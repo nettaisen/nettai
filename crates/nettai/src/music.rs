@@ -4,7 +4,7 @@
 //! gray, bn6 virus battle, bn6 boss battle, bn6 vs cybeast, bn6 crossover battle)", picked "beside the arena, each
 //! their own".
 //!
-//! What the themes are is each game's content: its rules' `battle_themes`, songs of its pack, and their names in
+//! What the themes are is each game's content: its rules' `battle_themes`, songs of its game's sound, and their names in
 //! its locales (`battle_themes`, by the song's asset name); this names no song and no game. A theme is offered
 //! once its game's parts are read (its content and its sound, `Games::read`: no runtime is needed), whichever
 //! game is selected. The pick is one, the player's own, Practice's for one visit (`practice::Visit`: the user,
@@ -285,7 +285,7 @@ mod tests {
                 .collect();
             (playing, player.battle().digest())
         };
-        // (A song by its pack's number: its handle, in the made-up pack.)
+        // (A song by its game's number: its handle, in the made-up assets.)
         let number = |game: &str, song: &str| {
             let c = all.read(game).unwrap().content().clone();
             SongId(c.assets.handle(nettai_content_api::AssetKind::Sound, song).unwrap())
@@ -308,7 +308,7 @@ mod tests {
     }
 
     /// The practice menu's Music changes the battle's music as it runs (`retheme`'s `Player::set_sound_parts`):
-    /// the new song at once, on its own pack's driver; the game's own again on the battle's; the battle the same.
+    /// the new song at once, on its own game's driver; the game's own again on the battle's; the battle the same.
     #[test]
     fn a_battle_changes_its_music_as_it_runs() {
         use nettai_audio::{MUSIC_PLAYER, m4a::SongId};

@@ -26,7 +26,7 @@
 //! box's digits, the enemies' in each color, the damage digits, the chip
 //! window's, a telop's, the banners') says how its numbers look: the box its
 //! faces fill in their 8x16 cells, the face's colors down its rows, and its
-//! outline (a rim all round, or a shadow right and down), as the pack has
+//! outline (a rim all round, or a shadow right and down), as the game's graphics have
 //! read them off the glyphs (`nettai_assets::letters::Digits`). Each
 //! character is drawn a glyph pixel a frame pixel across and as tall as its
 //! set's face box (the user, of the game's own sets: "aren't the fonts just
@@ -261,7 +261,7 @@ pub struct NumberSet {
 }
 
 impl NumberSet {
-    /// A set's look (the pack's, read off its glyphs) in `palette`.
+    /// A set's look (the game's, read off its glyphs) in `palette`.
     pub fn of(d: &Digits, palette: &Palette) -> NumberSet {
         let color = |c: u8| palette[c as usize & 15];
         NumberSet {

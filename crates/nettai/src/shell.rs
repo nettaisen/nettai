@@ -341,7 +341,7 @@ impl Shell {
     }
 
     /// Read each game's name in the language shown, for [`Shell::game_name`]: at start-up and when the language
-    /// changes. From the content's locales alone (a game without its pack has its name too); the header's name
+    /// changes. From the content's locales alone (a game whose ROMs aren't found has its name too); the header's name
     /// is told again.
     fn name_games(&self) {
         let ids: Vec<&str> = self.games.list.iter().map(|g| g.id.as_str()).collect();

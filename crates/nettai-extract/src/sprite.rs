@@ -22,7 +22,7 @@ pub fn archive(rom: &Rom, p: u32) -> Option<Vec<u8>> {
 /// The most palettes kept of a sprite's palette block.
 const MAX_PALETTES: usize = 64;
 
-/// A sheet as an archive has it: what its frames draw (the pack's), and
+/// A sheet as an archive has it: what its frames draw (the game's), and
 /// their timing (`timing`, by animation then frame: the duration in ticks
 /// and the flag byte, 0x80 on the last frame, 0x40 with it where the
 /// animation loops). The content times the sprites; the timing is kept for

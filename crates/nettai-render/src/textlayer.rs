@@ -6,7 +6,7 @@
 //!
 //! In the original mode ([`GraphicsMode::Original`]) nothing changes: every
 //! string is drawn into the 240x160 frame in the game's fonts, as the
-//! comparison with the original needs. (With a pack that has no lettering
+//! comparison with the original needs. (With graphics that have no lettering
 //! in the language shown, whose fonts are another language's, the original
 //! mode lays the strings out here and draws them into the frame in pixel
 //! fonts, at the frame's resolution: `pixeltext`, `Renderer::render`.) In
@@ -111,7 +111,7 @@ pub struct TextItem {
     /// fill color).
     pub ink: Option<Ink>,
     /// A drawing of the battle's frames in place of its picture (the
-    /// pack's shapes: `crate::shapes`), filled at the output's resolution
+    /// game's shapes: `crate::shapes`), filled at the output's resolution
     /// in its box: a banner's bar, a box, a window's frame.
     pub drawn: Option<Drawn>,
     /// How far past its box the item truly is, 16.16 frame pixels right and
@@ -230,7 +230,7 @@ pub struct TextSink<'f> {
     pub mode: GraphicsMode,
     font: Option<&'f VectorFont>,
     measure: Option<&'f std::cell::RefCell<crate::vfont::TextRenderer>>,
-    /// The original mode's pixel fonts, where its pack can't spell the
+    /// The original mode's pixel fonts, where its graphics can't spell the
     /// language shown: what takes the strings and measures them
     /// (`pixeltext`).
     pixels: Option<&'f std::cell::RefCell<crate::pixeltext::PixelText>>,
@@ -252,7 +252,7 @@ impl<'f> TextSink<'f> {
 
     /// With the game-style lettering left to the pictures however the
     /// strings are drawn (`on` false: the original mode's frame, whose
-    /// strings a pack without the language's lettering has drawn by the
+    /// strings graphics without the language's lettering have drawn by the
     /// vector font: `Renderer::render`).
     pub fn with_lettering(self, on: bool) -> TextSink<'f> {
         TextSink { lettering: on && self.lettering, ..self }
@@ -316,7 +316,7 @@ impl<'f> TextSink<'f> {
         self.lettering
     }
 
-    /// Whether the frames the pack has drawings of are drawn as shapes (the
+    /// Whether the frames the game's graphics have drawings of are drawn as shapes (the
     /// enhanced mode's: `shapes`).
     pub fn draws_shapes(&self) -> bool {
         self.lettering
@@ -334,7 +334,7 @@ impl<'f> TextSink<'f> {
     }
 
     /// With the original mode's pixel fonts taking and measuring the
-    /// strings (its pack can't spell the language shown).
+    /// strings (its graphics can't spell the language shown).
     pub fn with_pixels(self, pixels: Option<&'f std::cell::RefCell<crate::pixeltext::PixelText>>) -> TextSink<'f> {
         TextSink { pixels, ..self }
     }

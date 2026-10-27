@@ -1,5 +1,5 @@
-//! The original mode's strings where a pack can't spell the language shown
-//! (Chinese, which no GBA ROM has a font for; every pack has both
+//! The original mode's strings where the graphics can't spell the language shown
+//! (Chinese, which no GBA ROM has a font for; every game's graphics have both
 //! releases' fonts, English's and Japanese's), drawn at their own size
 //! into the 240x160 frame in pixel fonts: Fusion Pixel Bold 12px for the
 //! 8x16 font's strings (chip names, enemy names, the telop) and Fusion
@@ -14,8 +14,8 @@
 //! below, faded as the item is and hidden where something in front of it
 //! won the pixel. A string is never narrowed. The hanzi end on the row the
 //! original's letters end on (on the bar of an enemy's name, in the
-//! telop's band). What the pack's own font has of a string's plain
-//! characters (digits, Latin letters, ASCII's signs) is the pack's glyph, as
+//! telop's band). What the game's own font has of a string's plain
+//! characters (digits, Latin letters, ASCII's signs) is the game's glyph, as
 //! tall as the original's (the pixel fonts' are half-width, smaller); so is
 //! a mark of the game's (the stacked EX, SP, DS...: characters of the
 //! Private Use Area, §10.5), never the fonts' own glyphs there, which are
@@ -46,7 +46,7 @@ fn private(c: char) -> bool {
     ('\u{E000}'..='\u{F8FF}').contains(&c)
 }
 
-/// Whether the pack's own glyph draws `c` where it has one: a mark of the
+/// Whether the game's own glyph draws `c` where it has one: a mark of the
 /// game's, or a plain character (ASCII's).
 fn packs(c: char) -> bool {
     private(c) || c.is_ascii_graphic() || c == ' '
@@ -76,17 +76,17 @@ impl Face {
     }
 }
 
-/// A glyph's pixels: 0 clear, 1 its face, 2 its shadow (the pack's glyphs
+/// A glyph's pixels: 0 clear, 1 its face, 2 its shadow (the game's glyphs
 /// draw their own; the fonts' are face alone).
 struct Bitmap {
     /// Its first column, right of the pen.
     left: i32,
     /// Its first row: above the baseline (a font's glyph), or down from the
-    /// box's top (the pack's, drawn where the original's glyph is).
+    /// box's top (the game's, drawn where the original's glyph is).
     top: i32,
     w: usize,
     h: usize,
-    /// How far it moves the pen (the pack's: its cell, or the chatbox
+    /// How far it moves the pen (the game's: its cell, or the chatbox
     /// font's advance).
     advance: i32,
     px: Vec<u8>,
@@ -98,7 +98,7 @@ struct Piece {
     x: i32,
     y: i32,
     glyph: Option<Rc<Bitmap>>,
-    /// A font's glyph, which takes the shadow; the pack's has its own.
+    /// A font's glyph, which takes the shadow; the game's has its own.
     shadowed: bool,
 }
 
@@ -108,7 +108,7 @@ struct Laid {
     width: i32,
 }
 
-/// The pack's own glyphs the strings take: its fonts' marks of the game's
+/// The game's own glyphs the strings take: its fonts' marks of the game's
 /// and plain characters ([`packs`]), copied when the pack changes.
 #[derive(Default)]
 struct Own {
@@ -129,7 +129,7 @@ pub struct PixelText {
 
 impl PixelText {
     /// The fonts in `cut`'s forms (the language shown's: [`Cut::of`]); none
-    /// in the Japanese cut's, English's and Japanese's, which every pack
+    /// in the Japanese cut's, English's and Japanese's, which every game's graphics
     /// spells in its own fonts. Fusion Pixel 12px draws the chatbox's
     /// strings, its bold build the 8x16 font's ([`crate::bundled`] holds
     /// both).
@@ -145,7 +145,7 @@ impl PixelText {
         Some(PixelText { text, cells, scaler, glyphs: HashMap::new(), own: Own::default() })
     }
 
-    /// Draw the marks and plain characters from `hud`'s fonts (the pack
+    /// Draw the marks and plain characters from `hud`'s fonts (the game's graphics
     /// whose frame this is).
     pub fn use_pack(&mut self, hud: &Hud) {
         let pack = hud as *const Hud as usize;
@@ -182,7 +182,7 @@ impl PixelText {
         self.own = Own { pack, cells, dialogue };
     }
 
-    /// Whether the fonts draw every character of `text`, and the pack every
+    /// Whether the fonts draw every character of `text`, and the game's graphics every
     /// mark of the game's in it (spaces always).
     pub fn covers(&self, text: &str) -> bool {
         let has = |f: &Face, c: char| f.font().charmap().map(c) != 0;
@@ -382,19 +382,19 @@ mod tests {
         let bold = p.width("加農砲", Role::FittedCell);
         let regular = p.width("加農砲", Role::Dialogue);
         assert!(bold > regular && regular > 0, "{bold} {regular}");
-        assert!(p.covers("加農砲Ⓑ") && !p.covers("\u{E002}"), "a mark of the game's is the pack's");
+        assert!(p.covers("加農砲Ⓑ") && !p.covers("\u{E002}"), "a mark of the game's is the game's");
         let (i0, i1) = p.ink_extent("加農砲", Role::FittedCell).unwrap();
         assert!(i0 >= 0.0 && i1 <= bold as f32);
     }
 
-    /// English and Japanese have no pixel fonts: every pack spells them in
+    /// English and Japanese have no pixel fonts: every game's graphics spell them in
     /// its own.
     #[test]
     fn only_chinese_has_pixel_fonts() {
         assert!(PixelText::new(Cut::Japanese).is_none());
     }
 
-    /// A mark of the game's (the stacked EX) is the pack's own 8x16 glyph,
+    /// A mark of the game's (the stacked EX) is the game's own 8x16 glyph,
     /// a cell wide, never the font's glyph of that character.
     #[test]
     fn a_mark_is_the_packs_glyph() {

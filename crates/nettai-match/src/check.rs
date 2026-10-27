@@ -7,7 +7,7 @@
 //!   [`crate::rounds_for`]), each stage stated one a match of the game may
 //!   name (its rules'
 //!   `link_pick.match_stages`, `crate::link_battle_stages`), each
-//!   background stated one its pack has, and a stage left unstated only
+//!   background stated one its game has, and a stage left unstated only
 //!   where the rules pick one (`link_pick.stages`).
 //! - **A side**: its navi stated and the match's game's; its facts its game's
 //!   rules' (`crate::facts::check`: an enum the rules require stated, each

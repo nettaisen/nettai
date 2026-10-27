@@ -906,7 +906,7 @@ const BACKGROUND: usize = 1;
 /// stands on them that its netbattles are fought on) and the background pool, every game's battle backgrounds
 /// (`nettai_match::ids::pool_backgrounds`; docs/app.md §1, "The battle's background"), the games in their order
 /// and each list in its keys' natural order (a run of digits by its number: `netbattle-2` before
-/// `netbattle-10`; a background by its name in its game's pack). Each list is stepped through after Random: the
+/// `netbattle-10`; a background by its name in its game). Each list is stepped through after Random: the
 /// place picked from the seed each round, as a match that names none has it (what practice did before it had
 /// them), a background from the whole pool (`BackgroundPick::Pool`). A choice is a list's place, 0 Random.
 ///
@@ -925,7 +925,7 @@ const BACKGROUND: usize = 1;
 pub struct Places {
     /// Each arena's records, in the list's order: the first is the one it plays.
     arenas: Vec<Vec<StageHandle>>,
-    /// By the names a match writes for them: the game's own by its name in its pack, another game's with its
+    /// By the names a match writes for them: the game's own by its name in its game, another game's with its
     /// game (`exe4:acdc-area`).
     backgrounds: Vec<String>,
 }
@@ -1065,7 +1065,7 @@ fn natural(key: &str) -> String {
     out
 }
 
-/// The game and the name in its pack of the background a match of `game` names `written` (one of the pool's).
+/// The game and the name in its game of the background a match of `game` names `written` (one of the pool's).
 fn pool_background<'c>(content: &'c Content, game: &str, written: &str) -> Option<(&'c str, &'c str)> {
     nettai_match::ids::background(content, game, written).and_then(|id| content.background_of(id))
 }
@@ -1705,7 +1705,7 @@ mod tests {
 
     /// Each game's places are its link battle stages and the background pool, every game's backgrounds, after
     /// Random: a place chosen is every round's (and the set's places are those) and is found again from what the
-    /// round names (a background named by its name in the game's pack too), and Random names nothing, a Random
+    /// round names (a background named by its name in the game too), and Random names nothing, a Random
     /// background drawn from the pool. An arena is called by its place, a background by its game's name and its
     /// own in the language (each has one).
     #[test]
@@ -1745,7 +1745,7 @@ mod tests {
             assert!(backgrounds.contains(&"BN5 NebulaGray".to_string()) && backgrounds.contains(&"BN4 Duo".to_string()), "{game}");
             let own = |b: &str| !b.contains(':');
             assert_eq!(places.backgrounds.iter().filter(|b| own(b)).count(), nettai_match::ids::backgrounds(&content, game).len(), "{game}: its own by their names");
-            // (A background named by its name in the game's pack is found.)
+            // (A background named by its name in the game is found.)
             let named = nettai_match::ids::backgrounds(&content, game)[0].to_string();
             let at = places.find(&content, BACKGROUND, Some(&named));
             assert_eq!(places.backgrounds[at - 1], named, "{game}");

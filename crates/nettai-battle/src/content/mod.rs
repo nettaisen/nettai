@@ -15,13 +15,13 @@
 //! let chip = battle.content.chip(hand[0]);
 //! ```
 //!
-//! See docs/design/content-pack.md for the pack's files and this API.
+//! See docs/design/content-pack.md for the content root and this API.
 //!
 //! The engine does no file IO: a loader outside it (nettai-content) reads a
 //! content root (EXE6's is the committed content/exe6) into this model, and
 //! tests build small content sets in code. Everything a battle reads is the
-//! content's, the sprites' timing too: an asset pack (extracted from the
-//! user's ROM by `nettai-extract`) is only what a frontend draws and plays.
+//! content's, the sprites' timing too: a game's assets (extracted from the
+//! user's ROMs by `nettai-extract`) are only what a frontend draws and plays.
 //!
 //! Content has an identity, [`Content::hash`], which a round's setup
 //! carries (`RoundSetup::content`) so that netplay peers can check they
@@ -134,8 +134,9 @@ pub enum Region {
     Field(PanelCondition),
 }
 
-/// A banner asset: its handle over the loaded packs' banners (`AssetNames`;
-/// what its pack numbers it is the frontend's to look up). The engine names
+/// A banner asset: its handle over the banners the content names
+/// (`AssetNames`; what number the game's graphics give it is the frontend's
+/// to look up). The engine names
 /// none itself: what the rules show it gets by role (`Roles::banner`) or
 /// from a definition (a navi's win and lose banners, the banners that
 /// hold).
@@ -151,7 +152,7 @@ pub struct BannerId(pub u16);
 #[serde(transparent)]
 pub struct BackgroundId(pub u16);
 
-/// A mugshot asset: its handle over the loaded packs' mugshots (a link
+/// A mugshot asset: its handle over the mugshots the content names (a link
 /// navi's face, a form's faces). Presentation only.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
@@ -191,8 +192,8 @@ pub struct Content {
     pub animations: Animations,
     /// The assets the content names (`asset.sound("throw")`, a sprite where
     /// its module defines it), whose places are their handles: made by
-    /// [`Content::define`] (docs/design/content-model-v2.md §6.3). No pack
-    /// is read: what a pack numbers each is a frontend's
+    /// [`Content::define`] (docs/design/content-model-v2.md §6.3). No asset
+    /// is read: what number the game's assets give each is a frontend's
     /// (`nettai_content_api::AssetNumbers`).
     pub assets: nettai_content_api::AssetNames,
     /// The pack's scripts (see `scripts`).

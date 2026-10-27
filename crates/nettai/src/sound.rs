@@ -2,8 +2,8 @@
 //!
 //! The menus' sounds are the selected game's own: its custom screen's cursor, pick and taking back, its
 //! refusal, and the sound its battles start with as the screen breaks into one (the jack-in's), as its rules'
-//! sound roles name them (the app names no sound of a pack). The title music is the
-//! game's too: the song its pack names `title-screen` (no sound of the content's: played as one more past the
+//! sound roles name them (the app names no sound of a game's graphics). The title music is the
+//! game's too: the song its assets' index names `title-screen` (no sound of the content's: played as one more past the
 //! content's sounds), played across the menu screens, faded out as a battle starts, and crossfaded with the next
 //! game's as the game changes (docs/design/app-ui.md §6).
 //!
@@ -18,7 +18,7 @@ use nettai_frontend::player::FRAME_RATE;
 use std::time::Duration;
 use nettai_platform::time::Instant;
 
-/// The name a pack gives its title screen's music.
+/// The name a game's assets' index gives its title screen's music.
 const TITLE_MUSIC: &str = "title-screen";
 
 /// How long the title music takes to fade out, and to fade in.

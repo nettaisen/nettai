@@ -50,7 +50,7 @@ pub trait Driver {
     }
     /// A short description of where playback is.
     fn position(&self) -> String;
-    /// The game version of the console whose screen this is, as its pack
+    /// The game version of the console whose screen this is, as its game's graphics
     /// names its versions' assets, for a game whose versions the engine
     /// doesn't tell apart (EXE5's "protoman" and "colonel": the other
     /// version's chips; `Renderer::console_version`). None: the

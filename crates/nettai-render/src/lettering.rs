@@ -3,13 +3,13 @@
 //! (docs/design/text-rendering.md §12).
 //!
 //! A picture with words (a banner, "PAUSE", the waiting label, the damage
-//! digits) has its letters' look in the pack (`nettai_assets::letters`,
-//! read off the picture as the pack is made): where their capitals stand,
+//! digits) has its letters' look in the game's graphics (`nettai_assets::letters`,
+//! read off the picture as the graphics are extracted): where their capitals stand,
 //! the colors of their face down the rows, and an outline around it, a rim
 //! all round or a shadow right and down, as palette indices; a banner's bar
 //! as a shape. Here that look is put in the palette the picture is drawn
 //! in. Nothing here is a game's, and no picture is read: a game whose
-//! pictures look otherwise has another look in its pack. The words
+//! pictures look otherwise has another look in its game's graphics. The words
 //! themselves are the content's strings (`strings::DisplayText::lettering`).
 
 use crate::textlayer::Ink;

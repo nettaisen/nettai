@@ -1,7 +1,7 @@
 //! A chip's pictures on their own, outside a frame: its icon and its
 //! custom screen picture as RGBA images, for a tool that shows them (the
 //! build creator). They are looked up as a frame looks them up
-//! ([`crate::lookups`]: a chip's game's pack's, under its key there) and
+//! ([`crate::lookups`]: a chip's game's, under its key there) and
 //! colored as a frame colors them.
 
 use crate::audit::Problems;
@@ -42,7 +42,7 @@ pub fn image(tiles: &Tiles, w: usize, h: usize, palette: &Palette) -> Option<Ima
     Some(Image { width: pw as u32, height: ph as u32, rgba })
 }
 
-/// A chip's 16x16 icon, in its pack's HUD's icon palette (the slots'
+/// A chip's 16x16 icon, in its game's HUD's icon palette (the slots'
 /// unpicked look).
 pub fn chip_icon(graphics: &Graphics, c: &Content, chip: ChipHandle) -> Option<Image> {
     let (tiles, palette) = crate::lookups::chip_icon(graphics, c, chip, &mut Problems::default())?;
@@ -58,8 +58,8 @@ pub fn chip_art(graphics: &Graphics, c: &Content, chip: ChipHandle) -> Option<Im
 }
 
 /// The palette a chip family's element icon is drawn in: the icons' with
-/// the family's six colors from color 10, or the icon's own where the pack
-/// draws it as a sprite. None: the pack has no icon for the family.
+/// the family's six colors from color 10, or the icon's own where the game's graphics
+/// draws it as a sprite. None: the game's graphics have no icon for the family.
 fn element_palette(a: &nettai_assets::CustomScreen, family: usize) -> Option<Palette> {
     match &a.element_sprite {
         Some(sprite) => Some(sprite.palette),
@@ -71,7 +71,7 @@ fn element_palette(a: &nettai_assets::CustomScreen, family: usize) -> Option<Pal
     }
 }
 
-/// A chip family's 16x16 element icon, as the game's pack's chip window
+/// A chip family's 16x16 element icon, as the game's chip window
 /// shows it for a chip of the family: its frame with its symbol over it
 /// (`CustomScreen::element_icon`), in its palette. None: the game's graphics
 /// have no icon for the family.
@@ -83,7 +83,7 @@ pub fn element_icon(graphics: &Graphics, family: nettai_battle::content::ChipFam
 }
 
 /// A chip family's element icon as an SVG of 16x16 frame pixels: the frame
-/// the pack draws (`shapes.element_frame`) in the family's colors, smooth
+/// the game's graphics draw (`shapes.element_frame`) in the family's colors, smooth
 /// at any size, with the symbol over it as its pixels, square-edged (the
 /// icon's pixels inside the frame's ring: `CustomScreen::element_inside`).
 /// The user: "you should draw the element icons in the ui with the smooth

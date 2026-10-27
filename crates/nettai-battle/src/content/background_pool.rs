@@ -14,7 +14,7 @@ use nettai_content_api::AssetKind;
 
 /// Every background of the content's games, each by its game and its name in its game's pack: the games in their
 /// ids' order, each game's backgrounds in their names' (byte) order, each once. What each game's content names
-/// (its own language's `[backgrounds]`, read by the loader), so the same whatever packs are installed.
+/// (its own language's `[backgrounds]`, read by the loader), so the same whatever games' ROMs a player has.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct BackgroundPool {
     /// Each background's key, `<game>:<name>`, in the pool's order.
@@ -32,7 +32,7 @@ pub fn pool_key(game: &str, name: &str) -> String {
 }
 
 impl BackgroundPool {
-    /// The pool of `backgrounds`, each its game and its name in its game's pack, put in the pool's order.
+    /// The pool of `backgrounds`, each its game and its name in its game, put in the pool's order.
     pub fn new(backgrounds: impl IntoIterator<Item = (String, String)>) -> BackgroundPool {
         let mut pairs: Vec<(String, String)> = backgrounds.into_iter().collect();
         pairs.sort();
@@ -97,7 +97,7 @@ impl Content {
         self.other_backgrounds().position(|k| split(k) == (game, name)).map(|k| BackgroundId((own + k) as u16))
     }
 
-    /// Whether `id` is one of the game's own backgrounds (its asset table's, drawn from its pack by its name
+    /// Whether `id` is one of the game's own backgrounds (its asset table's, drawn from its graphics by its name
     /// there).
     pub fn is_own_background(&self, id: BackgroundId) -> bool {
         (id.0 as usize) < self.own_backgrounds()
@@ -110,8 +110,8 @@ impl Content {
         self.other_backgrounds().nth(k)
     }
 
-    /// Background `id`'s game and its name in its game's pack: one of the game's own (its asset table's: the
-    /// pack's game, the asset's name), or the pool's; none past them.
+    /// Background `id`'s game and its name in its game: one of the game's own (its asset table's: the
+    /// content's game, the asset's name), or the pool's; none past them.
     pub fn background_of(&self, id: BackgroundId) -> Option<(&str, &str)> {
         if self.is_own_background(id) {
             return Some((self.game(), self.assets.name(AssetKind::Background, id.0)?));

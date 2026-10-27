@@ -31,7 +31,7 @@ pub struct NaviData {
     #[serde(default)]
     pub mugshot: Option<super::MugshotId>,
     /// The version of its game a link navi belongs to (EXE6's Gregar's or
-    /// Falzar's link navis), by the name its game's pack keeps a version's
+    /// Falzar's link navis), by the name its game's graphics keep a version's
     /// pictures under; none: every version's. Presentation only (a console
     /// of another version has no portrait of it).
     #[serde(default)]
@@ -330,7 +330,7 @@ pub struct FormData {
     #[serde(default, deserialize_with = "faces")]
     pub mugshot: Option<Faces>,
     /// The version of its game the form belongs to (EXE6's Gregar's or
-    /// Falzar's Crosses and Beast), by the name its game's pack keeps a
+    /// Falzar's Crosses and Beast), by the name its game's graphics keep a
     /// version's pictures under; none: every version's. Its game's rules
     /// may read it (EXE6's: a Beast's roar, the Crosses a Beast goes with);
     /// to the engine it is presentation only (whose pictures name it in its

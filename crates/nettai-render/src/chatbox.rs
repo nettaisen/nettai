@@ -28,7 +28,7 @@ static BLANK_ARROW: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Til
 /// 8 rows.
 const BOX_ROW: i32 = 12;
 /// The text's image (the line buffer `sub_30070B4` copies): 192 pixels
-/// wide and 40 rows, a line every 14 rows, shown from the pack's place
+/// wide and 40 rows, a line every 14 rows, shown from the game's place
 /// (EXE6's (51, 108): `HudLayout::chatbox_text`) as three rows of six
 /// sprites (`chatbox_804021C`): 32x16, 32x16 and 32x8.
 const TEXT_WIDTH: usize = 192;
@@ -287,11 +287,11 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
     }
     // chatbox_804082C: the arrow; chatbox_8040B8C: the portrait in front.
     if let Some(frame) = c.look().arrow {
-        // (Its place by the box: the pack's, EXE6's `byte_8045DCC`.)
+        // (Its place by the box: the game's, EXE6's `byte_8045DCC`.)
         let (x, y) = assets.hud.layout.chatbox_arrows[shown.kind.min(1)];
         let at = (x as i32, y as i32);
         let arrow = part(&g.arrow, 4 * frame as usize, at, (16, 16), g.text_palette);
-        // (Drawn as shapes in the enhanced mode where the pack has its
+        // (Drawn as shapes in the enhanced mode where the game's graphics have its
         // frame's drawing, as deep as the part, which stands blank.)
         match assets.hud.shapes.chatbox_arrow.get(frame as usize).filter(|_| sink.draws_shapes()) {
             Some(d) => {
@@ -339,7 +339,7 @@ pub fn text_at(hud: &nettai_assets::Hud) -> (i32, i32) {
 }
 
 /// The box's map at an opening step (`chatbox_CopyBackgroundTiles_8040344`);
-/// in the enhanced mode the cells the pack has drawings of drawn as shapes
+/// in the enhanced mode the cells the game's graphics have drawings of drawn as shapes
 /// (`nettai_assets::shapes`), in the box's palette, the rest as tiles.
 fn draw_box(g: &Graphics, shapes: &[Option<nettai_assets::shapes::MapDrawing>], kind: usize, step: u8, layer: &mut Layer, sink: &mut TextSink) {
     let Some(map) = g.boxes.get(kind).and_then(|steps| steps.get(step as usize)) else { return };
@@ -521,7 +521,7 @@ mod tests {
         assert_eq!(shown(&c, &[5, 4, 6], false), vec![5, 4, 6]);
     }
 
-    /// Box graphics shaped as EXE6's: a frame tile (the pack's tile 8: a
+    /// Box graphics shaped as EXE6's: a frame tile (the game's tile 8: a
     /// clear column, the border's three, then the fill) on the left and,
     /// flipped, on the right, the message box's at column 29, the
     /// description box's at column 26, with columns 27 to 29 clear.

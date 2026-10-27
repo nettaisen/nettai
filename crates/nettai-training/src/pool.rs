@@ -33,7 +33,7 @@ pub struct PoolConfig {
     pub threads: usize,
     pub seed: u64,
     /// The content directory (none: `nettai_content::index::content`, the
-    /// repository's): the battles are its alone (no asset pack is read).
+    /// repository's): the battles are its alone (no asset is read).
     pub content: Option<PathBuf>,
     pub env: Config,
     /// Where the chips' fingerprints are kept on disk (none: computed once a
@@ -221,7 +221,7 @@ pub struct Pool {
 
 /// Game `game`'s battle content, from the content directory `content`
 /// (none: the repository's): the content alone, as a battle reads it (its
-/// sprites' timing too: no asset pack, picture or sound).
+/// sprites' timing too: no asset, picture or sound).
 pub fn load_game(content: Option<&Path>, game: &str) -> Result<Arc<Content>, String> {
     let dir = content.map(Path::to_path_buf).unwrap_or_else(nettai_content::index::content);
     let (content, _) = nettai_content::load::load_battle(&dir, game).map_err(|r| format!("{game}: {r}"))?;

@@ -205,7 +205,7 @@ impl Player {
 
     /// What the player made on the way since it was made, because nothing
     /// had made it ready (`crate::preload`): content runtimes loaded on
-    /// this thread, parts of a pack read from disk on it, and its text's
+    /// this thread, parts of a game's graphics read from disk on it, and its text's
     /// strings laid out and glyphs' fields made for the first time. A
     /// player a [`crate::preload::Preload`] made, on the thread that
     /// stepped it, has loaded no runtime and read nothing however long it
@@ -549,7 +549,7 @@ impl Player {
         }
     }
 
-    /// The battle's sound as it stands (none: silent): what each pack's
+    /// The battle's sound as it stands (none: silent): what each game's
     /// driver plays (a host's check of the music it was given).
     pub fn audio(&self) -> Option<&BattleAudio> {
         self.audio.as_ref()
@@ -566,7 +566,7 @@ impl Player {
     /// Show the battle in another language from the next frame: `graphics`
     /// are the game's in it (`Game::graphics(lang)`; the host loads each
     /// language it offers and keeps it, and nothing is loaded here). Only the
-    /// drawing changes, the pack's lettering and the content's strings: the
+    /// drawing changes, the game's lettering and the content's strings: the
     /// battle doesn't know its language, what the renderer follows over
     /// time (the HUD's rolling numbers, its timers) carries on.
     pub fn set_language(&mut self, graphics: &Graphics) {

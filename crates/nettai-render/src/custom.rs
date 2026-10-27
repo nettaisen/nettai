@@ -7,7 +7,7 @@
 //!
 //! It draws from the engine's `Screen` and its presentation state
 //! (`Screen::look`), the content (chip names, codes, elements, damage) and
-//! the pack's custom-screen graphics, composing the tile numbers the
+//! the game's custom-screen graphics, composing the tile numbers the
 //! original's window map names: the tiles the battle loads at fixed places
 //! and the ones the screen copies in as it runs. docs/frontend.md §3.
 
@@ -31,7 +31,7 @@ use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
 const COLUMNS: usize = 15;
 const ROWS: usize = 20;
 /// Where the screen's tiles go in the HUD layer's character block: the
-/// window frame from tile 1, the rest where the pack's game loads them
+/// window frame from tile 1, the rest where the game loads them
 /// (`CustomScreen::layout`: EXE6's `CustomLayout::EXE6`, the chip window's
 /// name from 0x9B, EXE5's from 0x59).
 const WINDOW_TILE: u16 = CustomScreen::WINDOW_TILE;
@@ -327,12 +327,12 @@ struct View<'a> {
     /// chip's frame's too (`sub_802812C`).
     emblem_palette: Palette,
     hud: &'a Hud,
-    /// Every pack's graphics: a chip's icon and picture are its game's.
+    /// The game's graphics: a chip's icon and picture are its game's.
     graphics: crate::graphics::Graphics<'a>,
 }
 
 /// A button of the rules as the frontend draws it (docs/design/rules-in-luau.md
-/// §4.8): the pack's look of the name its content registers it under
+/// §4.8): the game's look of the name its content registers it under
 /// (`ButtonPictures`: its tiles by set, which set a state shows, the cursor
 /// over it, its picture in the chip window), and its tiles a set, its
 /// cells' (the content's `cells`).
@@ -367,8 +367,8 @@ impl<'a> ButtonLook<'a> {
 }
 
 impl<'a> View<'a> {
-    /// The look of button `button`: the pack's of its name (the Beast's
-    /// version's own first: `VersionPictures::buttons`). A name the pack
+    /// The look of button `button`: the game's of its name (the Beast's
+    /// version's own first: `VersionPictures::buttons`). A name the game's graphics
     /// has no look for is drawn as nothing (`lookups::button` says so); a
     /// button that shows a chip (`Slot::face`: EXE5's capsules) is drawn as
     /// that chip's slot whatever its name.
@@ -379,7 +379,7 @@ impl<'a> View<'a> {
     }
 
     /// What the special slot shows with no button in it: the hidden set of
-    /// a button its content registers there, if the pack's look has one
+    /// a button its content registers there, if the game's look has one
     /// (EXE6's Beast Out button's fourth; EXE5's soul button has none: the
     /// window's fill, as its handler for no special button copies nothing
     /// in, 0x080240D8).
@@ -404,7 +404,7 @@ fn window_view(b: &Battle, screen: &Screen) -> Option<WindowView> {
     b.content.defs.window(window).view
 }
 
-/// The pack's look of the content's button with view `view` (by the
+/// The game's look of the content's button with view `view` (by the
 /// button's name, the key of its look).
 fn view_look<'a>(v: &View<'a>, view: ButtonView) -> Option<&'a ButtonPictures> {
     let d = v.b.content.defs.buttons.iter().find(|d| d.view == Some(view))?;
@@ -413,7 +413,7 @@ fn view_look<'a>(v: &View<'a>, view: ButtonView) -> Option<&'a ButtonPictures> {
 
 /// The icon of the form the button that offers a form (the view
 /// `form_offer`) offers or gave, if the special slot is that button: the
-/// pack's `icons` of the button and the icon's first tile in them, the
+/// game's `icons` of the button and the icon's first tile in them, the
 /// offer's place (`offer_icon`). (EXE5's soul button: the soul's icon,
 /// Chaos Unison's the 13th, 0x0802341C.)
 fn offered_icon<'a>(v: &View<'a>) -> Option<(&'a Tiles, usize)> {
@@ -470,7 +470,7 @@ fn offered_flight<'a>(v: &View<'a>, at: Flight, problems: &mut Problems) -> Opti
 pub const OTHER_VERSIONS_ICON: &str = "an offered form's icon in its own version's outline (the console's ROM draws every one in the console's)";
 
 /// The row of the offer button's icon palettes that is `form`'s own
-/// version's, of the pack's base version's (0) and then each other
+/// version's, of the game's base version's (0) and then each other
 /// version's (`icon_palettes`, by name): the form's own `version` (EXE5's
 /// souls: Team ProtoMan's or Team Colonel's). No form, one of no version,
 /// or one of the base version: the base version's.
@@ -585,7 +585,7 @@ impl View<'_> {
 
 /// A navi's forms of a version of its game: its form list named for the
 /// version, in the order its definition lists them (`NaviForms::listed`:
-/// EXE6's Crosses), the order of a pack version's names and colors.
+/// EXE6's Crosses), the order of a version's names and colors.
 pub fn version_forms<'c>(c: &'c Content, navi: NaviHandle, version: &str) -> &'c [FormHandle] {
     c.navi(navi).forms.as_ref().map_or(&[], |f| f.listed(version))
 }
@@ -642,7 +642,7 @@ pub fn version_name(b: &Battle, side: u8) -> Option<&str> {
 
 /// The version a side's console is of, by that name: what the frontend
 /// says of the console (`Graphics::version`: a recording's), else the side's
-/// player's (`version_name`), else the base version of the game's pack.
+/// player's (`version_name`), else the base version of the game's graphics.
 pub fn console_version<'x, 'a: 'x>(b: &'x Battle, graphics: &crate::graphics::Graphics<'a>, side: u8) -> &'x str {
     graphics.version().or_else(|| version_name(b, side)).unwrap_or(&graphics.bundle().custom.versioned.base_version)
 }
@@ -662,7 +662,7 @@ pub fn emblem_sprite(emblem: Option<&nettai_assets::Emblem>) -> Tiles {
 /// Why a navi's emblem isn't the one the console shows, if it isn't: a
 /// console has no emblem for another version's link navi (a navi that says
 /// its `version`) and shows its own counterpart's picture in the navi's
-/// colors; the pack has every navi's own (deliberately: docs/frontend.md).
+/// colors; the game's graphics have every navi's own (deliberately: docs/frontend.md).
 fn known_emblem(b: &Battle, graphics: &crate::graphics::Graphics, side: u8) -> Option<&'static str> {
     let navi = b.content.navi(b.stats[side as usize & 1].navi);
     let console = console_version(b, graphics, side);
@@ -711,7 +711,7 @@ struct Window {
     /// The form list's names it shows: each one's first tile, its form and
     /// the look of its name it shows (`letter_form_names`).
     form_name_tiles: Vec<(u16, FormHandle, usize)>,
-    /// Where the blocks go among the layer's tile numbers (the pack's).
+    /// Where the blocks go among the layer's tile numbers (the game's).
     layout: nettai_assets::CustomLayout,
     /// In the enhanced mode, the frames drawn as shapes (`shape_frames`):
     /// each one's cells (their first column, row and how many columns) and
@@ -880,7 +880,7 @@ impl Window {
         w
     }
 
-    /// In the enhanced mode, the frames the pack has drawings of drawn as
+    /// In the enhanced mode, the frames the game's graphics have drawings of drawn as
     /// shapes (`nettai_assets::shapes`): the window's map's (the drawings
     /// of its cells, each where the cell is laid as the map says: a cell the
     /// screen laid otherwise is drawn as its tiles, a problem), and the
@@ -1033,7 +1033,7 @@ impl Window {
     /// should trace ABCDEFGHIJKLMNOPQRSTUVWXYZ* for the chip codes font like
     /// you did digits"): the chip window's in Nettai Chip Codes, the slots'
     /// in Nettai Slot Codes. Each code's cell with its letter taken off (the
-    /// pack's `letters`), and the letter drawn in the box the picture's
+    /// game's `letters`), and the letter drawn in the box the picture's
     /// letters fill, a glyph pixel a frame pixel across and the box's height
     /// down, in its colors and its rim or shadow, where it stood.
     fn letter_codes(&mut self, v: &View, text: &TextSink, problems: &mut Problems) {
@@ -1067,7 +1067,7 @@ impl Window {
             };
             let item = TextItem::fitted(fitted, Rect::new(0, 0, 8 * block.w as i32, 8 * block.h as i32));
             self.labels.push((block.col, block.row, block.w, item));
-            // (A slot's code's plate drawn as shapes, where the pack has
+            // (A slot's code's plate drawn as shapes, where the game's graphics have
             // its drawing, under the letter.)
             if let Some(plate) = a.shapes.slot_code.as_ref().filter(|_| slot && text.draws_shapes()) {
                 let d = crate::shapes::drawn(plate, |_, c| palette[c as usize & 15], (false, false), None);
@@ -1130,7 +1130,7 @@ impl Window {
             // where they were.)
             self.tiles.put_part(first, &own.form_names_blank, FORM_NAME_TILES * look, FORM_NAME_TILES);
             self.labels.push((block.col, block.row, block.w, item));
-            // (The bar drawn as shapes where the pack has its drawing, kept
+            // (The bar drawn as shapes where the game's graphics have its drawing, kept
             // off its portrait's pixels, which stay the picture's.)
             if let Some(d) = v.assets.shapes.form_name_bar.as_ref().filter(|d| text.draws_shapes() && [8 * block.w, 8 * block.h] == [d.size[0] as usize, d.size[1] as usize]) {
                 let (w, h) = (8 * block.w, 8 * block.h);
@@ -1154,7 +1154,7 @@ impl Window {
         }
     }
 
-    /// In the enhanced mode, the window's labels its map shows (the pack's
+    /// In the enhanced mode, the window's labels its map shows (the game's
     /// `labels`: BATTLE CHIP, CHIP SELECT...), where the strings have their
     /// words (`window.NAME`) and the lettering font draws them: their
     /// letters taken off the tiles (each letter pixel the window's own
@@ -1422,7 +1422,7 @@ impl Window {
                     blank_details(self, &look.details(palette));
                     let name = nettai_content_api::keys::local(&v.b.content.defs.button(button).name);
                     // (The letters of the picture the look's is: the
-                    // version's own button's, else the pack's.)
+                    // version's own button's, else the game's.)
                     let pack_name = &v.b.content.defs.button(button).name;
                     let letters = if v.buttons.button(pack_name).is_some() { v.button_letters.button(pack_name) } else { a.letters.pictures.button(pack_name) };
                     self.help = Some((format!("pictures.{name}"), letters.cloned()));
@@ -1478,7 +1478,7 @@ impl Window {
         let family = data.family.0 as usize;
         if family < a.element_colors.len() {
             // (The frame with the icon over it, as the game's; in the
-            // enhanced mode, where the pack draws the frame, the symbol on
+            // enhanced mode, where the game's graphics draw the frame, the symbol on
             // the frame's ground, the frame's drawing over it but for the
             // symbol: `shape_frames`. The ground fills the square round the
             // ring, as the window's own panel round it.)
@@ -1679,7 +1679,7 @@ impl Window {
         // The icons' palettes (the 2x2 icon cells of slots 0-9).
         for s in 0..10usize {
             let slot = v.screen.slots[s];
-            // (The empty icon in the pack's palette for it: EXE4's 9.)
+            // (The empty icon in the game's graphics' palette for it: EXE4's 9.)
             let empty = self.layout.empty_palette.unwrap_or(11);
             let palette = match slot.kind {
                 SlotKind::Empty => empty,
@@ -1724,7 +1724,7 @@ impl Window {
     /// as the chip window's picture and name, in the box about them, which
     /// mirrors), the hand (the slots' cells),
     /// the buttons, OK (the cells its cursor's corners go about), the
-    /// labels (their letters' columns, where the pack says them: EXE6's
+    /// labels (their letters' columns, where the graphics say them: EXE6's
     /// CROSSSELECT tab's cells hold its arrow too, which mirrors), the
     /// picked column's icons and the screen's own emblem. A part within one
     /// before it goes with that one. Each part but the labels and the chip
@@ -2064,8 +2064,8 @@ impl Window {
         // (Its tiles with the letters taken off: its panel's or its
         // frame's color where they were.)
         self.tiles.put(self.layout.art, &found.blank);
-        // (Drawn as shapes where the pack has its drawing: the language's
-        // own, else the pack's.)
+        // (Drawn as shapes where the game's graphics have its drawing: the language's
+        // own, else the game's.)
         if text.draws_shapes() {
             let name = key.trim_start_matches("pictures.");
             let own = format!("{name}-{}", v.hud.language());
@@ -2217,7 +2217,7 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
     let palette = &w.palettes[13];
     // The bar: the slanted end, then one cell a glyph (eight at most; a
     // ninth glyph has bar cells from column 21 on, no end). In the enhanced
-    // mode drawn as shapes where the pack has its drawings, under the name.
+    // mode drawn as shapes where the game's graphics have its drawings, under the name.
     let bar = |tile: u16| MapEntry { tile, hflip: false, vflip: false, palette: 13 };
     let cells = len.min(8);
     let mut col = 0x1D - cells as i32;
@@ -2253,7 +2253,7 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
 /// The cursor's corners (`sub_8028820`): where its slot's frame is
 /// (`jt_802886C`'s routines, less 3) and the four 8x8 corners in each of
 /// its two frames (`byte_80288B0` and the others: y, x, flips). OK's and a
-/// button's are the pack's (`CustomLayout::ok_cursor`,
+/// button's are the game's (`CustomLayout::ok_cursor`,
 /// `ButtonPictures::cursor`: EXE5's sit otherwise).
 #[derive(Clone, Copy)]
 struct CursorShape {
@@ -2289,7 +2289,7 @@ fn cursor_cells(p: &nettai_assets::CursorPlace) -> [usize; 4] {
     [edge(x0), edge(y0), edge(x1), edge(y1)]
 }
 
-/// The cursor at a place the pack gives (OK's, a button's).
+/// The cursor at a place the graphics give (OK's, a button's).
 fn cursor_at(p: &nettai_assets::CursorPlace) -> (i32, i32, CursorShape) {
     let corners = p.corners.map(|frame| frame.map(|(y, x, h, v)| (y as i32, x as i32, h, v)));
     (p.x as i32, p.y as i32, CursorShape { corners })
@@ -2341,7 +2341,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
             let (col, row) = ((slot % 5) as i32, (slot / 5) as i32);
             (16 * col + 8, 0x68 + 0x18 * row, CHIP_CURSOR)
         }
-        // (A button the pack has no look for: a chip's cursor on its slot.)
+        // (A button the game's graphics have no look for: a chip's cursor on its slot.)
         SlotKind::Button { button, .. } => match v.button_look(button) {
             Some(look) => look.cursor(),
             None => {
@@ -2520,7 +2520,7 @@ fn element_part<'a>(v: &View, a: &'a CustomScreen, place: Placement) -> Option<S
 
 /// The element sprite's parts with their tags (`tags`, as `drawn_parts`):
 /// the frame with the icon in front of it, as the game's sprite; in the
-/// enhanced mode, where the pack draws the frame, the icon alone with the
+/// enhanced mode, where the game's graphics draw the frame, the icon alone with the
 /// frame drawn over it as a shape as deep as it, kept off the symbol's
 /// pixels inside its ring, the window's panel showing round the ring.
 fn framed_element<'a>(part: SpritePart<'a>, a: &'a CustomScreen, text: &mut TextSink, tags: &mut Vec<Option<u32>>, at: usize) -> Vec<SpritePart<'a>> {
@@ -2765,7 +2765,7 @@ pub fn draw<'a>(
     // 0x0801E3FC, then 0x0801E41E: the cursor is over the frame); else
     // after the cursor (EXE6's `sub_8026CCC`).
     let regular_first = b.content.rules().custom_screen.states_in_choosing;
-    // (The Regular chip's frame: as shapes where the pack has its drawings,
+    // (The Regular chip's frame: as shapes where the game's graphics have its drawings,
     // by its frame, 16 tiles each.)
     if drawn.regular && regular_first {
         let parts = drawn_parts(vec![regular_part(&v, a)], &a.shapes.regular, 16, text, &mut tags, queue.len());

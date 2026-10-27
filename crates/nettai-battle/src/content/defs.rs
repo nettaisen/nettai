@@ -451,8 +451,8 @@ impl RulesDef {
 /// §4.4): where it sits, and its functions, which run as the rules' calls.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ButtonDef {
-    /// Its name in the rules' `buttons` (the key a pack has its look
-    /// under).
+    /// Its name in the rules' `buttons` (the key the game's graphics have its
+    /// look under).
     pub name: String,
     /// What a frontend draws of it besides its look (`view`), if it says.
     pub view: Option<ButtonView>,

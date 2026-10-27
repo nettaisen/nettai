@@ -6,7 +6,7 @@ use nettai_frontend::replay::ReplayPlayer;
 use nettai_frontend::testing::{audio, graphics, recorded};
 use std::sync::Arc;
 
-/// A viewer of `replay` from `view`'s side, on graphics without a pack and
+/// A viewer of `replay` from `view`'s side, on made-up graphics (a field alone) and
 /// a sound of every cue.
 pub(crate) fn viewer(content: &Arc<Content>, replay: &Replay, view: u8) -> Viewer {
     let renderer = graphics(content, 0x7C1F).renderer(GraphicsMode::Original, None);

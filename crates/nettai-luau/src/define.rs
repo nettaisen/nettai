@@ -341,7 +341,7 @@ pub(crate) fn install_assets(
 /// What a game's modules have and a support pack's don't: the playing
 /// game's context, which reaches a support pack only as its callers'
 /// arguments (docs/design/content-model-v2.md §4.0). `asset` names the
-/// game's asset pack; `rules` reaches the game's rules' state, of the side
+/// game's assets; `rules` reaches the game's rules' state, of the side
 /// their running call is for.
 pub(crate) const GAME_CONTEXT: [&str; 2] = ["asset", "rules"];
 

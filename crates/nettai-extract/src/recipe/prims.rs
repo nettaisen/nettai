@@ -270,7 +270,7 @@ fn palette_table(lua: &Lua, p: &Palette) -> LResult<Table> {
 // ---- Sprites, animations, fonts -------------------------------------------------------------------
 
 /// A sprite archive's sheet, placed in the model as it is (with its
-/// timing, which the pack doesn't hold: `crate::sprite::Sheet`).
+/// timing, which the graphics don't hold: `crate::sprite::Sheet`).
 pub(crate) struct SheetHandle(pub crate::sprite::Sheet);
 
 impl UserData for SheetHandle {
@@ -306,7 +306,7 @@ fn guarded<T>(what: &str, f: impl FnOnce() -> T) -> LResult<T> {
 // ---- The libraries ---------------------------------------------------------------------------------
 
 /// What a recipe's `data` reads: the files under its game's `compat/`, by
-/// path in the pack (`compat/assets.toml`), with their bytes.
+/// path in its pack (`compat/assets.toml`), with their bytes.
 pub(crate) struct Data {
     pub game: String,
     pub files: BTreeMap<String, Arc<[u8]>>,

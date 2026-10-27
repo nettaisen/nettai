@@ -1,5 +1,5 @@
 //! The order the creator's lists keep: the game's library order (its
-//! pack's `library.toml`, `nettai_content::library`): the chips by the
+//! game's `library.toml`, `nettai_content::library`): the chips by the
 //! game's library tabs in their order and in each the order its library
 //! screen lists them, the entries of each of the game's collections in
 //! theirs; what isn't in it after, by key.

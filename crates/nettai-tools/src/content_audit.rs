@@ -9,20 +9,16 @@
 //! - every navi's face and emblem, its name and no-running message with
 //!   its portrait; every form's face for each emotion; every Cross's name
 //!   and colors and description; every custom-screen button's look, on a
-//!   console of each of the pack's versions;
-//! - every asset of the loaded packs, by its qualified name (a superset of
-//!   what the content names): each sprite with every animation and its
-//!   frames, each sound's song, each banner's glyphs (a telop's banner its
-//!   place, the judge's its numbers), each background and mugshot;
+//!   console of each of the game's versions;
+//! - every asset the content names: each sprite with every animation and
+//!   its frames, each sound's song, each banner's glyphs (a telop's banner
+//!   its place, the judge's its numbers), each background and mugshot;
 //! - the HUD's text lines, the custom screen, the chatbox and the warning
-//!   marker, of each loaded game's pack (a console draws its own game's:
-//!   another pack's for its game's chips' names, windows and descriptions,
-//!   and its navis' emblems);
-//! - the field (docs/design/rules-in-luau.md §7.4): each loaded game's
-//!   pack's blocks for the panel types its game names, and in an arena of
-//!   each, every panel type a loaded game names and both highlights, as
-//!   the stage draws them (`stage::FieldArt`: the arena's field, another
-//!   pack's, or a tinted normal panel, which is said, not counted).
+//!   marker of the game's graphics;
+//! - the field (docs/design/rules-in-luau.md §7.4): the game's field's
+//!   blocks for the panel types its game names, and every panel type and
+//!   both highlights as the stage draws them (`stage::FieldArt`: the
+//!   field's, or a tinted normal panel, which is said, not counted).
 //!
 //! It takes seconds and catches what a trace's frames would only catch for
 //! the chips and the navis the trace shows: a lookup by the wrong key
@@ -63,7 +59,7 @@ pub struct ContentAudit {
     /// The strings a language's table lacks (`ja: chips.hidden.name`),
     /// which show in the content's own: not problems.
     pub untranslated: Vec<String>,
-    /// What is drawn otherwise by design (a panel type no loaded pack's
+    /// What is drawn otherwise by design (a panel type the game's
     /// field draws, tinted): said, not problems.
     pub notes: Vec<String>,
 }
@@ -161,7 +157,7 @@ fn check(c: &Content, graphics: &Graphics, text: &DisplayText, lettered: bool, b
         }
     }
 
-    // The custom screen's buttons' looks: the pack's, and each of its
+    // The custom screen's buttons' looks: the game's, and each of its
     // versions' own (EXE6's Beast Out button is its version's Beast's).
     for i in 0..c.defs.buttons.len() {
         let button = nettai_battle::content::ButtonHandle(i as u16);
@@ -354,7 +350,7 @@ mod tests {
     use nettai_assets::{ChipIcon, Tiles};
     use nettai_battle::content::testing;
 
-    /// The static audit's chips without an icon, with the pack's icons
+    /// The static audit's chips without an icon, with the game's icons
     /// named by `name` of each chip's key.
     fn chips_without_icons(name: impl Fn(&str) -> String) -> usize {
         let c = testing::content();
@@ -363,11 +359,11 @@ mod tests {
             b.hud.chip_icons.push(ChipIcon { key: name(&d.key), tiles: Tiles { pixels: vec![1; 4 * Tiles::TILE] } });
         }
         let found = audit(&c, b, &testing::asset_numbers(&c), None, &[("en".into(), None)]);
-        found.problems.iter().filter(|p| p.ends_with("has no icon in the pack")).count()
+        found.problems.iter().filter(|p| p.ends_with("has no icon in the game's graphics")).count()
     }
 
-    /// The field's blocks are audited for the panel types the own pack's
-    /// game numbers, each of them.
+    /// The field's blocks are audited for the panel types the game numbers,
+    /// each of them.
     #[test]
     fn the_field_is_audited_for_the_panel_types_its_game_names() {
         let mut c = (*testing::content()).clone();
@@ -409,7 +405,7 @@ mod tests {
     }
 
     /// A lookup by the wrong key fails for every chip (R1's: a chip's icon
-    /// by another key than the pack names it by, here one written with its
+    /// by another key than the game's graphics name it by, here one written with its
     /// game), not only for the chips a trace shows.
     #[test]
     fn a_lookup_by_the_wrong_key_fails_for_every_chip() {

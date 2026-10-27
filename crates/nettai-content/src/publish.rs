@@ -11,7 +11,7 @@
 //!    linked beside this one's).
 //! 3. It builds the bundle from the submodules' folders (the support packs at the locked commits), numbered after
 //!    the line's releases.
-//! 4. It unpacks the bundle and loads its game, for its content hash (the content alone: no asset pack is read).
+//! 4. It unpacks the bundle and loads its game, for its content hash (the content alone: no asset is read).
 //! 5. It refuses a bundle that is the line's newest again: the same id, or the same content hash and pack commits.
 //! 6. It creates the release: tag `<line>-r<revision>` on the game pack's commit, with the bundle (`<id>.tar.gz`)
 //!    and its index entry (`bundle.json`, a [`Published`]).
@@ -410,7 +410,7 @@ fn refusal(newest: Option<&Published>, new: &Published) -> Option<String> {
 }
 
 /// The content hash of gzipped bundle `gz` (id `id`): unpacked into `dest` as an app's store unpacks it, and game
-/// `game` loaded from it (the content alone: no asset pack is read).
+/// `game` loaded from it (the content alone: no asset is read).
 fn content_hash(gz: &[u8], id: BundleId, dest: &Path, game: &str) -> Result<nettai_battle::ContentHash, String> {
     if let Some(parent) = dest.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;

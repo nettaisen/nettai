@@ -54,7 +54,7 @@ pub enum ChipClass {
 
 /// A chip's family: one of its game's (the rules' `elements.families`,
 /// [`super::ChipFamilies`]), by its number there, the number the game's
-/// chip records hold and its pack's custom-screen icons are by. It gives
+/// chip records hold and its game's custom-screen icons are by. It gives
 /// the chip's attacks their secondary elements (`Rules::family_elements`)
 /// and keys the forms' chip bonuses and charged chips. In a content file,
 /// the family's name, which the game's families say the number of (a
@@ -339,7 +339,7 @@ pub struct ChipData {
     #[serde(skip_deserializing, default = "super::strings::three_lines")]
     pub description_lines: u8,
     /// The palette of the chip's picture on the custom screen, 16 BGR555
-    /// colors, for a chip whose palette no ROM holds (the pack's picture
+    /// colors, for a chip whose palette no ROM holds (the extracted picture
     /// has a black one): presentation only.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub art_palette: Option<[u16; 16]>,

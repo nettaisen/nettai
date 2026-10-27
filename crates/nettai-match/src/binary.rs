@@ -4,16 +4,16 @@
 //! on, which whoever carries the bytes names beside them (a replay's head,
 //! the netplay handshake: the game and the content's hash), and nothing in
 //! it is a name but a round's background: a definition is its handle in the
-//! content (the pack's index, the same on every load of the content the
+//! content (its index there, the same on every load of the content the
 //! hash names), and a background, which may be any game's (the background
 //! pool's, docs/app.md §1, "The battle's background"), is its game and its
-//! name in its game's pack, which name the same background whatever the
+//! name in its game, which name the same background whatever the
 //! pool beside the content (no player's words: a match holds no other
 //! text).
 //!
 //! ```text
 //! place  := stage (u16: its handle), background (string: `<game>:<name>`, its game and its
-//!           name in its game's pack)
+//!           name in its game)
 //! side   := the side's setup of the game's rules in its compact form (`Block::write_compact`:
 //!           each fact in the setup's order, a list as its count and its entries)
 //! match  := seed (u32), the round wins its set is first to (u8: `n`, 1 to `MAX_FIRST_TO`),
@@ -27,7 +27,7 @@
 //! fought on a stage and a background, whatever the game); a side's
 //! is its game's rules' setup, so a game's facts change no other game's
 //! bytes. A reader refuses bytes that end early or run on, a handle past
-//! the content's definitions, a background neither the game's pack nor the
+//! the content's definitions, a background neither the game nor the
 //! pool has, and a value no fact may hold, each with where; whether what it
 //! read is a match the game's rules allow is the checks' (`check`), as for
 //! a match file.
@@ -81,7 +81,7 @@ fn handles_held(content: &Content, block: &Block, place: nettai_content_api::Pla
             if let FieldValue::Asset(_, Some(h)) = block.get_at(place)
                 && h as usize >= content.assets.names(*kind).len()
             {
-                return Err(format!("{path}: no {kind} {h} in the pack"));
+                return Err(format!("{path}: no {kind} {h} in the content"));
             }
         }
         _ => {}
@@ -150,8 +150,8 @@ fn take_string<'b>(bytes: &'b [u8], at: &str) -> Result<(&'b str, usize), String
     Ok((text, used + n))
 }
 
-/// Background `id` as a place holds it: its game and its name in its
-/// game's pack (`<game>:<name>`).
+/// Background `id` as a place holds it: its game and its name in its game
+/// (`<game>:<name>`).
 fn background_key(content: &Content, id: BackgroundId) -> Result<String, String> {
     content.background_of(id).map(|(game, name)| nettai_battle::content::pool_key(game, name)).ok_or_else(|| format!("no background {} in the content", id.0))
 }
@@ -272,7 +272,7 @@ mod tests {
 
     /// Live play's random matches of both games written and read back: the
     /// same match, the same bytes again, a match the checks pass; and on
-    /// another load of the content, the same bytes (a handle is the pack's
+    /// another load of the content, the same bytes (a handle is the content's
     /// index, the same on every load of content of one hash).
     #[test]
     fn a_match_reads_back_from_its_bytes() {

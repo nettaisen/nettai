@@ -85,7 +85,7 @@ impl Ready {
 }
 
 pub struct Entry {
-    /// The game pack's id (`exe6`).
+    /// The game's id (`exe6`).
     pub id: String,
     pub state: State,
     /// The content directory it is played from (`crate::contents::dir`).
@@ -1001,7 +1001,7 @@ mod tests {
         let entry = |id: &str| Entry::of(id, State::Loading(0.5));
         let mut games = Games::of(vec![entry("first"), entry("second")]);
         assert_eq!(games.take_notice(), None);
-        games.step("second", Step::Done(Err("its pack names no such sprite".into())));
+        games.step("second", Step::Done(Err("its assets name no such sprite".into())));
         assert_eq!(games.playable(), ["first"]);
         assert_eq!(games.take_notice(), Some(Notice::LoadFailed("second".into())));
         assert_eq!(games.take_notice(), None);

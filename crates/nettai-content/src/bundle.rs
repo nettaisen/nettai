@@ -125,7 +125,7 @@ pub struct Index {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Published {
     pub id: BundleId,
-    /// What it plays (`Content::hash` with the game's asset pack), as 16 hex digits.
+    /// What it plays (`Content::hash`: the content alone), as 16 hex digits.
     #[serde(with = "content_hash_hex")]
     pub content_hash: nettai_battle::ContentHash,
     /// Its revision within the line (1 for `r1`).

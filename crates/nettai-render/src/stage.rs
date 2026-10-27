@@ -2,7 +2,7 @@
 //! field's panels (priority 2), which share one set of tiles and the first
 //! nine background palettes.
 //!
-//! The field is the game's pack's (docs/design/rules-in-luau.md §7.4, as
+//! The field is the game's (docs/design/rules-in-luau.md §7.4, as
 //! built; a match plays one game, docs/design/content-model-v2.md §4.0):
 //! its tiles, palettes and their cycles, highlights and front edges. A
 //! panel type that field doesn't draw is a normal panel of its owner's,

@@ -1,4 +1,4 @@
-//! A headless host's battles need no asset pack (docs/design/content-model-v2.md §6.3): each game's real content
+//! A headless host's battles need no assets (docs/design/content-model-v2.md §6.3): each game's real content
 //! (content/), loaded alone as the training pool loads it, has every sprite it names defined and timed, and plays a
 //! battle (a random match, both sides mashing) with no error.
 

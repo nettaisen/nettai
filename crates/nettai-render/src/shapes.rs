@@ -1,6 +1,6 @@
 //! The battle's frames drawn as shapes in the enhanced mode
-//! (docs/design/text-rendering.md §13): the pack's drawings
-//! (`nettai_assets::shapes`, drawn by hand and checked as the pack is made)
+//! (docs/design/text-rendering.md §13): the game's drawings
+//! (`nettai_assets::shapes`, drawn by hand and checked as the graphics are extracted)
 //! put in the palette the picture they stand in for is drawn in at the
 //! moment, flipped as its tiles are, as a text layer item over the picture's
 //! place. Nothing here is a game's: a frame with no drawing is drawn as its
@@ -27,7 +27,7 @@ pub fn drawn(d: &Drawing, color: impl Fn(u8, u8) -> u16, (hflip, vflip): (bool, 
 /// Which of `d`'s frame pixels (row by row, its size) its shapes cover at
 /// their centers: where a picture standing in for it must still be (for
 /// what is drawn in front of or behind it), and nowhere else. Made once a
-/// drawing (the chatbox's as its pack's graphics are set).
+/// drawing (the chatbox's as its game's graphics are set).
 pub fn coverage(d: &Drawing) -> std::sync::Arc<Vec<bool>> {
     use std::sync::{Arc, Mutex, OnceLock};
     static MADE: OnceLock<Mutex<std::collections::HashMap<u64, Arc<Vec<bool>>>>> = OnceLock::new();

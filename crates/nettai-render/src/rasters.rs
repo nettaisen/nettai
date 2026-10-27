@@ -1,6 +1,6 @@
 //! The frames' drawings rasterized ahead of play (docs/design/
 //! text-rendering.md §13.2): each drawing's file read once, and rasterized
-//! once at the output's scale, when the pack is loaded (`Rasters::prepare`)
+//! once at the output's scale, when the game is loaded (`Rasters::prepare`)
 //! or before the first picture, and again, away from the frames, when the
 //! scale changes (the old rasters, resampled, stand in until then). A
 //! raster keeps each palette entry's share of every pixel, so a frame
@@ -93,7 +93,7 @@ impl Rasters {
         }
     }
 
-    /// The packs' drawings (`Frame::drawings`) ready to draw at `scale`: read
+    /// The drawings (`Frame::drawings`) ready to draw at `scale`: read
     /// and rasterized the first time they are given (the first picture,
     /// or a preload's), rasterized again away from the frames at a new
     /// scale.

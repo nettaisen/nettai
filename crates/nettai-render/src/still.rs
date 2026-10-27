@@ -15,7 +15,7 @@ use nettai_battle::object::{ObjectRef, flags};
 /// Background `id` as a round's first frame shows it (its scroll and its
 /// animations at their start), `w` by `h` pixels from the screen's top
 /// left, each `0x00RRGGBB`: drawn as [`crate::Renderer::render`] draws the
-/// background layer, from its own pack (another game's from that game's:
+/// background layer, from its own game's graphics (another game's from that game's:
 /// the background pool's), the backdrop where it is clear. None: no pack
 /// here has it.
 pub fn background(graphics: &GameGraphics, c: &Content, id: BackgroundId, w: usize, h: usize) -> Option<Vec<u32>> {
@@ -31,7 +31,7 @@ pub fn background(graphics: &GameGraphics, c: &Content, id: BackgroundId, w: usi
 /// under it, and the objects the arena placed as the round started), and
 /// nothing else: no background, no other object, no HUD, no fade. The screen's 240 by 160,
 /// each pixel `0xAARRGGBB`, clear (0) where nothing is drawn. The field's
-/// panels as [`crate::Renderer::render`] draws them, from the game's pack,
+/// panels as [`crate::Renderer::render`] draws them, from the game's graphics,
 /// seen from the local side; `keep`'s sprites as it draws them.
 pub fn field(graphics: &GameGraphics, b: &Battle, keep: &[ObjectRef]) -> Vec<u32> {
     let graphics = graphics.view();

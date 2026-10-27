@@ -260,7 +260,7 @@ impl Shell {
         let Loading { start, preload, .. } = loading;
         let preload = preload.expect("made above");
         for missing in preload.missing() {
-            crate::errors::log("the pack lacks something this battle draws", &missing);
+            crate::errors::log("the game's assets lack something this battle draws", &missing);
         }
         let driver = match start.play {
             Play::Drive(driver) => driver,

@@ -100,7 +100,7 @@ pub fn layer_text(
     }
 }
 
-/// A line of the pack's HUD text (glyph numbers, `Hud::texts`) on a tile
+/// A line of the game's HUD text (glyph numbers, `Hud::texts`) on a tile
 /// layer, a cell a glyph from (x, y); in the enhanced mode its words without
 /// the spaces that pad it, in the cells they take.
 pub fn layer_line(sink: &mut TextSink, plane: Plane, layer: &mut Layer, hud: &Hud, glyphs: &[u16], palette: &Palette, (x, y): (i32, i32)) {

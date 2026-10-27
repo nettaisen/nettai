@@ -3,9 +3,9 @@
 //! advance and whose window stays live.
 //!
 //! **What there is to wait for.** A game loads whole ([`crate::game`]): its
-//! content, every sprite, picture and sound of its pack. A match reads no
+//! content, every sprite, picture and sound of its game's graphics. A match reads no
 //! file ([`Late::reads`] counts any that were read; the example
-//! `preload` plays one with the pack and the content deleted). What a
+//! `preload` plays one with the game's graphics and the content deleted). What a
 //! match's first tick did wait for, before this, was made on the way:
 //!
 //! - **the content's runtime on the thread that runs the battle**: every
@@ -31,7 +31,7 @@
 //!   strings a fight goes on to show (a chip's name, a number) are made as
 //!   they show, well inside a frame.
 //!
-//! **Each side's part** is its things looked up in the pack that is in
+//! **Each side's part** is its things looked up in the game's graphics that is in
 //! memory: its navi's face, emblem and name, its forms' faces and names,
 //! each chip of its folder's icon, picture, name and description, by the
 //! same lookups a frame draws through. They take microseconds; what they
@@ -82,7 +82,7 @@ pub struct Late {
     /// Content runtimes this thread loaded since the player was made
     /// (`Behaviors::loads`): each a wait of about a second.
     pub runtimes: u64,
-    /// Parts of a pack or of the content this thread read from disk since
+    /// Parts of the content this thread read from disk since
     /// (`nettai_content::load::reads`).
     pub reads: u64,
     /// Strings its text was laid out for, and glyphs' distance fields made
@@ -129,7 +129,7 @@ struct Step {
     done: bool,
 }
 
-/// The sound a player is made with: the packs' banks and the content's
+/// The sound a player is made with: the battle's banks and the content's
 /// songs, as `BattleAudio::with_banks` takes them.
 pub type SoundParts = (Vec<Arc<m4a::SoundBank>>, nettai_audio::Songs);
 
@@ -246,7 +246,7 @@ impl Preload {
         fraction(self.steps.iter().filter(|s| s.part == part))
     }
 
-    /// What the steps run so far looked up that the pack doesn't have (a
+    /// What the steps run so far looked up that the game's assets don't have (a
     /// chip without a picture, a navi without a face), one line each: the
     /// match plays without it (a missing picture isn't drawn), and the host
     /// may say so before it starts.
@@ -366,7 +366,7 @@ impl Preload {
         }
     }
 
-    /// A form's in the pack: its face for each of the game's emotions, and
+    /// A form's in the game's graphics: its face for each of the game's emotions, and
     /// where the game's custom screen lists forms in a window, its name
     /// there and its description.
     fn look_up_form(&mut self, navi: NaviHandle, form: FormHandle) {
@@ -390,7 +390,7 @@ impl Preload {
         }
     }
 
-    /// A chip's in the pack: its icon, its picture (the button chip's is
+    /// A chip's in the game's graphics: its icon, its picture (the button chip's is
     /// its button's), its name, the chip window's colors in its code, and
     /// its description.
     fn look_up_chip(&mut self, chip: ChipHandle, code: ChipCode) {
@@ -458,7 +458,7 @@ mod tests {
         std::thread::spawn(f).join().unwrap()
     }
 
-    /// A renderer of a pack with nothing in it.
+    /// A renderer of graphics with nothing in them.
     fn renderer() -> Renderer {
         Renderer::new(Arc::new(nettai_assets::Bundle::default()))
     }
@@ -499,7 +499,7 @@ mod tests {
     /// is most of the whole; the fractions go from 0 to 1. The player it
     /// becomes plays its set with nothing made late: no runtime loaded on
     /// its thread and nothing read from disk, through custom screens and
-    /// fights. What the pack hasn't is said before the match starts.
+    /// fights. What the game's graphics haven't is said before the match starts.
     #[test]
     fn a_preloaded_match_loads_nothing_late() {
         let set = set();
@@ -530,9 +530,9 @@ mod tests {
             }
             assert!(preload.done() && !preload.step() && !preload.step_of(Part::Match));
             assert_eq!((preload.fraction(), parts(&preload), preload.stopped()), (1.0, [1.0; 3], None));
-            // (A pack with nothing in it: every chip's icon is missing.)
+            // (Graphics with nothing in them: every chip's icon is missing.)
             let missing = preload.missing();
-            assert!(missing.iter().any(|m| m.contains("has no icon in the pack")), "{missing:?}");
+            assert!(missing.iter().any(|m| m.contains("has no icon in the game's graphics")), "{missing:?}");
             let opponent = Opponent { in_fight: InFight::AttacksAtRandom, ..Opponent::default() };
             let mut player = preload.player(Box::new(LivePlayer::against(set, opponent, 9)));
             assert_eq!(player.late(), Late::default());

@@ -1,5 +1,5 @@
 //! Drawing a battle: everything visible is derived from the engine's state
-//! and the pack's graphics.
+//! and the game's graphics.
 
 use crate::audit::Problems;
 use crate::compose::{self, Fade, Fades, Layer, Palettes, SpritePart};
@@ -24,7 +24,7 @@ use std::sync::Arc;
 pub enum GraphicsMode {
     /// Exactly as the original draws it: the game's own fonts into the
     /// frame, and nothing moved that the game doesn't move. The reference
-    /// the frame comparison and the tests use. (Where the pack has no fonts
+    /// the frame comparison and the tests use. (Where the game's graphics have no fonts
     /// of the language shown, the vector font into the frame.)
     #[default]
     Original,
@@ -69,7 +69,7 @@ pub struct Frame {
     /// The squashed and turned sprites the enhanced mode's motion draws at
     /// the output's resolution (left out of `pixels`), front first.
     pub overlays: Vec<crate::smooth::Overlay>,
-    /// The packs' drawings (`Bundle::drawings`), for the text layer to have
+    /// The drawings (`Bundle::drawings`), for the text layer to have
     /// them rasterized before it draws the first of them (`present`).
     pub drawings: Option<Arc<Vec<nettai_assets::shapes::Drawing>>>,
 }
@@ -126,7 +126,7 @@ pub struct Renderer {
     /// right seat's chip name, its custom screen's window and names).
     scratch: Layer,
     scratch_names: Layer,
-    /// What the frames drawn so far named that the pack doesn't have.
+    /// What the frames drawn so far named that the game's assets don't have.
     pub problems: Problems,
     /// What the last frame's sprite draw took of its budget and left out
     /// (`objects::SpriteDraw`).
@@ -136,7 +136,7 @@ pub struct Renderer {
     /// whose versions the engine doesn't tell apart: which chips are the
     /// other version's, whose art its ROM draws otherwise
     /// (`ChipArt::version`), and the soul icon's outline. None: the
-    /// version the console's player brought, or the pack's base version
+    /// version the console's player brought, or the game's base version
     /// (`custom::console_version`).
     pub console_version: Option<&'static str>,
     /// How the battle is drawn, and the font of the enhanced mode's text.
@@ -145,7 +145,7 @@ pub struct Renderer {
     /// The enhanced mode's layouts, for what the frame places after a string
     /// (a chip's damage after its name).
     measure: Option<std::cell::RefCell<crate::vfont::TextRenderer>>,
-    /// What the original mode draws strings with where the pack has no
+    /// What the original mode draws strings with where the game's graphics have no
     /// lettering in the language shown (`render`): the pixel fonts in that
     /// language's cut, made when first needed.
     stand_in: Option<std::cell::RefCell<crate::pixeltext::PixelText>>,
@@ -175,7 +175,7 @@ pub struct Renderer {
     /// out, the text stays. The original mode has
     /// none of them, whatever this says.
     pub reduce_motion: bool,
-    /// The packs' drawings, gathered as they are set.
+    /// The drawings, gathered as they are set.
     drawings: Arc<Vec<nettai_assets::shapes::Drawing>>,
 }
 
@@ -192,7 +192,7 @@ impl Renderer {
             drawings,
             graphics,
             // Background priority 3 (BG1), field 2 (BG2), HUD 1 (BG3: the
-            // game's pack's `hud_priority`, set each frame).
+            // game's `hud_priority`, set each frame).
             background: Layer::new(3, 1),
             field: Layer::new(2, 2),
             hud: Layer { palettes: Palettes::Hud, ..Layer::new(1, 3) },
@@ -221,7 +221,7 @@ impl Renderer {
     }
 
     /// From now on make only the lookups a frame makes (`--audit`): what
-    /// the frame names is asked of the packs and the content as drawing
+    /// the frame names is asked of the game's graphics and the content as drawing
     /// asks it, and no pixel is drawn.
     pub fn set_lookups_only(&mut self, on: bool) {
         self.lookups_only = on;
@@ -245,8 +245,8 @@ impl Renderer {
 
     /// Draw in `mode`; the enhanced mode hands the strings `font` has to
     /// the text layer (without a font it draws them as the original does). The
-    /// original mode draws every string into the frame in the pack's
-    /// fonts, and with a pack that has no lettering in the language shown
+    /// original mode draws every string into the frame in the game's graphics'
+    /// fonts, and with graphics that have no lettering in the language shown
     /// (its fonts are another language's) in the pixel fonts, at the
     /// frame's resolution (`render`, `pixeltext`).
     pub fn set_mode(&mut self, mode: GraphicsMode, font: Option<Arc<VectorFont>>) {
@@ -392,9 +392,9 @@ impl Renderer {
         let mut graphics = self.graphics.view();
         graphics.set_version(self.console_version);
         let view = Self::view_for(b, self.consoles);
-        // (The background is its own pack's, another game's too (the
-        // background pool's), or where that pack isn't here, the stage's own;
-        // the field, the game's pack's: `FieldArt`.)
+        // (The background is its own game's, another game's too (the
+        // background pool's), or where that game's isn't here, the stage's own;
+        // the field, the game's: `FieldArt`.)
         let shown = graphics.round_background(&b.content, &b.setup.settings);
         let background = crate::lookups::background(&graphics, &b.content, shown, &mut self.problems);
         // (The background, behind everything, where the caller asks.)
@@ -446,10 +446,10 @@ impl Renderer {
             self.hud_right.clear();
             self.names_right.clear();
         }
-        // (The local player's custom screen and chatbox: the game's pack's.)
+        // (The local player's custom screen and chatbox: the game's.)
         let local = b.setup.local_side as usize & 1;
         let own_game = graphics.bundle();
-        // A pack with no lettering in the language shown (Chinese: every
+        // Graphics with no lettering in the language shown (Chinese: every
         // pack has English's and Japanese's) is drawn in its own
         // (`Bundle::for_language`): its pictures with words are that
         // language's, and so are its fonts, which lack most of the shown

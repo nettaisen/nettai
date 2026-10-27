@@ -1474,8 +1474,8 @@ pub enum PanelTrail {
 
 /// A game's chip families (rule section `elements`: `families`, each name
 /// with its number, and `non_elemental`): the numbers its chip records hold
-/// and its pack's custom-screen icons are by (EXE6's own; EXE5's as its
-/// pack has the icons, EXE6's numbers with its recovery and invisible
+/// and its game's custom-screen icons are by (EXE6's own; EXE5's as its
+/// graphics have the icons, EXE6's numbers with its recovery and invisible
 /// after them; EXE4's own, its record's +0x07).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ChipFamilies {

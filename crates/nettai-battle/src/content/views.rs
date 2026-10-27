@@ -66,7 +66,7 @@ impl WindowView {
 }
 
 /// What a frontend draws of a custom-screen button of the rules besides its
-/// look (the button's `view`; a button with none is its pack's look alone).
+/// look (the button's `view`; a button with none is its graphics' look alone).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ButtonView {
     /// It offers a form (EXE5's soul button): picked, the picked column

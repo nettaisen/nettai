@@ -56,8 +56,8 @@ pub use wrong::{Count, Wrong};
 
 /// A round of a match as the match states it: where it is fought, its
 /// stage (one of the game's link battle stages) and the background shown
-/// (by its name in the game's pack, or one of the background pool's by its
-/// game and its name in that game's pack, `exe4:acdc-area`: `ids::background`),
+/// (by its name in the game, or one of the background pool's by its game
+/// and its name in that game, `exe4:acdc-area`: `ids::background`),
 /// each part none where the match leaves it to be picked from its seed
 /// (`Match::places`: as the match's [`BackgroundPick`] says, `pick::places`).
 /// The original's battle settings of a round follow from its stage
@@ -293,7 +293,7 @@ pub fn match_effects(rounds: usize) -> u32 {
 pub const HOST_KEYS: HostKeys = HostKeys { pause: true, run: true };
 
 /// The background a match of `game` names `name`: its handle, if the
-/// game's pack has it, or the background pool (`exe4:acdc-area`:
+/// game has it, or the background pool (`exe4:acdc-area`:
 /// `ids::background`).
 pub fn background(content: &Content, game: &str, name: &str) -> Option<nettai_battle::content::BackgroundId> {
     ids::background(content, game, name)

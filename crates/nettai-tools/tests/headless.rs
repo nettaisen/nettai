@@ -75,7 +75,7 @@ fn rgb(c: u16) -> [u8; 3] {
 #[test]
 fn renders_a_live_battle_to_png() {
     // A live battle on the engine's hand-authored test content, drawn with
-    // the test pack's numbers for its assets.
+    // the test game's numbers for its assets.
     let content = testing::content();
     let graphics = nettai_render::graphics::GameGraphics::new(std::sync::Arc::new(assets())).with_numbers(std::sync::Arc::new(testing::asset_numbers(&content)));
     let mut renderer = Renderer::with_graphics(graphics);

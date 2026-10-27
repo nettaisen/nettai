@@ -198,7 +198,7 @@ pub struct HudLetters {
     pub pause: Option<Letters>,
     /// The emotion window's counts.
     pub counts: CountLetters,
-    /// The pack's own language's words.
+    /// The game's own language's words.
     pub words: HudWords,
 }
 
@@ -235,7 +235,7 @@ pub struct CustomLetters {
     /// (the first, the last): all their letters' columns, every version's
     /// and every language's, together.
     pub form_name_box: Option<[u8; 2]>,
-    /// The pack's own language's lettered pictures.
+    /// The game's own language's lettered pictures.
     pub pictures: PictureLetters,
 }
 
@@ -270,7 +270,7 @@ pub struct VersionLetters {
     pub form_names: Vec<Option<FormNameLetters>>,
     pub form_names_blank: Tiles,
     /// Where each name's portrait is over its bar (as `form_names_blank`:
-    /// 1 a portrait's pixel, 0 the bar's), where the pack keeps them apart.
+    /// 1 a portrait's pixel, 0 the bar's), where the graphics keep them apart.
     pub form_name_portraits: Tiles,
 }
 

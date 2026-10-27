@@ -122,7 +122,7 @@ pub fn load_for(dir: &Path, packs: &[String], lang: &str) -> Result<Option<Strin
 
 /// Game `game`'s name as a player sees it in `lang`, from its locales in content folder `dir` ([`GAME`]'s
 /// [`GAME_NAME`]): its own language's where `lang` has no table or says none. Read from the content alone, so a
-/// game whose asset pack is missing or can't be loaded has its name too. None where neither table says one, or
+/// game whose ROMs aren't found, or that can't be loaded, has its name too. None where neither table says one, or
 /// they can't be read.
 pub fn game_name(dir: &Path, game: &str, lang: &str) -> Option<String> {
     // (Only the game's own words: the rest of the table isn't read into anything.)

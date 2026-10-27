@@ -1123,7 +1123,7 @@ pub fn mark(folder: &Folder, entry: usize) -> Option<Mark> {
 }
 
 /// What a list shows of a chip: its family (the one whose icon the game
-/// shows as the chip's element: its number, by which the pack's icons are,
+/// shows as the chip's element: its number, by which the game's icons are,
 /// and its name in the game's rules), its element, its class and whether it
 /// is a dark chip, its MB, its attack (0: none, or one the chip works out),
 /// the codes it comes in, and its place in the game's library's order (the

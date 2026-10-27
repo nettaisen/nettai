@@ -5,14 +5,14 @@
 //! <store>/<id>/          the bundle, unpacked (crate::bundle::unpack): bundle.toml and a folder each pack, a
 //!                        content directory
 //! <store>/<id>.toml      its record (`Record`): its game, line and revision, the content hash its game's index
-//!                        gives it, and the one computed here with the game's asset pack
+//!                        gives it, and the one computed here
 //! ```
 //!
 //! A bundle is unpacked whole or not at all (`bundle::unpack`), and its record written after it: a folder without a
 //! record is one whose storing was cut short, and goes ([`Store::tidy`]), as does a record without its folder.
 //!
-//! The content hash says what a bundle plays (`Content::hash`): it is the engine's, of the content with its game's
-//! asset pack ([`content_hash`]), so it is known here only once the game's pack is there. A bundle is stored with
+//! The content hash says what a bundle plays (`Content::hash`): it is the engine's, of the content alone
+//! ([`content_hash`]). A bundle is stored with
 //! the hash its index gives (`Record::published`), and the hash computed here (`Record::hash`) is recorded when the
 //! game is first loaded from it, which checks the two are the same.
 
@@ -38,7 +38,7 @@ pub struct Record {
     /// The content hash its game's index gives it; none for a bundle stored without one.
     #[serde(default, skip_serializing_if = "Option::is_none", with = "hash_hex")]
     pub published: Option<ContentHash>,
-    /// The content hash computed here, with the game's asset pack, once the game has been loaded from it.
+    /// The content hash computed here, once the game has been loaded from it.
     #[serde(default, skip_serializing_if = "Option::is_none", with = "hash_hex")]
     pub hash: Option<ContentHash>,
 }

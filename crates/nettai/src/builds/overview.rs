@@ -2,7 +2,7 @@
 //! comes to, as a round starts it, and the whole of what it holds. Every number is the compiled one
 //! (`nettai_match::build::Checked::overview`: the stats as the NaviCust and the patch cards leave them, with what they
 //! added; after the eight, those the game's rules give, by their names in the game's strings), the abilities and the
-//! bugs are named by the game's own strings, and the folder's chips have the pack's own icons. Each part of the build
+//! bugs are named by the game's own strings, and the folder's chips have the game's own icons. Each part of the build
 //! is read as its editor's tab reads it (the choices' presets as the Navi tab's, the NaviCust's programs as placed,
 //! the patch cards' list or slots, the auto battle data's lists, the partners' programs), every item of each: the
 //! sheet shows them whole (the user: "when i hold tab to see the builds entire sections are missing like auto battle,

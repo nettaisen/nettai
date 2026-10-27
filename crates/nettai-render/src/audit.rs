@@ -1,10 +1,10 @@
-//! What a battle asked the presentation for and the pack didn't have: a
+//! What a battle asked the presentation for and the game's assets didn't have: a
 //! sprite, an animation or a palette an object names, a chip without a
 //! name or an icon, a banner without glyphs, a sound without a song.
 //!
 //! Drawing skips what it can't find, so nothing here stops a frame; the
 //! renderer and the audio check note each case in [`Problems`]. Every
-//! lookup the drawing code makes of the packs and the content goes through
+//! lookup the drawing code makes of the game's graphics and the content goes through
 //! [`crate::lookups`] (the audio's, a cue's song, through nettai-tools'
 //! `sound_lookups`), which notes it as a [`Lookup`] and checks it once a
 //! run. Two audits, nettai-tools', use them:
@@ -26,12 +26,12 @@ use nettai_battle::content::{BackgroundId, BannerId, Content, MugshotId, SpriteI
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
 use std::collections::{BTreeMap, HashSet};
 
-/// A lookup the drawing code or the audio makes of the packs or the
+/// A lookup the drawing code or the audio makes of the game's graphics or the
 /// content: what a frame or a cue named, by what it is for. Each is
 /// checked once a run ([`Problems::lookup`]).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Lookup {
-    /// A sprite's sheet, in its pack.
+    /// A sprite's sheet, in its game's graphics.
     Sprite(SpriteId),
     /// A sprite's animation, with its frames.
     Animation(SpriteId, u8),
@@ -58,7 +58,7 @@ pub enum Lookup {
     ChipWindow(ChipHandle),
     /// A chip's description in the dialogue font (R on the custom screen).
     ChipDescription(ChipHandle),
-    /// A mugshot, in its pack's HUD.
+    /// A mugshot, in its game's HUD.
     Mugshot(MugshotId),
     /// A link navi's own face in the emotion window.
     NaviFace(NaviHandle),
@@ -90,7 +90,7 @@ pub enum Lookup {
     TelopWithoutLook,
     /// A line of the HUD's text (`Hud::texts`).
     TextLine(u8),
-    /// A sound's song, in its pack's sound.
+    /// A sound's song, in its game's sound.
     Sound(u16),
     /// A part of the game's graphics that is there or not as a whole.
     Graphics(GraphicsPart),
@@ -191,8 +191,8 @@ pub struct Problems {
     pub marks: Vec<Mark>,
     /// Every distinct lookup made so far, each checked once.
     lookups: HashSet<Lookup>,
-    /// What is drawn otherwise than the packs would, by design, and said,
-    /// not counted (a panel no pack draws, drawn tinted).
+    /// What is drawn otherwise than the graphics would, by design, and said,
+    /// not counted (a panel the game's field doesn't draw, drawn tinted).
     said: BTreeMap<String, Seen>,
 }
 

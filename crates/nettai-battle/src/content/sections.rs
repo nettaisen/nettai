@@ -44,7 +44,7 @@ struct PanelTypeSection {
     flags: u32,
     #[serde(default)]
     carries: Option<SlideVector>,
-    /// A sound asset, as the pack identifies it.
+    /// A sound asset, as the content names it.
     #[serde(default)]
     trail_sound: Option<u16>,
     #[serde(default)]

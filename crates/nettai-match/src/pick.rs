@@ -86,7 +86,7 @@ fn picks_live(content: &Content) -> bool {
 /// `link_pick.first_round_stages` (EXE5's first 68: a practice's count).
 /// The background is one of the rules' `link_pick.backgrounds` (where they
 /// state none, the stage's own). Refused: a stage left to rules that pick
-/// none, a background named that the game's pack hasn't.
+/// none, a background named that the game hasn't.
 pub fn places(content: &Content, game: &str, rounds: &[RoundSettings], picks: &mut Picks) -> Result<Vec<Stage>, String> {
     places_from(content, game, rounds, BackgroundPick::Game, picks)
 }
@@ -439,7 +439,7 @@ mod tests {
     /// A round's part a match states is that, and moves no other part's
     /// pick: every round's stage and background are drawn whether stated or
     /// not. A match that states nothing has a random match's places of its
-    /// seed; one that names a background its pack hasn't, or leaves a stage
+    /// seed; one that names a background its game hasn't, or leaves a stage
     /// to rules that pick none, has none.
     #[test]
     fn a_stated_part_moves_no_other_pick() {

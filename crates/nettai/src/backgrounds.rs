@@ -14,7 +14,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 thread_local! {
-    /// The backgrounds' names in the language shown, by game and name in its pack: [`name_backgrounds`]'.
+    /// The backgrounds' names in the language shown, by game and name in its game: [`name_backgrounds`]'.
     static NAMES: RefCell<HashMap<(String, String), String>> = RefCell::new(HashMap::new());
 }
 
@@ -31,9 +31,9 @@ pub fn name_backgrounds<'a>(games: impl IntoIterator<Item = &'a str>, lang: &str
     NAMES.with(|n| *n.borrow_mut() = names);
 }
 
-/// Game `game`'s background `background` (its name in the game's pack) as a list shows it, in the language
+/// Game `game`'s background `background` (its name in the game) as a list shows it, in the language
 /// shown: the game's name, then the background's ("BN4 ACDC Area"); one its locales don't name, by its name in
-/// the pack.
+/// the game's graphics.
 pub fn name(game: &str, background: &str) -> String {
     let own = NAMES.with(|n| n.borrow().get(&(game.to_string(), background.to_string())).cloned()).unwrap_or_else(|| background.to_string());
     format!("{} {own}", Shell::game_name(game))

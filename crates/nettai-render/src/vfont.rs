@@ -668,7 +668,7 @@ pub struct Made {
     /// Glyphs' signed distance fields made from the font's outlines.
     pub glyphs: u64,
     /// Drawings rasterized while a frame was drawn, none having said they
-    /// were coming (`rasters`: a pack's are rasterized before the first
+    /// were coming (`rasters`: a game's are rasterized before the first
     /// picture, and again away from the frames when the scale changes).
     pub rasters: u64,
 }

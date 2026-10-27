@@ -3,8 +3,8 @@
 
 use serde::{Deserialize, Serialize};
 
-/// A sprite: its handle over the sprites the content defines (what a pack
-/// calls it, a `SpriteNumber`, is the pack's: `AssetNumbers`; docs/design/
+/// A sprite: its handle over the sprites the content defines (what the
+/// game's graphics call it, a `SpriteNumber`, is theirs: `AssetNumbers`; docs/design/
 /// rules-in-luau.md §7.4). The asset types come along for the frontends.
 pub use nettai_content_api::{AssetIndex, AssetNames, AssetNumbers, SpriteAnimation, SpriteDef, SpriteId, SpriteNumber};
 

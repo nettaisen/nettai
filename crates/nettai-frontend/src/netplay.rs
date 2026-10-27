@@ -875,7 +875,7 @@ mod tests {
         (seats, code)
     }
 
-    /// A renderer of a pack with nothing in it.
+    /// A renderer of graphics with nothing in them.
     fn renderer() -> crate::Renderer {
         crate::Renderer::new(Arc::new(nettai_assets::Bundle::default()))
     }
@@ -933,7 +933,7 @@ mod tests {
             .iter_mut()
             .map(|seat| {
                 let Status::Loading(a) = seat.lobby.poll(Instant::now()) else { panic!("loading") };
-                // (A pack with nothing in it: the steps are the match's.)
+                // (Graphics with nothing in them: the steps are the match's.)
                 Preload::with(renderer(), None, None, &a.set, a.side as u8, (240, 160))
             })
             .collect();

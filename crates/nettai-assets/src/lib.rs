@@ -16,9 +16,9 @@ pub use custom::{
 };
 
 /// Assets a game version has its own of: the base game's (`base_version`,
-/// an EXE6 pack's "falzar"), and other versions' that differ, by version name
+/// an EXE6 game's "falzar"), and other versions' that differ, by version name
 /// ("gregar", from the second ROM). A console of a version shows its own,
-/// else the base's. In a pack each is its own asset, named with its
+/// else the base's. In a game's graphics each is its own asset, named with its
 /// version (`form-names-falzar`, `form-names-gregar`); one that no other
 /// version has its own of is named without.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -63,7 +63,7 @@ pub struct Bundle {
     /// Battle backgrounds by the battle settings' background id.
     pub backgrounds: Vec<Option<Background>>,
     pub hud: Hud,
-    /// The custom screen's (empty in a pack that predates it).
+    /// The custom screen's (empty in a game's graphics that predates it).
     pub custom: CustomScreen,
 }
 
@@ -82,7 +82,7 @@ impl Bundle {
     }
     /// Every drawing of its frames (`shapes`): the HUD's, the banners'
     /// (each language's too), the custom screen's; a frontend draws them
-    /// from these, made ready when the pack is loaded.
+    /// from these, made ready when the game is loaded.
     pub fn drawings(&self) -> Vec<&shapes::Drawing> {
         let mut out: Vec<&shapes::Drawing> = Vec::new();
         out.extend(self.hud.shapes.drawings());
@@ -239,7 +239,7 @@ pub struct Field {
     pub front_edges: [[MapEntry; 5]; 2],
     /// Highlighted panel blocks (a chip's target), by highlight - 1: EXE6
     /// has two; a field may have one (a highlight it lacks is another
-    /// pack's, or drawn as a fallback).
+    /// game's, or drawn as a fallback).
     pub highlights: Vec<[MapEntry; 15]>,
 }
 
@@ -408,8 +408,8 @@ pub struct Hud {
     /// glyph d is digit d.
     pub enemy_digits: [Tiles; 3],
     pub enemy_palette: Palette,
-    /// Chip icons (2x2 tiles), each under its chip's key, in the pack's
-    /// order (a chip the pack numbers has its number's place), and the
+    /// Chip icons (2x2 tiles), each under its chip's key, in the game's graphics'
+    /// order (a chip the graphics number has its number's place), and the
     /// icon of an opponent's hidden chip.
     pub chip_icons: Vec<ChipIcon>,
     pub hidden_icon: Tiles,
@@ -460,7 +460,7 @@ pub struct Hud {
     pub layout: HudLayout,
     /// The language the lettering above is in (the fonts, the text lines,
     /// the banners' and "Cstmzing..."'s words; empty: `BASE_LANGUAGE`),
-    /// and the other languages' the pack has (`lettering`).
+    /// and the other languages' the game's graphics have (`lettering`).
     pub language: String,
     pub languages: Vec<(String, HudLettering)>,
     /// How its pictures' letters and digits look (`letters`), the words'
@@ -763,7 +763,7 @@ pub struct NaviMugshot {
 /// A chip's icon. Empty tiles: the chip has none.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ChipIcon {
-    /// The chip's key (the icon's file name in the pack).
+    /// The chip's key (the icon's file name in the game).
     pub key: String,
     pub tiles: Tiles,
 }

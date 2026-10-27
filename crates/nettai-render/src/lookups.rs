@@ -1,4 +1,4 @@
-//! The lookups the drawing code makes of the packs and the content, each a
+//! The lookups the drawing code makes of the game's graphics and the content, each a
 //! function that notes its [`Lookup`] and, the first time a run makes it,
 //! what is missing (`crate::audit`; the audio's, a cue's song, is
 //! nettai-tools' `sound_lookups`). A frame draws through these, and the
@@ -16,14 +16,14 @@ use nettai_battle::content::{BackgroundId, BannerId, ChipClass, ChipFlags, Conte
 use nettai_battle::field::PanelType;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
 
-/// The pack's letters of `what` (`nettai_assets::letters`: a picture's
-/// letters or digits, as the pack read them off it), where the enhanced
-/// mode draws its words or numbers in a font: none is a problem (the pack
+/// The game's letters of `what` (`nettai_assets::letters`: a picture's
+/// letters or digits, as extraction read them off it), where the enhanced
+/// mode draws its words or numbers in a font: none is a problem (the game's graphics
 /// predates them, or its picture has none), and the picture is drawn as it
 /// is.
 pub fn letters<'a, T>(found: Option<&'a T>, what: impl FnOnce() -> String, problems: &mut Problems) -> Option<&'a T> {
     if found.is_none() {
-        problems.note(format!("the pack has no letters of {} (extract it again)", what()));
+        problems.note(format!("the game's graphics have no letters of {}", what()));
     }
     found
 }
@@ -36,12 +36,12 @@ pub fn sprite_name(c: &Content, id: SpriteId) -> String {
     }
 }
 
-/// Sprite `id`'s sheet, from its pack; `who` says who asks (`of kind
+/// Sprite `id`'s sheet, from its game's graphics; `who` says who asks (`of kind
 /// "bomb"`, `(a portrait)`).
 pub fn sprite<'a>(graphics: &Graphics<'a>, c: &Content, id: SpriteId, who: &dyn Fn() -> String, problems: &mut Problems) -> Option<&'a SpriteSheet> {
     let sheet = graphics.sprite(id);
     if problems.lookup(Lookup::Sprite(id)) && sheet.is_none() {
-        problems.note(format!("{} {} is not in the pack's graphics", sprite_name(c, id), who()));
+        problems.note(format!("{} {} is not in the game's graphics", sprite_name(c, id), who()));
     }
     sheet
 }
@@ -164,13 +164,13 @@ fn key(c: &Content, chip: ChipHandle) -> &str {
     &c.defs.chip(chip).key
 }
 
-/// A chip's icon: its game's pack's, under its key there; with that HUD's
+/// A chip's icon: its game's, under its key there; with that HUD's
 /// icon palette.
 pub fn chip_icon<'a>(graphics: &Graphics<'a>, c: &Content, chip: ChipHandle, problems: &mut Problems) -> Option<(&'a Tiles, &'a Palette)> {
     let key = key(c, chip);
     let icon = graphics.chip_icon(key);
     if problems.lookup(Lookup::ChipIcon(chip)) && icon.is_none() {
-        problems.note(format!("chip {key:?} has no icon in the pack"));
+        problems.note(format!("chip {key:?} has no icon in the game's graphics"));
     }
     Some((icon?, &graphics.bundle().hud.icon_palette))
 }
@@ -189,13 +189,13 @@ pub fn chip_description_mark(c: &Content, chip: ChipHandle) -> String {
     format!("chip-description:{}", nettai_content_api::keys::local(key(c, chip)))
 }
 
-/// A chip's picture in the chip window: its game's pack's, under its key
+/// A chip's picture in the chip window: its game's, under its key
 /// there.
 pub fn chip_art<'a>(graphics: &Graphics<'a>, c: &Content, chip: ChipHandle, problems: &mut Problems) -> Option<&'a ChipArt> {
     let key = key(c, chip);
     let art = graphics.chip_art(key);
     if problems.lookup(Lookup::ChipArt(chip)) && art.is_none() {
-        problems.note(format!("chip {key:?} has no picture in the pack"));
+        problems.note(format!("chip {key:?} has no picture in the game's graphics"));
     }
     art
 }
@@ -220,7 +220,7 @@ pub fn other_versions_icon(graphics: &Graphics, b: &nettai_battle::battle::Battl
 pub fn chip_name(hud: &Hud, c: &Content, chip: ChipHandle, name: &str, problems: &mut Problems) -> Vec<u16> {
     let (glyphs, missing) = crate::fonts::cell_glyphs(hud, name);
     if problems.lookup(Lookup::ChipName(chip)) && !missing.is_empty() {
-        problems.note(format!("chip {:?} is named {name:?}, but the pack's font has no glyph for {missing:?}", key(c, chip)));
+        problems.note(format!("chip {:?} is named {name:?}, but the game's font has no glyph for {missing:?}", key(c, chip)));
     }
     glyphs
 }
@@ -237,7 +237,7 @@ pub fn chip_window(a: &CustomScreen, c: &Content, chip: ChipHandle, code: u8, pr
         ChipClass::Giga => Some(2),
         _ => None,
     };
-    // (A pack with one frame color draws every chip in it: EXE4's, which
+    // (Graphics with one frame color draw every chip in it: EXE4's, which
     // its screen loads once, 0x0801DC28.)
     let frame = match class {
         _ if a.frame_palettes.len() == 1 => 0,
@@ -270,7 +270,7 @@ pub fn advance_name(hud: &Hud, chip: ChipHandle, name: &str, problems: &mut Prob
     let (glyphs, missing) = crate::fonts::cell_glyphs(hud, name);
     // (Its own lookup: the chip's name, as the HUD's.)
     if problems.lookup(Lookup::ChipName(chip)) && !missing.is_empty() {
-        problems.note(format!("the Program Advance animation's {name:?}: the pack's font has no glyph for {missing:?}"));
+        problems.note(format!("the Program Advance animation's {name:?}: the game's font has no glyph for {missing:?}"));
     }
     glyphs
 }
@@ -316,8 +316,8 @@ pub fn form_face<'a>(
     (picture, face)
 }
 
-/// A navi's emblem on the custom screen: the pack's under the navi's key
-/// (`CustomScreen::emblems`), its tiles and its palette. None: the pack has
+/// A navi's emblem on the custom screen: the game's under the navi's key
+/// (`CustomScreen::emblems`), its tiles and its palette. None: the game's graphics have
 /// none for the navi (nothing is drawn, and the cursor has no colors), or
 /// the screen has an emblem of its own and its cursor its own colors
 /// (EXE4's `window_emblem` and `cursor_palette`), and draws no navi's.
@@ -328,14 +328,14 @@ pub fn emblem<'a>(a: &'a CustomScreen, c: &Content, navi: NaviHandle, problems: 
     let key = &c.defs.navi(navi).key;
     let found = a.emblem(key).filter(|e| e.tiles.len() >= 4);
     if problems.lookup(Lookup::Emblem(navi)) && found.is_none() {
-        problems.note(format!("navi {key:?} has no emblem in the pack (the custom screen draws none, and its cursor has no colors)"));
+        problems.note(format!("navi {key:?} has no emblem in the game's graphics (the custom screen draws none, and its cursor has no colors)"));
     }
     found
 }
 
-/// The pack's look of the button named `name`: the version's own (`own`:
+/// The game's look of the button named `name`: the version's own (`own`:
 /// the pictures of the version the screen draws, `custom::button_pictures`),
-/// else the pack's.
+/// else the game's.
 pub fn button_of<'a>(a: &'a CustomScreen, own: &'a VersionPictures, name: &str) -> Option<&'a ButtonPictures> {
     own.button(name).or_else(|| a.button(name))
 }
@@ -354,7 +354,7 @@ pub fn button<'a>(
     let d = c.defs.button(button);
     let found = button_of(a, own, &d.name);
     if problems.lookup(Lookup::Button(button.0)) && found.is_none() && d.chip.is_none() {
-        problems.note(format!("button {:?} has no look in the pack (the custom screen draws nothing for it)", d.name));
+        problems.note(format!("button {:?} has no look in the game's graphics (the custom screen draws nothing for it)", d.name));
     }
     found
 }
@@ -365,7 +365,7 @@ pub fn navi_name(hud: &Hud, navi: NaviHandle, variant: bool, name: &str, problem
     let (glyphs, missing) = crate::fonts::cell_glyphs(hud, name);
     let lookup = if variant { Lookup::NaviVariantName(navi) } else { Lookup::NaviName(navi) };
     if problems.lookup(lookup) && !missing.is_empty() {
-        problems.note(format!("the navi named {name:?}: the pack's font has no glyph for {missing:?}"));
+        problems.note(format!("the navi named {name:?}: the game's font has no glyph for {missing:?}"));
     }
     glyphs
 }
@@ -380,7 +380,7 @@ pub fn dialogue(font: &DialogueFont, lookup: Lookup, string: &str, problems: &mu
         .map(|line| {
             let (glyphs, missing) = crate::fonts::dialogue_glyphs(font, line);
             if first && !missing.is_empty() {
-                problems.note(format!("the chatbox's {line:?}: the pack's dialogue font has no glyph for {missing:?}"));
+                problems.note(format!("the chatbox's {line:?}: the game's dialogue font has no glyph for {missing:?}"));
             }
             glyphs
         })
@@ -388,7 +388,7 @@ pub fn dialogue(font: &DialogueFont, lookup: Lookup, string: &str, problems: &mu
 }
 
 /// The chatbox's graphics and the dialogue font, if the bundle has them
-/// (a pack always does).
+/// (the game's graphics always do).
 pub fn chatbox_graphics(hud: &Hud, problems: &mut Problems) -> bool {
     let there = !hud.chatbox.is_empty() && !hud.dialogue_font.is_empty();
     if problems.lookup(Lookup::Graphics(GraphicsPart::Chatbox)) && !there {
@@ -397,8 +397,8 @@ pub fn chatbox_graphics(hud: &Hud, problems: &mut Problems) -> bool {
     there
 }
 
-/// The custom screen's graphics, if the bundle has them (a pack always
-/// does).
+/// The custom screen's graphics, if the bundle has them (a game's graphics always
+/// do).
 pub fn custom_graphics(a: &CustomScreen, problems: &mut Problems) -> bool {
     if problems.lookup(Lookup::Graphics(GraphicsPart::CustomScreen)) && a.is_empty() {
         problems.note("the bundle has no custom screen graphics".into());
@@ -406,7 +406,7 @@ pub fn custom_graphics(a: &CustomScreen, problems: &mut Problems) -> bool {
     !a.is_empty()
 }
 
-/// The warning marker, if the bundle has it (a pack always does).
+/// The warning marker, if the bundle has it (the game's graphics always do).
 pub fn warning(hud: &Hud, problems: &mut Problems) -> bool {
     if problems.lookup(Lookup::Graphics(GraphicsPart::Warning)) && hud.warning.is_empty() {
         problems.note("the bundle has no warning marker".into());
@@ -443,25 +443,25 @@ pub fn form_name<'a>(
     found
 }
 
-/// A banner's layout with glyphs: its pack's HUD, the layout and its
+/// A banner's layout with glyphs: its game's HUD, the layout and its
 /// number there.
 pub fn banner<'a>(graphics: &Graphics<'a>, c: &Content, id: BannerId, problems: &mut Problems) -> Option<(&'a Hud, &'a BannerLayout, u8)> {
     let found = graphics.banner(id).and_then(|(hud, n)| hud.banners.get(n as usize / 4).filter(|l| !l.glyphs.is_empty()).map(|l| (hud, l, n)));
     if problems.lookup(Lookup::Banner(id)) && found.is_none() {
-        problems.note(format!("banner {} has no glyphs in the pack", banner_name(graphics, c, id)));
+        problems.note(format!("banner {} has no glyphs in the game's graphics", banner_name(graphics, c, id)));
     }
     found
 }
 
 /// A telop's banner's layout (a telop banner's: its glyphs are the chip's
-/// name), its pack's HUD and its number there.
+/// name), its game's HUD and its number there.
 pub fn telop<'a>(graphics: &Graphics<'a>, c: &Content, id: BannerId, problems: &mut Problems) -> Option<(&'a Hud, &'a BannerLayout, u8)> {
     let found = graphics.banner(id).and_then(|(hud, n)| hud.banners.get(n as usize / 4).map(|l| (hud, l, n)));
     if problems.lookup(Lookup::Telop(id)) {
         match found {
-            None => problems.note(format!("the telop's banner {} is not in the pack", banner_name(graphics, c, id))),
+            None => problems.note(format!("the telop's banner {} is not in the game's graphics", banner_name(graphics, c, id))),
             Some((_, l, _)) if l.kind != TELOP_KIND => {
-                problems.note(format!("the telop's banner {} is no telop's in the pack (kind {})", banner_name(graphics, c, id), l.kind))
+                problems.note(format!("the telop's banner {} is no telop's in the game's graphics (kind {})", banner_name(graphics, c, id), l.kind))
             }
             _ => {}
         }
@@ -470,7 +470,7 @@ pub fn telop<'a>(graphics: &Graphics<'a>, c: &Content, id: BannerId, problems: &
 }
 
 /// Whether banner `id` is the damage judge's: the content's judge banner
-/// (the role `banners.judge`), or one its pack lays out as the judge's (its
+/// (the role `banners.judge`), or one its game's graphics lay out as the judge's (its
 /// layout's kind, by its number there: EXE6's). The HUD draws the judge's
 /// numbers under it. (EXE4's judge banner is a holding banner of its
 /// table, 0x28, whose numbers its HUD task 9 draws: 0x080163C8.)
@@ -498,11 +498,11 @@ fn banner_name(graphics: &Graphics, c: &Content, id: BannerId) -> String {
     }
 }
 
-/// A telop with no look to draw it in: its game's pack has no telop look
+/// A telop with no look to draw it in: its game's graphics have no telop look
 /// of its own and its roles name no telop banner.
 pub fn telop_without_look(problems: &mut Problems) {
     if problems.lookup(Lookup::TelopWithoutLook) {
-        problems.note("a telop has no look: the pack's HUD has no telop look and the roles name no telop banner".into());
+        problems.note("a telop has no look: the game's HUD has no telop look and the roles name no telop banner".into());
     }
 }
 
@@ -518,7 +518,7 @@ pub fn telop_unknown(problems: &mut Problems) {
 pub fn text_line<'a>(hud: &'a Hud, line: usize, problems: &mut Problems) -> Option<&'a [u16]> {
     let glyphs = hud.texts.get(line).map(Vec::as_slice);
     if problems.lookup(Lookup::TextLine(line as u8)) && glyphs.is_none() {
-        problems.note(format!("the pack has no HUD text line {line}"));
+        problems.note(format!("the game's graphics have no HUD text line {line}"));
     }
     glyphs
 }
@@ -540,7 +540,7 @@ pub fn drawn_in(what: &str, words: &str, font: crate::vfont::LetteringFont, p: &
     }
 }
 
-/// A look's colors as the pack keeps them (palette indices, put in the
+/// A look's colors as the graphics keep them (palette indices, put in the
 /// palette of the moment: text-rendering.md §12.12): every one a palette
 /// entry, its face's none 0 (transparent), its rim and its shadow none of
 /// its face's. Else a problem.
@@ -558,7 +558,7 @@ fn look_colors(what: &str, fill: &[u8], rim: Option<u8>, shadow: Option<u8>, p: 
         None
     };
     if let Some(why) = why {
-        p.note(format!("the pack's look of {what} has {why} (fill {fill:?}, rim {rim:?}, shadow {shadow:?})"));
+        p.note(format!("the game's look of {what} has {why} (fill {fill:?}, rim {rim:?}, shadow {shadow:?})"));
     }
 }
 
@@ -652,7 +652,7 @@ fn pack_look_colors(hud: &Hud, a: &CustomScreen, p: &mut Problems) {
     }
 }
 
-/// The pack's letters of everything its HUD and its custom screen draw in
+/// The game's letters of everything its HUD and its custom screen draw in
 /// fonts in the enhanced mode (`letters`, which a frame looks up as it
 /// draws): its number sets and chip codes always, its lettered pictures
 /// where the content's strings (`text`) have their words, a lettered
@@ -716,7 +716,7 @@ pub fn pack_letters(c: &Content, hud: &Hud, a: &CustomScreen, text: &crate::stri
         }
     }
     // The chip window's lettered pictures: OK's, and each button's (the
-    // pack's, and each version's own).
+    // game's, and each version's own).
     let help = |key: &str, found: Option<&nettai_assets::letters::HelpLetters>, p: &mut Problems| {
         let line = |part: &str| text.lettering(c, &format!("{key}.{part}"));
         let (Some(title), Some(said)) = (line("title"), line("words")) else { return };
@@ -748,7 +748,7 @@ pub fn pack_letters(c: &Content, hud: &Hud, a: &CustomScreen, text: &crate::stri
     }
 }
 
-/// The pack's letters of banner `id` (its words', its bar's, its number's
+/// The game's letters of banner `id` (its words', its bar's, its number's
 /// places), where the content's strings have its words (`banner.NAME`).
 pub fn banner_letters(graphics: &Graphics, c: &Content, id: BannerId, text: &crate::strings::DisplayText, p: &mut Problems) {
     let Some(name) = crate::graphics::name(c, AssetKind::Banner, id.0) else { return };
@@ -764,7 +764,7 @@ pub fn banner_letters(graphics: &Graphics, c: &Content, id: BannerId, text: &cra
     drawn_in(&format!("banner {name:?}"), &words.replace("{n}", ""), crate::vfont::LetteringFont::Display, p);
 }
 
-/// The pack's letters of form `form`'s name in the form list's window (its
+/// The game's letters of form `form`'s name in the form list's window (its
 /// version's, in both its looks), where the content's strings have its
 /// words (`crosses.FORM`).
 pub fn form_name_letters(a: &CustomScreen, c: &Content, navi: NaviHandle, form: FormHandle, text: &crate::strings::DisplayText, p: &mut Problems) {

@@ -11,7 +11,7 @@
 //!                                 NaviCust programs, and what only an id names)
 //! <pack>/**/*.luau                the pack's scripts (exe6/chips/cannon/init.luau: a folder's main
 //!                                 module, which the folder's name stands for); every id local to
-//!                                 the game (`minibomb`), every asset name its asset pack's (`bomb`)
+//!                                 the game (`minibomb`), every asset name its game's (`bomb`)
 //! <pack>/**/*.d.luau              its API declarations, which its modules (and its users') check
 //!                                 against after the engine's
 //! <pack>/locales/<language>.toml  a game's display text by id: the own language's (en) is the
@@ -26,8 +26,8 @@
 //! `packs::find`), starting at each game's top module. A module requires
 //! only its own pack's and those of the support packs its pack depends on
 //! (`packs::check_require`). [`read_all`] loads every game. The assets the
-//! definitions name (`asset.sprite("bomb")`) come from the extracted packs'
-//! asset indices; `crate::load::load_battle` puts the two together.
+//! definitions name (`asset.sprite("bomb")`) are the game's, extracted from
+//! its ROMs (`nettai_extract`); `crate::load::asset_numbers` finds them there.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};

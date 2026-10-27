@@ -73,7 +73,7 @@ enum Load {
     /// pieces, the telops' palette.
     Telop(TelopName),
     /// "PAUSE" as it started (0x080166BC): its tiles, the banners' palette
-    /// where the pack says (`pause_loads_banner_palette`).
+    /// where the graphics say (`pause_loads_banner_palette`).
     Pause,
 }
 
@@ -661,7 +661,7 @@ fn transform_hides(b: &Battle, state: &HudState, local: u8) -> (bool, bool) {
 /// Draw the HUD layer and queue the HUD sprites of `seat`'s console
 /// (`state` its HUD's), where `seat` puts them: a console's own screen, or
 /// its share of a screen of both (`crate::seat`). What the HUD needs and
-/// the pack or the content doesn't have (a chip's icon, a character of its
+/// the game's assets or the content doesn't have (a chip's icon, a character of its
 /// name, a banner's glyphs) goes to `problems`. Without
 /// `custom_gauge`, the custom gauge (`Renderer::custom_gauge`). `smooth`
 /// is the enhanced mode's motion: the gauge's fill drawn between whole
@@ -707,7 +707,7 @@ pub fn draw<'a>(
         let digits_x = seat.x(shift + 8, 32);
         // In the enhanced mode the HP in the numbers' font over the cells
         // left blank (the box's glyph 10), and the box drawn as shapes where
-        // the pack has its drawing.
+        // the game's graphics have its drawing.
         let lettered = hp_box_number(hud, pal, shown, (digits_x, 0), text, problems);
         let drawn = hud.shapes.hp_box.as_ref().filter(|_| lettered.is_some() && text.draws_shapes());
         match drawn {
@@ -740,7 +740,7 @@ pub fn draw<'a>(
         let color = |_: u8, c: u8| pal[c as usize & 15];
         // In the enhanced mode the frame's word in the lettering font, in
         // its look, its cells with their letters taken off (their plate);
-        // and the frame and its cells drawn as shapes where the pack has
+        // and the frame and its cells drawn as shapes where the game's graphics have
         // their drawings (`shapes`), the word over them.
         let word = gauge_word(b, hud, text, problems);
         let frame_drawn = hud.shapes.gauge_frame.as_ref().filter(|_| text.draws_shapes());
@@ -780,7 +780,7 @@ pub fn draw<'a>(
                 lettered_word(b, text, "gauge.l-or-r", found.map(|f| &f.letters), pal, Lettering::wide, problems).zip(found)
             })
             .flatten();
-        // The cells drawn as shapes (the pack's, where each cell filling by
+        // The cells drawn as shapes (the game's, where each cell filling by
         // eighths is its filled cell cut short): the fill's end where the
         // counter is, between the pixels in the enhanced mode's motion.
         let cells_drawn = hud.shapes.gauge_cells.as_ref().filter(|c| text.draws_shapes() && c.cut && (g < FULL || l_or_r.is_some()));
@@ -925,9 +925,9 @@ pub fn draw<'a>(
     // the local side's on the left, around "VS" (`sub_801D048`: the HUD
     // layer's damage digits, the left number ending at column 13, the
     // right one starting at column 17), until the banner slides out.
-    // (The banner's layout is its pack's, by its number there; the
+    // (The banner's layout is its game's, by its number there; the
     // banner's lookup is the banner's own, below.)
-    // (The pack says when: EXE4's only from the banner's hold, until its
+    // (The graphics say when: EXE4's only from the banner's hold, until its
     // release slides it out.)
     let judge_shown = if hud.layout.judge_from_hold { b.banner.step == 4 } else { b.banner.step < 8 };
     if seat.draws_shared() && b.banner_for(local).is_some_and(|id| crate::lookups::is_judge(graphics, &b.content, id)) && judge_shown {
@@ -1021,7 +1021,7 @@ pub fn draw<'a>(
         time_left(layer, text, hud, left, TimeAt::Corner(seat), problems);
     }
     // The message under the gauge (`sub_801E270`: 17 glyphs from column 7;
-    // the pack's place), which every console shows.
+    // the game's place), which every console shows.
     if let Some((line, first)) = message.filter(|_| seat.draws_shared()) {
         let (column, row, width) = hud.layout.message;
         let over = (one_line && !first).then_some(timer_line);
@@ -1198,7 +1198,7 @@ pub fn draw<'a>(
         }
     }
     // The banner block's banner, where no telop lays on it. (The banner's
-    // own pack's HUD draws it, by its number there.) On a screen of both the
+    // own game's HUD draws it, by its number there.) On a screen of both the
     // round's result's is each player's own, over its own half.
     let banner = banner_of(b, seat);
     let telops = telops_of(b, seat);
@@ -1211,7 +1211,7 @@ pub fn draw<'a>(
             // its glyphs. (Not where a telop's load changed its glyphs or
             // its palette: `TelopTiles`, EXE4's.)
             let clean = shared.banner.is_empty() && shared.banner_palette.is_none();
-            // (A logo drawn whole as shapes where the pack has its drawing,
+            // (A logo drawn whole as shapes where the game's graphics have its drawing,
             // its words on it as text: the Program Advance's; else the
             // words over the bar.)
             if clean && text.draws_shapes()
@@ -1444,7 +1444,7 @@ fn put_px(layer: &mut Layer, hud: &Hud, pal: &Palette, e: MapEntry, x: i32, y: i
 
 /// A chip's name in the font's glyphs: its display text (the content's
 /// own, or the player's language's: `DisplayText::chip_name`), written in the
-/// characters the pack's font has (`sub_8027D10`'s text for the chip, at
+/// characters the game's font has (`sub_8027D10`'s text for the chip, at
 /// most eight glyphs).
 fn name_glyphs(b: &Battle, hud: &Hud, name: &str, chip: ChipHandle, problems: &mut Problems) -> Vec<u16> {
     let mut glyphs = crate::lookups::chip_name(hud, &b.content, chip, name, problems);
@@ -1533,14 +1533,14 @@ fn draw_chip_name(
     x
 }
 
-/// The pack's text lines (`Hud::texts`): "TIME UP!", then the seconds 1-10;
+/// The game's text lines (`Hud::texts`): "TIME UP!", then the seconds 1-10;
 /// and "COUNTER HIT!".
 pub const TEXT_TIME_UP: usize = 3;
 /// The turn timer's start: it shows once it has counted.
 const TURN_TICKS: u16 = 0xA5 * 4 - 1;
 pub const TEXT_COUNTER_HIT: usize = 14;
 
-/// Draw the pack's text line `line` on the HUD layer: up to `width` glyphs
+/// Draw the game's text line `line` on the HUD layer: up to `width` glyphs
 /// from tile column `col`, on tile rows `row` and `row + 1`.
 /// The row of the emotion window under the HP box (`mugshot_parts`): the
 /// custom screen's time left's (`time_left`).
@@ -1637,7 +1637,7 @@ fn draw_text(
     fonts::layer_line(text, Plane::Hud, layer, hud, shown, pal, (col * 8, row * 8));
 }
 
-/// [`draw_text`], with the pack's text line `over` (if any) in the place
+/// [`draw_text`], with the game's text line `over` (if any) in the place
 /// of the line's first glyphs: the lines' tiles are one line's (the turn
 /// timer's eight glyphs, rendered over a message's).
 #[allow(clippy::too_many_arguments)]
@@ -1755,7 +1755,7 @@ fn mugshot_parts<'a>(
     // The box beside it: the face's own (EXE5's), a count, or the box
     // without one. A game whose faces bring their boxes has no box
     // without a count: a face that brings none (EXE5's souls') shows its
-    // side's count (`window_count`). (Each box's drawing where the pack has
+    // side's count (`window_count`). (Each box's drawing where the game's graphics have
     // one, for the enhanced mode.)
     let own_drawing = picture.and_then(|m| face_hud.shapes.mugshot_boxes.get(m as usize)).and_then(Option::as_ref);
     let (tiles, count) = match picture.and_then(|m| face_hud.mugshot_box(m)) {
@@ -1778,7 +1778,7 @@ fn mugshot_parts<'a>(
         (Some(_), Some(_)) => (Some(&shared.count_blank), count.and_then(|(h, _)| h.shapes.count_blank.as_ref())),
         (_, Some(t)) if std::ptr::eq(t, &hud.count_box) => (Some(t), hud.shapes.count_box.as_ref()),
         (_, Some(t)) if own_drawing.is_some() && picture.and_then(|m| face_hud.mugshot_box(m)).is_some_and(|own| std::ptr::eq(own, t)) => (Some(t), own_drawing),
-        // (A face's own box with no drawing of its own: its frame drawn apart where the pack has it.)
+        // (A face's own box with no drawing of its own: its frame drawn apart where the game's graphics have it.)
         (_, Some(t)) if let Some(m) = picture.filter(|m| face_hud.mugshot_box(*m).is_some_and(|own| std::ptr::eq(own, t))) => {
             (Some(box_with_ring(face_hud, m, t, &pal, (at.1, flip), text, &mut items)), None)
         }
@@ -1792,7 +1792,7 @@ fn mugshot_parts<'a>(
             Some(digits) => {
                 let (tiles, flip) = match digits.and_then(|d| shared.made.make(upright_count(tiles, d))) {
                     Some(made) => (made, false),
-                    // (A count whose digits' places the pack doesn't
+                    // (A count whose digits' places the graphics don't
                     // have: the box as drawn, so they read.)
                     None => (tiles, false),
                 };
@@ -1859,7 +1859,7 @@ fn box_part<'a>(drawing: Option<&nettai_assets::shapes::Drawing>, tiles: &'a Til
 }
 
 /// Face `number` of `face_hud`'s for the emotion window (at `x`, flipped as
-/// `flip` says): where its pack has the window's frame apart from its faces
+/// `flip` says): where its game's graphics have the window's frame apart from its faces
 /// and draws it as shapes, the face without its ring and the ring drawn in
 /// its color (an item in `items`); else the face as it is.
 fn face_with_ring<'a>(face_hud: &'a Hud, number: u8, tiles: &'a Tiles, pal: &Palette, (x, flip): (i32, bool), text: &TextSink, items: &mut Vec<TextItem>) -> &'a Tiles {
@@ -1875,7 +1875,7 @@ fn face_with_ring<'a>(face_hud: &'a Hud, number: u8, tiles: &'a Tiles, pal: &Pal
 }
 
 /// Box `number` of `face_hud`'s, a face's own, for beside the face (at `x`,
-/// flipped as `flip` says): where its pack has the boxes' frame apart from
+/// flipped as `flip` says): where its game's graphics have the boxes' frame apart from
 /// them and draws it as shapes, the box without its frame and the frame
 /// drawn in its color (an item in `items`); else the box as it is.
 fn box_with_ring<'a>(face_hud: &'a Hud, number: u8, tiles: &'a Tiles, pal: &Palette, (x, flip): (i32, bool), text: &TextSink, items: &mut Vec<TextItem>) -> &'a Tiles {
@@ -1891,7 +1891,7 @@ fn box_with_ring<'a>(face_hud: &'a Hud, number: u8, tiles: &'a Tiles, pal: &Pale
 }
 
 /// The emotion window's count `n` in the numbers' font, if the text layer
-/// draws numbers and the pack has its digits' places (`CountLetters`: each
+/// draws numbers and the game's graphics have its digits' places (`CountLetters`: each
 /// a single digit's box, the union of theirs; a count of two digits, its
 /// own two): in their colors in `palette`, on the box at (x, y); in a
 /// flipped box (`flip`), each digit's box at its mirrored place, upright.
@@ -1977,7 +1977,7 @@ fn icon_parts<'a>(
     }
     let hand = &b.hands[o.alliance as usize];
     let Some(chip) = hand.ids.get(hand.cursor as usize).copied().flatten() else { return };
-    // A chip's icon is its game's pack's image under the chip's key, in
+    // A chip's icon is its game's image under the chip's key, in
     // that HUD's icon palette; the other player's in a link battle outside
     // battle mode 1, the hidden chip's (EXE5's 0x08018B48: its entries of
     // the remote navi).
@@ -2099,7 +2099,7 @@ const OWN_ICON_PRIORITY: u8 = 1;
 
 /// The banner's five 32x16 sprites (as 8x16 glyphs) with its vertical
 /// squash: grow over 5 frames, hold, shrink (`sub_801CE28`).
-/// `layout` is banner `id`'s (its number in `hud`'s pack).
+/// `layout` is banner `id`'s (its number in `hud`'s game's graphics).
 /// `blank`: blank parts in the glyphs' places, as many (the enhanced mode's
 /// lettering draws the words: `lettered_banner`).
 fn banner_parts<'a>(b: &Battle, hud: &'a Hud, layout: &'a nettai_assets::BannerLayout, id: u8, blank: bool, out: &mut Vec<SpritePart<'a>>) {
@@ -2140,7 +2140,7 @@ fn hp_box_number(hud: &Hud, palette: &Palette, shown: u16, (x, y): (i32, i32), t
 }
 
 /// The custom gauge's frame's word in the enhanced mode, if the strings and
-/// a font have it: the cells of the frame's top row that draw it (the pack's
+/// a font have it: the cells of the frame's top row that draw it (the game's
 /// `GaugeWord`), their tiles with the letters taken off (their plate's
 /// color), and the word laid out as text where the cells' letters are, in
 /// their look (the user: "the text above the custom gauge CUSTOM looks
@@ -2188,7 +2188,7 @@ fn ringed(look: crate::lettering::Look, words: &str) -> crate::lettering::Look {
 /// A lettered picture's words and their look, where the enhanced mode draws
 /// them in its place: the strings' words for it (`lettering`'s `key`) where
 /// the lettering font draws them, and the look of the picture's letters
-/// (the pack's `letters`; none is a problem) in `palette`.
+/// (the game's `letters`; none is a problem) in `palette`.
 pub(crate) fn lettered_word<'b>(
     b: &'b Battle,
     text: &TextSink<'b>,
@@ -2207,7 +2207,7 @@ pub(crate) fn lettered_word<'b>(
 }
 
 /// The number a numbered banner shows (`sub_801CE28`): the turn's on the
-/// turn's banner (its pack's number 0x0C), else the round's.
+/// turn's banner (its game's number 0x0C), else the round's.
 fn banner_number(b: &Battle, id: u8) -> usize {
     (if id == 0x0C { b.round.turn } else { b.round.round }) as usize
 }
@@ -2217,9 +2217,9 @@ fn banner_number(b: &Battle, id: u8) -> usize {
 /// say `{n}`) and the lettering font draws them: the words in the lettering
 /// font, centered on the picture's letters (and its number), in the
 /// picture's look (its capitals' rows, its face's colors down them, its
-/// rim), over its bar drawn as shapes (the pack's drawing: none for a
+/// rim), over its bar drawn as shapes (the game's drawing: none for a
 /// picture with no bar), with the banners' squash. `number` is its number
-/// in `hud`'s pack.
+/// in `hud`'s game's graphics.
 fn lettered_banner(
     b: &Battle,
     hud: &Hud,
@@ -2232,7 +2232,7 @@ fn lettered_banner(
     let name = crate::graphics::name(&b.content, nettai_content_api::AssetKind::Banner, id.0)?;
     let words = text.strings.lettering(&b.content, &format!("banner.{}", nettai_content_api::keys::local(name)))?;
     let what = || format!("banner {name:?}");
-    // (By its place in the pack's banners: its number there over 4.)
+    // (By its place in the game's graphics' banners: its number there over 4.)
     let found = crate::lookups::letters(hud.letters.words.banners.get(number as usize / 4).and_then(Option::as_ref), what, problems)?;
     let pal = &hud.banner_palette;
     let letters = &found.letters;
@@ -2287,7 +2287,7 @@ fn lettered_banner(
             items.extend(words_in(&words, Some(letters.span)));
         }
     }
-    // The bar under the words: the pack's drawing of it (none: the picture
+    // The bar under the words: the game's drawing of it (none: the picture
     // has none), squashed with them.
     items.first()?;
     if let Some(bar) = &layout.bar {
@@ -2344,7 +2344,7 @@ struct TelopStyle<'a> {
     digit: usize,
     plus: usize,
     times: usize,
-    /// The looks of those glyphs (the pack's letters).
+    /// The looks of those glyphs (the game's letters).
     letters: Option<[&'a Digits; 3]>,
 }
 
@@ -2473,7 +2473,7 @@ fn name_parts<'a>(
     let glyphs = if font { 0 } else { name.len() };
     // (With the words on the text layer, blank parts in the cells they take:
     // the group has parts, and so its items their depth, however few of
-    // the words the pack's font has glyphs for, none of a Chinese name's.)
+    // the words the game's font has glyphs for, none of a Chinese name's.)
     let parts: Vec<(&Tiles, usize)> = if font { vec![(&*BLANK_GLYPH, 0); cells] } else { name.iter().map(|&c| fonts::cell_glyph(hud, c)).collect() };
     for (tiles, first) in parts {
         out.push(SpritePart { first_tile: first, ..glyph(tiles, 0, pal, x, y, 0, vscale) });
@@ -2532,7 +2532,7 @@ pub(crate) struct NumberSets {
 }
 
 impl NumberSets {
-    /// The digits', the '+''s and the "x2"'s looks (the pack's, read off
+    /// The digits', the '+''s and the "x2"'s looks (the game's, read off
     /// their glyphs), in `palette`.
     pub(crate) fn of(letters: Option<[&Digits; 3]>, palette: &Palette, text: &TextSink) -> Option<NumberSets> {
         if !text.draws_numbers() {
@@ -2588,7 +2588,7 @@ const HIDDEN_GLYPH: usize = Hud::HIDDEN_GLYPH;
 const PLUS_GLYPH: usize = Hud::PLUS_GLYPH;
 const TIMES_GLYPH: usize = Hud::TIMES_GLYPH;
 
-/// The looks of the HUD layer's damage digits, '+' and "x2" (the pack's
+/// The looks of the HUD layer's damage digits, '+' and "x2" (the game's
 /// letters), where it has all three.
 fn hud_number_letters(hud: &Hud) -> Option<[&Digits; 3]> {
     let l = &hud.letters;
@@ -2625,7 +2625,7 @@ mod tests {
             banners,
             ..Hud::default()
         };
-        // (Its glyphs' letters and digits, as a pack has them.)
+        // (Its glyphs' letters and digits, as extraction reads them.)
         hud.letters = nettai_extract::letters::hud_letters(&hud, &mut |_| {});
         hud
     }

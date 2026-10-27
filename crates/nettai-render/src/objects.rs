@@ -445,7 +445,7 @@ pub fn describe(b: &Battle, view: &View) -> Vec<String> {
 /// Queue every visible object's sprite the frame's sprite draw has room
 /// for ([`SpriteDraw`]); returns what the draw took. Visible: to one of
 /// `viewers` (by side: the console's own, or on a screen of both either
-/// player's). What an object names that the pack's graphics don't have
+/// player's). What an object names that the game's graphics don't have
 /// goes to `problems` (`crate::lookups`); with `lookups_only` nothing is
 /// queued.
 ///
@@ -478,7 +478,7 @@ pub fn queue_objects<'a>(
             let Some(id) = s.id else { continue };
             let kind = || format!("of kind {:?}", b.content.defs.kind(o.kind).key);
             let (sheet, frames) = if nowhere {
-                // (Not drawn: what the pack lacks of it is no problem.)
+                // (Not drawn: what the game's assets lack of it is no problem.)
                 let Some(sheet) = graphics.sprite(id) else { continue };
                 let Some(frames) = sheet.animations.get(s.anim as usize) else { continue };
                 (sheet, &frames[..])

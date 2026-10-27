@@ -2,7 +2,7 @@
 //! with what their glyphs draw, the HUD's text lines, and the pictures with
 //! words in them (banners, "Cstmzing...", the gauge's label, the chip
 //! window's pictures for the slots that aren't chips, the Cross window's
-//! names, a named button's label). The pack's own (its base language's, `Hud::language`) are in
+//! names, a named button's label). The game's own (its base language's, `Hud::language`) are in
 //! the HUD's and the custom screen's fields; another language's are kept
 //! beside them (`Hud::languages`, `CustomScreen::languages`) and swapped
 //! in by [`Bundle::in_language`], so what draws the HUD draws whichever
@@ -12,17 +12,17 @@
 //!
 //! A pack has a language's lettering only if it was made from a ROM that
 //! has those words: `Hud::languages` says which it has, its own first. A
-//! frontend set to a language the pack lacks draws the pack's own
+//! frontend set to a language the game's assets lack draws the game's own
 //! ([`Bundle::for_language`]): every picture with words in a language the
 //! pack has them in, none a placeholder for want of the other.
 
 use crate::{BannerLayout, Bundle, CustomScreen, DialogueFont, Hud, Palette, Picture, SlotPictures, Tiles};
 
-/// The language of a pack that doesn't say (one extracted from the US
+/// The language of a game's graphics that doesn't say (one extracted from the US
 /// ROMs, or from none).
 pub const BASE_LANGUAGE: &str = "en";
 
-/// The HUD's lettering in a language other than the pack's own.
+/// The HUD's lettering in a language other than the game's own.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct HudLettering {
     /// The 8x16 font and what each glyph draws (`Hud::font`,
@@ -32,7 +32,7 @@ pub struct HudLettering {
     pub dialogue_font: DialogueFont,
     /// The HUD's text lines in this font's glyphs (`Hud::texts`).
     pub texts: Vec<Vec<u16>>,
-    /// The banners whose words differ, by banner id / 4 (none: the pack's
+    /// The banners whose words differ, by banner id / 4 (none: the game's
     /// own banner), each with its place (a longer name starts further
     /// left), and the banners' palette.
     pub banners: Vec<Option<BannerLayout>>,
@@ -44,27 +44,27 @@ pub struct HudLettering {
     /// The custom gauge's tiles (its "L or R").
     pub gauge_tiles: Tiles,
     /// Where the chatbox's text starts in this language, when its games
-    /// place it otherwise than the pack's own (`HudLayout::chatbox_text`:
+    /// place it otherwise than the game's own (`HudLayout::chatbox_text`:
     /// EXE4's Japanese games', (0x33, 0x6C), 0x0804E2A4, where the US
-    /// games moved it to (0x3F, 0x6D)); none: the pack's own.
+    /// games moved it to (0x3F, 0x6D)); none: the game's own.
     pub chatbox_text: Option<(u8, u8)>,
     /// How this language's words look in the pictures above
     /// (`HudLetters::words`).
     pub letters: crate::letters::HudWords,
 }
 
-/// The custom screen's lettering in a language other than the pack's own.
+/// The custom screen's lettering in a language other than the game's own.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CustomLettering {
     /// The chip window's pictures for the slots that are neither chips
     /// nor buttons (OK's).
     pub pictures: SlotPictures,
     /// The form list window's names (`VersionPictures::form_names`) by game
-    /// version; a version not listed keeps the pack's own.
+    /// version; a version not listed keeps the game's own.
     pub form_names: Vec<(String, Tiles)>,
     /// The named buttons that say something, by the button's name (in the
-    /// names' order, as a pack keeps them); a button not listed keeps the
-    /// pack's own.
+    /// names' order, as a game's graphics keep them); a button not listed keeps the
+    /// game's own.
     pub buttons: Vec<(String, ButtonLettering)>,
     /// How this language's lettered pictures' letters look
     /// (`CustomLetters::pictures`).
@@ -74,7 +74,7 @@ pub struct CustomLettering {
 /// What a language has of its own for a named button: its tiles
 /// (`ButtonPictures::tiles`: EXE5's soul button, "UNITE" in English) and
 /// its picture in the chip window (`ButtonPictures::picture`: the re-deal
-/// button's); none: the pack's own.
+/// button's); none: the game's own.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct ButtonLettering {
     pub tiles: Option<Tiles>,
@@ -169,7 +169,7 @@ impl CustomScreen {
 
 impl Bundle {
     /// The bundle in another language: `lang`'s fonts, HUD lines and
-    /// pictures with words where the pack's own were. The pack's own
+    /// pictures with words where the game's own were. The game's own
     /// language is the bundle as it is.
     pub fn in_language(mut self, lang: &str) -> Result<Bundle, String> {
         let own = self.hud.language().to_string();
@@ -177,24 +177,24 @@ impl Bundle {
             return Ok(self);
         }
         if !self.hud.in_language(lang) {
-            return Err(format!("the pack has no lettering in {lang:?} (it has {})", self.hud.languages().join(", ")));
+            return Err(format!("the game's graphics have no lettering in {lang:?} (it has {})", self.hud.languages().join(", ")));
         }
         // A bundle without the custom screen's graphics (a test's) has no
         // lettering of them either.
         if !self.custom.is_empty() && !self.custom.in_language(&own, lang) {
-            return Err(format!("the pack has the HUD in {lang:?} but not the custom screen (extract it again)"));
+            return Err(format!("the game's graphics have the HUD in {lang:?} but not the custom screen"));
         }
         Ok(self)
     }
 
     /// The bundle as a frontend set to `lang` draws it: in `lang` if the
-    /// pack has its lettering, else in the pack's own language, so that a
-    /// picture with words is one the pack has.
+    /// graphics have its lettering, else in their own language, so that a
+    /// picture with words is one the game's graphics have.
     pub fn for_language(self, lang: &str) -> Bundle {
         if self.hud.has_language(lang) { self.in_language(lang).expect("a language the HUD has") } else { self }
     }
 
-    /// The bundle without `lang`'s lettering beside its own (a pack made
+    /// The bundle without `lang`'s lettering beside its own (a game's graphics made
     /// from no ROM that has those words has none of it).
     pub fn without_language(mut self, lang: &str) -> Bundle {
         self.hud.languages.retain(|(l, _)| l != lang);
@@ -287,9 +287,9 @@ mod tests {
         assert_eq!((&ja.custom.buttons[0].1.tiles, &ja.custom.buttons[1].1.tiles), (&tiles(2, 18), &tiles(5, 18)), "a button's own label, the others as they are");
         let redeal = &ja.custom.buttons[2].1;
         assert_eq!((&redeal.tiles, &redeal.picture), (&tiles(6, 36), &Picture { tiles: tiles(2, 42), palette: [3; 16] }), "a button's own picture, its tiles as they are");
-        assert_eq!(redeal.palettes, [[3; 16], [9; 16]], "its palettes start with its picture's own (as a pack writes them)");
+        assert_eq!(redeal.palettes, [[3; 16], [9; 16]], "its palettes start with its picture's own (as a game's graphics write them)");
         assert_eq!(ja.hud.languages(), ["ja", "en"]);
-        // And back: the pack as it was, but for which language is its own.
+        // And back: the graphics as they were, but for which language is its own.
         let back = ja.in_language("en").unwrap();
         assert_eq!((&back.hud.font, &back.hud.texts, &back.custom.pictures), (&en.hud.font, &en.hud.texts, &en.custom.pictures));
         assert_eq!(back.custom.versioned, en.custom.versioned);
@@ -297,7 +297,7 @@ mod tests {
         assert_eq!(back.hud.layout.chatbox_text, (0x3F, 0x6D));
         assert!(en.clone().in_language("en").is_ok());
         assert!(en.clone().in_language("fr").unwrap_err().contains("en, ja"));
-        // A frontend set to a language the pack lacks draws the pack's own.
+        // A frontend set to a language the game's assets lack draws the game's own.
         assert_eq!(en.clone().for_language("fr"), en);
         assert_eq!(en.clone().for_language("ja").hud.language(), "ja");
         // A pack of the Japanese words alone: Japanese is its own language,
