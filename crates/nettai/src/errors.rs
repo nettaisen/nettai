@@ -242,6 +242,11 @@ static OFFSET: OnceLock<chrono::FixedOffset> = OnceLock::new();
 pub fn log(doing: &str, said: &dyn std::fmt::Display) {
     let offset = OFFSET.get().copied().unwrap_or(chrono::FixedOffset::east_opt(0).expect("UTC"));
     let line = format!("{} {doing}: {said}\n", chrono::Utc::now().with_timezone(&offset).format("%Y-%m-%d %H:%M:%S"));
+    // (A test's lines go to its own output, which the harness keeps, never to the player's log.)
+    if cfg!(test) {
+        eprint!("{line}");
+        return;
+    }
     // (The browser's log is the page's console as well: its file is in the page's storage.)
     #[cfg(target_arch = "wasm32")]
     ::log::warn!(target: "nettai", "{doing}: {said}");
