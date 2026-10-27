@@ -1071,7 +1071,7 @@ the US's (the user's choice).
   description), `[navis]` (name, variant_name, run_message), `[forms]` (a Cross's name and description),
   `[backgrounds]` (a background's name, by its asset name: the app's arenas, docs/frontend.md §1), and a table
   for each of the game's collections, by its name (`[patch_cards]`: a patch card's name), and the game's text tables
-  that no definition owns (top-level tables of key to text the game's manifest declares, `text`: `[patch_card_effects]`, a patch card's effect lines by the
+  that no definition owns (top-level tables of key to text that are no collection of the game: `[patch_card_effects]`, a patch card's effect lines by the
   effect's kind and choice). What reads each is §10.6. The engine's
   `content::strings::Strings` is one table; nettai-content's `locale` reads them. A definition holds none: the define
   phase refuses a `name`, `description` or `description_lines` field (core.d.luau's specs have none).
@@ -1569,7 +1569,7 @@ EXE6's pack (EXE5's digits are the same), whose README has the tracing rules; Ne
 
 ### 12.5 Words, languages and strings
 
-The words are each game's text table `lettering` in `locales/{en,ja}.toml` (declared in its manifest's `text`): display
+The words are each game's text table `lettering` in `locales/{en,ja}.toml`: display
 text, outside the hash, each player's own language. Keys: `banner.ASSET` (`{n}` the number), `pause`, `waiting`,
 `gauge.custom`, `gauge.l-or-r`, `turn-limit`, `pictures.NAME.title` and `.words` (the help pictures, by the chip
 window's picture: `ok`, `ok-picked`, a button's name), `window.NAME` (the window's labels), `crosses.FORM` (EXE6's

@@ -5,8 +5,8 @@ use std::{ffi::OsString, path::Path, path::PathBuf, process::ExitCode};
 
 const USAGE: &str = "usage: nettai-extract <game> <pack-dir> ROM... [--reads <file>] [--check]\n\
 <game> is a game's pack folder (content/exe6) or an unpacked bundle of one game: its\n\
-recipe (its manifest's [extract]) is run on its ROMs, every one it declares (a complete\n\
-Legacy Collection's), given in any order. The output must be a new or empty directory.\n\
+recipe (extract/init.luau) is run on its ROMs, every one it states (a complete Legacy\n\
+Collection's), given in any order. The output must be a new or empty directory.\n\
 --check also checks the battle definitions load with the pack.\n\
 --reads writes every range of the ROMs the extraction read, in order (tab-separated: the\n\
 ROM's code, the address, the length, `data`, `open` (a span a parser took what it needed\n\
@@ -48,7 +48,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, Error> {
 }
 
 /// The content directory and the game of `at`: a game pack's folder (its manifest in it), or a content directory
-/// (an unpacked bundle) whose one game pack declares a recipe.
+/// (an unpacked bundle) whose one game pack has a recipe.
 fn game_of(at: &Path) -> Result<(PathBuf, String), Error> {
     let said = |e: &dyn std::fmt::Display| Error(format!("{}: {e}", at.display()));
     let at = std::fs::canonicalize(at).map_err(|e| said(&e))?;
@@ -58,10 +58,11 @@ fn game_of(at: &Path) -> Result<(PathBuf, String), Error> {
         };
         return Ok((content.to_path_buf(), id.to_string()));
     }
-    let games: Vec<String> = packs::packs(&at).map_err(|e| said(&e))?.into_iter().filter(|p| p.kind == PackKind::Game && p.extract.is_some()).map(|p| p.id).collect();
+    let all = packs::packs(&at).map_err(|e| said(&e))?;
+    let games: Vec<String> = all.into_iter().filter(|p| p.kind == PackKind::Game && packs::has_recipe(&at, &p.id)).map(|p| p.id).collect();
     match games.as_slice() {
         [game] => Ok((at, game.clone())),
-        [] => Err(said(&"no game pack in it declares an extraction recipe")),
+        [] => Err(said(&"no game pack in it has an extraction recipe")),
         _ => Err(said(&format_args!("it holds the games {}: give one's folder ({})", games.join(", "), at.join(&games[0]).display()))),
     }
 }
@@ -166,17 +167,20 @@ mod tests {
     #[test]
     fn the_game_is_its_folders() {
         let dir = tempfile::tempdir().unwrap();
-        let pack = |id: &str, text: &str| {
-            std::fs::create_dir_all(dir.path().join(id)).unwrap();
+        let pack = |id: &str, text: &str, recipe: bool| {
+            std::fs::create_dir_all(dir.path().join(id).join(packs::EXTRACT)).unwrap();
             std::fs::write(dir.path().join(id).join(packs::MANIFEST), text).unwrap();
+            if recipe {
+                std::fs::write(dir.path().join(id).join(packs::EXTRACT).join("init.luau"), "return { roms = { \"BR6E\" } }\n").unwrap();
+            }
         };
-        let recipe = "[extract]\nroms = [\"BR6E\"]\nsize = 0x800000\n";
-        pack("lib", "id = \"lib\"\nkind = \"support\"\n");
-        pack("g", &format!("id = \"g\"\nkind = \"game\"\ndepends = [\"lib\"]\n{recipe}"));
+        pack("lib", "id = \"lib\"\nkind = \"support\"\n", false);
+        pack("g", "id = \"g\"\nkind = \"game\"\ndepends = [\"lib\"]\n", true);
+        pack("f", "id = \"f\"\nkind = \"game\"\n", false);
         let content = std::fs::canonicalize(dir.path()).unwrap();
         assert_eq!(game_of(&dir.path().join("g")).unwrap(), (content.clone(), "g".to_string()));
-        assert_eq!(game_of(dir.path()).unwrap(), (content.clone(), "g".to_string()));
-        pack("h", &format!("id = \"h\"\nkind = \"game\"\n{recipe}"));
+        assert_eq!(game_of(dir.path()).unwrap(), (content.clone(), "g".to_string()), "f has no recipe");
+        pack("h", "id = \"h\"\nkind = \"game\"\n", true);
         let e = game_of(dir.path()).unwrap_err().to_string();
         assert!(e.contains("the games g, h"), "{e}");
         assert!(game_of(&dir.path().join("missing")).is_err());

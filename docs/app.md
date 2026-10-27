@@ -651,8 +651,8 @@ game's graphics in the language are loaded, on a thread (§1). A language the co
 content's own names.
 
 **A game's name is its own, in the language shown**: BN4, BN5 and BN6 in English, EXE4, EXE5 and EXE6 in
-Japanese (docs/design/app-ui.md §2.22). Each game states it in its locales, in the text table `game` its manifest
-declares (`"name" = "BN6"`), and `nettai_content::locale::game_name(dir, game, lang)` reads it from the content
+Japanese (docs/design/app-ui.md §2.22). Each game states it in its locales, in the text table `game`
+(`"name" = "BN6"`), and `nettai_content::locale::game_name(dir, game, lang)` reads it from the content
 alone (a language with no table, the pseudo-locale, has the game's own language's), so a game with no pack, or
 one whose pack fails to load, is named too. The shell reads every game's at start-up and when the language
 changes (`Shell::name_games`), and `Shell::game_name(id)` gives it to whoever names a game: the header's
@@ -3766,7 +3766,7 @@ missing. A game's pack is made by its content's extraction recipe (`nettai_extra
 docs/design/extraction-recipes.md) and kept by the recipe's fingerprint (`Recipe::fingerprint`: a digest of the
 engine's line,
 the versions of the pack's formats, `nettai_content::pack::FORMATS`, and every file the recipe reads: its
-`extract/` modules and drawings, its support packs', and the compat tables its `[extract]` names, the names the
+`extract/` modules and drawings, its support packs', and its game's compat tables, the names the
 pack's assets are written under among them), which names the pack's folder (`packs/<game>-<fingerprint>`). The
 recipe is read from the content the game plays, at run time, not compiled into the app: content that names a new
 asset, or extracts one otherwise, has its pack extracted again with it, with no new build; content whose recipe is

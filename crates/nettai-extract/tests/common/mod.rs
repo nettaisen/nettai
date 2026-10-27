@@ -36,7 +36,7 @@ pub fn roms_by_code() -> BTreeMap<String, PathBuf> {
     out
 }
 
-/// The full set of `recipe`'s ROMs (every one it declares) from `NETTAI_EXTRACT_ROM_DIR`.
+/// The full set of `recipe`'s ROMs (every one it states) from `NETTAI_EXTRACT_ROM_DIR`.
 pub fn full_set(recipe: &Recipe) -> RomSet {
     let found = roms_by_code();
     let mut roms = recipe.rom_set();
@@ -48,14 +48,15 @@ pub fn full_set(recipe: &Recipe) -> RomSet {
 }
 
 /// The games asked for: `NETTAI_EXTRACT_GAMES` (`exe6`, `exe5,exe6`), else every game of the repository's content
-/// that declares a recipe.
+/// that has a recipe.
 pub fn games() -> Vec<String> {
+    use nettai_content_api::packs;
     match std::env::var("NETTAI_EXTRACT_GAMES") {
         Ok(list) => list.split([',', ' ']).filter(|s| !s.is_empty()).map(String::from).collect(),
-        Err(_) => nettai_content_api::packs::packs(&content())
+        Err(_) => packs::packs(&content())
             .unwrap_or_else(|e| panic!("{e}"))
             .into_iter()
-            .filter(|p| p.extract.is_some())
+            .filter(|p| p.kind == packs::PackKind::Game && packs::has_recipe(&content(), &p.id))
             .map(|p| p.id)
             .collect(),
     }

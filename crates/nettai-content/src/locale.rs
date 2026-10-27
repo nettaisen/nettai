@@ -58,9 +58,9 @@
 //! (and the frontend's `--cards`' messages). Nothing shows another form's name or a weapon's, so a table has
 //! none.
 //!
-//! A game's text tables, key to text that no definition owns, are top-level
-//! tables its manifest declares (`text = ["patch_card_effects"]`), which
-//! tools show (EXE6's and EXE5's `patch_card_effects`: a patch card's
+//! A game's text tables, key to text that no definition owns, are its
+//! top-level tables that are no collection of its root ([`text_tables`]),
+//! which tools show (EXE6's and EXE5's `patch_card_effects`: a patch card's
 //! effects as its menu lists them, by the effect's kind and choice,
 //! `{field}` the effect's number of that name; the build creator's patch card list
 //! shows them).
@@ -72,8 +72,8 @@ use std::path::{Path, PathBuf};
 /// The directory of a pack that holds its tables.
 pub const DIR: &str = "locales";
 
-/// A game's text table of its own words (its manifest declares it): `name`, the game's name as a player sees
-/// it in the language (BN6 in English, EXE6 in Japanese).
+/// A game's text table of its own words: `name`, the game's name as a player sees it in the language (BN6 in
+/// English, EXE6 in Japanese).
 pub const GAME: &str = "game";
 
 /// The key of [`GAME`] that is the game's name.
@@ -188,8 +188,8 @@ pub fn background_names(dir: &Path, game: &str, lang: &str) -> std::collections:
     out
 }
 
-/// Game `game`'s text table `table` (a manifest's `text`: the battle themes'
-/// names, [`BATTLE_THEMES`]) in `lang`, from the locales of content `dir`
+/// Game `game`'s text table `table` (the battle themes' names,
+/// [`BATTLE_THEMES`]) in `lang`, from the locales of content `dir`
 /// alone (a game without its pack has it too): each key's text in `lang`,
 /// else in the content's own language. Empty where neither has the table.
 pub fn text_table(dir: &Path, game: &str, lang: &str, table: &str) -> std::collections::BTreeMap<String, String> {
@@ -226,16 +226,28 @@ pub fn languages(dir: &Path) -> Vec<String> {
     out
 }
 
-/// What is wrong with a game's table against its definitions and the text
-/// tables its manifest declares (`text_tables`): an id no definition has, a
-/// top-level table that is no collection of the game and no declared text
-/// table (a misspelt name), a string with a combining mark (write the
-/// composed character); and in the own language's (`own`), a chip or navi
-/// without a name, which a frontend would show by its id, and a declared
-/// text table missing. (Which forms' strings
-/// something shows is a game's: EXE6's Crosses', which nettai-match's EXE6
-/// tests check.) (A string may be empty: the invalid chip's name is, and
-/// the Japanese games print no description for some chips.)
+/// The text tables of a game's tables `tables` (its languages'): each
+/// top-level table of key to text that is no collection of the game's root
+/// (`defs`), by name, in name order, whichever language has it.
+pub fn text_tables<'a>(tables: impl IntoIterator<Item = &'a Strings>, defs: &Defs) -> Vec<String> {
+    let collections = defs.collections();
+    let text = tables.into_iter().flat_map(|s| &s.tables).filter(|(n, t)| matches!(t, Table::Text(_)) && !collections.contains(&n.as_str()));
+    let mut out: Vec<String> = text.map(|(n, _)| n.clone()).collect();
+    out.sort();
+    out.dedup();
+    out
+}
+
+/// What is wrong with a game's table against its definitions and its text
+/// tables (`text_tables`, every one its languages have: [`text_tables`]):
+/// an id no definition has, a collection's table of text or a text table of
+/// entries, a string with a combining mark (write the composed character);
+/// and in the own language's (`own`), a chip or navi without a name, which
+/// a frontend would show by its id, and a text table the game's other
+/// languages have and it hasn't. (Which forms' strings something shows is a
+/// game's: EXE6's Crosses', which nettai-match's EXE6 tests check.) (A
+/// string may be empty: the invalid chip's name is, and the Japanese games
+/// print no description for some chips.)
 pub fn check(s: &Strings, defs: &Defs, text_tables: &[String], own: bool) -> Vec<String> {
     let mut out = Vec::new();
     let mut text = |what: String, v: &Option<String>| {
@@ -268,12 +280,11 @@ pub fn check(s: &Strings, defs: &Defs, text_tables: &[String], own: bool) -> Vec
         text(format!("forms.{key}.name"), &f.name);
         text(format!("forms.{key}.description"), &f.description);
     }
-    // (The game's own tables: each a collection of its root, or a text
-    // table its manifest declares.)
+    // (The game's own tables: each a collection of its root, else a text
+    // table.)
     let collections = defs.collections();
     for (name, table) in &s.tables {
         let collection = collections.contains(&name.as_str());
-        let declared = text_tables.iter().any(|t| t == name);
         match table {
             Table::Entries(entries) if collection => {
                 for (id, e) in entries {
@@ -284,16 +295,14 @@ pub fn check(s: &Strings, defs: &Defs, text_tables: &[String], own: bool) -> Vec
                     text(format!("{name}.{id}.description"), &e.description);
                 }
             }
-            Table::Text(lines) if declared => {
+            Table::Text(_) if collection => unknown.push(format!("{name}: a collection's table, whose entries are tables (`{{ name = ... }}`), not text")),
+            Table::Text(lines) => {
                 for (key, line) in lines {
                     text(format!("{name}.{key}"), &Some(line.clone()));
                 }
             }
-            Table::Text(_) if collection => unknown.push(format!("{name}: a collection's table, whose entries are tables (`{{ name = ... }}`), not text")),
-            Table::Entries(_) if declared => unknown.push(format!("{name}: a text table, key to text, not entries")),
-            _ => unknown.push(format!(
-                "{name}: no table of this name (the game's root holds no such collection, and its manifest declares no such text table: {})",
-                if text_tables.is_empty() { "none".to_string() } else { text_tables.join(", ") }
+            Table::Entries(_) => unknown.push(format!(
+                "{name}: the game's root holds no collection of this name, and a text table is key to text, not entries"
             )),
         }
     }
@@ -315,8 +324,8 @@ pub fn check(s: &Strings, defs: &Defs, text_tables: &[String], own: bool) -> Vec
             }
         }
         for t in text_tables {
-            if !matches!(s.tables.get(t), Some(Table::Text(_))) {
-                unknown.push(format!("{t}: the game's manifest declares this text table, which the content's own language hasn't"));
+            if !s.tables.contains_key(t) {
+                unknown.push(format!("{t}: the game's other languages have this text table, which the content's own language hasn't"));
             }
         }
     }
@@ -420,7 +429,6 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report
     let holdable = c.rules.as_ref().map(|r| r.emotion.holdable().into_iter().map(|(e, _)| r.emotion.name(e)).collect::<Vec<_>>()).unwrap_or_default();
     for game in c.scripts.games() {
         let pack = dir.join(&game);
-        let text_tables = c.scripts.manifest(&game).map(|m| m.text.clone()).unwrap_or_default();
         // (A chip folder whose main module didn't load.)
         let unported = |key: &str| {
             let module = format!("chips/{key}/init");
@@ -430,9 +438,11 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report
         if !langs.iter().any(|l| l == OWN) {
             r.error(format!("{game}/{DIR}/{OWN}.toml"), "the game's own words are missing");
         }
-        for lang in langs {
+        let tables: Vec<(String, Result<Option<Strings>, String>)> = langs.into_iter().map(|lang| (lang.clone(), load(&pack, &lang))).collect();
+        let text_tables = text_tables(tables.iter().filter_map(|(_, s)| s.as_ref().ok()?.as_ref()), &c.defs);
+        for (lang, table) in tables {
             let at = format!("{game}/{DIR}/{lang}.toml");
-            match load(&pack, &lang) {
+            match table {
                 Ok(Some(mut s)) => {
                     s.chips.retain(|k, _| !unported(k));
                     for problem in check(&s, &c.defs, &text_tables, lang == OWN) {
@@ -471,9 +481,6 @@ mod tests {
             assert_eq!(game_name(&dir, game, "en").as_deref(), Some(en), "{game}");
             assert_eq!(game_name(&dir, game, "ja").as_deref(), Some(ja), "{game}");
             assert_eq!(game_name(&dir, game, "pseudo").as_deref(), Some(en), "{game}: no table of its own");
-            // (Declared, so the locales' check holds the table to its game's.)
-            let manifest = nettai_platform::fs::read_to_string(dir.join(game).join("manifest.toml")).unwrap();
-            assert!(manifest.lines().any(|l| l.starts_with("text = [") && l.contains("\"game\"")), "{game}");
         }
         assert_eq!(game_name(&dir, "nowhere", "en"), None);
     }
@@ -492,22 +499,27 @@ mod tests {
     }
 
     /// A game's top-level table is a collection's (entries) or a text
-    /// table (key to text), read as which its values are; the check takes
-    /// a text table only where the manifest declares it, so a misspelt name
-    /// is refused, not a new table.
+    /// table (key to text), read as which its values are: one that is no
+    /// collection of the game is a text table, and the own language has
+    /// every text table the game's other languages have.
     #[test]
-    fn a_text_table_is_declared() {
-        let s = parse("language = \"en\"\n[patch_card_effects]\nhp_add = \"HP+{amount}\"\n[patch_card_efects]\nx = \"y\"\n", "en.toml").unwrap();
+    fn a_text_table_is_any_table_no_collection_is() {
+        let s = parse("language = \"en\"\n[patch_card_effects]\nhp_add = \"HP+{amount}\"\n[bugs]\nx = \"y\"\n", "en.toml").unwrap();
         assert_eq!(s.text("patch_card_effects", "hp_add"), Some("HP+{amount}"));
         let defs = Defs::default();
-        let problems = check(&s, &defs, &["patch_card_effects".to_string()], false);
+        let ja = parse("language = \"ja\"\n[builds]\na = \"b\"\n", "ja.toml").unwrap();
+        let tables = text_tables([&s, &ja], &defs);
+        assert_eq!(tables, ["bugs", "builds", "patch_card_effects"]);
+        assert!(check(&s, &defs, &tables, false).is_empty());
+        // (Own language: a text table another language has and it hasn't.)
+        let problems = check(&s, &defs, &tables, true);
         assert_eq!(problems.len(), 1, "{problems:?}");
-        assert!(problems[0].starts_with("patch_card_efects: no table of this name"), "{problems:?}");
-        let undeclared = check(&s, &defs, &[], false);
-        assert_eq!(undeclared.len(), 2, "{undeclared:?}");
-        // (Own language: a declared table it hasn't.)
-        let none = parse("language = \"en\"\n", "en.toml").unwrap();
-        assert_eq!(check(&none, &defs, &["patch_card_effects".to_string()], true).len(), 1);
+        assert!(problems[0].starts_with("builds: the game's other languages have this text table"), "{problems:?}");
+        // (A table of entries that is no collection: no text table either.)
+        let entries = parse("language = \"en\"\n[patch_card_efects]\nx = { name = \"y\" }\n", "en.toml").unwrap();
+        let problems = check(&entries, &defs, &text_tables([&entries], &defs), false);
+        assert_eq!(problems.len(), 1, "{problems:?}");
+        assert!(problems[0].starts_with("patch_card_efects: the game's root holds no collection of this name"), "{problems:?}");
     }
 
     /// `[backgrounds]` names the pack's backgrounds by their asset names:

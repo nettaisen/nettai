@@ -18,12 +18,16 @@
 //! support packs' and its own `extract/`), the content against the rest:
 //! neither sees the other's API. A content module requires no recipe
 //! module, a recipe module nothing but recipe modules, and a recipe's
-//! `data` reads only what its manifest's `[extract]` names.
+//! `data` reads only files of its game's `compat/`.
 
 pub mod lints;
 
 use std::path::Path;
 use std::time::Duration;
+
+/// The folder of a game's pack whose files its recipe reads with `data`
+/// (docs/design/extraction-recipes.md §3.9): its compat tables.
+const COMPAT: &str = "compat";
 
 /// A type error, as `path:line:col: message`.
 pub type Problem = String;
@@ -182,13 +186,15 @@ fn reach_of(dir: &Path, only: Option<&[&str]>) -> Result<Vec<Problem>, String> {
             }
             if recipe {
                 for (line, read) in lints::data_reads(&source) {
-                    let declared = p.extract.as_ref().is_some_and(|e| e.reads.iter().any(|r| r == &read));
+                    let compat = read
+                        .strip_prefix(&format!("{COMPAT}/"))
+                        .is_some_and(|rest| !rest.split('/').any(|s| s.is_empty() || s == "." || s == ".."));
                     if p.kind == nettai_content_api::PackKind::Support {
                         problems.push(format!(
                             "{file}:{line}: data({read:?}): a support pack's recipe code reads no data of its own; the game's recipe passes it what it reads"
                         ));
-                    } else if !declared {
-                        problems.push(format!("{file}:{line}: data({read:?}): {}/{} doesn't name it in [extract] reads", p.id, packs::MANIFEST));
+                    } else if !compat || !dir.join(&p.id).join(&read).is_file() {
+                        problems.push(format!("{file}:{line}: data({read:?}): {}/{read} is no file of its {COMPAT}/, which is all a recipe reads", p.id));
                     }
                 }
                 continue;

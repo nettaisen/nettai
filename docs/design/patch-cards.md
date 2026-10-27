@@ -84,8 +84,8 @@ rules (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch_c
   It goes through the effect numbers in order and draws each the card's table has (EXE5's 0x08137A78, 0x00 to 0x89;
   EXE6's 0x08141A6A, to 0xA9), so a card's effects are written in that order (both games' tables list some cards'
   otherwise: 53 of EXE5's, 30 of EXE6's), which the generators and checks hold to. Each game's locales hold them as
-  the text table `[patch_card_effects]` (top-level; its manifest declares it, `text`, so a misspelt table is
-  refused): the key is the effect record's `kind`, then `.` and
+  the text table `[patch_card_effects]` (top-level, and no collection of the game, so a text table; one the own
+  language lacks and another language has is refused): the key is the effect record's `kind`, then `.` and
   its one choice's name where it has one (a string field's value, a definition's id: `body.fire`,
   `charged_shot.patch-cards/airman/charge`), the line the effect's text with `{amount}` for its value (plain
   substitution: the HP effects' `amount` is the HP itself, which the original's card table keeps in tens and its

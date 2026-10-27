@@ -1,6 +1,8 @@
-//! The codec (docs/design/extraction-recipes.md §3.10): the table a recipe
-//! returns, read into the model: `nettai_assets::Bundle` (the graphics),
-//! the asset names and the sound's plan.
+//! The codec (docs/design/extraction-recipes.md §3.10): what a recipe
+//! returns, read: its table (§4.2: its ROMs and its function,
+//! [`declaration`]), and the table its function returns, read into the
+//! model: `nettai_assets::Bundle` (the graphics), the asset names and the
+//! sound's plan.
 //!
 //! The tables use the model's own field names. An unknown field, or a value
 //! of the wrong kind, is an error naming its path
@@ -21,7 +23,7 @@ use super::prims::{FontHandle, GfxAnimHandle, MapHandle, RomHandle, SheetHandle,
 use crate::rom::Rom;
 use nettai_assets::*;
 use nettai_content::names::AssetNames;
-use nettai_luau::mlua::{Table, Value};
+use nettai_luau::mlua::{Function, Table, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -337,6 +339,39 @@ fn record<T: Default>(v: &Value, path: &str, fields: impl FnOnce(&mut Fields, &m
 // ---- What a recipe returns -------------------------------------------------------------------
 
 /// The table a recipe returns.
+/// What a recipe's `extract/init.luau` returns (§4.2): the game's ROMs by
+/// their header codes, every one required, in the order its places read an
+/// address by (a ROM's slot, from 1), and the function from the set of them
+/// to what it extracts ([`extracted`]).
+pub(crate) struct Declaration {
+    pub roms: Vec<String>,
+    pub extract: Function,
+}
+
+/// The table a recipe's `extract/init.luau` returns, read: `roms` and
+/// `extract`, nothing else.
+pub(crate) fn declaration(v: &Value) -> R<Declaration> {
+    let path = "the recipe's table";
+    let mut f = Fields::new(v, path)?;
+    let (roms, at) = f.take("roms")?.ok_or_else(|| format!("{path}: no roms"))?;
+    let (extract, extract_at) = f.take("extract")?.ok_or_else(|| format!("{path}: no extract"))?;
+    f.finish()?;
+    let roms = list(&roms, &at, string)?;
+    if roms.is_empty() {
+        return Err(format!("{at}: no ROM"));
+    }
+    for (i, code) in roms.iter().enumerate() {
+        if code.len() != 4 || !code.bytes().all(|b| b.is_ascii_alphanumeric()) {
+            return Err(format!("{at}[{}]: {code:?} isn't a game code (four letters and digits, a header's at 0xAC)", i + 1));
+        }
+        if roms[..i].contains(code) {
+            return Err(format!("{at}[{}]: {code} twice", i + 1));
+        }
+    }
+    let Value::Function(extract) = extract else { return expected(&extract_at, "a function", &extract) };
+    Ok(Declaration { roms, extract })
+}
+
 pub(crate) fn extracted(v: &Value) -> R<Extracted> {
     let mut f = Fields::new(v, "the recipe's result")?;
     let names = f.take("names")?.ok_or("the recipe's result: no names")?;

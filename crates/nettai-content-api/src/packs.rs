@@ -90,7 +90,8 @@ pub enum PackKind {
 }
 
 /// A pack's manifest: what the pack is, and nothing of what it holds (a
-/// game's init.luau requires that).
+/// game's init.luau requires that; its recipe, `extract/init.luau`, says
+/// what it extracts from, docs/design/extraction-recipes.md §4.2).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PackManifest {
@@ -100,73 +101,6 @@ pub struct PackManifest {
     /// The support packs it requires modules of, by name.
     #[serde(default)]
     pub depends: Vec<String>,
-    /// Its locales' text tables, by name: top-level tables of key to text
-    /// that no definition owns (`patch_card_effects`), which tools read; a
-    /// top-level table that is no collection of the game and not declared
-    /// here is the locales' check's to refuse.
-    #[serde(default)]
-    pub text: Vec<String>,
-    /// How a game's assets are extracted ([`Extract`]); none: a support pack,
-    /// or a game whose recipe isn't written yet.
-    #[serde(default)]
-    pub extract: Option<Extract>,
-}
-
-/// A game's extraction recipe, as its manifest declares it (`[extract]`,
-/// docs/design/extraction-recipes.md §4.2), read without running anything:
-///
-/// ```toml
-/// [extract]
-/// roms = ["BR6E", "BR5E", "BR6J", "BR5J"]
-/// size = 0x800000
-/// reads = ["compat/assets.toml", "compat/chips.toml"]
-/// ```
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, serde::Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Extract {
-    /// The game's ROMs by their header codes (the four bytes at 0xAC), every
-    /// one required, in the order the recipe's places read an address by
-    /// (a ROM's slot, from 1): the base version's US ROM, the other's, then
-    /// their Japanese ones.
-    pub roms: Vec<String>,
-    /// Every ROM's size in bytes.
-    pub size: u32,
-    /// The files outside `extract/` the recipe reads (`data`), by path in
-    /// its pack.
-    #[serde(default)]
-    pub reads: Vec<String>,
-}
-
-impl Extract {
-    /// What makes the declaration unusable, said with `at` (the manifest).
-    pub fn check(&self, at: &str) -> Result<(), String> {
-        if self.roms.is_empty() {
-            return Err(format!("{at}: [extract] declares no ROM"));
-        }
-        for (i, code) in self.roms.iter().enumerate() {
-            if code.len() != 4 || !code.bytes().all(|b| b.is_ascii_graphic()) {
-                return Err(format!("{at}: [extract] ROM code {code:?} isn't four letters (a header's code at 0xAC)"));
-            }
-            if self.roms[..i].contains(code) {
-                return Err(format!("{at}: [extract] declares {code} twice"));
-            }
-        }
-        if self.size == 0 {
-            return Err(format!("{at}: [extract] size is 0"));
-        }
-        for (i, path) in self.reads.iter().enumerate() {
-            if path.is_empty() || path.starts_with('/') || path.split('/').any(|s| s.is_empty() || s == "." || s == "..") {
-                return Err(format!("{at}: [extract] reads {path:?}, which is no path in the pack"));
-            }
-            if path.split('/').next() == Some(EXTRACT) {
-                return Err(format!("{at}: [extract] reads {path:?}: the recipe's own files are its inputs already"));
-            }
-            if self.reads[..i].contains(path) {
-                return Err(format!("{at}: [extract] reads {path} twice"));
-            }
-        }
-        Ok(())
-    }
 }
 
 impl PackManifest {
@@ -184,12 +118,6 @@ impl PackManifest {
             if m.depends[..i].contains(u) {
                 return Err(format!("{at}: depends on {u} twice"));
             }
-        }
-        if let Some(e) = &m.extract {
-            if m.kind == PackKind::Support {
-                return Err(format!("{at}: a support pack has no [extract]: its extract/ is reached through the games' recipes"));
-            }
-            e.check(at)?;
         }
         Ok(m)
     }
@@ -590,6 +518,13 @@ fn declaration_files(dir: &Path) -> Vec<PathBuf> {
     out
 }
 
+/// Whether pack `id` of content `dir` has an extraction recipe: its
+/// [`EXTRACT`] folder's top module, `extract/init.luau`, which returns the
+/// recipe (docs/design/extraction-recipes.md §4.2).
+pub fn has_recipe(dir: &Path, id: &str) -> bool {
+    nettai_platform::fs::is_file(dir.join(id).join(EXTRACT).join(format!("{INIT}.luau")))
+}
+
 /// Whether module `name` (`exe6:extract/hud`) is a recipe's: under its
 /// pack's [`EXTRACT`] folder.
 pub fn is_extract_module(name: &str) -> bool {
@@ -696,7 +631,7 @@ mod tests {
     }
 
     fn pack(id: &str, kind: PackKind, depends: &[&str]) -> (String, PackManifest) {
-        (id.into(), PackManifest { id: id.into(), kind, depends: depends.iter().map(|u| u.to_string()).collect(), ..Default::default() })
+        (id.into(), PackManifest { id: id.into(), kind, depends: depends.iter().map(|u| u.to_string()).collect() })
     }
 
     #[test]
@@ -713,26 +648,16 @@ mod tests {
         assert!(PackManifest::parse("id = \"x\"\nkind = \"game\"\ndepends = [\"x\"]\n", "x").unwrap_err().contains("depends on itself"));
     }
 
+    /// A manifest says what the pack is and nothing more: what a game
+    /// extracts from is its recipe's to say (`extract/init.luau`), and its
+    /// locales' text tables are theirs.
     #[test]
-    fn a_recipe_is_declared() {
+    fn a_manifest_declares_no_recipe_and_no_text() {
         let head = "id = \"exe6\"\nkind = \"game\"\n";
-        let m = PackManifest::parse(
-            &format!("{head}[extract]\nroms = [\"BR6E\", \"BR5E\"]\nsize = 0x800000\nreads = [\"compat/assets.toml\"]\n"),
-            "exe6/manifest.toml",
-        )
-        .unwrap();
-        let e = m.extract.unwrap();
-        assert_eq!((e.roms.len(), e.size, e.reads.as_slice()), (2, 0x80_0000, ["compat/assets.toml".to_string()].as_slice()));
-        assert_eq!(PackManifest::parse(head, "x").unwrap().extract, None, "a game without a recipe yet");
-        let refused = |extract: &str| PackManifest::parse(&format!("{head}[extract]\nsize = 0x800000\n{extract}"), "x").unwrap_err();
-        assert!(refused("roms = []\n").contains("no ROM"));
-        assert!(refused("roms = [\"BR6E\", \"BR6E\"]\n").contains("twice"));
-        assert!(refused("roms = [\"BR6\"]\n").contains("four letters"));
-        assert!(refused("roms = [\"BR6E\"]\nreads = [\"../exe5/compat/assets.toml\"]\n").contains("no path in the pack"));
-        assert!(refused("roms = [\"BR6E\"]\nreads = [\"extract/init.luau\"]\n").contains("inputs already"));
-        assert!(refused("roms = [\"BR6E\"]\nunknown = 1\n").contains("unknown field"));
-        let support = PackManifest::parse("id = \"lib\"\nkind = \"support\"\n[extract]\nroms = [\"BR6E\"]\nsize = 1\n", "lib").unwrap_err();
-        assert!(support.contains("support pack has no [extract]"), "{support}");
+        let e = PackManifest::parse(&format!("{head}[extract]\nroms = [\"BR6E\"]\n"), "exe6/manifest.toml").unwrap_err();
+        assert!(e.contains("unknown field `extract`"), "{e}");
+        let e = PackManifest::parse(&format!("{head}text = [\"game\"]\n"), "exe6/manifest.toml").unwrap_err();
+        assert!(e.contains("unknown field `text`"), "{e}");
         assert!(is_extract_module("exe6:extract/hud") && is_extract_module("exelib:extract/place") && is_extract_module("exe6:extract"));
         assert!(!is_extract_module("exe6:extractor") && !is_extract_module("exe6:chips/extract/x"));
     }

@@ -282,7 +282,7 @@ impl Games {
     }
 
     /// Game `id`'s own pack, for its content `content`: the one its content's recipe names, among the app's packs
-    /// (none where its content declares no recipe, the recipe doesn't read, or it declares a ROM another game listed
+    /// (none where its content has no recipe, the recipe doesn't read, or it declares a ROM another game listed
     /// before it declares: why is in the log).
     fn own_pack(&self, id: &str, content: &Path) -> Option<Pack> {
         match Recipe::of_content(content, id) {
@@ -1231,15 +1231,16 @@ mod tests {
         assert_eq!(games.first_choice(None).as_deref(), Some("exe4"));
     }
 
-    /// A game's own pack is its content's recipe's, under the recipe's fingerprint; a game whose recipe declares a
-    /// ROM a game listed before it declares has none (two games can't have one ROM).
+    /// A game's own pack is its content's recipe's, under the recipe's fingerprint; a game whose recipe states a
+    /// ROM a game listed before it states has none (two games can't have one ROM).
     #[test]
     fn two_games_cant_declare_one_rom() {
         let (content, packs) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
         for (id, roms) in [("g", "\"AAAA\", \"BBBB\""), ("h", "\"CCCC\", \"BBBB\""), ("i", "\"DDDD\"")] {
-            let manifest = format!("id = \"{id}\"\nkind = \"game\"\n[extract]\nroms = [{roms}]\nsize = 0x800000\n");
+            let manifest = format!("id = \"{id}\"\nkind = \"game\"\n");
             nettai_content::pack::write_file(content.path(), &format!("{id}/manifest.toml"), manifest.as_bytes()).unwrap();
-            nettai_content::pack::write_file(content.path(), &format!("{id}/extract/init.luau"), b"return function(set) return {} end\n").unwrap();
+            let recipe = format!("return {{ roms = {{ {roms} }}, extract = function(set) return {{}} end }}\n");
+            nettai_content::pack::write_file(content.path(), &format!("{id}/extract/init.luau"), recipe.as_bytes()).unwrap();
         }
         let mut games = Games::of(Vec::new(), packs.path().to_path_buf());
         let g = games.own_pack("g", content.path()).expect("g's recipe");

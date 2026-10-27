@@ -1,5 +1,5 @@
 //! The host on synthetic data (docs/design/extraction-recipes.md §4.5: CI has no ROMs): the primitives, the codec,
-//! the declaration, the fingerprint and the refusals.
+//! the recipe's table, the fingerprint and the refusals.
 
 use super::*;
 use crate::rom;
@@ -18,11 +18,17 @@ fn image(code: &str, at: &[(u32, &[u8])]) -> Vec<u8> {
 }
 
 fn manifest(id: &str, kind: PackKind, depends: &[&str]) -> PackManifest {
-    PackManifest { id: id.into(), kind, depends: depends.iter().map(|d| d.to_string()).collect(), ..Default::default() }
+    PackManifest { id: id.into(), kind, depends: depends.iter().map(|d| d.to_string()).collect() }
+}
+
+/// A recipe's table whose function's body is `body` (its set is `set`), stating the four ROMs.
+fn recipe_of(body: &str) -> String {
+    format!("return {{ roms = {{ \"BR6E\", \"BR5E\", \"BR6J\", \"BR5J\" }}, extract = function(set)\n{body}\nend }}")
 }
 
 /// A recipe's VM over modules in memory (`g:extract/init` and what it requires), with the primitives and `data`
-/// (`reads`, by path), and what its function returns given the set of `roms`, read by `read` while the VM lives.
+/// (its compat files, by path), and what its function returns given the set of `roms`, read by `read` while the VM
+/// lives.
 fn run_recipe<T>(modules: &[(&str, &str)], reads: &[(&str, &str)], roms: &[&Arc<Rom>], read: impl FnOnce(Value) -> T) -> Result<T, String> {
     let m: BTreeMap<String, String> = modules.iter().map(|(n, s)| (n.to_string(), s.to_string())).collect();
     let data = prims::Data { game: "g".into(), files: reads.iter().map(|(p, t)| (p.to_string(), t.as_bytes().into())).collect() };
@@ -34,14 +40,14 @@ fn run_recipe<T>(modules: &[(&str, &str)], reads: &[(&str, &str)], roms: &[&Arc<
         roms.iter().enumerate().map(|(i, r)| prims::RomHandle { rom: (*r).clone(), code: codes[i].into(), slot: i as u32 + 1 }),
     )
     .map_err(|e| e.to_string())?;
-    vm.call::<Value>(set).map_err(|e| e.to_string()).map(read)
+    let extract = model::declaration(vm.entry())?.extract;
+    extract.call::<Value>(set).map_err(|e| e.to_string()).map(read)
 }
 
 /// The recipe's result read as a model, of a recipe whose function's body is `body` (its set is `set`).
 fn model_of(body: &str) -> Result<model::Extracted, String> {
     let rom = Arc::new(Rom(image("BR6E", &[])));
-    let init = format!("return function(set)\n{body}\nend");
-    run_recipe(&[("g:extract/init", &init)], &[], &[&rom], |v| model::extracted(&v))?
+    run_recipe(&[("g:extract/init", &recipe_of(body))], &[], &[&rom], |v| model::extracted(&v))?
 }
 
 #[test]
@@ -59,7 +65,7 @@ fn the_primitives_read_the_rom_and_check_their_bounds() {
     let other = Arc::new(Rom(image("BR5E", &[])));
     let init = r#"
         local place = require("@lib/extract/place")
-        return function(set)
+        return { roms = { "BR6E", "BR5E" }, extract = function(set)
             local rom = set.BR6E
             local p = place.at(rom, place.pointer(0x08000100, 0))
             local t = gba.tiles(rom, p, 64)
@@ -77,7 +83,7 @@ fn the_primitives_read_the_rom_and_check_their_bounds() {
                 hex = hex:len(), x = x:count(), first = b:u8(0), sub = b:sub(1, 2):u8(0), holds = rom:holds(0x08800000),
                 read = data("compat/x.toml").a.b, missing = select(2, pcall(data, "compat/y.toml")),
             }
-        end"#;
+        end }"#;
     let lib = "return { at = function(rom, p) local a = p.at[rom.slot] if p.pointer then return rom:u32(a) end return a end, \
                pointer = function(us, jp) return { at = { us, us, jp, jp }, pointer = true } end }";
     run_recipe(&[("g:extract/init", init), ("lib:extract/place", lib)], &[("compat/x.toml", "[a]\nb = 0x2A\n")], &[&rom, &other], check).unwrap();
@@ -104,14 +110,14 @@ fn check(v: Value) {
     assert_eq!((n("hex"), n("x"), n("first"), n("sub")), (8.0, 0.0, 0x21 as f64, 0.0));
     assert!(!get("holds").as_boolean().unwrap());
     assert_eq!(n("read"), 42.0);
-    assert!(get("missing").to_string().unwrap().contains("doesn't name it in [extract] reads"), "{:?}", get("missing"));
+    assert!(get("missing").to_string().unwrap().contains("g/compat/y.toml is no file of g's compat/"), "{:?}", get("missing"));
 }
 
 #[test]
 fn reads_are_recorded_with_the_recipes_lines() {
     let rom = Arc::new(Rom(image("BR6E", &[(0x0800_0010, &0x0800_0020u32.to_le_bytes())])));
-    let init = "return function(set)\n    local rom = set.BR6E\n    return rom:u32(0x08000010) + rom:u8(0x08000020)\nend";
-    let (v, reads) = rom::record_reads(|| run_recipe(&[("g:extract/init", init)], &[], &[&rom], |_| ()));
+    let init = recipe_of("    local rom = set.BR6E\n    return rom:u32(0x08000010) + rom:u8(0x08000020)");
+    let (v, reads) = rom::record_reads(|| run_recipe(&[("g:extract/init", &init)], &[], &[&rom], |_| ()));
     assert!(v.is_ok());
     let own: Vec<_> = reads.iter().filter(|r| r.rom == rom.0.as_ptr() as usize).collect();
     assert!(own.iter().any(|r| r.address == 0x0800_0010 && r.kind == rom::ReadKind::Pointer(0x0800_0020)));
@@ -178,14 +184,17 @@ fn bundle(files: &[(String, String)]) -> tempfile::TempDir {
     dir
 }
 
-const GAME: &str = "id = \"g\"\nkind = \"game\"\ndepends = [\"lib\"]\n[extract]\nroms = [\"BR6E\", \"BR5E\"]\nsize = 0x800000\nreads = [\"compat/assets.toml\"]\n";
+const GAME: &str = "id = \"g\"\nkind = \"game\"\ndepends = [\"lib\"]\n";
 
-/// A synthetic game `g` and its support pack `lib`, the game's manifest `game`'s.
-fn synthetic(game: &str) -> Vec<(String, String)> {
+/// The synthetic game's recipe, stating two ROMs.
+const RECIPE: &str = "return { roms = { \"BR6E\", \"BR5E\" }, extract = function(set) return {} end }\n";
+
+/// A synthetic game `g` and its support pack `lib`, the game's recipe `recipe`'s (its `extract/init.luau`).
+fn synthetic(recipe: &str) -> Vec<(String, String)> {
     [
-        ("g/manifest.toml", game),
+        ("g/manifest.toml", GAME),
         ("lib/manifest.toml", "id = \"lib\"\nkind = \"support\"\n"),
-        ("g/extract/init.luau", "return function(set) return {} end\n"),
+        ("g/extract/init.luau", recipe),
         ("g/extract/shapes/hud/hp-box.same", "lib/extract/shapes/hud/hp-box.svg\n"),
         ("lib/extract/place.luau", "return {}\n"),
         ("lib/extract/shapes/hud/hp-box.svg", "<svg/>\n"),
@@ -199,7 +208,7 @@ fn synthetic(game: &str) -> Vec<(String, String)> {
 
 #[test]
 fn a_recipe_is_its_inputs_and_its_fingerprint_digests_them() {
-    let files = synthetic(GAME);
+    let files = synthetic(RECIPE);
     let dir = bundle(&files);
     let recipe = Recipe::of_content(dir.path(), "g").unwrap();
     assert_eq!((recipe.game(), recipe.roms()), ("g", &["BR6E".to_string(), "BR5E".to_string()][..]));
@@ -212,35 +221,54 @@ fn a_recipe_is_its_inputs_and_its_fingerprint_digests_them() {
     assert!(print.len() == 16 && print.chars().all(|c| c.is_ascii_hexdigit()), "{print}");
     assert_eq!(Recipe::of_content(dir.path(), "g").unwrap().fingerprint(), print, "the same bundle, the same fingerprint");
     assert_eq!(recipe.drawings().game(), "g");
-    // A byte changed in any input changes it; a change outside them doesn't.
-    for (path, _) in files.iter().filter(|(p, _)| !p.ends_with("manifest.toml")) {
+    // A byte changed in any input changes it; a change outside them (the manifests, the content) doesn't.
+    for (path, _) in &files {
         let changed: Vec<(String, String)> = files.iter().map(|(p, t)| (p.clone(), if p == path { format!("{t} ") } else { t.clone() })).collect();
         let again = Recipe::of_content(bundle(&changed).path(), "g").unwrap().fingerprint();
-        if path == "g/rules/init.luau" {
+        if path.ends_with("manifest.toml") || path == "g/rules/init.luau" {
             assert_eq!(again, print, "{path} isn't an input");
         } else {
             assert_ne!(again, print, "{path} is an input");
         }
     }
-    // The declaration is digested too.
-    let declared = synthetic(&GAME.replace("0x800000", "0x400000"));
-    assert_ne!(Recipe::of_content(bundle(&declared).path(), "g").unwrap().fingerprint(), print);
+    // Every compat file is, read or not; and the ROMs the recipe states are its table's.
+    let mut more = files.clone();
+    more.push(("g/compat/chips.toml".into(), "[chips]\n".into()));
+    assert_ne!(Recipe::of_content(bundle(&more).path(), "g").unwrap().fingerprint(), print);
+    let other = Recipe::of_content(bundle(&synthetic(&RECIPE.replace("\"BR5E\"", "\"BR5J\""))).path(), "g").unwrap();
+    assert_eq!(other.roms(), ["BR6E".to_string(), "BR5J".to_string()]);
+    assert_ne!(other.fingerprint(), print);
 }
 
 #[test]
 fn a_recipe_refuses_what_it_cannot_run() {
-    let dir = bundle(&synthetic(GAME));
+    let dir = bundle(&synthetic(RECIPE));
     let recipe = Recipe::of_content(dir.path(), "g").unwrap();
     // An incomplete set, before any Luau runs.
     let mut roms = recipe.rom_set();
     roms.insert(image("BR6E", &[])).unwrap();
     let e = recipe.extract(&roms).err().unwrap().to_string();
     assert!(e.contains("incomplete") && e.contains("BR5E missing"), "{e}");
-    // A file it reads that isn't there; a game with no recipe.
-    let missing: Vec<(String, String)> = synthetic(GAME).into_iter().filter(|(p, _)| p != "g/compat/assets.toml").collect();
-    assert!(Recipe::of_content(bundle(&missing).path(), "g").unwrap_err().to_string().contains("compat/assets.toml, which [extract] reads"));
-    let none = synthetic("id = \"g\"\nkind = \"game\"\ndepends = [\"lib\"]\n");
-    assert!(Recipe::of_content(bundle(&none).path(), "g").unwrap_err().to_string().contains("declares no [extract]"));
+    // A table that states its ROMs otherwise than as game codes, or holds more or less than `roms` and `extract`.
+    let refused = |init: &str| Recipe::of_content(bundle(&synthetic(init)).path(), "g").unwrap_err().to_string();
+    let e = refused("return { roms = {}, extract = function(set) return {} end }");
+    assert!(e.contains("the recipe's table.roms: no ROM"), "{e}");
+    let e = refused("return { roms = { \"BR6E\", \"BR6E\" }, extract = function(set) return {} end }");
+    assert!(e.contains("roms[2]: BR6E twice"), "{e}");
+    let e = refused("return { roms = { \"BR6\" }, extract = function(set) return {} end }");
+    assert!(e.contains("roms[1]: \"BR6\" isn't a game code"), "{e}");
+    let e = refused("return { roms = { \"BR6E\" }, extract = \"extract\" }");
+    assert!(e.contains("the recipe's table.extract: expected a function, got string"), "{e}");
+    let e = refused("return { roms = { \"BR6E\" }, extract = function(set) return {} end, size = 0x800000 }");
+    assert!(e.contains("the recipe's table.size: no such field"), "{e}");
+    let e = refused("return function(set) return {} end");
+    assert!(e.contains("the recipe's table: expected a table, got function"), "{e}");
+    assert!(refused("return { extract = function(set) return {} end }").contains("no roms"));
+    // A recipe that doesn't load; a game with no recipe.
+    let e = refused("return {");
+    assert!(e.contains("g's recipe in") && e.contains("syntax error"), "{e}");
+    let none: Vec<(String, String)> = synthetic(RECIPE).into_iter().filter(|(p, _)| !p.starts_with("g/extract/")).collect();
+    assert!(Recipe::of_content(bundle(&none).path(), "g").unwrap_err().to_string().contains("g has no extract/ folder"));
 }
 
 #[test]

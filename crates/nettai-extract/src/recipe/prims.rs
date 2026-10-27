@@ -304,8 +304,8 @@ fn guarded<T>(what: &str, f: impl FnOnce() -> T) -> LResult<T> {
 
 // ---- The libraries ---------------------------------------------------------------------------------
 
-/// What a recipe's `data` reads: the files its manifest's `reads` names, by
-/// that path, with their bytes.
+/// What a recipe's `data` reads: the files under its game's `compat/`, by
+/// path in the pack (`compat/assets.toml`), with their bytes.
 pub(crate) struct Data {
     pub game: String,
     pub files: BTreeMap<String, Arc<[u8]>>,
@@ -469,7 +469,7 @@ pub(crate) fn install(lua: &Lua, data: Data) -> LResult<()> {
                 return Ok(v.clone());
             }
             let Some(bytes) = data.files.get(&path) else {
-                return fail(format!("data({path:?}): {}'s manifest doesn't name it in [extract] reads", data.game));
+                return fail(format!("data({path:?}): {0}/{path} is no file of {0}'s compat/, which is all a recipe reads", data.game));
             };
             let text = std::str::from_utf8(bytes).map_err(|e| mlua::Error::runtime(format!("data({path:?}): {e}")))?;
             let value = if path.ends_with(".toml") {

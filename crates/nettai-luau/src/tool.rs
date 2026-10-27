@@ -149,7 +149,7 @@ mod tests {
     use nettai_content_api::PackKind;
 
     fn manifest(id: &str, kind: PackKind, depends: &[&str]) -> PackManifest {
-        PackManifest { id: id.into(), kind, depends: depends.iter().map(|u| u.to_string()).collect(), ..Default::default() }
+        PackManifest { id: id.into(), kind, depends: depends.iter().map(|u| u.to_string()).collect() }
     }
 
     fn modules(list: &[(&str, &str)]) -> BTreeMap<String, String> {

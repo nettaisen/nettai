@@ -193,8 +193,7 @@ as before.
 
 **Asset packs.** Packs are kept by their content's extraction recipe's fingerprint (`packs/<game>-<fingerprint>/`,
 `nettai_extract::Recipe::fingerprint`): the engine's line, the pack formats, and every file the recipe reads (its
-`extract/` and its support packs', and the compat tables its `[extract]` names: the names the assets are written
-under). Content whose fingerprint has no pack has it extracted from the Legacy Collection when the game first loads,
+`extract/` and its support packs', and its game's compat tables: the names the assets are written under). Content whose fingerprint has no pack has it extracted from the Legacy Collection when the game first loads,
 and so does other content a replay plays on. The recipe is read from the content (`<game>/extract`,
 `<game>/compat`), not compiled into the app: the compat crates' built-in tables are their `builtin` feature's, for
 tools and tests, and the app builds without the content submodules.

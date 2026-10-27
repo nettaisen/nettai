@@ -47,16 +47,13 @@ fn full_sets_pass_the_content_audit() {
     }
 }
 
-/// A game's set takes its own ROMs, each once, of the size the recipe declares: another game's, a truncated image,
-/// one with no game code and a second copy are refused.
+/// A game's set takes its own ROMs, each once, recognized by the codes in their headers: another game's, an image
+/// with no game code and a second copy are refused.
 #[test]
-fn rejects_unknown_truncated_and_duplicate_roms() {
+fn rejects_unknown_and_duplicate_roms() {
     let six = recipe("exe6");
     let mut roms = six.rom_set();
     assert!(roms.insert(Vec::new()).unwrap_err().to_string().contains("no game code"));
-    let mut short = vec![0; 0xb0];
-    short[0xac..0xb0].copy_from_slice(b"BR6E");
-    assert!(roms.insert(short).unwrap_err().to_string().contains("expected 0x800000 bytes"));
     let mut other = vec![0; 8 * 1024 * 1024];
     other[0xac..0xb0].copy_from_slice(b"BRBE");
     let e = roms.insert(other).unwrap_err().to_string();
@@ -69,7 +66,7 @@ fn rejects_unknown_truncated_and_duplicate_roms() {
 }
 
 /// A ROM's game code is read from its header alone, the first `HEADER_LEN` bytes: each game's four, as its recipe
-/// declares them; a header cut short, or with no letters and digits there, has none.
+/// states them; a header cut short, or with no letters and digits there, has none.
 #[test]
 fn a_roms_code_is_read_from_its_header() {
     for game in games() {
@@ -100,11 +97,13 @@ fn each_game_has_its_own_fingerprint() {
 }
 
 /// The names are the content's, read when the extraction runs: content whose `assets.toml` names an asset
-/// otherwise has another fingerprint. A recipe whose files don't read is an error that names the folder.
+/// otherwise, or that has no `assets.toml`, has another fingerprint. A recipe that doesn't load is an error that
+/// names the folder.
 #[test]
 fn the_names_are_the_contents() {
     let copy = tempfile::tempdir().unwrap();
-    // (What the recipe reads of the content: the game's manifest, compat and extract/, and exelib's.)
+    // (What the recipe reads of the content: the game's compat/ and extract/, and exelib's extract/; the manifests
+    // say which packs they are.)
     fn copy_dir(from: &Path, to: &Path) {
         std::fs::create_dir_all(to).unwrap();
         for entry in std::fs::read_dir(from).unwrap() {
@@ -134,8 +133,11 @@ fn the_names_are_the_contents() {
     let renamed = Recipe::of_content(copy.path(), "exe6").unwrap();
     assert_ne!(renamed.fingerprint(), same.fingerprint());
     std::fs::remove_file(&assets).unwrap();
+    let gone = Recipe::of_content(copy.path(), "exe6").unwrap();
+    assert!(gone.fingerprint() != renamed.fingerprint() && gone.fingerprint() != same.fingerprint());
+    std::fs::write(copy.path().join("exe6/extract/names.luau"), "return {").unwrap();
     let e = Recipe::of_content(copy.path(), "exe6").unwrap_err().to_string();
-    assert!(e.contains("assets.toml") && e.contains(&copy.path().display().to_string()), "{e}");
+    assert!(e.contains("syntax error") && e.contains(&copy.path().display().to_string()), "{e}");
 }
 
 /// The extraction and the writing say how far they are, from 0 to 1 and never back; and what the writing that

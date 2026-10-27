@@ -8,9 +8,10 @@
 -- the extractor is the boundary, as compat is. Numbers are GBA addresses (0x08000000 on) and plain integers; a
 -- recipe computes with `bit32` and `//`. Every primitive checks its bounds: a bad address is an error naming it.
 --
--- A recipe (`extract/init.luau`) returns a function from its game's ROMs (`Set`) to the model (`Extracted`). The
--- host then makes the pack: the check that every named asset is there, the letters, the element icons' frame, the
--- hand-drawn frames (extract/shapes/), the sound bank, the files.
+-- A recipe (`extract/init.luau`) returns a table (`Recipe`): the game's ROMs by their header codes, and a function
+-- from them (`Set`) to the model (`Extracted`). The host reads the codes without ROMs, finds the ROMs by them, runs
+-- the function, then makes the pack: the check that every named asset is there, the letters, the element icons'
+-- frame, the hand-drawn frames (extract/shapes/), the sound bank, the files.
 --
 -- The model's tables use its own field names (crates/nettai-assets); a field left out takes the model's default,
 -- and an unknown one is an error naming its path. Lists are arrays; a list with holes is keyed by the game's number
@@ -28,12 +29,12 @@ declare extern type Bytes with
     function sub(self, from: number, len: number): Bytes
 end
 
--- One of the game's ROMs (an 8 MiB image the handles share). Every read is recorded with the recipe's line for
+-- One of the game's ROMs (an image the handles share). Every read is recorded with the recipe's line for
 -- `nettai-extract --reads`.
 declare extern type Rom with
-    -- Its header's code ("BR6E"), as the manifest's [extract] declares it.
+    -- Its header's code ("BR6E"), as the recipe's `roms` states it.
     code: string
-    -- Its place in the declaration, 1 to 4: what a place reads an address by (@exelib/extract/place).
+    -- Its place in the recipe's `roms`, 1 to 4: what a place reads an address by (@exelib/extract/place).
     slot: number
     function u8(self, at: number): number
     function u16(self, at: number): number
@@ -48,7 +49,7 @@ declare extern type Rom with
     function lz77(self, at: number): Bytes?
 end
 
--- The game's ROMs, by code (`set.BR6E`): every one the manifest declares, always all of them.
+-- The game's ROMs, by code (`set.BR6E`): every one the recipe's `roms` states, always all of them.
 export type Set = { [string]: Rom }
 
 declare bytes: {
@@ -125,7 +126,8 @@ declare font: {
     dialogue: (rom: Rom, glyphs: number, advances: number, count: number, advance_bytes: number, chars: { string }) -> DialogueFont,
 }
 
--- A file the manifest's [extract] `reads` names, by its path in the game's pack: TOML as tables (read once, frozen).
+-- A file of the game's compat/, by its path in the game's pack (`compat/assets.toml`): TOML as tables (read once,
+-- frozen).
 declare function data(path: string): any
 
 -- ---- The model ------------------------------------------------------------------------------------------
@@ -397,4 +399,14 @@ export type Extracted = {
     names: AssetNames,
     graphics: Graphics,
     sound: Sound,
+}
+
+-- What a recipe's extract/init.luau returns: nothing else.
+export type Recipe = {
+    -- The game's ROMs by their header codes (the four letters and digits at 0xAC), every one required (a complete
+    -- Legacy Collection's), in the order the recipe's places read an address by (a ROM's slot, from 1): the base
+    -- version's US ROM, the other's, then their Japanese ones.
+    roms: { string },
+    -- The ROMs, every one of `roms` (`set.BR6E`), to the model.
+    extract: (set: Set) -> Extracted,
 }

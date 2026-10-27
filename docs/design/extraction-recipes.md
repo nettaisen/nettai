@@ -61,8 +61,9 @@ Words:
 - **Names stay data.** compat/assets.toml and the tables it is joined with stay where they are, written by gen-content
   and checked against the ROMs; the recipe reads them (§4.3) and builds `AssetNames` itself. The compat crates leave
   the extractor.
-- **A recipe declares** its ROMs' header codes, their size and the data files it reads, in its pack's manifest
-  (§4.2). The app finds a Legacy Collection's ROMs by the declared codes.
+- **A recipe declares** its ROMs' header codes in the table its `extract/init.luau` returns, beside the function that
+  reads them (§4.2); the host reads them without ROMs. The app finds a Legacy Collection's ROMs by the declared
+  codes. The manifest says only what the pack is.
 - **It runs in a VM of its own** (§4.4): nettai-luau's sandbox and bytecode check, with the extraction libraries in
   place of the battle's, one budget for the whole run, on the extraction thread, the same on the desktop and in the
   browser. Recipes are the one place Luau holds the original's addresses and numbers: they are the extractor, the
@@ -192,7 +193,7 @@ is §3; "host" is nettai-extract's fixed steps (§3.10); "deleted" is code only 
 | `Game`, `ALL`, `named`, `id`, `codes` | gone: the game is the bundle's `game`; the codes are the recipe's ROM declarations (§4.2) |
 | `HEADER_LEN`, `recognize` | host, game-neutral: a header's code is matched against the installed bundles' declarations |
 | `fingerprint`, `asset_names` | host: the new fingerprint (§5.2); the names are the recipe's |
-| `RomSet::insert` (known code, 8 MiB, no duplicate) | host: the code and size from the declarations; an incomplete set is refused (§4.2) |
+| `RomSet::insert` (known code, 8 MiB, no duplicate) | host: the code from the recipe's `roms`, no size (a ROM is told by its header's code); an incomplete set is refused (§4.2) |
 | `Extraction` | host; `game` becomes the game's id; `missing_roms` and `placeholders` deleted |
 | `extract_recording_reads`, `RomRead` | host: the ROM handles record their reads as `Rom` does now |
 | `songs_played_otherwise` | host, for the verification's cross-ROM sweep; no recipe calls it |
@@ -201,8 +202,9 @@ is §3; "host" is nettai-extract's fixed steps (§3.10); "deleted" is code only 
 | `extract_inner` | recipe through step 2 and the sound's ROMs (§1.1); host the rest, in the same order |
 | `Extraction::unnamed`, `files`, `write`, `write_reporting` | host, unchanged |
 
-**cli.rs**: host. `nettai-extract <content-dir> <pack-dir> ROM...`, the game from the content directory's manifest
-(a game pack's folder, or an unpacked bundle), every declared ROM required; `--reads` and `songs` unchanged.
+**cli.rs**: host. `nettai-extract <content-dir> <pack-dir> ROM...`, the game from the content directory (a game
+pack's folder, or an unpacked bundle's one game with a recipe), every declared ROM required; `--reads` and `songs`
+unchanged.
 
 **rom.rs**
 
@@ -367,8 +369,8 @@ The declarations are content/nettai/extract.d.luau, beside core.d.luau, checked 
 
 ```luau
 declare extern type Rom with
-    code: string          -- "BR6E": the manifest's declaration (§4.2)
-    slot: number          -- its place in the declaration, 1 to 4
+    code: string          -- "BR6E": as the recipe's `roms` states it (§4.2)
+    slot: number          -- its place in `roms`, 1 to 4
     function u8(self, at: number): number
     function u16(self, at: number): number
     function u32(self, at: number): number
@@ -500,28 +502,33 @@ brings each version's songs that play otherwise into the base bank (`sound::colo
 ### 3.9 Data the recipe reads
 
 ```luau
-declare data: (path: string) -> any   -- a file the manifest's `reads` names, TOML parsed to tables
+declare data: (path: string) -> any   -- a file of the game's compat/ (`compat/assets.toml`), TOML parsed to tables
 ```
 
 ### 3.10 What a recipe returns, and what the host does with it
 
-The recipe (`extract/init.luau`) returns a function from the set to one table:
+The recipe (`extract/init.luau`) returns its table (§4.2), whose `extract` is a function from the set to one table:
 
 ```luau
-return function(set: Set): Extracted
-    local names = require("@self/names")()
-    return {
-        names = names, -- AssetNames: sprites, songs, backgrounds, mugshots, banners, chips, navis, glyphs
-        graphics = {
-            sprites = sprites(set, names),
-            field = field(set.BR6E),
-            backgrounds = backgrounds(set.BR6E),
-            hud = hud(set, names),
-            custom = custom(set, names),
-        },
-        sound = { from = set.BR6E },
-    }
-end
+local recipe: Recipe = {
+    roms = { "BR6E", "BR5E", "BR6J", "BR5J" },
+    extract = function(set: Set): Extracted
+        local names = require("@self/names")()
+        return {
+            names = names, -- AssetNames: sprites, songs, backgrounds, mugshots, banners, chips, navis, glyphs
+            graphics = {
+                sprites = sprites(set, names),
+                field = field(set.BR6E),
+                backgrounds = backgrounds(set.BR6E),
+                hud = hud(set, names),
+                custom = custom(set, names),
+            },
+            sound = { from = set.BR6E },
+        }
+    end,
+}
+
+return recipe
 ```
 
 **The codec** (nettai-extract's `recipe/model.rs`) reads the table into `nettai_assets::Bundle`, `AssetNames` and
@@ -577,10 +584,10 @@ app that runs a bundle's recipe has the primitives it was written for. The finge
 
 ```text
 exe6/
-  manifest.toml        [extract]: the ROMs, their size, the data files read (§4.2)
+  manifest.toml        what the pack is (id, kind, depends), nothing of the recipe
   compat/              as now; assets.toml, chips.toml, navis.toml, text.toml are read by the recipe
   extract/
-    init.luau          the recipe: the set in, the model out (§3.10)
+    init.luau          the recipe: its ROMs (§4.2), and the set in, the model out (§3.10)
     names.luau         AssetNames from compat/ (§4.3)
     sprites.luau       the sprite list, the portraits, DustMan's (graphics.rs, gregar.rs, jp.rs)
     stage.luau         the field, the panel names, the backgrounds and their scrollers
@@ -606,28 +613,41 @@ count passes it (EXE4's chatbox, one kind of box, which its recipe shows for bot
 
 ### 4.2 The declaration
 
-In the game's manifest, read without running anything:
+The table the recipe's `extract/init.luau` returns, `roms` beside the function (§3.10), and nothing else:
 
-```toml
-[extract]
-# The game's ROMs, all of them (a complete Legacy Collection's), in this order: the base version's US ROM, the
-# other's, then their Japanese ones.
-roms = ["BR6E", "BR5E", "BR6J", "BR5J"]
-size = 0x800000
-reads = ["compat/assets.toml", "compat/chips.toml", "compat/navis.toml", "compat/text.toml"]
+```luau
+local recipe: Recipe = {
+    -- Every ROM of a complete Legacy Collection, each required, in the order its places read an address by (a
+    -- ROM's slot): Falzar's US ROM, Gregar's, then their Japanese ones.
+    roms = { "BR6E", "BR5E", "BR6J", "BR5J" },
+    extract = function(set: Set): Extracted
+        -- ...
+    end,
+}
+
+return recipe
 ```
 
-- **`roms`**: the header codes (0xAC). Every one is required: the host refuses a set without one before the recipe
-  runs, and the app tells the player the Legacy Collection's files are incomplete (§5.6). `recognize` matches a header
-  against every installed bundle's declarations; `RomSet::insert` refuses a code no declaration names, a duplicate,
-  or an image not `size` bytes. Two games may not declare one code (the app refuses the later bundle).
-- **The order** is the one `Game::codes` has now, which exelib's places read an address by (a ROM's `slot`, §3.2).
+- **`roms`**: the header codes (0xAC), four letters and digits each, none twice. Every one is required: the host
+  refuses a set without one before the function runs, and the app tells the player the Legacy Collection's files are
+  incomplete (§5.6). The app matches a header against every installed bundle's codes; `RomSet::insert` refuses a code
+  the recipe doesn't state and a duplicate. A ROM is told by its code alone: there is no size, and an image cut
+  short fails where the recipe reads past its end, naming the ROM. Two games may not declare one code (the app
+  refuses the later bundle).
+- **The order** is the one `Game::codes` had, which exelib's places read an address by (a ROM's `slot`, §3.2).
   Regions and versions aren't declared: a recipe names its ROMs by code (`set.BR5E` is the Gregar US ROM) and holds
   its versions' names (`falzar`, `gregar`) as the constants the pack writes them under.
-- **`reads`**: the files outside `extract/` the recipe may read with `data`, in its own pack. Anything else is refused,
-  so the fingerprint can't miss an input (§5.2).
-- `PackManifest` (`deny_unknown_fields`) gains `extract: Option<Extract>`; a support pack has none. exelib's
-  `extract/` is reached through the games' recipes.
+- **Read without ROMs.** `Recipe::of_content` loads the recipe's modules in its VM (§4.4), with the primitives and
+  `data` but no set, and reads the table (`model::declaration`): an unknown field, a code that isn't one, a code
+  twice, `extract` that isn't a function are errors naming the field (`the recipe's table.roms[2]: BR6E twice`). So
+  everything that needs the codes before a ROM is read has them: the app's Legacy Collection lookup
+  (`bnlc::Install::roms`), `RomSet`'s checks, the CLI, the harness. Loading runs only the modules' top level, which
+  defines functions and constants; the extraction loads them again in a VM of its own and calls `extract`.
+- **What it reads**: with `data`, any file of the game's own `compat/`, by its path in the pack
+  (`compat/assets.toml`). The fingerprint covers all of them (§5.2), so none needs naming; a path outside it is
+  refused (and the content check refuses a literal one, §4.5).
+- `PackManifest` (`deny_unknown_fields`) is the pack's `id`, `kind` and `depends` alone: a manifest with `[extract]`
+  is refused. exelib's `extract/` is reached through the games' recipes.
 
 ### 4.3 The names
 
@@ -678,8 +698,8 @@ The crates stay for save import, traces and gen-content.
   against it and exelib's `extract/` declarations, and the content's modules against core.d.luau and the packs'
   `types.d.luau`, each set apart (`packs::declarations` today gives every module every declaration, which would show
   the battle's API to recipes and the recipes' to content).
-- **Lints**: a content module may not require under `extract/`, nor an `extract/` module outside it; `data` paths are
-  in `reads`.
+- **Lints**: a content module may not require under `extract/`, nor an `extract/` module outside it; a literal
+  `data` path is a file of the game's `compat/`.
 - **Runs need the ROMs.** A recipe runs only on its full set: in the verification harness (§6.3), in the full-set
   content audit (§6.4), when publishing (§5.7) and in the app. CI has no ROMs: there, the recipes are type-checked and
   the primitives, the codec, the declaration and the fingerprint are unit-tested on synthetic data. (Today's no-ROM
@@ -726,8 +746,8 @@ end
 ### 5.1 What a bundle carries
 
 Nothing new in its form: a bundle holds every file its packs' repos track (bundle.rs `pack_files`), so `extract/` and
-`compat/` are in it already. What a game's bundle must have to be extracted is its manifest's `[extract]` and the
-files that names.
+`compat/` are in it already. What a game's bundle must have to be extracted is its recipe, `extract/init.luau`
+and what it requires, and the `compat/` files it reads.
 
 ### 5.2 The fingerprint
 
@@ -736,18 +756,19 @@ content-app branch names them), of:
 
 - `pack::FORMATS` (the pack's formats, as now);
 - the engine's line (its major and minor version: the primitives change only with one, §3.12);
-- the game's id and its manifest's `[extract]` table;
-- each recipe input, in path order, its path and its bytes: every file under the game's `extract/`, under each of its
-  support packs' (with theirs, `with_depends`), and each file `reads` names.
+- the game's id;
+- each recipe input, in path order, its path and its bytes: every file under the game's `extract/` and its `compat/`,
+  and under each of its support packs' `extract/` (with theirs, `with_depends`). The ROMs' codes are in
+  `extract/init.luau` (§4.2); the manifest is no input.
 
-It is computed from the bundle's files without ROMs and without running Luau, so the app knows a bundle's pack
-before it extracts, and publishing records it (§5.7).
+It is computed from the bundle's files alone, without ROMs, so the app knows a bundle's pack before it extracts, and
+publishing records it (§5.7).
 
 | A change to | Changes the fingerprint |
 |---|---|
 | a recipe module, a drawing, exelib's `extract/` | yes: a new pack |
-| assets.toml, chips.toml, navis.toml, text.toml | yes (`reads`): names may differ |
-| rules, chips' behavior, locales, look.toml, kinds.toml | no: the pack is kept |
+| any file of the game's `compat/` (assets.toml, chips.toml, kinds.toml...) | yes: names may differ |
+| rules, chips' behavior, locales, look.toml, a manifest | no: the pack is kept |
 | the pack formats (`FORMATS`) or the engine's line (a minor version) | yes |
 | the app's patch version alone | no (the stamp before re-extracted on every version) |
 
@@ -956,6 +977,11 @@ The questions this design left open, with the answers (2026-10-26).
    EXE4's two e-Reader pictures, which are embedded data. There are no placeholder primitives and no placeholder
    skeletons; placeholders.rs and the checkerboard are deleted (§7); an asset a recipe can't find in the full set is
    an extraction error naming it, which the harness and the content audit catch (§3.10, §6.4).
+8. **The recipe declares its ROMs; the manifest says what the pack is** (§4.2; decided after step 6). Content is
+   returned tables, not TOML declarations: `extract/init.luau` returns the ROMs' codes beside its function, and the
+   manifest keeps `id`, `kind` and `depends` alone. `size` goes (a ROM is told by its header's code), and so does
+   `reads` (the fingerprint covers the game's whole `compat/`). The manifest's `text` goes too: a top-level table of a
+   game's locales that is no collection of its root is a text table.
 
 ## 9. As built
 
@@ -1162,3 +1188,37 @@ baseline's byte for byte (the harness, now the recipes against the baseline only
   recipe). tools/content/index.py, which writes the manifests, kept no `[extract]`: it keeps a manifest's tables now.
 - gen_content's checks pass: EXE4's and EXE5's against the ROMs, EXE5's auto battle data and rules, EXE6's
   gen-content.
+
+**The declaration in the recipe** (§8, decision 8):
+
+- *The table.* A recipe's `extract/init.luau` returns `{ roms = { ... }, extract = function(set) ... end }`, typed
+  `Recipe` in extract.d.luau, and nothing else; each game's comment on its ROMs' order moved from the manifest to
+  `roms`. `PackManifest` is `id`, `kind` and `depends`: `Extract` went, and a manifest with `[extract]` or `text` is
+  refused (an unknown field). A game has a recipe when it has `extract/init.luau` (`packs::has_recipe`), which the
+  CLI and the harness use to find the games.
+- *Read without ROMs.* `Recipe::of_content` reads the inputs, opens the recipe's VM (the primitives and `data`, no
+  set), loads `extract/init.luau` and reads its table (`model::declaration`): `the recipe's table.roms[2]: BR6E twice`,
+  `the recipe's table.extract: expected a function, got string`, an unknown field. The run opens a VM of its own, as
+  before, and calls `extract`. The app's Legacy Collection lookup, `RomSet`, the CLI and the harness take the codes
+  from `Recipe::roms` as they did.
+- *No size.* `RomSet::insert` refuses a code the recipe doesn't state and a duplicate; an image cut short fails
+  where the recipe reads past it (`Rom:u32: 4 bytes at 0x08021ab0 are past BR6E (4096 bytes)`, the app's test of a
+  failed extraction).
+- *No `reads`.* `data` reads any file of the game's `compat/` (`compat/assets.toml`), and the content check refuses a
+  literal path that is none. The fingerprint digests the formats, the line, the game and every file under the game's
+  `extract/` and `compat/` and its support packs' `extract/`, path and bytes; the manifest is no input. Every
+  fingerprint changed once, and no pack: the harness gives the baseline's three packs byte for byte (EXE4 3,076
+  files, EXE5 3,040, EXE6 3,413) and its reads, and the CLI's EXE6 pack has the baseline's digests.
+- *No `text`.* `locale::text_tables` infers a game's text tables: the top-level tables of text, in any of its
+  languages, that are no collection of its root. The check refuses a table of entries that is no collection and a
+  collection's table of text, and holds the own language to every text table another language of the game has (in
+  place of every declared one). A misspelt text table is no longer refused there: a lookup that finds no table is
+  the full content audit's to report. tools/exe5/gen_content.py keeps the committed locales' tables it doesn't write
+  (the twelve EXE5's manifest listed), and gen-content's locale check infers them as the engine does.
+- *The content hash moved, for the manifests alone.* `Scripts`' hash covers the packs' manifests, which held `text`
+  and `[extract]`, so the three games' hashes changed: EXE4 c2d5ff351c08488e to 8870df0294578597, EXE5
+  c54ce9defd43ae05 to f13b1322a84e4639, EXE6 69ae86083e34366a to 6e6a185a834ba1d9. They are the hashes the content
+  before the change gives when each manifest is hashed as `id`, `kind` and `depends` alone: nothing else moved.
+- *The verification workspace.* tools/content/index.py writes a manifest's header comment, `id`, `kind` and
+  `depends`, nothing else; tools/cross-rom's sweep.py takes the ROM order from the recipe's `roms`. exelib's
+  place.luau points at the recipe's `roms`, and every game's depends.lock follows exelib.

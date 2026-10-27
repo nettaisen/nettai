@@ -91,8 +91,8 @@ pub struct EntryStrings {
 
 /// A table of the game's own, at the top level beside the core's sections:
 /// a collection's entries' strings by id (`[patch_cards]`), or a text table
-/// of key to text that no definition owns (`[patch_card_effects]`), which
-/// its game's manifest declares (`text`).
+/// of key to text that no definition owns (`[patch_card_effects]`): any
+/// table that is no collection of the game.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Table {
@@ -103,9 +103,8 @@ pub enum Table {
 /// One language's strings, by definition key: the core's sections' (chips,
 /// navis, forms), and the game's own tables by name: each of its
 /// collections' (`[patch_cards]`), by id, and its text tables
-/// (`[patch_card_effects]`), by key. (A table that is no collection of the
-/// content and no text table its manifest declares is the locales' check's
-/// to refuse.)
+/// (`[patch_card_effects]`), by key. (A table of entries that is no
+/// collection of the content is the locales' check's to refuse.)
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Strings {
     /// Its language (`en`, `ja`).

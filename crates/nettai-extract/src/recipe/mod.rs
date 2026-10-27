@@ -1,17 +1,20 @@
 //! Extraction recipes (docs/design/extraction-recipes.md): each game says in
 //! Luau how its assets are extracted from its ROMs (its pack's `extract/`,
-//! with the shared part in its support packs' `extract/`), declared in its
-//! manifest's `[extract]`. The recipe reads the ROMs through the primitives
-//! (`prims`) and returns the model (`model`): the graphics, the asset names
-//! and which ROMs the sound is read from. The host here runs it, in a VM of
-//! its own (`nettai_luau::tool`), then makes the pack as every extraction
-//! does: the check that every named asset is there, the letters, the
-//! element icons' frame, the hand-drawn frames, the sound bank, the files.
+//! with the shared part in its support packs' `extract/`). Its
+//! `extract/init.luau` returns a table: the ROMs it reads (`roms`, by their
+//! header codes) and the function that reads them (`extract`) through the
+//! primitives (`prims`) and returns the model (`model`): the graphics, the
+//! asset names and which ROMs the sound is read from. The host here runs it,
+//! in a VM of its own (`nettai_luau::tool`), then makes the pack as every
+//! extraction does: the check that every named asset is there, the letters,
+//! the element icons' frame, the hand-drawn frames, the sound bank, the
+//! files.
 //!
 //! A recipe is read from a content directory (a bundle's, or the
 //! repository's content/) whole: its inputs (every file under its game's
-//! `extract/` and its support packs', and the files its `reads` names) are
-//! held in memory, so what it runs on is what its fingerprint digests.
+//! `extract/` and `compat/` and under its support packs' `extract/`) are
+//! held in memory, so what it runs on is what its fingerprint digests. Its
+//! ROMs' codes come from its table when it is read, before any ROM is.
 
 mod model;
 mod prims;
@@ -20,12 +23,12 @@ use crate::rom::Rom;
 use crate::shapes::{Drawings, SHAPES};
 use crate::{Error, Extraction, RomRead, RomSet, elements};
 use nettai_content::{names::AssetNames, pack, sound::SongVersions};
-use nettai_content_api::packs::{self, Extract, Modules, PackKind, PackManifest};
+use nettai_content_api::packs::{self, Modules, PackKind, PackManifest};
 use nettai_content_api::keys;
 use nettai_luau::mlua::Value;
 use nettai_luau::tool::{self, ToolOptions};
 use std::collections::BTreeMap;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 /// The engine's line (`0.11`): its version's major and minor numbers. The primitives change only with a line, so a
@@ -48,6 +51,10 @@ const fn line(version: &str) -> &str {
     version
 }
 
+/// The folder of a game's pack whose files its recipe reads with `data` (docs/design/extraction-recipes.md §3.9):
+/// its compat tables, the original's numbers (docs/design/content-model-v2.md §4.0).
+const COMPAT: &str = "compat";
+
 /// The share of an extraction's time its graphics take, the sound the rest ([`Recipe::extract_reporting`]). (Not
 /// measured apart: the whole is a few hundredths of a second for a game's four ROMs in a release build, and a
 /// pack's writing, with its encoding, nearly all of its time.)
@@ -57,7 +64,8 @@ const GRAPHICS_SHARE: f32 = 0.6;
 #[derive(Clone, Debug)]
 pub struct Recipe {
     game: String,
-    extract: Extract,
+    /// Its ROMs' header codes, as its table states them ([`Recipe::roms`]).
+    roms: Vec<String>,
     /// The game's pack and the support packs it depends on, in load order.
     packs: Vec<PackManifest>,
     /// Every input by its path in the bundle (`exe6/extract/hud.luau`,
@@ -66,9 +74,10 @@ pub struct Recipe {
 }
 
 impl Recipe {
-    /// Game `game`'s recipe in the content directory `content`: its
-    /// manifest's `[extract]`, its pack's and its support packs' `extract/`
-    /// folders, and the files it reads.
+    /// Game `game`'s recipe in the content directory `content`: its pack's
+    /// and its support packs' `extract/` folders and its pack's `compat/`,
+    /// and its ROMs, which its `extract/init.luau` returns (run here, without
+    /// ROMs).
     pub fn of_content(content: &Path, game: &str) -> Result<Recipe, Error> {
         let said = |e: String| Error(format!("{game}'s recipe in {}: {e}", content.display()));
         let all: BTreeMap<String, PackManifest> = packs::packs(content).map_err(said)?.into_iter().map(|p| (p.id.clone(), p)).collect();
@@ -77,10 +86,10 @@ impl Recipe {
         if own.kind != PackKind::Game {
             return Err(said(format!("{game} is a support pack, not a game")));
         }
-        let extract = own.extract.clone().ok_or_else(|| said(format!("{game}/{} declares no [extract]", packs::MANIFEST)))?;
+        let mut trees: Vec<(String, PathBuf)> = packs.iter().map(|p| (format!("{}/{}", p.id, packs::EXTRACT), content.join(&p.id).join(packs::EXTRACT))).collect();
+        trees.push((format!("{game}/{COMPAT}"), content.join(game).join(COMPAT)));
         let mut files = BTreeMap::new();
-        for p in &packs {
-            let root = content.join(&p.id).join(packs::EXTRACT);
+        for (under, root) in trees {
             let mut dirs = vec![root.clone()];
             while let Some(dir) = dirs.pop() {
                 let Ok(entries) = nettai_platform::fs::read_dir(&dir) else { continue };
@@ -96,19 +105,17 @@ impl Recipe {
                     let rel = path.strip_prefix(&root).expect("walked under the root");
                     let rel = rel.components().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/");
                     let bytes = nettai_platform::fs::read(&path).map_err(|e| said(format!("{}: {e}", path.display())))?;
-                    files.insert(format!("{}/{}/{rel}", p.id, packs::EXTRACT), bytes);
+                    files.insert(format!("{under}/{rel}"), bytes);
                 }
             }
         }
         if !files.keys().any(|p| p.starts_with(&format!("{game}/{}/", packs::EXTRACT))) {
             return Err(said(format!("{game} has no {}/ folder", packs::EXTRACT)));
         }
-        for read in &extract.reads {
-            let path = content.join(game).join(read);
-            let bytes = nettai_platform::fs::read(&path).map_err(|e| said(format!("{game}/{read}, which [extract] reads: {e}")))?;
-            files.insert(format!("{game}/{read}"), bytes);
-        }
-        Ok(Recipe { game: game.to_string(), extract, packs, files: Arc::new(files) })
+        let mut recipe = Recipe { game: game.to_string(), roms: Vec::new(), packs, files: Arc::new(files) };
+        let vm = recipe.vm().map_err(said)?;
+        recipe.roms = model::declaration(vm.entry()).map_err(said)?.roms;
+        Ok(recipe)
     }
 
     /// The game whose recipe it is (`exe6`).
@@ -116,16 +123,16 @@ impl Recipe {
         &self.game
     }
 
-    /// Its ROMs' header codes, every one required, in the declaration's
-    /// order.
+    /// Its ROMs' header codes, every one required, in the order its table
+    /// states them (`roms`, which its places read an address by: a ROM's
+    /// slot, from 1).
     pub fn roms(&self) -> &[String] {
-        &self.extract.roms
+        &self.roms
     }
 
-    /// An empty set of the game's ROMs, to give [`Recipe::extract`]: it takes the codes and the size the recipe
-    /// declares.
+    /// An empty set of the game's ROMs, to give [`Recipe::extract`]: it takes the codes the recipe states.
     pub fn rom_set(&self) -> RomSet {
-        RomSet::new(&self.game, &self.extract.roms, self.extract.size)
+        RomSet::new(&self.game, &self.roms)
     }
 
     /// The drawings it makes the frames with (its pack's `extract/shapes/`
@@ -137,9 +144,10 @@ impl Recipe {
 
     /// What names the packs it makes (§5.2): SHA-256, its first 16 hex
     /// digits, of the pack formats, the engine's line ([`LINE`]: the
-    /// primitives change only with one), the game, its `[extract]` and each
-    /// input in path order, its path and its bytes. The same bundle gives
-    /// the same on every machine; a change to any input gives another.
+    /// primitives change only with one), the game, and each input in path
+    /// order, its path and its bytes (its ROMs are its `extract/init.luau`'s).
+    /// The same bundle gives the same on every machine; a change to any
+    /// input gives another.
     pub fn fingerprint(&self) -> String {
         use sha2::{Digest, Sha256};
         let mut h = Sha256::new();
@@ -151,15 +159,6 @@ impl Recipe {
         put(format!("{:?}", pack::FORMATS).as_bytes());
         put(LINE.as_bytes());
         put(self.game.as_bytes());
-        put(&(self.extract.roms.len() as u64).to_le_bytes());
-        for code in &self.extract.roms {
-            put(code.as_bytes());
-        }
-        put(&self.extract.size.to_le_bytes());
-        put(&(self.extract.reads.len() as u64).to_le_bytes());
-        for read in &self.extract.reads {
-            put(read.as_bytes());
-        }
         put(&(self.files.len() as u64).to_le_bytes());
         for (path, bytes) in self.files.iter() {
             put(path.as_bytes());
@@ -192,39 +191,44 @@ impl Recipe {
         crate::recording_reads(roms, || self.extract(roms))
     }
 
-    /// The ROMs as the recipe is given them, in its declaration's order,
-    /// every one there (`RomSet::insert` checked each one's size).
+    /// The ROMs as the recipe is given them, in its table's order, every
+    /// one there.
     fn set(&self, roms: &RomSet) -> Result<Vec<prims::RomHandle>, Error> {
-        let missing: Vec<&str> = self.extract.roms.iter().filter(|c| !roms.contains(c)).map(String::as_str).collect();
+        let missing: Vec<&str> = self.roms.iter().filter(|c| !roms.contains(c)).map(String::as_str).collect();
         if !missing.is_empty() {
             return Err(Error(format!(
                 "{}: the Legacy Collection's ROMs are incomplete: {} missing (the game's are {})",
                 self.game,
                 missing.join(", "),
-                self.extract.roms.join(", ")
+                self.roms.join(", ")
             )));
         }
-        let set = self.extract.roms.iter().enumerate();
+        let set = self.roms.iter().enumerate();
         Ok(set.map(|(i, code)| prims::RomHandle { rom: roms.rom(code).expect("checked above"), code: code.clone(), slot: i as u32 + 1 }).collect())
+    }
+
+    /// The recipe's VM: the primitives, `data` (its game's `compat/` files,
+    /// by path in the pack), and its `extract/init.luau` loaded.
+    fn vm(&self) -> Result<tool::Tool, String> {
+        let game = &self.game;
+        let compat = format!("{game}/{COMPAT}/");
+        let files = self.files.iter().filter(|(p, _)| p.starts_with(&compat));
+        let data = prims::Data { game: game.clone(), files: files.map(|(p, b)| (p[game.len() + 1..].to_string(), b.clone().into())).collect() };
+        let entry = format!("{game}{}{}", keys::SEPARATOR, packs::EXTRACT);
+        tool::open(Inputs(self.files.clone()), self.packs.clone(), &entry, packs::EXTRACT, ToolOptions::default(), |lua| prims::install(lua, data))
+            .map_err(|e| e.to_string())
     }
 
     fn run(&self, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Result<Extraction, Error> {
         let game = &self.game;
         let set = self.set(roms)?;
         let recipe = |e: String| Error(format!("{game}'s recipe: {e}"));
-        let data = prims::Data {
-            game: game.clone(),
-            files: self.extract.reads.iter().map(|r| (r.clone(), self.files[&format!("{game}/{r}")].clone().into())).collect(),
-        };
-        let entry = format!("{game}{}{}", keys::SEPARATOR, packs::EXTRACT);
-        let vm = tool::open(Inputs(self.files.clone()), self.packs.clone(), &entry, packs::EXTRACT, ToolOptions::default(), |lua| {
-            prims::install(lua, data)
-        })
-        .map_err(|e| recipe(e.to_string()))?;
+        let vm = self.vm().map_err(recipe)?;
+        let model::Declaration { extract, .. } = model::declaration(vm.entry()).map_err(recipe)?;
         let set = prims::rom_set(vm.lua(), set).map_err(|e| recipe(e.to_string()))?;
-        let value: Value = vm.call(set).map_err(|e| recipe(e.to_string()))?;
+        let value: Value = extract.call(set).map_err(|e| recipe(e.to_string()))?;
         let model::Extracted { names, mut graphics, sound } = model::extracted(&value).map_err(recipe)?;
-        drop(value);
+        drop((value, extract));
         drop(vm);
         complete(&mut graphics, &names).map_err(|e| Error(format!("{game}: {e}")))?;
         progress(GRAPHICS_SHARE);

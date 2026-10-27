@@ -824,8 +824,7 @@ chips, etc."
 content/
   .luaurc                             the packs by name (`@exe6`, `@exelib`), for an editor's requires
   exe6/, exe5/                          the game packs: what a match plays
-    manifest.toml                     the pack: its id, its kind, what it depends on, its locales' text tables
-                                      (`text`: top-level tables of key to text no definition owns)
+    manifest.toml                     the pack: its id, its kind, what it depends on
     init.luau                         the game's top module: it requires the game's rules and folders (below)
     <folder>/init.luau                a folder's index: it requires the folder's modules that define what the
                                       game has (chips/, navis/, stages/, patch_cards/, navicust/, lib/)
@@ -846,6 +845,11 @@ id = "exe6"
 kind = "game"          # or "support"
 depends = ["exelib"]   # the support packs it requires from
 ```
+
+Nothing else: what a game extracts its assets from is its recipe's to state (`extract/init.luau` returns its ROMs,
+docs/design/extraction-recipes.md §4.2), and which top-level tables of its locales are text tables (key to text no
+definition owns, `patch_card_effects`) follows from its root: each that is no collection of the game is one
+(`nettai_content::locale::text_tables`).
 
 A game's top module, `<game>/init.luau` (`exe6:init`; the pack as a module, as a folder's init.luau is the folder,
 §4.1), requires the game's rules and its folders, and each folder's init.luau requires the folder's modules that
@@ -2299,7 +2303,7 @@ write ids and names without their game.) The resolved value is a handle into the
 
   *The exception: the extraction recipes* (docs/design/extraction-recipes.md §2.4). A game's `extract/` modules
   hold the original's numbers (ROM addresses, chip numbers, sprite categories) and read compat's TOML (`data`, the
-  files their manifest's `[extract] reads` names), for the reason compat holds them: the extractor is the boundary.
+  files of their game's `compat/`), for the reason compat holds them: the extractor is the boundary.
   They run in a VM of their own (`nettai_luau::tool`) with the extraction's libraries and none of the battle's, and
   require only `extract/` modules; no content module requires one (nettai-content-check refuses both), so they are
   in no `Content` and no content hash. What crosses is the asset model and the names, as from the Rust extractor.

@@ -1,10 +1,10 @@
 //! Extract a game's assets from its ROMs, without launching a process.
 //!
-//! A game's content says how its assets are extracted (docs/design/extraction-recipes.md): its manifest's
-//! `[extract]` declares its ROMs, every one required (a complete Battle Network Legacy Collection's), and its
-//! recipe in Luau (`extract/`) reads them through the primitives here and returns the assets in typed form; the
-//! host here makes the pack of them ([`Recipe`]). ROMs are told by the game code in their headers
-//! ([`header_code`]), in any order. The same API drives the `nettai-extract` command.
+//! A game's content says how its assets are extracted (docs/design/extraction-recipes.md): its recipe in Luau
+//! (`extract/`) states its ROMs, every one required (a complete Battle Network Legacy Collection's), reads them
+//! through the primitives here and returns the assets in typed form; the host here makes the pack of them
+//! ([`Recipe`]). ROMs are told by the game code in their headers ([`header_code`]), in any order. The same API
+//! drives the `nettai-extract` command.
 //!
 //! A ROM is given as its bytes ([`RomSet::insert`]), from wherever the host has it: nettai reads its ROMs out of an
 //! installed Legacy Collection's archives into memory and writes none to disk. [`Recipe::extract_reporting`] and
@@ -65,22 +65,22 @@ impl From<std::io::Error> for Error {
     }
 }
 
-/// A game's ROMs, owned, for its recipe ([`Recipe::rom_set`]): each of the codes the recipe declares at most once,
-/// each of the size it declares. A ROM missing is one not inserted; the recipe refuses to run without every one.
+/// A game's ROMs, owned, for its recipe ([`Recipe::rom_set`]): each of the codes the recipe states at most once,
+/// each recognized by its header's code. A ROM missing is one not inserted; the recipe refuses to run without every
+/// one.
 pub struct RomSet {
     game: String,
     codes: Vec<String>,
-    size: u32,
     roms: BTreeMap<String, Arc<Rom>>,
 }
 impl RomSet {
-    /// An empty set of game `game`'s ROMs, whose codes are `codes` and size `size`.
-    fn new(game: &str, codes: &[String], size: u32) -> RomSet {
-        RomSet { game: game.to_string(), codes: codes.to_vec(), size, roms: BTreeMap::new() }
+    /// An empty set of game `game`'s ROMs, whose codes are `codes`.
+    fn new(game: &str, codes: &[String]) -> RomSet {
+        RomSet { game: game.to_string(), codes: codes.to_vec(), roms: BTreeMap::new() }
     }
 
-    /// Add a ROM, by its bytes: refused if its header's code isn't one of the game's, if it isn't of the size the
-    /// game's are, or if the set has one of its code already.
+    /// Add a ROM, by its bytes: refused if its header's code isn't one of the game's, or if the set has one of its
+    /// code already.
     pub fn insert(&mut self, bytes: Vec<u8>) -> Result<(), Error> {
         let Some(code) = header_code(&bytes).filter(|c| self.codes.iter().any(|d| d == c)) else {
             return Err(Error(format!(
@@ -91,9 +91,6 @@ impl RomSet {
             )));
         };
         let code = code.to_string();
-        if bytes.len() != self.size as usize {
-            return Err(Error(format!("{code}: expected {:#x} bytes, got {}", self.size, bytes.len())));
-        }
         if self.roms.contains_key(&code) {
             return Err(Error(format!("duplicate ROM for {code}")));
         }

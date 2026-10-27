@@ -2,8 +2,9 @@
 
 One Rust library and binary extracts a game's battle assets from the player's Battle Network Legacy Collection
 ROMs into a pack, by the game's extraction recipe (docs/design/extraction-recipes.md): Luau in the game's content
-repository (`<game>/extract/`, with the code the games share in exelib's `extract/`), declared in its manifest's
-`[extract]`. The recipe reads the ROMs through the primitives here (`src/recipe/`: ROM reads, LZ77, 4bpp tiles,
+repository (`<game>/extract/`, with the code the games share in exelib's `extract/`), whose `extract/init.luau`
+returns the ROMs it reads (`roms`, by their header codes) and the function that reads them (`extract`). The recipe
+reads the ROMs through the primitives here (`src/recipe/`: ROM reads, LZ77, 4bpp tiles,
 palettes, map entries, sprite archives, GFX animations, the dialogue font) and returns the asset model. The host
 makes the pack from it: the check that every named asset is there, the pictures' letters, the element icons' frame,
 the hand-drawn frames (each game's `extract/shapes/` in its content and exelib's, `shapes::Drawings`), the sound
@@ -14,10 +15,10 @@ cargo run --release -p nettai-extract -- content/exe6 new-pack exe6f_rom_f_e.srl
 ```
 
 The first argument is the game's pack folder (or an unpacked bundle of one game); the output goes before the ROM
-paths. Headers identify ROMs in any order. A recipe needs every ROM its game declares, each of the declared size
-(a complete Legacy Collection's): another game's ROM, a truncated image or a duplicate is refused, a set short of
-one is refused before the recipe runs, and an asset the names name that the recipe can't find is an error naming
-it. There are no placeholders. The games' manifests declare these today, all 8 MiB:
+paths. Headers identify ROMs in any order. A recipe needs every ROM its game declares (a complete Legacy
+Collection's): another game's ROM or a duplicate is refused, a set short of one is refused before the recipe runs,
+a truncated image fails where the recipe reads past its end, and an asset the names name that the recipe can't find
+is an error naming it. There are no placeholders. The games' recipes declare these today:
 
 | Game | Base US | Other US | Base Japanese | Other Japanese |
 | --- | --- | --- | --- | --- |
@@ -38,7 +39,7 @@ extraction cannot keep stale files. Move the previous pack aside before regenera
 
 A pack is named by its recipe's fingerprint (`Recipe::fingerprint`): a digest of the engine's line (its major and
 minor version: the primitives change only with one), the pack formats and every file the recipe reads (its
-`extract/` and its support packs', and the compat tables its `[extract]` names). The app keeps a pack under it.
+`extract/` and its support packs', and its game's `compat/`). The app keeps a pack under it.
 
 ## Embedding
 

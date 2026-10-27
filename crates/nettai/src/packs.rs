@@ -436,7 +436,7 @@ mod tests {
 
     /// A game whose collection hasn't all its ROMs, or whose ROMs don't read or aren't whole, isn't extracted: the
     /// failure is said, the old pack stays, and nothing is left half made. (Its ROMs are only moved here: fake bytes
-    /// do, and the extractor refuses them for being no whole ROM.)
+    /// do, and the recipe fails on them, reading past their end.)
     #[test]
     fn an_extraction_that_fails_leaves_the_old_pack() {
         let (install, packs) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
@@ -448,13 +448,13 @@ mod tests {
         let why = extract(packs.path(), &job, &mut |_| {}).unwrap_err();
         assert!(why.contains("aren't all there") && why.contains("BR5E, BR6J, BR5J"), "{why}");
         assert_eq!(files(packs.path()), [format!("{}/content.toml", job.pack)]);
-        // (All four, and none a whole ROM.)
+        // (All four, and none a whole ROM: the recipe reads past one's end.)
         let four = [("exe6_rom_e.srl", "BR6E"), ("exe6f_rom_e.srl", "BR5E"), ("exe6_rom_j.srl", "BR6J"), ("exe6f_rom_j.srl", "BR5J")].map(|(name, code)| (name, fake_rom(code, 0x1000)));
         archive(&data.join("exe6.dat"), &four.iter().map(|(name, rom)| (*name, rom.as_slice())).collect::<Vec<_>>());
         let job = Job::new(recipe("exe6"), roms(install.path(), &recipe("exe6")));
         let mut said = Vec::new();
         let why = extract(packs.path(), &job, &mut |f| said.push(f)).unwrap_err();
-        assert!(why.contains("expected 0x800000 bytes"), "{why}");
+        assert!(why.contains("are past BR") && why.contains("(4096 bytes)"), "{why}");
         assert_eq!(files(packs.path()), [format!("{}/content.toml", job.pack)]);
         // An archive gone since it was looked in.
         nettai_platform::fs::remove_file(data.join("exe6.dat")).unwrap();

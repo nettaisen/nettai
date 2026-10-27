@@ -225,7 +225,7 @@ pub fn game_context(source: &str) -> Vec<(usize, String)> {
 
 /// The files a recipe module's literal `data("...")` calls read, each with
 /// its line (docs/design/extraction-recipes.md §4.5: what a recipe reads is
-/// what its manifest's `[extract] reads` names).
+/// a file of its game's `compat/`).
 pub fn data_reads(source: &str) -> Vec<(usize, String)> {
     let s = Scanned::new(source);
     let mut out = Vec::new();
