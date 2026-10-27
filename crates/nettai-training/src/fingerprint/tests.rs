@@ -238,15 +238,15 @@ fn a_navi_chip_counts_as_landed_when_it_hits() {
 
 /// The real games' attack chips (a damage) whose fingerprint hit nothing,
 /// and those whose first hit came in the last 30 of [`RUN_TICKS`]: a chip
-/// whose sequence outlasts the run is described as hitting nothing. Needs
-/// the packs (`NETTAI_PACKS`); `FP_CACHE` names a fingerprints folder.
+/// whose sequence outlasts the run is described as hitting nothing (the
+/// repository's content, its real timing; `FP_CACHE` names a fingerprints
+/// folder).
 #[test]
 #[ignore]
 fn attack_chips_that_hit_nothing_in_their_fingerprint() {
-    let packs = nettai_content::pack::packs_dir();
     let cache = std::env::var_os("FP_CACHE").map(std::path::PathBuf::from);
     for game in ["exe6", "exe5", "exe4"] {
-        let c = crate::pool::load_game(None, &packs, game).unwrap_or_else(|e| panic!("{e}"));
+        let c = crate::pool::load_game(None, game).unwrap_or_else(|e| panic!("{e}"));
         let fp = Fingerprints::for_game(&c, 8, cache.as_deref()).unwrap_or_else(|e| panic!("{e}"));
         let (mut none, mut late) = (Vec::new(), Vec::new());
         for chip in game_chips(&c) {
