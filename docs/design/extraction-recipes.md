@@ -4,8 +4,8 @@ The design for moving nettai-extract's per-game knowledge (where each asset is i
 from, how the HUD and the custom screen are put together) out of the app's Rust and into Luau in each game's content
 repo, beside the content that uses the assets. The app keeps the Rust that is the machine: ROM access, the GBA's and
 the series' binary formats, the asset model and the pack writer. Status: decided 2026-10-26 (§8); being built:
-the baseline (step 0), the host (step 1), EXE6's recipe (step 2) and EXE4's (step 4) are done, §9 says what building
-changed.
+the baseline (step 0), the host (step 1) and the recipes of EXE6 (step 2), EXE5 (step 3) and EXE4 (step 4) are
+done; §9 says what building changed.
 
 Decided (2026-10-26):
 
@@ -433,9 +433,9 @@ export type MapEntry = { tile: number, hflip: boolean, vflip: boolean, palette: 
   ("PAUSE" as five glyphs: `pick({0, 4, 1, 5, 2, 6, 3, 7, 8, 9})`; the banner digits with the filler's two tiles
   joined after).
 - `gba.palette` gives the colors as stored. Whether bit 15 is dropped is the recipe's (exelib's `colors.masked`):
-  the games' code differs (EXE6's HUD reads palettes as stored and its custom screen drops bit 15, EXE5's and EXE4's
-  HUD and custom screen drop it, and the three games' field and backgrounds keep it, exelib's makers reading them as
-  stored), and a pack keeps what the Rust kept.
+  the games' code differs (EXE6's HUD reads palettes as stored and its custom screen drops bit 15; EXE5's HUD,
+  custom screen and chip pictures drop it, as EXE4's HUD and custom screen do; the three games' field and backgrounds
+  keep it, exelib's makers reading them as stored), and a pack keeps what the Rust kept.
 - `gba.map` is `MapEntry::from_gba` over `count` halfwords; `first_tile` is taken off each entry's tile, wrapping in
   16 bits (the chatbox's maps, which count from BG0's tile 0x2E4 in EXE6).
 
@@ -919,11 +919,11 @@ About 1,300 lines of Rust in all.
 
 | Step | What | Size |
 |---|---|---|
-| 0 | The baseline (§6.2) | a script in the verification workspace; three extractions |
-| 1 | The host: `nettai_luau::tool`, the primitives, the codec, the declaration (`PackManifest::extract`, every ROM required), `Recipe`, the fingerprint, the drawings read from a content directory, `tests/recipes.rs` and the full-set audit; the partial-set tests and the README's tables deleted; extract.d.luau; content-check's split declarations and lints; exelib's `extract/` (places, colors, scroll, banners, patches, texts, field, backgrounds, sprite list, chatbox, buttons, names) and the shared drawings; every game's drawings to its `extract/shapes/`, build.rs and the crate's `shapes/` deleted (§9); content-model-v2.md §6.4 and core.d.luau's header | Rust +2,000 (codec 800, primitives 450, runner 300, declaration and fingerprint 200, tests 250), −450 (tests); Luau +500 exelib, +330 declarations; 33 drawings to exelib, 98 links renamed, 22 added |
-| 2 | EXE6's recipe, its manifest's `[extract]`; the harness equal; then `src/exe6/` deleted | Luau +1,050; Rust −1,500 |
-| 3 | EXE5's, likewise | Luau +1,000; Rust −1,500 |
-| 4 | EXE4's, with `cards.luau` (done: §9) | Luau +1,410 (84 lines of them the cards' hex); Rust −1,490 |
+| 0 | The baseline (§6.2) | a script in the verification workspace; three extractions. Done |
+| 1 | The host: `nettai_luau::tool`, the primitives, the codec, the declaration (`PackManifest::extract`, every ROM required), `Recipe`, the fingerprint, the drawings read from a content directory, `tests/recipes.rs` and the full-set audit; the partial-set tests and the README's tables deleted; extract.d.luau; content-check's split declarations and lints; exelib's `extract/` (places, colors, scroll, banners, patches, texts, field, backgrounds, sprite list, chatbox, buttons, names) and the shared drawings; every game's drawings to its `extract/shapes/`, build.rs and the crate's `shapes/` deleted (§9); content-model-v2.md §6.4 and core.d.luau's header | Rust +2,000 (codec 800, primitives 450, runner 300, declaration and fingerprint 200, tests 250), −450 (tests); Luau +500 exelib, +330 declarations; 33 drawings to exelib, 98 links renamed, 22 added. Done |
+| 2 | EXE6's recipe, its manifest's `[extract]`; the harness equal; then `src/exe6/` deleted | Luau +1,050; Rust −1,500. Done: Luau +1,180, Rust −1,470 |
+| 3 | EXE5's, likewise | Luau +1,000; Rust −1,500. Done: Luau +1,340, Rust −1,640 |
+| 4 | EXE4's, with `cards.luau` | Luau +1,000; Rust −1,450. Done: Luau +1,410 (84 lines of them the cards' hex), Rust −1,490 |
 | 5 | The rest of the Rust recipe path: `Game` and `codes`, the compat dependencies, `asset_names`, the old fingerprint, rom.rs's source choice and `Place`, decode.rs's moved parts, placeholders.rs whole, lib.rs's partial-set handling; `bnlc` by declarations and its incomplete-collection error (+40, its words in four locales); the stamp without the app version; the catalog by primitives; the CLI by content directory; the README | Rust −1,000, +80 |
 | 6 | The verification workspace (§6.6) | about 150 lines of Python and shell changed, two tools retired |
 | 7 | Each game published for the line (below) | three releases |
@@ -1034,6 +1034,42 @@ the codec take 0.04 to 0.06 s; the whole extraction in memory 0.11 to 0.12 s, th
   lettering problems (a font without a character of a translated word, a picture's line count) that the Rust-made
   EXE4 and EXE5 packs report too, which are the content's and its fonts', not the extraction's. A battle's
   definitions load against the pack, and a headless match plays on it.
+
+**Step 3.** EXE5's recipe is content/exe5/extract/ (init, names, versions, chips, hud, custom, lettering, sprites,
+stage: about 1,340 lines with the comments the Rust had), ported statement by statement. graphics.rs became three
+modules: the sprite list and the portraits (sprites), the field and the backgrounds (stage), the chip records
+(chips); rom.rs's `Version` and graphics.rs's `VERSION_CHIPS` and `OWN_CHIPS` are versions. Its manifest declares
+BRBE, BRKE, BRBJ and BRKJ, and reads assets.toml, chips.toml, panels.toml, records.toml and text.toml. Its pack is the
+Rust's byte for byte, `extraction.txt` included, and the baseline's (3,040 files); it reads the same ranges, and in
+the same order but for reads the Rust made twice (Team Colonel's soul icon palette, read for the comparison and again
+for the list; the backgrounds' three table pointers, read again for the check of the numbers one background shares).
+In a full set, BRBE holds what the four have alike, Team ProtoMan's own and the English words; BRKE Team Colonel's own
+(its version chips' pictures and icons, its navis' own chips' pictures, its souls' faces, its navis' faces and
+emblems, the soul icons' palette where it differs, its songs); BRBJ the Japanese words (Team of Colonel's are the
+same). Nothing is read of BRKJ, as the Rust read nothing of it with BRBJ there; it is declared and required as every
+ROM is (§8, decision 5). In a release build the recipe and the codec take 0.04 to 0.045 s; the whole extraction in
+memory 0.09 to 0.1 s, the Rust's 0.067 to 0.07 s.
+
+- exelib served as built: `chatbox.of` with `masked` (EXE5's chatbox drops bit 15), `field.read` (EXE5's panel
+  palette animations are in EXE6's form), `backgrounds.picture` with `DIRECT`, and `scroll.speeding`, whose first
+  user EXE5 is (NebulaGray's background, 0x1B). No primitive changed.
+- EXE5's HUD and custom screen start from the model's defaults (§2.3): with every ROM there its `drawn` and `worded`
+  set every field the placeholder skeletons did. An emotion-window face that brings no box (a soul's) has empty tiles
+  (`gba.join({})`).
+- The recipe checks what exe5-compat checks of the tables it reads, with its messages: one chip a number, a
+  background's numbers (at least one, none another background's), a sprite's "cc-ii", the panel types by number;
+  the background numbers' `assert!` is an `error()`.
+- What went with src/exe5/: `sound::colonel_songs` (the host's `own_songs` under the recipe's version names does it),
+  extract_inner's EXE5 sound branch, and of decode.rs `banner_at`, `field`, `palette_anims`, `background_picture`,
+  `BackgroundDescriptor::DIRECT` and `FieldAddresses`' `palette_anims` and `palette_buffer`, which only EXE5 still
+  used (EXE4's field gives its own palette animations, its backgrounds their own descriptor). `has_rust_extraction`
+  is EXE4 alone.
+- The full-set content audit passes every asset lookup for EXE5's pack and reports only the zh-Hans and zh-Hant
+  lettering problems step 2 names (six: the chip window's pictures' words); the pack is the baseline's byte for byte,
+  so they are the Rust-made pack's too. A battle's definitions load against the pack, and a headless match plays on
+  it.
+- A comment that still points at the Rust is in a generated file (compat/assets.toml's mugshot numbering, "its
+  hud.rs"): it changes with its generator in the verification workspace's step (§6.6).
 
 **Step 4.** EXE4's recipe is content/exe4/extract/ (init, names, versions, sprites, stage, hud, custom, lettering,
 cards: about 1,400 lines with the comments the Rust had, 84 of them the e-Reader pictures' hex), ported statement by

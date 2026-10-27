@@ -32,7 +32,6 @@
 pub mod cli;
 mod decode;
 mod elements;
-mod exe5;
 mod placeholders;
 mod recipe;
 mod rom;
@@ -160,27 +159,22 @@ impl Tables {
     /// The names the pack's assets are written under.
     fn names(&self) -> AssetNames {
         match &self.compat {
-            Compat::Exe4(_) => unreachable!("exe4 is extracted by its recipe (Tables::of_content)"),
-            Compat::Exe5(c) => exe5::names::asset_names(c),
-            Compat::Exe6(_) => unreachable!("exe6 is extracted by its recipe (Tables::of_content)"),
+            Compat::Exe4(_) | Compat::Exe5(_) | Compat::Exe6(_) => unreachable!("{} is extracted by its recipe (Tables::of_content)", self.game().id()),
         }
     }
 
     /// The field's panel types' names by number.
     fn panel_names(&self) -> Vec<String> {
         match &self.compat {
-            Compat::Exe4(_) => unreachable!("exe4 is extracted by its recipe (Tables::of_content)"),
-            Compat::Exe5(c) => exe5::graphics::panel_names(c),
-            Compat::Exe6(_) => unreachable!("exe6 is extracted by its recipe (Tables::of_content)"),
+            Compat::Exe4(_) | Compat::Exe5(_) | Compat::Exe6(_) => unreachable!("{} is extracted by its recipe (Tables::of_content)", self.game().id()),
         }
     }
 
-    /// What else of them the extraction reads, which changes what a pack holds: EXE5's backgrounds by their
-    /// numbers.
+    /// What else of them the extraction reads, which changes what a pack holds: nothing, now every game is
+    /// extracted by its recipe (whose inputs the fingerprint covers).
     fn read_by_number(&self) -> String {
         match &self.compat {
-            Compat::Exe5(c) => format!("{:?}", c.assets.backgrounds),
-            Compat::Exe4(_) | Compat::Exe6(_) => String::new(),
+            Compat::Exe4(_) | Compat::Exe5(_) | Compat::Exe6(_) => String::new(),
         }
     }
 }
@@ -371,7 +365,8 @@ pub fn extract_in_rust(tables: &Tables, roms: &RomSet) -> Result<Extraction, Err
 /// being compared with theirs).
 #[doc(hidden)]
 pub fn has_rust_extraction(game: Game) -> bool {
-    matches!(game, Game::Exe5)
+    let _ = game;
+    false
 }
 
 fn extract_in_rust_reporting(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Result<Extraction, Error> {
@@ -413,9 +408,7 @@ fn extract_inner(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) 
         .map(|c| format!("missing {c}: unavailable assets use generated placeholders"))
         .collect::<Vec<_>>();
     let mut graphics = match &tables.compat {
-        Compat::Exe4(_) => unreachable!("exe4 is extracted by its recipe (has_rust_extraction)"),
-        Compat::Exe5(c) => exe5::graphics::bundle(&rom::Roms(sources), &names, c),
-        Compat::Exe6(_) => unreachable!("exe6 is extracted by its recipe (has_rust_extraction)"),
+        Compat::Exe4(_) | Compat::Exe5(_) | Compat::Exe6(_) => unreachable!("{} is extracted by its recipe (has_rust_extraction)", game.id()),
     };
     let panel_names = tables.panel_names();
     let mut placeholders = placeholders::complete(&mut graphics, &names, &panel_names);
@@ -442,8 +435,7 @@ fn extract_inner(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) 
     // the emotion window's frame apart from its faces).
     warnings.extend(shapes::read(&mut graphics, &tables.drawings, &|i| names.banner(4 * i as u8)).into_iter().map(|p| format!("frames: {p}")));
     // (`sources`: the two US ROMs, then their Japanese ones. A US ROM's
-    // bank where there is one: EXE5's hit, song 0x6D, is louder in the
-    // Japanese ROMs, volume 127 for 112.)
+    // bank where there is one.)
     let (mut sound, missing_songs) = if let Some(i) = sources.iter().position(|r| r.is_present()) {
         let (bank, failures) =
             m4a::rom::extract(&sources[i].0).map_err(|e| Error(format!("reading sound: {e}")))?;
@@ -462,19 +454,7 @@ fn extract_inner(tables: &Tables, roms: &RomSet, progress: &mut dyn FnMut(f32)) 
             names.songs.keys().copied().collect(),
         )
     };
-    let sound_versions = if game == Game::Exe5 && sources[0].is_present() && sources[1].is_present()
-    {
-        let (colonel, failures) = m4a::rom::extract(&sources[1].0)
-            .map_err(|e| Error(format!("reading Colonel sound: {e}")))?;
-        warnings.extend(
-            failures
-                .iter()
-                .map(|(id, e)| format!("Colonel song {:#05x}: {e}", id.0)),
-        );
-        sound::colonel_songs(&mut sound, &colonel)
-    } else {
-        SongVersions::default()
-    };
+    let sound_versions = SongVersions::default();
     placeholders.extend(placeholders::songs(&mut sound, &names, &missing_songs));
     progress(0.95);
     sound.validate().map_err(|e| Error(e.to_string()))?;

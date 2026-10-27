@@ -1,38 +1,23 @@
-//! The sound: the US Team ProtoMan ROM's m4a bank, with any song the US Team
-//! Colonel ROM plays otherwise at the same number as Team Colonel's version
-//! of it. A Team Colonel song plays with voicegroups the bank has: its own
+//! A game's sound versions: the songs a version's ROM plays otherwise than
+//! the base version's at the same number, or has alone, brought into the
+//! base version's bank as that version's own (`own_songs`; a recipe names
+//! the versions and which ROM is each, docs/design/extraction-recipes.md
+//! §3.8). A version's song plays with voicegroups the bank has: its own
 //! voicegroups, with their samples, PSG waves and key maps, are matched to
-//! equal ones of Team ProtoMan's bank or added to it. (The Japanese ROMs
-//! play one song otherwise, EXE5's hit, which is louder there:
-//! `played_otherwise` compares two banks.)
+//! equal ones of the base bank or added to it. `played_otherwise` compares
+//! two banks (the verification's cross-ROM sweep).
 //!
-//! The two US ROMs play every song alike (`plays_alike`), so the pack has no
-//! version's own. Eleven songs' voicegroups (0x13C to 0x142, 0x145, 0x146,
-//! 0x170, 0x171) differ between the ROMs only in voices no note of theirs
-//! plays: a voicegroup is read 128 voices long, past the voices the game
-//! defines for it into the tables and data after them, where the two ROMs'
-//! bytes (pointers, at other addresses in each) read as other voices.
+//! Two songs play alike when their notes play alike (`plays_alike`), not
+//! when their bytes are equal: a voicegroup is read 128 voices long, past
+//! the voices the game defines for it into the tables and data after them,
+//! where two ROMs' bytes (pointers, at other addresses in each) read as
+//! other voices that no note plays.
 
 use m4a::SoundBank;
 use m4a::bank::{
     Command, KeyMapId, SampleId, Song, Voice, VoiceKind, Voicegroup, VoicegroupId, WaveId,
 };
-use nettai_content::sound::SongVersions;
 use std::collections::{BTreeMap, HashMap};
-
-/// Team Colonel's own songs (those that play otherwise than Team
-/// ProtoMan's at the same number), brought into `bank` (Team ProtoMan's):
-/// what `bank` needs for them is added to it. None: no versions.
-pub fn colonel_songs(bank: &mut SoundBank, colonel: &SoundBank) -> SongVersions {
-    let own = own_songs(bank, colonel);
-    if own.is_empty() {
-        return SongVersions::default();
-    }
-    SongVersions {
-        base_version: "protoman".into(),
-        versions: vec![("colonel".into(), own)],
-    }
-}
 
 /// A version's own songs: those `other` (its bank) plays otherwise than
 /// `bank` (the base version's) at the same number, or has alone, brought

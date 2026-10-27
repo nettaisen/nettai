@@ -5,9 +5,8 @@ Collection ROMs into a pack. A game whose content declares an extraction recipe 
 docs/design/extraction-recipes.md) is extracted by that recipe, Luau in the game's content repository
 (`<game>/extract/`, with the code the games share in exelib's `extract/`), which reads the ROMs through the
 primitives here (`src/recipe/`: ROM reads, LZ77, 4bpp tiles, palettes, map entries, sprite archives, GFX
-animations, the dialogue font) and returns the asset model. The games without a recipe yet are still extracted by
-their Rust modules (`exe5`), which the recipes replace game by game. Both paths share what makes the
-pack: the check that every named asset is there, the pictures' letters, the element icons' frame, the hand-drawn
+animations, the dialogue font) and returns the asset model; every game (EXE4, EXE5 and EXE6) has its recipe. The host
+makes the pack from it: the check that every named asset is there, the pictures' letters, the element icons' frame, the hand-drawn
 frames (each game's `extract/shapes/` in its content and exelib's, `shapes::Drawings`), the sound bank, the files
 and their read-back check.
 
