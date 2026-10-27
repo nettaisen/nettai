@@ -1,8 +1,9 @@
 //! The selected game's look (docs/app.md §10): the theme's colors and the ground behind the menus, as each game's
 //! content states them (its look.toml: `nettai_content::look`). Every game's look is read at start-up from the
-//! content alone, as the games' names are, so the menus are in the selected game's look before it is loaded; a
-//! game whose content states none, or one that can't be read (the log says why), has the app's own look, the
-//! theme's as the UI starts.
+//! content alone, as the games' names are, so the menus are in the selected game's look before it is loaded, and
+//! read again when the game's content changes (a game whose content was downloaded after start-up, or a newer
+//! revision of it); a game whose content states none, or one that can't be read (the log says why), has the app's
+//! own look, the theme's as the UI starts.
 //!
 //! A change of game is two motions over the theme's `settle`. The new game's ground sweeps across the window from
 //! the side its arrow was pressed on, over the one before (`Shell.grounds`, the last on top: each ground runs its
@@ -19,6 +20,7 @@
 use nettai_ui::{AppWindow, Ground, Look, PatternKind, PatternPaths, Theme};
 use slint::{Color, ComponentHandle, Model, ModelRc, VecModel};
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::fmt::Write as _;
 use std::rc::Rc;
 use std::time::Duration;
@@ -33,8 +35,9 @@ const SWEPT: Duration = Duration::from_millis(60);
 
 /// The looks, and the change under way.
 pub struct Looks {
-    /// Each game's look, by its id (a game that states none has none here).
-    by_game: HashMap<String, Look>,
+    /// Each game's look, by its id, with the content directory it was read from (none: the content states none, or
+    /// it couldn't be read).
+    by_game: HashMap<String, (PathBuf, Option<Look>)>,
     /// The app's own look: the theme's as the UI starts.
     plain: Look,
     /// The look shown, or being changed to.
@@ -54,13 +57,9 @@ impl Looks {
     pub fn new<'g>(ui: &AppWindow, games: impl IntoIterator<Item = &'g str>) -> Looks {
         let mut by_game = HashMap::new();
         for game in games {
-            let Some(dir) = crate::contents::dir(game) else { continue };
-            match nettai_content::look::of(&dir, game) {
-                Ok(Some(look)) => {
-                    by_game.insert(game.to_string(), of(&look));
-                }
-                Ok(None) => {}
-                Err(why) => crate::errors::log(&format!("reading {game}'s look"), &why),
+            if let Some(dir) = crate::contents::dir(game) {
+                let look = read(&dir, game);
+                by_game.insert(game.to_string(), (dir, look));
             }
         }
         let plain = ui.global::<Theme>().get_look();
@@ -77,7 +76,7 @@ impl Looks {
     /// for a tenth of a second or so after the press, and a clock started now would have run most of its way before
     /// a frame of it was drawn. Until that frame the colors are the ones shown.
     pub fn show(&mut self, ui: &AppWindow, game: Option<&str>, from: i32) {
-        let look = game.and_then(|g| self.by_game.get(g)).unwrap_or(&self.plain).clone();
+        let look = game.and_then(|g| self.look_of(g)).unwrap_or_else(|| self.plain.clone());
         if look == self.target {
             return;
         }
@@ -137,6 +136,29 @@ impl Looks {
 }
 
 /// A look of the content's, as the theme takes it.
+impl Looks {
+    /// Game `game`'s look, from the content it has now: read again when that isn't what it was read from.
+    fn look_of(&mut self, game: &str) -> Option<Look> {
+        let dir = crate::contents::dir(game)?;
+        if self.by_game.get(game).is_none_or(|(read_from, _)| *read_from != dir) {
+            let look = read(&dir, game);
+            self.by_game.insert(game.to_string(), (dir, look));
+        }
+        self.by_game.get(game)?.1.clone()
+    }
+}
+
+/// Game `game`'s look in content directory `dir`: none where it states none, or can't be read (said in the log).
+fn read(dir: &Path, game: &str) -> Option<Look> {
+    match nettai_content::look::of(dir, game) {
+        Ok(look) => look.as_ref().map(of),
+        Err(why) => {
+            crate::errors::log(&format!("reading {game}'s look"), &why);
+            None
+        }
+    }
+}
+
 fn of(look: &nettai_content::look::Look) -> Look {
     use nettai_content::look::{PatternKind as Kind, Rgb, Strength};
     let rgb = |c: Rgb| {
@@ -313,6 +335,15 @@ mod tests {
 
     /// A blend all the way is the new look; part of the way, its colors are between the two, and the rest is the
     /// new look's.
+    /// Every game's content states its look, and it reads: the menus show each game's own.
+    #[test]
+    fn each_game_reads_its_look_from_its_content() {
+        for game in ["exe4", "exe5", "exe6"] {
+            let dir = crate::contents::dir(game).unwrap_or_else(|| panic!("{game} has no content"));
+            assert!(read(&dir, game).is_some(), "{game}'s look");
+        }
+    }
+
     #[test]
     fn a_look_blends_from_the_one_before() {
         let mut old = Look { pattern: PatternKind::Hexagons, ..Default::default() };
