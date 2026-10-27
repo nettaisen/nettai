@@ -1,10 +1,10 @@
 //! The original mode's strings where a pack can't spell the language shown
-//! (its fonts are another language's: Chinese, or a pack of one region
-//! shown in the other's language), drawn at their own size into the
-//! 240x160 frame in pixel fonts: Fusion Pixel Bold 12px for the 8x16
-//! font's strings (chip names, enemy names, the telop) and Fusion Pixel
-//! 12px for the chatbox's (fonts/fusion-bold-pixel, fonts/fusion-pixel;
-//! docs/design/text-rendering.md §15).
+//! (Chinese, which no GBA ROM has a font for; every pack has both
+//! releases' fonts, English's and Japanese's), drawn at their own size
+//! into the 240x160 frame in pixel fonts: Fusion Pixel Bold 12px for the
+//! 8x16 font's strings (chip names, enemy names, the telop) and Fusion
+//! Pixel 12px for the chatbox's (fonts/fusion-bold-pixel,
+//! fonts/fusion-pixel; docs/design/text-rendering.md §15).
 //!
 //! The places that draw text lay the strings out as the enhanced mode does
 //! (a [`TextSink`](crate::textlayer::TextSink) that measures with
@@ -36,16 +36,15 @@ use swash::{CacheKey, FontRef, GlyphId};
 /// units an em, 100 a pixel), so at this size a glyph's pixels are whole.
 const SIZE: f32 = 12.0;
 
-/// Fusion Pixel 12px, by cut ([`Cut`]'s order): the chatbox's.
-const TEXT: [&[u8]; 3] = [
-    include_bytes!("../fonts/fusion-pixel/fusion-pixel-12px-monospaced-ja.otf"),
+/// Fusion Pixel 12px, Simplified then Traditional: the chatbox's.
+const TEXT: [&[u8]; 2] = [
     include_bytes!("../fonts/fusion-pixel/fusion-pixel-12px-monospaced-zh_hans.otf"),
     include_bytes!("../fonts/fusion-pixel/fusion-pixel-12px-monospaced-zh_tw.otf"),
 ];
 
-/// Fusion Pixel Bold 12px, by cut: the 8x16 font's strings'.
-const CELLS: [&[u8]; 3] = [
-    include_bytes!("../fonts/fusion-bold-pixel/fusion-bold-pixel-12px-monospaced-ja.otf"),
+/// Fusion Pixel Bold 12px, Simplified then Traditional: the 8x16 font's
+/// strings'.
+const CELLS: [&[u8]; 2] = [
     include_bytes!("../fonts/fusion-bold-pixel/fusion-bold-pixel-12px-monospaced-zh_hans.otf"),
     include_bytes!("../fonts/fusion-bold-pixel/fusion-bold-pixel-12px-monospaced-zh_tw.otf"),
 ];
@@ -142,12 +141,19 @@ pub struct PixelText {
 }
 
 impl PixelText {
-    /// The fonts in `cut`'s forms (the language shown's: [`Cut::of`]).
-    pub fn new(cut: Cut) -> PixelText {
+    /// The fonts in `cut`'s forms (the language shown's: [`Cut::of`]); none
+    /// in the Japanese cut's, English's and Japanese's, which every pack
+    /// spells in its own fonts.
+    pub fn new(cut: Cut) -> Option<PixelText> {
+        let k = match cut {
+            Cut::Japanese => return None,
+            Cut::Simplified => 0,
+            Cut::Traditional => 1,
+        };
         let mut scaler = ScaleContext::new();
-        let text = Face::new(TEXT[cut as usize], &mut scaler);
-        let cells = Face::new(CELLS[cut as usize], &mut scaler);
-        PixelText { text, cells, scaler, glyphs: HashMap::new(), own: Own::default() }
+        let text = Face::new(TEXT[k], &mut scaler);
+        let cells = Face::new(CELLS[k], &mut scaler);
+        Some(PixelText { text, cells, scaler, glyphs: HashMap::new(), own: Own::default() })
     }
 
     /// Draw the marks and plain characters from `hud`'s fonts (the pack
@@ -367,7 +373,7 @@ mod tests {
     /// item for a window to draw again.
     #[test]
     fn a_string_is_drawn_into_the_frame_in_its_colors() {
-        let mut p = PixelText::new(Cut::Simplified);
+        let mut p = PixelText::new(Cut::Simplified).unwrap();
         let (face, shadow) = (0x7FFF, 0x2108);
         let mut f = frame(vec![TextItem::new("加农炮 40", Role::FittedCell, Rect::new(16, 8, 64, 16), face, Some(shadow))]);
         p.draw(&mut f);
@@ -383,13 +389,20 @@ mod tests {
     /// font is the narrower: the 8x16 font's strings are in the bold build.
     #[test]
     fn a_box_is_as_wide_as_its_text() {
-        let mut p = PixelText::new(Cut::Traditional);
+        let mut p = PixelText::new(Cut::Traditional).unwrap();
         let bold = p.width("加農砲", Role::FittedCell);
         let regular = p.width("加農砲", Role::Dialogue);
         assert!(bold > regular && regular > 0, "{bold} {regular}");
         assert!(p.covers("加農砲Ⓑ") && !p.covers("\u{E002}"), "a mark of the game's is the pack's");
         let (i0, i1) = p.ink_extent("加農砲", Role::FittedCell).unwrap();
         assert!(i0 >= 0.0 && i1 <= bold as f32);
+    }
+
+    /// English and Japanese have no pixel fonts: every pack spells them in
+    /// its own.
+    #[test]
+    fn only_chinese_has_pixel_fonts() {
+        assert!(PixelText::new(Cut::Japanese).is_none());
     }
 
     /// A mark of the game's (the stacked EX) is the pack's own 8x16 glyph,
@@ -400,7 +413,7 @@ mod tests {
         let mut font = Tiles { pixels: vec![0; 2 * Tiles::TILE] };
         font.pixels.fill(1);
         let hud = Hud { font, font_chars: vec!["\u{E002}".into()], ..Hud::default() };
-        let mut p = PixelText::new(Cut::Simplified);
+        let mut p = PixelText::new(Cut::Simplified).unwrap();
         assert!(!p.covers("冲锋人\u{E002}"));
         p.use_pack(&hud);
         assert!(p.covers("冲锋人\u{E002}"));
@@ -412,12 +425,12 @@ mod tests {
     /// characters.
     #[test]
     fn depth_clip_and_printing_hide_what_they_hide() {
-        let mut p = PixelText::new(Cut::Simplified);
+        let mut p = PixelText::new(Cut::Simplified).unwrap();
         let item = TextItem::new("进行攻击", Role::Dialogue, Rect::new(40, 100, 160, 12), 0x0421, None);
         let drawn = |item: TextItem, depth: u32| {
             let mut f = frame(vec![item]);
             f.depth.fill(depth);
-            let mut p = PixelText::new(Cut::Simplified);
+            let mut p = PixelText::new(Cut::Simplified).unwrap();
             p.draw(&mut f);
             (0..WIDTH * HEIGHT).filter(|&i| f.pixels[i] != 0x1234).collect::<Vec<usize>>()
         };

@@ -449,8 +449,9 @@ impl Renderer {
         // (The local player's custom screen and chatbox: the game's pack's.)
         let local = b.setup.local_side as usize & 1;
         let own_game = packs.game(&b.content);
-        // A pack with no lettering in the language shown is drawn in its
-        // own (`Bundle::for_language`): its pictures with words are that
+        // A pack with no lettering in the language shown (Chinese: every
+        // pack has English's and Japanese's) is drawn in its own
+        // (`Bundle::for_language`): its pictures with words are that
         // language's, and so are its fonts, which lack most of the shown
         // language's characters. The original mode then lays the strings
         // out as the enhanced mode does, in boxes as wide as the text, and
@@ -459,7 +460,7 @@ impl Renderer {
         let shown = self.strings.as_ref().map_or(nettai_content::locale::OWN, |s| s.language.as_str());
         let stand_in = self.mode == GraphicsMode::Original && own_game.hud.language() != shown;
         if stand_in && self.stand_in.is_none() {
-            self.stand_in = Some(std::cell::RefCell::new(crate::pixeltext::PixelText::new(crate::vfont::Cut::of(shown))));
+            self.stand_in = crate::pixeltext::PixelText::new(crate::vfont::Cut::of(shown)).map(std::cell::RefCell::new);
         }
         let pixels = self.stand_in.as_ref().filter(|_| stand_in);
         if let Some(p) = pixels {

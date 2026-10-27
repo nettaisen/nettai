@@ -1228,15 +1228,15 @@ prints in step with it (a description's whole lines in the proportion of
 the own lines printed, a message's characters in the proportion of the own
 characters), so two players of different languages play one battle. The
 program's own text (what it prints: folder listings, a match's
-description) is the content's own strings. A pack made from one release's
-ROMs alone has that release's words only (`hud.json`'s `language` and
-`languages` say which): in the other language its pictures with words
-stay its own, and the strings are drawn in other fonts: the vector font
-in the enhanced mode, and in the original mode pixel fonts into the frame,
-Fusion Pixel Bold 12px for the 8x16 font's strings and Fusion Pixel 12px
-for the chatbox's, with the pack's own glyphs for digits, Latin letters
-and the game's marks (text-rendering.md §10.3, §15). So does Chinese, which
-no pack has a font for.
+description) is the content's own strings. Every pack has both releases'
+words, English and Japanese (its recipe reads all four ROMs; `hud.json`'s
+`language` and `languages` say so); Chinese, which no pack has a font
+for, keeps the pack's own pictures with words, and its strings are drawn
+in other fonts: the vector font in the enhanced mode, and in the original
+mode pixel fonts into the frame, Fusion Pixel Bold 12px for the 8x16
+font's strings and Fusion Pixel 12px for the chatbox's, with the pack's
+own glyphs for digits, Latin letters and the game's marks
+(text-rendering.md §10.3, §15).
 
 The bundled font is Noto Sans CJK (`crates/nettai-render/fonts/noto-sans-cjk`,
 SIL Open Font License 1.1, its license beside it), Google Fonts' whole

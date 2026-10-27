@@ -1110,15 +1110,14 @@ the US's (the user's choice).
 - `--lang ja` loads the pack's graphics, swaps the Japanese lettering into the HUD's and the custom screen's fields
   (`Bundle::for_language`; nothing that draws them changed), and loads `locales/ja.toml`. A language the content
   root has no table of stops the frontend with what there is.
-- **A pack without the language's lettering** (one made from the other release's ROMs alone: a pack states the
-  languages it has, asset-formats.md "Languages") is drawn in its own language, the content's strings still in the
-  chosen one: its pictures with words (the banners, the gauge's word, the chip window's pictures, the Crosses' names,
-  the waiting words) are the language it has them in, never placeholders. Its fonts are that language's too, without
-  most of the chosen language's characters (the US font has no kana; the Japanese fonts have 36 and 26 of the 62
-  Latin letters and digits), so the strings are drawn in other fonts in either mode: the enhanced mode's vector font
-  as always, and in the original mode pixel fonts into the 240x160 frame (§15: `Renderer::render`, `pixeltext`),
-  rather than in the other language's glyphs. The frame comparison has nothing to compare there: no console draws a
-  language its ROM has no font for.
+- **A pack without the language's lettering** (Chinese's, which no pack has: every recipe reads both releases' ROMs,
+  so every pack has English's and Japanese's; a pack states the languages it has, asset-formats.md "Languages") is
+  drawn in its own language, the content's strings still in the chosen one: its pictures with words (the banners, the
+  gauge's word, the chip window's pictures, the Crosses' names, the waiting words) are the language it has them in,
+  never placeholders. Its fonts are that language's too, without the hanzi the chosen language is written in, so the
+  strings are drawn in other fonts in either mode: the enhanced mode's vector font as always, and in the original mode
+  pixel fonts into the 240x160 frame (§15: `Renderer::render`, `pixeltext`), rather than in the other language's
+  glyphs. The frame comparison has nothing to compare there: no console draws a language its ROM has no font for.
 - The places that draw content's text (hud.rs, custom.rs, chatbox.rs) ask the frame's `TextSink` for it
   (`strings.rs`, `DisplayText`): the language's string, else the content's own, else the key; `--audit` lists what
   the language's table lacks. The frontend's own text (live play's status line, folder listings) is the content's own
@@ -2041,16 +2040,16 @@ font?".
 
 ### 15.1 What draws what
 
-Where a pack can't spell the language shown (Chinese, which no GBA ROM has a font for; a pack of one region shown
-in the other's language), the original mode lays the strings out as the enhanced mode does (a `TextSink` that
+Where a pack can't spell the language shown (Chinese, which no GBA ROM has a font for; every pack has both releases'
+fonts, English's and Japanese's), the original mode lays the strings out as the enhanced mode does (a `TextSink` that
 takes and measures them with the pixel fonts) and draws them into the 240x160 frame (`pixeltext`, at the end of
 `Renderer::render`), in place of the vector font shrunk to the frame's pixels that it drew before:
 
 - **Fusion Pixel Bold 12px** for the 8x16 font's strings (chip names, the enemy's name, the telop, the Program
   Advance's names, the HUD's seconds) and **Fusion Pixel 12px** for the chatbox's: TakWolf's fonts, release
-  2026.10.25, whole, in three cuts by `Cut::of` (ja for English and Japanese, zh_hans, zh_tw), under the OFL with
-  the notices of the fonts they are stitched from (fonts/fusion-pixel, fonts/fusion-bold-pixel; the About screen
-  lists both). About 30 MB of the program.
+  2026.10.25, whole, in two cuts by `Cut::of` (zh_hans, zh_tw; the ja cut went on 2026-10-27, as every pack spells
+  English and Japanese in its own fonts), under the OFL with the notices of the fonts they are stitched from
+  (fonts/fusion-pixel, fonts/fusion-bold-pixel; the About screen lists both). About 20 MB of the program.
 - A glyph's outline lies on a grid of 100 units a pixel, so at 12 pixels an em each of its pixels is a frame's
   (swash rasterizes it; coverage of half or more is ink).
 - In the item's face color, with the 8x16 font's shadow (right, below and both) in its shadow color, faded as the
