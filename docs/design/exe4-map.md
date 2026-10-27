@@ -1546,7 +1546,7 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
 
 **For the next steps:**
 
-- **Extraction** (`nettai-extract exe4`): as built, §14.
+- **Extraction** (`nettai-extract content/exe4`): as built, §14.
 - **exe4-compat:** the numbers (chips by id, navis, souls), the recording decode (the oracle's layout, §3.4, and the
   setup line), the save import (§12). Its start (the chips' ids, the asset names, the text encodings) came with
   the extraction (§14).
@@ -1560,7 +1560,7 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
 
 ## 14. The assets (as built)
 
-`nettai-extract exe4 <pack> <ROM ...>` writes an EXE4 pack by EXE4's extraction recipe (content/exe4/extract,
+`nettai-extract content/exe4 <pack> <ROM ...>` writes an EXE4 pack by EXE4's extraction recipe (content/exe4/extract,
 docs/design/extraction-recipes.md), its names and text encodings from content/exe4/compat (assets.toml, chips.toml,
 panels.toml, text.toml), which the verification workspace's tools/exe4/gen_content.py writes from the ROMs and
 `check`s again; the recipe reads them (extract/names.luau), as the exe4-compat crate does. Each address below is Red

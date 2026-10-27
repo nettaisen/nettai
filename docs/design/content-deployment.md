@@ -125,8 +125,8 @@ published for it, from the same commits or newer ones.
 **The catalog.** The app knows one address: the catalog, `https://nettai.n1gp.net/catalog.json`
 (`bundle::catalog_url`, `bundle::Catalog`), a map of each game's pack id to the full address of its site's
 `index.json` (and, as `ai`, nettai-ai's index). Every other address is data: the catalog gives each game's index, and
-each index entry the full address of its bundle (`Published::url`). The app's games are the catalog's that its
-extractor reads (`nettai_extract::Game`).
+each index entry the full address of its bundle (`Published::url`). The app's games are the catalog's: a bundle of
+the app's line holds its game's extraction recipe (extraction-recipes.md), and the app names no game.
 
 **The store.** Bundles are kept unpacked in the data folder's `content/<id>/` (`nettai_content::store`), each with its
 record beside it, `content/<id>.toml`: its game, line and revision, the content hash its index gives it
@@ -191,13 +191,13 @@ player leaves. Replays need none of this: each round's background is recorded by
 Nothing on the wire changes: each peer says its own content and pool as always, and a peer that doesn't wait refuses
 as before.
 
-**Asset packs.** Packs are kept by the fingerprint of what the content's tables say of them
-(`packs/<game>-<fingerprint>/`, `nettai_extract::fingerprint`): the names their assets are written under, and the
-numbers the extraction reads some by. Content whose fingerprint has no pack has it extracted from the Legacy
-Collection when the game first loads, and so does other content a replay plays on. The extractor reads the tables
-from the content (`<game>/compat`, `nettai_extract::Tables`), not from tables compiled into it: the compat crates'
-built-in tables are their `builtin` feature's, for tools and tests, and the app builds without the content
-submodules.
+**Asset packs.** Packs are kept by their content's extraction recipe's fingerprint (`packs/<game>-<fingerprint>/`,
+`nettai_extract::Recipe::fingerprint`): the engine's line, the pack formats, and every file the recipe reads (its
+`extract/` and its support packs', and the compat tables its `[extract]` names: the names the assets are written
+under). Content whose fingerprint has no pack has it extracted from the Legacy Collection when the game first loads,
+and so does other content a replay plays on. The recipe is read from the content (`<game>/extract`,
+`<game>/compat`), not compiled into the app: the compat crates' built-in tables are their `builtin` feature's, for
+tools and tests, and the app builds without the content submodules.
 
 **Development.** A build run from the repository plays every game from the submodules' content directory, as before,
 and downloads nothing for it; `$NETTAI_CONTENT` names another. Other content (a replay's) is found in the store and

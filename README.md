@@ -67,32 +67,35 @@ netplay needs.
 
 ## Getting started
 
-You need Rust with edition 2024. Extract assets from your own US or Japanese EXE5/EXE6 ROMs into a new or empty
-pack directory (the directories below are gitignored). ROMs can be supplied in any order:
+You need Rust with edition 2024. Extract assets from your own copy of Battle Network Legacy Collection Vol. 2 into a
+new or empty pack directory (the directories below are gitignored). Each game needs all four of its ROMs (both
+versions, US and Japanese: a complete Legacy Collection's), in any order; the first argument is the game's pack
+folder, whose extraction recipe (its `extract/`) the extractor runs:
 
-    cargo run --release -p nettai-extract -- exe6 data/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>
-    cargo run --release -p nettai-extract -- exe5 data/exe5 <protoman-us> <colonel-us> <protoman-jp> <colonel-jp>
+    cargo run --release -p nettai-extract -- content/exe6 data/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>
+    cargo run --release -p nettai-extract -- content/exe5 data/exe5 <protoman-us> <colonel-us> <protoman-jp> <colonel-jp>
+    cargo run --release -p nettai-extract -- content/exe4 data/exe4 <redsun-us> <bluemoon-us> <redsun-jp> <bluemoon-jp>
 
-Any subset works, including a single ROM or no ROMs. Available sources supply their assets; unavailable graphics
-become checkerboard placeholders and missing songs become silence. The pack includes `extraction.txt` with missing
-sources and generated assets. Add `--content content` to check the game's definitions against the written pack.
+A ROM missing is an error, as is an asset the recipe can't find. The pack includes `extraction.txt` with what the
+extraction noticed. Add `--check` to check the game's definitions against the written pack.
 
 Applications can embed the same extractor without launching a process or writing files:
 
 ```rust
-use nettai_extract::{extract, Game, RomSet};
+use nettai_extract::Recipe;
 
-let mut roms = RomSet::default();
-roms.insert(rom_bytes)?; // Vec<u8>, identified by the ROM header
-let assets = extract(Game::Exe6, &roms)?;
+let recipe = Recipe::of_content(std::path::Path::new("content"), "exe6")?;
+let mut roms = recipe.rom_set();
+roms.insert(rom_bytes)?; // Vec<u8>, identified by the ROM header; each of the game's four
+let assets = recipe.extract(&roms)?;
 // Use assets.graphics and assets.sound directly, or serialize the pack:
 let files = assets.files()?; // Vec<(relative_path, bytes)>
 ```
 
-The [extractor documentation](crates/nettai-extract/README.md) describes source selection, diagnostics and the API.
+The [extractor documentation](crates/nettai-extract/README.md) describes the recipes, diagnostics and the API.
 
 The app and the command line find the packs in `data` (or the directory `$NETTAI_PACKS` names), each by the
-game it says, with no options: an EXE5 pack written there (`nettai-extract exe5`) sits beside EXE6's. You play one game
+game it says, with no options: an EXE5 pack written there (`nettai-extract content/exe5`) sits beside EXE6's. You play one game
 at a time, EXE6 or EXE5: a build and a match file name their game and a trace states its own (there is no default
 game), and the battle is that game's content on its pack. Then run the app:
 

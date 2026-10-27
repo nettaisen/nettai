@@ -535,8 +535,8 @@ The verification workspace traces EXE5 consoles as it does EXE6's, with the same
 
 ## 11. The EXE5 pack (as built)
 
-`nettai-extract exe5 <pack-dir> <protoman-us> <colonel-us> <protoman-jp> <colonel-jp>` (any subset, identified by header,
-as the same extractor takes EXE6's) writes a pack whose manifest says `game = "exe5"`. Each asset is read from
+`nettai-extract content/exe5 <pack-dir> <protoman-us> <colonel-us> <protoman-jp> <colonel-jp>` (all four, identified by
+header, as the same extractor takes EXE6's; it once took any subset, as below) writes a pack whose manifest says `game = "exe5"`. Each asset is read from
 whichever ROM given holds it, through the game's own pointer to it in that ROM (what the four have alike from any, a
 team's own from a ROM of its version, each release's words from a ROM of that release, the US ROM's where both have
 their own; the extractor's README has what each set of ROMs lacks):

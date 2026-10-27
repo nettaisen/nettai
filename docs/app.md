@@ -3757,49 +3757,45 @@ choose. On this Mac Steam has no collection, so only the chosen folder has run.
 
 The ROMs are the `.srl` entries of the per-game archives `exe/data/exe*.dat` (zip files; the shared `exe.dat`
 holds the collection's own art and is passed over), wherever in an archive they are. Each is read only as far as
-its header, and the extractor says whose it is (`nettai_extract::recognize`: the app names no game); a second
-copy of one game code is passed over. Steam isn't asked when no pack is wanted.
+its header, whose game code (`nettai_extract::header_code`) is matched against the codes each game's recipe
+declares (`Recipe::roms`: the app names no game); a second copy of one game code is passed over. Steam isn't asked when no pack is wanted.
 
 **When a pack is extracted.** When the game is first loaded (the user: "you should lazily extract games on first
 load"; before, every game wanted was extracted as the app started), for each of the content's games whose pack is
-missing, or was made by another build: each pack is stamped (`stamp.toml` in it) with what made it,
+missing. A game's pack is made by its content's extraction recipe (`nettai_extract::Recipe`;
+docs/design/extraction-recipes.md) and kept by the recipe's fingerprint (`Recipe::fingerprint`: a digest of the
+engine's line,
+the versions of the pack's formats, `nettai_content::pack::FORMATS`, and every file the recipe reads: its
+`extract/` modules and drawings, its support packs', and the compat tables its `[extract]` names, the names the
+pack's assets are written under among them), which names the pack's folder (`packs/<game>-<fingerprint>`). The
+recipe is read from the content the game plays, at run time, not compiled into the app: content that names a new
+asset, or extracts one otherwise, has its pack extracted again with it, with no new build; content whose recipe is
+the same keeps its pack, and so does an app update of the same line (the primitives the recipes call change only
+with a line). Each pack is stamped (`stamp.toml` in it) with that fingerprint once it is whole,
 
-    nettai = "0.1.0"
-    assets = "1f3eed2364479361"
+    fingerprint = "1f3eed2364479361"
 
-the app's version, and the extractor's fingerprint of the game's content's tables (`nettai_extract::fingerprint`: a
-digest of the versions of the pack's formats, `nettai_content::pack::FORMATS`, each 1, and of what the extraction
-reads of the content's compat tables, `<game>/compat`: the names the pack's assets are written under, `assets.toml`,
-a chip's icon by its id, a navi's emblem by its key, the fonts' glyphs; the panels' names; and the numbers it reads
-some assets by, EXE4's version chips and text controls, EXE5's backgrounds several numbers share). The tables are
-read from the content the game plays, at run time (`nettai_extract::Tables`), not compiled into the app: content
-that names a new asset has its pack extracted again with it, with no new build (the compat crates' built-in tables
-are their `builtin` feature's, the tools' and the tests'). The fingerprint names the pack's folder; a pack whose
-stamp isn't this build's, or that has none (one `nettai-extract` wrote), is extracted again. The version is
-the user's word; it doesn't change between builds while it stays 0.1.0, and two builds of it differ in their
-packs above all where the content names an asset the other's pack hasn't (a sprite added, a song named): the pack
-loads and the content can't find it, which is what `UserError::GameOutdated` told before. The fingerprint is
-that. A change to how an asset is decoded that names nothing new doesn't change it: that is the version's to say.
-(A digest of the extractor's own source would catch that too, and would extract every pack again at nearly every
-commit.)
+and a pack whose stamp isn't its folder's fingerprint, or that has none (one `nettai-extract` wrote, or one whose
+writing was cut short), is extracted again.
 
 The battle themes (§1, "The battle's music") were such a change: every pack held every song already, the
 unnamed ones under their numbers (`sound-016`), which content may not use; naming EXE4's 0x16 and 0x17 and EXE5's
 0x16 and 0x17, and EXE4's 0x14 and 0x15 by their use (`virus-battle`, `boss-battle`, were `netbattle-single` and
 `netbattle`), changed BN4's and BN5's fingerprints, so the app extracts those two again (BN6's names were all
 there). A packs folder of `nettai-extract`'s (`$NETTAI_PACKS`) is the developer's to write again:
-`nettai-extract exe4 <dir> <exe4 ROMs>` and `nettai-extract exe5 <dir> <exe5 ROMs>`, into a new folder, then
-put in place.
+`nettai-extract content/exe4 <dir> <exe4 ROMs>` and `nettai-extract content/exe5 <dir> <exe5 ROMs>`, into a new
+folder, then put in place.
 
 **How.** On one thread, the games one after the other, the one the app opens on first; stepping to one still
 waiting moves it to the front. For each, its ROMs are read out of their archives into memory (none is written to
-disk) and handed to the extractor's library as bytes (`RomSet::insert`, `extract_reporting`), which writes the
+disk) and handed to the extractor's library as bytes (`Recipe::rom_set`, `RomSet::insert`,
+`Recipe::extract_reporting`), which writes the
 pack into a new folder, `packs/.new/<game>` (`Extraction::write_reporting`, which reads it back), and the stamp is
 written beside it. Then it is put in place by a rename: the old pack is moved aside to `packs/.old/<game>` the
 moment before, and deleted after. A crash leaves the old pack or none, never half of one; what it leaves is
 tidied as the app starts (a pack moved aside and not replaced is put back, the rest goes). The extractor's rule
-stands: its inputs are ROMs alone (and its own hand-drawn frames, asset-formats.md "Frames as shapes"), and a pack
-is whole from whichever of the game's ROMs hold each asset. The pack's
+stands: its inputs are ROMs alone, and the recipe's files (its hand-drawn frames among them, asset-formats.md
+"Frames as shapes"); a pack is made from every ROM of the game. The pack's
 files are the extractor's, as `nettai-extract` writes them from the same ROMs (checked: below); the stamp is the
 one file more. Each game's end goes to the log, with how long each stretch took.
 
@@ -3821,13 +3817,16 @@ with CHOOSE FOLDER and OK; where none can, the loading screen shows the line and
 system's folder dialog; or a folder is dropped on the window, which while a pack is wanted is taken as the one
 chosen (`App::dropped`; the dialog closes), on any screen but a battle's. A folder that holds the
 collection is kept in the settings, and the games it has can be extracted from it, each as it is first loaded; one that doesn't says the error
-again, and nothing is kept. A game whose pack another build made is loaded as it is while there is nothing to
-make it again from; if it doesn't load, that is the same error. A failure while reading the archives or
-extracting is `UserError::ExtractFailed` ("BN6's data couldn't be extracted. Details are in the log file."), the
-old pack kept where there is one; what went wrong is in the log alone. So is a collection that hasn't every ROM of
-the game, the US and the Japanese of both versions (a folder chosen, or dropped on the page, with some of them
-alone): a pack is extracted from a whole collection only, on the desktop and in the browser alike, never made
-smaller (`packs::extract`; the log names the ROMs missing).
+again, and nothing is kept. A game whose pack isn't stamped with its fingerprint is loaded as it is while there is
+nothing to make it again from; if it doesn't load, that is the same error. A collection that hasn't every ROM a
+game's recipe declares (the US and the Japanese of both versions: a folder chosen, or dropped on the page, without
+some of them) extracts nothing of that game: a pack is extracted from a whole collection only, on the desktop and
+in the browser alike, never made smaller. That is `UserError::IncompleteCollection`, said as the first is, a dialog
+with CHOOSE FOLDER and OK, or the loading screen's line where no game can be played: "The Legacy Collection's files
+are incomplete: some of BN6's are missing. Have Steam verify the collection's files, then choose its folder again."
+(`games::Notice::Incomplete`; the log names the ROMs missing). A failure while reading the archives or extracting
+is `UserError::ExtractFailed` ("BN6's data couldn't be extracted. Details are in the log file."), the old pack
+kept where there is one; what went wrong is in the log alone.
 
 **How long it takes** (2026-10-13, a release build, each game's four ROMs, from the archives of the folder below,
 as the app's log said them; load average 17 to 35; the game the app opened on first):

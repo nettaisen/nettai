@@ -65,9 +65,9 @@ sound, in open formats (indexed PNG, JSON, Tiled maps, MIDI, TOML, WAV; see
 `docs/design/content-pack.md` and `docs/design/asset-formats.md`), by the
 names the content gives them. Extract it once:
 
-    cargo run -p nettai-extract -- exe6 data/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>
+    cargo run -p nettai-extract -- content/exe6 data/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>
 
-ROMs can be in any order; any missing source is replaced with generated placeholders.
+ROMs can be in any order, and every one of the game's four is required (a complete Legacy Collection's).
 The output directory must be new or empty. (`data/` is gitignored.) **You play one game**, EXE6 or EXE5: a match
 is of one game (§6), which a match file names (`game = "exe6"`) and a
 trace states (its setup line's `"game"`: one that states none is refused;
@@ -78,7 +78,7 @@ no other game's chip, navi or field art. The frontend
 finds at start-up
 **every pack in the packs directory**, `$NETTAI_PACKS`, else
 `data`: each folder with a pack manifest, by the game the manifest
-says (`nettai_content::pack::find`); `nettai-extract exe5` writes EXE5's into
+says (`nettai_content::pack::find`); `nettai-extract content/exe5` writes EXE5's into
 `data/exe5` beside it. `--pack <dir>` names a pack elsewhere, in
 place of the found one of its game, and can be given again for another
 game's. Two packs of one game in the directory are an error. A pack is of

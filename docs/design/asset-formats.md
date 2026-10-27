@@ -5,10 +5,10 @@ widely supported files that ordinary tools edit, which loads into exactly the
 data the frontend and the audio use. This document describes the graphics and
 sound formats; the pack's battle data (chips, navis, rules, sprite timing:
 what the engine runs on) is described in [content-pack.md](content-pack.md).
-A pack is the only form this data takes: `nettai-extract exe6` writes it
+A pack is the only form this data takes: `nettai-extract content/exe6` writes it
 from the user's ROM, and everything loads it straight from its files.
 
-The code is the `nettai-content` crate, `nettai-extract exe6`, and pack
+The code is the `nettai-content` crate, `nettai-extract content/exe6`, and pack
 loading in `nettai-frontend` (`game`) and the audio examples. Everything below was
 checked on the game's full battle graphics and all of its songs; the in-repo
 tests use synthetic assets.
@@ -49,7 +49,7 @@ precisely what a format can't carry and how each case is handled.
   goes in a small text sidecar rather than in a private binary.
 - **Exact by construction, then proved.** Export writes a file, and for songs
   immediately reads it back and compares, refusing anything that wouldn't
-  return the same. `nettai-extract exe6` reads the asset data back before it
+  return the same. `nettai-extract content/exe6` reads the asset data back before it
   finishes, and `nettai-content verify` checks a whole pack against another.
 - **Imports explain, never guess silently.** An import returns a report of
   errors (the pack can't be built as it is), warnings (it builds, but likely
@@ -645,14 +645,14 @@ otherwise; an EXE6 pack writes none of them and is byte-identical to before:
   difference there (docs/frontend.md §5).
 
 **Four ROMs, and what differs by version and region.** An EXE6 pack is made
-from the two US ROMs and the two Japanese ones (`nettai-extract exe6 <pack>
-<falzar-us> <gregar-us> <falzar-jp> <gregar-jp>`, any subset and order,
-identified by game code: BR6E, BR5E, BR6J, BR5J). The pack has every
-asset one of the ROMs given holds: what the four have alike from whichever
-is there, what a version's ROMs alone have right or of their own from a
-ROM of that version (the extractor's `exe6::gregar`), each release's words
-from a ROM of that release, what the US release cut from a Japanese ROM
-(`exe6::jp`), and the US ROM's wherever both releases have their own. Each
+from the two US ROMs and the two Japanese ones (`nettai-extract content/exe6 <pack>
+<falzar-us> <gregar-us> <falzar-jp> <gregar-jp>`, all four, in any order,
+identified by game code: BR6E, BR5E, BR6J, BR5J), by EXE6's extraction
+recipe (content/exe6/extract/): what the four have alike from the Falzar US
+ROM, what a version's ROMs alone have right or of their own from a ROM of
+that version (the recipe's `versions.luau`), each release's words from a ROM
+of that release, what the US release cut from a Japanese ROM (`jp.luau`),
+and the US ROM's wherever both releases have their own. Each
 block is read through the game's own pointer to it (a routine's literal, a
 load list's entry: the extractor's `rom::Place`), which each ROM has where
 its code is:
@@ -1094,14 +1094,14 @@ total ever pass about a second, the sound import is where to look first.
 `Content::animations` (see [content-pack.md](content-pack.md)); nothing is
 compiled into the engine.
 
-**From the ROMs.** `nettai-extract exe6 <dir> [ROM ...]` writes a pack in one step from any
-subset of the four ROMs, generating placeholders for unavailable assets (the graphics
+**From the ROMs.** `nettai-extract content/exe6 <dir> ROM...` writes a pack in one step from the
+game's four ROMs, every one required, by the game's extraction recipe (the graphics
 extraction, the sound extraction, the exporters, then reading it all back),
 a few seconds. It is the only extraction.
 
 ## 10. Commands
 
-    cargo run -p nettai-extract -- exe6 data/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>    # ROMs -> pack
+    cargo run -p nettai-extract -- content/exe6 data/exe6 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>    # ROMs -> pack
     cargo run -p nettai-tools -- <trace.jsonl> --headless 100 --out <dir>   # a frame, from every pack in data
     cargo run -p nettai-content -- check data/exe6            # lint every file
     cargo run -p nettai-content -- verify data/exe6 <reference-pack> [--seconds N]

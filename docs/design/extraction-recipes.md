@@ -4,8 +4,9 @@ The design for moving nettai-extract's per-game knowledge (where each asset is i
 from, how the HUD and the custom screen are put together) out of the app's Rust and into Luau in each game's content
 repo, beside the content that uses the assets. The app keeps the Rust that is the machine: ROM access, the GBA's and
 the series' binary formats, the asset model and the pack writer. Status: decided 2026-10-26 (§8); being built:
-the baseline (step 0), the host (step 1) and the recipes of EXE6 (step 2), EXE5 (step 3) and EXE4 (step 4) are
-done; §9 says what building changed.
+the baseline (step 0), the host (step 1), the recipes of EXE6 (step 2), EXE5 (step 3) and EXE4 (step 4), the
+removal of the Rust recipe path (step 5) and the verification workspace's tools (step 6) are done; §9 says what
+building changed.
 
 Decided (2026-10-26):
 
@@ -60,19 +61,18 @@ Words:
 - **Names stay data.** compat/assets.toml and the tables it is joined with stay where they are, written by gen-content
   and checked against the ROMs; the recipe reads them (§4.3) and builds `AssetNames` itself. The compat crates leave
   the extractor.
-- **A recipe declares** its ROMs' header codes, their size, the primitives version it needs and the data files it
-  reads, in its pack's manifest (§4.2). The app finds a Legacy Collection's ROMs by the declared codes.
+- **A recipe declares** its ROMs' header codes, their size and the data files it reads, in its pack's manifest
+  (§4.2). The app finds a Legacy Collection's ROMs by the declared codes.
 - **It runs in a VM of its own** (§4.4): nettai-luau's sandbox and bytecode check, with the extraction libraries in
   place of the battle's, one budget for the whole run, on the extraction thread, the same on the desktop and in the
   browser. Recipes are the one place Luau holds the original's addresses and numbers: they are the extractor, the
   boundary, and nothing in the battle content can require them nor they it (§2.4).
-- **Fingerprint.** A pack is named by a digest of the pack formats, the app's primitives version and the bytes of
-  every file the recipe can read (§5.2), computed from the bundle without ROMs. A bundle whose recipe or names change
-  gets a new pack; one whose rules alone change keeps its pack; an app update keeps the packs unless it changes the
-  primitives or the formats (today's stamp re-extracts on every app version).
-- **Too old an app** reads the recipe's `primitives` and refuses with a message naming the update, and the index says
-  each bundle's `primitives`, so an app picks the newest bundle it can extract (§5.3). A patch release may add
-  primitives that content then needs.
+- **Fingerprint.** A pack is named by a digest of the pack formats, the engine's line and the bytes of every file the
+  recipe can read (§5.2), computed from the bundle without ROMs. A bundle whose recipe or names change gets a new
+  pack; one whose rules alone change keeps its pack; an app update keeps the packs unless it is of a new line or
+  changes the formats (the stamp before re-extracted on every app version).
+- **Primitives change only with a line** (a minor version), as the simulation does, and a bundle is published for one
+  line: there is no separate primitives version (§5.3).
 - **The content hash is untouched by the move.** It covers the pack's asset index and its sprites' timing and parts,
   not the recipe (§5.5): a bundle with its recipe and a byte-identical pack has the content hash today's content has.
   The primitives whose output reaches it (sprite sheets, the index) are simulation surface: they change only with a
@@ -565,11 +565,11 @@ and parts, the dialogue font's nibbles, the M4A bank, the letters, the encoders.
 0.1 s a game on the desktop and 0.3 s in the browser, under a tenth of an extraction; the verification harness times
 both paths (§6.3). Over it, the fix is a coarser primitive, not a faster binding.
 
-### 3.12 The primitives version
+### 3.12 Primitives and the line
 
-`nettai_extract::PRIMITIVES`, an integer from 1, rises with every app release that adds a primitive, changes what one
-returns, or lets the codec take a field it didn't. A recipe states the version it needs (§4.2). What may change within
-a line is §5.3.
+There is no primitives version. A primitive is added, or what one returns changes, or the codec takes a field it
+didn't, only with a new minor version of the engine (a new line), and a bundle is published for one line, so every
+app that runs a bundle's recipe has the primitives it was written for. The fingerprint digests the line (§5.2).
 
 ## 4. Recipes in a game's repo
 
@@ -577,7 +577,7 @@ a line is §5.3.
 
 ```text
 exe6/
-  manifest.toml        [extract]: the ROMs, the primitives version, the data files read (§4.2)
+  manifest.toml        [extract]: the ROMs, their size, the data files read (§4.2)
   compat/              as now; assets.toml, chips.toml, navis.toml, text.toml are read by the recipe
   extract/
     init.luau          the recipe: the set in, the model out (§3.10)
@@ -610,7 +610,6 @@ In the game's manifest, read without running anything:
 
 ```toml
 [extract]
-primitives = 1
 # The game's ROMs, all of them (a complete Legacy Collection's), in this order: the base version's US ROM, the
 # other's, then their Japanese ones.
 roms = ["BR6E", "BR5E", "BR6J", "BR5J"]
@@ -625,7 +624,6 @@ reads = ["compat/assets.toml", "compat/chips.toml", "compat/navis.toml", "compat
 - **The order** is the one `Game::codes` has now, which exelib's places read an address by (a ROM's `slot`, §3.2).
   Regions and versions aren't declared: a recipe names its ROMs by code (`set.BR5E` is the Gregar US ROM) and holds
   its versions' names (`falzar`, `gregar`) as the constants the pack writes them under.
-- **`primitives`**: the lowest primitives version the recipe runs on (§5.3).
 - **`reads`**: the files outside `extract/` the recipe may read with `data`, in its own pack. Anything else is refused,
   so the fingerprint can't miss an input (§5.2).
 - `PackManifest` (`deny_unknown_fields`) gains `extract: Option<Extract>`; a support pack has none. exelib's
@@ -729,7 +727,7 @@ end
 
 Nothing new in its form: a bundle holds every file its packs' repos track (bundle.rs `pack_files`), so `extract/` and
 `compat/` are in it already. What a game's bundle must have to be extracted is its manifest's `[extract]` and the
-files that names. `bundle::Published` (a release's `bundle.json`, the index's entry) gains `primitives` (§5.3).
+files that names.
 
 ### 5.2 The fingerprint
 
@@ -737,7 +735,7 @@ files that names. `bundle::Published` (a release's `bundle.json`, the index's en
 content-app branch names them), of:
 
 - `pack::FORMATS` (the pack's formats, as now);
-- `PRIMITIVES`, the app's;
+- the engine's line (its major and minor version: the primitives change only with one, §3.12);
 - the game's id and its manifest's `[extract]` table;
 - each recipe input, in path order, its path and its bytes: every file under the game's `extract/`, under each of its
   support packs' (with theirs, `with_depends`), and each file `reads` names.
@@ -750,32 +748,27 @@ before it extracts, and publishing records it (§5.7).
 | a recipe module, a drawing, exelib's `extract/` | yes: a new pack |
 | assets.toml, chips.toml, navis.toml, text.toml | yes (`reads`): names may differ |
 | rules, chips' behavior, locales, look.toml, kinds.toml | no: the pack is kept |
-| the pack formats (`FORMATS`) or the primitives (`PRIMITIVES`) | yes |
-| the app's version alone | no (today's stamp re-extracts on every version) |
+| the pack formats (`FORMATS`) or the engine's line (a minor version) | yes |
+| the app's patch version alone | no (the stamp before re-extracted on every version) |
 
 It over-approximates, on purpose: a recipe comment re-extracts (a second or two, once), and nothing that changes a
 pack's bytes can leave a stale one.
 
-### 5.3 Too old an app
+### 5.3 Primitives and the line
 
-- The recipe's `primitives` above the app's `PRIMITIVES`: the app doesn't extract, and says the content needs a newer
-  nettai (its notice names the two numbers in the log).
-- Each index entry carries the bundle's `primitives` (`bundle::Published::primitives`, from the manifest, written by
-  publishing; required: every bundle of the line is published with its recipe, §7). An app picks the newest bundle of
-  its line it can extract (`Index::newest_for(line, primitives)`), and finds a replay's content among those
-  (`Index::playing` likewise).
-- In the lobby, a peer whose newer revision the other can't extract refuses with that reason, as for content that
-  can't be had (content-deployment.md §5).
-- **Within a line** a patch release may add primitives, and content that needs them is published once that release
-  is out (§8, decision 3). What a primitive returns doesn't change within a line where the content hash looks (a
-  sprite's frames and parts, the asset index): that is a line change, as for the simulation (§5.5).
+What a primitive does, and what the codec takes, is the line's: it changes only with a minor version, where the
+simulation's changes too (§3.12). Bundles are already published for a line (content-deployment.md), and the app
+picks its line's newest bundle and finds a replay's content by its content hash within the line, as before: no
+index entry says more, and no app of a line meets a recipe its primitives can't run. What a primitive returns where
+the content hash looks (a sprite's frames and parts, the asset index) is simulation surface for the same reason
+(§5.5).
 
 ### 5.4 When the app extracts again
 
 The stamp (`stamp.toml` in the pack) becomes the fingerprint alone; the app version leaves it.
 
-- **No pack for the bundle's fingerprint**: a new bundle whose recipe or names changed, a new primitives version, a
-  new pack format. Lazily, when the game first loads (at once in the browser, where the Legacy Collection's files are
+- **No pack for the bundle's fingerprint**: a new bundle whose recipe or names changed, a new line, a new pack
+  format. Lazily, when the game first loads (at once in the browser, where the Legacy Collection's files are
   there only while the page is), as now.
 - **A pack that won't load** (a format refused): as now.
 - **An incomplete Legacy Collection**: nothing is extracted; the player sees why (§5.6). A pack already made stays.
@@ -796,7 +789,7 @@ So, after the change:
   has, and replays and the lobby see no change.
 - **The primitives that feed it are simulation surface**: `sprite.sheet`, `sprite.portrait` and the index's making.
   Their output changes only with a line (minor version), as the simulation's does (docs/design/rollback.md).
-- **Every pack comes from a full set**, so two apps with the same bundle and primitives compute the same hash. (A pack
+- **Every pack comes from a full set**, so two apps of a line with the same bundle compute the same hash. (A pack
   of fewer ROMs indexed fewer unnamed sprites and timed its placeholder sprites otherwise; no such pack is made now.)
 
 ### 5.6 Finding the ROMs
@@ -817,8 +810,8 @@ opens its `exe?*.dat` archives and reads each `.srl` entry's header. What change
 `nettai-content publish` hashes the bundle with a pack (step 4, content-deployment.md §4), today `--packs DIR`,
 `data/<game>` by default, unchecked against the bundle. It extracts the pack instead, from the bundle it publishes and
 the publisher's Legacy Collection (`--collection DIR`, Steam's install by default; §8, decision 4): the hash is then
-always the recipe's. It records `primitives` in `bundle.json`, and refuses a bundle whose recipe fails or whose pack's
-fingerprint isn't the one the bundle names.
+always the recipe's. It refuses a bundle whose recipe fails or whose pack's fingerprint isn't the one the bundle
+names.
 
 ## 6. Verification
 
@@ -924,8 +917,8 @@ About 1,300 lines of Rust in all.
 | 2 | EXE6's recipe, its manifest's `[extract]`; the harness equal; then `src/exe6/` deleted | Luau +1,050; Rust −1,500. Done: Luau +1,180, Rust −1,470 |
 | 3 | EXE5's, likewise | Luau +1,000; Rust −1,500. Done: Luau +1,340, Rust −1,640 |
 | 4 | EXE4's, with `cards.luau` | Luau +1,000; Rust −1,450. Done: Luau +1,410 (84 lines of them the cards' hex), Rust −1,490 |
-| 5 | The rest of the Rust recipe path: `Game` and `codes`, the compat dependencies, `asset_names`, the old fingerprint, rom.rs's source choice and `Place`, decode.rs's moved parts, placeholders.rs whole, lib.rs's partial-set handling; `bnlc` by declarations and its incomplete-collection error (+40, its words in four locales); the stamp without the app version; the catalog by primitives; the CLI by content directory; the README | Rust −1,000, +80 |
-| 6 | The verification workspace (§6.6) | about 150 lines of Python and shell changed, two tools retired |
+| 5 | The rest of the Rust recipe path: `Game` and `codes`, the compat dependencies, `asset_names`, the old fingerprint, rom.rs's source choice and `Place`, decode.rs's moved parts, placeholders.rs whole, lib.rs's partial-set handling; `bnlc` by declarations and its incomplete-collection error (+40, its words in four locales); the stamp without the app version; the catalog by primitives; the CLI by content directory; the README | Rust −1,000, +80. Done: Rust −1,660, +720 (the extractor −1,460, +440; the app +260, −170); no primitives version (§9) |
+| 6 | The verification workspace (§6.6) | about 150 lines of Python and shell changed, two tools retired. Done: about 440 lines added and 640 removed in 30 files, census.py and checkerboards.py retired |
 | 7 | Each game published for the line (below) | three releases |
 
 **The compat crates** stay: the app's save import, the trace tools and gen-content use them. What only the extractor
@@ -934,8 +927,8 @@ if nothing else needs them.
 
 **Publishing.** Every 0.11 content release (EXE4's r1 and r2, EXE5's r1, EXE6's r1) has been deleted, tags too, and
 the sites serve empty indexes. No released app has downloaded content, and none will until step 7. Step 7 publishes
-r1 of each game for the line from the commits with the recipes, with `primitives` in each entry; the app release that
-first downloads content ships those (`release.yml`).
+r1 of each game for the line from the commits with the recipes; the app release that first downloads content ships
+those (`release.yml`).
 
 ## 8. Decisions
 
@@ -947,9 +940,9 @@ The questions this design left open, with the answers (2026-10-26).
 2. **The code and the drawings the games share live in exelib's `extract/`** (§4.1): about 500 lines and 33 drawings
    the three games use alike (EXE4's and EXE5's banners' bars are EXE6's drawings), as makers that take a game's
    values. An exelib change re-extracts every game (its `extract/` is in each one's fingerprint).
-3. **A patch release may add primitives that content then needs** (§5.3). Content that needs them is published only
-   after that release is out, and an older app of the line stays on the revisions it can extract. What a primitive
-   returns where the content hash looks changes only with a line.
+3. **Primitives change only with a minor version; there is no separate primitives version** (§3.12, §5.3). A bundle
+   is published for one line, and every app of the line runs its recipe; the fingerprint digests the line. (Decided
+   first as a primitives version a patch release could raise; revised the same day, §9 step 5.)
 4. **Publishing extracts the pack it hashes with** (§5.7), from the bundle's own recipe and the publisher's Legacy
    Collection, never a pack left in `data/<game>`.
 5. **Only a complete Legacy Collection install is supported**, every ROM of the game (both versions, US and
@@ -994,8 +987,8 @@ with changes. The baseline of fac5b936a: EXE4 3,076 files, EXE5 3,040, EXE6 3,41
   fifth column on the recipe path; the Rust path's lines keep four. One recording runs at a time.
 - *The check* (§3.10, step 1) says `exe6: sprite/megaman is named in the asset names and no ROM gave it`, and
   `the recipe gave no field`.
-- *The fingerprint* digests each part length-prefixed (the formats' `Debug` text, `PRIMITIVES`, the game, the
-  declaration's fields, then each input's path and bytes), hidden files left out of the inputs.
+- *The fingerprint* digests each part length-prefixed (the formats' `Debug` text, the engine's line since step 5,
+  the game, the declaration's fields, then each input's path and bytes), hidden files left out of the inputs.
 - *Declarations.* extract.d.luau declares the model's types too, every field optional (the codec defaults what is
   left out), so a recipe's misspelled field is a type error before it is a run-time one; exelib's makers' types
   are `exelib/extract/types.d.luau`. `packs::declarations` leaves out `nettai/extract.d.luau` and every `.d.luau`
@@ -1106,3 +1099,66 @@ icons, its souls' faces); B4WJ for the Japanese words. In a release build the re
   step 2's note (five: in zh-Hans the Display font without a character of three pictures' words, and in both OK's
   picture with five lines of letters for four of words). EXE5's Rust and EXE6's recipe still make the baseline's
   packs.
+
+**Step 5.** The Rust recipe path is gone; every game is extracted by its recipe alone, and each pack is the
+baseline's byte for byte (the harness, now the recipes against the baseline only: §6.5).
+
+- *Removed:* lib.rs's `Game` (`ALL`, `named`, `id`, `codes`), `Compat`, `Tables` (with `names`, `panel_names`,
+  `read_by_number`), the old fingerprint, `extract_inner`, `extract_in_rust*`, `has_rust_extraction`, `JAPANESE`
+  and the free `extract`, `extract_reporting`, `extract_recording_reads` and `fingerprint` (the `Recipe` methods
+  are the API), `Extraction`'s `missing_roms` and `placeholders`; rom.rs's `Place`, `Source`, `Version`, `Roms`
+  and `Rom::is_present`; decode.rs but the GFX animation lists, which are gfx.rs; placeholders.rs whole; the
+  compat crates as the extractor's dependencies, and compat's `sprite_names` and `background_names`, which only
+  the Rust extraction called. In all, Rust −1,660 and +720: the extractor −1,460 and +440 (its tests −160, +110),
+  the app +260 and −170.
+- *The API.* `Recipe` is the entry (`of_content`, `roms`, `rom_set`, `extract`, `extract_reporting`,
+  `extract_recording_reads`, `fingerprint`, `drawings`). A `RomSet` is made by `Recipe::rom_set` and refuses a code
+  the recipe doesn't declare, a size other than the declared one, and a duplicate; `Recipe::extract` refuses a set
+  short of a ROM. `header_code` (the four letters and digits at 0xAC, from the first `HEADER_LEN` bytes) took
+  `recognize`'s place: which game a code is of is the declarations' to say.
+- *No primitives version* (§8, decision 3, revised): primitives change only with a minor version, and a bundle is
+  published for one line, so `[extract]`'s `primitives`, `PRIMITIVES` and the refusal of a recipe that needs newer
+  ones went (the three games' manifests with them), and nothing filters the catalog or an index by primitives. The
+  fingerprint digests the engine's line in their place: nettai-extract takes the workspace's version, so a minor
+  bump changes every fingerprint and a patch release none.
+- *The CLI* is `nettai-extract <game> <pack-dir> ROM... [--reads FILE] [--check]`: `<game>` is a game's pack folder
+  (content/exe6), or an unpacked bundle whose one game pack declares a recipe; `--content` became `--check` (the
+  battle definitions of the content the game is in, loaded against the pack).
+- *The app.* `bnlc` knows no game: `Install::roms(codes)` gives a recipe's ROMs in its order, or the codes no
+  archive has, and `bnlc::Rom.code` is a `String`. A game's own pack is its content's recipe's
+  (`packs/<game>-<fingerprint>`); a recipe that declares a ROM a game listed before it declares is refused (two
+  games can't have one ROM). A collection found or chosen that lacks some of a wanted game's ROMs makes it no
+  extractable game: the log names the codes, and the player sees `UserError::IncompleteCollection` ("The Legacy
+  Collection's files are incomplete: some of BN6's are missing. Have Steam verify the collection's files, then
+  choose its folder again.", in English, Japanese, Simplified and Traditional Chinese), a dialog with CHOOSE FOLDER
+  where a game can be played, else the loading screen's line with the same button, on the desktop and in the
+  browser alike. The stamp is `fingerprint = "..."` alone. The catalog's games are all the catalog's (its
+  `Game::named` filter went), the app picking its line's newest bundle of each as before. The save import's compat
+  tables are the app's own (`builds::import::Compat`, read by the compat crates' `of_content`), no longer the
+  extractor's.
+- *The checks the compat crates made* stay the recipes' with the crates' wording, now that no compat crate reads the
+  tables on the way: a duplicate chip number says `chips.toml: hicannon and cannon are both chip 0x001` in EXE4 as
+  exe4-compat did, the later key first.
+- *exelib* took what EXE4's and EXE5's recipes had twice: `buttons.corners` (the cursor's corner tables, with the
+  signed byte), `glyphs.chars` (a font's glyphs past the encoding's characters by their number in brackets), and a
+  formatter for `names.unique`, by which EXE4 and EXE5 keep their compat crates' wording. EXE5's `same_list` and
+  `same_background` stay EXE5's: no other game compares backgrounds. colors.luau's header says where each game
+  drops bit 15 (§3.4). Every game's depends.lock follows exelib.
+- *Checked:* the harness on the three games (EXE4 3,076 files, EXE5 3,040, EXE6 3,413: the baseline's, and its
+  reads); the full-set content audit's asset lookups; the workspace's type check with no warning; the touched
+  crates' tests; the content check; a wasm32 type check of nettai-web.
+
+**Step 6.** The verification workspace reads the recipes (§6.6):
+
+- tools/cross-rom: `sweep.py READS FROM TO --recipe <pack>` takes the ROM order from the manifest's `[extract] roms`
+  and the places from `extract/*.luau` and exelib's (`pointer`, `pointer_in_each`, `stated`), lists each range that
+  differs under its place with the recipe lines that read it (the reads log's fifth column), and works from a full
+  set's reads (each ROM read where the recipe chose it); `words.py` lists, for a recipe file, each place's block in
+  the four ROMs and the words that point at it. census.py and checkerboards.py are retired with the placeholders.
+- tools/shapes/redraw writes the drawings into the packs' `extract/shapes/` (a `.same` link's target where there is
+  one); tools/extract-baseline.sh and the briefs' pack commands use the CLI's new form.
+- The comments that pointed at the Rust point at the recipes (the two gen_content.py's mugshot numbering, gen_rules'
+  `FAMILY_BYTES`, tools/jp); EXE5's generated content followed (comments only; EXE4's already pointed at its
+  recipe). tools/content/index.py, which writes the manifests, kept no `[extract]`: it keeps a manifest's tables now.
+- gen_content's checks pass: EXE4's and EXE5's against the ROMs, EXE5's auto battle data and rules, EXE6's
+  gen-content.
