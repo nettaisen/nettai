@@ -36,19 +36,6 @@ use swash::{CacheKey, FontRef, GlyphId};
 /// units an em, 100 a pixel), so at this size a glyph's pixels are whole.
 const SIZE: f32 = 12.0;
 
-/// Fusion Pixel 12px, Simplified then Traditional: the chatbox's.
-const TEXT: [&[u8]; 2] = [
-    include_bytes!("../fonts/fusion-pixel/fusion-pixel-12px-monospaced-zh_hans.otf"),
-    include_bytes!("../fonts/fusion-pixel/fusion-pixel-12px-monospaced-zh_tw.otf"),
-];
-
-/// Fusion Pixel Bold 12px, Simplified then Traditional: the 8x16 font's
-/// strings'.
-const CELLS: [&[u8]; 2] = [
-    include_bytes!("../fonts/fusion-bold-pixel/fusion-bold-pixel-12px-monospaced-zh_hans.otf"),
-    include_bytes!("../fonts/fusion-bold-pixel/fusion-bold-pixel-12px-monospaced-zh_tw.otf"),
-];
-
 /// Where a glyph's shadow falls from each of its pixels: right, below, and
 /// both (the 8x16 font's own shadow).
 const SHADOW: [(i32, i32); 3] = [(1, 0), (0, 1), (1, 1)];
@@ -143,16 +130,18 @@ pub struct PixelText {
 impl PixelText {
     /// The fonts in `cut`'s forms (the language shown's: [`Cut::of`]); none
     /// in the Japanese cut's, English's and Japanese's, which every pack
-    /// spells in its own fonts.
+    /// spells in its own fonts. Fusion Pixel 12px draws the chatbox's
+    /// strings, its bold build the 8x16 font's ([`crate::bundled`] holds
+    /// both).
     pub fn new(cut: Cut) -> Option<PixelText> {
-        let k = match cut {
+        let traditional = match cut {
             Cut::Japanese => return None,
-            Cut::Simplified => 0,
-            Cut::Traditional => 1,
+            Cut::Simplified => false,
+            Cut::Traditional => true,
         };
         let mut scaler = ScaleContext::new();
-        let text = Face::new(TEXT[k], &mut scaler);
-        let cells = Face::new(CELLS[k], &mut scaler);
+        let text = Face::new(crate::bundled::fusion_pixel(false, traditional), &mut scaler);
+        let cells = Face::new(crate::bundled::fusion_pixel(true, traditional), &mut scaler);
         Some(PixelText { text, cells, scaler, glyphs: HashMap::new(), own: Own::default() })
     }
 

@@ -14,6 +14,9 @@ hanzi (the release's Japanese cut isn't bundled: every pack spells English and J
 - `fusion-pixel-12px-monospaced-zh_hans.otf`: Simplified Chinese (zh-Hans).
 - `fusion-pixel-12px-monospaced-zh_tw.otf`: Traditional Chinese (zh-Hant, Taiwan's forms).
 
+The program holds both builds' files packed, all four in one zstd frame, and unpacks them the first time the
+original mode draws Chinese (`bundled`, the crate's build.rs).
+
 License: SIL Open Font License 1.1 (OFL.txt). The files are the release's, unchanged. Its author made Fusion
 Pixel as the stand-in for Ark Pixel while Ark (hand-drawn) still lacks many characters: Ark Pixel's glyphs, the rest
 taken from two other open pixel fonts, Cubic 11 and Galmuri ("stitched", 缝合, in its name). Their authors'

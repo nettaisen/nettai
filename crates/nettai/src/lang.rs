@@ -131,7 +131,9 @@ pub fn display_face(code: &str) -> &'static str {
 
 /// Give the UI the bundled Noto Sans CJK, the battle's text font (nettai-render's `vfont`: one copy of its three
 /// variable files in the program), by its cuts' families ("Noto Sans JP", "Noto Sans SC", "Noto Sans TC": the theme's
-/// `body-face`), and as every face's fallback for hanzi and kana. Before the first window: the theme names them.
+/// `body-face`), and as every face's fallback for hanzi and kana; and M PLUS 1 Code, the theme's `mono`. The program
+/// holds their files packed, and this unpacks them (nettai-render's `bundled`). Before the first window: the theme
+/// names them.
 pub fn register_fonts() {
     use slint::fontique_011::fontique;
     use nettai_render::vfont::Cut;
@@ -144,6 +146,7 @@ pub fn register_fonts() {
     for script in ["Hani", "Hira", "Kana"] {
         collection.append_fallbacks(fontique::FallbackKey::new(fontique::Script::from_str_unchecked(script), None), families.iter().copied());
     }
+    collection.register_fonts(fontique::Blob::new(std::sync::Arc::new(nettai_render::bundled::m_plus_1_code())), None);
 }
 
 /// The language's own name.

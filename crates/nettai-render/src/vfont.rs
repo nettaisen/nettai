@@ -61,13 +61,11 @@ impl Cut {
         }
     }
 
-    /// The font file (Google Fonts' variable cut, weights 100 to 900: fonts/noto-sans-cjk).
+    /// The font file (Google Fonts' variable cut, weights 100 to 900: fonts/noto-sans-cjk), for a host that
+    /// draws with it otherwise too: the program holds it packed, and unpacks it the first time it is wanted
+    /// ([`crate::bundled`]).
     pub fn data(self) -> &'static [u8] {
-        match self {
-            Cut::Japanese => JAPANESE,
-            Cut::Simplified => SIMPLIFIED,
-            Cut::Traditional => TRADITIONAL,
-        }
+        crate::bundled::noto_sans_cjk(self)
     }
 
     /// Its family's name.
@@ -79,12 +77,6 @@ impl Cut {
         }
     }
 }
-
-/// The bundled font's cuts' files ([`Cut::data`]), for a host that draws
-/// with them otherwise.
-pub const JAPANESE: &[u8] = include_bytes!("../fonts/noto-sans-cjk/NotoSansJP[wght].ttf");
-pub const SIMPLIFIED: &[u8] = include_bytes!("../fonts/noto-sans-cjk/NotoSansSC[wght].ttf");
-pub const TRADITIONAL: &[u8] = include_bytes!("../fonts/noto-sans-cjk/NotoSansTC[wght].ttf");
 
 /// A cut of the bundled font, parsed once.
 pub fn bundled_font(cut: Cut) -> &'static std::sync::Arc<VectorFont> {
