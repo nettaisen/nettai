@@ -749,6 +749,9 @@ fn main() {
     let mut log = |s: &str| eprintln!("{s}");
     // (Headless rendering plays no sound.)
     let mut player = Player::with(renderer, text, None, first);
+    // (The other games' backgrounds the rounds are drawn on, extracted before the first frame.)
+    let backgrounds = nettai_render::graphics::set_backgrounds(&player.battle().setup);
+    player.renderer().graphics().wait_backgrounds(&content, backgrounds);
     if let Some(r) = recording {
         player.record(r).unwrap_or_else(|e| fail(e));
     }

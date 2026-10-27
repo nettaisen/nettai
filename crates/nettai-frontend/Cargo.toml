@@ -34,6 +34,8 @@ m4a.workspace = true
 # reveals, so neither picks its half of the seed or its side after seeing
 # the other's.
 sha2 = "0.10"
+# What the background pool's extraction of another game couldn't do: the host's log.
+log = "0.4"
 
 [features]
 # What tests of a set played back are made from (`testing`), for the tests

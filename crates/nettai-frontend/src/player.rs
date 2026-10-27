@@ -471,6 +471,8 @@ impl Player {
         for (now, then) in setup.later_stages.iter_mut().zip(&first.later_stages) {
             now.background = then.background;
         }
+        // (Another game's background is drawn once extracted: until then, the stage's own.)
+        self.renderer.graphics().want_backgrounds(set.content(), nettai_render::graphics::set_backgrounds(set.first()));
         live.play_set(set);
         true
     }

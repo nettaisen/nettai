@@ -13,36 +13,136 @@ use nettai_battle::content::{AssetNumbers, BackgroundId, BannerId, Content, Mugs
 use nettai_battle::setup::BattleSettings;
 use nettai_content_api::AssetKind;
 use std::collections::BTreeMap;
-use std::sync::Arc;
+use std::sync::{Arc, Condvar, Mutex, OnceLock};
 
-/// Other games' backgrounds, each extracted from its own game's ROMs, by its
-/// game and its name there: what a round drawn on one of the background
-/// pool's others draws (`Content::other_background`). A host has those of
-/// the games whose ROMs it has (nettai-frontend's `Game::graphics`); one it
-/// hasn't isn't here, and the round is drawn on its stage's own
-/// ([`Graphics::round_background`]).
-#[derive(Clone, Debug, Default)]
-pub struct OtherBackgrounds(BTreeMap<String, BTreeMap<String, Background>>);
+/// What makes one game's backgrounds, by name: the host's extraction of
+/// that game's ROMs ([`OtherGame::new`]).
+pub type Extract = Box<dyn FnOnce() -> Result<BTreeMap<String, Background>, String> + Send>;
 
-impl OtherBackgrounds {
-    /// Game `game`'s backgrounds, each by its name there.
-    pub fn insert(&mut self, game: &str, backgrounds: BTreeMap<String, Background>) {
-        self.0.entry(game.to_string()).or_default().extend(backgrounds);
+/// One other game's backgrounds, by name: extracted from that game's ROMs
+/// the first time they are wanted ([`OtherGame::want`]), on a thread of
+/// their own, once; none until then. A host keeps them for its run and
+/// shares them between the games it loads, so a game is extracted once.
+pub struct OtherGame {
+    /// The extraction, until it is started.
+    extract: Mutex<Option<Extract>>,
+    /// Its backgrounds once extracted, or why they couldn't be.
+    got: OnceLock<Result<BTreeMap<String, Background>, String>>,
+    /// Told when `got` is set.
+    done: (Mutex<()>, Condvar),
+}
+
+impl OtherGame {
+    /// A game's backgrounds, to be extracted by `extract` when first wanted.
+    pub fn new(extract: Extract) -> Arc<OtherGame> {
+        Arc::new(OtherGame { extract: Mutex::new(Some(extract)), got: OnceLock::new(), done: Default::default() })
     }
 
-    /// Game `game`'s background `name`, if it is here.
+    /// A game's backgrounds, extracted already.
+    pub fn extracted(backgrounds: BTreeMap<String, Background>) -> Arc<OtherGame> {
+        let other = OtherGame { extract: Mutex::new(None), got: OnceLock::new(), done: Default::default() };
+        let _ = other.got.set(Ok(backgrounds));
+        Arc::new(other)
+    }
+
+    /// Its backgrounds, extracted already (the game's own extraction, which
+    /// a host has as it loads the game): taken in place of extracting them,
+    /// unless they are being extracted now.
+    pub fn provide(&self, backgrounds: BTreeMap<String, Background>) {
+        let Ok(mut extract) = nettai_platform::thread::lock(&self.extract) else { return };
+        if extract.take().is_some() {
+            self.set(Ok(backgrounds));
+        }
+    }
+
+    /// Start extracting its backgrounds, on a thread of their own, unless
+    /// they are extracted or being extracted.
+    pub fn want(self: &Arc<Self>) {
+        let Some(extract) = nettai_platform::thread::lock(&self.extract).ok().and_then(|mut e| e.take()) else { return };
+        let other = self.clone();
+        if let Err(e) = nettai_platform::thread::spawn("other backgrounds", move || other.set(extract())) {
+            self.set(Err(format!("can't start a thread to extract them: {e}")));
+        }
+    }
+
+    fn set(&self, got: Result<BTreeMap<String, Background>, String>) {
+        let _ = self.got.set(got);
+        let _lock = nettai_platform::thread::lock(&self.done.0);
+        self.done.1.notify_all();
+    }
+
+    /// Whether its backgrounds are extracted, or couldn't be.
+    pub fn ready(&self) -> bool {
+        self.got.get().is_some()
+    }
+
+    /// Wait until [`OtherGame::ready`], having wanted them. Never on a
+    /// page's main thread, which may not wait: a host there asks `ready`
+    /// between its frames.
+    pub fn wait(self: &Arc<Self>) {
+        self.want();
+        if self.ready() {
+            return;
+        }
+        let Ok(mut lock) = self.done.0.lock() else { return };
+        while !self.ready() {
+            lock = match self.done.1.wait(lock) {
+                Ok(l) => l,
+                Err(_) => return,
+            };
+        }
+    }
+
+    /// Why its backgrounds couldn't be extracted, once that is known.
+    pub fn failure(&self) -> Option<&str> {
+        self.got.get()?.as_ref().err().map(String::as_str)
+    }
+
+    /// Background `name`, once extracted.
+    pub fn get(&self, name: &str) -> Option<&Background> {
+        self.got.get()?.as_ref().ok()?.get(name)
+    }
+}
+
+/// Other games' backgrounds, by game: what a round drawn on one of the
+/// background pool's others draws (`Content::other_background`), each game's
+/// extracted from its own ROMs when first wanted ([`OtherGame`]). A host has
+/// those of the games whose ROMs it has (nettai-frontend's `Game::graphics`);
+/// a background of a game it hasn't, or not extracted (yet), isn't here, and
+/// a round on it is drawn on its stage's own ([`Graphics::round_background`]).
+#[derive(Clone, Default)]
+pub struct OtherBackgrounds(BTreeMap<String, Arc<OtherGame>>);
+
+impl OtherBackgrounds {
+    /// Game `game`'s backgrounds.
+    pub fn insert(&mut self, game: &str, other: Arc<OtherGame>) {
+        self.0.insert(game.to_string(), other);
+    }
+
+    /// Game `game`'s background `name`, if it is here and extracted.
     pub fn get(&self, game: &str, name: &str) -> Option<&Background> {
         self.0.get(game)?.get(name)
     }
 
-    /// How many there are, of every game.
-    pub fn len(&self) -> usize {
-        self.0.values().map(BTreeMap::len).sum()
+    /// Game `game`'s backgrounds, if it is here.
+    pub fn game(&self, game: &str) -> Option<&Arc<OtherGame>> {
+        self.0.get(game)
     }
+}
 
-    pub fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
+/// The other games' backgrounds among `ids`, backgrounds of content `c`: each
+/// game once.
+fn other_games<'c>(c: &'c Content, ids: impl IntoIterator<Item = BackgroundId>) -> Vec<&'c str> {
+    let mut games: Vec<&str> = ids.into_iter().filter(|&id| !c.is_own_background(id)).filter_map(|id| Some(c.background_of(id)?.0)).collect();
+    games.sort_unstable();
+    games.dedup();
+    games
+}
+
+/// The backgrounds a set of rounds starting with `first` is drawn on: its
+/// first round's and each one's after it (`RoundSetup::later_stages`).
+pub fn set_backgrounds(first: &nettai_battle::setup::RoundSetup) -> Vec<BackgroundId> {
+    std::iter::once(first.settings.background).chain(first.later_stages.iter().map(|s| s.background)).collect()
 }
 
 /// A game's graphics, held: shared, with the other games' backgrounds beside
@@ -90,6 +190,35 @@ impl GameGraphics {
     /// The game's numbers for the content's assets.
     pub fn numbers(&self) -> &Arc<AssetNumbers> {
         &self.numbers
+    }
+
+    /// The other games' backgrounds beside these graphics.
+    pub fn others(&self) -> &Arc<OtherBackgrounds> {
+        &self.others
+    }
+
+    /// Start extracting the other games' backgrounds among `ids` (backgrounds
+    /// of content `c`), each game on a thread of its own ([`OtherGame::want`]).
+    pub fn want_backgrounds(&self, c: &Content, ids: impl IntoIterator<Item = BackgroundId>) {
+        for game in other_games(c, ids) {
+            self.others.game(game).inspect(|o| o.want());
+        }
+    }
+
+    /// Whether the other games' backgrounds among `ids` are extracted (or
+    /// couldn't be, or their games aren't here): a round drawn on one draws
+    /// what it will draw from now on.
+    pub fn backgrounds_ready(&self, c: &Content, ids: impl IntoIterator<Item = BackgroundId>) -> bool {
+        other_games(c, ids).into_iter().all(|game| self.others.game(game).is_none_or(|o| o.ready()))
+    }
+
+    /// Extract the other games' backgrounds among `ids` and wait for them
+    /// ([`OtherGame::wait`]: never on a page's main thread).
+    pub fn wait_backgrounds(&self, c: &Content, ids: impl IntoIterator<Item = BackgroundId> + Clone) {
+        self.want_backgrounds(c, ids.clone());
+        for game in other_games(c, ids) {
+            self.others.game(game).inspect(|o| o.wait());
+        }
     }
 
     /// What a frame draws from.
@@ -286,7 +415,7 @@ mod tests {
         a.backgrounds = vec![None; number + 1];
         a.backgrounds[number] = Some(picture(7));
         let mut others = OtherBackgrounds::default();
-        others.insert("zzz", [("far-area".to_string(), picture(9))].into());
+        others.insert("zzz", OtherGame::extracted([("far-area".to_string(), picture(9))].into()));
         let graphics = Graphics::of(&a).with_others(&others).with_numbers(&assets);
         assert_eq!(graphics.background(&c, own).map(|b| b.first_tile), Some(7), "the game's own");
         assert_eq!(graphics.background(&c, far).map(|b| b.first_tile), Some(9), "another game's, from its own");
@@ -297,5 +426,47 @@ mod tests {
         assert_eq!(graphics.round_background(&c, &settings(own)), own);
         assert_eq!(name(&c, AssetKind::Background, far.0), Some("zzz:far-area"));
         assert_eq!(Graphics::of(&a).round_background(&c, &settings(far)), own, "no other game's here");
+    }
+
+    /// Another game's backgrounds are extracted the first time they are wanted, on a thread of their own, and
+    /// once: wanted again, or by other graphics that share them, nothing is extracted again. Until then none is
+    /// drawn (a round on one, its stage's own); a game's own given in their place is never extracted; a failure is
+    /// ready too, and says why.
+    #[test]
+    fn another_games_backgrounds_are_extracted_once_when_wanted() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let mut c = content();
+        let stage = c.stage_by_key(testing::LINK_BATTLE);
+        let own = c.stage(stage).background;
+        c.background_pool = nettai_battle::content::BackgroundPool::new([("zzz".to_string(), "far-area".to_string())]);
+        let far = c.background_handle("zzz", "far-area").unwrap();
+        let made = Arc::new(AtomicUsize::new(0));
+        let counted = made.clone();
+        let other = OtherGame::new(Box::new(move || {
+            counted.fetch_add(1, Ordering::SeqCst);
+            std::thread::sleep(std::time::Duration::from_millis(20));
+            Ok([("far-area".to_string(), Background { first_tile: 9, ..Background::default() })].into())
+        }));
+        let mut others = OtherBackgrounds::default();
+        others.insert("zzz", other.clone());
+        let held = GameGraphics::new(Arc::new(bundle(1, "none"))).with_others(Arc::new(others)).with_numbers(Arc::new(testing::asset_numbers(&c)));
+        let shared = held.clone();
+        let settings = BattleSettings { stage, background: far, effects: 0 };
+        assert!(!held.backgrounds_ready(&c, [far]) && held.backgrounds_ready(&c, [own]), "not wanted yet; the game's own needs none");
+        assert_eq!(held.view().round_background(&c, &settings), own, "not extracted: the stage's own");
+        held.want_backgrounds(&c, [far]);
+        shared.wait_backgrounds(&c, [far, own]);
+        assert!(held.backgrounds_ready(&c, [far]));
+        assert_eq!(held.view().background(&c, far).map(|b| b.first_tile), Some(9));
+        assert_eq!(held.view().round_background(&c, &settings), far);
+        held.wait_backgrounds(&c, [far]);
+        assert_eq!(made.load(Ordering::SeqCst), 1, "extracted once");
+        let given = OtherGame::new(Box::new(|| panic!("a game's own backgrounds given aren't extracted")));
+        given.provide(BTreeMap::new());
+        given.wait();
+        assert!(given.ready() && given.failure().is_none());
+        let failed = OtherGame::new(Box::new(|| Err("no ROMs".to_string())));
+        failed.wait();
+        assert_eq!(failed.failure(), Some("no ROMs"));
     }
 }

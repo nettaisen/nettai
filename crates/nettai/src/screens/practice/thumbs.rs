@@ -183,8 +183,10 @@ fn background_key(content: &Content, game: &str, written: &str) -> BackgroundKey
 /// they need no runtime), then its arenas, each a round of its own.
 fn make(content: &Arc<Content>, graphics: &Graphics, game: &str, places: &Places, wanted: &[(usize, BackgroundKey)], send: &Sender<Made>) {
     let held = graphics.game_graphics();
-    for (at, key) in wanted {
-        let id = nettai_match::ids::background(content, game, &places.backgrounds[*at]);
+    let ids: Vec<_> = wanted.iter().map(|(at, _)| nettai_match::ids::background(content, game, &places.backgrounds[*at])).collect();
+    // (Another game's backgrounds extracted now, here and not on the window's thread: each game's once a run.)
+    held.wait_backgrounds(content, ids.iter().flatten().copied());
+    for ((_, key), id) in wanted.iter().zip(ids) {
         let Some(rgb) = id.and_then(|id| nettai_render::still::background(&held, content, id, WIDTH, TOP + HEIGHT)) else { continue };
         let argb: Vec<u32> = rgb.into_iter().map(|c| 0xFF00_0000 | c).collect();
         if send.send(Made::Background(key.clone(), crop(&argb, TOP))).is_err() {

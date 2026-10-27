@@ -25,7 +25,7 @@ use nettai_content_api::AssetIndex;
 pub use nettai_extract::RomSource;
 use nettai_extract::{Extraction, Recipe};
 use nettai_render::Renderer;
-use nettai_render::graphics::{GameGraphics, OtherBackgrounds};
+use nettai_render::graphics::{GameGraphics, OtherBackgrounds, OtherGame};
 pub use nettai_render::textlayer::GraphicsMode;
 pub use nettai_render::vfont::VectorFont;
 use std::collections::BTreeMap;
@@ -91,8 +91,8 @@ pub struct Game {
     pub index: Arc<AssetIndex>,
     /// The background pool's backgrounds past the game's own asset table
     /// (docs/app.md §1, "The battle's background": `Content::background_pool`):
-    /// other games', each extracted from its own game's ROMs, and the game's
-    /// own its modules don't name.
+    /// the game's own, extracted with it, and each other game's, extracted
+    /// from its own ROMs the first time one of them is wanted ([`others`]).
     pub others: Arc<OtherBackgrounds>,
     /// Where the content times its sprites otherwise than the ROMs
     /// (`nettai_extract::Extraction::timing_differences`), each named:
@@ -143,37 +143,45 @@ fn load_content(content: Option<&Path>, name: &str, pool: &[(String, PathBuf)]) 
     Ok(ContentLoaded { name: name.to_string(), content: c, dir, pool, report })
 }
 
-/// Run `f` over `items` on a thread each, keeping order (in the browser, where a thread is a Web Worker started
-/// from the event loop, one after the other on this one).
-fn on_threads<T: Sync, R: Send>(items: &[T], f: impl Fn(&T) -> R + Sync) -> Vec<R> {
-    if cfg!(target_arch = "wasm32") || items.len() < 2 {
-        return items.iter().map(f).collect();
-    }
-    std::thread::scope(|s| {
-        let handles: Vec<_> = items.iter().map(|item| s.spawn(|| f(item))).collect();
-        handles.into_iter().map(|h| h.join().expect("an extracting thread panicked")).collect()
-    })
+/// Other games' backgrounds as this run has them, by game, the content directory its recipe is read from and the
+/// ROMs (as they say themselves): each game's extracted once a run, the first time a game loaded wants one
+/// ([`others`]).
+type OtherGames = BTreeMap<(String, PathBuf, String), Arc<OtherGame>>;
+static OTHER_GAMES: std::sync::LazyLock<std::sync::Mutex<OtherGames>> = std::sync::LazyLock::new(Default::default);
+
+/// Game `game`'s backgrounds, its recipe read from content directory `dir`, its ROMs `roms`'s: this run's, else
+/// to be extracted when first wanted (and kept for the run).
+pub fn others(game: &str, dir: &Path, roms: &RomSource) -> Arc<OtherGame> {
+    let key = (game.to_string(), dir.to_path_buf(), format!("{roms:?}"));
+    let mut games = nettai_platform::thread::lock(&OTHER_GAMES).unwrap_or_else(|poisoned| poisoned.into_inner());
+    let (game, dir, roms) = (game.to_string(), dir.to_path_buf(), roms.clone());
+    games
+        .entry(key)
+        .or_insert_with(|| {
+            OtherGame::new(Box::new(move || {
+                let extracted = Recipe::of_content(&dir, &game).and_then(|recipe| recipe.extract(&roms.read(&recipe)?));
+                extracted.map(|e| backgrounds_of(&e)).map_err(|e| {
+                    log::warn!("the background pool's {game} backgrounds aren't drawn: {e}");
+                    e.to_string()
+                })
+            }))
+        })
+        .clone()
+}
+
+/// Every background extracted, by its name in the assets' index.
+fn backgrounds_of(e: &Extraction) -> BTreeMap<String, Background> {
+    e.index.backgrounds.iter().filter_map(|(name, &n)| Some((name.clone(), e.graphics.background(n)?.clone()))).collect()
 }
 
 impl ContentLoaded {
-    /// The game, its assets extracted from `roms`: the game's own, checked against its content, and the background
-    /// pool's other games' (on threads of their own), of which only the backgrounds the pool names are kept.
+    /// The game, its assets extracted from `roms` and checked against its content; the background pool's other
+    /// games' to be extracted when first wanted ([`others`]).
     fn extract(self, roms: &RomSource) -> Result<Game, LoadError> {
         let ContentLoaded { name, content, dir, pool, mut report } = self;
         let failed = |report: Report| LoadError { what: Failed::Assets { game: name.clone() }, report };
-        // (The game's own recipe from its content directory; each other game of the pool's from its own.)
-        let mut jobs: Vec<(String, PathBuf)> = vec![(name.clone(), dir.clone())];
-        for (game, from) in &pool {
-            if *game != name && content.background_pool.iter().any(|(g, _)| g == game) && !jobs.iter().any(|(g, _)| g == game) {
-                jobs.push((game.clone(), from.clone()));
-            }
-        }
-        let extract = |(game, from): &(String, PathBuf)| -> Result<Extraction, nettai_extract::Error> {
-            let recipe = Recipe::of_content(from, game)?;
-            recipe.extract(&roms.read(&recipe)?)
-        };
-        let mut extracted = on_threads(&jobs, extract).into_iter();
-        let own = match extracted.next().expect("the game's own is extracted first") {
+        let extracted = Recipe::of_content(&dir, &name).and_then(|recipe| recipe.extract(&roms.read(&recipe)?));
+        let own = match extracted {
             Ok(own) => own,
             Err(e) => {
                 report.error(format!("{name}'s ROMs"), e.to_string());
@@ -194,14 +202,15 @@ impl ContentLoaded {
             }
         };
         let timing_differences = own.timing_differences(&content.assets, &content.animations.sprites, &numbers);
-        // The background pool's others: the game's own its modules don't name, then each other game's.
+        // The background pool's: the game's own, extracted now (and kept for the run: another game's pool has them
+        // too), and each other game's, when first wanted.
         let mut others = OtherBackgrounds::default();
-        others.insert(&name, pool_backgrounds(&content, &name, &own));
-        for ((game, _), assets) in jobs.iter().skip(1).zip(extracted) {
-            match assets {
-                Ok(assets) => others.insert(game, pool_backgrounds(&content, game, &assets)),
-                // (A round on one of its backgrounds is drawn on its stage's own: `Graphics::round_background`.)
-                Err(e) => report.warn(format!("{game}'s ROMs"), format!("the background pool's {game} backgrounds aren't drawn: {e}")),
+        let own_backgrounds = self::others(&name, &dir, roms);
+        own_backgrounds.provide(backgrounds_of(&own));
+        others.insert(&name, own_backgrounds);
+        for (game, from) in &pool {
+            if *game != name && content.background_pool.iter().any(|(g, _)| g == game) {
+                others.insert(game, self::others(game, from, roms));
             }
         }
         let Extraction { graphics, sound, index, .. } = own;
@@ -220,27 +229,15 @@ impl ContentLoaded {
     }
 }
 
-/// The background pool's backgrounds of game `game` that `content` draws from `assets` (that game's, extracted):
-/// those the pool names, but for the content's own game's that its modules name (they are its asset table's), each
-/// by its name.
-fn pool_backgrounds(content: &Content, game: &str, assets: &Extraction) -> BTreeMap<String, Background> {
-    let own_named = |name: &str| game == content.game() && content.assets.handle(nettai_content_api::AssetKind::Background, name).is_some();
-    content
-        .background_pool
-        .iter()
-        .filter(|&(g, name)| g == game && !own_named(name))
-        .filter_map(|(_, name)| Some((name.to_string(), assets.graphics.background(*assets.index.backgrounds.get(name)?)?.clone())))
-        .collect()
-}
-
 impl Game {
     /// Game `name`'s content, from the content directory `content` (none:
     /// the one the program comes with), and its assets extracted from the
     /// ROMs of `roms`, checked against it. Its background pool is the
     /// backgrounds of the games of `pool`, each read from its own content
     /// directory (a host whose games each have content of their own: its
-    /// store's bundles), each other game's extracted from its own ROMs; none
-    /// given, the content directory's own games'.
+    /// store's bundles), each other game's extracted from its own ROMs when
+    /// a round or a picture first wants one ([`others`]); none given, the
+    /// content directory's own games'.
     pub fn load(roms: &RomSource, content: Option<&Path>, name: &str, pool: &[(String, PathBuf)]) -> Result<Game, LoadError> {
         load_content(content, name, pool)?.extract(roms)
     }
@@ -457,8 +454,7 @@ pub fn load(name: &str, options: &Options) -> Result<Loaded, LoadError> {
 pub enum Part {
     /// The game's battle content: its Luau modules read and defined.
     Content,
-    /// Its assets, extracted from its ROMs (and the background pool's other
-    /// games', for their backgrounds), checked against the content.
+    /// Its assets, extracted from its ROMs, checked against the content.
     Assets,
     /// The graphics in the language, and the content's strings in it.
     Graphics,
@@ -475,8 +471,7 @@ impl Part {
     /// The share of a game's loading the part takes, out of 100: what
     /// [`Loading::fraction`] counts a part done as. The content is more than
     /// half of every game's (it runs the game's Luau); extracting the ROMs,
-    /// a game's and the background pool's others' on threads of their own,
-    /// about a tenth of a second each, most of the rest; the graphics in a
+    /// about a tenth of a second, most of the rest; the graphics in a
     /// language and the sound are copies and lists.
     pub fn share(self) -> u32 {
         match self {

@@ -111,6 +111,9 @@ pub enum Part {
 enum Work {
     Runtime,
     Battle,
+    /// The other games' backgrounds the set's rounds are drawn on, being
+    /// extracted ([`Preload::with`] asks for them): done once they are.
+    Backgrounds,
     Picture,
     Sound,
     Navi(NaviHandle),
@@ -166,6 +169,11 @@ impl Preload {
     /// enhanced mode's text renderer and the sound (none: silent).
     pub fn with(renderer: Renderer, text: Option<TextRenderer>, sound: Option<SoundParts>, set: &Set, viewer: u8, size: (usize, usize)) -> Preload {
         let content = set.content().clone();
+        // (The other games' backgrounds the rounds are drawn on: extracted on threads of their own while the rest is
+        // made ready, and waited for before the first picture.)
+        let backgrounds = nettai_render::graphics::set_backgrounds(set.first());
+        renderer.graphics().want_backgrounds(&content, backgrounds.iter().copied());
+        let waits = !renderer.graphics().backgrounds_ready(&content, backgrounds.iter().copied());
         let mut steps = Vec::new();
         // The runtime is the wait (about a second against the rest's
         // hundredths), unless the thread has it.
@@ -194,6 +202,7 @@ impl Preload {
                 add(Work::Chip(chip, code));
             }
         }
+        steps.push(Step { part: Part::Match, share: if waits { 30 } else { 1 }, work: Work::Backgrounds, done: false });
         steps.push(Step { part: Part::Match, share: 6, work: Work::Picture, done: false });
         if sound.is_some() {
             steps.push(Step { part: Part::Match, share: 2, work: Work::Sound, done: false });
@@ -279,6 +288,15 @@ impl Preload {
                 }
             }
             Work::Battle => self.make_battle(),
+            Work::Backgrounds => {
+                let backgrounds = nettai_render::graphics::set_backgrounds(self.set.first());
+                if !self.renderer.graphics().backgrounds_ready(&self.content, backgrounds) {
+                    // (Not yet: the step runs again. Off a page, a moment's rest between asks.)
+                    self.steps[i].done = false;
+                    #[cfg(not(target_arch = "wasm32"))]
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+            }
             Work::Picture => {
                 if self.battle.is_none() && self.stopped.is_none() {
                     self.make_battle();
@@ -521,6 +539,38 @@ mod tests {
             play(&mut player, 1500);
             let late = player.late();
             assert_eq!((late.runtimes, late.reads, Behaviors::loads()), (0, 0, 1), "{late:?}");
+        });
+    }
+
+    /// A set drawn on another game's background (the background pool's) has
+    /// that game's backgrounds extracted while it is made ready, once: asked
+    /// for as the preload is made, waited for before the first picture.
+    #[test]
+    fn a_set_on_another_games_background_waits_for_it() {
+        use nettai_render::graphics::{GameGraphics, OtherBackgrounds, OtherGame};
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        let content = nettai_match::testing::exe6_content();
+        let mut m = nettai_match::pick::live(&content, "exe6", 5, None).unwrap();
+        m.rounds.iter_mut().for_each(|r| r.background = Some("exe5:nebula-area".into()));
+        let set = Set::of(&content, &m, 5);
+        assert_eq!(content.background_of(set.first().settings.background), Some(("exe5", "nebula-area")));
+        let made = Arc::new(AtomicUsize::new(0));
+        let counted = made.clone();
+        let exe5 = OtherGame::new(Box::new(move || {
+            counted.fetch_add(1, Ordering::SeqCst);
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            Ok([("nebula-area".to_string(), nettai_assets::Background { first_tile: 3, ..Default::default() })].into())
+        }));
+        let mut others = OtherBackgrounds::default();
+        others.insert("exe5", exe5.clone());
+        let graphics = GameGraphics::new(Arc::new(nettai_assets::Bundle::default())).with_others(Arc::new(others));
+        fresh(move || {
+            let mut preload = Preload::with(Renderer::with_graphics(graphics), None, None, &set, 0, (240, 160));
+            while preload.step() {}
+            assert!(exe5.ready(), "extracted before the preload is done");
+            assert_eq!(made.load(Ordering::SeqCst), 1);
+            let missing = preload.missing();
+            assert!(!missing.iter().any(|m| m.contains("nebula-area")), "no lookup of it failed: {missing:?}");
         });
     }
 

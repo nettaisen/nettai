@@ -411,7 +411,9 @@ impl Viewer {
     /// A viewer from its parts: the content the replay plays on, the
     /// renderer, the enhanced mode's text renderer (none: the frames carry
     /// their own text) and the sound (none: silent; it is copied for the
-    /// other console).
+    /// other console). The other games' backgrounds its rounds are drawn on
+    /// are extracted first, if they aren't (`GameGraphics::wait_backgrounds`:
+    /// a page's main thread has them from a [`crate::preload::Preload`]).
     pub fn with(
         content: &Arc<Content>,
         replay: &Replay,
@@ -423,6 +425,9 @@ impl Viewer {
         let driver = ReplayPlayer::new(content, replay, view)?;
         let view = view.unwrap_or(replay.info.side);
         let session = Session::new(Box::new(driver));
+        // (The other games' backgrounds its rounds are drawn on, extracted now: a frame shows them from the first.
+        // On a page's main thread they are a preload's, made ready already.)
+        renderer.graphics().wait_backgrounds(content, nettai_render::graphics::set_backgrounds(&session.battle.setup));
         renderer.reset();
         renderer.console_version = session.driver.console_version();
         let mut viewer = Viewer {
