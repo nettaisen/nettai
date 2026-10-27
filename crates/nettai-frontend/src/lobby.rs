@@ -893,10 +893,15 @@ pub struct Lobby {
     heard: Option<Instant>,
     timeout: Duration,
     /// A peer whose content's hash isn't this one's (all else the same) is waited on rather than refused, its
-    /// hash told the host ([`Lobby::their_content`]): set by a host that can find content by its hash
-    /// ([`Lobby::wait_on_content`]).
+    /// hash told the host ([`Lobby::their_content`]); and so is one whose background pool isn't this one's, its
+    /// pool told ([`Lobby::their_backgrounds`]): set by a host that can find content by its hash and take every
+    /// game's newest ([`Lobby::wait_on_content`]).
     waits_on_content: bool,
     their_content: Option<ContentHash>,
+    their_backgrounds: Option<u64>,
+    /// The other's pool this host last took every game's newest content against, and what it couldn't have then
+    /// ([`Lobby::updated_backgrounds`]).
+    updated_against: Option<(u64, Option<String>)>,
 }
 
 impl Lobby {
@@ -951,6 +956,8 @@ impl Lobby {
             timeout,
             waits_on_content: false,
             their_content: None,
+            their_backgrounds: None,
+            updated_against: None,
         }
     }
 
@@ -958,8 +965,17 @@ impl Lobby {
     /// (docs/design/content-deployment.md §5, "Netplay"): nothing of its lobby is taken while the hashes differ,
     /// and its hash is told ([`Lobby::their_content`]), for the host to find which revision each plays. The host
     /// then plays the other's ([`Lobby::replace_content`]), waits for the other to take this one's, or refuses
-    /// ([`Lobby::refuse_content`]). Nothing on the wire changes: each peer says its own content, as always, and a
-    /// peer that doesn't wait refuses as before.
+    /// ([`Lobby::refuse_content`]).
+    ///
+    /// A peer whose background pool isn't this one's, its content's hash the same, is waited on too: its pool is
+    /// told ([`Lobby::their_backgrounds`]), for the host to take every game's newest content, rebuild the pool and
+    /// play the game loaded again on it where that changed anything ([`Lobby::replace_content`]), and say it has
+    /// ([`Lobby::updated_backgrounds`]). Both peers do, so both come to the same pool without saying which game
+    /// differs; while the other's pool stays the one this host took the newest content against, it is waited on
+    /// (the other may be taking it too), and refused only where this host couldn't have something.
+    ///
+    /// Nothing on the wire changes: each peer says its own content and pool, as always, and a peer that doesn't
+    /// wait refuses as before.
     pub fn wait_on_content(&mut self, wait: bool) {
         self.waits_on_content = wait;
     }
@@ -967,6 +983,24 @@ impl Lobby {
     /// The other peer's content's hash, while it isn't this one's and this lobby waits on it.
     pub fn their_content(&self) -> Option<ContentHash> {
         self.their_content.filter(|_| matches!(self.phase, Phase::Lobby))
+    }
+
+    /// The other peer's background pool's identity, while it isn't this one's (their content's hash the same),
+    /// this lobby waits on it, and this host hasn't taken every game's newest content against it
+    /// ([`Lobby::updated_backgrounds`]): the host is to.
+    pub fn their_backgrounds(&self) -> Option<u64> {
+        self.their_backgrounds.filter(|_| matches!(self.phase, Phase::Lobby))
+    }
+
+    /// The host has taken every game's newest content it could, against the other peer's background pool
+    /// `theirs` ([`Lobby::their_backgrounds`]), and plays the game loaded again on it where that changed anything
+    /// ([`Lobby::replace_content`], first); `failed` is what it couldn't have, and why. While the other's pool is
+    /// still `theirs`, and isn't this one's, the other is waited on (it may be taking the newest content too); and
+    /// where something couldn't be had, the match is refused for it (`Reason::DifferentContent`, both sides). A
+    /// pool of theirs that changes and still differs is told again.
+    pub fn updated_backgrounds(&mut self, theirs: u64, failed: Option<String>) {
+        self.updated_against = Some((theirs, failed));
+        self.their_backgrounds = None;
     }
 
     /// Refuse the other peer for its content (it can't be had, or the two can't agree on one), with `detail` for
@@ -986,7 +1020,7 @@ impl Lobby {
         self.compat = Compat::new(content, self.compat.role);
         self.rulesets = rulesets;
         self.side = side;
-        self.their_content = None;
+        (self.their_content, self.their_backgrounds) = (None, None);
         self.check();
         self.change(false);
     }
@@ -1369,17 +1403,35 @@ impl Lobby {
     /// Their compatibility fields: refused (and this lobby failed) where
     /// this peer can't play with them.
     fn compatible(&mut self, theirs: &Compat) -> bool {
-        // (Content of another hash, all else the same, waited on where the host would.)
-        let other_content = theirs.protocol == self.compat.protocol
+        // (Content of another hash, or another background pool, all else the same, waited on where the host would.)
+        let alike = theirs.protocol == self.compat.protocol
             && netplay_line(&theirs.engine) == netplay_line(&self.compat.engine)
             && theirs.game == self.compat.game
-            && theirs.role != self.compat.role
-            && theirs.content != self.compat.content;
+            && theirs.role != self.compat.role;
+        let other_content = alike && theirs.content != self.compat.content;
+        let other_backgrounds = alike && !other_content && theirs.backgrounds != self.compat.backgrounds;
+        (self.their_content, self.their_backgrounds) = (None, None);
         if other_content && self.waits_on_content {
             self.their_content = Some(theirs.content);
             return false;
         }
-        self.their_content = None;
+        if other_backgrounds && self.waits_on_content {
+            match &self.updated_against {
+                // (Every game's newest content was taken against this pool of theirs, and the two still differ:
+                // what couldn't be had is why, else they are waited on.)
+                Some((against, failed)) if *against == theirs.backgrounds => {
+                    if let Some(why) = failed.clone() {
+                        let detail = format!(
+                            "can't play: the other side has other backgrounds (its pool {:016x}, this one's {:016x}), and this side couldn't take every game's newest content: {why}",
+                            theirs.backgrounds, self.compat.backgrounds
+                        );
+                        self.fail(Failure { reason: Reason::DifferentContent, detail }, true);
+                    }
+                }
+                _ => self.their_backgrounds = Some(theirs.backgrounds),
+            }
+            return false;
+        }
         match self.compat.mismatch(theirs) {
             Some(mut failure) => {
                 failure.detail = format!("can't play: {}", failure.detail);
@@ -1949,6 +2001,65 @@ mod tests {
         let [h, j] = [0, 1].map(|i| failed(&mut lobbies[i], now));
         assert_eq!(j.reason, Reason::DifferentContent);
         assert!(h.reason == Reason::DifferentContent && h.detail.contains("can't be had"), "{h:?}");
+    }
+
+    /// Peers whose background pools differ (their content's hash the same), each waiting on content, neither
+    /// fail: each takes nothing of the other's lobby and tells its host the other's pool. A host that took every
+    /// game's newest content and changed nothing waits for the other, and isn't told that pool again; the other,
+    /// its game loaded again on the newest content, plays the same pool, and the two agree. A host that couldn't
+    /// have something refuses for it once the pools still differ, both sides told the content differs and why.
+    #[test]
+    fn peers_wait_on_each_others_backgrounds() {
+        let content = nettai_match::testing::exe6_content();
+        let s = settings(TRIPLE_BATTLE);
+        let now = Instant::now();
+        let fresh = || {
+            let mut lobbies = pair(&content, [s.clone(), s.clone()], [side(&content, 1), side(&content, 2)]);
+            for l in lobbies.iter_mut() {
+                l.wait_on_content(true);
+            }
+            // (The joiner's pool is another: another game's revision of its content.)
+            lobbies[1].compat.backgrounds ^= 1;
+            lobbies
+        };
+        let mut lobbies = fresh();
+        run(&mut lobbies, now, 10, &mut |_, _| {});
+        let [mine, theirs] = [lobbies[0].compat.backgrounds, lobbies[1].compat.backgrounds];
+        assert!(lobbies.iter_mut().all(|l| matches!(l.poll(now), Status::Pending)), "nobody fails, nothing is agreed");
+        assert_eq!((lobbies[0].their_backgrounds(), lobbies[1].their_backgrounds()), (Some(theirs), Some(mine)));
+        assert_eq!((lobbies[0].their_content(), lobbies[1].their_content()), (None, None));
+        assert!(!lobbies[0].their_present() && !lobbies[1].their_present(), "nothing of the other's lobby is taken");
+        // The host has every game's newest content already: nothing changes, and it waits for the joiner.
+        lobbies[0].updated_backgrounds(theirs, None);
+        run(&mut lobbies, now, 10, &mut |_, _| {});
+        assert!(lobbies.iter_mut().all(|l| matches!(l.poll(now), Status::Pending)), "the host waits, refusing nobody");
+        assert_eq!((lobbies[0].their_backgrounds(), lobbies[1].their_backgrounds()), (None, Some(mine)));
+        // The joiner takes it: its game, loaded again on it, plays the host's pool; both agree once both are ready.
+        lobbies[1].replace_content(&content, rulesets(), side(&content, 2));
+        lobbies[1].updated_backgrounds(mine, None);
+        assert!(!lobbies[1].ready(), "a player isn't ready on content they weren't ready on");
+        lobbies[1].set_ready(true);
+        run(&mut lobbies, now, 20, &mut |_, _| {});
+        assert_eq!((lobbies[0].their_backgrounds(), lobbies[1].their_backgrounds()), (None, None));
+        assert!(matches!(lobbies[0].poll(now), Status::Loading(_)) && matches!(lobbies[1].poll(now), Status::Loading(_)), "agreed");
+        // A pool of theirs that changes, and still differs, is told again: their content was taken anew.
+        let mut lobbies = fresh();
+        run(&mut lobbies, now, 4, &mut |_, _| {});
+        lobbies[0].updated_backgrounds(theirs, None);
+        lobbies[1].compat.backgrounds ^= 2;
+        lobbies[1].change(true);
+        run(&mut lobbies, now, 4, &mut |_, _| {});
+        assert_eq!(lobbies[0].their_backgrounds(), Some(lobbies[1].compat.backgrounds));
+        // A host that couldn't have something: refused for it, both sides told.
+        let mut lobbies = fresh();
+        run(&mut lobbies, now, 4, &mut |_, _| {});
+        lobbies[1].updated_backgrounds(mine, Some("exe5's newest content couldn't be downloaded (no connection)".into()));
+        lobbies[0].change(true);
+        run(&mut lobbies, now, 4, &mut |_, _| {});
+        let [h, j] = [0, 1].map(|i| failed(&mut lobbies[i], now));
+        assert!(j.reason == Reason::DifferentContent && j.detail.starts_with("can't play: the other side has other backgrounds"), "{j:?}");
+        assert!(j.detail.ends_with("this side couldn't take every game's newest content: exe5's newest content couldn't be downloaded (no connection)"), "{j:?}");
+        assert!(h.reason == Reason::DifferentContent && h.detail.starts_with("the other side refused: can't play:") && h.detail.contains("exe5's newest"), "{h:?}");
     }
 
     /// Each player's name goes to the other, cut to its length and without
