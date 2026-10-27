@@ -42,7 +42,9 @@
 //!   [`IceServer`]). The Worker's are Cloudflare's: its TURN service's STUN
 //!   and TURN servers, with credentials it asked for this client, which last
 //!   [`TURN_CREDENTIALS_LAST`]; without them (no TURN key set, or the
-//!   service didn't answer), Cloudflare's public STUN server alone. A
+//!   service didn't answer), Cloudflare's public STUN server alone. A client
+//!   in mainland China is given only the owner's own coturn there instead,
+//!   with credentials the Worker makes, which last as long. A
 //!   client uses exactly the servers a welcome gives (only a server that
 //!   gives none, such as [`crate::testing`]'s by default, leaves it to its
 //!   own, [`crate::Config::ice_servers`], none unless a caller names some);

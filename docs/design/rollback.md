@@ -829,14 +829,28 @@ by default, "you don't even need a google default right? direct connect doesn't 
   the client's connections use, as the browser's `RTCIceServer`s (`{"urls":[...],"username":...,
   "credential":...}`, nettai-rtc's `IceServer`). With its TURN key, the Worker asks Cloudflare's TURN service
   (Cloudflare Realtime) for credentials for that client, `POST
-  https://rtc.live.cloudflare.com/v1/turn/keys/{TURN_KEY_ID}/credentials/generate-ice-servers` with
-  `Authorization: Bearer {TURN_KEY_API_TOKEN}` and `{"ttl":14400}`, and gives the servers it answers: its STUN
+  https://rtc.live.cloudflare.com/v1/turn/keys/{CLOUDFLARE_TURN_KEY_ID}/credentials/generate-ice-servers` with
+  `Authorization: Bearer {CLOUDFLARE_TURN_KEY_API_TOKEN}` and `{"ttl":14400}`, and gives the servers it answers: its STUN
   server (`stun:stun.cloudflare.com:3478`) and its TURN servers (`turn:` over UDP and TCP, `turns:` over TLS,
   each with the username and credential). Without the key, or when the service answers with an error, gives no
   server, or doesn't answer within 3 seconds, the welcome gives Cloudflare's public STUN server alone (a constant
   in the Worker): a room never waits on the service longer, nor fails for it. The failure is logged on the
   Worker, by its kind or HTTP status; the secrets are sent to Cloudflare's API and nowhere else, and never
   logged.
+- **Mainland China has its own servers.** Cloudflare's TURN service is slow or blocked from mainland China, so a
+  client there is given only the owner's own STUN and TURN server in China, a coturn, and none of Cloudflare's.
+  The Worker tells by Cloudflare's lookup of the client's IP address (`request.cf.country` is `CN`; Hong Kong,
+  Macau and Taiwan have codes of their own, and a player on a VPN abroad counts as abroad), and each socket keeps
+  its country, so the client that waited is given its own region's servers when the other comes. The two players
+  of a room may be given different servers: each relays through its own, and the relays reach each other. coturn
+  has no API to ask for credentials: the Worker makes them itself by coturn's TURN REST scheme (its
+  `use-auth-secret`), with the secret it shares with the coturn (`CHINA_TURN_SECRET`, the coturn's
+  `static-auth-secret`). The username is the time they expire, four hours on as Cloudflare's, and nothing more
+  (no `:user` part, which the facade can't hand the browser); the credential is
+  base64(HMAC-SHA1(secret, username)); coturn checks both and refuses them once that time has passed. They go
+  with each of the URLs in `CHINA_TURN_URLS` (its `stun:` URL needs none, and the clients give it none). The
+  same rules hold as for Cloudflare's: only for a room both players are in, counted against the same limit.
+  Without those two secrets, a client in China is given Cloudflare's.
 - **TURN only for a room both players are in, and only so often.** The credentials cost the key's owner what is
   relayed on them, and anyone could open a socket to `/rooms` (the security audit's finding; the user: "fix the
   open turn credentials as well"). So a welcome gives TURN credentials only once the room's two places are taken;
@@ -864,10 +878,12 @@ by default, "you don't even need a google default right? direct connect doesn't 
   as it is made.
 - **The owner's setup.** Make a TURN key (the Cloudflare dashboard's Realtime, TURN Server, Create; or the API's
   `POST /accounts/{account_id}/calls/turn_keys`): it shows the key's ID (the "Turn Token ID") and its API token.
-  Give them to the Worker as its two secrets, `npx wrangler secret put TURN_KEY_ID` and `npx wrangler secret put
-  TURN_KEY_API_TOKEN` in `signaling/` (for `wrangler dev`, the same names in `signaling/.dev.vars`, which git
-  ignores); then `npx wrangler deploy`. Neither secret is ever in the repository. Deploying, the secrets and the
-  custom domain are the owner's steps, never an agent's.
+  Give them to the Worker as its two secrets, `npx wrangler secret put CLOUDFLARE_TURN_KEY_ID` and `npx wrangler
+  secret put CLOUDFLARE_TURN_KEY_API_TOKEN` in `signaling/` (for `wrangler dev`, the same names in
+  `signaling/.dev.vars`, which git ignores); then `npx wrangler deploy`. For China, set the coturn up with
+  `use-auth-secret`, a `static-auth-secret` and UDP on its port, and give the Worker `CHINA_TURN_URLS` (its
+  `stun:` and `turn:` URLs, separated by spaces) and `CHINA_TURN_SECRET` (that secret) the same way. No secret is
+  ever in the repository. Deploying, the secrets and the custom domain are the owner's steps, never an agent's.
 
 **The server only while it is needed.** The user's request: "the signaling server session should last just long
 enough for the peers to reach each other, so it doesn't have to hold onto a connection longer than required. but it

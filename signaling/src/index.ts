@@ -36,13 +36,23 @@
 //   client's connections use, exactly those (as the browser's RTCIceServer:
 //   {"urls":[...],"username":...,"credential":...}). The user's words: "the
 //   signaling server should return stun and turn server credentials". With
-//   its TURN key (the secrets TURN_KEY_ID and TURN_KEY_API_TOKEN), the server
-//   asks Cloudflare's TURN service for credentials for this client, which
-//   last TURN_TTL_SECONDS, and gives what it answers: its STUN server and its
-//   TURN servers. Without the key, or when the service fails or doesn't
-//   answer within TURN_API_WAIT_MS, Cloudflare's public STUN server alone
-//   (STUN), and the failure is logged here, never the secrets; a room never
-//   waits on it longer.
+//   its Cloudflare TURN key (the secrets CLOUDFLARE_TURN_KEY_ID and
+//   CLOUDFLARE_TURN_KEY_API_TOKEN), the server asks Cloudflare's TURN
+//   service for credentials for this client, which last TURN_TTL_SECONDS,
+//   and gives what it answers: its STUN server and its TURN servers. Without
+//   the key, or when the service fails or doesn't answer within
+//   TURN_API_WAIT_MS, Cloudflare's public STUN server alone (STUN), and the
+//   failure is logged here, never the secrets; a room never waits on it
+//   longer.
+// - A client in mainland China (by Cloudflare's lookup of its IP address,
+//   country CN; Hong Kong, Macau and Taiwan have codes of their own) is
+//   given the China servers instead, and only those: the owner's own STUN
+//   and TURN server there, a coturn (the secrets CHINA_TURN_URLS and
+//   CHINA_TURN_SECRET), with credentials the server makes itself, which
+//   also last TURN_TTL_SECONDS. Without those secrets, Cloudflare's, as any
+//   other client is given. The two players of a room may be given different
+//   servers: each relays through its own, and the two relays reach each
+//   other.
 // - TURN credentials cost the key's owner what is relayed on them, so they
 //   go only to a room with both its places taken (a room one client made
 //   alone is no match, and a socket opened to collect credentials gets
@@ -74,11 +84,19 @@ import { DurableObject } from "cloudflare:workers";
 export interface Env {
 	ROOMS: DurableObjectNamespace<Room>;
 	/** The Cloudflare Realtime TURN key's ID, a secret (`npx wrangler secret
-	 * put TURN_KEY_ID`): none, no TURN. */
-	TURN_KEY_ID?: string;
-	/** The TURN key's API token, a secret (`npx wrangler secret put
-	 * TURN_KEY_API_TOKEN`). */
-	TURN_KEY_API_TOKEN?: string;
+	 * put CLOUDFLARE_TURN_KEY_ID`): none, no Cloudflare TURN. */
+	CLOUDFLARE_TURN_KEY_ID?: string;
+	/** The Cloudflare TURN key's API token, a secret (`npx wrangler secret
+	 * put CLOUDFLARE_TURN_KEY_API_TOKEN`). */
+	CLOUDFLARE_TURN_KEY_API_TOKEN?: string;
+	/** The China servers' URLs, separated by spaces or commas: the `stun:`
+	 * and `turn:` URLs of the owner's coturn in mainland China, a secret
+	 * (`npx wrangler secret put CHINA_TURN_URLS`). None, and clients in
+	 * China are given Cloudflare's. */
+	CHINA_TURN_URLS?: string;
+	/** The coturn's shared secret, its `static-auth-secret`, a secret (`npx
+	 * wrangler secret put CHINA_TURN_SECRET`). */
+	CHINA_TURN_SECRET?: string;
 	/** How often a client may be given TURN credentials (a rate limit
 	 * binding, wrangler.toml's TURN_PER_MINUTE a minute): none, no limit. */
 	TURN_LIMIT?: RateLimit;
@@ -103,6 +121,9 @@ interface Attachment {
 	/** Its place (in a reconnect room, "host" is the first to come). */
 	role: Role;
 	kind: Kind;
+	/** The client's country (`countryOf`), which picks its servers when
+	 * they are given as the other comes. */
+	country: string;
 	/** Another socket of the same client took its place: the other client
 	 * isn't told it went. */
 	replaced?: boolean;
@@ -132,14 +153,19 @@ const TURN_TTL_SECONDS = 4 * 60 * 60;
 /** How long a welcome waits on Cloudflare's TURN service before it gives
  * STUN alone. */
 const TURN_API_WAIT_MS = 3000;
+/** Mainland China's country code, whose clients are given the China
+ * servers. */
+const CHINA = "CN";
 
 /** The STUN and TURN servers for a client of a room both players are in
- * (the comment at the top): Cloudflare's TURN service's, with credentials
- * made for it, or STUN alone. `client` is who the limit counts it against
- * (`clientOf`). Never fails, and never says a secret: a failure's log is its
- * kind or its HTTP status. */
-async function iceServers(env: Env, client: string): Promise<IceServer[]> {
-	if (!env.TURN_KEY_ID || !env.TURN_KEY_API_TOKEN) {
+ * (the comment at the top): for a client in `country` China, the China
+ * servers when the owner has set them; else Cloudflare's TURN service's,
+ * with credentials made for it; or STUN alone. `client` is who the limit
+ * counts it against (`clientOf`). Never fails, and never says a secret: a
+ * failure's log is its kind or its HTTP status. */
+async function iceServers(env: Env, client: string, country: string): Promise<IceServer[]> {
+	const china = country === CHINA && env.CHINA_TURN_URLS && env.CHINA_TURN_SECRET ? { urls: env.CHINA_TURN_URLS, secret: env.CHINA_TURN_SECRET } : undefined;
+	if (!china && (!env.CLOUDFLARE_TURN_KEY_ID || !env.CLOUDFLARE_TURN_KEY_API_TOKEN)) {
 		return STUN;
 	}
 	try {
@@ -147,10 +173,48 @@ async function iceServers(env: Env, client: string): Promise<IceServer[]> {
 			console.error("no TURN credentials: a client asked for more than its limit");
 			return STUN;
 		}
-		const url = `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(env.TURN_KEY_ID)}/credentials/generate-ice-servers`;
+	} catch (e) {
+		console.error(`no TURN credentials: ${e instanceof Error ? e.name : "an error"} asking the TURN limit`);
+		return STUN;
+	}
+	return china ? chinaServers(china.urls, china.secret) : cloudflareServers(env.CLOUDFLARE_TURN_KEY_ID!, env.CLOUDFLARE_TURN_KEY_API_TOKEN!);
+}
+
+/** The China servers (`CHINA_TURN_URLS`), all with one username and
+ * credential made here by coturn's TURN REST scheme (its `use-auth-secret`),
+ * with no call to it: the username is when they expire (Unix seconds,
+ * TURN_TTL_SECONDS from now) and nothing more, since a client on the web
+ * can't be given a username with a `:` in it (nettai-rtc's `ice_urls`), and
+ * the credential is base64(HMAC-SHA1(secret, username)). A `stun:` URL
+ * among them needs none, and the clients give it none. Never fails: STUN
+ * alone, logged, when the URLs are empty or the credential can't be made. */
+async function chinaServers(urls: string, secret: string): Promise<IceServer[]> {
+	const list = urls.split(/[\s,]+/).filter((u) => u !== "");
+	if (list.length === 0) {
+		console.error("no TURN credentials: CHINA_TURN_URLS names no server");
+		return STUN;
+	}
+	try {
+		const username = String(Math.floor(Date.now() / 1000) + TURN_TTL_SECONDS);
+		const utf8 = new TextEncoder();
+		const key = await crypto.subtle.importKey("raw", utf8.encode(secret), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
+		const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, utf8.encode(username)));
+		return [{ urls: list, username, credential: btoa(String.fromCharCode(...mac)) }];
+	} catch (e) {
+		console.error(`no TURN credentials: ${e instanceof Error ? e.name : "an error"} making the China server's`);
+		return STUN;
+	}
+}
+
+/** Cloudflare's TURN service's STUN and TURN servers, with credentials it
+ * made for this client, asked for with the owner's TURN key. Never fails:
+ * STUN alone, logged, when the service fails or doesn't answer in time. */
+async function cloudflareServers(keyId: string, apiToken: string): Promise<IceServer[]> {
+	try {
+		const url = `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(keyId)}/credentials/generate-ice-servers`;
 		const response = await fetch(url, {
 			method: "POST",
-			headers: { Authorization: `Bearer ${env.TURN_KEY_API_TOKEN}`, "Content-Type": "application/json" },
+			headers: { Authorization: `Bearer ${apiToken}`, "Content-Type": "application/json" },
 			body: JSON.stringify({ ttl: TURN_TTL_SECONDS }),
 			signal: AbortSignal.timeout(TURN_API_WAIT_MS),
 		});
@@ -207,6 +271,13 @@ function clientOf(request: Request): string {
 	const back = tail ? tail.split(":") : [];
 	const groups = tail === undefined ? front : [...front, ...Array(Math.max(0, 8 - front.length - back.length)).fill("0"), ...back];
 	return `${groups.slice(0, 4).map((g) => parseInt(g, 16).toString(16)).join(":")}::/64`;
+}
+
+/** Where a request comes from, by Cloudflare's lookup of its IP address:
+ * the country's ISO 3166 code, or "" when Cloudflare doesn't say. */
+function countryOf(request: Request): string {
+	const country = (request.cf as { country?: unknown } | undefined)?.country;
+	return typeof country === "string" ? country : "";
 }
 
 /** The WebSocket close code of each refusal. */
@@ -277,6 +348,7 @@ export default {
 			to.searchParams.set("code", code);
 			to.searchParams.set("peer", peer);
 			to.searchParams.set("client", clientOf(request));
+			to.searchParams.set("country", countryOf(request));
 			const name = what === "reconnect" ? `reconnect/${code}` : code;
 			return env.ROOMS.get(env.ROOMS.idFromName(name)).fetch(new Request(to, request));
 		};
@@ -318,6 +390,7 @@ export class Room extends DurableObject<Env> {
 		const peer = url.searchParams.get("peer") ?? "";
 		const code = url.searchParams.get("code") ?? "";
 		const client = url.searchParams.get("client") ?? "";
+		const country = url.searchParams.get("country") ?? "";
 		const kind: Kind = url.pathname === "/reconnect" ? "reconnect" : "invite";
 		// The client's place: the places read and written with nothing else
 		// between (the two come to a reconnect room at about the same
@@ -352,17 +425,18 @@ export class Room extends DurableObject<Env> {
 		const { role, both } = taken;
 		// The servers the welcome gives (never failing, nor waiting long): TURN
 		// only once both players are in the room, for this client and for the
-		// other's socket (which waited with STUN alone, or comes back to it).
-		const waiting = both && this.ctx.getWebSockets(other(role)).length > 0;
-		const [ice, theirs] = both ? await Promise.all([iceServers(this.env, client), waiting ? iceServers(this.env, client) : STUN]) : [STUN, STUN];
+		// other's socket (which waited with STUN alone, or comes back to it),
+		// each by its own country.
+		const waiting = both ? this.ctx.getWebSockets(other(role)).map((ws) => ws.deserializeAttachment() as Attachment).find((a) => !a.replaced) : undefined;
+		const [ice, theirs] = both ? await Promise.all([iceServers(this.env, client, country), waiting ? iceServers(this.env, client, waiting.country) : STUN]) : [STUN, STUN];
 		const [socket, server] = Object.values(new WebSocketPair());
 		// The client's socket from before, if it is still here, goes.
 		for (const old of this.ctx.getWebSockets(role)) {
-			old.serializeAttachment({ role, kind, replaced: true } satisfies Attachment);
+			old.serializeAttachment({ ...(old.deserializeAttachment() as Attachment), replaced: true } satisfies Attachment);
 			old.close(4001, "replaced by a new connection");
 		}
 		this.ctx.acceptWebSocket(server, [role]);
-		server.serializeAttachment({ role, kind } satisfies Attachment);
+		server.serializeAttachment({ role, kind, country } satisfies Attachment);
 		const there = this.ctx.getWebSockets(other(role));
 		const welcome =
 			kind === "invite" ? { type: "welcome", role, peer: there.length > 0, code, iceServers: ice } : { type: "welcome", peer: there.length > 0, iceServers: ice };
@@ -427,8 +501,9 @@ export class Room extends DurableObject<Env> {
 	 * while (its kind's; one forgotten already, both having left, is
 	 * nothing to wait for). */
 	async gone(ws: WebSocket): Promise<void> {
-		const { role, kind, replaced } = ws.deserializeAttachment() as Attachment;
-		ws.serializeAttachment({ role, kind, replaced: true } satisfies Attachment);
+		const attachment = ws.deserializeAttachment() as Attachment;
+		const { role, kind, replaced } = attachment;
+		ws.serializeAttachment({ ...attachment, replaced: true } satisfies Attachment);
 		if (!replaced) {
 			for (const them of this.ctx.getWebSockets(other(role))) {
 				tell(them, JSON.stringify({ type: "peer", present: false }));
