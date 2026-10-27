@@ -3,7 +3,7 @@
 The design for moving nettai-extract's per-game knowledge (where each asset is in each ROM, which ROM it is read
 from, how the HUD and the custom screen are put together) out of the app's Rust and into Luau in each game's content
 repo, beside the content that uses the assets. The app keeps the Rust that is the machine: ROM access, the GBA's and
-the series' binary formats, the asset model and the pack writer. Status: proposed, 2026-10-26.
+the series' binary formats, the asset model and the pack writer. Status: decided 2026-10-26 (§8); not built.
 
 Decided (2026-10-26):
 
@@ -11,7 +11,9 @@ Decided (2026-10-26):
   a new asset says how to extract it, in the same bundle;
 - the app keeps Rust primitives the recipes call;
 - this is designed and built before any app release downloads content: it fixes what a bundle contains
-  ([content-deployment.md](content-deployment.md) §6, step 4).
+  ([content-deployment.md](content-deployment.md) §6, step 4);
+- assets are extracted from a complete Battle Network Legacy Collection only, every ROM of the game, on the desktop
+  and in the browser; there are no placeholders (§8, decisions 5 and 7).
 
 The rule it follows: Rust is the machine, Luau is the game, and Rust names no game feature
 ([rust-and-luau.md](rust-and-luau.md), [core-content-boundary.md](core-content-boundary.md)).
@@ -19,7 +21,7 @@ The rule it follows: Rust is the machine, Luau is the game, and Rust names no ga
 Related: [content-deployment.md](content-deployment.md) (bundles, the store, packs by fingerprint),
 [asset-formats.md](asset-formats.md) (the pack's files), [content-model-v2.md](content-model-v2.md) (packs, compat),
 [scripting.md](scripting.md) (the Luau runtime), [text-rendering.md](text-rendering.md) §12–13 (the letters and the
-hand-drawn frames read as a pack is made), crates/nettai-extract/README.md (what a pack of each ROM set holds).
+hand-drawn frames read as a pack is made), crates/nettai-extract/README.md (the extractor as it is).
 
 Words:
 
@@ -30,17 +32,17 @@ Words:
   takes back the asset model, and runs the fixed steps that make the pack (§3.10);
 - the **model** is what a pack holds in typed form: `nettai_assets::Bundle` (the graphics: sprites, field,
   backgrounds, HUD, custom screen), the sound bank with its versions, and the asset names (`AssetNames`);
-- a **ROM set** is the ROMs given for one game: any subset of its four (two versions, US and Japanese);
-- a **source** is one of a game's four ROM slots, present or not (`rom::Source` today).
+- a game's **ROMs** are its four: two versions, US and Japanese, as a Legacy Collection install holds them. They are
+  always all given (§8, decision 5).
 
 ## 0. Summary
 
 - **A recipe returns the model; the host makes the pack.** A recipe reads the ROMs through primitives and returns one
-  table: the graphics in the model's shape, the asset names, the pack's languages, and which ROMs its sound is read
-  from. Everything after that is the host's and unchanged: placeholders for what no ROM given holds, the letters, the
-  element icons' frame, the hand-drawn frames, the sound bank, the asset index, the files, the read-back check
-  (`extract_inner` and `Extraction::files` today, from `placeholders::complete` on). The pack's encoders don't move,
-  which is what makes byte-identical output reachable.
+  table: the graphics in the model's shape, the asset names, and which ROMs its sound is read from. Everything after
+  that is the host's and unchanged: the check that every named asset is there, the letters, the element icons'
+  frame, the hand-drawn frames, the sound bank, the asset index, the files, the read-back check (`extract_inner` and
+  `Extraction::files` today, from `placeholders::complete` on). The pack's encoders don't move, which is what makes
+  byte-identical output reachable.
 - **The line.** Rust keeps the GBA's formats (ROM reads, LZ77, 4bpp tiles, 15-bit palettes, BG map entries, OBJ
   shapes, the M4A sound driver) and the series' bulk formats that decode straight into the model's own types (sprite
   archives, GFX animation lists), the per-pixel work, the model's codec and the writer. Luau gets every address, every
@@ -48,12 +50,16 @@ Words:
   HUD and the custom screen, the record-sized formats (banners, patch lists, text lines, palette animation lists,
   background descriptors, cursor tables), the asset names, and the special cases (DustMan's orphaned portrait, the
   e-Reader cards' pictures, the gift chips' palettes).
+- **A complete Legacy Collection, and nothing else.** A recipe declares its game's ROMs and they are all required: an
+  install missing one is an error the player sees, on the desktop and in the browser alike, not a smaller pack. A
+  recipe may assume every ROM is there. Today's handling of partial sets and its placeholders (about 1,300 lines of
+  Rust) isn't ported; it is deleted as each part moves (§7). An asset a recipe can't find in the full set is an
+  extraction error naming it.
 - **Names stay data.** compat/assets.toml and the tables it is joined with stay where they are, written by gen-content
   and checked against the ROMs; the recipe reads them (§4.3) and builds `AssetNames` itself. The compat crates leave
   the extractor.
-- **A recipe declares** the ROMs it reads (header code, region, version), their size, the primitives version it
-  needs and the data files it reads, in its pack's manifest (§4.2). No ROM is required: any subset makes a pack, as
-  now. The app finds a Legacy Collection's ROMs by the declared codes.
+- **A recipe declares** its ROMs' header codes, their size, the primitives version it needs and the data files it
+  reads, in its pack's manifest (§4.2). The app finds a Legacy Collection's ROMs by the declared codes.
 - **It runs in a VM of its own** (§4.4): nettai-luau's sandbox and bytecode check, with the extraction libraries in
   place of the battle's, one budget for the whole run, on the extraction thread, the same on the desktop and in the
   browser. Recipes are the one place Luau holds the original's addresses and numbers: they are the extractor, the
@@ -63,18 +69,21 @@ Words:
   gets a new pack; one whose rules alone change keeps its pack; an app update keeps the packs unless it changes the
   primitives or the formats (today's stamp re-extracts on every app version).
 - **Too old an app** reads the recipe's `primitives` and refuses with a message naming the update, and the index says
-  each bundle's `primitives`, so an app picks the newest bundle it can extract (§5.3).
+  each bundle's `primitives`, so an app picks the newest bundle it can extract (§5.3). A patch release may add
+  primitives that content then needs.
 - **The content hash is untouched by the move.** It covers the pack's asset index and its sprites' timing and parts,
-  not the recipe (§5.5): a bundle republished with its recipe and a byte-identical pack keeps its content hash. The
-  primitives whose output reaches it (sprite sheets, the index) are simulation surface: they change only with a line.
-- **Publishing extracts** the pack it hashes with from the bundle's own recipe and the publisher's ROMs (§5.7).
+  not the recipe (§5.5): a bundle with its recipe and a byte-identical pack has the content hash today's content has.
+  The primitives whose output reaches it (sprite sheets, the index) are simulation surface: they change only with a
+  line. Every pack comes from a full set, so every app with a bundle computes one hash for it.
+- **Publishing extracts** the pack it hashes with, from the bundle's own recipe and the publisher's Legacy Collection
+  (§5.7).
 - **Verification.** Both paths live in one build while a game moves: the old Rust recipe and the new Luau one extract
-  each of the game's sixteen ROM sets, and their files, `extraction.txt` and ROM reads must be identical (§6), with a
-  baseline of digests recorded before anything changes. Only then is the game's Rust deleted.
+  the game's full set, and their files, `extraction.txt` and ROM reads must be identical (§6), with a baseline of the
+  three games' full-set packs recorded before anything changes. Only then is the game's Rust deleted.
 - **Migration**, one game at a time (§7): the host, the primitives and exelib's shared recipe code first; then EXE6,
-  EXE5, EXE4; then `Game`, the compat crates' place in the extractor and the old fingerprint go, and each game's
-  bundle is published again with its recipe. About 2,150 lines of Rust added (300 of them tests) and 5,200 removed;
-  about 4,200 lines of Luau and 350 of declarations.
+  EXE5, EXE4; then `Game`, placeholders.rs, the compat crates' place in the extractor and the old fingerprint go, and
+  each game is published for the line with its recipe. About 2,100 lines of Rust added (250 of them tests) and 5,900
+  removed (450 of them tests); about 3,550 lines of Luau and 330 of declarations.
 
 ## 1. Extraction today
 
@@ -100,6 +109,10 @@ under `catch_unwind`:
 (`AssetNames::index`) and `extraction.txt`; `write_reporting` writes them and reads them back. `fingerprint(game)`
 digests `pack::FORMATS` and the names (FNV-1a, 64 bits).
 
+Any subset of the four ROMs makes a pack today, the empty one included (the README's tables). With all four, nothing
+is a placeholder: the full-set packs in the main checkout and in the verification workspace (data/exe4–6) have no
+`placeholder:` line, no missing ROM and no silenced song in their `extraction.txt`.
+
 ### 1.2 Where the per-game knowledge is
 
 | | EXE4 | EXE5 | EXE6 |
@@ -118,7 +131,7 @@ What the per-game modules hold, by kind:
   among them: EXE6's `gregar::RIGHT_IN_GREGAR`, `OWN_FACES`, `SPRITES`, `chip_source`, `icon_source`, `jp::SPRITES`,
   `CHIP_PICTURES`, `VERSIONED`; EXE5's `VERSION_CHIPS`, `OWN_CHIPS`; EXE4's `version_of` (compat's `version`).
 - **Layout the frontend draws by**: `CustomLayout`, `CursorPlace`s, `WindowLabel`s, `HudLayout`, `TelopTiles`,
-  `ButtonPlace`, `FAMILY_BYTES`, `BANNER_RECORDS`, the chatbox's first tile.
+  `ButtonPlace`, `FAMILY_BYTES`, the chatbox's first tile.
 - **Assembly**: `hud`, `drawn`, `worded`, `custom`, `version_pictures`, `row_button`, `soul_button`, the lettering's
   `hud` and `custom`: which block fills which field of `Hud` and `CustomScreen`, and the reorderings ("PAUSE" as five
   glyphs, the banner digits with the filler as glyph 10, EXE4's UNITE button with the window's fill tile six times).
@@ -129,14 +142,17 @@ What the per-game modules hold, by kind:
 - **Special cases**: EXE6's `DUSTMAN_PORTRAIT`, `GIFT_PALETTE`, the BeastOut chip's picture; EXE5's background
   numbers that must be one picture (an `assert!` against compat); EXE4's e-Reader cards (`cards.rs`: two pictures as
   hex, icons after chip 0x136's), its judge banner's kind, its Japanese chatbox text place.
+- **Absent ROMs**: each block's `is_present` branch with its placeholder (55, 37 and 46 lines in EXE4, EXE5 and
+  EXE6), `BANNER_RECORDS` (the banners' kinds for a HUD of placeholders, about 20 lines a game), the fallbacks of the
+  source choice above, EXE4's placeholder font and its screen without a ROM: about 110 lines a game.
 
 ### 1.3 The shared part
 
 `rom.rs` (ROM reads, LZ77, the read recorder, `Place`, `Source`, `Roms`), `decode.rs` (`speeding_scroll`,
 `gfx_anims`, `tiles`, `banner_at`, `patches`, the field, palette animations, map entries, background pictures),
-`sprite.rs` (archives, sheets, portraits), `sound.rs` (`colonel_songs`, `played_otherwise`), `placeholders.rs`,
-`elements.rs`, `shapes/mod.rs` with `build.rs` (the hand-drawn SVGs compiled in), `cli.rs`, `lib.rs`: about 3,400
-lines. Part of it is per-game in all but name (§2.3).
+`sprite.rs` (archives, sheets, portraits), `sound.rs` (`colonel_songs`, `played_otherwise`), `placeholders.rs`
+(401 lines), `elements.rs`, `shapes/mod.rs` with `build.rs` (the hand-drawn SVGs compiled in), `cli.rs`, `lib.rs`:
+about 3,400 lines. Part of it is per-game in all but name (§2.3).
 
 ## 2. The split
 
@@ -164,7 +180,8 @@ Rust first, as now.
 ### 2.2 Every module and function, and its fate
 
 "Recipe" is the game's `extract/`; "exelib" is exelib's `extract/`, the code the three games share (§4.1); "primitive"
-is §3; "host" is nettai-extract's fixed steps (§3.10).
+is §3; "host" is nettai-extract's fixed steps (§3.10); "deleted" is code only a partial set runs, which isn't ported
+(§2.3).
 
 **lib.rs**
 
@@ -173,17 +190,17 @@ is §3; "host" is nettai-extract's fixed steps (§3.10).
 | `Game`, `ALL`, `named`, `id`, `codes` | gone: the game is the bundle's `game`; the codes are the recipe's ROM declarations (§4.2) |
 | `HEADER_LEN`, `recognize` | host, game-neutral: a header's code is matched against the installed bundles' declarations |
 | `fingerprint`, `asset_names` | host: the new fingerprint (§5.2); the names are the recipe's |
-| `RomSet::insert` (known code, 8 MiB, no duplicate) | host: the code and size from the declarations |
-| `Extraction` | host; `game` becomes the game's id |
+| `RomSet::insert` (known code, 8 MiB, no duplicate) | host: the code and size from the declarations; an incomplete set is refused (§4.2) |
+| `Extraction` | host; `game` becomes the game's id; `missing_roms` and `placeholders` deleted |
 | `extract_recording_reads`, `RomRead` | host: the ROM handles record their reads as `Rom` does now |
 | `songs_played_otherwise` | host, for the verification's cross-ROM sweep; no recipe calls it |
 | `extract_reporting`'s `catch_unwind` | host; a recipe's error becomes `Error` with the Luau traceback |
-| `JAPANESE` and the language trimming | recipe says the pack's languages (§3.10); host applies `in_language`, `without_language` |
-| `extract_inner` | recipe through step 2 and the choices in 3, 4 and 6 (§1.1); host the rest, in the same order |
+| `JAPANESE` and the language trimming | deleted: a full set's pack has both languages, as built |
+| `extract_inner` | recipe through step 2 and the sound's ROMs (§1.1); host the rest, in the same order |
 | `Extraction::unnamed`, `files`, `write`, `write_reporting` | host, unchanged |
 
-**cli.rs**: host. `nettai-extract <content-dir> <pack-dir> [ROM ...]`, the game from the content directory's
-manifest (a game pack's folder, or an unpacked bundle); `--reads` and `songs` unchanged.
+**cli.rs**: host. `nettai-extract <content-dir> <pack-dir> ROM...`, the game from the content directory's manifest
+(a game pack's folder, or an unpacked bundle), every declared ROM required; `--reads` and `songs` unchanged.
 
 **rom.rs**
 
@@ -192,7 +209,7 @@ manifest (a game pack's folder, or an unpacked bundle); `--reads` and `songs` un
 | `Rom::u8`, `u16`, `u32`, `bytes`, `from`, `contains`, `lz77`, `note` | primitive: the `Rom` handle (§3.2) |
 | `record_reads`, `Read`, `ReadKind` | host |
 | `Place::pointer`, `pointer_in_each`, `stated`, `Source::at` | exelib: `place.luau` |
-| `Roms::any`, `us`, `jp`, `of`, `preferring`, `us_of`, `jp_of`; `Version` | exelib: `roms.luau`; two versions by two regions is the series' shape, not the machine's |
+| `Rom::is_present`, `Source`, `Roms` (`first`, `any`, `us`, `jp`, `of`, `preferring`, `us_of`, `jp_of`), `Version` | deleted: with every ROM there, each choice is one ROM, which the recipe names (§2.3) |
 
 **decode.rs**
 
@@ -200,7 +217,7 @@ manifest (a game pack's folder, or an unpacked bundle); `--reads` and `songs` un
 |---|---|
 | `speeding_scroll` | exelib: `scroll.luau` (§2.3) |
 | `gfx_anims`, `gfx_anim` | primitive `gfx.anims` |
-| `tiles` | primitive `gba.tiles` |
+| `tiles` | primitive `gba.tiles`; its placeholder branch deleted |
 | `banner_at` | exelib: `banners.luau`; EXE4's record (`exe4::hud::banner`) in EXE4's recipe |
 | `patches` | exelib: `patches.luau` |
 | `FieldAddresses`, `field`, `field_with`, `palette_anims` | exelib: `field.luau`, over `rom:lz77`, `gba.tiles`, `gba.palettes`, `gba.map` |
@@ -213,14 +230,8 @@ manifest (a game pack's folder, or an unpacked bundle); `--reads` and `songs` un
 **sound.rs**: `colonel_songs` becomes the host's song versions, with the version names the recipe gives (§3.8);
 `played_otherwise` stays as above.
 
-**placeholders.rs**
-
-| Item | Fate |
-|---|---|
-| `PALETTE`, `tiles`, `picture`, `font` | primitives `placeholder.*`: a checkerboard is the machine's look for "no ROM given has it" |
-| `hud`, `custom` | exelib: `placeholders.luau` (§2.3: they hold EXE6's layout numbers) |
-| `banners`, `BannerRecord`, `lettering`, `slot_pictures`, `button` | exelib, over `placeholder.tiles` |
-| `complete` (with `sprite`), `sound_bank`, `songs` | host |
+**placeholders.rs**: deleted whole (§2.3). Of `complete`, the host keeps the two sorts it makes (each language's
+buttons by name, the sprites by number); a named asset the model lacks becomes an error (§3.10).
 
 **elements.rs** `split`: host. **shapes/mod.rs** (`Shaper`, `read`, `hud_shapes`, `custom_shapes`, `map_drawings`,
 `Views`): host, reading the drawings from the bundle (§2.3). **build.rs**: gone. **examples/shapes_check.rs**: host
@@ -230,10 +241,10 @@ tool, given a content directory.
 
 | Module | Fate |
 |---|---|
-| `mod.rs` (`Version`, `name`) | recipe: the ROM declarations' `version` (§4.2) |
+| `mod.rs` (`Version`, `name`) | recipe: its versions' names (`falzar`, `gregar`) as constants |
 | `names.rs` | recipe: `names.luau` (§4.3) |
 | `graphics.rs`: `bundle`, `sprites`, `portraits`, `field`, `panel_names`, `backgrounds`, `SCROLLERS` | recipe: `init.luau`, `sprites.luau`, `stage.luau`, over exelib's makers |
-| `hud.rs`: every `Place`, `BANNER_RECORDS`, `texts`, `palette`, `map`, `banner`, `mugshot`, `navi_mugshot`, `hud`, `drawn`, `worded`, `dialogue_font`, `chatbox`, `chip_icons` | recipe: `hud.luau`; `texts`, `chatbox`, `banner` through exelib |
+| `hud.rs`: every `Place`, `texts`, `palette`, `map`, `banner`, `mugshot`, `navi_mugshot`, `hud`, `drawn`, `worded`, `dialogue_font`, `chatbox`, `chip_icons` | recipe: `hud.luau`; `texts`, `chatbox`, `banner` through exelib; `BANNER_RECORDS` deleted |
 | `custom.rs`: every `Place`, `LAYOUT`, the cursors, the button names, `version_pictures`, `row_button`, `emblems`, `picture`, `custom`, `labels`, `drawn`, `chip_art` | recipe: `custom.luau` |
 | `gregar.rs` | recipe: `versions.luau` |
 | `jp.rs` | recipe: `jp.luau` |
@@ -242,21 +253,35 @@ tool, given a content directory.
 **exe5/**: the same shape. `rom.rs` (`Version`), `names.rs`, `graphics.rs` (with `VERSION_CHIPS`, `OWN_CHIPS`,
 `chip_ids` and the background numbers' check), `hud.rs` (the faces with their boxes, the souls in Chaos Unison's
 palettes, `glyph_name`), `custom.rs` (`FAMILY_BYTES`, `cursor_corners`, `soul_button`, Arm Change), `lettering.rs`:
-all recipe.
+all recipe, less each game's absent-ROM code.
 
 **exe4/**: the same. `graphics.rs` (`version_of`, `panel_names`, `texts` with compat's `first_control`, the
 hand-listed panel palette animations, the stated scrollers, its `DESCRIPTOR`), `hud.rs` (its banner record, the judge's
 kind, the telops, `HudLayout`), `custom.rs` (`window_emblem`, the UNITE fill, `SHUFFLE_SETS`, `lettering`), `cards.rs`:
-all recipe.
+all recipe; `placeholder_font` and the screen without a ROM deleted.
 
 ### 2.3 What resists the split
 
-- **`placeholders::hud` and `placeholders::custom` are EXE6's in all but name.** They start every game's HUD with
-  tile 0x1A0, the gauge at 0x222, the HP box in palette 13 and the gauge frame in 9, a 136-tile window and a 300-cell
-  map in palette 9: EXE6's numbers, which EXE5's and EXE4's code then overwrites in part. They become exelib's
-  skeletons (`placeholders.luau`), built from the checkerboard primitives; each game's recipe starts from one, as
-  today. (A cleaner start per game is a later content change; for the migration they must be what they are, byte for
-  byte.)
+- **Partial sets and placeholders.** Today's extractor makes a pack of any subset of the four ROMs, filling what the
+  ROMs given don't hold with checkerboards (§1.2, "Absent ROMs"; placeholders.rs). A complete Legacy Collection is
+  now required (§8, decision 5), and with all four ROMs today's packs have no placeholder (§1.1). So none of it is
+  ported:
+  - each `is_present` branch and each `placeholders::` call runs only without a ROM; `BANNER_RECORDS` serves only a
+    HUD of placeholders; EXE4's `placeholder_font` and its screen without a ROM likewise;
+  - every source choice is one ROM: `any()` and `us()` are the base version's US ROM, `jp()` its Japanese one,
+    `of(v)`, `preferring(v)` and `us_of(v)` version `v`'s US ROM, `jp_of(v)` its Japanese one. The recipe names it
+    (`set.BR5E`);
+  - `placeholders::hud` and `placeholders::custom`, the skeletons every game's HUD and screen start from, hold EXE6's
+    layout numbers (tile 0x1A0, the gauge at 0x222, palettes 13 and 9, a 136-tile window), but a full set's pack keeps
+    none of their fields: each game's `drawn` and `worded` (EXE4's screen, built whole) set every one. The recipe
+    starts from the model's defaults;
+  - `placeholders::complete` adds nothing to a full set's pack, but makes two sorts the pack's bytes depend on (each
+    language's buttons by name, the sprites by number): the host keeps them. A named asset the recipe doesn't give is
+    an error naming it (`exe6: sprite/megaman is named in compat/assets.toml and no ROM gave it`), which the harness
+    and the content audit catch (§6.4).
+
+  What no ROM holds is no placeholder either: EXE4's two e-Reader chips' pictures are recipe data (below), and the
+  gift chips' palettes are black, their definitions' `art_palette` coloring them, as now.
 - **`speeding_scroll` reads a routine's code.** It matches a BG1 scroll callback's Thumb instructions and the
   battle-flag test (flag 0x40, BattleState+0x5C) of EXE5's 0x080019EC and EXE4's scroller +0xB8: that is the series'
   code, not a format. It moves to exelib as Luau over `rom:u16` (about 40 lines; it runs on fewer than thirty
@@ -271,25 +296,23 @@ all recipe.
 - **The hand-drawn frames are game content compiled into the app**: 121 drawings and 98 `.same` links, 72 of them
   across games (EXE4's and EXE5's banners' bars to EXE6's `bar-NNN.svg`, EXE5's `mugshot-box-frame` to EXE4's). With
   one repo a game, a game's bundle holds its own pack and exelib only. The 33 drawings another game links to move to
-  exelib's `extract/shapes/`; each game's own stay in its `extract/shapes/`; a `.same` file names a path in the bundle
-  (`exelib/extract/shapes/banners/bar-104.svg`). The host reads them from the bundle (`Shaper::file`), not from
-  `drawn::DRAWINGS`. `NETTAI_SHAPES_SOURCES` and `shapes_check` work as now, given a content directory.
+  exelib's `extract/shapes/` (§8, decision 2); each game's own stay in its `extract/shapes/`; a `.same` file names a
+  path in the bundle (`exelib/extract/shapes/banners/bar-104.svg`). The host reads them from the bundle
+  (`Shaper::file`), not from `drawn::DRAWINGS`. `NETTAI_SHAPES_SOURCES` and `shapes_check` work as now, given a
+  content directory.
 - **The e-Reader cards' pictures** (EXE4's `cards.rs`: Duo and PrixPowr, 0x540 bytes each as hex) are the one input
-  besides the drawings that no ROM holds. They move to EXE4's recipe as they are (`extract/cards.luau`, hex strings,
-  decoded by `gba.tiles` over `bytes.hex`).
+  besides the drawings that no ROM holds: embedded data. They move to EXE4's recipe as they are (`extract/cards.luau`,
+  hex strings, decoded by `gba.tiles` over `bytes.hex`; §8, decision 6).
 - **Asserts.** EXE5's background check (`assert!` that the numbers compat makes one background are one picture) and
   the lettering's banner-kind check (`assert_eq!` between a Japanese and a US banner) become `error()` in the recipe:
   extraction fails with the message, as it does now through `catch_unwind`.
 - **The compat crates validate as they parse** (exe4-compat's text table: no more glyphs than the bytes below
-  `first_control`). What the recipe reads raw, the recipe checks, with the same messages; the run without ROMs that
-  the tests and publishing make runs those checks (§4.5).
-- **The language trimming in `extract_inner`** decides by "a US ROM is given" and "a Japanese ROM is given": regions
-  are the recipe's. The recipe returns the pack's languages, its own first; the host applies the model's
-  `in_language` and `without_language`.
+  `first_control`). What the recipe reads raw, the recipe checks, with the same messages, at every extraction.
 - **EXE5's song versions** (`colonel_songs`) name `protoman` and `colonel`. The merge itself is the machine's (voice
   groups matched or added); the recipe names the versions and which ROM is which.
 - **EXE6's panel names are a Rust list** (`exe6::graphics::panel_names`), EXE5's and EXE4's compat's
-  (`panel_name(n)`). All three become the recipe's (EXE6's list in its recipe, the others from panels.toml).
+  (`panel_name(n)`). All three become the recipe's (EXE6's list in its recipe, the others from panels.toml), for the
+  field's panel types.
 - **The order of the reads.** `--reads` (`extract_recording_reads`) lists the ROM ranges in the order the extraction
   read them, and the verification workspace's cross-ROM sweep consumes it. A recipe ported statement by statement
   reads in the same order (Rust evaluates a struct literal's fields as written, Luau a table constructor's likewise);
@@ -318,8 +341,8 @@ content-model-v2.md §6.4 and core.d.luau's header gain the exception in step 1 
 
 ### 3.1 Their shape
 
-- **Global libraries and functions** in the recipe's VM (`gba`, `bytes`, `sprite`, `gfx`, `font`, `placeholder`;
-  `data`, `say`), installed as the battle's are (`lib_fn!` closures in a table, crates/nettai-luau/src/bind.rs).
+- **Global libraries and a function** in the recipe's VM (`gba`, `bytes`, `sprite`, `gfx`, `font`; `data`), installed
+  as the battle's are (`lib_fn!` closures in a table, crates/nettai-luau/src/bind.rs).
 - **Handles for bulk data**: `Rom`, `Bytes`, `Tiles`, `Map`, `Sheet`, `GfxAnim`, `DialogueFont` are userdata over
   Rust values (`impl UserData`, `enable_namecall`, as `Object` and `Vec3` are). Their bytes never enter Luau: an 8 MiB
   ROM is an `Arc<[u8]>` the handles share. A recipe moves handles around and puts them in the model; it reads single
@@ -331,6 +354,7 @@ content-model-v2.md §6.4 and core.d.luau's header gain the exception in step 1 
   the desktop; the browser build is `panic=abort`, where it kills the page. A Luau error unwinds there too.
 - **Numbers** are GBA addresses (0x08000000 on) and plain integers; a recipe computes with `bit32` and `//` as content
   does.
+- **No placeholders.** No primitive makes a stand-in picture, palette, font or song (§2.3).
 
 The declarations are content/nettai/extract.d.luau, beside core.d.luau, checked against by `extract/` modules only
 (§4.5). The excerpts below are its substance.
@@ -340,6 +364,7 @@ The declarations are content/nettai/extract.d.luau, beside core.d.luau, checked 
 ```luau
 declare extern type Rom with
     code: string          -- "BR6E": the manifest's declaration (§4.2)
+    slot: number          -- its place in the declaration, 1 to 4
     function u8(self, at: number): number
     function u16(self, at: number): number
     function u32(self, at: number): number
@@ -350,16 +375,17 @@ declare extern type Rom with
 end
 ```
 
-The recipe gets one argument, the set (§4.2): each declared ROM in declaration order, `{code, region, version, rom}`,
-`rom` nil where it wasn't given. Reads are recorded as `Rom::note` records them now (a word that holds a ROM address is
-a pointer read; contiguous data reads merge; `span` is open), for `--reads`; the recorder also notes the recipe's
-file and line of each read (mlua's stack inspection, only while recording), a fifth column the cross-ROM sweep can use
-in place of parsing Rust constants (§6.6).
+The recipe gets one argument, the set: each declared code to its ROM (`set.BR6E`), every one present (§4.2). Reads
+are recorded as `Rom::note` records them now (a word that holds a ROM address is a pointer read; contiguous data reads
+merge; `span` is open), for `--reads`; the recorder also notes the recipe's file and line of each read (mlua's stack
+inspection, only while recording), a fifth column the cross-ROM sweep can use in place of parsing Rust constants
+(§6.6).
 
-`Place` and `Source` are exelib's (`place.luau`, `roms.luau`): `place.pointer(us, jp)`, `place.pointer_in_each({...})`,
-`place.stated({...})`, and a source's `at(place)`, which reads the pointer word through `rom:u32`. They keep their
-Rust spelling (`place.pointer(0x0801_ECC0, 0x0801_F0E4)`: Luau takes `_` in numbers), so the tools that read them
-change their pattern, not their method.
+`Place` is exelib's (`place.luau`): `place.pointer(us, jp)`, `place.pointer_in_each({...})`, `place.stated({...})`,
+and `place.at(rom, p)`, which takes the address for the ROM's slot (a `pointer`'s first for slots 1 and 2, its second
+for 3 and 4, as `Place::pointer` has them) and reads the pointer word there through `rom:u32`. They keep their Rust
+spelling (`place.pointer(0x0801_ECC0, 0x0801_F0E4)`: Luau takes `_` in numbers), so the tools that read them change
+their pattern, not their method.
 
 ### 3.3 Bytes and decompression
 
@@ -457,31 +483,20 @@ in EXE4).
 A recipe doesn't read the sound bank; it says which ROM the host reads it from, and which ROMs are versions of it:
 
 ```luau
-sound = { from = us_base_or_first_given,                         -- nil: no ROM given, silent placeholders
-          base_version = "protoman", versions = { { name = "colonel", from = colonel_us } } }
+sound = { from = set.BRBE, base_version = "protoman", versions = { { name = "colonel", from = set.BRKE } } }
 ```
 
 The host reads each with `m4a::rom::extract` (the driver is found by its code, `find_song_num_start`: the machine's),
 brings each version's songs that play otherwise into the base bank (`sound::colonel_songs`, renamed
-`song_versions`, the names the recipe's), fills failures with `placeholders::songs` and validates. `songs` and
+`song_versions`, the names the recipe's) and validates. A song that fails to read is an extraction error naming it
+(no full set has one today); a song-table slot the game leaves empty stays empty (EXE6's stop-music). `songs` and
 `played_otherwise` stay the CLI's and the cross-ROM sweep's.
 
-### 3.9 Placeholders and diagnostics
+### 3.9 Data the recipe reads
 
 ```luau
-declare placeholder: {
-    palette: Palette,                         -- `placeholders::PALETTE`
-    tiles: (count: number) -> Tiles,          -- the checkerboard
-    picture: () -> Picture,                   -- 7x6 tiles
-    font: (cell: {string}, dialogue: {string}) -> DialogueFont,
-}
-declare data: (path: string) -> any           -- a file the manifest's `reads` names, TOML parsed to tables
-declare say: (line: string) -> ()             -- a line of extraction.txt's warnings
+declare data: (path: string) -> any   -- a file the manifest's `reads` names, TOML parsed to tables
 ```
-
-The checkerboard is the machine's look for "no ROM given has it"; what a placeholder HUD or screen is made of (its
-tile numbers, its sizes) is exelib's skeleton (§2.3). `placeholders::complete` stays the host's: it works from the
-names alone.
 
 ### 3.10 What a recipe returns, and what the host does with it
 
@@ -489,53 +504,49 @@ The recipe (`extract/init.luau`) returns a function from the set to one table:
 
 ```luau
 return function(set: Set): Extracted
-    local roms = require("@exelib/extract/roms").of(set)
     local names = require("./names")()
     return {
-        names = names,                               -- AssetNames: sprites, songs, backgrounds, mugshots, banners, chips, navis, glyphs...
-        panel_names = PANEL_NAMES,                   -- the field's panel types by number, for a placeholder field
-        languages = roms.languages(),                -- the pack's, its own first: {"en", "ja"}, {"ja"}, {"en"}
+        names = names, -- AssetNames: sprites, songs, backgrounds, mugshots, banners, chips, navis, glyphs
         graphics = {
-            sprites = sprites(roms, names),
-            field = roms.any.present and field(roms.any) or nil,
-            backgrounds = roms.any.present and backgrounds(roms.any) or nil,
-            hud = hud(roms, names),
-            custom = custom(roms, names),
+            sprites = sprites(set, names),
+            field = field(set.BR6E),
+            backgrounds = backgrounds(set.BR6E),
+            hud = hud(set, names),
+            custom = custom(set, names),
         },
-        sound = sound(roms),
+        sound = { from = set.BR6E },
     }
 end
 ```
 
-**The codec** (nettai-extract's `recipe/model.rs`) reads the table into `nettai_assets::Bundle`, `AssetNames`, the
-panel names, the languages and the sound plan. The tables use the model's own field names: an unknown field, or a
-value of the wrong kind, is an error naming its path (`graphics.hud.chatbox.boxes[2][1]: expected Map, got table`),
-as the rule sections' `SpecReader` does; a field left out takes the model's default, as the Rust's
-`..Default::default()` and `Field::default()` do now (exelib's skeletons give the rest, §2.3). Lists are arrays; a
-list with holes (`Vec<Option<Background>>`) is a table keyed by the game's number from 0 with its length
-(`{ n = 22, [0x00] = ..., [0x05] = ... }`); an enum is its variant's name
-(`sets = "other"`); `Versioned` is `{ base_version, base, versions = { {name, value} } }`. Keyed maps go into
-`BTreeMap`s, so the order Luau iterates them in never reaches a file. It is hand-written (the model has no serde and
-holds handles); about 800 lines. `plain_data` doesn't fit: it takes no userdata and goes 16 deep.
+**The codec** (nettai-extract's `recipe/model.rs`) reads the table into `nettai_assets::Bundle`, `AssetNames` and
+the sound plan. The tables use the model's own field names: an unknown field, or a value of the wrong kind, is an
+error naming its path (`graphics.hud.chatbox.boxes[2][1]: expected Map, got table`), as the rule sections'
+`SpecReader` does; a field left out takes the model's default, as the Rust's `..Default::default()` does now. Lists
+are arrays; a list with holes (`Vec<Option<Background>>`) is a table keyed by the game's number from 0 with its length
+(`{ n = 22, [0x00] = ..., [0x05] = ... }`); an enum is its variant's name (`sets = "other"`); `Versioned` is
+`{ base_version, base, versions = { {name, value} } }`. Keyed maps go into `BTreeMap`s, so the order Luau iterates
+them in never reaches a file. It is hand-written (the model has no serde and holds handles); about 800 lines.
+`plain_data` doesn't fit: it takes no userdata and goes 16 deep.
 
-**The host then runs the steps `extract_inner` runs after the per-game code, in the same order:**
+**The host then runs the steps `extract_inner` runs after the per-game code, in the same order**, less the two that
+only a partial set needs (the placeholders and the language trimming):
 
-1. the missing-ROM lines, one for each declared ROM not given, in declaration order (they lead `extraction.txt` as
-   now), then the recipe's `say` lines (none today);
-2. `placeholders::complete(graphics, names, panel_names)`; progress 0.6;
-3. the languages: `in_language(own)` where the pack's own isn't the model's base, then `without_language` for each
-   language the model has that the list doesn't;
-4. `letters::read`, `elements::split`, `shapes::read` with the drawings from the bundle (§2.3), each line prefixed as
+1. the check that takes `placeholders::complete`'s place: each language's buttons sorted by name and the sprites by
+   number, as `complete` sorts them; every asset the names name present in the model (a sprite, a background, a
+   mugshot, a chip's picture and icon, a navi's emblem, the field), else an error naming the first missing; progress
+   0.6;
+2. `letters::read`, `elements::split`, `shapes::read` with the drawings from the bundle (§2.3), each line prefixed as
    now;
-5. the sound (§3.8); progress 0.95; `SoundBank::validate`; 1.0;
-6. `Extraction` as now: `files`, `write_reporting`, the read-back.
+3. the sound (§3.8); progress 0.95; `SoundBank::validate`; 1.0;
+4. `Extraction` as now: `files`, `write_reporting`, the read-back.
 
 ### 3.11 Performance
 
 Today a game's graphics take 0.02–0.04 s of an extraction's 1.1–1.8 s on the desktop (2–3 s in a browser worker);
 encoding, writing and reading back are the rest (docs/app.md §17). The recipe adds:
 
-- **the VM and the modules**: some 1,200 lines a game plus 700 of exelib's, compiled once, a few milliseconds;
+- **the VM and the modules**: some 1,000 lines a game plus 500 of exelib's, compiled once, a few milliseconds;
 - **the calls**: a few tens of thousands a game (411 chip records read three words each, twice; the sprite lists'
   1,500 entries; 47 banners of 22 words in two languages; the text lines' bytes; the places' pointer words), at the
   50–180 ns a library call, method or handle costs (scripting.md §7): under 10 ms;
@@ -573,14 +584,14 @@ exe6/
     shapes/            EXE6's own drawings (banners/, hud/, custom/)
 exelib/
   extract/
-    place.luau  roms.luau  colors.luau  scroll.luau  banners.luau  patches.luau  texts.luau
-    field.luau  backgrounds.luau  sprites.luau  chatbox.luau  buttons.luau  placeholders.luau
+    place.luau  colors.luau  scroll.luau  banners.luau  patches.luau  texts.luau
+    field.luau  backgrounds.luau  sprites.luau  chatbox.luau  buttons.luau
     shapes/            the drawings two games or more share (§2.3)
 exe4/extract/cards.luau  the e-Reader cards' pictures
 ```
 
 One file a Rust module, so the port is read side by side. exelib's are makers that take a game's places and sizes
-(the "shared maker" form content already uses): `chatbox.of(src, CHATBOX)` where `CHATBOX` is the game's table of
+(the "shared maker" form content already uses): `chatbox.of(rom, CHATBOX)` where `CHATBOX` is the game's table of
 places, tile count and first tile. A game that differs writes its own (EXE4's banner record, its chatbox's single
 kind).
 
@@ -591,25 +602,20 @@ In the game's manifest, read without running anything:
 ```toml
 [extract]
 primitives = 1
-# Each ROM the recipe reads, in this order (the base version's US ROM, the other's, then their Japanese ones):
-# none is required; a pack has what the ones given hold.
-roms = [
-    { code = "BR6E", region = "us", version = "falzar" },
-    { code = "BR5E", region = "us", version = "gregar" },
-    { code = "BR6J", region = "jp", version = "falzar" },
-    { code = "BR5J", region = "jp", version = "gregar" },
-]
+# The game's ROMs, all of them (a complete Legacy Collection's), in this order: the base version's US ROM, the
+# other's, then their Japanese ones.
+roms = ["BR6E", "BR5E", "BR6J", "BR5J"]
 size = 0x800000
 reads = ["compat/assets.toml", "compat/chips.toml", "compat/navis.toml", "compat/text.toml"]
 ```
 
-- **`roms`**: the header codes (0xAC), each with the region and version its recipe chooses by. The host uses the code
-  alone: `recognize` matches a header against every installed bundle's declarations, `RomSet::insert` refuses a code
-  no declaration names, a duplicate, or an image not `size` bytes. Two games may not declare one code (the app
-  refuses the later bundle). The order is the one `Game::codes` has now; the missing-ROM lines and exelib's
-  `roms.luau` follow it.
-- **No ROM is required.** Every game makes a pack from any subset, the empty one included (the README's tables); a
-  declaration names no required ROM because none is.
+- **`roms`**: the header codes (0xAC). Every one is required: the host refuses a set without one before the recipe
+  runs, and the app tells the player the Legacy Collection's files are incomplete (§5.6). `recognize` matches a header
+  against every installed bundle's declarations; `RomSet::insert` refuses a code no declaration names, a duplicate,
+  or an image not `size` bytes. Two games may not declare one code (the app refuses the later bundle).
+- **The order** is the one `Game::codes` has now, which exelib's places read an address by (a ROM's `slot`, §3.2).
+  Regions and versions aren't declared: a recipe names its ROMs by code (`set.BR5E` is the Gregar US ROM) and holds
+  its versions' names (`falzar`, `gregar`) as the constants the pack writes them under.
 - **`primitives`**: the lowest primitives version the recipe runs on (§5.3).
 - **`reads`**: the files outside `extract/` the recipe may read with `data`, in its own pack. Anything else is refused,
   so the fingerprint can't miss an input (§5.2).
@@ -618,7 +624,7 @@ reads = ["compat/assets.toml", "compat/chips.toml", "compat/navis.toml", "compat
 
 ### 4.3 The names
 
-compat/assets.toml and the tables beside it stay TOML, and the recipe reads them (`names.luau`):
+compat/assets.toml and the tables beside it stay TOML, and the recipe reads them (`names.luau`; §8, decision 1):
 
 - they are written by gen-content (the verification workspace) and checked by it against the ROMs, and gen-content,
   the trace tests and the curation tools read them (they would read Luau badly);
@@ -645,7 +651,7 @@ The crates stay for save import, traces and gen-content.
   (`nettai_luau::tool::open(packs, entry, options, install)`): `sandbox::new_vm` (string, table, bit32 and the exact
   math), `sandbox::compiler`, `verify::check` (no global assignment, no writes to module-level locals), modules
   frozen as they load (`deep_freeze`), `require` resolved by `packs::find` and limited to `extract/` trees of the pack
-  and its support packs (`@exelib/extract/roms`), and the caller's libraries installed (`install`: nettai-extract's
+  and its support packs (`@exelib/extract/place`), and the caller's libraries installed (`install`: nettai-extract's
   primitives). None of `asset`, `new`, `rules`, `battle`.
 - **One budget for the run**, not a call's: the battle's million checks a call would stop a recipe that walks 411
   chips twice. A whole-run count large enough that only a runaway loop meets it ("the recipe ran past its budget"),
@@ -667,9 +673,11 @@ The crates stay for save import, traces and gen-content.
   the battle's API to recipes and the recipes' to content).
 - **Lints**: a content module may not require under `extract/`, nor an `extract/` module outside it; `data` paths are
   in `reads`.
-- **A run without ROMs.** The empty set runs the whole recipe (every source absent, every placeholder path): the
-  tests do it for each game (`empty_sets_*` in tests/extract.rs), and so does publishing (§5.7). nettai-content-check
-  can't run it (it can't link nettai-luau: the two Luau builds' symbols collide).
+- **Runs need the ROMs.** A recipe runs only on its full set: in the verification harness (§6.3), in the full-set
+  content audit (§6.4), when publishing (§5.7) and in the app. CI has no ROMs: there, the recipes are type-checked and
+  the primitives, the codec, the declaration and the fingerprint are unit-tested on synthetic data. (Today's no-ROM
+  tests, `empty_sets_*`, extract placeholder packs, which no longer exist.) nettai-content-check couldn't run a recipe
+  anyway: it can't link nettai-luau (the two Luau builds' symbols collide).
 
 ### 4.6 A recipe, in part
 
@@ -677,8 +685,8 @@ EXE6's HUD's `drawn`, as `hud.luau` would have it:
 
 ```luau
 local place = require("@exelib/extract/place")
-local colors = require("@exelib/extract/colors")
 local chatbox = require("@exelib/extract/chatbox")
+local at = place.at
 
 local HUD_TILES = place.pointer(0x0801_ECC0, 0x0801_F0E4)
 local TIMES_GLYPH = place.pointer(0x0801_ECD8, 0x0801_F0FC)
@@ -687,22 +695,21 @@ local HUD_PALETTES = place.pointer(0x0801_DF80, 0x0801_E3A4)
 local PAUSE = place.pointer(0x0801_E188, 0x0801_E5AC)
 -- ...
 
--- `h` with what the four ROMs have alike, read from `src`.
-local function drawn(src, h)
-    local rom = src.rom
+-- `h` with what the four ROMs have alike, read from the Falzar US ROM.
+local function drawn(rom, h)
     h.tiles = gba.join({
-        gba.tiles(rom, src:at(HUD_TILES), 0x640),
-        gba.tiles(rom, src:at(TIMES_GLYPH), 0x40),
-        gba.tiles(rom, src:at(TWO_GLYPH), 0x40),
+        gba.tiles(rom, at(rom, HUD_TILES), 0x640),
+        gba.tiles(rom, at(rom, TIMES_GLYPH), 0x40),
+        gba.tiles(rom, at(rom, TWO_GLYPH), 0x40),
     })
     h.first_tile = 0x1A0
     h.gauge_first_tile = 0x222
-    h.hp_palettes = gba.palettes(rom, src:at(HUD_PALETTES), 3)
-    h.gauge_palette = gba.palette(rom, src:at(HUD_PALETTES))
+    h.hp_palettes = gba.palettes(rom, at(rom, HUD_PALETTES), 3)
+    h.gauge_palette = gba.palette(rom, at(rom, HUD_PALETTES))
     -- ...
     -- "PAUSE" as five glyphs: the 32x16 sprite's columns (its tiles go row by row), then the 8x16 sprite.
-    h.pause = gba.tiles(rom, src:at(PAUSE), 0x140):pick({ 0, 4, 1, 5, 2, 6, 3, 7, 8, 9 })
-    h.chatbox = chatbox.of(src, CHATBOX)
+    h.pause = gba.tiles(rom, at(rom, PAUSE), 0x140):pick({ 0, 4, 1, 5, 2, 6, 3, 7, 8, 9 })
+    h.chatbox = chatbox.of(rom, CHATBOX)
     return h
 end
 ```
@@ -745,26 +752,24 @@ pack's bytes can leave a stale one.
 - The recipe's `primitives` above the app's `PRIMITIVES`: the app doesn't extract, and says the content needs a newer
   nettai (its notice names the two numbers in the log).
 - Each index entry carries the bundle's `primitives` (`bundle::Published::primitives`, from the manifest, written by
-  publishing). An app picks the newest bundle of its line it can extract (`Index::newest_for(line, primitives)`),
-  and finds a replay's content among those (`Index::playing` likewise). An entry without one is a bundle without a
-  recipe (the 0.11 r1 releases, §7): no app extracts it.
+  publishing; required: every bundle of the line is published with its recipe, §7). An app picks the newest bundle of
+  its line it can extract (`Index::newest_for(line, primitives)`), and finds a replay's content among those
+  (`Index::playing` likewise).
 - In the lobby, a peer whose newer revision the other can't extract refuses with that reason, as for content that
   can't be had (content-deployment.md §5).
-- **Within a line** the primitives may grow in a patch release; content that needs them is published once that
-  release is out. What a primitive returns doesn't change within a line where the content hash looks (a sprite's
-  frames and parts, the asset index): that is a line change, as for the simulation (§5.5; open question 3).
+- **Within a line** a patch release may add primitives, and content that needs them is published once that release
+  is out (§8, decision 3). What a primitive returns doesn't change within a line where the content hash looks (a
+  sprite's frames and parts, the asset index): that is a line change, as for the simulation (§5.5).
 
 ### 5.4 When the app extracts again
 
-The stamp (`stamp.toml` in the pack) becomes the fingerprint and the codes of the ROMs it was made from; the app
-version leaves it.
+The stamp (`stamp.toml` in the pack) becomes the fingerprint alone; the app version leaves it.
 
 - **No pack for the bundle's fingerprint**: a new bundle whose recipe or names changed, a new primitives version, a
   new pack format. Lazily, when the game first loads (at once in the browser, where the Legacy Collection's files are
   there only while the page is), as now.
-- **More ROMs than the pack had**: the Legacy Collection (or a folder given in the browser) now has a declared code
-  the stamp lacks.
 - **A pack that won't load** (a format refused): as now.
+- **An incomplete Legacy Collection**: nothing is extracted; the player sees why (§5.6). A pack already made stays.
 - **Packs no stored bundle names** are removed (the content-app branch keeps every fingerprint's; in the browser every
   pack in the origin's file system loads into memory at each start).
 
@@ -778,78 +783,89 @@ not compat (tools' data, never loaded as content); not `extract/` (outside the r
 So, after the change:
 
 - **A recipe moves the content hash only through the pack**: by naming an asset otherwise, or decoding a sprite's
-  timing or parts otherwise. A recipe republished with a byte-identical pack keeps the content hash, and replays and
-  the lobby see no change.
+  timing or parts otherwise. A bundle with its recipe and a byte-identical pack has the content hash today's content
+  has, and replays and the lobby see no change.
 - **The primitives that feed it are simulation surface**: `sprite.sheet`, `sprite.portrait` and the index's making.
   Their output changes only with a line (minor version), as the simulation's does (docs/design/rollback.md).
-- **The hash depends on the ROM set**, as it does now: a pack of fewer ROMs indexes fewer unnamed sprites and has
-  placeholder sprites with their own timing. The Legacy Collection always gives all four ROMs of each game, so the
-  app's packs agree; a browser given a partial folder makes a pack whose hash differs, and the content-app branch's
-  `verify` would evict a good bundle for it (open question 5).
+- **Every pack comes from a full set**, so two apps with the same bundle and primitives compute the same hash. (A pack
+  of fewer ROMs indexed fewer unnamed sprites and timed its placeholder sprites otherwise; no such pack is made now.)
 
 ### 5.6 Finding the ROMs
 
 `crates/nettai/src/bnlc.rs` stays the app's: it finds the Legacy Collection (Steam's app 1798020 or a chosen folder),
-opens its `exe?*.dat` archives and reads each `.srl` entry's header. What changes is that it knows no game: `scan`
-matches each header's code against the installed bundles' declarations, and `bnlc::Rom.code` is a `String`. The
-catalog's games are those whose bundles this app can extract (the content-app branch filters by `Game::named`).
+opens its `exe?*.dat` archives and reads each `.srl` entry's header. What changes:
+
+- it knows no game: `scan` matches each header's code against the installed bundles' declarations, and
+  `bnlc::Rom.code` is a `String`;
+- a game whose declared ROMs aren't all there isn't extracted: the player sees that the Legacy Collection's files are
+  incomplete (a new `UserError`, its words in the four locales), the log names the missing codes, and on the desktop
+  the dialog to choose the folder again offers itself as for no Legacy Collection; in the browser, a folder given
+  without every archive the game needs is refused the same way;
+- the catalog's games are those whose bundles this app can extract (the content-app branch filters by `Game::named`).
 
 ### 5.7 Publishing
 
 `nettai-content publish` hashes the bundle with a pack (step 4, content-deployment.md §4), today `--packs DIR`,
 `data/<game>` by default, unchecked against the bundle. It extracts the pack instead, from the bundle it publishes and
-the publisher's ROMs (`--roms DIR`, the Legacy Collection by default): the hash is then always the recipe's. It
-records `primitives` in `bundle.json`, and refuses a bundle whose recipe fails on the empty set or whose pack's
+the publisher's Legacy Collection (`--collection DIR`, Steam's install by default; §8, decision 4): the hash is then
+always the recipe's. It records `primitives` in `bundle.json`, and refuses a bundle whose recipe fails or whose pack's
 fingerprint isn't the one the bundle names.
 
 ## 6. Verification
 
 ### 6.1 The bar
 
-For every game and every one of its sixteen ROM sets, the Luau recipe's pack is the Rust recipe's, byte for byte:
-the same paths, the same bytes, `extraction.txt` included. And the ROM reads are the same ranges. A pack whose
-bytes are the same draws the same, so no frame comparison is needed for the move; any later recipe change that draws
-something new is frame-compared as any drawing change is.
+For each game, the Luau recipe's pack of the full set is the Rust recipe's, byte for byte: the same paths, the same
+bytes, `extraction.txt` included. And the ROM reads are the same ranges. A pack whose bytes are the same draws the
+same, so no frame comparison is needed for the move; any later recipe change that draws something new is
+frame-compared as any drawing change is. No partial set is compared: none is supported.
 
 ### 6.2 A baseline first
 
 Nothing pins a pack today: the packs in the verification workspace (data/exe4–6) and the main checkout's data/ were
 written by hand at different commits, and no test compares bytes across runs. Before step 1:
 
-- `nettai-extract` at the commit step 1 starts from (with its content submodules' commits) extracts all 48 ROM sets;
+- `nettai-extract` at the commit step 1 starts from (with its content submodules' commits) extracts each game's full
+  set: three packs;
 - each pack's files' SHA-256, path by path, and its `--reads` log go to the verification workspace
-  (`data/extract-baseline/<commit>/<game>-<set>.sha256`, `.reads`): digests and addresses, no ROM bytes;
-- the two full sets of each game are kept whole too, for `diff -r` and the tools that read packs.
+  (`data/extract-baseline/<commit>/<game>.sha256`, `.reads`): digests and addresses, no ROM bytes;
+- the three packs are kept whole too, for `diff -r` and the tools that read packs.
 
 The baseline catches what the dual path can't: a change to the host both paths share (the drawings read from the
-bundle instead of compiled in, the placeholder skeletons in exelib).
+bundle instead of compiled in, the check in place of `placeholders::complete`).
 
 ### 6.3 Both paths in one build
 
 While a game moves, nettai-extract has both: the Rust recipe behind `Game`, the Luau one through `Recipe`. An ignored
-test (`tests/recipes.rs`) extracts each of the game's sixteen sets both ways, in memory (`Extraction::files`, no
-writes), and compares:
+test (`tests/recipes.rs`) extracts the game's full set both ways, in memory (`Extraction::files`, no writes), and
+compares:
 
 - the file lists, then each file's bytes (the first difference reported with its path and, for a text file, its first
   differing line);
-- the warnings and placeholders (`extraction.txt` is a file);
+- the warnings (`extraction.txt` is a file);
 - the reads (`extract_recording_reads`), as ranges per ROM after merging adjacent ones;
 - the time each path takes (§3.11).
 
 It takes a folder of ROMs and recognizes them by their headers (`NETTAI_EXTRACT_ROM_DIR`, any file names), so the
 ROMs where the tools keep them (~/Documents/Tango/roms) serve as they are, and filters by game
-(`NETTAI_EXTRACT_GAMES`). While iterating, `NETTAI_EXTRACT_SETS=full,none` runs the two ends; all sixteen run once
-before the Rust is deleted.
+(`NETTAI_EXTRACT_GAMES`). One game's run is a few seconds a path, so it runs at every step of a game's port.
 
 ### 6.4 The other checks, on the new path
 
-- `every_source_subset` and the content audit, unchanged but for the path: placeholders only where no ROM given holds
-  the picture, the languages each set states, every lookup a frontend makes. `banner_kinds` is held to the full set's
-  banners rather than a table; `in_no_rom` and `unreached` stay the test's data, by game id.
+- **A full-set content audit** (ignored, it needs the ROMs): each game's pack loads with its content and passes every
+  lookup a frontend makes (`nettai-tool --audit-content`'s), as `empty_sets_pass_the_content_audit` does today for a
+  pack of no ROMs. With no placeholders, an asset content names that the recipe didn't extract fails the extraction
+  (§3.10), and one the names don't list fails the audit.
 - `full_sets_preserve_reference_graphics`, and EXE4 added to it.
-- `nettai-content publish --dry-run` for each game: the content hash equals the line's last published one.
+- `nettai-content publish --dry-run` for each game: the content hash is the one the same content has with today's
+  pack.
 - The fingerprint: the same bundle gives the same one on two runs and two machines; a byte changed in any input
-  changes it; a change outside the inputs doesn't (unit tests over a synthetic bundle).
+  changes it; a change outside the inputs doesn't (unit tests over a synthetic bundle). The refusals: an unknown code,
+  a truncated image, a duplicate, an incomplete set.
+- **What goes**: `every_source_subset` (the sixteen sets a game, with its ROM-provenance census: `Held`, `pictures`,
+  `unreached`), `empty_sets_make_loadable_packs_and_language_variants`, `an_empty_set_makes_an_exe4_pack`,
+  `empty_sets_pass_the_content_audit`, `banner_kinds` (the kinds a HUD of placeholders had to keep), and `in_no_rom`
+  (the e-Reader pictures are the recipe's data, read like any other block): about 450 lines of tests/extract.rs.
 
 ### 6.5 After the Rust is gone
 
@@ -860,7 +876,10 @@ alter them records a new baseline (with the commit that does).
 ### 6.6 The verification workspace
 
 - `tools/cross-rom/sweep.py` and `words.py` read places from the extractor's Rust (`Place::pointer(...)` in
-  `src/<game>/*.rs`): they read `extract/*.luau` (`place.pointer(...)`), or the `--reads` log's new column (§3.2).
+  `src/<game>/*.rs`): they read `extract/*.luau` (`place.pointer(...)`), or the `--reads` log's new column (§3.2). The
+  sweep stays useful: it is how a recipe's author finds which ROM holds a block as the game shows it.
+- `tools/cross-rom/census.py` and `checkerboards.py` classify placeholders in packs and frames of partial sets: they
+  retire with them.
 - `tools/exe4/gen_content.py`'s `check_cards` reads Duo's and PrixPowr's hex from `exe4/cards.rs`: it reads
   `content/exe4/extract/cards.luau`.
 - `tools/shapes/redraw/build.sh` names `crates/nettai-extract/shapes`: the drawings are the packs' `extract/shapes/`.
@@ -868,59 +887,70 @@ alter them records a new baseline (with the commit that does).
   `FAMILY_BYTES` in gen_rules.py and the generated elements.luau, tools/jp/README.md's `src/exe6/jp.rs`) point at the
   recipes.
 - The briefs' pack command (`cargo run --release -p nettai-extract -- exe6 <dir> <ROMs>`) becomes
-  `-- content/exe6 <dir> <ROMs>`.
+  `-- content/exe6 <dir> <ROMs>`, with all four ROMs.
 - gen-content, the trace tests and the sound tests use the compat crates, which stay;
   `the_packs_asset_names_are_compats` holds the recipe's index to assets.toml as it holds the Rust's.
 
 ## 7. Migration
 
-Each step builds and passes the quick checks (type-check, the touched tests, the content check); the full harness
-runs where a step says so. The content-app branch lands first: recipes replace its `Tables`, and keep its pack
+Each step builds and passes the quick checks (type-check, the touched tests, the content check); the harness runs at
+each step of a game's port. The content-app branch lands first: recipes replace its `Tables`, and keep its pack
 folders, its stamp and its store.
+
+**Partial sets and placeholders go as they move.** None of today's code for them is ported. It goes in three places:
+
+- in step 1, the tests built on partial sets (about 450 lines) and the README's tables of what each set holds (about
+  120 lines of text);
+- in steps 2 to 4, each game's absent-ROM branches, fallbacks and `BANNER_RECORDS` (about 110 lines a game), with
+  the game's Rust;
+- in step 5, placeholders.rs (401 lines, for a 40-line check), rom.rs's `Source`, `Roms` and `is_present` (86), and
+  lib.rs's missing ROMs, no-ROM sound and language trimming (about 60).
+
+About 1,300 lines of Rust in all.
 
 | Step | What | Size |
 |---|---|---|
-| 0 | The baseline (§6.2) | a script in the verification workspace; 48 extractions |
-| 1 | The host: `nettai_luau::tool`, the primitives, the codec, the declaration (`PackManifest::extract`), `Recipe`, the fingerprint, the drawings read from a content directory, `tests/recipes.rs`; extract.d.luau; content-check's split declarations and lints; exelib's `extract/` (places, sources, scroll, banners, patches, texts, field, backgrounds, sprite list, chatbox, buttons, placeholder skeletons) and the shared drawings; content-model-v2.md §6.4 and core.d.luau's header | Rust +2,150 (codec 800, primitives 500, runner 300, declaration and fingerprint 250, tests 300); Luau +700 exelib, +350 declarations; 33 drawings to exelib, 98 links renamed |
-| 2 | EXE6's recipe, its manifest's `[extract]`, its drawings; the harness's 16 sets equal; then `src/exe6/` and `shapes/exe6/` deleted | Luau +1,200; Rust −1,500 |
-| 3 | EXE5's, likewise | Luau +1,150; Rust −1,500 |
-| 4 | EXE4's, with `cards.luau` | Luau +1,150; Rust −1,450 |
-| 5 | The rest of the Rust recipe path: `Game` and `codes`, the compat dependencies, `asset_names`, the old fingerprint, build.rs and `shapes/`, the moved parts of rom.rs, decode.rs and placeholders.rs; `bnlc` by declarations; the stamp without the app version; the catalog by primitives; the CLI by content directory; the README's tables and commands | Rust −700 |
-| 6 | The verification workspace (§6.6) | about 150 lines of Python and shell |
-| 7 | Each game's bundle published again (below) | three releases |
+| 0 | The baseline (§6.2) | a script in the verification workspace; three extractions |
+| 1 | The host: `nettai_luau::tool`, the primitives, the codec, the declaration (`PackManifest::extract`, every ROM required), `Recipe`, the fingerprint, the drawings read from a content directory, `tests/recipes.rs` and the full-set audit; the partial-set tests and the README's tables deleted; extract.d.luau; content-check's split declarations and lints; exelib's `extract/` (places, colors, scroll, banners, patches, texts, field, backgrounds, sprite list, chatbox, buttons) and the shared drawings; content-model-v2.md §6.4 and core.d.luau's header | Rust +2,000 (codec 800, primitives 450, runner 300, declaration and fingerprint 200, tests 250), −450 (tests); Luau +500 exelib, +330 declarations; 33 drawings to exelib, 98 links renamed |
+| 2 | EXE6's recipe, its manifest's `[extract]`, its drawings; the harness equal; then `src/exe6/` and `shapes/exe6/` deleted | Luau +1,050; Rust −1,500 |
+| 3 | EXE5's, likewise | Luau +1,000; Rust −1,500 |
+| 4 | EXE4's, with `cards.luau` | Luau +1,000; Rust −1,450 |
+| 5 | The rest of the Rust recipe path: `Game` and `codes`, the compat dependencies, `asset_names`, the old fingerprint, build.rs and `shapes/`, rom.rs's source choice and `Place`, decode.rs's moved parts, placeholders.rs whole, lib.rs's partial-set handling; `bnlc` by declarations and its incomplete-collection error (+40, its words in four locales); the stamp without the app version; the catalog by primitives; the CLI by content directory; the README | Rust −1,000, +80 |
+| 6 | The verification workspace (§6.6) | about 150 lines of Python and shell changed, two tools retired |
+| 7 | Each game published for the line (below) | three releases |
 
 **The compat crates** stay: the app's save import, the trace tools and gen-content use them. What only the extractor
 used goes in step 5: `sprite_names`, `background_names`, the content-app branch's `of_content` and `builtin` feature
 if nothing else needs them.
 
-**The published 0.11 bundles** (r1 of each game) have no `[extract]`: no app has downloaded them (content-deployment.md
-§6, step 4 isn't released), and none will extract them (§5.3). Step 7 publishes r2 of each game for 0.11 from the
-commits with the recipe. Its pack is byte-identical, so its content hash is r1's, and `Index::playing` finds r2 for
-any replay made with r1's content. The app release that first downloads content ships r2 (`release.yml`). r1 stays
-published, as every release does.
+**Publishing.** Every 0.11 content release (EXE4's r1 and r2, EXE5's r1, EXE6's r1) has been deleted, tags too, and
+the sites serve empty indexes. No released app has downloaded content, and none will until step 7. Step 7 publishes
+r1 of each game for the line from the commits with the recipes, with `primitives` in each entry; the app release that
+first downloads content ships those (`release.yml`).
 
-## 8. Open questions
+## 8. Decisions
 
-1. **Do the asset names stay TOML, read by the recipe, or move into the recipe's Luau?** Recommendation: they stay
-   (§4.3). gen-content writes and checks them against the ROMs, the content check validates asset names by them,
-   the tools read them, and they are compat, where the original's numbers are kept. The recipe holds the code that
-   joins them.
-2. **Does the code and the drawings the games share live in exelib, or does each game's recipe hold its own copy?**
-   Recommendation: exelib's `extract/` (§4.1). It is about 700 lines and 33 drawings the three games use alike
-   (EXE4's and EXE5's banners' bars are EXE6's drawings), and exelib is already "behavior the games share", as makers
-   that take a game's values. The cost: an exelib change re-extracts every game (its `extract/` is in each one's
-   fingerprint).
-3. **May a patch release add primitives that content then needs?** Recommendation: yes, with content that needs
-   them published only after that release is out, and an older app of the line staying on the revisions it can
-   extract (§5.3). What a primitive returns where the content hash looks changes only with a line. The alternative,
-   primitives frozen for a line, makes a recipe that needs a new decoder wait for the next minor version.
-4. **Does publishing extract the pack it hashes with?** Recommendation: yes (§5.7). Today it hashes with whatever is
-   in `data/<game>`, which can be another commit's pack, and an app that computes another hash evicts the bundle.
-5. **The content hash depends on which ROMs were given** (§5.5). Recommendation: keep the hash as it is, and have the
-   app check a bundle's hash and play online only with a pack of the game's full ROM set; a partial set (a browser
-   given a few ROMs) plays offline and evicts nothing. Making the hash independent of the ROM set (indexing only
-   named assets, keeping placeholder timing out) is a line change, and the Legacy Collection always gives the full
-   set.
-6. **EXE4's e-Reader card pictures: hex in Luau, or an image file?** Recommendation: hex in `cards.luau` for the
-   move, as `cards.rs` has them, byte for byte. An indexed PNG would be the open format the packs use, but it needs a
-   PNG-reading primitive for two pictures; it can follow as a content change once the migration is done.
+The questions this design left open, with the answers (2026-10-26).
+
+1. **The asset names stay TOML, read by the recipe** (§4.3). gen-content writes and checks them against the ROMs, the
+   content check validates asset names by them, the tools read them, and they are compat, where the original's
+   numbers are kept. The recipe holds the code that joins them.
+2. **The code and the drawings the games share live in exelib's `extract/`** (§4.1): about 500 lines and 33 drawings
+   the three games use alike (EXE4's and EXE5's banners' bars are EXE6's drawings), as makers that take a game's
+   values. An exelib change re-extracts every game (its `extract/` is in each one's fingerprint).
+3. **A patch release may add primitives that content then needs** (§5.3). Content that needs them is published only
+   after that release is out, and an older app of the line stays on the revisions it can extract. What a primitive
+   returns where the content hash looks changes only with a line.
+4. **Publishing extracts the pack it hashes with** (§5.7), from the bundle's own recipe and the publisher's Legacy
+   Collection, never a pack left in `data/<game>`.
+5. **Only a complete Legacy Collection install is supported**, every ROM of the game (both versions, US and
+   Japanese), on the desktop and in the browser alike. A recipe may assume its full set; every declared ROM is
+   required; a missing one is an error the player sees ("the Legacy Collection's files are incomplete", §5.6), not a
+   smaller pack. The partial-set machinery goes (§2.3, §7), verification compares each game's full set only (three
+   packs, §6), and the content hash no longer depends on which ROMs were given (§5.5).
+6. **EXE4's e-Reader card pictures are hex in `cards.luau`** (§2.3), as `cards.rs` has them, byte for byte. An indexed
+   PNG would need a PNG-reading primitive for two pictures; it can follow as a content change.
+7. **No placeholders at all.** With a complete Legacy Collection nothing needs one: the only assets no ROM holds are
+   EXE4's two e-Reader pictures, which are embedded data. There are no placeholder primitives and no placeholder
+   skeletons; placeholders.rs and the checkerboard are deleted (§7); an asset a recipe can't find in the full set is
+   an extraction error naming it, which the harness and the content audit catch (§3.10, §6.4).
