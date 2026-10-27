@@ -234,7 +234,8 @@ going on and its scenery moving as the game's pause moves it (§15).
   starts at once. No rule plays it; the packs name it `encounter` (`compat/assets.toml`). (EXE5's and EXE6's song
   0x0F, `transmission`, was looked at first and isn't used: the user, "it shouldn't be the transmission sound, it
   should be the encounter sound".)
-- The title music is the selected game's too: the sound its pack names `title-screen`, on a driver of its own. It
+- The title music is the selected game's too: the song its pack names `title-screen` (no sound of the content's:
+  the pack's index gives its number, and it plays as one sound more past the content's), on a driver of its own. It
   plays across the menu screens, fades in, fades out as a battle starts, and crossfades with the next game's as
   the game changes. Each game's content names its own (`content/<game>/compat/assets.toml`): the song its start
   screen's first state sets, song 1 in EXE6 and EXE5 and song 0 in EXE4, read from the routine in all twelve
@@ -4090,9 +4091,16 @@ back later.": every index empty for the line), a game with none published for th
 that is loaded when its newer content arrives plays it from the next time the main menu shows with nothing over it,
 loaded again behind the bar.
 
-**What a bundle plays.** The first time a game is loaded from a bundle, the content hash it computes with its pack
-is checked against the one its index gave (`contents::verify`), and recorded. A bundle that plays another is taken
-out of the store (the reason in the log), and the game loads its next newest; with none, it can't be played.
+**What a bundle plays.** The first time a game is loaded from a bundle, the content hash it computes (the bundle's
+alone: no pack is read for it) is checked against the one its index gave (`contents::verify`), and recorded. A bundle
+that plays another is taken out of the store (the reason in the log), and the game loads its next newest; with none,
+it can't be played.
+
+**A pack that can't draw it.** A game's content times its sprites and names its assets itself (docs/design/
+content-model-v2.md §6.3); its pack draws and plays them. As the game loads, the pack is checked against the content
+(`nettai_content::pack::pack_assets`): it has every asset the content names, and each sprite the content defines with
+as many animations, each of as many frames (a frame is drawn by the battle's animation and frame). A pack that hasn't
+is a load failure naming the sprite or asset (a pack extracted before the content changed: extract it again).
 
 **Replays** (§16). A replay plays on the content its head names: the game's own where the hashes match, else the
 store's bundle that plays its hash, or the one the game's index lists for it, downloaded while the replay is

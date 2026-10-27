@@ -84,8 +84,9 @@ place of the found one of its game, and can be given again for another
 game's. Two packs of one game in the directory are an error. A pack is of
 the format's one version, 1 (each file says it): another is refused, with
 a note to extract it again. Each pack loads straight from its files: its asset
-index into the engine's `Content`, the graphics through nettai-content's
-importer, and, when a window opens, the sound. `NETTAI_LOAD_TIMES=1` prints
+index, which gives the content's assets their numbers in the pack, the
+graphics through nettai-content's importer, and, when a window opens, the
+sound. `NETTAI_LOAD_TIMES=1` prints
 how long each part took. Each sprite, banner, mugshot, background and sound
 comes from its own pack, and the HUD, the custom screen and the field from
 the match's game's (see "Field and background" below).
@@ -101,10 +102,19 @@ writes one. A game's chips without a use yet (a port's unwritten chips)
 aren't required by its init.luau, so they don't load. Every loader does the same (the
 editor, the tools' `load_battle`, the EXE5 replays, the static audit), and
 the content then is what loaded: its hash, which netplay's handshake
-compares, covers exactly that. A game the content must load whose pack
-isn't found is an error naming the extract command. (Netplay's handshake
-compares the content, the packs' asset names among it: two players play
-with the same packs, or give `--content` and `--pack` alike.)
+compares, covers exactly that. The battle is the content's alone: the
+assets it names, their handles and its sprites' timing are its own
+(docs/design/content-model-v2.md §6.3), so a headless host
+(`pack::load_battle`: the tools' battles, the training pool) reads no pack,
+and the hash is the same whatever pack draws it. A frontend checks the pack
+against the content as it loads the game (`pack::pack_assets`): the pack
+has every asset the content names, and each sprite the content defines with
+as many animations, each of as many frames (drawing takes the pack's frame
+by the simulation's animation and frame; the durations may differ, the
+content's timing the battle), else the load fails naming the sprite or the
+asset; what the pack numbers each asset is then what it draws and plays
+by (`PackAssets`). A game the content must load whose pack isn't found is
+an error naming the extract command.
 
 The graphics load into the types of the `nettai-assets` crate, decoded
 (tiles as palette indices, colors as BGR555):
@@ -629,8 +639,8 @@ host calls, in order:
   §4.7) check that both players run the same netplay protocol, the same
   engine's minor version (`lobby::netplay_line`: "0.7" of 0.7.3; patch
   releases play together, a minor release doesn't), the same game (a match is of one), the same content
-  (`Content::hash`: the definitions, scripts and rule tables, and what the
-  battle reads of the pack, the asset names and the animations' timing) and
+  (`Content::hash`: the definitions, scripts and rule tables, the asset
+  names and the sprites' animations' timing, all the content's) and
   the same background pool (`Compat::backgrounds`, its identity: the hash
   leaves it out, and a round's background may be any of it), and
   refuse a mismatch on both sides, each with a reason its host can say
