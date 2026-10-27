@@ -188,45 +188,6 @@ pub fn tiles(rom: &Rom, a: u32, len: usize) -> Tiles {
     Tiles::from_4bpp(rom.bytes(a, len))
 }
 
-pub fn banner_at(rom: &Rom, (banners, filler): (u32, u32), id: u32) -> BannerLayout {
-    let p = rom.u32(banners + 4 * id);
-    let head = rom.u32(p);
-    let (x, y, kind) = (head as u8, (head >> 8) as u8, (head >> 16) as u8);
-    let mut glyphs = Tiles::default();
-    let mut number_at = None;
-    // Kind 3 (the telops) has no glyphs; kind 4 (the judge's) has them
-    // like the plain ones.
-    if kind <= 2 || kind == 4 {
-        // 20 glyph pointers; once the filler shows up it repeats.
-        let mut q = p + 4;
-        for _ in 0..20 {
-            let g = rom.u32(q);
-            let t = tiles(rom, g, 0x40);
-            glyphs.push(t.get(0).unwrap());
-            glyphs.push(t.get(1).unwrap());
-            if g != filler {
-                q += 4;
-            }
-        }
-        if rom.u32(q) == filler {
-            q += 4;
-        }
-        if kind == 1 {
-            let n = rom.u32(q);
-            number_at = Some((n as u8, (n >> 8) as u8));
-        }
-    }
-    BannerLayout {
-        x,
-        y,
-        kind,
-        glyphs,
-        number_at,
-        bar: None,
-        logo: None,
-    }
-}
-
 pub fn patches(rom: &Rom, (mut a, first_tile): (u32, u16)) -> PatchList {
     let mut patches = Vec::new();
     while rom.u8(a) != 0xFF {
@@ -254,52 +215,10 @@ pub struct FieldAddresses {
     pub panels: u32,
     pub highlights: [u32; 2],
     pub edges: u32,
-    pub palette_anims: u32,
-    pub palette_buffer: u32,
-}
-pub fn field(rom: &Rom, a: FieldAddresses, panel_types: Vec<String>) -> Field {
-    let palette_anims = palette_anims(rom, a.palette_anims, a.palette_buffer);
-    field_with(rom, a, panel_types, palette_anims)
 }
 
-/// The panel palette animations of a list in EXE6's and EXE5's form
-/// (`sub_800C192`'s): a word list of records, each its frame count, timer
-/// slot and destination, then a palette and a duration a frame.
-pub fn palette_anims(rom: &Rom, list: u32, palette_buffer: u32) -> Vec<PaletteAnim> {
-    let mut palette_anims = Vec::new();
-    let mut e = list;
-    loop {
-        let p = rom.u32(e);
-        if p == 0 {
-            break;
-        }
-        let count = rom.u8(p + 1) as u32;
-        let timer_slot = rom.u8(p + 2);
-        let dest = rom.u32(p + 4);
-        let frames = (0..count)
-            .map(|i| {
-                let f = p + 8 + 8 * i;
-                (
-                    palettes_from_bytes(rom.bytes(rom.u32(f), 32))[0],
-                    rom.u32(f + 4) as u8,
-                )
-            })
-            .collect();
-        // The timers start at 0xE, 0xD .. by their counter byte (EXE6's
-        // `sub_800BF88`).
-        let initial_timer = 0xE - (timer_slot.saturating_sub(3) / 2);
-        palette_anims.push(PaletteAnim {
-            slot: ((dest - palette_buffer) / 32) as u8,
-            frames,
-            initial_timer,
-        });
-        e += 4;
-    }
-    palette_anims
-}
-
-/// The field at `a` (its `palette_anims` unread), with these panel palette
-/// animations.
+/// The field at `a`, with these panel types (their names, in the game's
+/// order: its blocks') and panel palette animations.
 pub fn field_with(rom: &Rom, a: FieldAddresses, panel_types: Vec<String>, palette_anims: Vec<PaletteAnim>) -> Field {
     let tiles = Tiles::from_4bpp(&rom.lz77(a.tiles).expect("the field's tiles"));
     let palettes = palettes_from_bytes(rom.bytes(a.palettes, 0x100));
@@ -338,15 +257,6 @@ pub struct BackgroundDescriptor {
     pub dest: u32,
     pub map: u32,
     pub palette: u32,
-}
-
-impl BackgroundDescriptor {
-    /// EXE6's (`off_8080F98`'s) and EXE5's.
-    pub const DIRECT: Self = Self { gfx: 0, dest: 4, map: 8, palette: 0x10 };
-}
-
-pub fn background_picture(rom: &Rom, d: u32) -> Option<BackgroundPicture> {
-    background_picture_by(rom, d, BackgroundDescriptor::DIRECT)
 }
 
 /// A background's picture from its descriptor at `d`, laid out as `at`.

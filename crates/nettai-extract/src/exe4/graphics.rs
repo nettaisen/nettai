@@ -154,8 +154,6 @@ fn field(src: Source, c: &Compat) -> Field {
             panels: src.at(PANEL_BLOCKS),
             highlights: [src.at(HIGHLIGHT_BLOCK); 2],
             edges: src.at(FRONT_EDGES),
-            palette_anims: 0,
-            palette_buffer: FIELD_PALETTE_BUFFER,
         },
         panel_types,
         palette_anims,
