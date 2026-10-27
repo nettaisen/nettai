@@ -1023,7 +1023,9 @@ decisions from scratch; its update 500 had beaten the fourth run's update 500 ov
 its update 1,000 (390 M decisions; its update 750 had beaten its 500 93 to 44), then its update 1,500 (585 M; within
 14 Elo of the fourth run's update 5,250 over duplicate deals, 57 deals won both ways to 72, ahead in EXE6), then its
 update 2,000 (about 780 M decisions; even with 5,250, 73 to 67, Elo 1,188 to 1,183), which became the nettai-ai
-repository's first (line 0.11).
+repository's first (line 0.11). Then the same run's update 3,250 (about 1.26 B decisions; its learning rate cut
+at 2,850), which beat 2,000 over duplicate deals at Hard 74 to 56 (Elo 1,200 to 1,186; it had beaten 2,750 69 to
+54), published as 0.11-r2.
 
 The app has the dummy that fights only when built with its `ai` feature (2026-10-26, the user: "have practice
 mode ai be a compile time feature flag that's off by default"): nettai-training is an optional dependency of
