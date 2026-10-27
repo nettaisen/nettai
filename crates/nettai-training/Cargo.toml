@@ -33,3 +33,9 @@ testing = ["nettai-match/testing"]
 
 [dev-dependencies]
 nettai-match = { path = "../nettai-match", features = ["testing"] }
+# The lost-rounds example writes its rounds as replays.
+nettai-replay = { path = "../nettai-replay" }
+
+[[example]]
+name = "lost_rounds"
+required-features = ["live"]

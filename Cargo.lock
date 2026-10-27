@@ -3573,6 +3573,7 @@ dependencies = [
  "nettai-match",
  "nettai-netplay",
  "nettai-platform",
+ "nettai-replay",
  "serde",
  "serde_json",
 ]
