@@ -792,10 +792,12 @@ pub enum MoveDirection {
 
 impl MoveDirection {
     /// The direction of a move from `old` to `new` by a body of side
-    /// `alliance`.
+    /// `alliance`. The game loads the panels as unsigned bytes and tests
+    /// their difference as a 32-bit number, so a body off the field (an X
+    /// of 128 or more) moves by the bytes' whole difference.
     pub fn of(self, old: crate::object::PanelPos, new: crate::object::PanelPos, alliance: u8) -> u8 {
-        let dx = new.x as i8 - old.x as i8;
-        let dy = new.y as i8 - old.y as i8;
+        let dx = i32::from(new.x) - i32::from(old.x);
+        let dy = i32::from(new.y) - i32::from(old.y);
         match self {
             MoveDirection::BySide => {
                 // The original tests the move's X as it is: a move of two
@@ -805,7 +807,7 @@ impl MoveDirection {
                 // is and the other side's mirrored, with the canonical
                 // side's back and forward (docs/engine/side-symmetry.md).
                 let c = nettai_content_api::CANONICAL_SIDE;
-                let dx = dx * nettai_content_api::side_sign(alliance) as i8;
+                let dx = dx * nettai_content_api::side_sign(alliance);
                 if dx >= 2 || dy >= 2 {
                     return 5;
                 }

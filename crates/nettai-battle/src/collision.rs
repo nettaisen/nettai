@@ -875,4 +875,22 @@ mod tests {
         assert_eq!(by(Absolute, 0), [3, 4, 1, 2, 4, 3, 4, 0]);
         assert_eq!(by(Absolute, 1), [3, 4, 1, 2, 4, 3, 4, 0]);
     }
+
+    /// A body off the field moves by the panels' whole difference, as the
+    /// game subtracts two unsigned bytes in 32 bits (EXE4's 0x0800AF90 after
+    /// the `ldrb`s at 0x08012D9E, EXE6's `sub_800E994` after 0x0801A050's).
+    /// An EXE4 navi stepping from X 128 to 127 moves left; it overflowed a
+    /// signed byte.
+    #[test]
+    fn an_off_field_move_is_the_bytes_difference() {
+        use crate::content::MoveDirection::{Absolute, BySide};
+        let p = |x| PanelPos { x, y: 2 };
+        let c = nettai_content_api::CANONICAL_SIDE;
+        let back = if c == 0 { 3 } else { 4 };
+        assert_eq!(Absolute.of(p(128), p(127), 0), 3);
+        assert_eq!(Absolute.of(p(0), p(200), 0), 4);
+        assert_eq!(Absolute.of(p(200), p(0), 0), 3);
+        assert_eq!(BySide.of(p(0), p(200), c), 5);
+        assert_eq!(BySide.of(p(200), p(0), c), back);
+    }
 }
