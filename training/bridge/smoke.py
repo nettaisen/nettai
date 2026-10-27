@@ -1,11 +1,11 @@
 """A smoke test of the bridge (docs/design/training-ai.md §6.6): a pool on the
-packs, random allowed actions for every seat asked, N steps; prints the
+content, random allowed actions for every seat asked, N steps; prints the
 spec's shapes, decisions a second, and the rounds that ended.
 
     cd training/bridge
     uv venv .venv && uv pip install --python .venv/bin/python maturin numpy
     VIRTUAL_ENV=$PWD/.venv PATH=$PWD/.venv/bin:$PATH maturin develop --release
-    NETTAI_PACKS=<packs dir> .venv/bin/python smoke.py [steps] [envs] [threads] [games...]
+    .venv/bin/python smoke.py [steps] [envs] [threads] [games...]
 """
 
 import sys

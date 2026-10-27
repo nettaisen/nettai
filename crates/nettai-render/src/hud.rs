@@ -362,8 +362,8 @@ pub fn shared_glyphs<'a>(
 /// beside it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Face {
-    /// The mugshot's pack and number there (none: the form names no face).
-    picture: Option<nettai_battle::content::InPack<u8>>,
+    /// The mugshot (none: the form names no face).
+    picture: Option<nettai_battle::content::MugshotId>,
     /// One of MegaMan's own faces (the base form's: pictures 0..=4 in
     /// EXE6), which blink when they change.
     own: bool,
@@ -393,7 +393,7 @@ impl Face {
         let base_variant = nettai_battle::kinds::player::base_face_variant(b, side);
         let f = b.content.form(form);
         Face {
-            picture: f.mugshot.as_ref().and_then(|faces| crate::packs::mugshot(&b.content, faces.shown(&b.game_rules().emotion, emotion, variant))),
+            picture: f.mugshot.as_ref().map(|faces| faces.shown(&b.game_rules().emotion, emotion, variant)),
             own: f.base,
             full_synchro: b.game_rules().emotion.role(emotion) == Some(EmotionRole::FullSynchro),
             // (The count the emotion window's box shows: a stat of the
@@ -1724,7 +1724,7 @@ fn mugshot_parts<'a>(
         let Some((tiles, palettes, number)) = crate::lookups::navi_face(packs, &b.content, stats.navi, problems) else { return items };
         let full_synchro = emotion_role(b, side as u8) == Some(EmotionRole::FullSynchro);
         let pal = window_faded(b, side as u8, palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default());
-        let picture = navi.mugshot.and_then(|m| crate::packs::mugshot(&b.content, m));
+        let picture = navi.mugshot.and_then(|m| packs.mugshot_of(m));
         let face_hud = picture.map_or(hud, |m| packs.mugshot(m).0);
         let tiles = face_with_ring(face_hud, number, tiles, &pal, (at.0, flip), text, &mut items);
         out.push(SpritePart { hflip: flip, ..block(tiles, 32, 16, pal, at.0, EMOTION_WINDOW_Y) });

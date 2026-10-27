@@ -37,7 +37,6 @@ def make_pool(
         threads=threads if threads > 0 else (os.cpu_count() or 1),
         seed=env.seed if seed is None else seed,
         content=env.content,
-        packs=env.packs,
         k=env.k,
         delay=tuple(env.delay),
         max_fight_ticks=env.max_fight_ticks,

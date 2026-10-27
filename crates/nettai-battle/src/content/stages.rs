@@ -107,13 +107,13 @@ pub(crate) fn read(
     let music = match spec.field("music") {
         Data::Nil => None,
         Data::Asset(AssetKind::Sound, name) => Some(SoundId(
-            assets.handle(AssetKind::Sound, name).ok_or_else(|| what(format!("the packs have no sound {name:?}")))?,
+            assets.handle(AssetKind::Sound, name).ok_or_else(|| what(format!("the content names no sound {name:?}")))?,
         )),
         _ => return Err(what("`music` is a sound (asset.sound(...)), or nothing".into())),
     };
     let background = match spec.field("background") {
         Data::Asset(AssetKind::Background, name) => super::BackgroundId(
-            assets.handle(AssetKind::Background, name).ok_or_else(|| what(format!("the packs have no background {name:?}")))?,
+            assets.handle(AssetKind::Background, name).ok_or_else(|| what(format!("the content names no background {name:?}")))?,
         ),
         _ => return Err(what("needs a `background` (asset.background(...))".into())),
     };

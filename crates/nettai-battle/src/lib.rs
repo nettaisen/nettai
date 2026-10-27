@@ -3,8 +3,8 @@
 //! It reimplements Mega Man Battle Network 6's battle rules from scratch with
 //! its own data model; EXE6 is the first game it plays (content/exe6), and the
 //! aim is to bring the other Battle Network games over as content too. Game content (chips, navis, the rules' tables,
-//! animation timing) comes in a [`Content`], which a loader outside the
-//! engine reads from a content pack (nettai-content); a battle shares it
+//! the sprites' animation timing) comes in a [`Content`], which a loader outside the
+//! engine reads from the content's packs (nettai-content); a battle shares it
 //! read-only. Behavior is verified tick by tick against traces recorded
 //! from the original game (exe6-compat's `trace`).
 

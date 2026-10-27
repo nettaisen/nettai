@@ -1,5 +1,5 @@
 # A short run on the real pool on a 10-core Mac (EXE6 only): CPU, which beat MPS at this size.
-#   NETTAI_PACKS=../data uv run --no-sync python -m nettai_ai.train --run-dir runs/mac --config configs/mac.toml
+#   uv run --no-sync python -m nettai_ai.train --run-dir runs/mac --config configs/mac.toml
 [env]
 games = ["exe6"]
 envs = 64

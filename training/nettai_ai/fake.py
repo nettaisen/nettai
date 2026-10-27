@@ -72,7 +72,6 @@ class FakePool:
         threads: int = 1,
         seed: int = 1,
         content: str | None = None,
-        packs: str | None = None,
         k: int = 4,
         delay: tuple[int, int] = (6, 30),
         max_fight_ticks: int = 18000,

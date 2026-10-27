@@ -56,7 +56,7 @@ unsafe fn view<'py, T: Element>(owner: &Bound<'py, PyPool>, ptr: *const T, len: 
 #[pymethods]
 impl PyPool {
     #[new]
-    #[pyo3(signature = (games, envs=256, threads=8, seed=1, content=None, packs=None, k=4, delay=(6, 30), max_fight_ticks=18000, hp=None, chip_holdout=(0.0, 0, "exclude".to_string()), practice=0.25, randomize=0.75, full_lists=0.5, combos=0.3, cache=None, builders=0, mirror=false, fixed_builds=0))]
+    #[pyo3(signature = (games, envs=256, threads=8, seed=1, content=None, k=4, delay=(6, 30), max_fight_ticks=18000, hp=None, chip_holdout=(0.0, 0, "exclude".to_string()), practice=0.25, randomize=0.75, full_lists=0.5, combos=0.3, cache=None, builders=0, mirror=false, fixed_builds=0))]
     #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python<'_>,
@@ -65,7 +65,6 @@ impl PyPool {
         threads: usize,
         seed: u64,
         content: Option<std::path::PathBuf>,
-        packs: Option<std::path::PathBuf>,
         k: u32,
         delay: (u16, u16),
         max_fight_ticks: u32,
@@ -84,7 +83,7 @@ impl PyPool {
             return Err(PyValueError::new_err(format!("k {k}, delay {delay:?}, hp {hp:?}: k is at least 1, each range low to high, HP above 0")));
         }
         let env = Config { k, delay, max_fight_ticks, hp, holdout: holdout(chip_holdout)?, practice, randomize, full_lists, combos, mirror, fixed_builds, ..Config::default() };
-        let cfg = PoolConfig { games, envs, threads, seed, content, packs, env, cache, builders };
+        let cfg = PoolConfig { games, envs, threads, seed, content, env, cache, builders };
         let pool = py.detach(|| Pool::new(cfg)).map_err(err)?;
         Ok(PyPool { pool: Mutex::new(pool) })
     }

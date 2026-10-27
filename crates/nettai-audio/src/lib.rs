@@ -48,9 +48,10 @@ pub const NO_MUSIC: SoundId = SoundId(0x63);
 pub struct Songs(pub Vec<nettai_battle::content::InPack<u16>>);
 
 impl Songs {
-    /// The loaded packs' sounds' songs.
-    pub fn of(assets: &nettai_battle::content::AssetNames) -> Songs {
-        Songs(assets.sounds.values().copied().collect())
+    /// A content's sounds' songs in its game's pack (`assets`: what the
+    /// pack holds of the content's assets), the pack the first loaded.
+    pub fn of(assets: &nettai_battle::content::PackAssets) -> Songs {
+        Songs(assets.sounds.iter().map(|&id| nettai_battle::content::InPack { pack: Default::default(), id }).collect())
     }
 
     /// Songs by their own numbers (sound `n` is song `n` of the one pack):

@@ -1,29 +1,32 @@
 //! Content for tests: content/exe6's definitions (and EXE5's and EXE4's:
-//! [`exe5_content`], [`exe4_content`]), each game alone as a match loads it, on a made-up
-//! asset index
-//! (`testing::asset_names_used`), every sprite timed as the test content's
-//! navi is (nothing from a ROM), with their own strings.
+//! [`exe5_content`], [`exe4_content`]), each game alone as a match loads it,
+//! with their own strings, every sprite timed as the test content's navi is
+//! (short, the same for every sprite, as the tests here reason about it; a
+//! game's own timing is its content's, which `nettai_content::pack::load_battle`
+//! loads).
 
 use nettai_battle::Content;
 use std::sync::{Arc, OnceLock};
 
-/// Every sprite of `c` timed as the test content's navi is.
+/// Every sprite of `c` timed as the test content's navi is (a defined
+/// content's timing, replaced: the content changed, so its hash is made
+/// again).
 fn timed(c: &mut Content) {
     use nettai_battle::content::testing;
-    let mut navi = testing::content().animations.sprites[&testing::sprite(testing::NAVI_SPRITE)].clone();
-    navi.resize(0x40, navi[1].clone());
-    for h in 0..c.assets.sprites.len() {
-        c.animations.sprites.insert(nettai_battle::content::SpriteId(h as u16), navi.clone());
+    let test = testing::content();
+    let mut navi = test.animations.sprites[testing::sprite_named(&test, "test-navi").index()].clone();
+    navi.animations.resize(0x40, navi.animations[1].clone());
+    for s in &mut c.animations.sprites {
+        *s = navi.clone();
     }
+    c.hash_cache.clear();
 }
 
 /// The repository's content directory.
 const CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content");
 
 /// content/'s games `games` (each by its index and what it requires), with
-/// their strings, on a made-up asset index (each game's names in its own
-/// game's pack), every sprite timed as the test content's navi is: defined,
-/// or why not.
+/// their strings: defined, or why not.
 pub fn defined(games: &[&str]) -> Result<Content, String> {
     let mut report = nettai_content::report::Report::default();
     let games: Vec<String> = games.iter().map(|g| g.to_string()).collect();
@@ -36,10 +39,9 @@ fn defined_of(read: nettai_content::index::Read) -> Result<Content, String> {
     let mut c = Content::default();
     c.scripts = read.scripts();
     c.strings = read.strings;
-    c.assets = nettai_battle::content::testing::asset_names_for(&c.scripts);
     c.background_pool = nettai_content::locale::background_pool(&read.dir);
-    timed(&mut c);
     c.define().map_err(|e| e.message)?;
+    timed(&mut c);
     Ok(c)
 }
 

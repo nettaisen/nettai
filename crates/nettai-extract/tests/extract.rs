@@ -24,12 +24,13 @@ fn audit(game: &str, dir: &Path) -> Vec<String> {
         let strings = nettai_content::locale::load_for(&loaded.dir, std::slice::from_ref(&loaded.name), &lang).unwrap();
         languages.push((lang, strings.map(Arc::new)));
     }
-    nettai_tools::content_audit::audit(&loaded.content, bundles, loaded.own, Some(&banks), &languages).problems
+    nettai_tools::content_audit::audit(&loaded.content, bundles, loaded.own, &loaded.assets, Some(&banks), &languages).problems
 }
 
 /// Each game's pack of its full set, made by its recipe, loads with its content and answers every lookup the
-/// content audit makes: an asset the content names that the pack lacks fails it. And a battle's definitions load
-/// against it (`pack::load_battle`, the CLI's `--check`), and it is written as `write` writes it.
+/// content audit makes: an asset the content names that the pack lacks fails it. And it has what the content names,
+/// each sprite with the content's animations (`pack::pack_assets`, the CLI's `--check`), and it is written as `write`
+/// writes it.
 #[test]
 #[ignore = "requires local ROMs via NETTAI_EXTRACT_ROM_DIR"]
 fn full_sets_pass_the_content_audit() {
@@ -38,7 +39,8 @@ fn full_sets_pass_the_content_audit() {
         let assets = recipe.extract(&full_set(&recipe)).unwrap_or_else(|e| panic!("{e}"));
         let dir = tempfile::tempdir().unwrap();
         assets.write(dir.path()).unwrap();
-        let (_, report) = pack::load_battle(&content(), dir.path()).unwrap_or_else(|e| panic!("{game}: {e}"));
+        let (loaded, _) = pack::load_battle(&content(), &game).unwrap_or_else(|e| panic!("{game}: {e}"));
+        let (_, report) = pack::pack_assets(&loaded, dir.path()).unwrap_or_else(|e| panic!("{game}: {e}"));
         assert!(!report.has_errors(), "{game}: {report}");
         let problems = audit(&game, dir.path());
         assert!(problems.is_empty(), "{game}: {problems:#?}");

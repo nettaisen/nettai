@@ -532,18 +532,16 @@ mod tests {
         });
     }
 
-    /// The repository's exe6 as a bundle (`NETTAI_PACKS=<packs> cargo test -p nettai --lib -- --ignored
-    /// a_real_bundle`: each game's pack, `nettai-extract`'s), published on a site of the tests' own with the content
-    /// hash its pack gives: downloaded, stored, and loaded from the store with the pack, it plays that hash, which
-    /// is recorded.
+    /// The repository's exe6 as a bundle (`cargo test -p nettai --lib -- --ignored a_real_bundle`), published on a
+    /// site of the tests' own with its content hash: downloaded, stored, and loaded from the store, it plays that
+    /// hash, which is recorded.
     #[test]
-    #[ignore = "needs NETTAI_PACKS"]
+    #[ignore = "loads the repository's EXE6 twice"]
     fn a_real_bundle_plays_its_published_hash() {
-        let packs = PathBuf::from(std::env::var_os("NETTAI_PACKS").expect("NETTAI_PACKS"));
         let repository = nettai_content::index::content();
         let manifest = Manifest { game: "exe6".into(), line: line().into(), revision: 1, packs: [("exe6".to_string(), "a".to_string()), ("exelib".to_string(), "b".to_string())].into() };
         let bundle = build(manifest, &[("exe6", &repository.join("exe6")), ("exelib", &repository.join("exelib"))]).unwrap();
-        let hash = nettai_content::store::content_hash(&repository, "exe6", &packs.join("exe6")).unwrap_or_else(|r| panic!("{r}"));
+        let hash = nettai_content::store::content_hash(&repository, "exe6").unwrap_or_else(|r| panic!("{r}"));
         let site = tempfile::tempdir().unwrap();
         let url = serve(site.path().to_path_buf());
         // (A store and sites of the test's own.)
@@ -565,15 +563,14 @@ mod tests {
             assert_ne!(contents.fetch_newest("exe6", |_| {}).await.unwrap(), Newest::Unpublished);
         });
         let stored = contents.store.get(bundle.id).expect("stored");
-        let computed = nettai_content::store::content_hash(&stored.dir, "exe6", &packs.join("exe6")).unwrap_or_else(|r| panic!("{r}"));
+        let computed = nettai_content::store::content_hash(&stored.dir, "exe6").unwrap_or_else(|r| panic!("{r}"));
         assert_eq!(verify_in(&contents.store, &stored.dir, computed), Ok(()));
         assert_eq!(contents.store.get(bundle.id).unwrap().record.hash, Some(hash));
     }
 
     /// The sites, live (`cargo test -p nettai --lib -- --ignored the_sites_give_each_games_content`): the catalog
     /// read, and each game's newest bundle of the line downloaded, checked against its id and stored (into the
-    /// tests' store, a folder of their own); asked again, the store has it. With `NETTAI_PACKS` (a folder of each
-    /// game's pack, `nettai-extract`'s), each is loaded with its pack and plays its index's hash.
+    /// tests' store, a folder of their own); asked again, the store has it, and it plays its index's hash.
     #[test]
     #[ignore = "reads the live sites"]
     fn the_sites_give_each_games_content() {
@@ -592,15 +589,12 @@ mod tests {
                 assert_eq!(fetch_newest(game, |_| {}).await.unwrap(), Newest::Had, "{game}: the store has it");
                 let hash = stored.content_hash().unwrap();
                 assert_eq!(fetch_playing(game, hash).await.unwrap().map(|s| s.id), Some(stored.id), "{game}: found by its hash");
-                // (With `NETTAI_PACKS`, a folder of each game's pack: the bundle loaded with it plays its index's hash,
-                // as a game's first load from it checks.)
-                if let Some(packs) = std::env::var_os("NETTAI_PACKS").map(PathBuf::from) {
-                    let (dir, id) = (stored.dir.clone(), game.clone());
-                    let computed = nettai_platform::task::off_thread("hashing", move || nettai_content::store::content_hash(&dir, &id, &packs.join(&id)).map_err(|r| r.to_string())).await.unwrap();
-                    let computed = computed.unwrap_or_else(|why| panic!("{why}"));
-                    assert_eq!(verify(&stored.dir, computed), Ok(()), "{game}");
-                    assert_eq!(contents().store.get(stored.id).unwrap().record.hash, Some(computed));
-                }
+                // (The bundle plays its index's hash, as a game's first load from it checks.)
+                let (dir, id) = (stored.dir.clone(), game.clone());
+                let computed = nettai_platform::task::off_thread("hashing", move || nettai_content::store::content_hash(&dir, &id).map_err(|r| r.to_string())).await.unwrap();
+                let computed = computed.unwrap_or_else(|why| panic!("{why}"));
+                assert_eq!(verify(&stored.dir, computed), Ok(()), "{game}");
+                assert_eq!(contents().store.get(stored.id).unwrap().record.hash, Some(computed));
             }
         });
     }

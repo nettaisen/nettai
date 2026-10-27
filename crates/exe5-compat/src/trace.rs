@@ -894,8 +894,10 @@ impl Round {
             Some(k) => out.push(format!("the stage {k} (settings {})", stage_bytes(st))),
             None => out.push(format!("the stage (settings {}: no EXE5 netbattle stage)", stage_bytes(st))),
         }
-        if content.assets.pack(crate::ROOT).is_none() {
-            out.push("EXE5's pack".into());
+        // (Its assets are named as its game names them: the round's content
+        // is its game's.)
+        if content.game() != crate::ROOT {
+            out.push("EXE5's content".into());
         }
         out.dedup();
         Ok(out)
@@ -918,13 +920,12 @@ impl Round {
         let stage = self.stage_key(content, compat, &d).and_then(|k| content.defs.stage_by_key(&k)).expect("needs saw the stage");
         // (The background by its name in compat: a liberation's map's number
         // is its area's background, which the pack has under the area's
-        // first number.)
-        let background = nettai_battle::content::BackgroundId(
-            compat
-                .background(st[4])
-                .and_then(|name| content.assets.handle(nettai_content_api::AssetKind::Background, name))
-                .ok_or_else(|| format!("EXE5's pack has no background {:#04x}", st[4]))?,
-        );
+        // first number. One the content's modules don't name is one of its
+        // own in the background pool.)
+        let background = compat
+            .background(st[4])
+            .and_then(|name| content.background_handle(crate::ROOT, name))
+            .ok_or_else(|| format!("EXE5's content has no background {:#04x}", st[4]))?;
         let mut effects = u32::from_le_bytes([st[8], st[9], st[10], st[11]]);
         if d.ds.is_some() {
             // (The DS's 0x200000 says Navi Select's partners join, where the
@@ -1807,7 +1808,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, exchange:
     if let (Some(id), true) = (b.banner_for(r.local_side), task) {
         let ours = match b.telop_for(r.local_side) {
             Some(_) => Some(0),
-            None => b.content.assets.number(nettai_content_api::AssetKind::Banner, id.0).map(|n| n.id as u8),
+            None => b.content.assets.name(nettai_content_api::AssetKind::Banner, id.0).and_then(|n| compat.assets.banners.get(n).copied()),
         };
         let theirs = unhex(&banner.banner).ok().and_then(|x| x.get(1).copied());
         let show = |n: Option<u8>| n.map_or("none".to_string(), |n| format!("{n:#04x}"));

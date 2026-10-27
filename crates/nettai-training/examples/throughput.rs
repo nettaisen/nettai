@@ -1,9 +1,9 @@
-//! The pool's throughput on the packs (docs/design/training-ai.md §6.5):
+//! The pool's throughput on the content (docs/design/training-ai.md §6.5):
 //! decisions a second for each game, on one thread and on all, both seats
 //! a policy taking random allowed actions; what a round's start costs; the
 //! share of an env's time spent encoding observations.
 //!
-//! `NETTAI_PACKS=<packs dir> cargo run --release -p nettai-training --example throughput [seconds]`
+//! `cargo run --release -p nettai-training --example throughput [seconds]`
 
 use nettai_training::env::{Config, Env, Game};
 use nettai_training::pool::{Pool, PoolConfig, load_game};
@@ -40,12 +40,11 @@ fn random_actions(b: &nettai_training::pool::Buffers, rng: &mut SplitMix64, out:
 
 fn main() {
     let seconds: u64 = std::env::args().nth(1).and_then(|s| s.parse().ok()).unwrap_or(10);
-    let packs = nettai_content::pack::packs_dir();
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
-    println!("packs {}, {threads} threads, {seconds} s a measure", packs.display());
+    println!("{threads} threads, {seconds} s a measure");
     let mut rows = Vec::new();
     for game in ["exe6", "exe5", "exe4"] {
-        let content = load_game(None, &packs, game).unwrap_or_else(|e| panic!("{e}"));
+        let content = load_game(None, game).unwrap_or_else(|e| panic!("{e}"));
         // The chips' fingerprints: a folder's worth on one thread (what the
         // app does as a battle starts), then the whole game on all.
         nettai_battle::behavior::Behaviors::for_content(&content).unwrap();
@@ -142,7 +141,7 @@ fn main() {
         // The pool, on one thread and on all.
         let mut per = Vec::new();
         for (envs, t) in [(8, 1), (32, 4), (threads * 8, threads)] {
-            let cfg = PoolConfig { games: vec![game.to_string()], envs, threads: t, seed: 1, content: None, packs: None, env: Config::default(), cache: None, builders: 0 };
+            let cfg = PoolConfig { games: vec![game.to_string()], envs, threads: t, seed: 1, content: None, env: Config::default(), cache: None, builders: 0 };
             let made = Instant::now();
             let mut pool = Pool::with_contents(cfg, vec![content.clone()]).unwrap();
             let start_cost = made.elapsed();

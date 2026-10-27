@@ -38,7 +38,7 @@ fn a_require_reaches_only_its_pack_and_the_support_packs_it_depends_on() {
         let pack = Pack::new(modules.iter().map(|(n, s)| (n.to_string(), s.to_string())))
             .with_entries(vec![entry.to_string()])
             .with_packs(packs.clone());
-        define(&pack, &AssetNames::default(), Options::default()).map(|_| ()).map_err(|e| e.message)
+        define(&pack, Options::default()).map(|_| ()).map_err(|e| e.message)
     };
     let lib = ("lib:y", "return {}");
     load("a:x", &[("a:x", "local _ = require('@lib/y')\nreturn {}"), lib]).unwrap();
@@ -65,7 +65,7 @@ fn a_support_pack_has_no_game_context() {
         let pack = Pack::new(modules.iter().map(|(n, s)| (n.to_string(), s.to_string())))
             .with_entries(vec![modules[0].0.to_string()])
             .with_packs(packs.clone());
-        define(&pack, &names(), Options::default()).map(|_| ()).map_err(|e| e.message)
+        define(&pack, Options::default()).map(|_| ()).map_err(|e| e.message)
     };
     // A game's module names its assets, defines, and reaches its systems'
     // library; and passes a look to the support pack's maker.
@@ -73,7 +73,7 @@ fn a_support_pack_has_no_game_context() {
     load(&[
         (
             "game:x",
-            "local make = require('@lib/m')\nlocal _ = rules.state\nreturn make({ sprite = asset.sprite('bomb') })",
+            "local make = require('@lib/m')\nlocal _ = rules.state\nreturn make({ sprite = asset.sprite('bomb', { { 3 } }) })",
         ),
         ("lib:m", maker),
     ])
@@ -90,8 +90,8 @@ fn a_support_pack_has_no_game_context() {
     // globals against the VM's when it loads, so the support pack's must
     // be missing there too, not only in its environment.
     let e = load(&[
-        ("game:x", "local s = asset.sprite('bomb')\nreturn require('@lib/m')"),
-        ("lib:m", "return asset.sprite('bomb')"),
+        ("game:x", "local s = asset.sound('throw')\nreturn require('@lib/m')"),
+        ("lib:m", "return asset.sound('throw')"),
     ])
     .unwrap_err();
     refused(&e, "asset", "lib:m");
@@ -99,7 +99,7 @@ fn a_support_pack_has_no_game_context() {
     // it loads: a function keeps its module's environment.
     let e = load(&[
         ("game:x", "local make = require('@lib/m')\nreturn make()"),
-        ("lib:m", "return function() return new.effect { sprite = asset.sprite('bomb'), anim = 0 } end"),
+        ("lib:m", "return function() return new.effect { sprite = asset.sound('throw'), anim = 0 } end"),
     ])
     .unwrap_err();
     refused(&e, "asset", "lib:m");
@@ -144,7 +144,7 @@ fn errors_unwind_and_leave_the_vm_usable() {
 #[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn runaway_content_is_interrupted_and_a_new_pack_still_loads() {
     let options = Options { budget: 10, ..Options::default() };
-    let e = define(&pack(&[("loop", "while true do end")]), &AssetNames::default(), options).unwrap_err();
+    let e = define(&pack(&[("loop", "while true do end")]), options).unwrap_err();
     assert!(e.message.contains("ran past its budget"), "{}", e.message);
     assert!(define_pack(&[("ok", "return new.effect { anim = 0 }")]).is_ok());
 }
@@ -161,7 +161,7 @@ fn definition_integers_keep_their_values_on_32_bit_targets() {
 }
 
 fn define_pack(modules: &[(&str, &str)]) -> Result<Definitions, String> {
-    define(&pack(modules), &AssetNames::default(), Options::default()).map(|(d, _)| d).map_err(|e| e.message)
+    define(&pack(modules), Options::default()).map(|(d, _, _)| d).map_err(|e| e.message)
 }
 
 /// A family library, a kind, and chips composing them: MiniBomb's pattern
@@ -318,38 +318,81 @@ fn definition_mistakes_are_load_errors() {
     assert!(d.of(Registry::Kind).is_empty());
 }
 
-/// Asset names for these tests: the `test` pack's.
-fn names() -> AssetNames {
-    let mut a = nettai_content_api::PackIndex::default();
-    a.sprites.insert("bomb".into(), nettai_content_api::PackSprite { category: 0x0C, index: 2 });
-    a.sprites.insert("explosion".into(), nettai_content_api::PackSprite { category: 0x0C, index: 1 });
-    a.sounds.insert("throw".into(), 0x1A6);
-    AssetNames::of_pack("test", a)
-}
-
 fn define_named(modules: &[(&str, &str)]) -> Result<Definitions, String> {
-    define(&pack(modules), &names(), Options::default()).map(|(d, _)| d).map_err(|e| e.message)
+    define_assets(modules).map(|(d, _)| d)
 }
 
+fn define_assets(modules: &[(&str, &str)]) -> Result<(Definitions, nettai_content_api::DefinedAssets), String> {
+    define(&pack(modules), Options::default()).map(|(d, _, a)| (d, a)).map_err(|e| e.message)
+}
+
+/// docs/design/content-model-v2.md §6.3: content names its assets while it
+/// loads, one value per asset, and defines its sprites (`asset.sprite(name,
+/// animations)`) where their modules are; the define phase interns the
+/// names, each kind's in byte order, and keeps each sprite's definition.
 #[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
 #[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn assets_resolve_by_name_while_content_loads() {
-    let d = define_named(&[(
-        "lib/effects",
-        "local SOUND = asset.sound('throw')\n\
-         if asset.sprite('bomb') ~= asset.sprite('bomb') then error('one value per asset') end\n\
-         return { explosion = new.effect { sprite = asset.sprite('explosion'), anim = 3, sound = SOUND } }",
-    )])
+    let (d, assets) = define_assets(&[
+        ("sprites/explosion", "return asset.sprite('explosion', { { 3, 3 }, { 2, 2, 4, loop = true } })"),
+        ("sprites/bomb", "return asset.sprite('bomb', {})"),
+        (
+            "lib/effects",
+            "local SOUND = asset.sound('throw')\n\
+             if asset.sound('throw') ~= SOUND then error('one value per asset') end\n\
+             local _ = require('./../sprites/bomb')\n\
+             return { explosion = new.effect { sprite = require('./../sprites/explosion'), anim = 1, sound = SOUND } }",
+        ),
+    ])
     .unwrap();
     let e = &d.of(Registry::Effect)[0];
     assert_eq!(e.spec.field("sprite"), &Data::Asset(nettai_content_api::AssetKind::Sprite, "explosion".into()));
     assert_eq!(e.spec.field("sound"), &Data::Asset(nettai_content_api::AssetKind::Sound, "throw".into()));
-    // An unknown name is an error naming the module; so is a resolver
-    // called after loading.
-    let e = define_named(&[("chips/x/chip", "return { s = asset.sprite('bom') }")]).unwrap_err();
-    assert!(e.contains("chips/x/chip: no sprite is named \"bom\""), "{e}");
+    assert_eq!(assets.names.sprites, ["bomb", "explosion"], "in byte order, whatever order they loaded in");
+    assert_eq!(assets.names.sounds, ["throw"]);
+    let anim = |frames: &[u8], looping| nettai_content_api::SpriteAnimation { frames: frames.to_vec(), looping };
+    assert_eq!(assets.sprites[1].animations, [anim(&[3, 3], false), anim(&[2, 2, 4], true)]);
+    assert!(assets.sprites[0].animations.is_empty() && assets.sprites[0].parts.is_empty());
+    // A sprite is defined once, by its module.
+    let e = define_named(&[("a", "return asset.sprite('bomb', { { 1 } })"), ("b", "return asset.sprite('bomb', { { 1 } })")]).unwrap_err();
+    assert!(e.contains("sprite \"bomb\" is defined twice: in test/a.luau and in test/b.luau"), "{e}");
+    let e = define_named(&[("chips/x/chip", "return { s = asset.sprite('bomb') }")]).unwrap_err();
+    assert!(e.contains("chips/x/chip: sprite \"bomb\": asset.sprite(name, animations) takes the sprite's animations"), "{e}");
+    // An animation is its frames' durations, 1 to 255, and `loop`.
+    for (animations, wrong) in [
+        ("{ { 0 } }", "frame 0 is 0, not 1 to 255"),
+        ("{ { 3, 256 } }", "frame 1 is 256, not 1 to 255"),
+        ("{ {} }", "animation 0 has no frame"),
+        ("{ { 3, last = true } }", "holds its frames' durations (1, 2, ...) and `loop`, not last"),
+        ("{ { 3, loop = 1 } }", "`loop` is a integer, not a boolean"),
+        ("{ [2] = { 3 } }", "the animations are a list"),
+    ] {
+        let e = define_named(&[("m", &format!("return asset.sprite('bomb', {animations})"))]).unwrap_err();
+        assert!(e.contains(wrong), "{animations}: {e}");
+    }
+    // Other assets are named alone.
+    let e = define_named(&[("m", "return asset.sound('throw', {})")]).unwrap_err();
+    assert!(e.contains("asset.sound takes a name alone"), "{e}");
     let e = define_named(&[("m", "return { f = function() return asset.sound('throw') end }")]);
     assert!(e.is_ok(), "calling it later is the runtime's error, not the define phase's");
+}
+
+/// A sprite states the parts content reads (`sprite:part_offset(n)`): by
+/// part number, each animation's frames' offsets, as many as its frames.
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
+fn a_sprite_states_the_parts_content_reads() {
+    let define_parts = |parts: &str| {
+        define_assets(&[("m", &format!("return asset.sprite('plane', {{ {{ 6, loop = true }}, {{ 8, 2 }} }}, {{ parts = {parts} }})"))])
+    };
+    let (_, assets) = define_parts("{ [1] = { { { 18, -20 } }, { { 18, -20 }, { 14, -20 } } } }").unwrap();
+    assert_eq!(assets.sprites[0].parts[&1], [vec![(18, -20)], vec![(18, -20), (14, -20)]]);
+    let e = define_parts("{ [1] = { { { 18, -20 } }, { { 18, -20 } } } }").unwrap_err();
+    assert!(e.contains("part 1, animation 1 has 1 offsets, and the animation 2 frames"), "{e}");
+    let e = define_parts("{ [1] = { { { 18, -20 } } } }").unwrap_err();
+    assert!(e.contains("part 1 has offsets for 1 animations, and the sprite has 2"), "{e}");
+    let e = define_parts("{ [1] = { { { 200, 0 } }, { { 0, 0 }, { 0, 0 } } } }").unwrap_err();
+    assert!(e.contains("offset is 200, not -128 to 127"), "{e}");
 }
 
 /// A game's rules are one definition, its rules (rules/init.luau), which
@@ -386,7 +429,7 @@ fn definitions_are_frozen_and_tags_close_after_loading() {
         "m",
         "local d = new.record('r', { n = 1 })\nreturn { d = d, late = function() return new.record('r', {}) end }",
     )]);
-    let (lua, defined, modules, _, _) = open(&p, &AssetNames::default(), Options::default()).unwrap();
+    let (lua, defined, modules, _, _) = open(&p, Options::default()).unwrap();
     assert!(defined.tables.iter().all(|t| t.is_readonly()));
     let LuaValue::Table(m) = &modules["test:m"] else { panic!("a table") }; // (written in full)
     let late: Function = m.get("late").unwrap();
@@ -406,7 +449,7 @@ fn coverage_records_the_modules_that_ran() {
         ("m", "local lib = require('./lib/twice')\nreturn { f = function(n) for i = 1, 2 do n = lib.twice(n) end return n end }"),
         ("other", "return { g = function() return 1 end }"),
     ]);
-    let (lua, _, modules, _, _) = open(&p, &AssetNames::default(), Options::default()).unwrap();
+    let (lua, _, modules, _, _) = open(&p, Options::default()).unwrap();
     let LuaValue::Table(m) = &modules["test:m"] else { panic!("a table") }; // (written in full)
     let f: Function = m.get("f").unwrap();
     BUDGET.with(|b| b.set(1000));
@@ -427,7 +470,7 @@ fn coverage_records_the_modules_that_ran() {
 fn a_plan_binds_definition_slots() {
     let modules = BOMBS.to_vec();
     let p = pack(&modules);
-    let (definitions, compiled) = define(&p, &AssetNames::default(), Options::default()).unwrap();
+    let (definitions, compiled, assets) = define(&p, Options::default()).unwrap();
     assert_eq!(compiled.len(), modules.len(), "every module compiled");
     let p = p.with_compiled(compiled);
     let handles = (0..definitions.defs.len() as u16).collect();
@@ -440,9 +483,14 @@ fn a_plan_binds_definition_slots() {
         definitions,
         handles,
         entries: Vec::new(),
-        assets: AssetNames::default(),
+        assets: assets.names,
     };
     assert!(LuauContent::load(&p, &plan, Options::default()).is_ok());
+    // A plan made from other assets is refused.
+    let mut other = plan.clone();
+    other.assets.sounds.push("zzz".into());
+    let e = LuauContent::load(&p, &other, Options::default()).err().expect("refused").message;
+    assert!(e.contains("name other assets"), "{e}");
     // A plan made from other definitions is refused.
     let mut stale = plan.clone();
     stale.definitions.defs.pop();
@@ -454,26 +502,4 @@ fn a_plan_binds_definition_slots() {
     wrong.functions.push(FnSource::slot(Registry::Chip, "minibomb", "name"));
     let e = LuauContent::load(&p, &wrong, Options::default()).err().expect("refused").message;
     assert!(e.contains("chip minibomb: `name` is string, not a function"), "{e}");
-}
-
-/// docs/design/content-model-v2.md §4.0: content names an asset as its
-/// game's asset pack does (`bomb`); a name the pack hasn't is refused.
-#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
-#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
-fn assets_are_named_as_their_pack_names_them() {
-    let mut test = nettai_content_api::PackIndex::default();
-    test.sprites.insert("bomb".into(), nettai_content_api::PackSprite { category: 0x0C, index: 2 });
-    let names = AssetNames::of_pack("test", test);
-    assert_eq!(names.names(nettai_content_api::AssetKind::Sprite), ["bomb"]);
-    let sprite = |source: &str| -> Result<Data, String> {
-        let p = Pack::root("test", [("m".to_string(), source.to_string())]);
-        define(&p, &names, Options::default())
-            .map(|(d, _)| d.of(Registry::Effect)[0].spec.field("sprite").clone())
-            .map_err(|e| e.message)
-    };
-    let effect = |name: &str| format!("return new.effect {{ sprite = asset.sprite('{name}'), anim = 0 }}");
-    let asset = |n: &str| Data::Asset(nettai_content_api::AssetKind::Sprite, n.into());
-    assert_eq!(sprite(&effect("bomb")), Ok(asset("bomb")));
-    let e = sprite(&effect("nope")).unwrap_err();
-    assert!(e.contains("no sprite is named \"nope\" in the game's asset pack"), "{e}");
 }

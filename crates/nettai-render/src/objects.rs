@@ -376,8 +376,7 @@ fn is(b: &Battle, o: &Object, kind: EngineKind) -> bool {
     b.content.defs.engine_kind(o.kind) == Some(kind)
 }
 
-/// A sprite as content names it (the pack's asset index), for a problem's
-/// text.
+/// A sprite as content names it, for a problem's text.
 pub fn sprite_name(b: &Battle, id: nettai_battle::content::SpriteId) -> String {
     crate::lookups::sprite_name(&b.content, id)
 }

@@ -13,6 +13,7 @@
 local eruption = require("../objects/eruption")
 local panel_types = require("@exelib/panel_types")
 local statuses = require("./status")
+local sprites = require("../sprites")
 
 -- A magnet panel's slide, by the direction of the move (none, up, down,
 -- back, forward, other): the steps tried in turn, dx toward the front.
@@ -91,7 +92,7 @@ return {
             burn = panel_types.burn {
                 damage = 50,
                 spared_by = { "invisible", "submerged", "flashing", "untouchable", "bubbled" },
-                spark = new.spark { sprite = asset.sprite("test-spark"), anim = 0, palette = 0 },
+                spark = new.spark { sprite = sprites["test-spark"], anim = 0, palette = 0 },
             },
         },
         sea = {
@@ -99,7 +100,7 @@ return {
             expires = 960,
             submerges = true,
             stand = panel_types.drains("fire"),
-            move_end = panel_types.holds(20, new.effect { sprite = asset.sprite("test-burst"), anim = 0, palette = 0 }),
+            move_end = panel_types.holds(20, new.effect { sprite = sprites["test-burst"], anim = 0, palette = 0 }),
             slide = panel_types.stops_a_slide,
         },
     },

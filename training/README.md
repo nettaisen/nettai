@@ -17,7 +17,7 @@ nettai_ai/evaluate.py    checkpoints against bots and each other, per game; Elo
 nettai_ai/export.py      safetensors for the Rust side, and a parity fixture
 nettai_ai/bench.py       the simulation, inference and update timed apart; update variants; the loop (--loop)
 bridge/                  the pyo3 module nettai_gym (its own Cargo workspace)
-cloud/                   setup, timings upload, run and sync scripts for the cloud machine
+cloud/                   setup, run and sync scripts for the cloud machine
 configs/                 smoke.toml (a short run), mac.toml (20 minutes on a Mac), cloud.toml (a full run)
 ```
 
@@ -46,9 +46,9 @@ On the real engine, build the bridge into this environment once (and after engin
 
 ```sh
 uv run maturin develop --release --uv --manifest-path bridge/Cargo.toml
-NETTAI_PACKS=../data uv run --no-sync python -m nettai_ai.train --run-dir runs/mac --config configs/mac.toml
-NETTAI_PACKS=../data uv run --no-sync python -m nettai_ai.bench --profile     # where the time goes
-NETTAI_PACKS=../data uv run --no-sync python -m nettai_ai.bench --variants base --loop 8   # and the loop's
+uv run --no-sync python -m nettai_ai.train --run-dir runs/mac --config configs/mac.toml
+uv run --no-sync python -m nettai_ai.bench --profile     # where the time goes
+uv run --no-sync python -m nettai_ai.bench --variants base --loop 8   # and the loop's
 ```
 
 Training overlaps collection with the update: a collector thread plays the next rollout with a copy of the
@@ -69,11 +69,10 @@ builds and favors them in evaluation builds.
 
 ## In the cloud
 
-1. Locally, copy the packs' timing files (no pictures or sound) and upload them with the repo:
+1. Put the repo on the machine, with its content submodules (the battles are the content's alone: no asset pack,
+   picture or sound goes to the machine):
    ```sh
-   training/cloud/timings.sh                      # → training/timings/
-   ssh HOST git clone git@github.com:bigfarts/nettai.git nettai     # or rsync the checkout
-   rsync -a training/timings/ HOST:nettai/training/timings/
+   ssh HOST git clone --recurse-submodules git@github.com:bigfarts/nettai.git nettai     # or rsync the checkout
    ```
 2. On the machine: `nettai/training/cloud/setup.sh` (Rust, uv, the bridge, tests and a smoke run).
 3. Start a run: `nettai/training/cloud/run.sh first --config configs/cloud.toml` (tmux session `train-first`,

@@ -1,6 +1,6 @@
 //! The test content of the three games (`nettai_match::testing`: content/'s
-//! definitions on a made-up asset index, every sprite timed alike), for
-//! this crate's tests and the bridge's.
+//! definitions, every sprite timed alike), for this crate's tests and the
+//! bridge's.
 
 use nettai_battle::Content;
 use std::sync::Arc;

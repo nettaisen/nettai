@@ -1,7 +1,7 @@
 //! A bare Wasm module, with no wasm-bindgen or WASI imports. Run with
 //! `node crates/nettai-luau/tests/wasm-smoke.mjs <wasm_smoke.wasm>`.
 
-use nettai_content_api::{AssetNames, Registry};
+use nettai_content_api::Registry;
 use nettai_luau::{Options, Pack, define, sandbox};
 
 #[unsafe(no_mangle)]
@@ -10,7 +10,7 @@ pub extern "C" fn smoke_test() -> u32 {
         "effect".into(),
         "return new.effect { anim = 0 }".into(),
     )]);
-    let (defs, compiled) = define(&pack, &AssetNames::default(), Options::default()).unwrap();
+    let (defs, compiled, _) = define(&pack, Options::default()).unwrap();
     assert_eq!(defs.of(Registry::Effect).len(), 1);
     assert_eq!(compiled.len(), 1);
     let lua = sandbox::new_vm(false).unwrap();

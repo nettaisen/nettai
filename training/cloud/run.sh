@@ -20,7 +20,6 @@ name="$1"
 shift
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 training="$(dirname "$here")"
-timings="${NETTAI_PACKS:-$training/timings}"
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
 run="runs/$name"
@@ -32,7 +31,7 @@ if tmux has-session -t "$session" 2>/dev/null; then
     exit 1
 fi
 tmux new-session -d -s "$session" -c "$training" \
-    "NETTAI_PACKS=$(printf %q "$timings") uv run --no-sync python -m nettai_ai.train --run-dir $run$args 2>&1 | tee -a $run/train.log"
+    "uv run --no-sync python -m nettai_ai.train --run-dir $run$args 2>&1 | tee -a $run/train.log"
 if ! tmux has-session -t tensorboard 2>/dev/null; then
     tmux new-session -d -s tensorboard -c "$training" "uv run --no-sync tensorboard --logdir runs --host 127.0.0.1 --port 6006"
 fi

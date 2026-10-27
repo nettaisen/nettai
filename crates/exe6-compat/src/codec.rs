@@ -46,34 +46,34 @@ impl<'a> Ids<'a> {
         Ids { content, compat }
     }
 
-    /// The pack EXE6's numbers are of: compat's game's pack in the
-    /// content (docs/design/rules-in-luau.md §7.4: the engine knows assets
-    /// by handle; the original's numbers are its pack's).
-    pub fn pack(&self) -> nettai_content_api::PackId {
-        let root = &self.compat.root;
-        self.content.assets.pack(root).unwrap_or_else(|| panic!("the content loads no pack of {root}"))
-    }
-
-    /// The original's number for asset `h` of `kind` (EXE6's pack's).
+    /// The original's number for asset `h` of `kind`: compat's number for
+    /// the content's name for it (docs/design/rules-in-luau.md §7.4: the
+    /// engine knows assets by handle, compat their original numbers by
+    /// name).
     pub fn asset_number(&self, kind: nettai_content_api::AssetKind, h: u16) -> u16 {
-        let a = self.content.assets.number(kind, h).unwrap_or_else(|| panic!("no {kind} has handle {h}"));
-        assert_eq!(a.pack, self.pack(), "{kind} {h} is no asset of EXE6's pack");
-        a.id
+        let name = self.content.assets.name(kind, h).unwrap_or_else(|| panic!("no {kind} has handle {h}"));
+        self.compat.asset_number(kind, name).unwrap_or_else(|| panic!("assets.toml has no {kind} {name}"))
     }
 
     /// The handle of EXE6's `kind` asset numbered `n`.
     pub fn asset(&self, kind: nettai_content_api::AssetKind, n: u16) -> u16 {
-        self.content.assets.number_handle(kind, self.pack(), n).unwrap_or_else(|| panic!("the pack has no {kind} {n:#x}"))
+        let name = self.compat.asset_name(kind, n).unwrap_or_else(|| panic!("assets.toml has no {kind} {n:#x}"));
+        self.content.assets.handle(kind, name).unwrap_or_else(|| panic!("the content names no {kind} {name}"))
     }
 
-    /// The background numbered `n` (a settings record's byte).
+    /// The background numbered `n` (a settings record's byte): one the
+    /// content names, or one of the game's own in the background pool.
     pub fn background(&self, n: u8) -> nettai_battle::content::BackgroundId {
-        nettai_battle::content::BackgroundId(self.asset(nettai_content_api::AssetKind::Background, n as u16))
+        let kind = nettai_content_api::AssetKind::Background;
+        let name = self.compat.asset_name(kind, n as u16).unwrap_or_else(|| panic!("assets.toml has no background {n:#04x}"));
+        self.content.background_handle(&self.compat.root, name).unwrap_or_else(|| panic!("the content has no background {name}"))
     }
 
     /// A background's number.
     pub fn background_number(&self, b: nettai_battle::content::BackgroundId) -> u8 {
-        self.asset_number(nettai_content_api::AssetKind::Background, b.0) as u8
+        let (game, name) = self.content.background_of(b).unwrap_or_else(|| panic!("no background has handle {}", b.0));
+        assert_eq!(game, self.compat.root, "background {name} is {game}'s, not EXE6's");
+        self.compat.asset_number(nettai_content_api::AssetKind::Background, name).unwrap_or_else(|| panic!("assets.toml has no background {name}")) as u8
     }
 
     /// A sound's song-table number.

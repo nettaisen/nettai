@@ -1139,7 +1139,7 @@ fn read_roles(
                         Data::Asset(nettai_content_api::AssetKind::Sprite, asset) => assets
                             .handle(nettai_content_api::AssetKind::Sprite, asset)
                             .map(SpriteId)
-                            .ok_or_else(|| what(format!("sprites.{name}: the packs have no sprite {asset:?}")))?,
+                            .ok_or_else(|| what(format!("sprites.{name}: the content names no sprite {asset:?}")))?,
                         _ => return Err(what(format!("sprites.{name} is not a sprite asset (asset.sprite(...))"))),
                     };
                     roles.sprites.insert(role, sprite);
@@ -1183,7 +1183,7 @@ fn role_asset(
 ) -> Result<u16, String> {
     match v {
         Data::Asset(k, asset) if *k == kind => {
-            assets.handle(kind, asset).ok_or_else(|| format!("{group}.{name}: the packs have no {kind} {asset:?}"))
+            assets.handle(kind, asset).ok_or_else(|| format!("{group}.{name}: the content names no {kind} {asset:?}"))
         }
         _ => Err(format!("{group}.{name} is not a {kind} asset (asset.{kind}(...))")),
     }
@@ -1754,7 +1754,7 @@ impl Defs {
             let what = |e: String| ContentError::new(format!("{}.luau: {} {}: {e}", d.module, d.registry, d.key));
             let sprite = match d.spec.field("sprite") {
                 Data::Asset(nettai_content_api::AssetKind::Sprite, name) => {
-                    SpriteId(content.assets.handle(nettai_content_api::AssetKind::Sprite, name).ok_or_else(|| what(format!("the packs have no sprite {name:?}")))?)
+                    SpriteId(content.assets.handle(nettai_content_api::AssetKind::Sprite, name).ok_or_else(|| what(format!("the content names no sprite {name:?}")))?)
                 }
                 _ => return Err(what("needs a `sprite` (asset.sprite(...))".into())),
             };
@@ -2323,7 +2323,6 @@ mod tests {
         // names: a held game's is made by folder.)
         let top = nettai_content_api::packs::top_module("exe6");
         c.scripts.modules.insert(top, std::fs::read_to_string(format!("{dir}/init.luau")).expect("content/exe6/init.luau"));
-        c.assets = crate::content::testing::asset_names_for(&c.scripts);
         assert!(c.scripts.modules.len() > 200, "{} modules", c.scripts.modules.len());
         c.define().unwrap_or_else(|e| panic!("content/exe6: {e}"));
         // Every chip is a definition with its own use.

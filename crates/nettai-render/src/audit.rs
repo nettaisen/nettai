@@ -116,7 +116,7 @@ impl Lookup {
         let chip = |h: ChipHandle| &c.defs.chip(h).key;
         let navi = |h: NaviHandle| &c.defs.navi(h).key;
         let form = |h: FormHandle| &c.defs.form(h).key;
-        let pack_name = |p: PackId| c.assets.packs.get(p.index()).map_or(format!("pack {}", p.index()), String::clone);
+        let pack_name = |p: PackId| if p == PackId::default() { c.game().to_string() } else { format!("pack {}", p.index()) };
         match *self {
             Lookup::Sprite(id) => format!("sprite {}", sprite(id)),
             Lookup::Animation(id, anim) => format!("sprite {} animation {anim}", sprite(id)),

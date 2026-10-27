@@ -54,7 +54,7 @@ impl<'a> SpecReader<'a> {
             Data::Ref(registry, key) => return Err(format!("{at}: a {registry} ({key:?}) is no value a record holds")),
             // An asset by its handle (every kind's id is one).
             Data::Asset(kind, name) => {
-                Json::from(self.assets.handle(*kind, name).ok_or_else(|| format!("{at}: the packs have no {kind} {name:?}"))?)
+                Json::from(self.assets.handle(*kind, name).ok_or_else(|| format!("{at}: the content names no {kind} {name:?}"))?)
             }
             Data::Function => return Err(format!("{at}: a function isn't data")),
         })

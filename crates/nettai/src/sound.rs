@@ -3,8 +3,9 @@
 //! The menus' sounds are the selected game's own: its custom screen's cursor, pick and taking back, its
 //! refusal, and the sound its battles start with as the screen breaks into one (the jack-in's), as its rules'
 //! sound roles name them (the app names no sound of a pack). The title music is the
-//! game's too: the sound its pack names `title-screen`, played across the menu screens, faded out as a battle
-//! starts, and crossfaded with the next game's as the game changes (docs/design/app-ui.md §6).
+//! game's too: the song its pack names `title-screen` (no sound of the content's: played as one more past the
+//! content's sounds), played across the menu screens, faded out as a battle starts, and crossfaded with the next
+//! game's as the game changes (docs/design/app-ui.md §6).
 //!
 //! The device gets one stream at the battle's rate. While a battle runs, the menus' sounds are ticked with
 //! its ticks and added to its samples; with none running they run on their own clock at the same rate
@@ -12,7 +13,6 @@
 
 use nettai_audio::{BattleAudio, Output, SoundCue, SoundId};
 use nettai_battle::content::SoundRole;
-use nettai_content_api::assets::AssetKind;
 use nettai_frontend::game::Loaded;
 use nettai_frontend::player::FRAME_RATE;
 use std::time::Duration;
@@ -143,6 +143,12 @@ impl Sound {
             self.leaving = Some((old.music, self.fade));
         }
         self.fade = 0.0;
+        // (The title music is no sound of the content's: its pack's song, one more sound past the content's.)
+        let mut music = sound.songs.clone();
+        let title = game.game.index.sounds.get(TITLE_MUSIC).map(|&id| {
+            music.0.push(nettai_battle::content::InPack { pack: game.game.own, id });
+            SoundCue::Music(SoundId(music.0.len() as u16 - 1))
+        });
         self.menu = Some(Menu {
             effects: BattleAudio::with_banks(sound.banks.clone(), sound.songs.clone()),
             cursor: cue(SoundRole::CustomCursor),
@@ -150,8 +156,8 @@ impl Sound {
             back: cue(SoundRole::CustomBack),
             refused: cue(SoundRole::Refused),
             jack_in: cue(SoundRole::Encounter),
-            music: BattleAudio::with_banks(sound.banks.clone(), sound.songs.clone()),
-            title: content.assets.handle(AssetKind::Sound, TITLE_MUSIC).map(|h| SoundCue::Music(SoundId(h))),
+            music: BattleAudio::with_banks(sound.banks.clone(), music),
+            title,
             playing: false,
         });
         self.game = Some(id.to_string());

@@ -32,7 +32,7 @@
 
 use nettai_assets::Bundle;
 use nettai_battle::Content;
-use nettai_battle::content::{BackgroundId, BannerId, BannerRole, ChipCode, ChipRole, MugshotId, PackId, SoundRole, SpriteId};
+use nettai_battle::content::{BackgroundId, BannerId, BannerRole, ChipCode, ChipRole, MugshotId, PackAssets, PackId, SoundRole, SpriteId};
 use nettai_battle::field::PanelType;
 use nettai_content_api::{AssetKind, ChipHandle, FormHandle, NaviHandle};
 use nettai_render::audit::{Lookup, Problems};
@@ -73,10 +73,17 @@ pub struct ContentAudit {
 pub type Language = (String, Option<Arc<nettai_content::locale::Strings>>);
 
 /// Audit `c` against its packs' graphics (`bundles`, by `PackId`; `own` the
-/// content's own, whose lettering each language swaps in) and sound
-/// (`banks`, by `PackId`, if loaded), in each of `languages` (the content's
-/// own first).
-pub fn audit(c: &Content, mut bundles: Vec<Bundle>, own: PackId, banks: Option<&[Arc<m4a::SoundBank>]>, languages: &[Language]) -> ContentAudit {
+/// content's own, whose lettering each language swaps in; `assets`, its
+/// pack's numbers for the content's assets) and sound (`banks`, by `PackId`,
+/// if loaded), in each of `languages` (the content's own first).
+pub fn audit(
+    c: &Content,
+    mut bundles: Vec<Bundle>,
+    own: PackId,
+    assets: &PackAssets,
+    banks: Option<&[Arc<m4a::SoundBank>]>,
+    languages: &[Language],
+) -> ContentAudit {
     let mut out = ContentAudit {
         chips: c.defs.chips.len(),
         navis: c.defs.navis.len(),
@@ -94,13 +101,13 @@ pub fn audit(c: &Content, mut bundles: Vec<Bundle>, own: PackId, banks: Option<&
         let lettered = b.hud.has_language(lang);
         let pack_language = b.hud.language().to_string();
         bundles[own.index()] = b.for_language(lang);
-        let packs = Packs::new(bundles.iter().collect(), own);
+        let packs = Packs::new(bundles.iter().collect(), own).with_assets(assets);
         let text = DisplayText::new(strings.as_deref());
         let mut problems = Problems::default();
         check(c, &packs, &text, lettered, if k == 0 { banks } else { None }, &mut problems);
         for (game, lines, made) in other_packs(c, &packs, lang, &text) {
             for what in lines {
-                problems.note(format!("({game}'s pack) {what}"));
+                problems.note(format!("({game}) {what}"));
             }
             out.made.extend(made);
         }
@@ -119,11 +126,12 @@ pub fn audit(c: &Content, mut bundles: Vec<Bundle>, own: PackId, banks: Option<&
         out.languages.push(lang.clone());
         // (Another game's pack without this language's lettering draws its
         // console's names in its own: said.)
-        for (i, game) in c.assets.packs.iter().enumerate() {
+        for i in 0..bundles.len() {
             let pack = PackId(i as u8);
+            let game = lookups::pack_name(c, pack);
             if pack != own && is_loaded(&packs, pack) && !packs.bundle(pack).hud.languages().contains(&lang.as_str()) {
                 out.notes.push(format!(
-                    "{game}'s pack has no {lang} lettering: an {game} console draws {lang} names and descriptions in its own (not checked)"
+                    "{game} has no {lang} lettering: a console of its game draws {lang} names and descriptions in its own (not checked)"
                 ));
             }
         }
@@ -154,11 +162,12 @@ fn is_loaded(packs: &Packs, pack: PackId) -> bool {
 /// game's navis' emblems. Its problems, by game, and the lookups made.
 fn other_packs(c: &Content, packs: &Packs, lang: &str, text: &DisplayText) -> Vec<(String, Vec<String>, Vec<String>)> {
     let mut out = Vec::new();
-    for (i, game) in c.assets.packs.iter().enumerate() {
+    for i in 0..packs.loaded() {
         let pack = PackId(i as u8);
         if pack == packs.own_pack() || !is_loaded(packs, pack) {
             continue;
         }
+        let game = lookups::pack_name(c, pack);
         let bundle = packs.bundle(pack);
         let (hud, a) = (&bundle.hud, &bundle.custom);
         let mut p = Problems::default();
@@ -325,7 +334,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, lettered: bool, banks: 
     if let Some(banks) = banks {
         for h in handles(AssetKind::Sound) {
             // (The no-music song stops the music: it has none.)
-            crate::sound_lookups::sound(c, banks, h, true, p);
+            crate::sound_lookups::sound(c, packs.assets(), banks, h, true, p);
         }
     }
     // (A banner no loaded game's roles name is checked as its pack lays it
@@ -398,7 +407,7 @@ fn field(c: &Content, packs: &Packs, p: &mut Problems) {
 fn sprite(c: &Content, packs: &Packs, id: SpriteId, p: &mut Problems) {
     let who = || "(named by the content)".to_string();
     let Some(sheet) = lookups::sprite(packs, c, id, &who, p) else { return };
-    let timed = c.animations.sprites.get(&id).map_or(0, Vec::len);
+    let timed = c.animations.sprites.get(id.index()).map_or(0, |d| d.animations.len());
     if timed > sheet.animations.len() {
         p.note(format!(
             "{} has {} animations in the pack's graphics, and {timed} in its timing (the engine's)",
@@ -431,8 +440,7 @@ mod tests {
         for d in &c.defs.chips {
             b.hud.chip_icons.push(ChipIcon { key: name(&d.key), tiles: Tiles { pixels: vec![1; 4 * Tiles::TILE] } });
         }
-        let own = c.assets.pack(testing::ROOT).expect("the test pack");
-        let found = audit(&c, vec![b], own, None, &[("en".into(), None)]);
+        let found = audit(&c, vec![b], PackId(0), &testing::pack_assets(&c), None, &[("en".into(), None)]);
         found.problems.iter().filter(|p| p.ends_with("has no icon in the pack")).count()
     }
 
@@ -441,9 +449,8 @@ mod tests {
     #[test]
     fn the_field_is_audited_for_the_panel_types_its_game_names() {
         let mut c = (*testing::content()).clone();
-        let own = c.assets.pack(testing::ROOT).expect("the test pack");
         let missing = |c: &Content| {
-            let found = audit(c, vec![Bundle::default()], own, None, &[("en".into(), None)]);
+            let found = audit(c, vec![Bundle::default()], PackId(0), &testing::pack_assets(c), None, &[("en".into(), None)]);
             found.problems.iter().filter(|p| p.contains("doesn't draw panel type")).count()
         };
         let numbered = c.rules().panels.types.len();
@@ -461,9 +468,8 @@ mod tests {
     #[test]
     fn a_navi_without_its_no_running_message_is_listed() {
         let mut c = (*testing::content()).clone();
-        let own = c.assets.pack(testing::ROOT).expect("the test pack");
         let silent = |c: &Content| {
-            let found = audit(c, vec![Bundle::default()], own, None, &[("en".into(), None)]);
+            let found = audit(c, vec![Bundle::default()], PackId(0), &testing::pack_assets(c), None, &[("en".into(), None)]);
             found.problems.into_iter().filter(|p| p.contains("has no no-running message")).collect::<Vec<_>>()
         };
         // (The test content's navis that say nothing are listed already.)
@@ -480,17 +486,16 @@ mod tests {
         assert_eq!(silent(&c), Vec::<String>::new());
     }
 
-    /// Another loaded game's pack is audited as its console draws it (its
-    /// HUD's, custom screen's and chatbox's graphics), named by its game;
-    /// one that isn't loaded is not.
+    /// Another loaded pack is audited as its console draws it (its HUD's,
+    /// custom screen's and chatbox's graphics), named by its place; one that
+    /// isn't loaded is not.
     #[test]
     fn another_games_pack_is_audited_as_its_console_draws_it() {
-        let mut c = (*testing::content()).clone();
-        let own = c.assets.pack(testing::ROOT).expect("the test pack");
-        c.assets.packs.push("other".into());
+        let c = testing::content();
+        let assets = testing::pack_assets(&c);
         let others = |bundles: Vec<Bundle>| {
-            let found = audit(&c, bundles, own, None, &[("en".into(), None)]);
-            found.problems.into_iter().filter(|p| p.starts_with("(other's pack)")).collect::<Vec<_>>()
+            let found = audit(&c, bundles, PackId(0), &assets, None, &[("en".into(), None)]);
+            found.problems.into_iter().filter(|p| p.starts_with("(pack 1)")).collect::<Vec<_>>()
         };
         let found = others(vec![Bundle::default(), Bundle::default()]);
         assert!(found.iter().any(|p| p.contains("no chatbox graphics")), "{found:?}");

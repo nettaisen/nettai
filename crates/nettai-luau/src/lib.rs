@@ -49,7 +49,7 @@ use std::sync::Arc;
 
 use nettai_content_api::packs::Modules;
 use nettai_content_api::{
-    AssetKind, AssetNames, BindPlan, ContentError, ContentHost, CoreApi, Definitions, FnId, FnSource, HookCall, Manifest,
+    AssetKind, BindPlan, ContentError, DefinedAssets, ContentHost, CoreApi, Definitions, FnId, FnSource, HookCall, Manifest,
     ObjectRef, Registry, StateId, Value, keys,
 };
 use mlua::chunk::ChunkMode;
@@ -248,8 +248,8 @@ impl Bound {
     }
 
     /// Asset `h` of `kind` as a script value.
-    pub fn asset_value(&self, lua: &Lua, kind: AssetKind, h: u16) -> mlua::Result<Table> {
-        self.assets.borrow_mut().value(lua, kind, h)
+    pub fn asset_value(&self, kind: AssetKind, h: u16) -> mlua::Result<Table> {
+        self.assets.borrow().value(kind, h)
     }
 }
 
@@ -271,7 +271,12 @@ impl LuauContent {
     /// Load a pack's modules (the define phase), check they define what
     /// `plan` was made from, and bind the functions `plan` names.
     pub fn load(pack: &Pack, plan: &BindPlan, options: Options) -> Result<LuauContent, ContentError> {
-        let (lua, defined, modules, _, assets) = open(pack, &plan.assets, options)?;
+        let (lua, defined, modules, _, assets) = open(pack, options)?;
+        if assets.names != plan.assets {
+            return Err(ContentError::new(
+                "loading Luau content: the scripts name other assets than the content was made from".to_string(),
+            ));
+        }
         if defined.definitions != plan.definitions {
             return Err(ContentError::new(format!(
                 "loading Luau content: the scripts define something other than what the content was made from ({})",
@@ -423,10 +428,12 @@ impl LuauContent {
 }
 
 /// Read a pack's definitions: the define phase, in a VM of its own (which
-/// is dropped). The engine makes its content from what this returns, and
-/// keeps the modules' bytecode for its runtimes (`Pack::with_compiled`).
-pub fn define(pack: &Pack, assets: &AssetNames, options: Options) -> Result<(Definitions, Compiled), ContentError> {
-    open(pack, assets, options).map(|(_, defined, _, compiled, _)| (defined.definitions, compiled))
+/// is dropped). The engine makes its content from what this returns (the
+/// definitions, and the assets the modules name: their handles and the
+/// sprites' definitions), and keeps the modules' bytecode for its runtimes
+/// (`Pack::with_compiled`).
+pub fn define(pack: &Pack, options: Options) -> Result<(Definitions, Compiled, DefinedAssets), ContentError> {
+    open(pack, options).map(|(_, defined, _, compiled, assets)| (defined.definitions, compiled, assets.defined()))
 }
 
 /// The first place two readings of the definitions differ, for messages.
@@ -506,7 +513,7 @@ fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Res
 /// pack loaded, and the define phase finished.
 type Opened = (Lua, define::Defined, BTreeMap<String, LuaValue>, Compiled, define::AssetTables);
 
-fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, ContentError> {
+fn open(pack: &Pack, options: Options) -> Result<Opened, ContentError> {
     let err = |e: mlua::Error| ContentError::new(format!("loading Luau content: {e}"));
     let lua = sandbox::new_vm(options.debug_print).map_err(err)?;
     #[cfg(feature = "jit")]
@@ -535,7 +542,7 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
         Rc::new(move || loader.upgrade().and_then(|l| l.borrow().stack.last().cloned()))
     };
     define::install(&lua, &tags, module.clone()).map_err(err)?;
-    let assets = Rc::new(RefCell::new(define::AssetTables::new(&lua, assets.clone()).map_err(err)?));
+    let assets = Rc::new(RefCell::new(define::AssetTables::new(&lua).map_err(err)?));
     define::install_assets(&lua, &assets, module).map_err(err)?;
     let require = {
         let loader = Rc::downgrade(&loader);
@@ -589,7 +596,9 @@ fn open(pack: &Pack, assets: &AssetNames, options: Options) -> Result<Opened, Co
     let modules = std::mem::take(&mut loader.borrow_mut().loaded);
     let compiled = std::mem::take(&mut loader.borrow_mut().compiled);
     drop(loader);
-    let assets = Rc::try_unwrap(assets).ok().expect("the resolvers hold the asset tables weakly").into_inner();
+    let mut assets = Rc::try_unwrap(assets).ok().expect("the resolvers hold the asset tables weakly").into_inner();
+    // (The handles: every name the modules gave, in byte order.)
+    assets.finish();
     let games: std::collections::HashSet<String> =
         pack.packs.values().filter(|p| p.kind == nettai_content_api::PackKind::Game).map(|p| p.id.clone()).collect();
     let defined = define::finish(&lua, &tags, &assets, &games, &results, &modules)

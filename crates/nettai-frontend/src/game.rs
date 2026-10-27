@@ -14,7 +14,7 @@
 
 use nettai_assets::Bundle;
 use nettai_battle::Content;
-use nettai_battle::content::PackId;
+use nettai_battle::content::{PackAssets, PackId};
 use nettai_content::locale::{self, Strings};
 use nettai_content::pack;
 pub use nettai_content::report::Report;
@@ -43,7 +43,6 @@ pub enum Failed {
     /// The game's battle content.
     Content { game: String },
     /// The content loaded names no pack of the game.
-    NoPack { game: String },
     /// A part of a pack: its `"graphics"`, its `"sound"`.
     Part { part: &'static str, pack: PathBuf },
     /// The language: the content has no strings in it, or the pack no
@@ -58,7 +57,6 @@ impl fmt::Display for LoadError {
         match &self.what {
             Failed::Packs => write!(f, "can't read the packs given"),
             Failed::Content { game } => write!(f, "can't load {game}'s battle content"),
-            Failed::NoPack { game } => write!(f, "no {game} pack is loaded"),
             Failed::Part { part, pack } => {
                 write!(f, "can't load the {part} of the content pack {} (extract it again: README.md, \"Getting started\")", pack.display())
             }
@@ -112,6 +110,11 @@ pub struct Game {
     pub packs: Vec<PathBuf>,
     /// The game's own pack among them.
     pub own: PackId,
+    /// What the game's pack holds of the content's assets (checked against
+    /// the content as it loaded: `nettai_content::pack::pack_assets`).
+    pub assets: Arc<PackAssets>,
+    /// The game's pack's own index: every asset it has, by its name there.
+    pub index: Arc<nettai_content_api::PackIndex>,
     /// The other games' packs found beside its own, which the background
     /// pool's other backgrounds are drawn from ([`Game::graphics`]).
     pub others: Vec<pack::Found>,
@@ -132,11 +135,18 @@ impl Game {
             loaded.content.background_pool = locale::background_pool_of(pool);
         }
         let content = Arc::new(loaded.content);
-        let Some(own) = content.assets.pack(name) else {
-            return Err(LoadError { what: Failed::NoPack { game: name.to_string() }, report: loaded.report });
-        };
         let others = found.packs.iter().filter(|f| f.game != name).cloned().collect();
-        Ok(Game { name: loaded.game, content, dir: loaded.dir, packs: vec![loaded.pack], own, others, report: loaded.report })
+        Ok(Game {
+            name: loaded.game,
+            content,
+            dir: loaded.dir,
+            packs: vec![loaded.pack],
+            own: PackId::default(),
+            assets: Arc::new(loaded.assets),
+            index: Arc::new(loaded.index),
+            others,
+            report: loaded.report,
+        })
     }
 
     /// The packs' graphics, the game's own in `lang`: the pack's lettering
@@ -183,20 +193,27 @@ impl Game {
             bundles.push(Arc::new(bundle.for_language(lang)));
         }
         let others = Arc::new(self.other_backgrounds(&mut report));
-        Ok(Graphics { bundles, strings, own: self.own, others, report })
+        Ok(Graphics { bundles, strings, own: self.own, others, assets: self.assets.clone(), report })
     }
 
-    /// The background pool's backgrounds of other games (docs/app.md §1,
-    /// "The battle's background": `Content::background_pool`), each from its
-    /// game's pack among [`Game::others`], read alone (its folder,
-    /// `graphics/backgrounds/<name>`: a few kilobytes each). A game whose
-    /// pack isn't there has none, and a round on one of its backgrounds is
-    /// drawn on its stage's own (`Packs::round_background`); what reading
-    /// one said is in `report`.
+    /// The background pool's backgrounds past the game's own asset table
+    /// (docs/app.md §1, "The battle's background": `Content::background_pool`):
+    /// other games', each from its game's pack among [`Game::others`], and
+    /// the game's own its modules don't name, from its own pack; each read
+    /// alone (its folder, `graphics/backgrounds/<name>`: a few kilobytes
+    /// each). A game whose pack isn't there has none, and a round on one of
+    /// its backgrounds is drawn on its stage's own
+    /// (`Packs::round_background`); what reading one said is in `report`.
     pub fn other_backgrounds(&self, report: &mut Report) -> OtherBackgrounds {
         let mut out = OtherBackgrounds::default();
-        for found in &self.others {
-            let names = self.content.background_pool.iter().filter(|(game, _)| *game == found.game).map(|(_, name)| name);
+        let own = self.packs.get(self.own.index()).map(|dir| pack::Found { game: self.name.clone(), dir: dir.clone() });
+        for found in self.others.iter().chain(own.as_ref()) {
+            let c = &self.content;
+            let names = c
+                .background_pool
+                .iter()
+                .filter(|&(game, name)| game == found.game && !(game == c.game() && c.assets.handle(nettai_content_api::AssetKind::Background, name).is_some()))
+                .map(|(_, name)| name);
             let (backgrounds, r) = pack::load_backgrounds(&found.dir, names);
             report.issues.extend(r.issues);
             out.insert(&found.game, backgrounds);
@@ -220,7 +237,7 @@ impl Game {
                 }
             }
         }
-        Ok(Sound { banks, songs: nettai_audio::Songs::of(&self.content.assets), report })
+        Ok(Sound { banks, songs: nettai_audio::Songs::of(&self.assets), report })
     }
 }
 
@@ -236,13 +253,15 @@ pub struct Graphics {
     pub strings: Option<Arc<Strings>>,
     /// The game's own pack.
     pub own: PackId,
+    /// What the game's pack holds of the content's assets.
+    pub assets: Arc<PackAssets>,
     pub report: Report,
 }
 
 impl Graphics {
     /// The packs' graphics, as a renderer holds them.
     pub fn packs(&self) -> PackGraphics {
-        PackGraphics::new(self.bundles.clone(), self.own).with_others(self.others.clone())
+        PackGraphics::new(self.bundles.clone(), self.own).with_others(self.others.clone()).with_assets(self.assets.clone())
     }
 
     /// A renderer of these graphics, its text drawn in `text` mode
@@ -372,9 +391,9 @@ impl Loaded {
         if !self.game.content.battle_themes().contains(&nettai_battle::sound::SoundId(handle)) {
             return None;
         }
-        let at = assets.sound(handle)?;
-        let bank = self.sound.as_ref()?.banks.get(at.pack.index())?.clone();
-        Some(nettai_audio::Theme { bank, song: at.id })
+        let song = self.game.assets.sound(handle)?;
+        let bank = self.sound.as_ref()?.banks.get(self.game.own.index())?.clone();
+        Some(nettai_audio::Theme { bank, song })
     }
 
     /// Everything the loaders reported, in the order they loaded.

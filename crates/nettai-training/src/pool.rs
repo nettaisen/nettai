@@ -33,10 +33,8 @@ pub struct PoolConfig {
     pub threads: usize,
     pub seed: u64,
     /// The content directory (none: `nettai_content::index::content`, the
-    /// repository's) and the packs directory (none: `$NETTAI_PACKS`, else
-    /// `data`).
+    /// repository's): the battles are its alone (no asset pack is read).
     pub content: Option<PathBuf>,
-    pub packs: Option<PathBuf>,
     pub env: Config,
     /// Where the chips' fingerprints are kept on disk (none: computed once a
     /// process: `Fingerprints::for_game`).
@@ -221,21 +219,19 @@ pub struct Pool {
     buffers: Buffers,
 }
 
-/// Game `game`'s content from its pack in `packs` and the content in
-/// `content` (none: the repository's), as the app loads it: the battle data
-/// and the animations' timings (no picture or sound).
-pub fn load_game(content: Option<&Path>, packs: &Path, game: &str) -> Result<Arc<Content>, String> {
-    let mut report = nettai_content::report::Report::default();
-    let found = nettai_content::pack::find(packs, &[], &mut report).ok_or_else(|| format!("no packs in {}: {report}", packs.display()))?;
-    let loaded = nettai_content::pack::load_game(content, game, &found).map_err(|r| format!("{game}: {r}"))?;
-    Ok(Arc::new(loaded.content))
+/// Game `game`'s battle content, from the content directory `content`
+/// (none: the repository's): the content alone, as a battle reads it (its
+/// sprites' timing too: no asset pack, picture or sound).
+pub fn load_game(content: Option<&Path>, game: &str) -> Result<Arc<Content>, String> {
+    let dir = content.map(Path::to_path_buf).unwrap_or_else(nettai_content::index::content);
+    let (content, _) = nettai_content::pack::load_battle(&dir, game).map_err(|r| format!("{game}: {r}"))?;
+    Ok(Arc::new(content))
 }
 
 impl Pool {
-    /// A pool as `cfg` says, its games loaded from the packs.
+    /// A pool as `cfg` says, its games loaded from the content.
     pub fn new(cfg: PoolConfig) -> Result<Pool, String> {
-        let packs = cfg.packs.clone().unwrap_or_else(nettai_content::pack::packs_dir);
-        let contents = cfg.games.iter().map(|g| load_game(cfg.content.as_deref(), &packs, g)).collect::<Result<Vec<_>, _>>()?;
+        let contents = cfg.games.iter().map(|g| load_game(cfg.content.as_deref(), g)).collect::<Result<Vec<_>, _>>()?;
         Pool::with_contents(cfg, contents)
     }
 

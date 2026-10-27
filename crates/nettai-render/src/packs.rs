@@ -1,13 +1,15 @@
 //! The engine's assets as their packs hold them (docs/design/rules-in-luau.md
-//! §7.4). The engine knows an asset by its handle over the loaded packs; the
-//! frontend draws a pack's sprite, banner, mugshot or background by the
-//! pack's own id for it, from that pack's graphics ([`Packs`]). A round may
+//! §7.4). The engine knows an asset by its handle over the names the
+//! content gives; the frontend draws a sprite, banner, mugshot or
+//! background by the game's pack's own number for it ([`PackAssets`], which
+//! the loader made when it checked the pack against the content), from that
+//! pack's graphics ([`Packs`]). A round may
 //! be drawn on another game's background (the content's background pool:
 //! docs/app.md §1, "The battle's background"), which its own game's pack
 //! holds: those are [`OtherBackgrounds`], beside the packs.
 
 use nettai_assets::{Background, Bundle, Hud, SpriteSheet};
-use nettai_battle::content::{BackgroundId, BannerId, Content, InPack, MugshotId, PackId, PackSprite, SpriteId};
+use nettai_battle::content::{BackgroundId, BannerId, Content, InPack, MugshotId, PackAssets, PackId, SpriteId};
 use nettai_battle::setup::BattleSettings;
 use nettai_content_api::AssetKind;
 use std::collections::BTreeMap;
@@ -53,6 +55,7 @@ pub struct PackGraphics {
     bundles: Vec<Arc<Bundle>>,
     own: PackId,
     others: Arc<OtherBackgrounds>,
+    assets: Arc<PackAssets>,
 }
 
 impl PackGraphics {
@@ -72,14 +75,14 @@ impl PackGraphics {
 
     /// One pack's graphics: every asset is its.
     pub fn one(bundle: Arc<Bundle>) -> PackGraphics {
-        PackGraphics { bundles: vec![bundle], own: PackId(0), others: Default::default() }
+        PackGraphics { bundles: vec![bundle], own: PackId(0), others: Default::default(), assets: Default::default() }
     }
 
     /// Several packs' graphics, by `PackId`; `own` the frontend's own
     /// game's.
     pub fn new(bundles: Vec<Arc<Bundle>>, own: PackId) -> PackGraphics {
         assert!(own.index() < bundles.len(), "the frontend's own pack is loaded");
-        PackGraphics { bundles, own, others: Default::default() }
+        PackGraphics { bundles, own, others: Default::default(), assets: Default::default() }
     }
 
     /// These graphics, with other games' backgrounds beside them (the
@@ -88,14 +91,28 @@ impl PackGraphics {
         PackGraphics { others, ..self }
     }
 
+    /// These graphics, drawing the content's assets as the game's pack
+    /// numbers them (`nettai_content::pack::pack_assets`).
+    pub fn with_assets(self, assets: Arc<PackAssets>) -> PackGraphics {
+        PackGraphics { assets, ..self }
+    }
+
+    /// The game's pack's numbers for the content's assets.
+    pub fn assets(&self) -> &Arc<PackAssets> {
+        &self.assets
+    }
+
     /// The packs to draw from.
     pub fn packs(&self) -> Packs<'_> {
-        Packs { bundles: self.bundles.iter().map(|b| &**b).collect(), own: self.own, others: &self.others, version: None }
+        Packs { bundles: self.bundles.iter().map(|b| &**b).collect(), own: self.own, others: &self.others, assets: &self.assets, version: None }
     }
 }
 
 /// No other game's backgrounds.
 static NO_OTHERS: std::sync::LazyLock<OtherBackgrounds> = std::sync::LazyLock::new(OtherBackgrounds::default);
+
+/// No asset's number.
+static NO_ASSETS: std::sync::LazyLock<PackAssets> = std::sync::LazyLock::new(PackAssets::default);
 
 /// The loaded packs' graphics, by `PackId` (the content's `AssetNames::packs`
 /// order), and the match's game's pack's (the frontend's own), which draws
@@ -106,6 +123,8 @@ pub struct Packs<'a> {
     own: PackId,
     /// Other games' backgrounds (the background pool's).
     others: &'a OtherBackgrounds,
+    /// The game's pack's numbers for the content's assets.
+    assets: &'a PackAssets,
     /// The console's version (`Renderer::console_version`): a chip of
     /// another version's shows that version's ROM's art, which this console
     /// draws otherwise (`ChipArt::version`).
@@ -115,19 +134,35 @@ pub struct Packs<'a> {
 impl<'a> Packs<'a> {
     /// One pack's graphics: every asset is its.
     pub fn one(bundle: &'a Bundle) -> Packs<'a> {
-        Packs { bundles: vec![bundle], own: PackId(0), others: &NO_OTHERS, version: None }
+        Packs { bundles: vec![bundle], own: PackId(0), others: &NO_OTHERS, assets: &NO_ASSETS, version: None }
     }
 
     /// Several packs' graphics, by `PackId`; `own` the frontend's own
     /// game's.
     pub fn new(bundles: Vec<&'a Bundle>, own: PackId) -> Packs<'a> {
         assert!(own.index() < bundles.len(), "the frontend's own pack is loaded");
-        Packs { bundles, own, others: &NO_OTHERS, version: None }
+        Packs { bundles, own, others: &NO_OTHERS, assets: &NO_ASSETS, version: None }
     }
 
     /// These packs, with other games' backgrounds beside them.
     pub fn with_others(self, others: &'a OtherBackgrounds) -> Packs<'a> {
         Packs { others, ..self }
+    }
+
+    /// These packs, drawing the content's assets as the game's pack numbers
+    /// them.
+    pub fn with_assets(self, assets: &'a PackAssets) -> Packs<'a> {
+        Packs { assets, ..self }
+    }
+
+    /// The game's pack's numbers for the content's assets.
+    pub fn assets(&self) -> &'a PackAssets {
+        self.assets
+    }
+
+    /// How many packs are loaded.
+    pub fn loaded(&self) -> usize {
+        self.bundles.len()
     }
 
     /// The graphics of pack `pack` (the own pack's for one not loaded: a
@@ -153,9 +188,9 @@ impl<'a> Packs<'a> {
         self.bundle(self.game_id(c))
     }
 
-    /// The game's pack (the own pack when it isn't loaded).
-    pub fn game_id(&self, c: &Content) -> PackId {
-        c.assets.pack(c.game()).filter(|p| p.index() < self.bundles.len()).unwrap_or(self.own)
+    /// The game's pack: the own pack (a match plays the frontend's game).
+    pub fn game_id(&self, _c: &Content) -> PackId {
+        self.own
     }
 
     /// Draw a console of `version` (`Renderer::console_version`; None: the
@@ -179,16 +214,22 @@ impl<'a> Packs<'a> {
         self.game(c).custom.chip_art(nettai_content_api::keys::local(key))
     }
 
-    /// Sprite `id`'s sheet, from its pack.
+    /// Sprite `id`'s sheet, from the game's pack.
     pub fn sprite(&self, c: &Content, id: SpriteId) -> Option<&'a SpriteSheet> {
-        let a = c.assets.sprite(id.0)?;
-        self.bundle(a.pack).sprite(a.id.category, a.id.index)
+        let s = self.assets.sprite(id.0)?;
+        self.game(c).sprite(s.category, s.index)
     }
 
     /// Banner `id`'s pack's HUD and its number there.
     pub fn banner(&self, c: &Content, id: BannerId) -> Option<(&'a Hud, u8)> {
-        let a = c.assets.number(AssetKind::Banner, id.0)?;
-        Some((&self.bundle(a.pack).hud, a.id as u8))
+        let n = self.assets.number(AssetKind::Banner, id.0)?;
+        Some((&self.game(c).hud, n as u8))
+    }
+
+    /// Mugshot `id`'s pack and its number there.
+    pub fn mugshot_of(&self, id: MugshotId) -> Option<InPack<u8>> {
+        let n = self.assets.number(AssetKind::Mugshot, id.0)?;
+        Some(InPack { pack: self.own, id: n as u8 })
     }
 
     /// Mugshot `m`'s pack's HUD and its number there.
@@ -205,8 +246,8 @@ impl<'a> Packs<'a> {
             let (game, name) = c.background_of(id)?;
             return self.others.get(game, name);
         }
-        let a = c.assets.number(AssetKind::Background, id.0)?;
-        self.bundle(a.pack).background(a.id as u8)
+        let n = self.assets.number(AssetKind::Background, id.0)?;
+        self.game(c).background(n as u8)
     }
 
     /// The background a round of `settings` is drawn on: its own
@@ -222,44 +263,14 @@ impl<'a> Packs<'a> {
     }
 }
 
-/// Sprite `id` as its pack holds it.
-pub fn sprite(c: &Content, id: SpriteId) -> Option<PackSprite> {
-    c.assets.sprite(id.0).map(|a| a.id)
-}
-
-/// The pack and number of `kind` asset `h`.
-fn number(c: &Content, kind: AssetKind, h: u16) -> Option<InPack<u16>> {
-    c.assets.number(kind, h)
-}
-
-/// Banner `id`'s number in its pack.
-pub fn banner(c: &Content, id: BannerId) -> Option<u8> {
-    number(c, AssetKind::Banner, id.0).map(|n| n.id as u8)
-}
-
-/// Mugshot `id`'s pack and number there.
-pub fn mugshot(c: &Content, id: MugshotId) -> Option<InPack<u8>> {
-    number(c, AssetKind::Mugshot, id.0).map(|n| InPack { pack: n.pack, id: n.id as u8 })
-}
-
-/// Background `id`'s number in its pack (one of the game's own).
-pub fn background(c: &Content, id: BackgroundId) -> Option<u8> {
-    number(c, AssetKind::Background, id.0).map(|n| n.id as u8)
-}
-
 /// The name content gives `kind` asset `h` (`bomb`), for a problem's
 /// text; a background of the pool's others, its game and its name
 /// (`exe4:acdc-area`).
 pub fn name(c: &Content, kind: AssetKind, h: u16) -> Option<&str> {
-    let names = match kind {
-        AssetKind::Sprite => c.assets.sprites.keys().nth(h as usize),
-        AssetKind::Sound => c.assets.sounds.keys().nth(h as usize),
-        AssetKind::Banner => c.assets.banners.keys().nth(h as usize),
-        AssetKind::Background if !c.is_own_background(BackgroundId(h)) => return c.other_background(BackgroundId(h)),
-        AssetKind::Background => c.assets.backgrounds.keys().nth(h as usize),
-        AssetKind::Mugshot => c.assets.mugshots.keys().nth(h as usize),
-    };
-    names.map(String::as_str)
+    match kind {
+        AssetKind::Background if !c.is_own_background(BackgroundId(h)) => c.other_background(BackgroundId(h)),
+        _ => c.assets.name(kind, h),
+    }
 }
 
 #[cfg(test)]
@@ -298,7 +309,8 @@ mod tests {
         let c = content();
         let chip = c.defs.chip(c.defs.chip_by_key("gundels3").expect("a test chip")).key.clone();
         let a = bundle(1, keys::local(&chip));
-        let packs = Packs::one(&a);
+        let assets = testing::pack_assets(&c);
+        let packs = Packs::one(&a).with_assets(&assets);
         let tiles = |s: Option<&SpriteSheet>| s.expect("a sheet").tilesets[0].pixels.len() / Tiles::TILE;
         assert_eq!(tiles(packs.sprite(&c, testing::sprite_named(&c, "test-navi"))), 1);
         assert!(std::ptr::eq(packs.game(&c), &a));
@@ -316,7 +328,8 @@ mod tests {
         let mut c = content();
         let stage = c.stage_by_key(testing::LINK_BATTLE);
         let own = c.stage(stage).background;
-        let number = background(&c, own).expect("the stage's background's number") as usize;
+        let assets = testing::pack_assets(&c);
+        let number = assets.number(AssetKind::Background, own.0).expect("the stage's background's number") as usize;
         c.background_pool = nettai_battle::content::BackgroundPool::new([("zzz".to_string(), "far-area".to_string()), ("zzz".to_string(), "gone".to_string())]);
         let far = c.background_handle("zzz", "far-area").unwrap();
         let gone = c.background_handle("zzz", "gone").unwrap();
@@ -326,7 +339,7 @@ mod tests {
         a.backgrounds[number] = Some(picture(7));
         let mut others = OtherBackgrounds::default();
         others.insert("zzz", [("far-area".to_string(), picture(9))].into());
-        let packs = Packs::one(&a).with_others(&others);
+        let packs = Packs::one(&a).with_others(&others).with_assets(&assets);
         assert_eq!(packs.background(&c, own).map(|b| b.first_tile), Some(7), "the game's own, from its pack");
         assert_eq!(packs.background(&c, far).map(|b| b.first_tile), Some(9), "another game's, from its pack");
         assert_eq!(packs.background(&c, gone), None, "its pack hasn't it");

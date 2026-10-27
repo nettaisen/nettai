@@ -418,12 +418,17 @@ pub fn check_emotions(s: &Strings, emotions: &[&str], own: bool) -> Vec<String> 
 /// `c`: each language's table of the game's pack (a chip the game's
 /// init.luau doesn't require yet, its folder `chips/<key>/` there without
 /// a use, may have its strings before it loads), and the own language's
-/// present; the backgrounds' against the content's assets' (its pack's, or
-/// on made-up assets those its modules name).
-pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report::Report) {
+/// present; the backgrounds' against the backgrounds of the game's asset
+/// pack, whose index is `pack`. With no pack, only that the own language
+/// names every background the content's modules name (whether the pack has
+/// the others the tables name is the pack's to say).
+pub fn check_games(dir: &Path, c: &nettai_battle::Content, pack: Option<&nettai_content_api::PackIndex>, r: &mut crate::report::Report) {
     use nettai_content_api::{AssetKind, AssetNames};
-    let backgrounds: Vec<&str> =
-        c.assets.names(AssetKind::Background).into_iter().filter(|n| !AssetNames::is_placeholder(AssetKind::Background, n)).collect();
+    let own_names = load(&dir.join(c.game()), OWN).ok().flatten().map(|s| s.backgrounds.keys().cloned().collect::<Vec<_>>()).unwrap_or_default();
+    let backgrounds: Vec<&str> = match pack {
+        Some(p) => p.backgrounds.keys().map(String::as_str).filter(|n| !AssetNames::is_placeholder(AssetKind::Background, n)).collect(),
+        None => c.assets.backgrounds.iter().chain(&own_names).map(String::as_str).collect(),
+    };
     let sounds = c.assets.names(AssetKind::Sound);
     let themes: Vec<&str> = c.battle_themes().iter().filter_map(|t| sounds.get(t.0 as usize).copied()).collect();
     let holdable = c.rules.as_ref().map(|r| r.emotion.holdable().into_iter().map(|(e, _)| r.emotion.name(e)).collect::<Vec<_>>()).unwrap_or_default();

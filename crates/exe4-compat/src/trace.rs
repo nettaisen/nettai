@@ -680,8 +680,10 @@ impl Round {
             Some(k) => out.push(format!("the stage {k} (layout {layout:#04x}, actors {actor_list:#010x})")),
             None => out.push(format!("the stage (layout {layout:#04x}, actors {actor_list:#010x}: no EXE4 netbattle stage)")),
         }
-        if content.assets.pack(crate::ROOT).is_none() {
-            out.push("EXE4's pack".into());
+        // (Its assets are named as its game names them: the round's content
+        // is its game's.)
+        if content.game() != crate::ROOT {
+            out.push("EXE4's content".into());
         }
         out.dedup();
         Ok(out)
@@ -703,7 +705,6 @@ impl Round {
         let (layout, actor_list) = d.stage_record();
         let (version, japanese) = d.traced_rom();
         let stage = compat.stage(layout, actor_list, version, japanese).and_then(|k| content.defs.stage_by_key(&k)).expect("needs saw the stage");
-        let pack = content.assets.pack(crate::ROOT).expect("needs saw the pack");
         // (The background loader, 0x08085430: the game state's +0x0F, else,
         // where it is 0xFF, the settings record's +5: every netbattle
         // record's is 3.)
@@ -711,12 +712,13 @@ impl Round {
             0xFF => st[5],
             n => n,
         };
-        let background = nettai_battle::content::BackgroundId(
-            content
-                .assets
-                .number_handle(nettai_content_api::AssetKind::Background, pack, number as u16)
-                .ok_or_else(|| format!("EXE4's pack has no background {number:#04x}"))?,
-        );
+        let background = compat
+            .assets
+            .backgrounds
+            .iter()
+            .find(|&(_, &n)| n == number)
+            .and_then(|(name, _)| content.background_handle(crate::ROOT, name))
+            .ok_or_else(|| format!("EXE4's content has no background {number:#04x}"))?;
         // (EXE4's records have no effects word: the stage's own, with what a
         // link battle's match adds, as a match sets a round up; a single
         // battle is no set.)
@@ -1304,7 +1306,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
     let (ours, theirs) = shows(b.remote_telop.active || b.used_chip_for(r.local_side).is_some(), SECOND_BLOCK_TASK);
     check("second block", ours, theirs);
     if let (Some(id), true) = (b.banner_for(r.local_side), tasks & BANNER_TASK != 0) {
-        let ours = b.content.assets.number(nettai_content_api::AssetKind::Banner, id.0).map(|n| n.id as u8);
+        let ours = b.content.assets.name(nettai_content_api::AssetKind::Banner, id.0).and_then(|n| compat.assets.banners.get(n).copied());
         let theirs = unhex(&banner.banner).ok().and_then(|x| x.get(1).copied());
         let show = |n: Option<u8>| n.map_or("none".to_string(), |n| format!("{n:#04x}"));
         check("banner number", show(ours), show(theirs));

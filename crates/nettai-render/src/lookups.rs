@@ -122,9 +122,10 @@ pub fn background<'a>(packs: &Packs<'a>, c: &Content, id: BackgroundId, problems
     found
 }
 
-/// A pack's name for a problem's text (`exe6's pack`).
+/// A pack's name for a problem's text (`exe6's pack`): the game's (a match
+/// plays one), another loaded pack by its place.
 pub fn pack_name(c: &Content, pack: PackId) -> String {
-    c.assets.packs.get(pack.index()).map_or(format!("pack {}", pack.index()), |g| format!("{g}'s pack"))
+    if pack == PackId::default() { format!("{}'s pack", c.game()) } else { format!("pack {}", pack.index()) }
 }
 
 /// Pack `pack`'s field's panel block for a panel type (`kind`, by its
@@ -283,7 +284,7 @@ pub fn advance_name(hud: &Hud, chip: ChipHandle, name: &str, problems: &mut Prob
 
 /// A mugshot, from its pack's HUD: the picture and its palettes.
 pub fn mugshot<'a>(packs: &Packs<'a>, c: &Content, id: MugshotId, problems: &mut Problems) -> Option<(&'a Tiles, &'a [Palette])> {
-    let face = crate::packs::mugshot(c, id).and_then(|m| {
+    let face = packs.mugshot_of(id).and_then(|m| {
         let (hud, n) = packs.mugshot(m);
         hud.mugshot(n)
     });
@@ -297,7 +298,7 @@ pub fn mugshot<'a>(packs: &Packs<'a>, c: &Content, id: MugshotId, problems: &mut
 /// A link navi's own face (its definition's mugshot): the picture and its
 /// palettes (the second Full Synchro's).
 pub fn navi_face<'a>(packs: &Packs<'a>, c: &Content, navi: NaviHandle, problems: &mut Problems) -> Option<(&'a Tiles, &'a [Palette], u8)> {
-    let picture = c.navi(navi).mugshot.and_then(|m| crate::packs::mugshot(c, m));
+    let picture = c.navi(navi).mugshot.and_then(|m| packs.mugshot_of(m));
     let face = picture.and_then(|m| {
         let (hud, n) = packs.mugshot(m);
         hud.mugshot(n).map(|(t, p)| (t, p, m.id))
@@ -320,7 +321,7 @@ pub fn form_face<'a>(
     variant: bool,
     problems: &mut Problems,
 ) -> (Option<nettai_battle::content::InPack<u8>>, Option<(&'a Tiles, &'a [Palette])>) {
-    let picture = c.form(form).mugshot.as_ref().and_then(|faces| crate::packs::mugshot(c, faces.shown(&c.rules().emotion, emotion, variant)));
+    let picture = c.form(form).mugshot.as_ref().and_then(|faces| packs.mugshot_of(faces.shown(&c.rules().emotion, emotion, variant)));
     let face = picture.and_then(|m| {
         let (hud, n) = packs.mugshot(m);
         hud.mugshot(n)
@@ -463,7 +464,7 @@ pub fn form_name<'a>(
 pub fn banner<'a>(packs: &Packs<'a>, c: &Content, id: BannerId, problems: &mut Problems) -> Option<(&'a Hud, &'a BannerLayout, u8)> {
     let found = packs.banner(c, id).and_then(|(hud, n)| hud.banners.get(n as usize / 4).filter(|l| !l.glyphs.is_empty()).map(|l| (hud, l, n)));
     if problems.lookup(Lookup::Banner(id)) && found.is_none() {
-        problems.note(format!("banner {} has no glyphs in the pack", banner_name(c, id)));
+        problems.note(format!("banner {} has no glyphs in the pack", banner_name(packs, c, id)));
     }
     found
 }
@@ -474,9 +475,9 @@ pub fn telop<'a>(packs: &Packs<'a>, c: &Content, id: BannerId, problems: &mut Pr
     let found = packs.banner(c, id).and_then(|(hud, n)| hud.banners.get(n as usize / 4).map(|l| (hud, l, n)));
     if problems.lookup(Lookup::Telop(id)) {
         match found {
-            None => problems.note(format!("the telop's banner {} is not in the pack", banner_name(c, id))),
+            None => problems.note(format!("the telop's banner {} is not in the pack", banner_name(packs, c, id))),
             Some((_, l, _)) if l.kind != TELOP_KIND => {
-                problems.note(format!("the telop's banner {} is no telop's in the pack (kind {})", banner_name(c, id), l.kind))
+                problems.note(format!("the telop's banner {} is no telop's in the pack (kind {})", banner_name(packs, c, id), l.kind))
             }
             _ => {}
         }
@@ -505,8 +506,8 @@ pub const TELOP_KIND: u8 = 3;
 pub const JUDGE_KIND: u8 = 4;
 
 /// A banner's name for a problem's text.
-fn banner_name(c: &Content, id: BannerId) -> String {
-    match (crate::packs::name(c, AssetKind::Banner, id.0), crate::packs::banner(c, id)) {
+fn banner_name(packs: &Packs, c: &Content, id: BannerId) -> String {
+    match (crate::packs::name(c, AssetKind::Banner, id.0), packs.banner(c, id).map(|(_, n)| n)) {
         (Some(name), Some(n)) => format!("{name:?} ({n:#04x})"),
         (Some(name), None) => format!("{name:?}"),
         _ => format!("handle {}", id.0),

@@ -124,11 +124,11 @@ pub fn passed_x(new: i32, old: i32, target: i32, side: u8) -> bool {
     passed(new.wrapping_mul(s), old.wrapping_mul(s), target.wrapping_mul(s))
 }
 
-/// A sprite, as the engine names it: a handle, its place among the loaded
-/// packs' sprite names (`AssetNames::sprites`, qualified by pack, in byte
-/// order; docs/design/rules-in-luau.md §7.4). What a pack calls it (its
-/// category and index) is [`PackSprite`], which loaders, frontends and
-/// compat read through the asset names; the simulation never does.
+/// A sprite, as the engine names it: a handle, its place among the sprites
+/// the content defines (`AssetNames::sprites`, in byte order;
+/// docs/design/rules-in-luau.md §7.4). What a pack calls it (its category
+/// and index) is [`PackSprite`], which frontends read through a pack's
+/// assets (`PackAssets`); the simulation never does.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 pub struct SpriteId(pub u16);
@@ -180,8 +180,9 @@ impl<'de> serde::Deserialize<'de> for PackSprite {
     }
 }
 
-/// A loaded asset pack, by its place among the content's packs (their
-/// games in byte order: `AssetNames::packs`).
+/// A loaded asset pack, by its place among those a host loads (the game's
+/// own first: a battle theme of another game's plays from that game's
+/// pack's bank).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PackId(pub u8);
 

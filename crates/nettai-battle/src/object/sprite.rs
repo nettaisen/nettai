@@ -1,6 +1,7 @@
 //! Sprite animation timing. Nothing is drawn here; the engine steps
 //! animations because some behaviors end when an animation does (effect
-//! lifetimes, some chip attacks). Frame durations come from the content.
+//! lifetimes, some chip attacks). Frame durations come from the content's
+//! sprite definitions.
 //! `Look` records how behaviors ask for the sprite to be drawn, for a
 //! frontend.
 
@@ -107,13 +108,10 @@ pub enum Shadow {
 }
 
 impl Sprite {
-    fn frames<'c>(&self, content: &'c Content) -> &'c [AnimFrame] {
-        self.id.map(|id| content.animation(id, self.anim)).unwrap_or(&[])
-    }
-
     fn frame_at(&self, content: &Content, i: u16) -> AnimFrame {
-        // A sprite without data behaves like a single held frame.
-        self.frames(content).get(i as usize).copied().unwrap_or(AnimFrame { duration: 1, flags: FRAME_LAST })
+        // (An animation the sprite hasn't, or a frame past its last, is a
+        // single held frame.)
+        self.id.and_then(|id| content.animations.frame(id, self.anim, i)).unwrap_or(AnimFrame { duration: 1, flags: FRAME_LAST })
     }
 
     /// Load a sprite (resets the animation state).

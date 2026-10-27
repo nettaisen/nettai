@@ -17,7 +17,7 @@
 
 use nettai_battle::content::Content;
 use nettai_content_api::{
-    AssetKind, ChipHandle, EntryHandle, FormHandle, NaviHandle, RecordHandle, Registry, StageHandle, WeaponHandle, keys,
+    ChipHandle, EntryHandle, FormHandle, NaviHandle, RecordHandle, Registry, StageHandle, WeaponHandle, keys,
 };
 
 /// The content's key of the definition named `name` in `game`: the name,
@@ -147,7 +147,7 @@ pub fn background(content: &Content, game: &str, name: &str) -> Option<nettai_ba
     }
     match name.split_once(':') {
         Some((of, name)) => content.background_handle(of, name),
-        None => content.assets.handle(AssetKind::Background, name).map(nettai_battle::content::BackgroundId),
+        None => content.background_handle(game, name),
     }
 }
 
@@ -156,15 +156,23 @@ pub fn background(content: &Content, game: &str, name: &str) -> Option<nettai_ba
 /// game and its name in that game's pack (`exe4:acdc-area`); none: no such
 /// background.
 pub fn background_name(content: &Content, id: nettai_battle::content::BackgroundId) -> Option<&str> {
-    if !content.is_own_background(id) {
-        return content.other_background(id);
+    match content.background_of(id)? {
+        (game, name) if game == content.game() => Some(local(name)),
+        _ => content.other_background(id),
     }
-    content.assets.backgrounds.keys().nth(id.0 as usize).map(|k| local(k))
 }
 
-/// The names of `game`'s backgrounds, in order.
+/// The names of `game`'s backgrounds, in order: those its modules name and
+/// the others of its own the background pool has.
 pub fn backgrounds<'c>(content: &'c Content, game: &str) -> Vec<&'c str> {
-    (content.game() == game).then(|| content.assets.backgrounds.keys().map(|k| local(k)).collect()).unwrap_or_default()
+    if content.game() != game {
+        return Vec::new();
+    }
+    let pool = content.background_pool.iter().filter(|(g, _)| *g == game).map(|(_, name)| name);
+    let mut out: Vec<&str> = content.assets.backgrounds.iter().map(String::as_str).chain(pool).map(local).collect();
+    out.sort();
+    out.dedup();
+    out
 }
 
 /// The names a match of the content's game writes for the background pool's

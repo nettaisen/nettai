@@ -11,7 +11,7 @@
 //!    linked beside this one's).
 //! 3. It builds the bundle from the submodules' folders (the support packs at the locked commits), numbered after
 //!    the line's releases.
-//! 4. It unpacks the bundle and loads it with the game's asset pack, for its content hash.
+//! 4. It unpacks the bundle and loads its game, for its content hash (the content alone: no asset pack is read).
 //! 5. It refuses a bundle that is the line's newest again: the same id, or the same content hash and pack commits.
 //! 6. It creates the release: tag `<line>-r<revision>` on the game pack's commit, with the bundle (`<id>.tar.gz`)
 //!    and its index entry (`bundle.json`, a [`Published`]).
@@ -26,7 +26,7 @@ use std::process::Command;
 
 use nettai_content::bundle::{self, BundleId, Manifest, Published};
 use nettai_content::pack;
-use nettai_content::report::{Level, Report};
+use nettai_content::report::Level;
 use nettai_content_api::{PackKind, packs};
 
 /// The workspace's manifest, whose version is this engine's: the engine that computes the content hash is this
@@ -42,25 +42,21 @@ const MAIN: &str = "origin/main";
 /// The release's index entry's name among its files.
 const ENTRY: &str = "bundle.json";
 
-pub const USAGE: &str = "  nettai-content publish <game> [--packs DIR] [--dry-run]
+pub const USAGE: &str = "  nettai-content publish <game> [--dry-run]
                                                    publish the game's content for this engine's line: a
                                                    release of nettaisen/<game> with its bundle, from the
-                                                   submodules (run in the engine checkout; DIR: the game's
-                                                   asset pack, default data/<game>)";
+                                                   submodules (run in the engine checkout)";
 
 struct Options {
     game: String,
-    /// The game's asset pack (`data/<game>` of the checkout when not given).
-    packs: Option<PathBuf>,
     dry_run: bool,
 }
 
-fn parse(mut args: impl Iterator<Item = String>) -> Result<Options, String> {
+fn parse(args: impl Iterator<Item = String>) -> Result<Options, String> {
     let usage = || format!("usage:\n{USAGE}");
-    let mut o = Options { game: String::new(), packs: None, dry_run: false };
-    while let Some(arg) = args.next() {
+    let mut o = Options { game: String::new(), dry_run: false };
+    for arg in args {
         match arg.as_str() {
-            "--packs" => o.packs = Some(args.next().ok_or("--packs needs the game's asset pack's folder")?.into()),
             "--dry-run" => o.dry_run = true,
             a if a.starts_with("--") => return Err(format!("unknown option {a}\n{}", usage())),
             _ if !o.game.is_empty() => return Err(format!("one game at a time\n{}", usage())),
@@ -126,17 +122,16 @@ pub fn run(args: impl Iterator<Item = String>) -> Result<(), String> {
     eprintln!("   r{revision}: {} ({} bytes)", built.id, gz.len());
 
     say("4. the content hash");
-    let assets = o.packs.unwrap_or_else(|| root.join("data").join(&o.game));
     let work = root.join("target").join("publish").join(&o.game);
     if work.exists() {
         std::fs::remove_dir_all(&work).map_err(|e| format!("{}: {e}", work.display()))?;
     }
     let unpacked = work.join(built.id.to_string());
-    let hash = content_hash(&gz, built.id, &unpacked, &assets, &o.game);
+    let hash = content_hash(&gz, built.id, &unpacked, &o.game);
     let _ = std::fs::remove_dir_all(&unpacked);
     let hash = hash?;
     let published = Published { id: built.id, content_hash: hash, revision, packs: commits, date: today(), size: gz.len() as u64, url: None };
-    eprintln!("   {:016x} (with {})", hash.0, assets.display());
+    eprintln!("   {:016x}", hash.0);
 
     say("5. the line's newest");
     if let Some(why) = refusal(newest.as_ref(), &published) {
@@ -415,28 +410,21 @@ fn refusal(newest: Option<&Published>, new: &Published) -> Option<String> {
     None
 }
 
-/// The content hash of gzipped bundle `gz` (id `id`): unpacked into `dest` as an app's store unpacks it, and loaded
-/// with game `game`'s asset pack `assets`.
-fn content_hash(gz: &[u8], id: BundleId, dest: &Path, assets: &Path, game: &str) -> Result<nettai_battle::ContentHash, String> {
-    let mut r = Report::default();
-    let Some(m) = pack::read_manifest(assets, &mut r) else {
-        return Err(format!("{}: {r}", assets.display()));
-    };
-    if m.game != game {
-        return Err(format!("{} is {}'s asset pack, not {game}'s", assets.display(), m.game));
-    }
+/// The content hash of gzipped bundle `gz` (id `id`): unpacked into `dest` as an app's store unpacks it, and game
+/// `game` loaded from it (the content alone: no asset pack is read).
+fn content_hash(gz: &[u8], id: BundleId, dest: &Path, game: &str) -> Result<nettai_battle::ContentHash, String> {
     if let Some(parent) = dest.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
     }
     bundle::unpack(gz, id, dest)?;
-    match pack::load_battle(dest, assets) {
+    match pack::load_battle(dest, game) {
         Ok((c, loaded)) => {
             for i in loaded.issues.iter().filter(|i| i.level != Level::Note) {
                 eprintln!("   {i}");
             }
             Ok(c.hash())
         }
-        Err(r) => Err(format!("the bundle doesn't load with {}:\n{r}", assets.display())),
+        Err(r) => Err(format!("the bundle doesn't load:\n{r}")),
     }
 }
 
@@ -614,20 +602,19 @@ mod tests {
 
     #[test]
     fn options() {
-        let o = parse(tags(&["exe6", "--packs", "/x/data/exe6", "--dry-run"]).into_iter()).unwrap();
-        assert_eq!((o.game.as_str(), o.packs.as_deref(), o.dry_run), ("exe6", Some(Path::new("/x/data/exe6")), true));
+        let o = parse(tags(&["exe6", "--dry-run"]).into_iter()).unwrap();
+        assert_eq!((o.game.as_str(), o.dry_run), ("exe6", true));
         assert!(parse(tags(&["exe6", "exe5"]).into_iter()).is_err());
         assert!(parse(tags(&["--dry-run"]).into_iter()).is_err());
         assert!(parse(tags(&["exe6", "--packs"]).into_iter()).is_err());
     }
 
     /// A bundle plays what the checkout's content plays: its content hash is the one a build run from the
-    /// repository computes for the same game. (Needs the asset packs: `NETTAI_PACKS`, default the checkout's data/.)
+    /// repository computes for the same game. (Each game's content loaded twice: a few seconds.)
     #[test]
     #[ignore]
     fn a_bundle_plays_what_the_checkout_plays() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-        let packs = std::env::var_os("NETTAI_PACKS").map_or_else(|| root.join("data"), PathBuf::from);
         let content = root.join("content");
         let all: BTreeMap<String, packs::PackManifest> = packs::packs(&content).unwrap().into_iter().map(|p| (p.id.clone(), p)).collect();
         for game in ["exe4", "exe5", "exe6"] {
@@ -643,22 +630,20 @@ mod tests {
             let built = bundle::build(manifest, &folders).unwrap();
             let dest = std::env::temp_dir().join(format!("nettai-plays-{game}-{}", std::process::id()));
             let _ = std::fs::remove_dir_all(&dest);
-            let hash = content_hash(&bundle::gzip(&built.tar), built.id, &dest, &packs.join(game), game);
+            let hash = content_hash(&bundle::gzip(&built.tar), built.id, &dest, game);
             let _ = std::fs::remove_dir_all(&dest);
-            let (checkout, _) = pack::load_battle(&content, &packs.join(game)).unwrap_or_else(|r| panic!("{game}: {r}"));
+            let (checkout, _) = pack::load_battle(&content, game).unwrap_or_else(|r| panic!("{game}: {r}"));
             assert_eq!(hash.unwrap(), checkout.hash(), "{game}");
         }
     }
 
     /// Each game's published site: its index reads, and each bundle of the line downloads, has its id, unpacks and
-    /// loads with the main checkout's asset pack to the content hash the index gives. Games with nothing published
-    /// for the line yet are passed over, but one must have it. (Needs the network and the asset packs:
-    /// `NETTAI_PACKS`, a folder of them, default the checkout's data/.)
+    /// loads to the content hash the index gives. Games with nothing published for the line yet are passed over, but
+    /// one must have it. (Needs the network.)
     #[test]
     #[ignore]
     fn the_sites_serve_what_was_published() {
         let line = line_of(&workspace_version(WORKSPACE).unwrap());
-        let packs = std::env::var_os("NETTAI_PACKS").map_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../data"), PathBuf::from);
         let fetch = |url: &str| -> Vec<u8> {
             let out = Command::new("curl").args(["-fsSL", url]).output().unwrap();
             assert!(out.status.success(), "{url}: {}", String::from_utf8_lossy(&out.stderr));
@@ -680,7 +665,7 @@ mod tests {
                 assert_eq!(gz.len() as u64, p.size, "{game} r{}", p.revision);
                 let dest = std::env::temp_dir().join(format!("nettai-site-{game}-{}", std::process::id()));
                 let _ = std::fs::remove_dir_all(&dest);
-                let hash = content_hash(&gz, p.id, &dest, &packs.join(game), game);
+                let hash = content_hash(&gz, p.id, &dest, game);
                 let _ = std::fs::remove_dir_all(&dest);
                 assert_eq!(hash.unwrap(), p.content_hash, "{game} r{}", p.revision);
                 eprintln!("{game} r{}: {}, content hash {:016x}", p.revision, p.id, p.content_hash.0);

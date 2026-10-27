@@ -437,7 +437,7 @@ fn audit_content(args: &Args, game: &Game) -> ! {
         let strings = nettai_content::locale::load_for(dir, games, &lang).unwrap_or_else(|e| fail(e));
         languages.push((lang, strings.map(Arc::new)));
     }
-    let found = nettai_tools::content_audit::audit(content, bundles, game.own, banks.as_deref(), &languages);
+    let found = nettai_tools::content_audit::audit(content, bundles, game.own, &game.assets, banks.as_deref(), &languages);
     for p in &found.problems {
         println!("{p}");
     }

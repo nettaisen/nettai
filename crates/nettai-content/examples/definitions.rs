@@ -2,11 +2,11 @@
 //! the same must print the same): for each registry its definitions' count
 //! and a digest of their keys, modules and specs, then every key.
 //!
-//!     cargo run --release -p nettai-content --example definitions -- <pack> [--keys]
+//!     cargo run --release -p nettai-content --example definitions -- <game> [--keys]
 //!
-//! (The content is this repository's content/, or `$NETTAI_CONTENT`; the
-//! pack gives its game and its assets. The digest is of the definitions
-//! alone, not the content hash, which covers the modules' text.)
+//! (The content is this repository's content/, or `$NETTAI_CONTENT`. The
+//! digest is of the definitions alone, not the content hash, which covers
+//! the modules' text.)
 
 use std::collections::BTreeMap;
 
@@ -21,9 +21,9 @@ fn fnv(bytes: &[u8], mut h: u64) -> u64 {
 
 fn main() {
     let mut args = std::env::args().skip(1);
-    let pack = std::path::PathBuf::from(args.next().expect("usage: definitions <pack> [--keys]"));
+    let game = args.next().expect("usage: definitions <game> [--keys]");
     let keys = args.next().is_some_and(|a| a == "--keys");
-    let (content, _) = nettai_content::pack::load_battle(&nettai_content::index::content(), &pack).unwrap_or_else(|r| panic!("{r}"));
+    let (content, _) = nettai_content::pack::load_battle(&nettai_content::index::content(), &game).unwrap_or_else(|r| panic!("{r}"));
     let defs = &content.defs.definitions.defs;
     let mut by_registry: BTreeMap<String, (usize, u64)> = BTreeMap::new();
     let mut all = 0xCBF2_9CE4_8422_2325u64;

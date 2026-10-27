@@ -179,7 +179,7 @@ fn a_battle_drives_the_music() {
     let content = testing::restaged(testing::LINK_BATTLE_SIDE0_FIRST, |s| s.music = Some(nettai_battle::SoundId(0)));
     let mut setup = testing::round_setup(testing::LINK_BATTLE_SIDE0_FIRST, testing::stats(500));
     testing::on(&mut setup, &content);
-    let songs = Songs::of(&content.assets);
+    let songs = Songs::of(&testing::pack_assets(&content));
     let mut b = Battle::new(setup, std::sync::Arc::new(content));
     let mut a = BattleAudio::new(bank(), songs);
     let mut out = Vec::new();
