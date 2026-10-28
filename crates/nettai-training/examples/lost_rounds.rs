@@ -216,6 +216,9 @@ struct RoundOut {
     /// (the other navi losing HP within `stats::LANDS` ticks), by side.
     attack_chips: [u32; 2],
     landed: [u32; 2],
+    /// Each side's chips used in the fight and panels stepped to.
+    chips_used: [u32; 2],
+    steps: [u32; 2],
     /// The AI's attack chips by name: used, and landed (as `landed`).
     ai_chips: HashMap<String, (u32, u32)>,
     /// Fight ticks dimmed, and the dimmings.
@@ -424,7 +427,7 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
     let m = s.game.maker.round_with([s.builds[i].side.clone(), s.builds[j].side.clone()], Some(1000), seed).expect("a round of the fixed builds");
     let set = Set::of(content, &m, seed);
     let mut b = set.start();
-    let mut ai = NetAi::of(s.net.clone(), Level::Normal, rng.next_u64(), Fingerprinter::made(s.fingerprints.clone())).expect("the AI");
+    let mut ai = NetAi::of(s.net.clone(), level(), rng.next_u64(), Fingerprinter::made(s.fingerprints.clone())).expect("the AI");
     let (d, k) = (ai.knobs().delay as u32, s.net.k());
     // (The masher, else the scripted player LOST_BOT names.)
     let kind = std::env::var("LOST_BOT").ok().and_then(|n| BotKind::named(&n)).unwrap_or(BotKind::Masher);
@@ -452,6 +455,8 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
         replay_ended: false,
         attack_chips: [0; 2],
         landed: [0; 2],
+        chips_used: [0; 2],
+        steps: [0; 2],
         ai_chips: HashMap::new(),
         dimmed_ticks: 0,
         dimmings: 0,
@@ -691,6 +696,8 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
     out.ending = result.1;
     out.attack_chips = measure.stats.attack_chips;
     out.landed = measure.stats.attacks_landed;
+    out.chips_used = measure.stats.chips_used;
+    out.steps = measure.stats.steps;
     for (&c, &n) in measure.chips.as_ref().map(|c| &c[1]).into_iter().flatten() {
         out.ai_chips.insert(b.content.defs.chip(c).key.clone(), n);
     }
@@ -760,7 +767,7 @@ type Group = (&'static str, fn(&RoundOut) -> bool);
 
 fn summary(s: &Shared, rounds: &[RoundOut], a: &Args, d: u32, k: u32) -> String {
     let mut o = String::new();
-    let _ = writeln!(o, "lost_rounds: {} EXE6 rounds, masher (side 0) vs NetAi Normal (side 1); weights {}", rounds.len(), a.weights.display());
+    let _ = writeln!(o, "lost_rounds: {} EXE6 rounds, masher (side 0) vs NetAi {} (side 1); weights {}", rounds.len(), level().name(), a.weights.display());
     let _ = writeln!(o, "AI: delay D = {d} ticks, decisions every k = {k} ticks; fixed builds (seed 0x5EED_B11D + i, full_lists 0.5, randomize 0.75, combos 0.3, HP 1000):");
     for (i, n) in s.navis.iter().enumerate() {
         let pair = s.builds[i].pair.as_ref().map(|p| format!(" (folder seeded with {} + {})", s.content.defs.chip(p.setup).key, s.content.defs.chip(p.payoff).key)).unwrap_or_default();
@@ -772,6 +779,9 @@ fn summary(s: &Shared, rounds: &[RoundOut], a: &Args, d: u32, k: u32) -> String 
 
     let (used, landed) = rounds.iter().fold(([0u32; 2], [0u32; 2]), |(u, l), r| ([u[0] + r.attack_chips[0], u[1] + r.attack_chips[1]], [l[0] + r.landed[0], l[1] + r.landed[1]]));
     let _ = writeln!(o, "attack chips used in the fight and landed (the other navi losing HP within {} ticks): side 0 (the scripted player) {} of {} ({}), side 1 (the AI) {} of {} ({})", nettai_training::stats::LANDS, landed[0], used[0], pct(landed[0] as usize, used[0] as usize), landed[1], used[1], pct(landed[1] as usize, used[1] as usize));
+    let fight_min = rounds.iter().map(|r| r.fight_ticks as f64).sum::<f64>() / 3600.0;
+    let per = |f: fn(&RoundOut) -> [u32; 2], i: usize| rounds.iter().map(|r| f(r)[i] as f64).sum::<f64>() / fight_min.max(1e-9);
+    let _ = writeln!(o, "a fight minute: the AI uses {:.1} chips and steps {:.1} times; the masher {:.1} and {:.1}", per(|r| r.chips_used, 1), per(|r| r.steps, 1), per(|r| r.chips_used, 0), per(|r| r.steps, 0));
     let (dt, dn, ft) = rounds.iter().fold((0u64, 0u64, 0u64), |(a, n, f), r| (a + r.dimmed_ticks as u64, n + r.dimmings as u64, f + r.fight_ticks as u64));
     let _ = writeln!(o, "dimmed: {dt} ticks in {dn} dimmings ({:.0} ticks each), against {ft} fight ticks", dt as f64 / dn.max(1) as f64);
     let mut by_chip: HashMap<&str, (u32, u32)> = HashMap::new();
@@ -1055,6 +1065,11 @@ fn write_hits(path: &Path, s: &Shared, rounds: &[RoundOut]) {
     std::fs::write(path, o).expect("hits.tsv");
 }
 
+/// The AI's level: LOST_LEVEL (easy, normal, hard), Normal by default.
+fn level() -> Level {
+    std::env::var("LOST_LEVEL").ok().and_then(|n| Level::ALL.into_iter().find(|l| l.name() == n)).unwrap_or(Level::Normal)
+}
+
 fn main() {
     let a = args();
     std::fs::create_dir_all(&a.out).expect("the output folder");
@@ -1100,7 +1115,7 @@ fn main() {
     });
     let rounds: Vec<RoundOut> = results.into_inner().unwrap().into_iter().map(|r| r.expect("every round played")).collect();
 
-    let probe = NetAi::of(net.clone(), Level::Normal, 0, Fingerprinter::made(shared.fingerprints.clone())).expect("the AI");
+    let probe = NetAi::of(net.clone(), level(), 0, Fingerprinter::made(shared.fingerprints.clone())).expect("the AI");
     let (d, k) = (probe.knobs().delay as u32, net.k());
     write_hits(&a.out.join("hits.tsv"), &shared, &rounds);
     let text = summary(&shared, &rounds, &a, d, k);

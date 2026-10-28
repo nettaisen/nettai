@@ -1103,6 +1103,29 @@ cc24c9a58 -- crates/nettai crates/nettai-ui docs/app.md`), with `NetAi` where `F
   1.5, a random legal action 10% of the time; Normal 16 ticks, the policy's own sampling; Hard 10 ticks, the best
   action. `nettai_ai.evaluate --level` plays them.
 
+### 10.7 Lookahead
+
+**Why** (2026-10-27). The large network stopped improving at about update 3,250: a run from its update 4,050 with
+the HP reward at 1.0 (large2) was even with 3,250 at updates 250, 500, 750 and 1,000 (deals won both ways to lost both
+ways 34–24, 34–31, 35–33, 30–27), the extra-large network (xl2) even with the large at equal updates (32–35 at 500),
+and an exploiter had found nothing to beat it with (§8). What a player notices, getting hit and chips thrown away,
+is what self-play rewards least: a dodge's worth is a little HP later, lost in the noise, and its opponents don't
+aim at it.
+
+**What** (`search::Search`, `NetAi::with_search`). At a fight decision the network's likeliest actions (6) and the
+steps beside its first (the four directions with its A and B) are each tried on a copy of the battle as it stands:
+held for the decision's `k` ticks (then B alone if it held B), the other side pressing nothing, for 40 undimmed ticks
+(at most 480 in all: a dimming plays out whole, so a navi chip lands in its own). Each is worth the other navi's HP
+lost less its own, as fractions of max HP, plus 0.005 times its log-probability under the network (a nat is worth 5
+HP of 1,000); the most worth is played. It reads the battle as it is, not the network's delayed view: what is on the
+field and how it moves, not the other player's next press (bending §3's screen-only rule).
+
+**Measured** (`examples/search_duel.rs`: the lookahead against the same weights alone, both at Hard; 100 deals a
+game, each played both ways; the published 3,250): won both ways 120, lost both ways 3, split 157, undecided 20
+(EXE6 45–1, EXE5 49–0, EXE4 26–2). Every comparison of networks before it came out even. Its cost, on the Mac with
+other work running, a fight minute of CPU time: EXE6 13 s, EXE4 35 s, EXE5 82 s, where the network alone takes about
+1 s; it must come down before it plays in the app.
+
 ## 11. The cloud machine
 
 - **Shape: one GPU and many CPU cores.** The battles run on the cores. The network's updates, about ten times its

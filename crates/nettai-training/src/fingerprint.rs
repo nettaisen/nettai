@@ -278,7 +278,7 @@ pub struct Cost {
 }
 
 /// A user's hand of `chips` in `b`, the next first.
-fn give(b: &mut Battle, side: u8, chips: &[ChipHandle]) {
+pub(crate) fn give(b: &mut Battle, side: u8, chips: &[ChipHandle]) {
     let h = &mut b.hands[side as usize];
     h.cursor = 0;
     for i in 0..6 {
@@ -525,7 +525,7 @@ impl Sandbox {
 
     /// The sandbox set up for a run at `target` as `setup` says, and the
     /// ticks that took past walking.
-    fn prepared(&self, target: usize, setup: Setup) -> Option<(Battle, u32)> {
+    pub(crate) fn prepared(&self, target: usize, setup: Setup) -> Option<(Battle, u32)> {
         let to = targets()[target];
         let mut b = self.base.clone();
         let mut ticks = 0;

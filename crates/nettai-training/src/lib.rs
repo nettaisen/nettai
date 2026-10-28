@@ -35,6 +35,7 @@ pub mod names;
 pub mod net;
 pub mod observe;
 pub mod pool;
+pub mod search;
 pub mod spec;
 pub mod stats;
 #[cfg(any(test, feature = "testing"))]

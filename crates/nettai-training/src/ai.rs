@@ -445,6 +445,9 @@ pub struct NetAi {
     /// ([`NetAi::stopped`]).
     error: Option<String>,
     told: Arc<Mutex<Option<String>>>,
+    /// Looking ahead at each fight decision ([`crate::search`]): none, the
+    /// level's own choice from the network's.
+    search: Option<crate::search::Search>,
     /// Each fight decision's tick and the tick of the view it was made from.
     #[cfg(test)]
     decided: Vec<(u32, u32)>,
@@ -477,9 +480,17 @@ impl NetAi {
             obs: Obs::new(),
             error: None,
             told: Default::default(),
+            search: None,
             #[cfg(test)]
             decided: Vec::new(),
         })
+    }
+
+    /// The same, each fight decision looking ahead as `search` says (the
+    /// level's delay kept; its choice from the network's replaced).
+    pub fn with_search(mut self, search: crate::search::Search) -> NetAi {
+        self.search = Some(search);
+        self
     }
 
     /// Whether every chip asked for has its fingerprint (a decision whose
@@ -619,7 +630,11 @@ impl NetAi {
                 self.decided.push((r.t, if delayed { r.t - d } else { r.t }));
                 let out = self.net.forward(obs, &mut self.mem, Heads::Fight);
                 let logits = out.fight.expect("the fight's head");
-                match net::choose(&logits, &[true; spec::FIGHT_ACTIONS], &self.knobs, &mut self.rng) {
+                let chosen = match &self.search {
+                    Some(search) => search.pick(b, side, k, &logits),
+                    None => net::choose(&logits, &[true; spec::FIGHT_ACTIONS], &self.knobs, &mut self.rng),
+                };
+                match chosen {
                     Some(a) => {
                         r.action = a as i32;
                         self.mem.took(Action::Fight(a));
