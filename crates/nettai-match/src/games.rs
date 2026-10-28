@@ -346,7 +346,7 @@ fn a_match_is_described_by_its_facts() {
     side.set_fact(&six, "bug_frags", &number(9)).unwrap();
     let said = crate::describe(&six, &m, 1, false, 0);
     let line = said.lines().nth(1).unwrap();
-    assert_eq!(line, "  MegaMan (you); beast_out: no; bug_frags: 9; crosses: HeatCross, SpoutCross; cybeast: FBeast");
+    assert_eq!(line, "  MegaMan (you); beast_out: no; bug_frags: 9; crosses: HeatCross, AquaCross; cybeast: FBeast");
     // (No Crosses is the list's default, which goes unsaid.)
     m.sides[0].set_fact(&six, "crosses", &[]).unwrap();
     assert!(crate::describe(&six, &m, 1, false, 0).lines().nth(1).unwrap().starts_with("  MegaMan (you); beast_out: no; bug_frags: 9; cybeast: "));
