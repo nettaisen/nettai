@@ -279,6 +279,10 @@ pub(crate) struct Bound {
     assets: RefCell<define::AssetTables>,
     /// The handles given out again (`bind::Handles`).
     pub handles: bind::Handles,
+    /// `tables` as a Luau table by `bind::definition_key`, in the VM's
+    /// registry: its reference (a field read without mlua pushes a
+    /// definition from it, `bind::read_natively`).
+    pub by_key: std::os::raw::c_int,
 }
 
 impl Bound {
@@ -381,6 +385,8 @@ impl LuauContent {
                     .map_err(|e| ContentError::new(format!("loading Luau content: {e}")))?,
             );
         }
+        let by_key = bind::definitions_by_key(&lua, &tables).map_err(err)?;
+        let handles = bind::Handles::new(&lua).map_err(err)?;
         Ok(LuauContent {
             lua,
             bound: Bound {
@@ -390,7 +396,8 @@ impl LuauContent {
                 record_types,
                 keys,
                 assets: RefCell::new(assets),
-                handles: bind::Handles::default(),
+                handles,
+                by_key,
             },
             functions,
             sources: plan.functions.clone(),
@@ -587,6 +594,7 @@ fn open(pack: &Pack, options: Options) -> Result<Opened, ContentError> {
         return Err(ContentError::new("native code needs nettai-luau's `jit` feature"));
     }
     bind::install(&lua).map_err(err)?;
+    bind::dispatch_fields_natively(&lua).map_err(err)?;
     let loader = Rc::new(RefCell::new(Loader {
         pack: pack.clone(),
         loaded: BTreeMap::new(),

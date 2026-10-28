@@ -130,9 +130,36 @@ fn bound<R>(f: impl FnOnce(&Bound) -> mlua::Result<R>) -> mlua::Result<R> {
 /// given again from a new one; and a handle is borrowed only shared, a call
 /// further out may hold it: its fields' setters take it as a function's
 /// argument, `object_of`.)
-#[derive(Default)]
 pub(crate) struct Handles {
     kept: std::cell::RefCell<Vec<Option<AnyUserData>>>,
+    /// What each kept handle names, by its userdata's address (which stays
+    /// its own: a kept handle lives as long as the VM), for a field read
+    /// without mlua ([`read_natively`]).
+    named: std::cell::RefCell<std::collections::HashMap<usize, Handle, std::hash::BuildHasherDefault<AddressHasher>>>,
+    /// The kept handles again, as a Luau table by place (from 1) in the VM's
+    /// registry, which a field read without mlua pushes them from: the
+    /// table, and its reference.
+    by_place: (mlua::Table, std::os::raw::c_int),
+}
+
+/// A hasher for addresses (a userdata's): its bits mixed by one product.
+#[derive(Default)]
+struct AddressHasher(u64);
+
+impl std::hash::Hasher for AddressHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        for &b in bytes {
+            self.0 = (self.0.rotate_left(8) ^ u64::from(b)).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+        }
+    }
+
+    fn write_usize(&mut self, n: usize) {
+        self.0 = (n as u64 ^ (n as u64 >> 29)).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    }
 }
 
 /// What a handle names, for [`Handles`].
@@ -197,6 +224,13 @@ impl Handles {
         }
     }
 
+    /// None kept yet, in `lua`.
+    pub(crate) fn new(lua: &Lua) -> mlua::Result<Handles> {
+        let t = lua.create_table_with_capacity(Handles::LEN, 0)?;
+        let r = registry_ref(lua, &t)?;
+        Ok(Handles { kept: Default::default(), named: Default::default(), by_place: (t, r) })
+    }
+
     /// The handle of `h` in the VM `bound` is the binding of.
     fn get_in(lua: &Lua, bound: &Bound, h: Handle) -> mlua::Result<AnyUserData> {
         let make = || Handles::make(lua, h);
@@ -211,6 +245,8 @@ impl Handles {
             kept.resize(Handles::LEN, None);
         }
         kept[at] = Some(ud.clone());
+        handles.named.borrow_mut().insert(ud.to_pointer() as usize, h);
+        handles.by_place.0.raw_set(at + 1, &ud)?;
         Ok(ud)
     }
 }
@@ -3495,6 +3531,407 @@ pub fn plain_data(v: &LuaValue, bound: &Bound, depth: u32) -> mlua::Result<netta
         }
         other => return Err(mlua::Error::runtime(format!("no data is a {}", other.type_name()))),
     })
+}
+
+// ---- Field dispatch ------------------------------------------------------------------------
+
+/// mlua reaches a userdata's fields through a `__index` it writes in Luau
+/// (and a `__newindex`): a Luau call for each field content reads or
+/// writes, costing about what the field's own callback does. This puts a
+/// native function in front of each, for the types whose fields content
+/// reads most: where the Luau one finds a field's getter or setter, or a
+/// method, the native one does what it does, its interrupt checks included
+/// (`return getter(self)` checks at the call and at the return; `return
+/// method` at the return; a type's own `__index` at its two calls and the
+/// return); for anything else (no such key) it calls the Luau one, whose
+/// checks and errors are what content meets. A kept handle's field
+/// ([`Handles`]) it reads itself where it can, as the getter would (mlua's
+/// callback costs more than most reads): [`read_natively`].
+pub fn dispatch_fields_natively(lua: &Lua) -> mlua::Result<()> {
+    // (A userdata of each type, which makes its metatable; one of its
+    // fields, and one it writes, which the check finds among mlua's.)
+    let o = ObjectRef { pool: nettai_content_api::Pool::ALL[0], slot: 0 };
+    let sprite_rw = SpriteField::ALL.iter().find(|f| f.writable()).map(|f| f.name());
+    let collision_rw = CollisionField::ALL.iter().find(|f| f.writable()).map(|f| f.name());
+    // The fields read without mlua ([`read_natively`]), by name: their codes.
+    let codes = |groups: &[(i64, Vec<&'static str>)]| -> mlua::Result<mlua::Table> {
+        let t = lua.create_table()?;
+        for (group, names) in groups {
+            for (i, name) in names.iter().enumerate() {
+                t.raw_set(*name, (group << 16) | i as i64)?;
+            }
+        }
+        Ok(t)
+    };
+    let names = |all: &[&'static str]| all.to_vec();
+    let object_codes = codes(&[
+        (OBJECT, names(&ObjectField::ALL.iter().map(|f| f.name()).collect::<Vec<_>>())),
+        (ACTOR, names(&ActorField::ALL.iter().map(|f| f.name()).collect::<Vec<_>>())),
+        (OVERLAY, names(&OverlayField::ALL.iter().map(|f| f.name()).collect::<Vec<_>>())),
+        (OWN, names(&OWN_HANDLES)),
+    ])?;
+    let sprite_codes = codes(&[(SPRITE, SpriteField::ALL.iter().map(|f| f.name()).collect())])?;
+    let collision_codes = codes(&[(COLLISION, CollisionField::ALL.iter().map(|f| f.name()).collect())])?;
+    let navi_codes = codes(&[(NAVI, NaviStat::ALL.iter().map(|f| f.name()).collect())])?;
+    let types = [
+        (lua.create_userdata(Object(o))?, ObjectField::Hp.name(), Some(ObjectField::Hp.name()), Some(object_codes)),
+        (lua.create_userdata(Sprite(o))?, SpriteField::ALL[0].name(), sprite_rw, Some(sprite_codes)),
+        (lua.create_userdata(Collision(o))?, CollisionField::ALL[0].name(), collision_rw, Some(collision_codes)),
+        (lua.create_userdata(Navi(nettai_content_api::StatsOf::side(0)))?, NaviStat::Form.name(), Some(NaviStat::Form.name()), Some(navi_codes)),
+        (lua.create_userdata(LVec3(Vec3::default()))?, "x", None, None),
+    ];
+    for (ud, getter, setter, codes) in types {
+        let getter = std::ffi::CString::new(getter).expect("a field's name");
+        let setter = setter.map(|s| std::ffi::CString::new(s).expect("a field's name"));
+        // SAFETY: the userdata and its codes (or nil) pushed as the two
+        // arguments; what is done to its metatable is in `dispatch_natively`.
+        unsafe { lua.exec_raw::<()>((ud, codes), |state| dispatch_natively(state, &getter, setter.as_deref()))? };
+    }
+    Ok(())
+}
+
+/// The native `__index` and `__newindex` in front of mlua's Luau ones on the
+/// metatable of the userdata at the top of the stack. mlua 0.12's (its
+/// userdata/util.rs) close over `field_getters, methods, isfunction,
+/// __index, error` and `field_setters, isfunction, __newindex, error`, in
+/// that order; that they still do is checked (`getter` a key of the first
+/// table, `setter` of the setters'), and anything else is a panic: an mlua
+/// that writes them otherwise needs this rewritten.
+unsafe fn dispatch_natively(state: *mut mlua::ffi::lua_State, getter: &std::ffi::CStr, setter: Option<&std::ffi::CStr>) {
+    use mlua::ffi;
+    // SAFETY (all of it): the stack as mlua's `exec_raw` gives it, room
+    // checked; the values each call reads are where the comments say.
+    unsafe {
+        let ud = ffi::lua_gettop(state) - 1;
+        let codes = ud + 1;
+        assert!(ffi::lua_getmetatable(state, ud) != 0, "a userdata type with fields has a metatable");
+        let mt = ffi::lua_gettop(state);
+        assert!(ffi::lua_checkstack(state, 8) != 0, "room on the stack");
+        // The Luau function at `name` of the metatable, and its upvalues' count.
+        let luau = |name: &std::ffi::CStr| -> (std::os::raw::c_int, std::os::raw::c_int) {
+            ffi::lua_rawgetfield(state, mt, name.as_ptr());
+            let f = ffi::lua_gettop(state);
+            assert!(
+                ffi::lua_type(state, f) == ffi::LUA_TFUNCTION && ffi::lua_iscfunction(state, f) == 0,
+                "mlua's {name:?} is a Luau function"
+            );
+            let mut n = 0;
+            while !ffi::lua_getupvalue(state, f, n + 1).is_null() {
+                ffi::lua_settop(state, f);
+                n += 1;
+            }
+            (f, n)
+        };
+        // Whether upvalue `n` of `f` is a table holding `key`.
+        let holds = |f: std::os::raw::c_int, n: std::os::raw::c_int, key: &std::ffi::CStr| -> bool {
+            ffi::lua_getupvalue(state, f, n);
+            let found = ffi::lua_type(state, -1) == ffi::LUA_TTABLE && ffi::lua_rawgetfield(state, -1, key.as_ptr()) == ffi::LUA_TFUNCTION;
+            ffi::lua_settop(state, f);
+            found
+        };
+        let is_cfunction = |f: std::os::raw::c_int, n: std::os::raw::c_int| -> bool {
+            ffi::lua_getupvalue(state, f, n);
+            let c = ffi::lua_iscfunction(state, -1) != 0;
+            ffi::lua_settop(state, f);
+            c
+        };
+
+        let (f, n) = luau(c"__index");
+        if n == 2 {
+            // (Fields, and the methods' table as `__index`.)
+            assert!(holds(f, 1, getter), "mlua's __index closes over field_getters, __index");
+            ffi::lua_getupvalue(state, f, 1);
+            ffi::lua_getupvalue(state, f, 2);
+            assert!(ffi::lua_type(state, -1) == ffi::LUA_TTABLE, "mlua's __index closes over field_getters, __index");
+            ffi::lua_pushvalue(state, codes);
+            ffi::lua_pushcclosurek(state, native_index_table, c"__index".as_ptr(), 3, None);
+        } else {
+            assert!(n == 5 && holds(f, 1, getter) && is_cfunction(f, 3) && is_cfunction(f, 5), "mlua's __index closes over field_getters, methods, isfunction, __index, error");
+            ffi::lua_getupvalue(state, f, 1);
+            ffi::lua_getupvalue(state, f, 2);
+            ffi::lua_pushvalue(state, f);
+            ffi::lua_getupvalue(state, f, 4);
+            ffi::lua_pushvalue(state, codes);
+            ffi::lua_pushcclosurek(state, native_index, c"__index".as_ptr(), 5, None);
+        }
+        ffi::lua_rawsetfield(state, mt, c"__index".as_ptr());
+        ffi::lua_settop(state, mt);
+
+        if let Some(setter) = setter {
+            let (f, n) = luau(c"__newindex");
+            assert!(n == 4 && holds(f, 1, setter) && is_cfunction(f, 2) && is_cfunction(f, 4), "mlua's __newindex closes over field_setters, isfunction, __newindex, error");
+            ffi::lua_getupvalue(state, f, 1);
+            ffi::lua_pushvalue(state, f);
+            ffi::lua_pushcclosurek(state, native_newindex, c"__newindex".as_ptr(), 2, None);
+            ffi::lua_rawsetfield(state, mt, c"__newindex".as_ptr());
+        }
+        ffi::lua_settop(state, ud - 1);
+    }
+}
+
+/// `return getter(self)`, the getter at the top of a native `__index`'s
+/// stack (self and key below): the field read without mlua where it can be
+/// ([`read_natively`]: its code in the table at `codes`), else the getter
+/// called; a check at the call and one at the return either way.
+unsafe fn get_field(state: *mut mlua::ffi::lua_State, codes: std::os::raw::c_int) -> std::os::raw::c_int {
+    use mlua::ffi;
+    // SAFETY: as `native_index`'s; the getter at 3.
+    unsafe {
+        check(state);
+        if ffi::lua_type(state, codes) == ffi::LUA_TTABLE {
+            ffi::lua_pushvalue(state, 2);
+            ffi::lua_rawget(state, codes);
+            let code = (ffi::lua_type(state, -1) == ffi::LUA_TNUMBER).then(|| ffi::lua_tointegerx(state, -1, std::ptr::null_mut()) as i64);
+            ffi::lua_settop(state, 3);
+            if let Some(code) = code
+                && read_natively(state, code)
+            {
+                check(state);
+                return 1;
+            }
+        }
+        ffi::lua_pushvalue(state, 1);
+        ffi::lua_call(state, 1, ffi::LUA_MULTRET);
+        check(state);
+        ffi::lua_gettop(state) - 2
+    }
+}
+
+/// The codes of the fields [`read_natively`] reads: a group's, shifted
+/// above its fields' places in their `ALL`.
+const OBJECT: i64 = 0;
+const ACTOR: i64 = 1;
+const OVERLAY: i64 = 2;
+const SPRITE: i64 = 3;
+const COLLISION: i64 = 4;
+const NAVI: i64 = 5;
+/// An object's own handles, as its getters give them (`me.state`...), by
+/// their places in `OWN_HANDLES`.
+const OWN: i64 = 6;
+const OWN_HANDLES: [&str; 4] = ["state", "attack_state", "sprite", "collision"];
+
+/// The field of code `code` of the kept handle at 1 (`self`), read as its
+/// getter reads it and pushed, when its value is one pushed without mlua (a
+/// nil, a flag, a number, a variant's name, a code, a definition): true if
+/// it was. A handle not kept, a read the API refuses (the getter's error is
+/// the message), a value of another kind, or a panic (the getter's own then
+/// takes it as mlua does) leave it to the getter: false, nothing pushed.
+unsafe fn read_natively(state: *mut mlua::ffi::lua_State, code: i64) -> bool {
+    use mlua::ffi;
+    let Some((api, bound)) = CTX.with(|c| c.get()) else { return false };
+    // SAFETY: set by a live `Enter`, whose borrow a content call holds
+    // while Luau runs; the reads take it shared.
+    let (api, bound): (&dyn CoreApi, &Bound) = unsafe { (&*api.as_ptr(), &*bound.as_ptr()) };
+    // SAFETY: self at 1, a userdata whose metatable's `__index` this is.
+    let address = unsafe { ffi::lua_touserdata(state, 1) } as usize;
+    let Some(handle) = bound.handles.named.borrow().get(&address).copied() else { return false };
+    if let (Handle::Object(o), OWN) = (handle, code >> 16) {
+        let own = match code & 0xFFFF {
+            0 => Handle::State(StateOf::Object(o)),
+            1 => Handle::State(StateOf::Action(o)),
+            2 => Handle::Sprite(o),
+            3 => Handle::Collision(o),
+            _ => return false,
+        };
+        // SAFETY: as `push_from`'s.
+        return unsafe { push_handle(state, bound, own) };
+    }
+    let read = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let (group, i) = (code >> 16, (code & 0xFFFF) as usize);
+        Some(match (handle, group) {
+            (Handle::Object(o), OBJECT) => ObjectField::ALL.get(i).copied().map(|f| (api.get(o, f), f.field_type()))?,
+            (Handle::Object(o), ACTOR) => ActorField::ALL.get(i).copied().map(|f| (api.actor_get(o, f), f.field_type()))?,
+            (Handle::Object(o), OVERLAY) => OverlayField::ALL.get(i).copied().map(|f| (api.overlay_get(o, f), f.field_type()))?,
+            (Handle::Sprite(o), SPRITE) => SpriteField::ALL.get(i).copied().map(|f| (Ok(api.sprite_get(o, f)), f.field_type()))?,
+            (Handle::Collision(o), COLLISION) => CollisionField::ALL.get(i).copied().map(|f| (api.collision_get(o, f), f.field_type()))?,
+            (Handle::Navi(of), NAVI) => NaviStat::ALL.get(i).copied().map(|f| (Ok(api.navi_stat(of, f)), f.field_type()))?,
+            _ => return None,
+        })
+    }));
+    let Ok(Some((Ok(v), ty))) = read else { return false };
+    // As `from_api` makes it, for the kinds pushed here.
+    // SAFETY: room for two more values (LUA_MINSTACK).
+    unsafe {
+        match v {
+            Value::Nil => ffi::lua_pushnil(state),
+            Value::Bool(b) => ffi::lua_pushboolean(state, b as std::os::raw::c_int),
+            Value::Int(i) => match ty {
+                FieldType::Enum(names) => match names.get(i as usize) {
+                    Some(name) => {
+                        ffi::lua_pushlstring(state, name.as_ptr().cast(), name.len());
+                    }
+                    None => ffi::lua_pushnil(state),
+                },
+                _ => ffi::lua_pushnumber(state, i as f64),
+            },
+            Value::Code(c) => {
+                ffi::lua_pushlstring(state, [c].as_ptr().cast(), 1);
+            }
+            // (The table `def_value` gives: none, and the getter's error is
+            // the message.)
+            Value::Def(r, h) => return push_from(state, bound.by_key, definition_key(r, h)),
+            // (A kept handle; one not kept yet, the getter keeps.)
+            Value::Object(o) => return push_handle(state, bound, Handle::Object(o)),
+            _ => return false,
+        }
+    }
+    true
+}
+
+/// Push entry `key` of the table of registry reference `table`: false (and
+/// nothing pushed) if it has none.
+unsafe fn push_from(state: *mut mlua::ffi::lua_State, table: std::os::raw::c_int, key: mlua::Integer) -> bool {
+    use mlua::ffi;
+    // SAFETY: room for two more values (LUA_MINSTACK).
+    unsafe {
+        ffi::lua_rawgeti(state, ffi::LUA_REGISTRYINDEX, table.into());
+        if ffi::lua_rawgeti(state, -1, key) == ffi::LUA_TNIL {
+            ffi::lua_settop(state, -3);
+            return false;
+        }
+        ffi::lua_remove(state, -2);
+    }
+    true
+}
+
+/// Push the kept handle of `h`: false if none is kept.
+unsafe fn push_handle(state: *mut mlua::ffi::lua_State, bound: &Bound, h: Handle) -> bool {
+    let Some(at) = Handles::place(h) else { return false };
+    // SAFETY: as `push_from`'s.
+    unsafe { push_from(state, bound.handles.by_place.1, at as mlua::Integer + 1) }
+}
+
+/// A table's reference in the VM's registry (which keeps it as long as the
+/// VM).
+fn registry_ref(lua: &Lua, t: &mlua::Table) -> mlua::Result<std::os::raw::c_int> {
+    // SAFETY: the table pushed as the one argument; referenced, then
+    // replaced by its reference.
+    unsafe {
+        lua.exec_raw::<std::os::raw::c_int>(t, |state| {
+            let r = mlua::ffi::lua_ref(state, -1);
+            mlua::ffi::lua_settop(state, -2);
+            mlua::ffi::lua_pushinteger(state, r.into());
+        })
+    }
+}
+
+/// Where definition `h` of `registry` is in [`definitions_by_key`]'s table.
+fn definition_key(registry: Registry, h: u16) -> mlua::Integer {
+    ((registry as mlua::Integer) << 16) | mlua::Integer::from(h)
+}
+
+/// The definitions' tables in a Luau table by [`definition_key`], in the
+/// VM's registry: its reference (`Bound::by_key`).
+pub(crate) fn definitions_by_key(
+    lua: &Lua,
+    tables: &std::collections::HashMap<(Registry, u16), mlua::Table>,
+) -> mlua::Result<std::os::raw::c_int> {
+    let t = lua.create_table_with_capacity(0, tables.len())?;
+    for (&(r, h), def) in tables {
+        t.raw_set(definition_key(r, h), def)?;
+    }
+    registry_ref(lua, &t)
+}
+
+/// An interrupt check, as the VM makes one at a call and at a return.
+unsafe fn check(state: *mut mlua::ffi::lua_State) {
+    // SAFETY: the VM's callbacks; the interrupt called as the VM calls it.
+    unsafe {
+        if let Some(interrupt) = (*mlua::ffi::lua_callbacks(state)).interrupt {
+            interrupt(state, -1);
+        }
+    }
+}
+
+/// `__index(self, key)`: upvalues field_getters, methods, the Luau one,
+/// its `__index`, and the codes of the fields read natively.
+unsafe extern "C-unwind" fn native_index(state: *mut mlua::ffi::lua_State) -> std::os::raw::c_int {
+    use mlua::ffi;
+    // SAFETY: a metamethod's call (self and key at 1 and 2, room for
+    // LUA_MINSTACK more); the upvalues as `dispatch_natively` set them.
+    unsafe {
+        ffi::lua_settop(state, 2);
+        let getters = ffi::lua_upvalueindex(1);
+        if ffi::lua_type(state, getters) == ffi::LUA_TTABLE {
+            ffi::lua_pushvalue(state, 2);
+            if ffi::lua_rawget(state, getters) != ffi::LUA_TNIL {
+                return get_field(state, ffi::lua_upvalueindex(5));
+            }
+            ffi::lua_settop(state, 2);
+        }
+        let methods = ffi::lua_upvalueindex(2);
+        if ffi::lua_type(state, methods) == ffi::LUA_TTABLE {
+            ffi::lua_pushvalue(state, 2);
+            if ffi::lua_rawget(state, methods) != ffi::LUA_TNIL {
+                check(state);
+                return 1;
+            }
+            ffi::lua_settop(state, 2);
+        }
+        // `if isfunction(__index) then return __index(self, key)`: the
+        // checks of the two calls and of the return.
+        let index = ffi::lua_upvalueindex(4);
+        if ffi::lua_type(state, index) == ffi::LUA_TFUNCTION {
+            check(state);
+            check(state);
+            ffi::lua_pushvalue(state, index);
+            ffi::lua_insert(state, 1);
+            ffi::lua_call(state, 2, ffi::LUA_MULTRET);
+            check(state);
+            return ffi::lua_gettop(state);
+        }
+        ffi::lua_pushvalue(state, ffi::lua_upvalueindex(3));
+        ffi::lua_insert(state, 1);
+        ffi::lua_call(state, 2, ffi::LUA_MULTRET);
+        ffi::lua_gettop(state)
+    }
+}
+
+/// `__index(self, key)` of a type whose methods are its `__index` table:
+/// upvalues field_getters, that table, and the codes of the fields read
+/// natively. (The whole of the Luau one: `return getter(self)`, else
+/// `return __index[key]`, a table with no metatable.)
+unsafe extern "C-unwind" fn native_index_table(state: *mut mlua::ffi::lua_State) -> std::os::raw::c_int {
+    use mlua::ffi;
+    // SAFETY: as `native_index`'s.
+    unsafe {
+        ffi::lua_settop(state, 2);
+        ffi::lua_pushvalue(state, 2);
+        if ffi::lua_rawget(state, ffi::lua_upvalueindex(1)) != ffi::LUA_TNIL {
+            return get_field(state, ffi::lua_upvalueindex(3));
+        }
+        ffi::lua_settop(state, 2);
+        ffi::lua_pushvalue(state, 2);
+        ffi::lua_rawget(state, ffi::lua_upvalueindex(2));
+        check(state);
+        1
+    }
+}
+
+/// `__newindex(self, key, value)`: upvalues field_setters, the Luau one.
+unsafe extern "C-unwind" fn native_newindex(state: *mut mlua::ffi::lua_State) -> std::os::raw::c_int {
+    use mlua::ffi;
+    // SAFETY: as `native_index`'s (self, key, value at 1 to 3).
+    unsafe {
+        ffi::lua_settop(state, 3);
+        let setters = ffi::lua_upvalueindex(1);
+        if ffi::lua_type(state, setters) == ffi::LUA_TTABLE {
+            ffi::lua_pushvalue(state, 2);
+            if ffi::lua_rawget(state, setters) != ffi::LUA_TNIL {
+                check(state);
+                ffi::lua_pushvalue(state, 1);
+                ffi::lua_pushvalue(state, 3);
+                ffi::lua_call(state, 2, 0);
+                check(state);
+                return 0;
+            }
+            ffi::lua_settop(state, 3);
+        }
+        ffi::lua_pushvalue(state, ffi::lua_upvalueindex(2));
+        ffi::lua_insert(state, 1);
+        ffi::lua_call(state, 3, 0);
+        0
+    }
 }
 
 #[cfg(test)]
