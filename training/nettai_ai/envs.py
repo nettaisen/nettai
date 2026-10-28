@@ -49,6 +49,7 @@ def make_pool(
         landed_bonus=env.landed_bonus,
         teacher_rate=env.teacher_rate,
         teacher_margin=env.teacher_margin,
+        searcher=env.searcher,
     )
     if env.chip_holdout > 0:
         kwargs["chip_holdout"] = (env.chip_holdout, env.chip_holdout_seed, holdout_mode)

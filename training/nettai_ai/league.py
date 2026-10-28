@@ -87,6 +87,8 @@ class League:
             raise ValueError("league: an external share with no external_dir")
         if cfg.bots > 0 and not cfg.bot_names:
             raise ValueError("league: a bot share with no bot_names")
+        if cfg.bot_weights is not None and (len(cfg.bot_weights) != len(cfg.bot_names) or min(cfg.bot_weights, default=1) < 0 or sum(cfg.bot_weights) <= 0):
+            raise ValueError(f"league: bot_weights {cfg.bot_weights} aren't one weight ≥ 0 a bot of bot_names {cfg.bot_names}")
         # Snapshots and external opponents each have active + draining in play.
         need = (cfg.active + cfg.draining) * (2 if cfg.external > 0 else 1)
         if cfg.cache < need:
@@ -134,7 +136,11 @@ class League:
         p = np.array([c.self_play, c.snapshots, c.bots, c.external])
         self.next_kind[envs] = self.rng.choice(4, size=n, p=p / p.sum())
         self.next_seat[envs] = self.rng.integers(0, 2, n)
-        self.next_bot[envs] = self.rng.integers(0, max(1, len(c.bot_names)), n)
+        if c.bot_weights is None:
+            self.next_bot[envs] = self.rng.integers(0, max(1, len(c.bot_names)), n)
+        else:
+            w = np.asarray(c.bot_weights, np.float64)
+            self.next_bot[envs] = self.rng.choice(len(w), size=n, p=w / w.sum())
 
     def _send_next(self, envs: np.ndarray) -> None:
         """set_seat for the next round of envs, grouped by (seat, controller)."""

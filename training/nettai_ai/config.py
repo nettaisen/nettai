@@ -83,6 +83,7 @@ class EnvConfig:
     landed_bonus: float = 0.0  # added to a seat's hp_gain each time its attack chip lands (weighted by reward.hp_*)
     teacher_rate: float = 0.0  # share of fight decisions the lookahead labels (search.rs `teach`; 0: none)
     teacher_margin: float = 0.02  # the best's worth over the worst's (HP fractions) for a label
+    searcher: str | None = None  # weights file of the lookahead's player (bot name "searcher"); none: no such seat
     cache: str | None = None  # a directory the pool keeps the chips' fingerprints in (EXE5's take 14 s to make)
 
 
@@ -163,6 +164,7 @@ class LeagueConfig:
     external: float = 0.0
     external_dir: str | None = None
     bot_names: list[str] = field(default_factory=lambda: ["still", "mover", "masher", "shooter", "dodger"])
+    bot_weights: list[float] | None = None  # a bot round's draw among bot_names (none: even)
     snapshot_every: int = 10  # updates
     pfsp_power: float = 2.0  # a snapshot's weight is (1 - learner's win rate against it) ** power
     # A round keeps its opponent to its end (rounds last about eight rollouts), and each snapshot in play costs

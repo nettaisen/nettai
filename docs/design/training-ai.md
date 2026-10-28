@@ -724,6 +724,15 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
   6 to 30 ticks old, so where the label answers what the view doesn't hold yet (a shot about to come), the network
   learns the label's average over the moments that look alike to it: stepping at random. A teacher for this
   network has to answer from what its view holds, or teach only what that view decides.
+- **The lookahead as an opponent** (2026-10-28, after the teacher failed). A seat may be the lookahead's player
+  (`Controller::Searcher`, bot name "searcher"): a fixed network (`env.searcher`, an exported weights file) that
+  plays as a policy seat does (its delayed view, `k`, the custom screen's navigator), the env deciding for it
+  rather than asking the caller: in the fight the network's logits and `search::Search::pick` (§10.7), on the
+  screen the network's likeliest allowed choice. The league draws it as one of its bots, `league.bot_weights`
+  weighting the draw. Unlike the teacher nothing the learner can't see is copied: it plays an opponent that aims
+  and steps out of the way, and its own reward does the rest. Its cost, pools of 32 envs on 8 of the Mac's
+  threads, the learner's decisions a second against it and against the masher: EXE6 1,186 and 13,407, EXE5 394 and
+  3,500, EXE4 652 and 8,084 (its network's pass and the lookahead, about 6, 20 and 11 ms a decision of its).
 - **Plans a round ahead.** The pool takes a seat's controller "from the next round", so each env's next round
   (the learner's seat; self-play, a snapshot or which scripted player) is sent with `set_seat` as the current
   one starts. Which snapshot plays a policy seat is the trainer's own choice, made when the round starts. The

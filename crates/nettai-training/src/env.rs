@@ -117,6 +117,9 @@ pub struct Config {
     /// over the worst for one. 0: none.
     pub teacher_rate: f32,
     pub teacher_margin: f32,
+    /// The network a [`Controller::Searcher`] seat plays (none: no seat
+    /// may be the lookahead's).
+    pub searcher: Option<SearcherNet>,
 }
 
 impl Default for Config {
@@ -139,6 +142,7 @@ impl Default for Config {
             landed_bonus: 0.0,
             teacher_rate: 0.0,
             teacher_margin: 0.02,
+            searcher: None,
         }
     }
 }
@@ -148,6 +152,10 @@ impl Default for Config {
 pub enum Controller {
     Policy,
     Bot(BotKind),
+    /// The lookahead's player (§8): a fixed network ([`Config::searcher`])
+    /// playing as a policy seat plays, its fight decisions through
+    /// `search::Search`; the env decides for it, never asking the caller.
+    Searcher,
 }
 
 impl Controller {
@@ -155,11 +163,36 @@ impl Controller {
         match self {
             Controller::Policy => "policy",
             Controller::Bot(k) => k.name(),
+            Controller::Searcher => "searcher",
         }
     }
 
     pub fn named(name: &str) -> Option<Controller> {
-        if name == "policy" { Some(Controller::Policy) } else { BotKind::named(name).map(Controller::Bot) }
+        match name {
+            "policy" => Some(Controller::Policy),
+            "searcher" => Some(Controller::Searcher),
+            _ => BotKind::named(name).map(Controller::Bot),
+        }
+    }
+
+    /// Whether a network decides for the seat (the caller's policy, or the
+    /// lookahead's): asked at decisions from views, not a scripted player.
+    fn decides(self) -> bool {
+        matches!(self, Controller::Policy | Controller::Searcher)
+    }
+}
+
+/// The lookahead's player's network and how it looks ahead
+/// ([`Controller::Searcher`]).
+#[derive(Clone)]
+pub struct SearcherNet {
+    pub net: Arc<crate::net::Net>,
+    pub search: crate::search::Search,
+}
+
+impl std::fmt::Debug for SearcherNet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SearcherNet").field("search", &self.search).finish_non_exhaustive()
     }
 }
 
@@ -211,6 +244,8 @@ struct Seat {
     /// length: their ticks and them.
     ring: Vec<(Option<u32>, Obs)>,
     bot: Bot,
+    /// The lookahead's network's state, where the seat is its.
+    mem: Option<crate::net::Memory>,
 }
 
 /// Where an env's time went, in nanoseconds, and what it did: for the
@@ -375,6 +410,7 @@ impl Env {
             gain: 0.0,
             ring: (0..ring).map(|_| (None, Obs::new())).collect(),
             bot: Bot::new(BotKind::Still, n),
+            mem: None,
         };
         let mut picks = Picks::new((seed ^ (seed >> 32)) as u32);
         // (The draws of one seed differ from another's from the first.)
@@ -567,8 +603,11 @@ impl Env {
             }
             seat.bot = Bot::new(match seat.controller {
                 Controller::Bot(k) => k,
-                Controller::Policy => BotKind::Still,
+                Controller::Policy | Controller::Searcher => BotKind::Still,
             }, seed);
+            if let Some(mem) = &mut seat.mem {
+                mem.reset();
+            }
         }
         self.full_gauge = self.chance(self.cfg.practice);
         let folder_order = self.chance(self.cfg.practice);
@@ -686,7 +725,15 @@ impl Env {
                 }
                 continue;
             }
-            let asked = self.asks();
+            let mut asked = self.asks();
+            // The lookahead's seats decide here, not the caller.
+            for s in 0..2 {
+                if asked[s] != NONE && self.seats[s].controller == Controller::Searcher {
+                    self.ask(s, asked[s]);
+                    self.search_decides(s, asked[s])?;
+                    asked[s] = NONE;
+                }
+            }
             if asked != [NONE; 2] {
                 for s in 0..2 {
                     if asked[s] == NONE {
@@ -709,13 +756,40 @@ impl Env {
         }
     }
 
+    /// Seat `s`'s decision of phase `phase` (asked, its view in `obs`), the
+    /// lookahead's player deciding: in the fight its network's logits and
+    /// the lookahead's pick, on the screen the network's likeliest allowed.
+    fn search_decides(&mut self, s: usize, phase: u8) -> Result<(), String> {
+        use crate::net::{Action, Heads};
+        let Env { cfg, seats, battle, obs, legal_screen, .. } = self;
+        let sn = cfg.searcher.as_ref().ok_or_else(|| format!("seat {s} is the lookahead's, and the env has no network for it"))?;
+        let seat = &mut seats[s];
+        let mem = seat.mem.get_or_insert_with(|| sn.net.memory());
+        if phase == FIGHT {
+            let logits = sn.net.forward(&obs[s], mem, Heads::Fight).fight.expect("the fight's head");
+            let a = sn.search.pick(battle, s as u8, seat.k, &logits).unwrap_or(0);
+            seat.action = a as i32;
+            mem.took(Action::Fight(a));
+        } else {
+            let logits = sn.net.forward(&obs[s], mem, Heads::Screen).screen.expect("the screen's head");
+            let a = (0..spec::SCREEN_ACTIONS)
+                .filter(|&a| legal_screen[s][a] && logits[a].is_finite())
+                .max_by(|&a, &b| logits[a].total_cmp(&logits[b]).then(b.cmp(&a)))
+                .ok_or_else(|| format!("seat {s}: a screen decision with nothing allowed"))?;
+            seat.nav.point(a as i32);
+            seat.decisions += 1;
+            mem.took(Action::Screen(a));
+        }
+        Ok(())
+    }
+
     /// The seats a policy decides for now.
     fn asks(&self) -> [u8; 2] {
         let b = &self.battle;
         let mut out = [NONE; 2];
         for s in 0..2 {
             let seat = &self.seats[s];
-            if seat.controller != Controller::Policy || seat.decided_at == Some(self.t) {
+            if !seat.controller.decides() || seat.decided_at == Some(self.t) {
                 continue;
             }
             if fight_runs(b) && self.t.is_multiple_of(seat.k) && b.player(s as u8).is_some() {
@@ -767,7 +841,7 @@ impl Env {
                 self.legal_screen[s] = [false; spec::SCREEN_ACTIONS];
                 self.teacher[s] = -1;
                 let rate = self.cfg.teacher_rate;
-                if rate > 0.0 && ((self.teacher_rng.next_u64() >> 40) as f32) < rate * (1u64 << 24) as f32 {
+                if rate > 0.0 && self.seats[s].controller == Controller::Policy && ((self.teacher_rng.next_u64() >> 40) as f32) < rate * (1u64 << 24) as f32 {
                     let started = std::time::Instant::now();
                     let holding_b = act::fight_buttons(self.seats[s].action) & nettai_battle::input::keys::B != 0;
                     let label = crate::search::Search::default().teach(&self.battle, s as u8, k, holding_b, self.cfg.teacher_margin);
@@ -816,14 +890,14 @@ impl Env {
             let b = &self.battle;
             let seat = &mut self.seats[s];
             held[s] = if custom {
-                if seat.controller != Controller::Policy && seat.nav.idle() {
+                if !seat.controller.decides() && seat.nav.idle() {
                     let p = act::scripted_pointer(b, s as u8, &seat.nav);
                     seat.nav.point(p);
                 }
                 seat.nav.buttons(b, s as u8)
             } else if runs {
                 match seat.controller {
-                    Controller::Policy => act::fight_buttons(seat.action),
+                    Controller::Policy | Controller::Searcher => act::fight_buttons(seat.action),
                     Controller::Bot(_) => seat.bot.fight(b, s as u8),
                 }
             } else {
@@ -854,7 +928,7 @@ impl Env {
         for s in 0..2 {
             let seat = &self.seats[s];
             let d = seat.delay as u32;
-            if seat.controller != Controller::Policy || !(self.t + d).is_multiple_of(seat.k) {
+            if !seat.controller.decides() || !(self.t + d).is_multiple_of(seat.k) {
                 continue;
             }
             let extra = self.extra(s);

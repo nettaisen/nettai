@@ -716,3 +716,35 @@ fn fight_decisions_get_teachers_labels_as_drawn() {
         assert_eq!(labeled > 0, want_some, "rate {rate}: {labeled} labeled");
     }
 }
+
+/// The lookahead's player (the fixture's network): the env decides for its
+/// seat, in the fight and on the screen, and never asks the caller; rounds
+/// against it play to their ends.
+#[test]
+fn the_lookaheads_seat_decides_without_the_caller() {
+    let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/net.safetensors");
+    let net = Arc::new(crate::net::Net::from_safetensors(&std::fs::read(path).unwrap()).unwrap());
+    let searcher = Some(SearcherNet { net, search: crate::search::Search::default() });
+    let cfg = Config { max_fight_ticks: 3000, seats: [Controller::Policy, Controller::Searcher], searcher, ..Config::default() };
+    let mut env = Env::new(games(&["exe6"]), cfg, 11).unwrap();
+    let mut rng = SplitMix64::new(5);
+    let mut actions = [0; 2];
+    let (mut rounds, mut its_actions) = (0, std::collections::BTreeSet::new());
+    for _ in 0..3000 {
+        let out = env.step(actions).unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(out.phase[1], NONE, "the lookahead's seat asked of the caller");
+        actions[0] = match out.phase[0] {
+            FIGHT => random_action(&mut rng, &env.legal_fight[0]),
+            SCREEN => random_action(&mut rng, &env.legal_screen[0]),
+            _ => 0,
+        };
+        its_actions.insert(env.seats[1].action);
+        rounds += out.done as u32;
+    }
+    println!("{rounds} rounds; the lookahead's fight actions {its_actions:?}");
+    assert!(rounds >= 1);
+    assert!(its_actions.len() > 1, "the lookahead's seat never changed its action");
+    for r in &env.ended {
+        assert!(r.error.is_none(), "{:?}", r.error);
+    }
+}

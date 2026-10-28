@@ -194,3 +194,30 @@ def test_a_run_plays_external_opponents(tmp_path: Path):
     assert len(rows) == 3
     assert [x.name for x in exploiter.league.externals] == ["main.pt"]
     assert len(exploiter.league.externals[0].scores) > 0, "no round against the external opponent ended"
+
+
+class Seats:
+    """A pool that keeps the controllers it is sent."""
+
+    def __init__(self) -> None:
+        self.sent: list[str] = []
+
+    def set_seat(self, envs, seat, controller) -> None:
+        self.sent += [controller] * len(envs)
+
+
+def test_bot_rounds_draw_their_bots_by_bot_weights(tmp_path: Path):
+    E = 4000
+    cfg = LeagueConfig(self_play=0.0, snapshots=0.0, bots=1.0, bot_names=["masher", "searcher"], bot_weights=[1.0, 3.0])
+    pool = Seats()
+    League(cfg, pool, E, tmp_path, torch.device("cpu"), lambda: torch.nn.Linear(2, 2), np.random.default_rng(1)).start()
+    bots = [c for c in pool.sent if c != "policy"]
+    share = bots.count("searcher") / len(bots)
+    assert len(bots) == E and abs(share - 0.75) < 0.03, share
+    for bad in ([1.0], [1.0, -1.0], [0.0, 0.0]):
+        try:
+            League(LeagueConfig(self_play=0.0, snapshots=0.0, bots=1.0, bot_names=["masher", "searcher"], bot_weights=bad),
+                   Seats(), 4, tmp_path, torch.device("cpu"), lambda: torch.nn.Linear(2, 2), np.random.default_rng(1))
+        except ValueError:
+            continue
+        raise AssertionError(f"bot_weights {bad} were taken")

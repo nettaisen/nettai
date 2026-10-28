@@ -85,6 +85,7 @@ class FakePool:
         landed_bonus: float = 0.0,  # (the same)
         teacher_rate: float = 0.0,  # the toy's target as a fight decision's label, at this share
         teacher_margin: float = 0.02,  # (no outcomes: unused)
+        searcher: str | None = None,  # (no lookahead's player: unused)
         spec: dict[str, Any] | None = None,
     ):
         self.games = list(games)

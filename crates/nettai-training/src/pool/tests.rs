@@ -129,3 +129,13 @@ fn scripted_seats_delays_and_refusals() {
     let stats = p.round_stats().unwrap();
     assert!(stats.iter().any(|r| r.controllers == ["shooter".to_string(), "dodger".to_string()]));
 }
+
+/// A seat for the lookahead's player is refused where the pool has no
+/// network for it.
+#[test]
+fn a_lookahead_seat_needs_its_network() {
+    let mut p = pool(2, 1, 3, Config::default());
+    let err = p.set_seat(&[0], 1, Controller::Searcher).unwrap_err();
+    assert!(err.contains("no network"), "{err}");
+    p.set_seat(&[0], 1, Controller::Bot(crate::bots::BotKind::Masher)).unwrap();
+}

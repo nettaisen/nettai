@@ -417,6 +417,9 @@ impl Pool {
     /// Who plays seat `seat` of envs `envs` from their next round.
     pub fn set_seat(&mut self, envs: &[usize], seat: usize, controller: Controller) -> Result<(), String> {
         check_seat(seat)?;
+        if controller == Controller::Searcher && self.config.searcher.is_none() {
+            return Err("a seat for the lookahead's player, and the pool has no network for it (the searcher's weights)".into());
+        }
         self.each(Some(envs), |env| env.set_seat(seat, controller))
     }
 
