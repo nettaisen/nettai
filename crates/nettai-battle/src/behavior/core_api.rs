@@ -1736,6 +1736,27 @@ impl CoreApi for Battle {
         }
     }
 
+    fn listen(&mut self, side: u8, hook: nettai_content_api::RulesHook, on: bool) -> ApiResult<()> {
+        if !self.has_rules(side) {
+            return Err(ApiError::Other(format!("side {side} plays by no rules")));
+        }
+        let r = &mut self.rules[side as usize & 1];
+        if on {
+            r.muted &= !hook.bit();
+        } else {
+            r.muted |= hook.bit();
+        }
+        Ok(())
+    }
+
+    fn listen_panels(&mut self, side: u8, kinds: u128) -> ApiResult<()> {
+        if !self.has_rules(side) {
+            return Err(ApiError::Other(format!("side {side} plays by no rules")));
+        }
+        self.rules[side as usize & 1].panels = kinds;
+        Ok(())
+    }
+
     fn set_drive(&mut self, o: ObjectRef, d: nettai_content_api::Drive) -> ApiResult<()> {
         use nettai_content_api::{Drive, Held};
         if self.objects.state(o).is_none() {

@@ -3,7 +3,7 @@
 //! step makes the calls the update would have made, in its order, through
 //! the same API, so a drive changes nothing but who runs them.
 
-use nettai_content_api::{CollisionField, CoreApi, Drive, Fly, Follow, Held, Lifecycle, ObjectField, ObjectRef, PanelPos, Sleep, SpriteField, Value, Vec3};
+use nettai_content_api::{CollisionField, CoreApi, Drive, Fly, Follow, Held, Lifecycle, ObjectField, ObjectRef, PanelPos, SpriteField, Value, Vec3};
 
 use crate::battle::Battle;
 
@@ -24,7 +24,6 @@ pub(crate) fn step(b: &mut Battle, r: ObjectRef) -> bool {
             true
         }
         Drive::Fly(f) => fly(b, r, f),
-        Drive::Sleep(s) => sleep(b, r, s),
     }
 }
 
@@ -113,21 +112,6 @@ fn fly(b: &mut Battle, me: ObjectRef, f: Fly) -> bool {
     }
     CoreApi::present_collision(b, me);
     CoreApi::update_sprite(b, me);
-    true
-}
-
-fn sleep(b: &mut Battle, me: ObjectRef, s: Sleep) -> bool {
-    let woken = s.ticks == 0
-        || (s.wake_on_hit && CoreApi::collision_get(b, me, CollisionField::HitFlags).is_ok_and(|v| v != Value::Int(0)))
-        || (s.wake_on_finish && CoreApi::sprite_get(b, me, SpriteField::Finished) == Value::Bool(true));
-    if woken {
-        end(b, me);
-        return false;
-    }
-    b.objects.get_mut(me).drive = Drive::Sleep(Sleep { ticks: s.ticks - 1, ..s });
-    if s.animate {
-        CoreApi::update_sprite(b, me);
-    }
     true
 }
 

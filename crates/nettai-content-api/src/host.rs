@@ -371,10 +371,17 @@ pub enum RulesHook {
     /// `custom_closed(side)`: both results are in and the fight resumes
     /// (`sub_8009338`).
     CustomClosed,
+    /// `navi_panel(side, navi)`: each tick of the fight, in the navi's
+    /// intake (`sub_801AC6C`) after the standing effects and before
+    /// `navi_intake`, while the navi's panel is of a kind the rules listen
+    /// for (`CoreApi::listen_panels`; none at first): EXE5's light and dark
+    /// part clears the holy panel a dark MegaMan stands on (0x08017136).
+    /// Its result is unused.
+    NaviPanel,
     /// `navi_intake(side, navi)`: each tick of the fight, in the navi's
-    /// intake (`sub_801AC6C`) after the standing effects: EXE5's light and
-    /// dark part clears the holy panel a dark MegaMan stands on
-    /// (0x08017136). Its result is unused.
+    /// intake (`sub_801AC6C`) after the standing effects (and
+    /// `navi_panel`): EXE4's souls ask for their change there. Its result
+    /// is unused.
     NaviIntake,
     /// `chip_check(side, navi, chip)`: a chip's use is prepared (the end of
     /// `sub_80127C0`, where EXE5's 0x080100E6 checks it): nil lets it be
@@ -455,6 +462,10 @@ pub enum RulesHook {
     /// side's navi of a player's kind (presentation; `sub_80100EC`'s
     /// `sub_801002C`, EXE5's 0x0800DD94: rules/light_dark's). The
     /// first part that answers decides; none, the framework's (EXE6's).
+    /// Asked again only when the navi, its side's navi stats, its navi
+    /// states, AI index, identity or B charge, or its side's party member
+    /// on the field differ from the last answer's: it is a function of
+    /// those, and of what is fixed for the battle.
     NaviPalette,
     /// `navi_shader(side, navi)`: each tick of the navi's status routine's
     /// tail, after its status shaders and the counter's, the color shader
@@ -729,6 +740,16 @@ impl RulesHook {
         matches!(self, RulesHook::FolderCheck | RulesHook::FolderView | RulesHook::Overview | RulesHook::Validate | RulesHook::BuildCheck)
     }
 
+    /// The hook named `name` (its name in the rules' `hooks` table).
+    pub fn named(name: &str) -> Option<RulesHook> {
+        RulesHook::ALL.into_iter().find(|h| h.name() == name)
+    }
+
+    /// The hook's bit in a set of hooks (one of at most 128).
+    pub fn bit(self) -> u128 {
+        1 << self as u32
+    }
+
     /// The hook's name in the rules' `hooks` table.
     pub fn name(self) -> &'static str {
         match self {
@@ -745,6 +766,7 @@ impl RulesHook {
             RulesHook::Overview => "overview",
             RulesHook::Validate => "validate",
             RulesHook::BuildCheck => "build_check",
+            RulesHook::NaviPanel => "navi_panel",
             RulesHook::NaviIntake => "navi_intake",
             RulesHook::ChipCheck => "chip_check",
             RulesHook::CutInBarred => "cut_in_barred",
@@ -807,7 +829,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 72] = [
+    pub const ALL: [RulesHook; 73] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -817,6 +839,7 @@ impl RulesHook {
         RulesHook::CustomResult,
         RulesHook::CustomClosed,
         RulesHook::FolderCheck,
+        RulesHook::NaviPanel,
         RulesHook::NaviIntake,
         RulesHook::ChipCheck,
         RulesHook::CutInBarred,

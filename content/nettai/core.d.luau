@@ -679,9 +679,6 @@ declare extern type Object with
     -- collision presented again, and it animates. Its update runs instead, and the drive ends, on a tick the battle
     -- is over, its collision was hit, or its step would leave the field.
     function fly(self, climbs: boolean?): ()
-    -- Its update skipped `ticks` times (with `animate`, it animates each time); it runs at once, and the drive ends,
-    -- on a tick its collision was hit (`wake_on_hit`) or its animation has finished (`wake_on_finish`).
-    function sleep(self, ticks: number, spec: { animate: boolean?, wake_on_hit: boolean?, wake_on_finish: boolean? }?): ()
     -- `object_genericDestroy`: release panel reservations and collision,
     -- then free.
     function destroy(self): ()
@@ -2070,8 +2067,13 @@ export type RulesSpec = {
         -- field (from 1). Nothing: none.
         validate: ((side: number) -> { SetupProblem }?)?,
         -- Each tick of the fight, in the navi's intake after the standing
-        -- effects (`sub_801AC6C`; EXE5's light and dark MegaMan clears a holy
-        -- panel there).
+        -- effects (`sub_801AC6C`), while the navi's panel is of a kind the
+        -- rules listen for (`rules.listen_panels`; none at first): a dark
+        -- MegaMan clears the holy panel he stands on.
+        navi_panel: ((side: number, navi: Object) -> ())?,
+        -- Each tick of the fight, in the navi's intake after the standing
+        -- effects (`sub_801AC6C`) and `navi_panel`: EXE4's souls ask for their
+        -- change there.
         navi_intake: ((side: number, navi: Object) -> ())?,
         -- A chip's use is prepared (the end of `sub_80127C0`): nil lets it
         -- be used, a chip is what the navi uses instead.
@@ -2123,7 +2125,10 @@ export type RulesSpec = {
         starting_mood: ((side: number) -> number?)?,
         -- Each tick, the sprite palette of the side's navi of a player's
         -- kind (presentation; `sub_801002C`, EXE5's 0x0800DD94); none, the
-        -- framework's (EXE6's).
+        -- framework's (EXE6's). Asked again only when the navi, its side's
+        -- navi stats, its navi states, AI index, identity or B charge, or its
+        -- side's party member on the field differ from the last answer's: a
+        -- function of those, and of what is fixed for the battle.
         navi_palette: ((side: number, navi: Object) -> number?)?,
         -- Each tick of the navi's status routine's tail, after its status
         -- shaders: the color shader the rules put over them (presentation;
@@ -3426,4 +3431,15 @@ declare rules: {
     -- Side `side`'s player's setup of the rules, read-only, likewise a
     -- game's rules' alone: its API module reads the save's `level` there.
     setup_of: (side: number) -> any,
+    -- Whether the engine calls side `side`'s hook `hook` (its name in the
+    -- rules' `hooks`): every hook is called from the round's setup on until
+    -- the rules say otherwise, and one not called answers nothing, as a
+    -- hook the rules don't have. A game's rules' alone: what they turn off
+    -- they turn on again where it would do something (a hook asked every
+    -- tick, while nothing can come of it).
+    listen: (side: number, hook: string, on: boolean) -> (),
+    -- The panel types (by name) on which the engine calls side `side`'s
+    -- `navi_panel` for a navi standing on one, in place of the last; none at
+    -- first. A game's rules' alone.
+    listen_panels: (side: number, kinds: { string }) -> (),
 }

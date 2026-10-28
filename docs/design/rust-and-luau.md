@@ -31,6 +31,29 @@ order its code says. The engine calls a hook by its name and reads its answer, k
 block per side, and reads a setup field it needs by its role. Which module answers, and in what order they run, is
 the rules' code.
 
+## What runs each tick
+
+The original polls: many of its routines run every tick and mostly find nothing to do. The engine keeps their timing
+without a script call a tick, through four generic means (2026-10-28):
+
+- **`rules.listen(side, hook, on)`**: whether the engine calls a hook of the side's rules. Every hook is called until
+  the rules turn it off; they turn it off where it can do nothing (EXE5's party supports and KnightMan's guard without
+  partners) and on again at the event that lets it act (Chaos Unison's charge armed, a DarkInvs drive, the dark
+  soul's emerging), or turn it off from inside the call that finds nothing left (the dark soul's AI out of the soul).
+  A hook a navi runs (`navi_tick`) is switched by the navi's `ticked` the same way.
+- **`rules.listen_panels(side, kinds)`** and **`navi_panel`**: a part of the navi's intake that acts only on panels
+  of some kinds (a dark MegaMan's holy panels, the holes a light one closes) is called only while the navi stands on
+  one.
+- **`navi_palette`'s answer is kept** until what it may depend on changes (the navi, its side's navi stats, its navi
+  states, AI index, identity and B charge, its side's party member on the field: `rules::PaletteInputs`).
+- **Drives** (`Object:follow`, `Object:fly`; `kinds::drive`): an object that only follows its owner (an attachment) or
+  flies a panel at a time (the projectile) has the engine make the calls its update would, in its place of the update
+  order, until the drive ends or wakes the update (a hit, the field's edge, the battle's end).
+
+What still runs each tick is a chip's or a navi's own behavior (a buster shot's recovery reads the pad; an obstacle
+takes its hits and answers the obstacle framework), and the panel types' `stand` and `tick` (grass, poison, a
+volcano's cycle), which cost little.
+
 ## Known crossings
 
 Every place where Rust still knows one game's feature, from an audit of nettai-battle, nettai-render,

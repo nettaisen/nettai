@@ -769,17 +769,6 @@ impl UserData for Object {
             let d = nettai_content_api::Drive::Fly(nettai_content_api::Fly { climbs: climbs.unwrap_or(false) });
             with(|api, _| api.set_drive(this.0, d).map_err(api_error))
         });
-        methods.add_method("sleep", |_, this, (ticks, spec): (LuaValue, Option<mlua::Table>)| {
-            let ticks = u16::try_from(int(&ticks, "sleep: ticks")?).map_err(|_| mlua::Error::runtime("sleep: ticks from 0 to 65535"))?;
-            let flag = |key: &str| -> mlua::Result<bool> { Ok(spec.as_ref().map(|t| t.raw_get::<Option<bool>>(key)).transpose()?.flatten().unwrap_or(false)) };
-            let d = nettai_content_api::Drive::Sleep(nettai_content_api::Sleep {
-                ticks,
-                animate: flag("animate")?,
-                wake_on_hit: flag("wake_on_hit")?,
-                wake_on_finish: flag("wake_on_finish")?,
-            });
-            with(|api, _| api.set_drive(this.0, d).map_err(api_error))
-        });
         methods.add_method("free", |_, this, ()| with(|api, _| Ok(api.free(this.0))));
         methods.add_method("destroy", |_, this, ()| with(|api, _| Ok(api.destroy(this.0))));
         methods.add_method("add_parts", |_, this, (identity, arg): (LuaValue, LuaValue)| {
@@ -2248,6 +2237,29 @@ fn rules_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "setup_of", |lua, side: LuaValue| {
         rules_only(lua, "rules.setup_of", "setup")?;
         state_handle(lua, StateOf::Setup(RulesCtx { side: u8_arg(side, "side")? & 1 }))
+    });
+    // Whether the engine calls a hook of side `side`'s rules.
+    lib_fn!(lua, t, "listen", |lua, (side, hook, on): (LuaValue, Name, bool)| {
+        rules_only(lua, "rules.listen", "hooks")?;
+        let side = u8_arg(side, "side")? & 1;
+        let hook = named(&hook, "rules hook", nettai_content_api::RulesHook::named)?;
+        with(|api, _| api.listen(side, hook, on).map_err(api_error))
+    });
+    // The panel kinds `navi_panel` is called on, for side `side`.
+    lib_fn!(lua, t, "listen_panels", |lua, (side, kinds): (LuaValue, mlua::Table)| {
+        rules_only(lua, "rules.listen_panels", "hooks")?;
+        let side = u8_arg(side, "side")? & 1;
+        let mut mask = 0u128;
+        for name in kinds.sequence_values::<String>() {
+            let name = name?;
+            let kind = with(|api, _| Ok(api.panel_type_named(&name)))?
+                .ok_or_else(|| mlua::Error::runtime(format!("rules.listen_panels: {name:?} is no panel type")))?;
+            if kind >= 128 {
+                return Err(mlua::Error::runtime(format!("rules.listen_panels: panel type {name:?} is number {kind}, past 127")));
+            }
+            mask |= 1 << kind;
+        }
+        with(|api, _| api.listen_panels(side, mask).map_err(api_error))
     });
     Ok(t)
 }

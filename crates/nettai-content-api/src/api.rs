@@ -1216,9 +1216,8 @@ named_flags! {
 
 /// What the engine runs for a content object in its place of the update
 /// order, instead of calling its kind's update (`Object:follow`,
-/// `Object:fly`, `Object:sleep`): the update runs again once the drive ends
-/// or wakes it, so an object that only follows, flies or waits makes no
-/// script call a tick.
+/// `Object:fly`): the update runs again once the drive ends or wakes it,
+/// so an object that only follows or flies makes no script call a tick.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Drive {
     /// The kind's update runs.
@@ -1226,7 +1225,6 @@ pub enum Drive {
     None,
     Follow(Follow),
     Fly(Fly),
-    Sleep(Sleep),
 }
 
 /// Each tick: at `target`'s position plus `offset`; shown to each console
@@ -1268,18 +1266,6 @@ pub enum Held {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Fly {
     pub climbs: bool,
-}
-
-/// Its update skipped `ticks` times (it animating each time, with
-/// `animate`); the update runs at once, and the drive ends, on a tick its
-/// collision was hit (with `wake_on_hit`) or its animation has finished
-/// (with `wake_on_finish`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Sleep {
-    pub ticks: u16,
-    pub animate: bool,
-    pub wake_on_hit: bool,
-    pub wake_on_finish: bool,
 }
 
 /// A one-tick hit region (attack object #3), as `object_spawnCollisionRegion`
@@ -1930,6 +1916,13 @@ pub trait CoreApi {
     fn set_lifecycle_only(&mut self, o: ObjectRef, l: Lifecycle);
     /// Put content object `o` on drive `d` (none: its update runs).
     fn set_drive(&mut self, o: ObjectRef, d: Drive) -> ApiResult<()>;
+    /// Whether the engine calls side `side`'s rules' hook `hook` (each is
+    /// called from the round's setup until the rules say otherwise): one not
+    /// called answers nothing, as a hook the rules don't have.
+    fn listen(&mut self, side: u8, hook: crate::RulesHook, on: bool) -> ApiResult<()>;
+    /// The panel kinds (bit n: kind n) on which side `side`'s rules'
+    /// `navi_panel` is called for a navi standing on one (none at first).
+    fn listen_panels(&mut self, side: u8, kinds: u128) -> ApiResult<()>;
     /// Switch to `action` from its first phase (the object's own action
     /// byte; a navi's action is a definition: `set_content_attack`).
     fn set_action(&mut self, o: ObjectRef, action: u8) -> ApiResult<()>;

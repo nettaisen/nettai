@@ -47,7 +47,7 @@ pub use api::{
     SideSpecial, StatsOf, PartyInfo,
 };
 pub use api::AfterimageSpec;
-pub use api::{Drive, Fly, Follow, Held, Sleep};
+pub use api::{Drive, Fly, Follow, Held};
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
 pub use api::{ObstacleHold, ObstaclePush};
 pub use assets::{AssetIndex, AssetKind, AssetNames, AssetNumbers, DefinedAssets, SpriteAnimation, SpriteDef};

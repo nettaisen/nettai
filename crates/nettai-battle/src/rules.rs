@@ -35,6 +35,31 @@ pub(crate) enum NaviBug {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct SideRules {
     pub state: Option<Block>,
+    /// The hooks the rules said not to call (`RulesHook::bit`s:
+    /// `CoreApi::listen`).
+    pub muted: u128,
+    /// The panel kinds `navi_panel` is called on (bit n: kind n;
+    /// `CoreApi::listen_panels`).
+    pub panels: u128,
+    /// The rules' last `navi_palette` answer, and what it was asked from
+    /// (`Battle::rules_navi_palette`).
+    pub palette: Option<(PaletteInputs, Option<u8>)>,
+}
+
+/// What a navi's palette may depend on, of what changes in battle (the
+/// rules' `navi_palette`, which is asked again only when these differ from
+/// the last answer's): the navi, its side's navi stats, its navi states
+/// (its status word), AI index, identity and B charge, and its side's
+/// party's member on the field.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct PaletteInputs {
+    navi: ObjectRef,
+    stats: crate::setup::NaviStats,
+    status: u32,
+    ai_index: u8,
+    identity: Option<nettai_content_api::IdentityHandle>,
+    b_charge_time: Option<u8>,
+    party_active: u8,
 }
 
 impl SideRules {
@@ -64,7 +89,7 @@ impl SideRules {
             };
             panic!("a player's setup doesn't state the rules' `{}` ({what}): none is assumed", field.name);
         }
-        SideRules { state: Some(Block::new(rules.state, content.defs.schema(rules.state))) }
+        SideRules { state: Some(Block::new(rules.state, content.defs.schema(rules.state))), muted: 0, panels: 0, palette: None }
     }
 }
 
@@ -436,7 +461,7 @@ impl Battle {
     /// hook (or the side plays by none).
     fn call_rules(&mut self, side: u8, hook: RulesHook, navi: Option<ObjectRef>, chip: Option<ChipHandle>, weapon: Option<WeaponHandle>) -> Option<Value> {
         let f = self.content.defs.rules()?.hook(hook)?;
-        if !self.has_rules(side) {
+        if !self.has_rules(side) || self.rules[side as usize & 1].muted & hook.bit() != 0 {
             return None;
         }
         let call = HookCall::Rules { side, hook, navi, chip, weapon, member: None, mood: None };
@@ -538,6 +563,20 @@ impl Battle {
     /// NaviCust's boards so). None: no module of that name.
     pub fn module_data(&self, module: &str) -> Option<Result<nettai_content_api::Data, String>> {
         crate::behavior::module_data(self, module)
+    }
+
+    /// The rules' `navi_panel(side, navi)`, each tick of the fight in the
+    /// navi's intake, where its panel is of a kind they listen for.
+    pub(crate) fn rules_navi_panel(&mut self, side: u8, navi: ObjectRef) {
+        let kinds = self.rules[side as usize & 1].panels;
+        if kinds == 0 {
+            return;
+        }
+        let p = self.objects.get(navi).panel;
+        let on = <Battle as nettai_content_api::CoreApi>::panel_info(self, p).is_some_and(|i| i.kind < 128 && kinds & (1 << i.kind) != 0);
+        if on {
+            self.call_rules(side, RulesHook::NaviPanel, Some(navi), None, None);
+        }
     }
 
     /// The rules' `navi_intake(side, navi)`, each tick of the fight in the
@@ -649,9 +688,33 @@ impl Battle {
         self.rules_ask(side, RulesHook::StartingMood, None)
     }
 
-    /// The rules' `navi_palette(side, navi)`, if they answer.
+    /// The rules' `navi_palette(side, navi)`, if they answer: asked again
+    /// only where what it may depend on ([`PaletteInputs`]) differs from
+    /// the last answer's, else that answer.
     pub(crate) fn rules_navi_palette(&mut self, side: u8, navi: ObjectRef) -> Option<u8> {
-        self.rules_ask(side, RulesHook::NaviPalette, Some(navi))
+        if self.content.defs.rules().and_then(|r| r.hook(RulesHook::NaviPalette)).is_none() || !self.has_rules(side) {
+            return None;
+        }
+        let o = self.objects.get(navi);
+        let a = self.actors.get(o.actor.expect("a navi with actor data"));
+        let s = side as usize & 1;
+        let inputs = PaletteInputs {
+            navi,
+            stats: self.stats[o.alliance as usize & 1],
+            status: a.status,
+            ai_index: a.ai_index,
+            identity: o.identity,
+            b_charge_time: a.b_charge_time,
+            party_active: self.party[s].active,
+        };
+        if let Some((last, answer)) = self.rules[s].palette
+            && last == inputs
+        {
+            return answer;
+        }
+        let answer = self.rules_ask(side, RulesHook::NaviPalette, Some(navi));
+        self.rules[s].palette = Some((inputs, answer));
+        answer
     }
 
     /// The rules' `navi_shader(side, navi)`, if they answer.
@@ -707,7 +770,7 @@ impl Battle {
     /// A party hook of the rules' for side `side`: its answer.
     fn call_party(&mut self, side: u8, hook: RulesHook, navi: Option<ObjectRef>, member: u8, mood: Option<u8>) -> Option<Value> {
         let f = self.content.defs.rules()?.hook(hook)?;
-        if !self.has_rules(side) {
+        if !self.has_rules(side) || self.rules[side as usize & 1].muted & hook.bit() != 0 {
             return None;
         }
         let call = HookCall::Rules { side, hook, navi, chip: None, weapon: None, member: Some(member), mood };

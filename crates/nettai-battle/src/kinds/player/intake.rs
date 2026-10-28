@@ -30,6 +30,7 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     // The side's rules, each tick (EXE5's light and dark: a dark MegaMan
     // clears the holy panel he stands on, 0x08017136; EXE6's call nothing).
     let side = b.objects.get(r).alliance;
+    b.rules_navi_panel(side, r);
     b.rules_navi_intake(side, r);
     slide_triggers(b, r);
     // (EXE5's takes the hit's NaviCust bug before the HP bug drains: the
@@ -108,6 +109,7 @@ pub(super) fn collect_hits_navi(b: &mut Battle, r: ObjectRef) {
     barrier(b, r);
     standing_effects(b, r);
     let side = b.objects.get(r).alliance;
+    b.rules_navi_panel(side, r);
     b.rules_navi_intake(side, r);
     slide_triggers(b, r);
     drop_cursor_trap(b, r);
