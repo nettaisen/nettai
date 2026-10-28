@@ -428,6 +428,10 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
     let set = Set::of(content, &m, seed);
     let mut b = set.start();
     let mut ai = NetAi::of(s.net.clone(), level(), rng.next_u64(), Fingerprinter::made(s.fingerprints.clone())).expect("the AI");
+    // (LOST_SEARCH set: the AI looks ahead, `search::Search`.)
+    if std::env::var_os("LOST_SEARCH").is_some() {
+        ai = ai.with_search(nettai_training::search::Search::default());
+    }
     let (d, k) = (ai.knobs().delay as u32, s.net.k());
     // (The masher, else the scripted player LOST_BOT names.)
     let kind = std::env::var("LOST_BOT").ok().and_then(|n| BotKind::named(&n)).unwrap_or(BotKind::Masher);
