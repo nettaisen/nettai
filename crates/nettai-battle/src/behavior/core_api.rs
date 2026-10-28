@@ -7,8 +7,8 @@ use nettai_content_api::api::ApiResult;
 use nettai_content_api::api::ObstacleFlag;
 use nettai_content_api::{
     ActorField, ApiError, BattleInfo, BlinkOut, CollisionField, ColumnInfo, CoreApi, DimmingStep,
-    FieldType, FieldValue, HitboxSpec, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState,
-    ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag,
+    FieldType, FieldValue, HitboxSpec, HudField, Key, Lifecycle, LinkedChip, NaviStat, NaviState,
+    ObjectField, ObstacleAction, OverlayField, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag,
     PartyInfo, ScreenFade, Shadow, StatsOf,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
 };
@@ -40,6 +40,11 @@ use crate::sound::SoundId;
 /// [`kinds::player::NaviAction`] (`navi_action`, `set_attack`).
 fn navi_action_byte() -> ApiError {
     ApiError::Other("a navi's action is no number: read it with navi_action(), start one with set_attack()".into())
+}
+
+/// Overlay field `f` on an object that isn't `what`.
+fn not_an_overlay(f: OverlayField, what: &str) -> ApiError {
+    ApiError::Other(format!("`{}` is {what}'s, and this object is none", f.name()))
 }
 
 fn status_bit(flag: StatusFlag) -> u32 {
@@ -548,24 +553,65 @@ impl CoreApi for Battle {
         kinds::burst::spawn(self, navi)
     }
 
-    fn show_hud(&mut self, part: HudPart, shown: bool) {
-        // (Each console's own navi's: the call runs on every console,
-        // whichever navi makes it.)
-        if part == HudPart::ChipIcons {
-            for hud in &mut self.chip_hud {
-                hud.icons = shown;
+    fn hud(&self, f: HudField, side: u8) -> Value {
+        use HudField as F;
+        let side = side as usize & 1;
+        let (looks, console, chips, hidden) = (&self.looks[side], &self.consoles[side], &self.chip_hud[side], &self.hud_hidden);
+        Value::Bool(match f {
+            F::FaceVariant => looks.face_variant,
+            F::FaceVariantCharged => looks.face_variant_charged,
+            F::NameVariant => looks.name_variant,
+            F::WindowCount => looks.window_count,
+            F::EmotionWindowGlitch => console.emotion_window_glitch,
+            F::EmotionWindowGlitching => console.emotion_window.glitch,
+            F::ChipIcons => chips.icons,
+            F::OpponentChipIcons => chips.opponent,
+            F::ChipWindow => chips.window,
+            F::Gauge => !hidden.gauge,
+            F::EmotionWindow => !hidden.emotion_window,
+            F::LevelGauge => !hidden.level_gauge,
+            F::HpBox => !hidden.hp_box,
+        })
+    }
+
+    fn set_hud(&mut self, f: HudField, side: Option<u8>, v: Value) -> ApiResult<()> {
+        use HudField as F;
+        let FieldValue::Bool(on) = store(f.name(), f.writable(), f.ty(), v)? else { unreachable!() };
+        if f.shared() {
+            if side.is_some() {
+                return Err(ApiError::Other(format!("battle.set_hud: every console shows {:?} alike", f.name())));
             }
-            return;
+            let h = &mut self.hud_hidden;
+            let hidden = match f {
+                F::Gauge => &mut h.gauge,
+                F::EmotionWindow => &mut h.emotion_window,
+                F::LevelGauge => &mut h.level_gauge,
+                F::HpBox => &mut h.hp_box,
+                _ => unreachable!("{f:?} is each side's"),
+            };
+            *hidden = !on;
+            return Ok(());
         }
-        let h = &mut self.hud_hidden;
-        let hidden = match part {
-            HudPart::Gauge => &mut h.gauge,
-            HudPart::EmotionWindow => &mut h.emotion_window,
-            HudPart::LevelGauge => &mut h.level_gauge,
-            HudPart::HpBox => &mut h.hp_box,
-            HudPart::ChipIcons => unreachable!("the chips' icons are each console's"),
-        };
-        *hidden = !shown;
+        for s in 0..2usize {
+            if side.is_some_and(|side| side as usize & 1 != s) {
+                continue;
+            }
+            let (looks, console, chips) = (&mut self.looks[s], &mut self.consoles[s], &mut self.chip_hud[s]);
+            match f {
+                F::FaceVariant => looks.face_variant = on,
+                F::FaceVariantCharged => looks.face_variant_charged = on,
+                F::NameVariant => looks.name_variant = on,
+                F::WindowCount => looks.window_count = on,
+                F::EmotionWindowGlitch => console.emotion_window_glitch = on,
+                F::EmotionWindowGlitching => console.emotion_window.glitch = on,
+                F::ChipIcons => chips.icons = on,
+                F::OpponentChipIcons => chips.opponent = on,
+                // (Not by the custom screen's close alone.)
+                F::ChipWindow => (chips.window, chips.from_close) = (on, false),
+                F::Gauge | F::EmotionWindow | F::LevelGauge | F::HpBox => unreachable!("every console shows {f:?} alike"),
+            }
+        }
+        Ok(())
     }
 
     fn screen_fade(&mut self, fade: ScreenFade, speed: u8) {
@@ -590,16 +636,12 @@ impl CoreApi for Battle {
         Battle::warn(self, SoundId(sound), at, side);
     }
 
-    fn show_hp(&mut self, o: ObjectRef, dx: i8, dy: i8, damage: bool) {
-        Battle::show_hp(self, o, dx, dy, damage, None);
+    fn show_hp(&mut self, o: ObjectRef, dx: i8, dy: i8, damage: bool, console: Option<u8>) {
+        Battle::show_hp(self, o, dx, dy, damage, console);
     }
 
     fn hide_hp(&mut self, o: ObjectRef) {
         Battle::hide_hp(self, o);
-    }
-
-    fn show_navi_hp(&mut self, o: ObjectRef) {
-        crate::kinds::player::show_hp_number(self, o);
     }
 
     fn navi_stat(&self, of: StatsOf, stat: NaviStat) -> Value {
@@ -800,10 +842,6 @@ impl CoreApi for Battle {
 
     fn lose_mood(&mut self, side: u8, n: u16) {
         kinds::player::lose_mood(self, side & 1, n);
-    }
-
-    fn set_emotion_window_glitch(&mut self, side: u8, on: bool) {
-        self.consoles[side as usize & 1].emotion_window_glitch = on;
     }
 
     fn tool_answer(&mut self, answer: nettai_content_api::Data) {
@@ -1410,23 +1448,6 @@ impl CoreApi for Battle {
         self.sides[side as usize & 1].sword_pick = pick;
     }
 
-    fn set_face_variant(&mut self, side: u8, variant: bool, charged: bool) {
-        let looks = &mut self.looks[side as usize & 1];
-        if charged {
-            looks.face_variant_charged = variant;
-        } else {
-            looks.face_variant = variant;
-        }
-    }
-
-    fn set_name_variant(&mut self, side: u8, variant: bool) {
-        self.looks[side as usize & 1].name_variant = variant;
-    }
-
-    fn set_window_count(&mut self, side: u8, shown: bool) {
-        self.looks[side as usize & 1].window_count = shown;
-    }
-
     fn add_side_gauge(&mut self, side: u8, n: u16) {
         let s = &mut self.sides[side as usize & 1];
         s.gauge = (s.gauge as u32 + n as u32).min(crate::hud::CustomGauge::FULL as u32) as u16;
@@ -1648,13 +1669,6 @@ impl CoreApi for Battle {
     fn move_lag(&self, o: ObjectRef) -> ApiResult<u16> {
         self.actor_of(o)?;
         Ok(kinds::player::move_lag(self, o))
-    }
-
-    fn hide_chip_window(&mut self, o: ObjectRef) -> ApiResult<()> {
-        self.actor_of(o)?;
-        let side = self.objects.get(o).alliance as usize & 1;
-        kinds::player::idle::hide_chip_window(self, side);
-        Ok(())
     }
 
     fn drop_links(&mut self, o: ObjectRef) -> ApiResult<()> {
@@ -1894,8 +1908,7 @@ impl CoreApi for Battle {
         if let Some(bit) = flag_bit(f) {
             let FieldValue::Bool(on) = v else { unreachable!() };
             if f == ObjectField::Visible {
-                // For every viewer (`hide_from_blind` and `copy_visibility`
-                // decide it per viewer).
+                // For every viewer (`set_for` decides it for one).
                 ob.set_visible(on);
             } else {
                 ob.flags = if on { ob.flags | bit } else { ob.flags & !bit };
@@ -1941,6 +1954,29 @@ impl CoreApi for Battle {
         Ok(())
     }
 
+    fn get_for(&self, o: ObjectRef, f: ObjectField, side: u8) -> ApiResult<Value> {
+        match f {
+            ObjectField::Visible => Ok(Value::Bool(self.visible_to(o, side))),
+            _ => self.get(o, f),
+        }
+    }
+
+    fn set_for(&mut self, o: ObjectRef, f: ObjectField, side: u8, v: Value) -> ApiResult<()> {
+        if f != ObjectField::Visible {
+            return Err(ApiError::Other(format!("object:set: every console has {:?} alike", f.name())));
+        }
+        let FieldValue::Bool(on) = store(f.name(), f.writable(), f.ty(), v)? else { unreachable!() };
+        // (Setting one console's keeps what the other shows.)
+        let mut shown = [0u8, 1].map(|viewer| self.visible_to(o, viewer));
+        shown[side as usize & 1] = on;
+        self.set_visible_by_viewer(o, shown);
+        Ok(())
+    }
+
+    fn sees(&self, viewer: u8, side: u8) -> bool {
+        Battle::sees(self, viewer, side)
+    }
+
     fn facing(&self, o: ObjectRef) -> i32 {
         let ob = self.objects.get(o);
         common::facing(ob.alliance, ob.flip)
@@ -1984,28 +2020,6 @@ impl CoreApi for Battle {
 
     fn set_panel_from_coordinates(&mut self, o: ObjectRef) {
         common::set_panels_from_coordinates(self, o);
-    }
-
-    fn update_visibility(&mut self, o: ObjectRef) {
-        if !self.is_dimmed() {
-            self.objects.get_mut(o).set_visible(true);
-        }
-        // Hidden from a blind viewer when the other side's (each console's
-        // rule, decided for both viewers).
-        let alliance = self.objects.get(o).alliance;
-        let hidden = [0u8, 1].map(|viewer| {
-            viewer != alliance & 1
-                && self.player(viewer).and_then(|p| self.objects.get(p).collision).is_some_and(|c| self.collision.get(c).f1 & f1::BLIND != 0)
-        });
-        self.hide_from(o, hidden);
-    }
-
-    fn hide_from_blind(&mut self, o: ObjectRef) {
-        Battle::hide_from_blind(self, o);
-    }
-
-    fn copy_visibility(&mut self, from: ObjectRef, to: ObjectRef) {
-        Battle::copy_visibility(self, from, to);
     }
 
     fn update_collision_panels(&mut self, o: ObjectRef) {
@@ -2115,12 +2129,13 @@ impl CoreApi for Battle {
         sprite: SpriteId,
         stepping: u8,
         anim_offset: u8,
-        nudged: bool,
+        pinned: bool,
         owner_palette: bool,
     ) -> Option<ObjectRef> {
         use kinds::form_overlay::{Palette, Stepping, Vars, spawn_with};
         let palette = if owner_palette { Palette::Owner } else { Palette::Own };
-        let spec = Vars { sprite: Some(sprite), nudged, anim_offset, stepping: Stepping::from_param(stepping), palette, ..Vars::default() };
+        let spec =
+            Vars { sprite: Some(sprite), nudged: pinned, anim_offset, stepping: Stepping::from_param(stepping), palette, ..Vars::default() };
         spawn_with(self, owner, spec)
     }
 
@@ -2136,36 +2151,37 @@ impl CoreApi for Battle {
         kinds::player::form::navi_death_hook(self, o, Some(identity));
     }
 
-    fn add_parts_of(&mut self, o: ObjectRef, owner: ObjectRef, keep_stepping: bool, paused_stepping: bool) {
-        let identity = self.objects.get(owner).identity;
-        let rec = self.content.navi_record(identity);
-        let r2 = if paused_stepping { 1 } else { rec.version };
-        kinds::player::form::put_on_parts(self, o, identity, r2);
-        if keep_stepping && let Some(part) = self.objects.get(o).related[1] {
-            kinds::player::form::keep_overlay_stepping(self, part);
-        }
-    }
-
-    fn add_overlay_of(&mut self, o: ObjectRef, owner: ObjectRef) {
-        let side = self.objects.get(owner).alliance;
-        let s = &self.stats[side as usize & 1];
-        let (navi, form) = (s.navi, s.form);
-        if self.content.navi(navi).changes_form() {
-            if let Some(f) = self.content.defs.form(form).put_on {
-                crate::behavior::call_hook(self, f, nettai_content_api::HookCall::FormNavi { navi: o });
-                return;
+    fn overlay_get(&self, o: ObjectRef, f: OverlayField) -> ApiResult<Value> {
+        use crate::kinds::Vars;
+        let ob = self.objects.get(o);
+        match f {
+            OverlayField::Stepping => Ok(Value::Int(kinds::form_overlay::Stepping::from_param(ob.params[2]) as i64)),
+            OverlayField::Pinned => {
+                kinds::player::form::overlay_pinned(self, o).map(Value::Bool).ok_or_else(|| not_an_overlay(f, "an overlay"))
             }
-            let identity = self.content.form(form).identity;
-            kinds::player::form::put_on_parts(self, o, identity, 1);
-            return;
+            OverlayField::ExtraAnimOffset => match &ob.vars {
+                Vars::BodyOverlay(v) => Ok(Value::Int(v.extra_offset as i64)),
+                _ => Err(not_an_overlay(f, "a body overlay")),
+            },
         }
-        let identity = self.objects.get(owner).identity;
-        kinds::player::form::put_on_parts(self, o, identity, 1);
     }
 
-    fn remove_parts_of(&mut self, o: ObjectRef, owner: ObjectRef) {
-        let identity = self.objects.get(owner).identity;
-        kinds::player::form::navi_death_hook(self, o, identity);
+    fn overlay_set(&mut self, o: ObjectRef, f: OverlayField, v: Value) -> ApiResult<()> {
+        use crate::kinds::Vars;
+        match (f, store(f.name(), f.writable(), f.ty(), v)?) {
+            (OverlayField::Stepping, FieldValue::Enum(i)) => kinds::player::form::set_overlay_param3(self, o, i as u8),
+            (OverlayField::Pinned, FieldValue::Bool(on)) => {
+                if !kinds::player::form::set_overlay_pinned(self, o, on) {
+                    return Err(not_an_overlay(f, "an overlay"));
+                }
+            }
+            (OverlayField::ExtraAnimOffset, FieldValue::U8(x)) => match &mut self.objects.get_mut(o).vars {
+                Vars::BodyOverlay(v) => v.extra_offset = x,
+                _ => return Err(not_an_overlay(f, "a body overlay")),
+            },
+            (f, v) => unreachable!("{f:?} stored as {v:?}"),
+        }
+        Ok(())
     }
 
     fn spawn_afterimage(&mut self, owner: ObjectRef, pos: Vec3, spec: &nettai_content_api::api::AfterimageSpec) -> Option<ObjectRef> {
@@ -2526,39 +2542,6 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn overlay_stepping(&mut self, o: ObjectRef, mode: nettai_content_api::api::OverlayStepping) {
-        use nettai_content_api::api::OverlayStepping as S;
-        if let Some(overlay) = self.objects.get(o).related[1] {
-            match mode {
-                S::Keep => kinds::player::form::keep_overlay_stepping(self, overlay),
-                S::Normal => kinds::player::form::normal_overlay_stepping(self, overlay),
-                S::Told => kinds::player::form::tell_overlay(self, overlay),
-            }
-        }
-    }
-
-    fn set_overlay_anim_offset(&mut self, o: ObjectRef, offset: u8) {
-        if let Some(overlay) = self.objects.get(o).related[1] {
-            kinds::body_overlay::set_extra_offset(self, overlay, offset);
-        }
-    }
-
-    fn take_off_form_overlay(&mut self, o: ObjectRef, form: nettai_content_api::FormHandle) {
-        kinds::player::form::take_off_overlay(self, o, form);
-    }
-
-    fn put_on_form_overlay(&mut self, o: ObjectRef, form: nettai_content_api::FormHandle) {
-        kinds::player::form::put_on_overlay(self, o, form);
-    }
-
-    fn take_off_form_parts(&mut self, o: ObjectRef, form: nettai_content_api::FormHandle) {
-        kinds::player::form::take_off_form_parts(self, o, form);
-    }
-
-    fn put_on_form_parts(&mut self, o: ObjectRef, form: nettai_content_api::FormHandle) {
-        kinds::player::form::put_on_form_parts(self, o, form);
-    }
-
     fn load_form_sprite(&mut self, o: ObjectRef, form: nettai_content_api::FormHandle) -> ApiResult<()> {
         self.actor_of(o)?;
         let side = self.objects.get(o).alliance as usize & 1;
@@ -2630,10 +2613,6 @@ impl CoreApi for Battle {
     fn form_change_terms(&self, o: ObjectRef) -> (u8, bool) {
         let t = &self.turn_transforms[self.objects.get(o).alliance as usize & 1];
         (t.turns, t.alternate)
-    }
-
-    fn pin_overlay(&mut self, o: ObjectRef) {
-        kinds::player::form::pin_overlay(self, o);
     }
 
     fn end_attack(&mut self, o: ObjectRef) {
@@ -3250,14 +3229,6 @@ impl CoreApi for Battle {
         b.hand_shrink_turn = 0;
     }
 
-    fn clear_emotion_window_glitch(&mut self) {
-        Battle::clear_emotion_window_glitch(self);
-    }
-
-    fn show_opponent_chip_icons(&mut self, side: u8) {
-        self.chip_hud[side as usize & 1].opponent = true;
-    }
-
     fn navi_left(&mut self, controller: ObjectRef) {
         kinds::navi_left(self, controller);
     }
@@ -3504,15 +3475,6 @@ impl CoreApi for Battle {
         look.shadow = sprite::Shadow::Ground;
         look.set_palette(palette);
         Ok(())
-    }
-
-    fn navi_image_parts(&mut self, o: ObjectRef, on: bool) {
-        let identity = self.objects.get(o).identity;
-        if on {
-            kinds::player::form::put_on_parts(self, o, identity, 1);
-        } else {
-            kinds::player::form::navi_death_hook(self, o, identity);
-        }
     }
 
     fn absorbed_look(&self, o: ObjectRef) -> Option<nettai_content_api::IdentityHandle> {

@@ -144,24 +144,24 @@ pub(crate) fn keep_overlay_stepping(b: &mut Battle, overlay: ObjectRef) {
 /// switch's and knockout's landings): it steps its sprite through dimming
 /// when it runs then, without being made to run.
 pub(crate) fn tell_overlay(b: &mut Battle, overlay: ObjectRef) {
-    let o = b.objects.get_mut(overlay);
-    o.params[2] = 1;
-    match &mut o.vars {
-        crate::kinds::Vars::FormOverlay(v) => v.stepping = form_overlay::Stepping::WhileDimmed,
-        crate::kinds::Vars::BodyOverlay(v) => v.always_step = true,
-        // The idle overlay doesn't read its Param3.
-        _ => {}
-    }
+    set_overlay_param3(b, overlay, 1);
 }
 
 /// Param3 = 0 on an overlay (Beast Out's emergence): it steps like any
 /// object again.
 pub(crate) fn normal_overlay_stepping(b: &mut Battle, overlay: ObjectRef) {
+    set_overlay_param3(b, overlay, 0);
+}
+
+/// An object's Param3, as the overlays read it (how their sprites step):
+/// the original sets it on whatever a navi wears.
+pub(crate) fn set_overlay_param3(b: &mut Battle, overlay: ObjectRef, param3: u8) {
     let o = b.objects.get_mut(overlay);
-    o.params[2] = 0;
+    o.params[2] = param3;
     match &mut o.vars {
-        crate::kinds::Vars::FormOverlay(v) => v.stepping = form_overlay::Stepping::Normal,
-        crate::kinds::Vars::BodyOverlay(v) => v.always_step = false,
+        crate::kinds::Vars::FormOverlay(v) => v.stepping = form_overlay::Stepping::from_param(param3),
+        crate::kinds::Vars::BodyOverlay(v) => v.always_step = param3 != 0,
+        // The idle overlay doesn't read its Param3.
         _ => {}
     }
 }
@@ -169,11 +169,28 @@ pub(crate) fn normal_overlay_stepping(b: &mut Battle, overlay: ObjectRef) {
 /// `sub_80C4526(overlay, 1)`: an overlay copied onto an afterimage sits in
 /// front (and an idle overlay keeps its owner's height).
 pub(crate) fn pin_overlay(b: &mut Battle, overlay: ObjectRef) {
+    set_overlay_pinned(b, overlay, true);
+}
+
+/// An overlay's ExtraVars[0] (`sub_80C4526`), as its kind reads it;
+/// false: it is no overlay.
+pub(crate) fn set_overlay_pinned(b: &mut Battle, overlay: ObjectRef, on: bool) -> bool {
     match &mut b.objects.get_mut(overlay).vars {
-        crate::kinds::Vars::FormOverlay(v) => v.nudged = true,
-        crate::kinds::Vars::BodyOverlay(v) => v.forced_front = true,
-        crate::kinds::Vars::IdleOverlay(v) => v.pinned = true,
-        _ => {}
+        crate::kinds::Vars::FormOverlay(v) => v.nudged = on,
+        crate::kinds::Vars::BodyOverlay(v) => v.forced_front = on,
+        crate::kinds::Vars::IdleOverlay(v) => v.pinned = on,
+        _ => return false,
+    }
+    true
+}
+
+/// An overlay's ExtraVars[0]; none: it is no overlay.
+pub(crate) fn overlay_pinned(b: &Battle, overlay: ObjectRef) -> Option<bool> {
+    match &b.objects.get(overlay).vars {
+        crate::kinds::Vars::FormOverlay(v) => Some(v.nudged),
+        crate::kinds::Vars::BodyOverlay(v) => Some(v.forced_front),
+        crate::kinds::Vars::IdleOverlay(v) => Some(v.pinned),
+        _ => None,
     }
 }
 

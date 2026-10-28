@@ -98,7 +98,7 @@ pub struct Console {
     /// cards; EXE5's 0x10C1 and 0x10C4), for the emotion window's start:
     /// MegaMan's window flickers as a bugged navi's does, bugs or not. No
     /// setup gives it: the game's rules make it as the round is set up
-    /// (`battle.set_emotion_window_glitch`: the NaviCust's compile when a
+    /// (`battle.set_hud("emotion_window_glitch", ..)`: the NaviCust's compile when a
     /// bug applies, the patch cards' routine).
     pub emotion_window_glitch: bool,
     /// The HP box's count to its next low-HP sound (`eStruct2035280`+6:
@@ -292,14 +292,6 @@ impl Battle {
     pub(crate) fn stop_emotion_windows(&mut self) {
         for c in &mut self.consoles {
             c.emotion_window.running = false;
-        }
-    }
-
-    /// `sub_801E658` (BugFix's effect): the save's glitch is gone from
-    /// every console's emotion window.
-    pub fn clear_emotion_window_glitch(&mut self) {
-        for c in &mut self.consoles {
-            c.emotion_window.glitch = false;
         }
     }
 

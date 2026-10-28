@@ -260,7 +260,8 @@ setup), so the state is the same on both, and each presents it for its own playe
 each side hears, the telops and banners per viewer, what each player sees of the objects). `battle.local_side()`
 is for presentation and for these known differences only; nothing feeds it back into decisions. What a
 console's rule hides (a blind player doesn't see the other side's objects) content decides per viewer with
-`me:hide_from_blind()`, and an attachment follows its owner's visibility with `me:copy_visibility(owner)`.
+`visibility.hide_from_blind(me)` (@exelib/visibility, over `o:get("visible", side)` and `o:set("visible", on, side)`),
+and an attachment follows its owner's visibility with `visibility.copy(me, owner)`.
 
 ## 5. Determinism and snapshots
 

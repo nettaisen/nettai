@@ -471,6 +471,53 @@ mod tests {
         assert!(b.sprite_set_for(e, SpriteField::VFlip, 1, Value::Bool(true)).is_err());
     }
 
+    /// An object shown on one console is that console's: setting one keeps
+    /// what the other shows, its `VISIBLE` flag is the local side's, and
+    /// set without a side it is every console's again.
+    #[test]
+    fn visibility_set_on_one_console_is_that_consoles() {
+        use crate::content::EffectRole;
+        use nettai_content_api::{CoreApi, ObjectField, Value};
+        let mut b = battle();
+        let look = b.roles().effect(EffectRole::TrapMark);
+        let e = crate::kinds::effect::spawn(&mut b, Default::default(), look, 0, 0, 0).expect("a slot");
+        b.set(e, ObjectField::Visible, Value::Bool(true)).unwrap();
+        let local = b.round.local_side & 1;
+        b.set_for(e, ObjectField::Visible, local ^ 1, Value::Bool(false)).unwrap();
+        let shown = |b: &Battle| [0u8, 1].map(|v| b.get_for(e, ObjectField::Visible, v).unwrap());
+        let mut expected = [Value::Bool(true); 2];
+        expected[local as usize ^ 1] = Value::Bool(false);
+        assert_eq!(shown(&b), expected);
+        assert_eq!(b.get(e, ObjectField::Visible).unwrap(), Value::Bool(true));
+        // The local side's hidden too: the flag follows it, and the two are
+        // alike again.
+        b.set_for(e, ObjectField::Visible, local, Value::Bool(false)).unwrap();
+        assert_eq!(b.objects.get(e).flags & flags::VISIBLE, 0);
+        assert_eq!(b.objects.get(e).sight, Sight::Shared);
+        b.set_for(e, ObjectField::Visible, local ^ 1, Value::Bool(true)).unwrap();
+        b.set(e, ObjectField::Visible, Value::Bool(false)).unwrap();
+        assert_eq!(shown(&b), [Value::Bool(false); 2]);
+        assert!(b.set_for(e, ObjectField::Hp, 1, Value::Int(1)).is_err());
+    }
+
+    /// A HUD field set for one side is that side's, set without a side
+    /// every side's; what every console shows alike takes no side.
+    #[test]
+    fn a_hud_field_is_each_sides() {
+        use nettai_content_api::{CoreApi, HudField, Value};
+        let mut b = battle();
+        b.set_hud(HudField::ChipWindow, None, Value::Bool(true)).unwrap();
+        b.set_hud(HudField::ChipWindow, Some(1), Value::Bool(false)).unwrap();
+        assert_eq!([0u8, 1].map(|s| b.hud(HudField::ChipWindow, s)), [Value::Bool(true), Value::Bool(false)]);
+        assert_eq!([b.chip_hud[0].window, b.chip_hud[1].window], [true, false]);
+        b.set_hud(HudField::FaceVariantCharged, Some(0), Value::Bool(true)).unwrap();
+        assert_eq!([b.looks[0].face_variant_charged, b.looks[1].face_variant_charged], [true, false]);
+        b.set_hud(HudField::Gauge, None, Value::Bool(false)).unwrap();
+        assert!(b.hud_hidden.gauge);
+        assert_eq!([0u8, 1].map(|s| b.hud(HudField::Gauge, s)), [Value::Bool(false); 2]);
+        assert!(b.set_hud(HudField::Gauge, Some(0), Value::Bool(true)).is_err());
+    }
+
     /// The result's banner as each game's routine picks it (`sub_80081A4`,
     /// `sub_800825A`; EXE5's 0x080074D2): the winner's navi's in the link
     /// battles the flow names, else "ENEMY DELETED", and the judge's

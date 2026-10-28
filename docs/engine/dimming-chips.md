@@ -717,10 +717,10 @@ small per-aim tables of §8 and §7 are the kinds' constants. Collision types: r
 
 Framework (Rust): `sub_801A7CC` is `Object:raise_barrier` (the barrier byte by behavior: plain 1, bubble 8,
 regenerating 0xA), with the charge glow's clobbered link (§3.4); `dimming.hide_user_sparing` (`sub_80E1352` with
-mask 0xF); `battle.clear_navicust_bugs` (§5.1); `Sprite:load_look_of`, `Object:add_parts_of`/`remove_parts_of`
-(BugFix's glow); `Object:name_look_is` (`sub_800F26C`, §9.3); `battle.hand_chip_damages` (§10.2); and
-`Sprite:part_offset` (`sub_80030BA`: where a part of the current frame sits, which the pack's sprite layouts
-give; the propeller, §7.3). AntiNavi is done (§2).
+mask 0xF); `battle.clear_navicust_bugs` (§5.1); `Sprite:load_look_of`, @exelib/overlays'
+`add_parts_of`/`remove_parts_of` (BugFix's glow); `Object:name_look_is` (`sub_800F26C`, §9.3);
+`battle.hand_chip_damages` (§10.2); and `Sprite:part_offset` (`sub_80030BA`: where a part of the current frame
+sits, which the pack's sprite layouts give; the propeller, §7.3). AntiNavi is done (§2).
 
 The trace comparison (exe6-compat) skips the register garbage the original leaves: the controllers' positions
 (`scratch_position`), the Sensor scanner's, laser's and the points' Z fractions (`scratch_z_fraction`), and the

@@ -130,8 +130,9 @@ The original's `reloadCurNaviStatBoosts` calls `sub_813C458` when the PET's navi
    | `status` | a status at the battle's start (+0x1A = 9) |
    | `status-strong` | a stronger one (+0x1A = 10) |
 
-   Any bug sets the save's flag 0x1720, the emotion window's glitch (`battle.set_emotion_window_glitch`). With
-   patch cards installed, the cards' module then sets the flag the Japanese console reads instead (0x1723).
+   Any bug sets the save's flag 0x1720, the emotion window's glitch (`battle.set_hud("emotion_window_glitch", on,
+   side)`). With patch cards installed, the cards' module then sets the flag the Japanese console reads instead
+   (0x1723).
 6. **The HP** (`sub_803CE44`). The maximum is the base plus the HP programs, and the round starts at the maximum, as
    it does in the real world.
 

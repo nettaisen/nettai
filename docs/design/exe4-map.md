@@ -3123,7 +3123,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      place should be, 0x0800E742, as EXE5's is, so no pattern's place or chips ever play and the setup states no
      records), a dimming chip before any miss (a step anywhere first), or a chip, which it gets in place for and
      uses on the tick it is ready (0x0800E7D8), a miss when it isn't. "The buster" is a draw: his buster from an
-     enemy's row, twice (0x0800E61C: the chip window hidden, `navi:hide_chip_window`), or 50 ticks of steps up and
+     enemy's row, twice (0x0800E61C: the chip window hidden, the HUD's `chip_window`), or 50 ticks of steps up and
      down with a B charge showing and then his charged shot from an enemy's row (0x0800E67C: the AI writes the
      charge's source and count, AIData +9 and +0x32, and the input makes the level of the count as any charge's,
      0x0800BB50; the 40 it writes for the full charge's time, +0x36, the intake's reload of the charge times takes
@@ -3167,7 +3167,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
 
      The engine's part, each its own commit: the status rule `idle_asks_controller` (split from EXE5's
      `no_charge_drive`), the form traits `ignores_b` and `emotions_as_base`, `navi:ask_form_change`,
-     `navi:hide_chip_window`, the rules' hook `navi_shader`, a navi's `charge_source` and `charge_counter`
+     the HUD's `chip_window`, the rules' hook `navi_shader`, a navi's `charge_source` and `charge_counter`
      writable. The lab's darksoul/ (87: the trigger and what bars it, a soul, a light MegaMan, a hit taken while
      dimmed, once a battle; the buttons, the hand and the custom screen in it; each side and version; the third
      object as the first target, an invisible one, the chips barred; a pattern entry; the answers; every class by

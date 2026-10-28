@@ -120,7 +120,7 @@ rules (docs/design/rules-in-luau.md §2.2): EXE6's is content/exe6/rules/patch_c
   stats to the battle-start copy. It is a hook like S0's (`SystemHook::RoundSetup`, called with
   `Battle::notify_rules`), and costs one call per side per round.
 - **The glitch is pushed**, as rules-in-luau.md §2.1 rule 5 asks: with cards installed the part sets the
-  console's emotion window glitch (`battle.set_emotion_window_glitch(side, on)`) from the stats after the cards.
+  console's emotion window glitch (`battle.set_hud("emotion_window_glitch", on, side)`) from the stats after the cards.
 - **`RoundSetup::navi_stats` is the stats before the cards.** A trace's setup gives both: the oracle traps the
   apply routine's entry for the stats before (`navi_stats_before_cards`), and the init exchange has the stats
   after. exe6-compat builds the setup from the first (the bytes the cards write; the rest from the exchange) and

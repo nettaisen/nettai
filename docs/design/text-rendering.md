@@ -1045,7 +1045,7 @@ string is a content root's `locales/<lang>.toml`.
 | A chip's description (R on the custom screen) | `en.toml` | `ja.toml`, the Japanese ROMs' descriptions |
 | A Cross's description | `en.toml` `[forms]` | `ja.toml` `[forms]` |
 | The no-running message (L) | `en.toml` `[navis]` `run_message` | `ja.toml` `[navis]` `run_message` |
-| The enemy names (a round's first custom screen) | `en.toml` `[navis]` `name`, the ROM's name for the navi's NameID (ChrgeMan, GrndMan, TmhkMan, ProtoMan); `variant_name` when the side's rules ask (`battle.set_name_variant`: EXE5's Hub Style, BCMegaMn) | `ja.toml` `[navis]` `name` (ロックマン, キラーマン, アクアマン, ブルース...), `variant_name` (FCロックマン) |
+| The enemy names (a round's first custom screen) | `en.toml` `[navis]` `name`, the ROM's name for the navi's NameID (ChrgeMan, GrndMan, TmhkMan, ProtoMan); `variant_name` when the side's rules ask (`battle.set_hud("name_variant", ...)`: EXE5's Hub Style, BCMegaMn) | `ja.toml` `[navis]` `name` (ロックマン, キラーマン, アクアマン, ブルース...), `variant_name` (FCロックマン) |
 | A Cross's name (the frontend's own text: live play's terminal summary, the plain-text screen's Cross window) | `en.toml` `[forms]` | (English) |
 | A background's name (the app's arenas) | `en.toml` `[backgrounds]`, the US ROM's menu name of its area, as the menu writes it (RobCtrlComp; docs/frontend.md §1) | `ja.toml` `[backgrounds]`, the Japanese ROM's menu name (秋原エリア, ロボせいぎょPCの電脳) |
 | A patch card's name (gen-content checks them; the frontend's match description and the editor's card list show them) | `en.toml` `[patch-cards]`, the fan translation's | `ja.toml` `[patch-cards]`, the Japanese ROMs' card names |

@@ -233,8 +233,8 @@ rule, EXE6's patch cards module (content/exe6/rules/patch_cards/init.luau, in co
   before anything reads the side's stats. It is §1.2 steps 2 to 7 over the side's stats (`battle.navi(side)`):
   the slots seeded from the stats, each card's effects in the kinds' order, the clamps, the copy
   (BugStop holding back the bug slots), ChpShufl turning NumbrOpn off, MaxHP and HP. With cards installed it
-  pushes the emotion window's glitch (`battle.set_emotion_window_glitch`): the stats after the cards have a
-  NaviCust bug (§1.3). Afterwards the framework copies the stats to the battle-start copy (`reserves`).
+  pushes the emotion window's glitch (`battle.set_hud("emotion_window_glitch", on, side)`): the stats after the
+  cards have a NaviCust bug (§1.3). Afterwards the framework copies the stats to the battle-start copy (`reserves`).
 - **What stays as the original has it**: the kinds' order rather than the card's, a later card's choice winning,
   GigaFolder− not clamping, the HP clamp after each HP effect, the percentages rounded toward zero, a card that
   lists one effect twice applying the first.

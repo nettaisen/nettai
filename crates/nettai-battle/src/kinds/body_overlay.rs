@@ -31,7 +31,7 @@ pub struct Vars {
     /// ExtraVars[0] (`sub_80C4526`): drawn one pixel in front whatever
     /// the owner's animation.
     pub forced_front: bool,
-    /// EXE5's ExtraVars word (0x080C451A, `set_overlay_anim_offset`), which
+    /// EXE5's ExtraVars word (0x080C451A, content's `extra_anim_offset`), which
     /// its overlay adds to its owner's animation, its depth read by the sum
     /// (0x080C365C): GyroSoul's propeller while primed.
     pub extra_offset: u8,
@@ -177,13 +177,5 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         common::step_sprite(b, r);
     } else if !b.is_dimmed() {
         common::update_sprite(b, r);
-    }
-}
-
-/// EXE5's 0x080C451A on the overlay `r`: its animation offset (its ExtraVars
-/// word). Nothing for an overlay of another kind.
-pub(crate) fn set_extra_offset(b: &mut Battle, r: ObjectRef, offset: u8) {
-    if let crate::kinds::Vars::BodyOverlay(v) = &mut b.objects.get_mut(r).vars {
-        v.extra_offset = offset;
     }
 }

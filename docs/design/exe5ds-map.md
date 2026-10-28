@@ -1177,7 +1177,8 @@ EXE5 content on its hooks below) and the supports (step 10).
   `navi_falling(side, navi)` (at 0 HP, before the fall-back), `mic_heard(side)` (a fight tick with a level).
 - **Luau API:** `battle.party(side)`, `battle.member(side, m)` (a member's block, by the same proxy as
   `battle.navi`), `battle.join_party(side, navi)` (round_setup only), `battle.mic_level(side)`, `navi:take_back()`;
-  the `flinch` request; the `dim` and `undim` screen fades; `overlay_stepping("told")` (the DS's 0x02202064).
+  the `flinch` request; the `dim` and `undim` screen fades; what he wears its `stepping` "while_dimmed" (the
+  DS's 0x02202064).
 
 **The game (EXE5's Luau).**
 - `rules/party`: who joins (the setup's `party`: up to two team navis with their PartyCust programs; MegaMan's alone),

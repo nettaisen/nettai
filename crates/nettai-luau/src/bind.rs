@@ -23,7 +23,7 @@ use std::ptr::NonNull;
 
 use nettai_content_api::{
     ActorField, ApiError, BattleInfo, CollisionField, CoreApi, DimmingStep, FieldType,
-    HitboxSpec, HookCall, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction,
+    HitboxSpec, HookCall, HudField, Key, Lifecycle, LinkedChip, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction, OverlayField,
     AssetKind, SpawnAt,
     ObstacleCrush, ObstacleRequest, Pad, PanelPos, Registry, RequestFlag, ScreenFade, SpriteField, SpriteId,
     StateId, StatusFlag, StatusTimer, Value, Vec3,
@@ -368,6 +368,16 @@ impl UserData for Object {
                 });
             }
         }
+        for &f in OverlayField::ALL {
+            fields.add_field_method_get(f.name(), move |lua, this| {
+                let v = with(|api, _| api.overlay_get(this.0, f).map_err(api_error))?;
+                from_api(lua, v, &f.ty())
+            });
+            fields.add_field_method_set(f.name(), move |_, this, v: LuaValue| {
+                let v = to_api(v, &f.ty(), f.name())?;
+                with(|api, _| api.overlay_set(this.0, f, v).map_err(api_error))
+            });
+        }
         fields.add_field_method_get("pool", |_, this| Ok(this.0.pool.name()));
         fields.add_field_method_get("kind", |lua, this| {
             let kind = with(|api, _| Ok(api.object_kind(this.0)))?;
@@ -396,6 +406,25 @@ impl UserData for Object {
             Ok(format!("Object({} {})", this.0.pool.name(), this.0.slot))
         });
 
+        // A field by console.
+        methods.add_method("get", |lua, this, (field, side): (mlua::LuaString, LuaValue)| {
+            let f = named(&field, "object field", ObjectField::from_name)?;
+            let side = side_arg(side)?;
+            let v = with(|api, _| api.get_for(this.0, f, side).map_err(api_error))?;
+            from_api(lua, v, &f.ty())
+        });
+        methods.add_method("set", |_, this, (field, value, side): (mlua::LuaString, LuaValue, Option<LuaValue>)| {
+            let f = named(&field, "object field", ObjectField::from_name)?;
+            let v = to_api(value, &f.ty(), f.name())?;
+            match side.filter(|s| !s.is_nil()) {
+                None => with(|api, _| api.set(this.0, f, v).map_err(api_error)),
+                Some(s) => {
+                    let side = side_arg(s)?;
+                    with(|api, _| api.set_for(this.0, f, side, v).map_err(api_error))
+                }
+            }
+        });
+
         // Lifecycle.
         methods.add_method("set_lifecycle", |_, this, name: mlua::LuaString| {
             let l = named(&name, "lifecycle state", Lifecycle::from_name)?;
@@ -415,21 +444,6 @@ impl UserData for Object {
         methods.add_method("remove_parts", |_, this, identity: LuaValue| {
             let identity = nettai_content_api::IdentityHandle(bound(|b| def_arg(b, &identity, Registry::Identity, "remove_parts"))?);
             with(|api, _| Ok(api.remove_parts(this.0, identity)))
-        });
-        methods.add_method(
-            "add_parts_of",
-            |_, this, (owner, keep, stepping): (mlua::UserDataRef<Object>, Option<bool>, Option<bool>)| {
-                let owner = owner.0;
-                with(|api, _| Ok(api.add_parts_of(this.0, owner, keep.unwrap_or(false), stepping.unwrap_or(false))))
-            },
-        );
-        methods.add_method("add_overlay_of", |_, this, owner: mlua::UserDataRef<Object>| {
-            let owner = owner.0;
-            with(|api, _| Ok(api.add_overlay_of(this.0, owner)))
-        });
-        methods.add_method("remove_parts_of", |_, this, owner: mlua::UserDataRef<Object>| {
-            let owner = owner.0;
-            with(|api, _| Ok(api.remove_parts_of(this.0, owner)))
         });
 
         // Sprite stepping.
@@ -461,11 +475,6 @@ impl UserData for Object {
         methods.add_method("set_panel_from_coordinates", |_, this, ()| {
             with(|api, _| Ok(api.set_panel_from_coordinates(this.0)))
         });
-        methods.add_method("update_visibility", |_, this, ()| with(|api, _| Ok(api.update_visibility(this.0))));
-        methods.add_method("hide_from_blind", |_, this, ()| with(|api, _| Ok(api.hide_from_blind(this.0))));
-        methods.add_method("copy_visibility", |_, this, from: mlua::UserDataRef<Object>| {
-            with(|api, _| Ok(api.copy_visibility(from.0, this.0)))
-        });
         methods.add_method("update_collision_panels", |_, this, ()| {
             with(|api, _| Ok(api.update_collision_panels(this.0)))
         });
@@ -493,7 +502,6 @@ impl UserData for Object {
         });
         methods.add_method("chips_enabled", |_, this, ()| with(|api, _| api.chips_enabled(this.0).map_err(api_error)));
         methods.add_method("move_lag", |_, this, ()| with(|api, _| api.move_lag(this.0).map_err(api_error)));
-        methods.add_method("hide_chip_window", |_, this, ()| with(|api, _| api.hide_chip_window(this.0).map_err(api_error)));
         methods.add_method("drop_links", |_, this, ()| with(|api, _| api.drop_links(this.0).map_err(api_error)));
         methods.add_method("drop_status_visuals", |_, this, ()| with(|api, _| api.drop_status_visuals(this.0).map_err(api_error)));
         methods.add_method("drop_chip", |_, this, ()| with(|api, _| api.drop_chip(this.0).map_err(api_error)));
@@ -627,35 +635,6 @@ impl UserData for Object {
         });
         methods.add_method("drop_statuses", |_, this, ()| with(|api, _| api.drop_statuses(this.0).map_err(api_error)));
         methods.add_method("end_statuses", |_, this, ()| with(|api, _| api.end_statuses(this.0).map_err(api_error)));
-        methods.add_method("set_overlay_anim_offset", |_, this, offset: u8| {
-            with(|api, _| Ok(api.set_overlay_anim_offset(this.0, offset)))
-        });
-        methods.add_method("overlay_stepping", |_, this, mode: mlua::LuaString| {
-            use nettai_content_api::api::OverlayStepping as S;
-            let mode = match &*mode.to_str()? {
-                "keep" => S::Keep,
-                "normal" => S::Normal,
-                "told" => S::Told,
-                other => return Err(mlua::Error::runtime(format!("overlay_stepping: {other:?} is none of \"keep\", \"normal\", \"told\""))),
-            };
-            with(|api, _| Ok(api.overlay_stepping(this.0, mode)))
-        });
-        methods.add_method("take_off_form_overlay", |_, this, form: LuaValue| {
-            let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "take_off_form_overlay"))?);
-            with(|api, _| Ok(api.take_off_form_overlay(this.0, form)))
-        });
-        methods.add_method("put_on_form_overlay", |_, this, form: LuaValue| {
-            let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "put_on_form_overlay"))?);
-            with(|api, _| Ok(api.put_on_form_overlay(this.0, form)))
-        });
-        methods.add_method("take_off_form_parts", |_, this, form: LuaValue| {
-            let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "take_off_form_parts"))?);
-            with(|api, _| Ok(api.take_off_form_parts(this.0, form)))
-        });
-        methods.add_method("put_on_form_parts", |_, this, form: LuaValue| {
-            let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "put_on_form_parts"))?);
-            with(|api, _| Ok(api.put_on_form_parts(this.0, form)))
-        });
         methods.add_method("load_form_sprite", |_, this, form: LuaValue| {
             let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "load_form_sprite"))?);
             with(|api, _| api.load_form_sprite(this.0, form).map_err(api_error))
@@ -684,7 +663,6 @@ impl UserData for Object {
         });
         methods.add_method("form_change_terms", |_, this, ()| with(|api, _| Ok(api.form_change_terms(this.0))));
         methods.add_method("stop_moving", |_, this, ()| with(|api, _| api.stop_moving(this.0).map_err(api_error)));
-        methods.add_method("pin_overlay", |_, this, ()| with(|api, _| Ok(api.pin_overlay(this.0))));
         methods.add_method("end_attack", |_, this, ()| with(|api, _| Ok(api.end_attack(this.0))));
         methods.add_method("set_attack", |_, this, (action, kind): (LuaValue, LuaValue)| {
             let kind = u8_arg(kind, "attack kind")?;
@@ -780,7 +758,6 @@ impl UserData for Object {
             let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "wear_form_image"))?);
             with(|api, _| api.wear_form_image(this.0, navi, form).map_err(api_error))
         });
-        methods.add_method("navi_image_parts", |_, this, on: bool| with(|api, _| Ok(api.navi_image_parts(this.0, on))));
         methods.add_method("wear_absorbed_look", |_, this, look: LuaValue| {
             let look = bound(|b| match b.def(&look) {
                 Some((Registry::Identity, h)) => Ok(nettai_content_api::IdentityHandle(h)),
@@ -1962,10 +1939,13 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         };
         let (dx, dy) = (offset("dx")?, offset("dy")?);
         let damage = spec.get::<Option<bool>>("damage")?.unwrap_or(false);
-        with(|api, _| Ok(api.show_hp(o.0, dx, dy, damage)))
+        let console = match spec.get::<LuaValue>("console")? {
+            LuaValue::Nil => None,
+            v => Some(side_arg(v)?),
+        };
+        with(|api, _| Ok(api.show_hp(o.0, dx, dy, damage, console)))
     });
     lib_fn!(lua, t, "hide_hp", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.hide_hp(o.0))));
-    lib_fn!(lua, t, "show_navi_hp", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.show_navi_hp(o.0))));
     lib_fn!(lua, t, "shake_camera", |_, (magnitude, ticks): (LuaValue, LuaValue)| {
         let (magnitude, ticks) = (u16_arg(magnitude, "magnitude")?, u16_arg(ticks, "ticks")?);
         if magnitude > 3 {
@@ -1995,17 +1975,17 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let speed = u8_arg(speed, "fade speed")?;
         with(|api, _| Ok(api.screen_fade(fade, speed)))
     });
-    lib_fn!(lua, t, "show_hud", |_, (parts, shown): (mlua::Table, bool)| {
-        let parts = parts
-            .sequence_values::<mlua::LuaString>()
-            .map(|p| named(&p?, "HUD part", HudPart::from_name))
-            .collect::<mlua::Result<Vec<_>>>()?;
-        with(|api, _| {
-            for p in parts {
-                api.show_hud(p, shown);
-            }
-            Ok(())
-        })
+    lib_fn!(lua, t, "hud", |lua, (field, side): (mlua::LuaString, LuaValue)| {
+        let f = named(&field, "HUD field", HudField::from_name)?;
+        let side = side_arg(side)?;
+        let v = with(|api, _| Ok(api.hud(f, side)))?;
+        from_api(lua, v, &f.ty())
+    });
+    lib_fn!(lua, t, "set_hud", |_, (field, value, side): (mlua::LuaString, LuaValue, Option<LuaValue>)| {
+        let f = named(&field, "HUD field", HudField::from_name)?;
+        let v = to_api(value, &f.ty(), f.name())?;
+        let side = side.filter(|s| !s.is_nil()).map(side_arg).transpose()?;
+        with(|api, _| api.set_hud(f, side, v).map_err(api_error))
     });
     lib_fn!(lua, t, "navi", |_, side: LuaValue| Ok(Navi(nettai_content_api::StatsOf::side(u8_arg(side, "side")?))));
     lib_fn!(lua, t, "member", |_, (side, m): (LuaValue, LuaValue)| {
@@ -2050,10 +2030,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "lose_mood", |_, (side, n): (LuaValue, LuaValue)| {
         let (side, n) = (u8_arg(side, "side")? & 1, int(&n, "amount")? as u16);
         with(|api, _| Ok(api.lose_mood(side, n)))
-    });
-    lib_fn!(lua, t, "set_emotion_window_glitch", |_, (side, on): (LuaValue, bool)| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.set_emotion_window_glitch(side, on)))
     });
     // The folder a tool asks the rules to check (`folder_check`): { side,
     // chips = { { chip = <the definition>, code = "A" } }, regular = n?,
@@ -2120,6 +2096,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         let p = with(|api, _| Ok(api.player(side)))?;
         object_value(lua, p)
+    });
+    lib_fn!(lua, t, "sees", |_, (viewer, side): (LuaValue, LuaValue)| {
+        let (viewer, side) = (side_arg(viewer)?, u8_arg(side, "side")?);
+        with(|api, _| Ok(api.sees(viewer, side)))
     });
     lib_fn!(lua, t, "alive_actor_slot", |lua, (side, i): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
@@ -2219,11 +2199,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.clear_bugs(side)))
     });
-    lib_fn!(lua, t, "clear_emotion_window_glitch", |_, ()| with(|api, _| Ok(api.clear_emotion_window_glitch())));
-    lib_fn!(lua, t, "show_opponent_chip_icons", |_, side: LuaValue| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.show_opponent_chip_icons(side)))
-    });
     lib_fn!(lua, t, "fill_custom_gauge", |_, ()| with(|api, _| Ok(api.fill_custom_gauge())));
     lib_fn!(lua, t, "drain_custom_gauge", |_, n: LuaValue| {
         let n = u16_arg(n, "gauge")?;
@@ -2260,23 +2235,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "set_sword_pick", |_, (side, pick): (LuaValue, LuaValue)| {
         let (side, pick) = (u8_arg(side, "side")? & 1, u8_arg(pick, "sword pick")?);
         with(|api, _| Ok(api.set_sword_pick(side, pick)))
-    });
-    lib_fn!(lua, t, "set_face_variant", |_, (side, variant, mode): (LuaValue, bool, Option<mlua::LuaString>)| {
-        let side = u8_arg(side, "side")? & 1;
-        let charged = match mode.as_ref().map(|m| m.to_str().map(|s| s.to_string())).transpose()?.as_deref() {
-            None | Some("base") => false,
-            Some("charged") => true,
-            Some(other) => return Err(mlua::Error::runtime(format!("set_face_variant: a mode is \"base\" or \"charged\", not {other:?}"))),
-        };
-        with(|api, _| Ok(api.set_face_variant(side, variant, charged)))
-    });
-    lib_fn!(lua, t, "set_name_variant", |_, (side, variant): (LuaValue, bool)| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.set_name_variant(side, variant)))
-    });
-    lib_fn!(lua, t, "set_window_count", |_, (side, shown): (LuaValue, bool)| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.set_window_count(side, shown)))
     });
     lib_fn!(lua, t, "bump_side_stat", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
         let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
@@ -2447,9 +2405,9 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             None => 0,
         };
         let anim_offset = table_int(&spec, "anim_offset")? as u8;
-        let nudged = spec.raw_get::<Option<bool>>("nudged")?.unwrap_or(false);
+        let pinned = spec.raw_get::<Option<bool>>("pinned")?.unwrap_or(false);
         let owner_palette = spec.raw_get::<Option<bool>>("owner_palette")?.unwrap_or(false);
-        let o = with(|api, _| Ok(api.spawn_form_overlay(owner.0, sprite, stepping, anim_offset, nudged, owner_palette)))?;
+        let o = with(|api, _| Ok(api.spawn_form_overlay(owner.0, sprite, stepping, anim_offset, pinned, owner_palette)))?;
         object_value(lua, o)
     });
     // Subtype 18 (Otenko).
