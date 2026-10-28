@@ -715,6 +715,15 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
   On FakePool's toy, labels of the target on 30% of fight decisions took the target pressed from 0.09 to 0.41 in 12
   updates. Measured on the real pool (64 envs a game, random actions, a draw rate of 0.1): a label on 2.3% of the
   drawn decisions in EXE6, 1.5% in EXE5, 1.4% in EXE4, a draw costing 2.8, 33 and 26 ms (the games' ticks, §10.7).
+  **It made the network worse** (large2 from its update 1,400, `teacher_rate` 0.03; `ppo.teacher` 1.0, then 0.3 from
+  1,450): the network came to agree with the labels on about 57% of them and no more, the policy moved about 0.09
+  an update (0.06 at 0.3) against 0.02 before, and its play fell: the evaluation against the masher and the shooter
+  0.60 at 1,500 (0.73 to 0.78 for the 1,300 updates before), and against large1's 3,250 over duplicate deals 24
+  won both ways to 59 lost (EXE4 11–8, EXE5 7–31, EXE6 6–20), where update 1,000 had been 30–27. Stopped there. The
+  likely reason is what the two see: the labels are from the battle as it stands, the network decides from a view
+  6 to 30 ticks old, so where the label answers what the view doesn't hold yet (a shot about to come), the network
+  learns the label's average over the moments that look alike to it: stepping at random. A teacher for this
+  network has to answer from what its view holds, or teach only what that view decides.
 - **Plans a round ahead.** The pool takes a seat's controller "from the next round", so each env's next round
   (the learner's seat; self-play, a snapshot or which scripted player) is sent with `set_seat` as the current
   one starts. Which snapshot plays a policy seat is the trainer's own choice, made when the round starts. The
