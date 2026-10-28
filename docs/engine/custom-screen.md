@@ -624,8 +624,8 @@ and the fight resumes as usual (no loss, no leaving the match).
     check 120 ticks on), stopped by the win, loss and draw states; every 20 ticks it checks the console's own navi,
     and flickers once or twice (the draw) when the navi has a NaviCust bug (`sub_800FE52`) or, for MegaMan, when the
     save's event flag 0x1720 is set (`Console::emotion_window_glitch`, which no setup gives: the rules make it as
-    the round is set up, `battle.set_emotion_window_glitch`; BugFix clears it on both consoles,
-    `Battle::clear_emotion_window_glitch`, from BugFix's controller).
+    the round is set up, the HUD's `emotion_window_glitch`; BugFix clears it on both consoles,
+    the HUD's `emotion_window_glitching`, from BugFix's controller).
 
   **Fidelity.** Measured against the recording console's RNG1 column (a scratch probe; the trace comparison doesn't
   check RNG1): exact on every frame the engine reproduces of machgun, soundmod (all three rounds up to their

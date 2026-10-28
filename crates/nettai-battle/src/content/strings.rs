@@ -36,7 +36,7 @@ pub struct ChipStrings {
 
 /// A navi's strings: its name (the custom screen's enemy name), the name
 /// the enemy names show instead when its side's rules ask
-/// (`battle.set_name_variant`: EXE5's Hub Style, "BCMegaMn"), and its
+/// (`battle.set_hud("name_variant", ..)`: EXE5's Hub Style, "BCMegaMn"), and its
 /// no-running message (L), its lines apart by `\n`; and its whole name
 /// (`long_name`) where the game's own is cut short to fit its 8 letters
 /// ("MagnetMn": "MagnetMan"), which the app's menus show (the battle shows

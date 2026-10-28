@@ -920,22 +920,57 @@ named_flags! {
     }
 }
 
-named_flags! {
-    /// A HUD part a chip's effect hides and shows (`sub_801DACC` and
-    /// `sub_801DA48` with its draw task).
-    pub enum HudPart {
+named_fields! {
+    /// What the HUD shows, a side's: its console's, or its navi's as the
+    /// consoles show it. Presentation, but for the emotion window's glitch
+    /// (its flicker draws its console's RNG1). The last four every console
+    /// shows alike (`sub_801DACC` hides a draw task, `sub_801DA48` shows
+    /// it).
+    pub enum HudField {
+        /// The side's emotion window shows its base form's second set of
+        /// faces (EXE5's Hub Style, 0x0801AF8E).
+        FaceVariant = "face_variant", Bool, rw;
+        /// And whatever its form while its navi's rules' B charge is armed
+        /// (EXE5's Chaos Unison look, 0x080125F6).
+        FaceVariantCharged = "face_variant_charged", Bool, rw;
+        /// The custom screen's enemy names show the side's navi by its
+        /// variant name (EXE5's Hub Style in a link battle, 0x0801AE3A).
+        NameVariant = "name_variant", Bool, rw;
+        /// The side's emotion window shows its count (its navi's stat of
+        /// the role `window_count`: EXE6's Beast Out turns), else its empty
+        /// box.
+        WindowCount = "window_count", Bool, rw;
+        /// The side's console starts its emotion window glitching (the
+        /// save's NaviCust bug flag, which the rules decide as the round is
+        /// set up).
+        EmotionWindowGlitch = "emotion_window_glitch", Bool, rw;
+        /// Its emotion window glitches now: the save's glitch, as it kept
+        /// it (BugFix's `sub_801E658` clears every console's).
+        EmotionWindowGlitching = "emotion_window_glitching", Bool, rw;
+        /// The chips' icons over the console's own navi (draw task 1).
+        ChipIcons = "chip_icons", Bool, rw;
+        /// The console's chip-icon table has the opponent's navi too (EXE5's
+        /// SearchSoul's status reset, 0x08011C0C; a status reset takes it
+        /// out again).
+        OpponentChipIcons = "opponent_chip_icons", Bool, rw;
+        /// The console's chip window (`sub_801DACC(0x40)` hides it).
+        ChipWindow = "chip_window", Bool, rw;
         /// The custom gauge (draw task 4).
-        Gauge = "gauge",
+        Gauge = "gauge", Bool, rw;
         /// The emotion window (draw task 14).
-        EmotionWindow = "emotion_window",
-        /// The own-gauges mode's gauge, drawn by its levels (draw
-        /// task 17).
-        LevelGauge = "level_gauge",
+        EmotionWindow = "emotion_window", Bool, rw;
+        /// The own-gauges mode's gauge, drawn by its levels (draw task 17).
+        LevelGauge = "level_gauge", Bool, rw;
         /// The HP box (draw task 7; its drawing only: the low-HP alarm
         /// sounds on).
-        HpBox = "hp_box",
-        /// The chips' icons over each console's own navi (draw task 1).
-        ChipIcons = "chip_icons",
+        HpBox = "hp_box", Bool, rw;
+    }
+}
+
+impl HudField {
+    /// Every console shows it alike.
+    pub fn shared(self) -> bool {
+        matches!(self, HudField::Gauge | HudField::EmotionWindow | HudField::LevelGauge | HudField::HpBox)
     }
 }
 
@@ -1040,15 +1075,25 @@ named_flags! {
 /// or `sub_801BCD0` (paused or not).
 pub const OVERLAY_STEPPINGS: [&str; 3] = ["normal", "while_dimmed", "always"];
 
-/// How a navi's overlay is to step (`navi:overlay_stepping`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OverlayStepping {
-    /// Through pauses and dimming: its Param3 1, flags 0x14.
-    Keep,
-    /// Like any object: its Param3 0.
-    Normal,
-    /// Its Param3 1 alone (the DS's 0x02202064).
-    Told,
+named_fields! {
+    /// The parameters of the engine's overlays, what a navi wears (a body
+    /// overlay, a form overlay, an idle overlay).
+    pub enum OverlayField {
+        /// Param3: how its sprite steps ([`OVERLAY_STEPPINGS`] by the
+        /// byte): a form overlay's as they say once every navi is in; a
+        /// body overlay's paused or not but for "normal"; an idle overlay
+        /// doesn't read it. Every object has the byte (the original sets it
+        /// on whatever a navi wears).
+        Stepping = "stepping", enum_type(&OVERLAY_STEPPINGS), rw;
+        /// ExtraVars[0] (`sub_80C4526(overlay, 1)`): a form overlay sits a
+        /// pixel higher and nearer than its owner, a body overlay in front
+        /// whatever its owner's animation, an idle overlay at its owner's
+        /// height.
+        Pinned = "pinned", Bool, rw;
+        /// A body overlay's ExtraVars word (EXE5's 0x080C451A), added to
+        /// its owner's animation (its depth read by the sum).
+        ExtraAnimOffset = "extra_anim_offset", U8, rw;
+    }
 }
 
 named_flags! {
@@ -1399,18 +1444,13 @@ pub trait CoreApi {
     /// `sound` on every 16th frame of a console's own frame counter; on
     /// `side`'s console only, or on both.
     fn warn(&mut self, sound: u16, at: Option<Vec3>, side: Option<u8>);
-    /// `sub_801DC7C(dx, dy)`: every console's HUD numbers `o`'s HP under
-    /// it (output only), `dx`, `dy` pixels from where it projects `o`'s
-    /// position; `damage`: the damage `o` took instead (its max HP less its
-    /// HP), uncentered.
-    fn show_hp(&mut self, o: ObjectRef, dx: i8, dy: i8, damage: bool);
+    /// `sub_801DC7C(dx, dy)`: `console`'s HUD (none: every console's)
+    /// numbers `o`'s HP under it (output only), `dx`, `dy` pixels from where
+    /// it projects `o`'s position; `damage`: the damage `o` took instead
+    /// (its max HP less its HP), uncentered.
+    fn show_hp(&mut self, o: ObjectRef, dx: i8, dy: i8, damage: bool, console: Option<u8>);
     /// `sub_801DD34`: `o`'s HP number goes.
     fn hide_hp(&mut self, o: ObjectRef);
-    /// A navi's HP number under it, as it shows once the navi is in
-    /// (`sub_801DC7C(0, 0)` on the other side's console, on both in battle
-    /// mode 6, none for a body that hides its HP): for a navi brought back
-    /// from 0 HP, whose number went at 0.
-    fn show_navi_hp(&mut self, o: ObjectRef);
     /// `camera_initShakeEffect_80302a8`: both consoles' cameras shake for
     /// `ticks` ticks at `magnitude` (0-3). Each shaking tick draws from
     /// the consoles' own RNGs, which ChpShufl's re-deal reads.
@@ -1430,9 +1470,11 @@ pub trait CoreApi {
     /// `sub_80EA438`: a burst around `navi`'s panel (effect object #0x90,
     /// which runs while paused).
     fn spawn_burst(&mut self, navi: ObjectRef) -> Option<ObjectRef>;
-    /// `sub_801DA48` (`shown`) or `sub_801DACC` with a HUD part's draw
-    /// task: every console shows or hides it (output only).
-    fn show_hud(&mut self, part: HudPart, shown: bool);
+    /// HUD field `f` of side `side`'s.
+    fn hud(&self, f: HudField, side: u8) -> Value;
+    /// HUD field `f` of side `side`'s alone, or of every side's (none). An
+    /// error for a side's of a field every console shows alike.
+    fn set_hud(&mut self, f: HudField, side: Option<u8>, v: Value) -> ApiResult<()>;
     /// `SetScreenFade(mode, speed)`: the screen fades from where it is.
     fn screen_fade(&mut self, fade: ScreenFade, speed: u8);
     /// One of a side's navi stats, or of a member's block of its party
@@ -1460,10 +1502,6 @@ pub trait CoreApi {
     fn emotion(&self, side: u8) -> String;
     /// Set a side's mood, unless its navi's emotion is held (`sub_8015BEC`).
     fn set_mood(&mut self, side: u8, mood: u8);
-    /// Whether `side`'s console starts its emotion window glitching (the
-    /// save's NaviCust bug flag; the rules decide it as the round
-    /// is set up, as EXE6's patch cards do).
-    fn set_emotion_window_glitch(&mut self, side: u8, on: bool);
     /// The folder a tool asks the side's rules to check (`folder_check`),
     /// while it is checked.
     fn checked_folder(&self) -> Option<CheckedFolder>;
@@ -1693,19 +1731,6 @@ pub trait CoreApi {
     /// `sub_8010B78`: the damage a side's custom gauge gives (its own gauge
     /// in the own-gauges mode, else the shared one).
     fn gauge_damage(&self, side: u8) -> u16;
-    /// Presentation: whether side `side`'s emotion window shows its form's
-    /// second set of faces (`variant`): in the base form (EXE5's Hub
-    /// Style), or with `charged` while its navi's rules' B charge is armed,
-    /// whatever its form (EXE5's Chaos Unison look).
-    fn set_face_variant(&mut self, side: u8, variant: bool, charged: bool);
-    /// Presentation: whether the custom screen's enemy names show side
-    /// `side`'s navi by its variant name (EXE5's Hub Style in a link battle,
-    /// 0x0801AE3A).
-    fn set_name_variant(&mut self, side: u8, variant: bool);
-    /// Presentation: whether side `side`'s emotion window shows its count
-    /// (its navi's stat of the role `window_count`: EXE6's Beast Out turns),
-    /// else its empty box.
-    fn set_window_count(&mut self, side: u8, shown: bool);
     /// `sub_802E032`: add to a side's own custom gauge (battle flag 0x40),
     /// up to full.
     fn add_side_gauge(&mut self, side: u8, n: u16);
@@ -1814,10 +1839,6 @@ pub trait CoreApi {
     fn chips_enabled(&self, o: ObjectRef) -> ApiResult<bool>;
     /// `sub_8010332`: the ticks a step of its ends with.
     fn move_lag(&self, o: ObjectRef) -> ApiResult<u16>;
-    /// `sub_801DACC(0x40)` (EXE4's 0x08015B9E(0x10)) for the navi: the chip
-    /// window goes, as an attack's start from idle hides it (its console's,
-    /// or every console's by the rules' `chip_use`).
-    fn hide_chip_window(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// A panel that burns (its type's `burn`) burns `o`, an object not a
     /// player's (held while the battle is dimmed): EXE5's 0x08016D80,
     /// EXE4's 0x0801309E.
@@ -1882,6 +1903,19 @@ pub trait CoreApi {
     fn set_action(&mut self, o: ObjectRef, action: u8) -> ApiResult<()>;
     fn get(&self, o: ObjectRef, f: ObjectField) -> ApiResult<Value>;
     fn set(&mut self, o: ObjectRef, f: ObjectField, v: Value) -> ApiResult<()>;
+    /// Field `f` as side `side`'s console has it: the consoles each decide
+    /// `visible` (where the original's consoles clear it by rules of their
+    /// own side); the others read alike. ([`CoreApi::get`] reads the local
+    /// side's console's.)
+    fn get_for(&self, o: ObjectRef, f: ObjectField, side: u8) -> ApiResult<Value>;
+    /// Field `f` on side `side`'s console alone (presentation; setting it
+    /// with [`CoreApi::set`] is every console's). An error for a field
+    /// every console has alike: all but `visible`.
+    fn set_for(&mut self, o: ObjectRef, f: ObjectField, side: u8, v: Value) -> ApiResult<()>;
+    /// `sub_800EB6C` on `viewer`'s console: its player sees `side`'s
+    /// objects (its own side's always; the other side's unless its navi is
+    /// blind, a navi with no collision data yet as the game reads it then).
+    fn sees(&self, viewer: u8, side: u8) -> bool;
     /// +1 facing right, -1 facing left.
     fn facing(&self, o: ObjectRef) -> i32;
     /// `object_setAnimation`: request animation `anim`, restarting it even
@@ -1914,19 +1948,6 @@ pub trait CoreApi {
     fn set_panel_from_coordinates(&mut self, o: ObjectRef);
     /// `object_updateCollisionPanels`.
     fn update_collision_panels(&mut self, o: ObjectRef);
-    /// `sub_80169BE`: show `o` unless the battle is dimmed, then hide it
-    /// from a viewer whose navi is blind if it is the other side's (each
-    /// console's rule, `sub_800EB6C`, decided for both viewers; the HUD
-    /// flash it also drives for a player in an action is presentation).
-    fn update_visibility(&mut self, o: ObjectRef);
-    /// `sub_800EB6C` on each console: `o` hidden from a viewer whose navi
-    /// is blind, if it is the other side's (on top of what each viewer sees
-    /// of it now). Presentation: where the original clears an object's
-    /// visibility for the local console, the engine decides it per viewer.
-    fn hide_from_blind(&mut self, o: ObjectRef);
-    /// `to` seen by whoever sees `from` (each viewer's view of it): an
-    /// attachment that follows its owner's visibility.
-    fn copy_visibility(&mut self, from: ObjectRef, to: ObjectRef);
     /// Onto the destination panel of a move: the panel, the reservation,
     /// the coordinates and the collision.
     fn snap_to_future_panel(&mut self, o: ObjectRef);
@@ -1964,14 +1985,14 @@ pub trait CoreApi {
     /// `sub_80C468C`: a form overlay (actor 0x57) on `owner`: `sprite`,
     /// following the owner's animation plus `anim_offset`; `stepping` 0
     /// normal, 1 while dimmed, 2 always (Param3); a pixel nearer when
-    /// `nudged`; wearing the owner's palette when `owner_palette`.
+    /// `pinned`; wearing the owner's palette when `owner_palette`.
     fn spawn_form_overlay(
         &mut self,
         owner: ObjectRef,
         sprite: SpriteId,
         stepping: u8,
         anim_offset: u8,
-        nudged: bool,
+        pinned: bool,
         owner_palette: bool,
     ) -> Option<ObjectRef>;
     /// `sub_80E11E0`: a screen palette flash (effect object #0x0A) of
@@ -1989,23 +2010,10 @@ pub trait CoreApi {
     /// `sub_8011044`: take them off (at their next update), if the
     /// identity's death hook does.
     fn remove_parts(&mut self, o: ObjectRef, identity: crate::IdentityHandle);
-    /// `sub_8010DF6` with `owner`'s NameID record (`sub_800F29C`: its
-    /// actor type, AI index and first byte): put on the parts that record
-    /// adds, kept in `o`'s related2; with `keep_stepping`, a part that came
-    /// steps even while paused and dimmed (its Param3 1, flags 0x14); with
-    /// `paused_stepping`, `sub_8010DF6`'s r2 is 1 rather than the record's
-    /// first byte (the dimming chips' stand-ins): the parts step even while
-    /// paused.
-    fn add_parts_of(&mut self, o: ObjectRef, owner: ObjectRef, keep_stepping: bool, paused_stepping: bool);
-    /// `sub_8011420` with Param3 1 (EXE5's 0x0800F0EC: its stand-ins'):
-    /// what `owner`'s navi wears put on `o`, as on an image of it: a navi
-    /// that changes form its form's put-on routine (its `put_on`: EXE5's
-    /// NumberSoul's layer, the base form's Hub Style shade), else the
-    /// parts its form's identity wears; any other navi its identity's
-    /// parts. Their sprites step even while paused.
-    fn add_overlay_of(&mut self, o: ObjectRef, owner: ObjectRef);
-    /// `sub_8011044` with `owner`'s NameID record: take them off.
-    fn remove_parts_of(&mut self, o: ObjectRef, owner: ObjectRef);
+    /// An overlay's parameter ([`OverlayField`]): an error for an object
+    /// that isn't the overlay it names (the Param3 any object has).
+    fn overlay_get(&self, o: ObjectRef, f: OverlayField) -> ApiResult<Value>;
+    fn overlay_set(&mut self, o: ObjectRef, f: OverlayField, v: Value) -> ApiResult<()>;
 
     // ---- Navis and the attack in progress -------------------------------------
 
@@ -2067,24 +2075,6 @@ pub trait CoreApi {
     /// `sub_801A264`: a navi's statuses end: their flags, requests and
     /// timers (not the whole status word, as `clear_statuses`).
     fn end_statuses(&mut self, o: ObjectRef) -> ApiResult<()>;
-    /// The navi's overlay (`related2`) keeps stepping through pauses and
-    /// dimming (`keep`: its Param3 1 and flags 0x14), or steps like any
-    /// object again (its Param3 0). Nothing without an overlay.
-    fn overlay_stepping(&mut self, o: ObjectRef, mode: OverlayStepping);
-    /// EXE5's 0x080C451A: the navi's body overlay (`related2`) adds `offset`
-    /// to its owner's animation. Nothing without one.
-    fn set_overlay_anim_offset(&mut self, o: ObjectRef, offset: u8);
-    /// `sub_8011384(form)`: take off what `form` wore (its `take_off`, or the
-    /// default: `take_off_form_parts`).
-    fn take_off_form_overlay(&mut self, o: ObjectRef, form: crate::FormHandle);
-    /// `sub_8011268(form)`: put on what `form` wears (its `put_on`, or the
-    /// default: `put_on_form_parts`).
-    fn put_on_form_overlay(&mut self, o: ObjectRef, form: crate::FormHandle);
-    /// The default take-off routine of `form`: what its identity's death
-    /// hook takes down (the base form: what is there).
-    fn take_off_form_parts(&mut self, o: ObjectRef, form: crate::FormHandle);
-    /// The default put-on routine of `form`: its identity's parts.
-    fn put_on_form_parts(&mut self, o: ObjectRef, form: crate::FormHandle);
     /// `sub_80144C0`: the full status reset (NaviCust state, hand bonuses,
     /// hit modifier, region, charge, weapons, the form's flags, element,
     /// body damage).
@@ -2110,9 +2100,6 @@ pub trait CoreApi {
     /// whether it is the alternate (the turn's transform record's +3, +1:
     /// EXE5's soul's turns, and Chaos Unison).
     fn form_change_terms(&self, o: ObjectRef) -> (u8, bool);
-    /// `sub_80C4526(overlay, 1)`: an overlay on an image sits in front (an
-    /// idle overlay keeps its owner's height).
-    fn pin_overlay(&mut self, o: ObjectRef);
     /// `sub_801171C`: back to the idle action (the animation untouched).
     fn end_attack(&mut self, o: ObjectRef);
     /// `object_setAttack0..5`: start the content action `action` (a handle
@@ -2307,14 +2294,6 @@ pub trait CoreApi {
     /// `sub_80E14AC` it is back: EXE5's Django's coffin.
     fn hide_actor(&mut self, o: ObjectRef);
     fn show_actor(&mut self, o: ObjectRef);
-    /// `sub_801E658` (BugFix): the save's emotion window glitch is gone
-    /// from every console's emotion window, which then flickers (and
-    /// draws its console's RNG1) for NaviCust bugs only.
-    fn clear_emotion_window_glitch(&mut self);
-    /// EXE5's SearchSoul's status reset (0x08011C0C-0x08011C36): `side`'s
-    /// console's chip-icon table gets the opponent's navi (presentation:
-    /// its icons show over it; a status reset takes it out again).
-    fn show_opponent_chip_icons(&mut self, side: u8);
     /// `sub_80E1332`: a navi chip's user warps out (`out`) or back in (the
     /// navi warp, actor 0x2D).
     fn navi_warp(&mut self, user: ObjectRef, out: bool);
@@ -2385,9 +2364,6 @@ pub trait CoreApi {
     /// pool it passed before that one this tick. Routines that never set
     /// r3 spawn with it as a position (DustMan's junk).
     fn loop_register(&self) -> u32;
-    /// `sub_8010DF6` (`on`, its r2 1) or `sub_8011044` by the actor record
-    /// of `o`'s identity: the parts the navi image wears.
-    fn navi_image_parts(&mut self, o: ObjectRef, on: bool);
     /// `sub_800F6AC`: ask the field object `o` to be picked up by `side` and
     /// thrown at panel (x, y) after shaking `shake` ticks, hitting with the
     /// damage word `damage` (`sub_8018002` does it).

@@ -206,8 +206,8 @@ fn misuse_of_the_core_api_is_a_type_error() {
         // Dimming chip subtypes 2, 3, 5, 15 and 27.
         ("field.blink(1, 1, 3, 0)", "a blink to a panel type by number"),
         // The Gregar and Falzar chips.
-        ("battle.show_hud({ \"chips\" }, false)", "not a HUD part"),
-        ("battle.show_hud(\"gauge\", false)", "a HUD part, not a list of them"),
+        ("battle.set_hud(\"chips\", false)", "not a HUD field"),
+        ("battle.set_hud({ \"gauge\" }, false)", "a list of HUD fields, not one"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");

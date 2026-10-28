@@ -74,7 +74,6 @@ mod input;
 mod intake;
 mod reactions;
 mod status;
-pub(crate) use entry::show_hp_number;
 pub(crate) use status::slide_state;
 
 pub(crate) use intake::strip_body_programs;

@@ -980,10 +980,10 @@ right after S2 (§8.3); loader-qualified keys (§7.2); the cheaper binding only 
   `Battle::system_slot`, `ContentHost::update_action`'s system).
 - **API** for a game's rules over a navi (§4.5): `clear_invulnerable`, `face_default`, `reset_charge`,
   `end_full_synchro_aura`, `drop_statuses`, `end_statuses` (`sub_801A264`, which isn't `clear_statuses`'s whole status
-  word: the first lab run showed Beast Over keeping three flags the wrong one dropped), `overlay_stepping`,
-  `take_off_form_overlay`, `put_on_form_overlay`, `load_form_sprite`, `reset_status`, `end_anger`,
-  `form_change_target`, `pin_overlay`; `battle.shake_camera_secondary`, `battle.burst`; the navi stats' `form`
-  writable.
+  word: the first lab run showed Beast Over keeping three flags the wrong one dropped), what a navi wears
+  stepping (now the overlay's `stepping`), a form's put-on and take-off (now @exelib/overlays), `load_form_sprite`,
+  `reset_status`, `end_anger`, `form_change_target`, an overlay pinned (now its `pinned`);
+  `battle.shake_camera_secondary`, `battle.burst`; the navi stats' `form` writable.
 - **Roles** only the change used are gone (the sounds of a form change, a Cross, Beast Out, the roars, Beast Over's
   rumble, the Cross merge; the effects of a form change and Beast Over's beast and blast): the Luau names the assets.
 - `kinds::cross_merge` and `EngineKind::CrossMerge` are gone; the engine has 21 kinds of its own.

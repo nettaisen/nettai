@@ -90,9 +90,9 @@ in the views (the state fields they found by the games' names). What is left is 
   *(d)* The series' framework (§4.6: "Full Synchro and the mood, which the lineage shares"). The aura runs per tick.
   The name is the series' own.
 - **E4. The emotion window's flicker** (`Console::emotion_window`, `update_emotion_window`, console.rs:93–320; the
-  `emotion_window_glitch` API, api.rs:1286, :2038; `HudPart::EmotionWindow`). It checks every tick on both consoles
-  and draws the console's RNG, which the digest covers. *(d)* It stays simulated. At most the HUD part gets a neutral
-  name.
+  HUD fields `emotion_window_glitch` and `emotion_window_glitching`, `HudField::EmotionWindow`). It checks every
+  tick on both consoles and draws the console's RNG, which the digest covers. *(d)* It stays simulated. At most the
+  HUD part gets a neutral name.
 
 ### NaviCust (both games)
 
@@ -145,7 +145,7 @@ Each with what it was and what it is now.
   the screen's order (`custom.play_sound`, `ScreenSound::Rules`): EXE6's beast/custom.luau and cross/window.luau
   hold them.
 - **B6.** Whether the emotion window shows its side's count is a look the rules push for the round
-  (`battle.set_window_count`, `SideLooks::window_count`): EXE6's rules/beast's `round_setup` says it from
+  (the HUD's `window_count`, `SideLooks::window_count`): EXE6's rules/beast's `round_setup` says it from
   `sub_801D814`'s rule (mode 5 always, mode 1 never, else the save's `beast_out`, no navi code's `level`, no
   gauge of each side's own, not a random battle). `beast_count_shown` and the fact role `PlayerFact::BeastOut`
   are gone; `beast_out` is EXE6's setup field with no role.
@@ -244,7 +244,7 @@ Each with what it was and what it is now.
   `b_charge_anim` (its full animation). A full charge released while it is armed asks the rules
   (`charge_released`) and raises one request, `rules_release`, which idle hands them (`release_taken`) where the
   original's 0x080F034E and 0x080F0382 run. The palette and the face are EXE5's (its `navi_palette`;
-  `battle.set_face_variant(side, true, "charged")`). Gone from Rust: `ChaosCharge`, `ActorField::{ChaosArmed,
+  `battle.set_hud("face_variant_charged", true, side)`). Gone from Rust: `ChaosCharge`, `ActorField::{ChaosArmed,
   ChaosLevel}`, the `chaos_cycle` rule, `request::CHAOS_*`, `FormWeapons::chaos`, `SoulData::chaos_cycle`,
   `ActionRole::ChaosFailure`, `SpriteRole::ChargeGlowChaos`, the palette's branch and the end-of-kind-6 disarm
   (the failure's revert drops the charge with its status reset first: the EXE5 lab's 29 failures end disarmed).

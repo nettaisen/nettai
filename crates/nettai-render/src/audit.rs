@@ -67,7 +67,7 @@ pub enum Lookup {
     FormFace(FormHandle, nettai_battle::content::Emotion, bool),
     /// A navi's name on the custom screen (the enemy names).
     NaviName(NaviHandle),
-    /// A navi's variant name there (`battle.set_name_variant`: EXE5's Hub
+    /// A navi's variant name there (`battle.set_hud("name_variant", ..)`: EXE5's Hub
     /// Style).
     NaviVariantName(NaviHandle),
     /// A navi's emblem on the custom screen.

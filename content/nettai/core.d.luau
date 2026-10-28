@@ -74,11 +74,35 @@ export type SideSpecial = "none" | "select" | "takeover"
 -- whether the hand's picks list it (they do), and whether the cursor on it
 -- shades the screen as on a dark chip (not).
 export type Offer = { marks: number?, listed: boolean?, shades: boolean? }
--- A HUD part a chip's effect hides and shows: the custom gauge (draw task
--- 4), the emotion window (14), a side's own gauge drawn by its levels (17,
--- `battle.own_gauges`), the HP box (7: its drawing only, the low-HP alarm
--- sounds on), the chips' icons over each console's own navi (1).
-export type HudPart = "gauge" | "emotion_window" | "level_gauge" | "hp_box" | "chip_icons"
+-- What the HUD shows, a side's (`battle.hud`, `battle.set_hud`), each a flag. Its navi's as the consoles show it:
+-- "face_variant", its emotion window shows its base form's second set of faces (`mugshot.variant`: EXE5's Hub
+-- Style); "face_variant_charged", and whatever its form while its navi's rules' B charge is armed (EXE5's Chaos
+-- Unison look); "name_variant", the custom screen's enemy names show it by its variant name (the locale's
+-- `variant_name`: EXE5's Hub Style in a link battle); "window_count", its emotion window shows its count (its navi's
+-- stat of the role `window_count`: EXE6's Beast Out turns), else its empty box. Its console's:
+-- "emotion_window_glitch", it starts its emotion window glitching (the save's NaviCust bug flag, which the rules
+-- decide in `round_setup`); "emotion_window_glitching", the window glitches now, the save's glitch as it kept it
+-- (BugFix's `sub_801E658` clears every console's; the window then flickers, drawing its console's RNG1, for NaviCust
+-- bugs only); "chip_icons", the chips' icons over its own navi (draw task 1); "opponent_chip_icons", its chip-icon
+-- table has the opponent's navi too (EXE5's SearchSoul's status reset, 0x08011C0C; a status reset takes it out
+-- again); "chip_window", its chip window (`sub_801DACC(0x40)` hides it, EXE4's 0x08015B9E(0x10)). And what every
+-- console shows alike (`sub_801DACC` hides a draw task, `sub_801DA48` shows it): "gauge", the custom gauge (draw
+-- task 4); "emotion_window" (14); "level_gauge", a side's own gauge drawn by its levels (17, `battle.own_gauges`);
+-- "hp_box" (7: its drawing only, the low-HP alarm sounds on).
+export type HudField =
+    "face_variant"
+    | "face_variant_charged"
+    | "name_variant"
+    | "window_count"
+    | "emotion_window_glitch"
+    | "emotion_window_glitching"
+    | "chip_icons"
+    | "opponent_chip_icons"
+    | "chip_window"
+    | "gauge"
+    | "emotion_window"
+    | "level_gauge"
+    | "hp_box"
 -- A screen fade content starts (`SetScreenFade`'s modes): the
 -- transformation sequencer's fade out (0x44, to full) and back in (0x40).
 export type ScreenFade = "transform_out" | "transform_in" | "dim" | "undim"
@@ -457,9 +481,8 @@ declare extern type Object with
     active: boolean
     -- It has a collision record (read-only): `collision`'s fields and methods need one.
     has_collision: boolean
-    -- Drawn (for every viewer, when set; read: the local side's console's).
-    -- What a console's rule hides per viewer is `hide_from_blind`, and an
-    -- attachment follows its owner with `copy_visibility`.
+    -- Drawn (for every console, when set; read: the local side's console's).
+    -- Each console's is `get("visible", side)`.
     visible: boolean
     run_while_paused: boolean
     -- Keeps updating while the battle is dimmed.
@@ -619,6 +642,27 @@ declare extern type Object with
     -- zeroes (`sub_80143A6`).
     anger_ticks: number
     stun_ticks: number
+    -- What a navi wears, the engine's overlays (a body overlay, a form overlay, an idle overlay): its Param3, how its
+    -- sprite steps (a form overlay's as FormOverlayStepping says once every navi is in; a body overlay's paused or not
+    -- but for "normal"; an idle overlay doesn't read it). Every object has the byte: the original sets it on whatever
+    -- a navi wears. (@exelib/overlays keeps it stepping through pauses and dimming.)
+    stepping: FormOverlayStepping
+    -- An overlay's ExtraVars[0] (`sub_80C4526(overlay, 1)`): a form overlay sits a pixel higher and nearer than its
+    -- owner, a body overlay in front whatever its owner's animation, an idle overlay at its owner's height. An error
+    -- for an object that is no overlay.
+    pinned: boolean
+    -- A body overlay's ExtraVars word (EXE5's 0x080C451A), added to its owner's animation, its depth read by the sum
+    -- (GyroSoul's propeller while primed). An error for another object.
+    extra_anim_offset: number
+
+    -- A field as side `side`'s console (0 or 1) has it: the consoles each decide "visible", where the original's
+    -- consoles clear it by rules of their own side; the others read alike. Reading the field itself gives the local
+    -- side's console's. (@exelib/visibility hides from a blind player and copies an owner's.)
+    function get(self, field: string, side: number): any
+    -- Set a field: with `side`, on that side's console alone ("visible"); without, on every console, as setting the
+    -- field does. Presentation.
+    function set(self, field: string, value: any, side: number?): ()
+
 
     -- Enter a lifecycle state from its first action and phase (the game's
     -- word store).
@@ -632,27 +676,13 @@ declare extern type Object with
     function destroy(self): ()
     -- `sub_8010DF6`: put on what an identity wears (its `parts`: a body
     -- overlay, SpoutMan's idle overlay, a beast head), kept in related2
-    -- (CircusMan's second one kept by the engine); `arg` 1: their sprites
-    -- step even while paused.
+    -- (CircusMan's second one kept by the engine); `arg` (r2, the parts'
+    -- Param3) nonzero: their sprites step even while paused.
+    -- (@exelib/overlays puts on an owner's, a form's.)
     function add_parts(self, identity: Identity, arg: number): ()
-    -- `sub_8011044`: take them off (at their next update).
+    -- `sub_8011044`: take them off (at their next update), if the identity's
+    -- death hook does.
     function remove_parts(self, identity: Identity): ()
-    -- `sub_8010DF6` with `owner`'s identity: put on the parts it wears (a
-    -- navi's body overlay), kept in related2; with
-    -- `keep_stepping`, a part that came steps even while paused and dimmed.
-    -- With `paused_stepping`, `sub_8010DF6`'s r2 is 1 rather than the
-    -- record's first byte (the dimming chips' stand-ins): the parts step
-    -- even while paused.
-    function add_parts_of(self, owner: Object, keep_stepping: boolean?, paused_stepping: boolean?): ()
-    -- `sub_8011420` with Param3 1 (EXE5's 0x0800F0EC: its stand-ins'): what
-    -- `owner`'s navi wears, put on this object as on an image of it: a navi
-    -- that changes form its form's `put_on` (EXE5's NumberSoul's layer, the
-    -- base form's Hub Style shade), else the parts its form's identity
-    -- wears; any other navi its identity's parts. Their sprites step even
-    -- while paused.
-    function add_overlay_of(self, owner: Object): ()
-    -- `sub_8011044` with `owner`'s identity: take them off.
-    function remove_parts_of(self, owner: Object): ()
 
     -- `object_setAnimation`: request an animation, restarting it even if
     -- it is current.
@@ -679,17 +709,6 @@ declare extern type Object with
     function set_coordinates_from_panel(self): ()
     function set_panel_from_coordinates(self): ()
     function update_collision_panels(self): ()
-    -- `sub_80169BE`: shown unless the battle is dimmed; hidden from a
-    -- viewer whose navi is blind if it is the other side's.
-    function update_visibility(self): ()
-    -- `sub_800EB6C` on each console: hidden from a viewer whose navi is
-    -- blind if it is the other side's, on top of what each viewer sees of
-    -- it now. (Presentation, decided per viewer: `visible` is for every
-    -- viewer.)
-    function hide_from_blind(self): ()
-    -- Seen by whoever sees `owner` (each viewer's view of it): an
-    -- attachment following its owner's visibility.
-    function copy_visibility(self, owner: Object): ()
     -- Onto the destination panel of a move (panel, reservation,
     -- coordinates, collision).
     function snap_to_future_panel(self): ()
@@ -707,9 +726,6 @@ declare extern type Object with
     function chips_enabled(self): boolean
     -- `sub_8010332`: the ticks a step of its ends with.
     function move_lag(self): number
-    -- `sub_801DACC(0x40)` (EXE4's 0x08015B9E(0x10)): the chip window goes, as
-    -- an attack's start from idle hides it.
-    function hide_chip_window(self): ()
     -- A panel that burns (its type's `burn`) burns it, an object not a
     -- player's (held while the battle is dimmed): EXE5's 0x08016D80, EXE4's
     -- 0x0801309E.
@@ -801,25 +817,6 @@ declare extern type Object with
     -- `sub_801A264`: a navi's statuses end: their flags, requests and
     -- timers (not the whole status word, as `clear_statuses`).
     function end_statuses(self): ()
-    -- The navi's overlay (related2) keeps stepping through pauses and
-    -- dimming ("keep": its Param3 1, flags 0x14), steps like any object
-    -- ("normal"), or is told its Param3 1 alone ("told": the DS's 0x02202064).
-    -- Nothing without an overlay.
-    function overlay_stepping(self, mode: "keep" | "normal" | "told"): ()
-    -- EXE5's 0x080C451A: the navi's body overlay (related2) adds `offset` to
-    -- its owner's animation (its depth read by the sum). Nothing without
-    -- one.
-    function set_overlay_anim_offset(self, offset: number): ()
-    -- `sub_8011384`, `sub_8011268`: take off what a form wore, put on what
-    -- it wears (its `take_off`, `put_on`, or the defaults below).
-    function take_off_form_overlay(self, form: FormDef): ()
-    function put_on_form_overlay(self, form: FormDef): ()
-    -- The default take-off and put-on routines of a form, which its own
-    -- replace: what its identity's death hook takes down (the base form:
-    -- what is there), and its identity's parts. A form's hook that wants
-    -- the default and more calls these.
-    function take_off_form_parts(self, form: FormDef): ()
-    function put_on_form_parts(self, form: FormDef): ()
     -- `sub_80144C0`: the full status reset.
     function reset_status(self): ()
     -- `sub_8014080` (`sub_80140EE` without `undershirt`): MegaMan's body
@@ -844,9 +841,6 @@ declare extern type Object with
     -- The terms of the change its side asked for: its turns, and whether it is
     -- the alternate (EXE5's Soul Unison: the soul's turns, and Chaos Unison).
     function form_change_terms(self): (number, boolean)
-    -- `sub_80C4526(overlay, 1)`: an overlay on an image sits in front (an
-    -- idle overlay keeps its owner's height).
-    function pin_overlay(self): ()
     -- `sub_801171C`: back to idle, the animation as it is.
     function end_attack(self): ()
     -- `object_setAttack0..5`: start an action (a definition); kind 1
@@ -908,9 +902,6 @@ declare extern type Object with
     function freeze_target_marker(self, on: boolean): ()
     -- `sub_800F2FC`: turn to face `target`'s column.
     function face_toward(self, target: Object): ()
-    -- The parts of the identity it wears as a navi's image (`sub_8010DF6`
-    -- with r2 1, or `sub_8011044`).
-    function navi_image_parts(self, on: boolean): ()
     -- `sub_800E2FC`: heal up to the maximum HP, with the recovery sparkle
     -- and sound; with `anti_recovery`, the opponent's armed AntiRecv turns
     -- it into damage instead (true when it did).
@@ -1113,14 +1104,14 @@ export type FormOverlayStepping = "normal" | "while_dimmed" | "always"
 
 -- A form overlay (`battle.form_overlay`): its sprite (Param1, Param2),
 -- stepping (Param3), the offset to the owner's animation it plays
--- (Param4); a pixel nearer than its owner when `nudged` (ExtraVars[0]);
+-- (Param4); a pixel nearer than its owner when `pinned` (ExtraVars[0]);
 -- wearing the owner's palette when `owner_palette` (ExtraVars[1] 0xFF).
 export type FormOverlaySpec = {
     sprite: SpriteAsset,
     -- "normal" by default.
     stepping: FormOverlayStepping?,
     anim_offset: number?,
-    nudged: boolean?,
+    pinned: boolean?,
     owner_palette: boolean?,
 }
 
@@ -1242,16 +1233,13 @@ declare battle: {
     -- counter; on `side`'s console only, or on both. Call it every tick the
     -- warning shows.
     warn: (sound: Sound, at: Vec3?, side: number?) -> (),
-    -- `sub_801DC7C`: every console's HUD numbers `object`'s HP under it
-    -- (drawn only; one of four places, none when they are taken), rolling
-    -- to it as it changes, until its HP is 0 or `hide_hp`.
+    -- `sub_801DC7C`: every console's HUD (or the spec's `console`'s) numbers
+    -- `object`'s HP under it (drawn only; one of four places, none when they
+    -- are taken), rolling to it as it changes, until its HP is 0 or
+    -- `hide_hp`.
     show_hp: (object: Object, spec: HpNumberSpec) -> (),
     -- `sub_801DD34`: the object's HP number goes.
     hide_hp: (object: Object) -> (),
-    -- A navi's HP number under it, as it shows once the navi is in (on the
-    -- other side's console; none for a body that hides its HP): for a navi
-    -- brought back from 0 HP, whose number went at 0.
-    show_navi_hp: (navi: Object) -> (),
     -- `camera_initShakeEffect_80302a8`: the camera shakes for `ticks` ticks
     -- at `magnitude` (0-3). Drawn only, but each shaking tick draws from
     -- the consoles' own RNGs, which ChpShufl's re-deal reads.
@@ -1267,9 +1255,11 @@ declare battle: {
     -- `sub_80EA438`: a burst around the navi's panel (effect #0x90, which
     -- runs while paused).
     burst: (navi: Object) -> Object?,
-    -- `sub_801DA48` (`shown`) or `sub_801DACC` with the parts' HUD draw
-    -- tasks: every console shows or hides them (drawn only).
-    show_hud: (parts: { HudPart }, shown: boolean) -> (),
+    -- A HUD field of side `side`'s (see HudField).
+    hud: (field: HudField, side: number) -> boolean,
+    -- Set a HUD field: with `side`, that side's alone; without, every side's (the fields every console shows alike take
+    -- no side).
+    set_hud: (field: HudField, on: boolean, side: number?) -> (),
     navi: (side: number) -> Navi,
     -- A member's block of the side's party (0 the side's own navi, then its partners; nil for one it hasn't), as the
     -- party keeps it: the member on the field's is as it was when it came in (its live stats are `battle.navi`'s).
@@ -1285,10 +1275,6 @@ declare battle: {
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
     set_mood: (side: number, mood: number) -> (),
-    -- Whether the side's console starts its emotion window glitching (the
-    -- save's NaviCust bug flag): the rules decide it in `round_setup` (EXE6's
-    -- patch cards do).
-    set_emotion_window_glitch: (side: number, on: boolean) -> (),
     -- A definition's name in the content's own strings (its locales'
     -- language), else its key: for what the rules say to a tool
     -- (`validate`).
@@ -1308,6 +1294,10 @@ declare battle: {
     end_takeover: (side: number) -> (),
     takeover_ticks: (side: number) -> number,
     player: (side: number) -> Object?,
+    -- `sub_800EB6C` on side `viewer`'s console: its player sees `side`'s objects: its own side's always, the other
+    -- side's unless its navi is blind (a navi with no collision data yet as the game reads it then, the rules'
+    -- `missing_collision_status`).
+    sees: (viewer: number, side: number) -> boolean,
     -- A side's combatants still in, in slot order.
     alive_actors: (side: number) -> { Object },
     -- A side's count of alive navis (a deletion's start takes one off,
@@ -1352,14 +1342,6 @@ declare battle: {
     -- rules' `anti_navi_sparkle` puts it from the panel's center), with its
     -- sound (the role `sounds.cut_in`): its height.
     trap_mark: (o: Object) -> number,
-    -- `sub_801E658` (BugFix): the save's emotion window glitch is gone from
-    -- every console's emotion window, which then flickers (and draws its
-    -- console's RNG1) for NaviCust bugs only.
-    clear_emotion_window_glitch: () -> (),
-    -- EXE5's SearchSoul's status reset (0x08011C0C-0x08011C36): `side`'s
-    -- console's chip-icon table gets the opponent's navi (presentation: its
-    -- icons show over it; a status reset takes it out again).
-    show_opponent_chip_icons: (side: number) -> (),
     fill_custom_gauge: () -> (),
     -- `sub_801DFD0` (EXE5's CusVolt): the custom gauge drops by `n`, to 0 at least.
     drain_custom_gauge: (n: number) -> (),
@@ -1370,16 +1352,6 @@ declare battle: {
     -- `sub_8010B78`: the damage a side's custom gauge gives (its own gauge
     -- when each side has one, `own_gauges`, else the shared one).
     gauge_damage: (side: number) -> number,
-    -- Presentation: whether the side's emotion window shows its form's second set of faces (`mugshot.variant`): in the
-    -- base form ("base", the default: EXE5's Hub Style), or whatever the form while its navi's rules' B charge is
-    -- armed ("charged": EXE5's Chaos Unison look).
-    set_face_variant: (side: number, variant: boolean, mode: ("base" | "charged")?) -> (),
-    -- Presentation: whether the custom screen's enemy names show the side's navi by its variant name (the locale's
-    -- `variant_name`: EXE5's Hub Style in a link battle).
-    set_name_variant: (side: number, variant: boolean) -> (),
-    -- Presentation: whether the side's emotion window shows its count (its navi's stat of the role `window_count`:
-    -- EXE6's Beast Out turns), else its empty box.
-    set_window_count: (side: number, shown: boolean) -> (),
     -- `sub_802E032`: add to a side's own custom gauge, up to full.
     add_side_gauge: (side: number, n: number) -> (),
     -- `sub_802E04E`: take from a side's own custom gauge, down to empty.
@@ -1550,8 +1522,8 @@ declare field: {
 -- from where the HUD projects its position (0 if nil), the digits centered
 -- there; with `damage`, the damage it took (its max HP less its HP), its
 -- digits right-aligned in four places from there (what the original does
--- for LilBoiler).
-export type HpNumberSpec = { dx: number?, dy: number?, damage: boolean? }
+-- for LilBoiler); on side `console`'s console alone (nil: every console).
+export type HpNumberSpec = { dx: number?, dy: number?, damage: boolean?, console: number? }
 
 -- What the telop of a dimming content starts itself names (`dimming.start`):
 -- a chip (nil: a zeroed chip field's, the roles' `zeroed` chip), and the
@@ -2435,8 +2407,8 @@ export type ChipMatch = { element: ElementName?, family: ChipFamily? }
 -- emotion's (the order's last case's: EXE6's and EXE5's `normal`), which a set has.
 export type FaceSet = { [Emotion]: Mugshot }
 export type MugshotFaces = {
-    -- A second set, shown where the side's rules ask (`battle.set_face_variant`): while the navi's rules' B charge is
-    -- armed (EXE5's soul's Chaos Unison look), or in the base form (EXE5's Hub Style).
+    -- A second set, shown where the side's rules ask (`battle.set_hud`'s face variants): while the navi's rules' B
+    -- charge is armed (EXE5's soul's Chaos Unison look), or in the base form (EXE5's Hub Style).
     variant: FaceSet?,
     [Emotion]: Mugshot,
 }
@@ -2733,8 +2705,9 @@ export type FormDef = {
     -- navis, TomahawkSoul's grass).
     reset: ((navi: Object) -> ())?,
     -- Its put-on and take-off routines (`sub_8011268`, `sub_8011384` by the
-    -- form; EXE5's tables by soul), in place of the defaults
-    -- (`put_on_form_parts`, `take_off_form_parts`): EXE5's base form's
+    -- form; EXE5's tables by soul), in place of the defaults (what its
+    -- identity wears, put on and taken off; the base form's take-off takes
+    -- down whatever is there: @exelib/overlays): EXE5's base form's
     -- shade in Hub Style (0x0800EE1C), NumberSoul's layer. A base form's
     -- `put_on` also runs as a player's init ends, in place of its navi's
     -- init hook (`sub_8010DD0`: EXE5's MegaMan's record names the same
