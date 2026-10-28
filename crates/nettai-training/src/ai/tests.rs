@@ -94,6 +94,35 @@ fn it_plays_a_round_as_the_env_plays_a_seat() {
     }
 }
 
+/// At Hard it looks ahead (§10.7) on a thread of its own: each fight
+/// decision asked for `lead` ticks before it takes effect, from the view of
+/// its delay before that, and taken on a tick of `k`. Its buttons are the
+/// same every time, however fast the thread answers, and they aren't the
+/// network's alone.
+#[test]
+fn at_hard_it_looks_ahead_the_same_every_time() {
+    for game in crate::testing::GAMES {
+        let mut ai = NetAi::of(net(), Level::Hard, 5, fingerprints(game)).unwrap();
+        assert!(ai.search.is_some() && ai.worker.is_some(), "{game}: Hard looks ahead");
+        let (one, _, b) = play_fight(game, 9, &mut ai, 2400, 0);
+        assert_eq!(ai.error(), None, "{game}");
+        assert!(b.round.turn >= 2, "{game}: it got through {} custom screens", b.round.turn);
+        let d = ai.knobs.delay as u32;
+        assert!(ai.decided.len() > 50, "{game}: {} fight decisions", ai.decided.len());
+        for &(t, seen) in &ai.decided {
+            assert!(t.is_multiple_of(ai.k), "{game}: a decision at tick {t}");
+            assert_eq!(seen, t - d, "{game}: the decision at {t} saw the view of {seen}");
+        }
+        ai.reset();
+        let (again, _, _) = play_fight(game, 9, &mut ai, 2400, 0);
+        assert_eq!(one, again, "{game}: started over, the same buttons");
+        let mut alone = NetAi::of(net(), Level::Hard, 5, fingerprints(game)).unwrap().with_search(None).unwrap();
+        assert!(alone.worker.is_none());
+        let (plain, _, _) = play_fight(game, 9, &mut alone, 2400, 0);
+        assert_ne!(one, plain, "{game}: the lookahead changes its choices");
+    }
+}
+
 /// It opens the custom screen itself as the env did in training (the user:
 /// "allow the dummy to go into custom screen"): with the other side never
 /// opening it, L a while after the gauge is full, within `opener_wait`'s

@@ -428,9 +428,9 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
     let set = Set::of(content, &m, seed);
     let mut b = set.start();
     let mut ai = NetAi::of(s.net.clone(), level(), rng.next_u64(), Fingerprinter::made(s.fingerprints.clone())).expect("the AI");
-    // (LOST_SEARCH set: the AI looks ahead, `search::Search`.)
-    if std::env::var_os("LOST_SEARCH").is_some() {
-        ai = ai.with_search(nettai_training::search::Search::default());
+    // (LOST_SEARCH 1 or 0: the AI looks ahead, `search::Search`, or doesn't, whatever its level does.)
+    if let Ok(on) = std::env::var("LOST_SEARCH") {
+        ai = ai.with_search((on != "0").then(nettai_training::search::Search::default)).expect("the lookahead's thread");
     }
     let (d, k) = (ai.knobs().delay as u32, s.net.k());
     // (The masher, else the scripted player LOST_BOT names.)

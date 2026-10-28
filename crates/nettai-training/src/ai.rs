@@ -42,6 +42,7 @@ use crate::env::{self, fight_runs};
 use crate::fingerprint::{self, Fingerprints};
 use crate::net::{self, Action, Heads, Knobs, Memory, Net};
 use crate::observe::{self, AttackHistory, Extra, Names, Obs};
+use crate::search::{Search, Worker};
 use crate::spec;
 use nettai_battle::battle::mode;
 use nettai_battle::input::keys;
@@ -91,6 +92,12 @@ pub enum Level {
 
 impl Level {
     pub const ALL: [Level; 3] = [Level::Easy, Level::Normal, Level::Hard];
+
+    /// How it looks ahead at this level (§10.7): Hard does, Easy and
+    /// Normal play the network's choice.
+    pub fn search(self) -> Option<Search> {
+        (self == Level::Hard).then(Search::default)
+    }
 
     /// Its name in the weights' metadata.
     pub fn name(self) -> &'static str {
@@ -387,6 +394,16 @@ fn work(s: &Shared, first: bool) {
     }
 }
 
+/// A fight decision the lookahead is thinking over: the tick it takes
+/// effect at, its number on the lookahead's thread, and the tick of the
+/// view it was made from.
+struct Pending {
+    at: u32,
+    n: u64,
+    #[cfg_attr(not(test), allow(dead_code))]
+    seen: u32,
+}
+
 /// What it does on the screen and in the fight, from the round's start.
 struct Round {
     /// The round's content and the set's score as it started: another is
@@ -446,8 +463,12 @@ pub struct NetAi {
     error: Option<String>,
     told: Arc<Mutex<Option<String>>>,
     /// Looking ahead at each fight decision ([`crate::search`]): none, the
-    /// level's own choice from the network's.
-    search: Option<crate::search::Search>,
+    /// level's own choice from the network's. Its thread, the decision it
+    /// is thinking over, and the network's memory after that decision.
+    search: Option<Search>,
+    worker: Option<Worker>,
+    pending: Option<Pending>,
+    thought: Memory,
     /// Each fight decision's tick and the tick of the view it was made from.
     #[cfg(test)]
     decided: Vec<(u32, u32)>,
@@ -466,8 +487,9 @@ impl NetAi {
     pub fn of(net: Arc<Net>, level: Level, seed: u64, fingerprints: Fingerprinter) -> Result<NetAi, String> {
         let knobs = net.level(level.name()).cloned().ok_or_else(|| format!("the weights have no level {}", level.name()))?;
         let (k, screen_decisions) = (net.k(), net.screen_decisions());
-        Ok(NetAi {
+        NetAi {
             mem: net.memory(),
+            thought: net.memory(),
             net,
             knobs,
             seed,
@@ -481,16 +503,26 @@ impl NetAi {
             error: None,
             told: Default::default(),
             search: None,
+            worker: None,
+            pending: None,
             #[cfg(test)]
             decided: Vec::new(),
-        })
+        }
+        .with_search(level.search())
     }
 
     /// The same, each fight decision looking ahead as `search` says (the
-    /// level's delay kept; its choice from the network's replaced).
-    pub fn with_search(mut self, search: crate::search::Search) -> NetAi {
-        self.search = Some(search);
-        self
+    /// level's delay kept; its choice from the network's replaced), on a
+    /// thread of its own; none, the level's own choice. An error if the
+    /// thread can't start.
+    pub fn with_search(mut self, search: Option<Search>) -> Result<NetAi, String> {
+        self.worker = match search {
+            Some(_) => Some(self.worker.take().map_or_else(Worker::start, Ok)?),
+            None => None,
+        };
+        self.search = search;
+        self.pending = None;
+        Ok(self)
     }
 
     /// Whether every chip asked for has its fingerprint (a decision whose
@@ -559,6 +591,10 @@ impl NetAi {
                 opener: None,
             });
             self.mem.reset();
+            self.pending = None;
+            if let Some(w) = &self.worker {
+                w.load(b.content.clone());
+            }
             // (Both folders' chips and the Program Advances they make: the
             // chips it may see, made as the round starts. The other side's
             // folder is read for this alone; only a chip of it shown used
@@ -598,6 +634,29 @@ impl NetAi {
                 None => self.names = Some((Names::with_fingerprints(&b.content, fps), g)),
             }
         }
+        let decides = fight_runs(b) && b.player(side).is_some();
+        // (Looking ahead, the fight decision due now, asked for `lead` ticks
+        // ago: taken if it is still due, its answer waited for if it isn't
+        // ready.)
+        if let Some(p) = self.pending.take_if(|p| p.at <= r.t)
+            && p.at == r.t
+            && decides
+        {
+            match self.worker.as_ref().expect("the lookahead's thread").wait(p.n) {
+                Ok(Some(a)) => {
+                    #[cfg(test)]
+                    self.decided.push((p.at, p.seen));
+                    std::mem::swap(&mut self.mem, &mut self.thought);
+                    r.action = a as i32;
+                    self.mem.took(Action::Fight(a));
+                }
+                Ok(None) => self.stop("a fight decision with nothing allowed".into()),
+                Err(why) => self.stop(why),
+            }
+            if self.error.is_some() {
+                return 0;
+            }
+        }
         let names = &self.names.as_ref().expect("names").0;
         // The view a later decision will need (the env's ring).
         if r.t > 0 && (r.t + d).is_multiple_of(k) {
@@ -610,7 +669,35 @@ impl NetAi {
         // A decision (the env's `asks`, then `ask`).
         let custom = b.round.mode == mode::CUSTOM;
         let screen = b.custom.sides[side as usize].screen;
-        if fight_runs(b) && r.t.is_multiple_of(k) && b.player(side).is_some() {
+        if let Some(search) = self.search {
+            // (Looking ahead: the decision `lead` ticks from now asked for,
+            // from the view it will have, the network's memory after it
+            // kept apart till it takes effect.)
+            let lead = search.lead.clamp(1, k);
+            let t = r.t + lead;
+            if decides && t.is_multiple_of(k) {
+                let want = t.checked_sub(d).filter(|&w| w <= r.t);
+                let slot = &r.ring[((t / k) as usize) % r.ring.len()];
+                let delayed = want.is_some() && slot.0 == want;
+                let obs = if delayed {
+                    &slot.1
+                } else {
+                    let extra = self.extra(r);
+                    observe::encode(b, side, names, &extra, &mut self.obs);
+                    &self.obs
+                };
+                if !waits(&self.fingerprints, obs) {
+                    self.thought.h.copy_from_slice(&self.mem.h);
+                    self.thought.last = self.mem.last;
+                    let out = self.net.forward(obs, &mut self.thought, Heads::Fight);
+                    let logits = out.fight.expect("the fight's head");
+                    let luck = self.rng.next_u64();
+                    let worker = self.worker.as_mut().expect("the lookahead's thread");
+                    let n = worker.ask(search, b, side, k, act::fight_buttons(r.action), logits, luck);
+                    self.pending = Some(Pending { at: t, n, seen: if delayed { t - d } else { r.t } });
+                }
+            }
+        } else if decides && r.t.is_multiple_of(k) {
             let want = r.t.checked_sub(d);
             let slot = &r.ring[((r.t / k) as usize) % r.ring.len()];
             let delayed = want.is_some() && slot.0 == want;
@@ -630,11 +717,7 @@ impl NetAi {
                 self.decided.push((r.t, if delayed { r.t - d } else { r.t }));
                 let out = self.net.forward(obs, &mut self.mem, Heads::Fight);
                 let logits = out.fight.expect("the fight's head");
-                let chosen = match &self.search {
-                    Some(search) => search.pick(b, side, k, &logits),
-                    None => net::choose(&logits, &[true; spec::FIGHT_ACTIONS], &self.knobs, &mut self.rng),
-                };
-                match chosen {
+                match net::choose(&logits, &[true; spec::FIGHT_ACTIONS], &self.knobs, &mut self.rng) {
                     Some(a) => {
                         r.action = a as i32;
                         self.mem.took(Action::Fight(a));
@@ -642,11 +725,14 @@ impl NetAi {
                     None => self.stop("a fight decision with nothing allowed".into()),
                 }
             }
-        } else if custom && r.nav.idle() && screen.is_some_and(|s| act::chooses(&s)) {
+        }
+        // (The custom screen is open only while the fight doesn't run.)
+        if custom && r.nav.idle() && screen.is_some_and(|s| act::chooses(&s)) {
             if r.probe.is_none() {
                 r.probe = Some(env::probe(b, side, &mut r.nav));
             }
             let extra = self.extra(r);
+            let names = &self.names.as_ref().expect("names").0;
             observe::encode(b, side, names, &extra, &mut self.obs);
             // (No decision on a view without a chip's fingerprint: the screen
             // waits, and asks again next tick.)
@@ -734,6 +820,7 @@ impl Ai for NetAi {
 
     fn reset(&mut self) {
         self.round = None;
+        self.pending = None;
         self.rng = SplitMix64::new(self.seed);
         self.mem.reset();
         self.error = None;

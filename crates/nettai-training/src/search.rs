@@ -17,19 +17,33 @@
 //! It reads the battle as it is, not the delayed view the network decides
 //! from: what is already on the field and how it moves (attacks in flight,
 //! a charge about to be let go), not the other player's next press.
+//!
+//! In live play ([`Search::ahead`], on a thread of its own: `Worker`) it
+//! thinks a decision over for [`Search::lead`] ticks before it takes
+//! effect: from the battle as it was then, its own held action pressed
+//! through them and the other side's nothing, and with luck of its own (the
+//! copy's random numbers drawn anew), so it can't foresee the battle's.
 
 use crate::act;
-use crate::env::step_battle;
+use crate::env::{fight_runs, step_battle};
 use crate::spec;
 use crate::stats::navi_hp;
-use nettai_battle::Battle;
+use nettai_battle::{Battle, Rng};
 use std::sync::atomic::{AtomicU64, Ordering};
+
+#[cfg(feature = "live")]
+mod worker;
+#[cfg(feature = "live")]
+pub use worker::Worker;
 
 /// Every lookahead's decisions, tries and ticks stepped so far, in this
 /// process (for measuring its cost).
 pub static DECISIONS: AtomicU64 = AtomicU64::new(0);
 pub static TRIES: AtomicU64 = AtomicU64::new(0);
 pub static TICKS: AtomicU64 = AtomicU64::new(0);
+/// Live play's decisions whose lookahead wasn't done when they took effect
+/// (the battle's thread waited for it: [`Worker::wait`]).
+pub static LATE: AtomicU64 = AtomicU64::new(0);
 
 /// How a decision looks ahead.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -42,13 +56,18 @@ pub struct Search {
     pub cap: u32,
     /// Worth a nat of the network's log-probability, in HP fractions.
     pub prior: f32,
+    /// Live play's: the ticks a decision is thought over before it takes
+    /// effect ([`Search::ahead`]; at least 1, at most the decision's `k`).
+    pub lead: u32,
 }
 
 impl Default for Search {
     fn default() -> Search {
         // (A nat of the network's preference is worth 5 HP of 1000: a hit of
         // 40 outweighs a choice the network makes 99 times in 100.)
-        Search { candidates: 6, horizon: 40, cap: 480, prior: 0.005 }
+        // (Four ticks to think in: a decision's tries take about 5 ms on
+        // the desktop, the most about 50.)
+        Search { candidates: 6, horizon: 40, cap: 480, prior: 0.005, lead: 4 }
     }
 }
 
@@ -104,6 +123,28 @@ impl Search {
             }
         }
         best.map(|(a, _)| a)
+    }
+
+    /// Live play's decision: the action side `side` takes `lead` ticks
+    /// after `b`, the battle then foreseen from `b` with `held` pressed on
+    /// its side through them and nothing on the other's, `luck` the copy's
+    /// random numbers; the network's fight `logits` before it, its action
+    /// held `k` ticks. The network's first where the fight doesn't run
+    /// then. None: no action is allowed.
+    pub fn ahead(&self, b: &Battle, side: u8, k: u32, held: u16, logits: &[f32], luck: u64) -> Option<usize> {
+        let mut c = b.clone();
+        c.rng = Rng::new(luck as u32);
+        for (i, console) in c.consoles.iter_mut().enumerate() {
+            console.rng = Rng::new((luck >> 32) as u32 ^ i as u32);
+        }
+        for _ in 0..self.lead {
+            let mut press = [0u16; 2];
+            press[side as usize] = held;
+            if !step_battle(&mut c, press) || c.round_end().is_some() || !fight_runs(&c) {
+                return candidates(logits, 1).first().copied();
+            }
+        }
+        self.pick(&c, side, k, logits)
     }
 
     /// A teacher's label for training (training-ai.md §8, the lookahead's

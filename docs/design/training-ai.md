@@ -991,7 +991,8 @@ in most rounds, and live play had to make the whole game first (12 to 64 s for E
 
 ### 10.4 Threads and time
 
-On the battle's thread, desktop and browser alike, inline. Measured (release, the packs, `examples/ai_costs`, a
+On the battle's thread, desktop and browser alike, inline (Hard's lookahead's tries on a thread of their own:
+§10.7). Measured (release, the packs, `examples/ai_costs`, a
 network of the trainer's default widths: 1.13 M parameters; random play, 3,000 fight decisions a game):
 
 | Game | Fight pass, median occupancy | most seen | Screen pass | Every token (194) | A view encoded | Key probe (once a screen) |
@@ -1132,7 +1133,7 @@ cc24c9a58 -- crates/nettai crates/nettai-ui docs/app.md`), with `NetAi` where `F
   |---|---|---|
   | Easy | 400 ms | samples widely, sometimes a random action |
   | Normal | 270 ms | samples from its policy |
-  | Hard | 170 ms | takes its best action |
+  | Hard | 170 ms | takes its best action, looking ahead (§10.7) |
 
   The numbers are set by measuring the levels against each other and the scripted players. The trainer's first
   values, which the weights file carries in its `levels` metadata for the Rust side: Easy 24 ticks, temperature
@@ -1171,6 +1172,44 @@ EXE4 81 µs, EXE5 192 µs). Sampled, EXE5's tick is mostly Luau: about half of i
 every tick for each idle navi (`rules_controller_answer`, EXE5's no-charge drive), then `palette_pick` and the
 anti-damage traps' checks, each call building the bridge's userdata and copying field definitions. Making those
 calls cheap would speed up EXE5 and EXE4 everywhere, training's simulation too.
+
+**Cheaper ticks** (0.16: the rules' every-tick hooks called only where they can act, followers and projectiles
+without a script call each tick). A fight tick EXE6 2.1 µs, EXE5 0.9 µs, EXE4 10.6 µs; the lookahead's CPU a
+fight minute about 2.5 s in EXE6, 2.8 s in EXE5 and 2.9 s in EXE4, about 5 ms a decision (30 deals a game: won
+both ways 32, lost both ways 2).
+
+**In the app** (2026-10-28, the user said yes to it at Hard). Hard looks ahead (`Level::search`); Easy and Normal
+play the network's choice. A decision's tries are never stepped on the battle's thread: each fight decision is
+asked for `lead` ticks (4) before it takes effect, from a thread of the AI's own (`search::Worker`, started with
+`nettai_platform::thread`, a browser's worker too).
+
+- On the battle's thread, then: the network's pass on the view of the level's delay before the decision (its
+  memory after it kept apart till the decision takes effect: a decision the fight's end calls off leaves the
+  memory as it was), and a copy of the battle as it is.
+- On the worker: the copy played `lead` ticks on (the AI's held action pressed, the other side's nothing), then
+  the tries from there (`Search::ahead`).
+- The answer is taken on the decision's tick and waited for if it isn't ready (`search::LATE` counts those). So
+  what it presses depends on the battle alone, never on the machine's speed (tested: the same buttons every
+  time).
+- The copy's random numbers (the battle's and both consoles') are drawn anew from the AI's own draws: it can't
+  foresee the battle's luck, and a random chip's outcome it sees is a guess.
+- Its runtime is loaded as each round starts, while the custom screen is open. A thread that can't start stops
+  the AI, with the reason (no second way to do the work).
+
+Measured with `search_duel --lead` (the lookahead against the network alone at Hard, 100 deals a game, each
+played both ways), deals won both ways to lost both ways:
+
+| `lead` | EXE6 | EXE5 | EXE4 | All (split, undecided) |
+|---|---|---|---|---|
+| 1 | 37–3 | 43–2 | 27–5 | 107–10 (166, 17) |
+| 4 | 40–1 | 40–2 | 26–4 | 106–7 (172, 15) |
+| 8 | 39–3 | 35–4 | 24–8 | 98–15 (170, 17) |
+
+Four ticks cost nothing measurable against one (it decided on the battle as it is before: 120–8 on 0.15's
+content) and leave four times the time to think; eight cost some (a decision foreseen 8 ticks on misses more of
+what the other side does meanwhile). At the game's own rate (`--pace`: three games at once, 3 deals a game, on
+this Mac at a load average of 160), 168 of about 12,000 answers weren't ready when due (1.4%), and the side that
+looked ahead took 0.8 to 1.4 s of the battle's thread a fight minute, against 0.7 to 1.0 s for the network alone.
 
 ## 11. The cloud machine
 

@@ -3261,7 +3261,9 @@ before, and holds that action till the next; on its custom screen it points at a
 presses the way there. It never hears the player's buttons, and like any dummy but a second pad it never opens
 the custom screen (the player does). The Levels are the weights' own knobs: Easy reacts in 24 ticks (0.4 s) and
 samples widely, a random action a tenth of the time; Normal in 16 (0.27 s), sampling its policy; Hard in 10
-(0.17 s), taking its best action. No network is built in: the nettai-ai repository
+(0.17 s), taking its best action and, in the fight, looking ahead: before each move takes effect it tries its
+likeliest moves on copies of the battle, on a thread of its own, and takes the one that comes out best in HP
+(docs/design/training-ai.md §10.7). No network is built in: the nettai-ai repository
 (github.com/nettaisen/nettai-ai) publishes them as releases by nettai minor version ("0.11" what nettai 0.11.x
 plays), and its site (https://nettai.n1gp.net/nettai-ai/) serves each line's newest: `index.json`, whose address
 the catalog (https://nettai.n1gp.net/catalog.json) gives, lists each line's SHA-256 and the network's full address

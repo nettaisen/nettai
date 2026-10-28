@@ -6,7 +6,7 @@
 //!
 //!     cargo run --release -p nettai-training --features live --example search_duel -- WEIGHTS \
 //!         [--deals N] [--games exe6,exe5,exe4] [--level hard] [--seed S] [--threads T] [--cache DIR] \
-//!         [--candidates N] [--horizon T] [--prior P]
+//!         [--candidates N] [--horizon T] [--prior P] [--lead T] [--pace]
 //!
 //! It prints, by game, the deals the lookahead won both ways, lost both ways and split, and what a fight
 //! decision's lookahead cost.
@@ -39,11 +39,14 @@ struct Args {
     threads: usize,
     cache: PathBuf,
     search: Search,
+    /// Ticks at the game's own rate (60 a second), as the app plays them: how often a decision's answer is late
+    /// there.
+    pace: bool,
 }
 
 fn args() -> Args {
     let mut it = std::env::args().skip(1);
-    let usage = "usage: search_duel <weights> [--deals N] [--games exe6,exe5,exe4] [--level hard] [--seed S] [--threads T] [--cache DIR] [--candidates N] [--horizon T] [--prior P]";
+    let usage = "usage: search_duel <weights> [--deals N] [--games exe6,exe5,exe4] [--level hard] [--seed S] [--threads T] [--cache DIR] [--candidates N] [--horizon T] [--prior P] [--lead T] [--pace]";
     let weights = PathBuf::from(it.next().expect(usage));
     let mut a = Args {
         weights,
@@ -54,8 +57,13 @@ fn args() -> Args {
         threads: std::thread::available_parallelism().map_or(4, |n| n.get()),
         cache: PathBuf::from("fingerprints"),
         search: Search::default(),
+        pace: false,
     };
     while let Some(flag) = it.next() {
+        if flag == "--pace" {
+            a.pace = true;
+            continue;
+        }
         let value = it.next().expect(usage);
         match flag.as_str() {
             "--deals" => a.deals = value.parse().expect(usage),
@@ -67,6 +75,7 @@ fn args() -> Args {
             "--candidates" => a.search.candidates = value.parse().expect(usage),
             "--horizon" => a.search.horizon = value.parse().expect(usage),
             "--prior" => a.search.prior = value.parse().expect(usage),
+            "--lead" => a.search.lead = value.parse().expect(usage),
             _ => panic!("{usage}"),
         }
     }
@@ -93,11 +102,12 @@ fn round(p: &Played, net: &Arc<Net>, a: &Args, m: &nettai_match::Match, seed: u3
     let mut b: Battle = Set::of(content, m, seed).start();
     let make = |s: u8| {
         let ai = NetAi::of(net.clone(), a.level, ai_seed ^ s as u64, Fingerprinter::made(p.fingerprints.clone())).expect("the AI");
-        if s == searcher { ai.with_search(a.search) } else { ai }
+        ai.with_search((s == searcher).then_some(a.search)).expect("the lookahead's thread")
     };
     let mut ais = [make(0), make(1)];
     let mut took = [Duration::ZERO; 2];
     let (mut t, mut fight_ticks, mut screen_ticks) = (0u32, 0u32, 0u32);
+    let started = Instant::now();
     let result = loop {
         if matches!(b.round_end(), Some(nettai_battle::RoundEnd::Error(_))) {
             break 0;
@@ -125,6 +135,10 @@ fn round(p: &Played, net: &Arc<Net>, a: &Args, m: &nettai_match::Match, seed: u3
             break 0;
         }
         t += 1;
+        if a.pace {
+            let due = started + Duration::from_micros(t as u64 * 16_667);
+            std::thread::sleep(due.saturating_duration_since(Instant::now()));
+        }
         fight_ticks += (b.round.mode == mode::FIGHTING) as u32;
     };
     Round { result, took, fight_ticks }
@@ -203,6 +217,8 @@ fn main() {
     let tallies = tallies.into_inner().unwrap();
     println!("lookahead {:?} against the network alone, {} level, {} deals a game (each played both ways):", a.search, a.level.name(), a.deals);
     println!("{:<6} {:>9} {:>10} {:>6} {:>10} {:>16} {:>16}", "game", "won both", "lost both", "split", "undecided", "lookahead ms/min", "network ms/min");
+    // (A side's time on the battle's thread: the lookahead's tries are on its own thread, and a decision
+    // whose answer wasn't ready is waited for here.)
     let mut sum = Tally::default();
     for (p, t) in played.iter().zip(&tallies) {
         // (Each played every round: its time over the rounds' fight minutes.)
@@ -223,7 +239,8 @@ fn main() {
         sum.undecided += t.undecided;
     }
     println!("{:<6} {:>9} {:>10} {:>6} {:>10}", "all", sum.won_both, sum.lost_both, sum.split, sum.undecided);
-    use nettai_training::search::{DECISIONS, TICKS, TRIES};
+    use nettai_training::search::{DECISIONS, LATE, TICKS, TRIES};
     let (d, n, k) = (DECISIONS.load(Ordering::Relaxed), TRIES.load(Ordering::Relaxed), TICKS.load(Ordering::Relaxed));
     println!("lookahead: {d} decisions looked ahead, {:.1} tries and {:.0} ticks each ({:.0} a try)", n as f64 / d.max(1) as f64, k as f64 / d.max(1) as f64, k as f64 / n.max(1) as f64);
+    println!("lookahead: {} decisions waited for (answer not ready when due)", LATE.load(Ordering::Relaxed));
 }

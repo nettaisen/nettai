@@ -37,6 +37,26 @@ fn it_steps_out_of_a_cannons_row() {
     assert!(matches!(a / 4, 1 | 2), "a step up or down, not {a} (staying worth {stay})");
 }
 
+/// Live play's lookahead foresees the battle `lead` ticks on (its own
+/// held action pressed through them, the other side's nothing, the copy's
+/// luck its own) and decides from there: it still steps out of the
+/// cannon's row.
+#[test]
+fn ahead_it_still_steps_out_of_a_cannons_row() {
+    let c = content("exe6");
+    let cannon = nettai_match::ids::chip(&c, "exe6", "cannon").expect("EXE6 has a cannon");
+    let sandbox = Sandbox::new(&c).unwrap_or_else(|e| panic!("{e}"));
+    let (mut b, _) = sandbox.prepared(4, Setup::Plain).expect("the target at its panel");
+    crate::fingerprint::give(&mut b, 0, &[cannon]);
+    assert!(step_battle(&mut b, [nettai_battle::input::keys::A, 0]));
+    let search = Search::default();
+    assert!(search.lead >= 1);
+    let mut logits = vec![0.0f32; spec::FIGHT_ACTIONS];
+    logits[0] = 5.0;
+    let a = search.ahead(&b, 1, 8, 0, &logits, 7).expect("an action");
+    assert!(matches!(a / 4, 1 | 2), "a step up or down, not {a}");
+}
+
 /// What a try costs, by game: a copy of a battle in its fight, and a tick
 /// of one (the repository's content, real timing; printed). COST_GAMES
 /// (comma-separated) and COST_TICKS (2000) change what is timed.
