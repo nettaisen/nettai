@@ -1146,12 +1146,10 @@ fn reset_status_tail(b: &mut Battle, r: ObjectRef, reload_weapons: bool) {
     let side = b.objects.get(r).alliance as usize;
     b.hands[side].charge_bonus = [0; 6];
     // The rules' (EXE5's 0x08011B3C, 0x080CAC30: the side's ColonelSoul
-    // army disarmed, which the form's reset below arms again).
+    // army disarmed, which the form's reset below arms again, and the
+    // opponent's chip icons off its HUD, which SearchSoul's puts back).
     b.rules_status_reset(side as u8 & 1, r);
     ai_mut(b, r).status &= !0x20;
-    // (Netbattle, local player: removes the opponent's HUD entry: its chip
-    // icons, which EXE5's SearchSoul's reset below puts back.)
-    b.chip_hud[side & 1].opponent = false;
     // EXE5's 0x08011B74: a form's priming is spent (EXE6 never primes).
     ai_mut(b, r).primed = false;
     let hm = body_hit_modifier(b);
