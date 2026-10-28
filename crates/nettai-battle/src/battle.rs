@@ -626,9 +626,9 @@ pub struct SideLooks {
     /// (EXE5's Hub Style, NaviStats +0x4C: 0x0801AF8E adds 11 to the face;
     /// `battle.set_hud("face_variant", ..)`, `kinds::player::shows_face_variant`).
     pub face_variant: bool,
-    /// And whatever its form while its navi's rules' B charge is armed
-    /// (EXE5's Chaos Unison look, 0x080125F6: `face_charged`).
-    pub face_variant_charged: bool,
+    /// And whatever its form (EXE5's Chaos Unison look while its charge is
+    /// armed, 0x080125F6, which its rules set and clear).
+    pub face_variant_any_form: bool,
     /// The emotion window shows the side's count (its navi's stat of the
     /// role `window_count`), else its empty box, as the side's rules say
     /// for the round (`battle.set_hud("window_count", ..)`: EXE6's Beast Out turns,
@@ -2656,7 +2656,7 @@ mod tests {
     fn a_sides_looks_outlast_the_players_init() {
         let c = testing::content();
         let mut b = Battle::new(testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c)), c);
-        let looks = SideLooks { face_variant: true, face_variant_charged: false, window_count: false, name_variant: true };
+        let looks = SideLooks { face_variant: true, face_variant_any_form: false, window_count: false, name_variant: true };
         b.looks = [looks; 2];
         b.sides[1].takeover_ticks = 3;
         b.spawn_actors();

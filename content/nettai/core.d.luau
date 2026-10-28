@@ -76,8 +76,8 @@ export type SideSpecial = "none" | "select" | "takeover"
 export type Offer = { marks: number?, listed: boolean?, shades: boolean? }
 -- What the HUD shows, a side's (`battle.hud`, `battle.set_hud`), each a flag. Its navi's as the consoles show it:
 -- "face_variant", its emotion window shows its base form's second set of faces (`mugshot.variant`: EXE5's Hub
--- Style); "face_variant_charged", and whatever its form while its navi's rules' B charge is armed (EXE5's Chaos
--- Unison look); "name_variant", the custom screen's enemy names show it by its variant name (the locale's
+-- Style); "face_variant_any_form", and whatever its form (EXE5's Chaos Unison look while its charge is armed);
+-- "name_variant", the custom screen's enemy names show it by its variant name (the locale's
 -- `variant_name`: EXE5's Hub Style in a link battle); "window_count", its emotion window shows its count (its navi's
 -- stat of the role `window_count`: EXE6's Beast Out turns), else its empty box. Its console's:
 -- "emotion_window_glitch", it starts its emotion window glitching (the save's NaviCust bug flag, which the rules
@@ -91,7 +91,7 @@ export type Offer = { marks: number?, listed: boolean?, shades: boolean? }
 -- "hp_box" (7: its drawing only, the low-HP alarm sounds on).
 export type HudField =
     "face_variant"
-    | "face_variant_charged"
+    | "face_variant_any_form"
     | "name_variant"
     | "window_count"
     | "emotion_window_glitch"
@@ -2182,6 +2182,9 @@ export type RulesSpec = {
         -- A form's revert or break finishes, its 30 ticks up (`sub_8015614`, `sub_8015766`: EXE5 DS's guard and dive
         -- end).
         revert_finished: ((side: number, navi: Object) -> ())?,
+        -- The navi's weapons are loaded (`sub_800FEEC`), from its navi stats or its form's (EXE5's drops its own B
+        -- charge there, 0x0800DCD8).
+        weapons_loaded: ((side: number, navi: Object) -> ())?,
         -- Each tick of the idle action of a navi whose side's takeover runs
         -- (`sub_802D4C6`), in place of the player's decisions: what it did,
         -- as `controller` answers, or "own_chip" (an attack of its own

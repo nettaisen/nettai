@@ -510,8 +510,8 @@ mod tests {
         b.set_hud(HudField::ChipWindow, Some(1), Value::Bool(false)).unwrap();
         assert_eq!([0u8, 1].map(|s| b.hud(HudField::ChipWindow, s)), [Value::Bool(true), Value::Bool(false)]);
         assert_eq!([b.chip_hud[0].window, b.chip_hud[1].window], [true, false]);
-        b.set_hud(HudField::FaceVariantCharged, Some(0), Value::Bool(true)).unwrap();
-        assert_eq!([b.looks[0].face_variant_charged, b.looks[1].face_variant_charged], [true, false]);
+        b.set_hud(HudField::FaceVariantAnyForm, Some(0), Value::Bool(true)).unwrap();
+        assert_eq!([b.looks[0].face_variant_any_form, b.looks[1].face_variant_any_form], [true, false]);
         b.set_hud(HudField::Gauge, None, Value::Bool(false)).unwrap();
         assert!(b.hud_hidden.gauge);
         assert_eq!([0u8, 1].map(|s| b.hud(HudField::Gauge, s)), [Value::Bool(false); 2]);

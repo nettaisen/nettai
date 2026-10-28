@@ -537,7 +537,7 @@ impl CoreApi for Battle {
         let (looks, console, chips, hidden) = (&self.looks[side], &self.consoles[side], &self.chip_hud[side], &self.hud_hidden);
         Value::Bool(match f {
             F::FaceVariant => looks.face_variant,
-            F::FaceVariantCharged => looks.face_variant_charged,
+            F::FaceVariantAnyForm => looks.face_variant_any_form,
             F::NameVariant => looks.name_variant,
             F::WindowCount => looks.window_count,
             F::EmotionWindowGlitch => console.emotion_window_glitch,
@@ -577,7 +577,7 @@ impl CoreApi for Battle {
             let (looks, console, chips) = (&mut self.looks[s], &mut self.consoles[s], &mut self.chip_hud[s]);
             match f {
                 F::FaceVariant => looks.face_variant = on,
-                F::FaceVariantCharged => looks.face_variant_charged = on,
+                F::FaceVariantAnyForm => looks.face_variant_any_form = on,
                 F::NameVariant => looks.name_variant = on,
                 F::WindowCount => looks.window_count = on,
                 F::EmotionWindowGlitch => console.emotion_window_glitch = on,

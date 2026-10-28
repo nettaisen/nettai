@@ -753,6 +753,11 @@ impl Battle {
         self.call_rules(side, RulesHook::StatusReset, Some(navi), None, None);
     }
 
+    /// The rules' `weapons_loaded(side, navi)`.
+    pub(crate) fn rules_weapons_loaded(&mut self, side: u8, navi: ObjectRef) {
+        self.call_rules(side, RulesHook::WeaponsLoaded, Some(navi), None, None);
+    }
+
     /// The rules' `switch_finished(side, navi)`.
     pub(crate) fn rules_switch_finished(&mut self, side: u8, navi: ObjectRef) {
         self.call_rules(side, RulesHook::SwitchFinished, Some(navi), None, None);

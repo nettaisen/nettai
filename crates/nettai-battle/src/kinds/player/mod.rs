@@ -457,11 +457,10 @@ pub(crate) fn lose_hp_and_gauge(b: &mut Battle, r: ObjectRef, amount: u16) -> bo
 }
 
 /// Presentation: whether side `side`'s emotion window shows its form's
-/// second set of faces, as the side's rules ask: while its navi's rules' B
-/// charge is armed, whatever its form (`face_charged`), or in the base form
-/// (`base_face_variant`).
+/// second set of faces, as the side's rules ask: whatever its form
+/// (`face_variant_any_form`), or in the base form (`base_face_variant`).
 pub fn shows_face_variant(b: &Battle, side: u8) -> bool {
-    face_charged(b, side) || base_face_variant(b, side)
+    face_variant_any_form(b, side) || base_face_variant(b, side)
 }
 
 /// Presentation: the second set for the side's base form when its rules
@@ -473,13 +472,11 @@ pub fn base_face_variant(b: &Battle, side: u8) -> bool {
     b.looks[side as usize & 1].face_variant && form_of(b, p).base
 }
 
-/// Presentation: the second set while the side's navi's rules' B charge is
-/// armed, where its rules ask (`SideLooks::face_variant_charged`: EXE5's
-/// 0x080125F6, AIData +0x12, the face's palette 11 on, a soul's Chaos
-/// Unison look), whichever picture the window shows: the original reads it
-/// as it draws (0x08019704).
-pub fn face_charged(b: &Battle, side: u8) -> bool {
-    b.looks[side as usize & 1].face_variant_charged && b.player(side).is_some_and(|p| ai(b, p).b_charge_time.is_some())
+/// Presentation: the second set whatever the form, where the side's rules
+/// show it (`SideLooks::face_variant_any_form`: EXE5's Chaos Unison look
+/// while its charge is armed, 0x080125F6).
+pub fn face_variant_any_form(b: &Battle, side: u8) -> bool {
+    b.looks[side as usize & 1].face_variant_any_form
 }
 
 /// Whether a navi's mood is held (`sub_8015BEC`'s test): held tired or
@@ -1201,9 +1198,9 @@ fn load_weapons(b: &mut Battle, r: ObjectRef) {
         }
         a.alt_a_charge = w.alt_a_charge;
     }
-    // The load drops the rules' own B charge (EXE5's 0x0800DCD8 disarms its
-    // Chaos Unison charge).
-    (a.b_charge_time, a.b_charge_glow, a.b_charge_anim) = (None, None, None);
+    // The rules' (EXE5's 0x0800DCD8 drops its own B charge: Chaos Unison's).
+    let side = b.objects.get(r).alliance & 1;
+    b.rules_weapons_loaded(side, r);
 }
 
 /// `sub_800FF5E`: reload the base form's weapon bytes (after a NaviCust

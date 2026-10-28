@@ -617,6 +617,11 @@ pub enum RulesHook {
     /// ends are cleared (EXE5 DS's guard and dive end there, 0x020605A0 and
     /// 0x020606AA). Its result is unused.
     RevertFinished,
+    /// `weapons_loaded(side, navi)`: the navi's weapons are loaded
+    /// (`sub_800FEEC`), from its navi stats or its form's (EXE5's drops its
+    /// own B charge there, 0x0800DCD8: Chaos Unison's). Its result is
+    /// unused.
+    WeaponsLoaded,
     /// `custom.hand_size(side)`: how many chips the side's custom screen
     /// deals (`sub_802A40C`; EXE5's `sub_802A49C`), asked as it opens. The
     /// first part that answers decides; none answering, the framework's
@@ -782,6 +787,7 @@ impl RulesHook {
             RulesHook::StatusReset => "status_reset",
             RulesHook::SwitchFinished => "switch_finished",
             RulesHook::RevertFinished => "revert_finished",
+            RulesHook::WeaponsLoaded => "weapons_loaded",
             RulesHook::CustomHandSize => "custom.hand_size",
             RulesHook::CustomDeal => "custom.deal",
             RulesHook::CustomOpen => "custom.open",
@@ -801,7 +807,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 71] = [
+    pub const ALL: [RulesHook; 72] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -854,6 +860,7 @@ impl RulesHook {
         RulesHook::StatusReset,
         RulesHook::SwitchFinished,
         RulesHook::RevertFinished,
+        RulesHook::WeaponsLoaded,
         RulesHook::CustomHandSize,
         RulesHook::ButtonShown,
         RulesHook::ButtonState,

@@ -239,12 +239,12 @@ Each with what it was and what it is now.
 - **S1.** Chaos Unison is EXE5's Luau (rules/souls/chaos_charge): the level, the cycle's counter and window and a
   release's outcome are its rules' state, the cycle runs in its `navi_tick` (next to the input, as 0x080105F8),
   the table is its own, and a soul's weapon and row are its form's `chaos` (an extension). The engine keeps a
-  generic rules' B charge, which the rules push and the weapons' load drops: `b_charge_time` (the time to a full
+  generic rules' B charge, which the rules push and drop (their `weapons_loaded`, where the weapons' load ran it): `b_charge_time` (the time to a full
   B charge in place of the charged shot's), `b_charge_glow` (the glow, seen and heard by its side alone) and
   `b_charge_anim` (its full animation). A full charge released while it is armed asks the rules
   (`charge_released`) and raises one request, `rules_release`, which idle hands them (`release_taken`) where the
   original's 0x080F034E and 0x080F0382 run. The palette and the face are EXE5's (its `navi_palette`;
-  `battle.set_hud("face_variant_charged", true, side)`). Gone from Rust: `ChaosCharge`, `ActorField::{ChaosArmed,
+  `battle.set_hud("face_variant_any_form", ...)` as it arms and drops the charge). Gone from Rust: `ChaosCharge`, `ActorField::{ChaosArmed,
   ChaosLevel}`, the `chaos_cycle` rule, `request::CHAOS_*`, `FormWeapons::chaos`, `SoulData::chaos_cycle`,
   `ActionRole::ChaosFailure`, `SpriteRole::ChargeGlowChaos`, the palette's branch and the end-of-kind-6 disarm
   (the failure's revert drops the charge with its status reset first: the EXE5 lab's 29 failures end disarmed).

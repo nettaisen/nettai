@@ -911,9 +911,9 @@ named_fields! {
         /// The side's emotion window shows its base form's second set of
         /// faces (EXE5's Hub Style, 0x0801AF8E).
         FaceVariant = "face_variant", Bool, rw;
-        /// And whatever its form while its navi's rules' B charge is armed
-        /// (EXE5's Chaos Unison look, 0x080125F6).
-        FaceVariantCharged = "face_variant_charged", Bool, rw;
+        /// And whatever its form (EXE5's Chaos Unison look while its charge
+        /// is armed, 0x080125F6, which its rules set and clear).
+        FaceVariantAnyForm = "face_variant_any_form", Bool, rw;
         /// The custom screen's enemy names show the side's navi by its
         /// variant name (EXE5's Hub Style in a link battle, 0x0801AE3A).
         NameVariant = "name_variant", Bool, rw;
