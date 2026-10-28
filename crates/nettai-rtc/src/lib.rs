@@ -63,6 +63,8 @@
 //! and a few of the link's insides for tests (`Link::hold_codes`,
 //! `Link::reconnect_code`, `Link::in_a_room`).
 
+#![forbid(unsafe_code)]
+
 pub mod signal;
 
 mod link;

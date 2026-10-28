@@ -20,6 +20,8 @@
 //! module, a recipe module nothing but recipe modules, and a recipe's
 //! `data` reads only files of its game's `compat/`.
 
+#![forbid(unsafe_code)]
+
 pub mod lints;
 
 use std::path::Path;

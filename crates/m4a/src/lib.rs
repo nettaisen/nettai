@@ -15,6 +15,8 @@
 //! what the game's do. It began as a port of the `m4a-core` and
 //! `m4a-engine` crates of bnmusic's arranger (MIT license).
 
+#![forbid(unsafe_code)]
+
 pub mod apu;
 pub mod bank;
 pub mod driver;

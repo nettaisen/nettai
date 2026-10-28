@@ -31,6 +31,8 @@
 //!
 //! docs/frontend.md §7, and `examples/embed.rs`: a host with no window.
 
+#![forbid(unsafe_code)]
+
 pub mod connection;
 pub mod driver;
 pub mod game;

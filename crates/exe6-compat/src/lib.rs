@@ -24,6 +24,8 @@
 //! never the other way (a test guards it), and content (Luau) can't load
 //! compat's TOML.
 
+#![forbid(unsafe_code)]
+
 pub mod codec;
 pub mod import;
 pub mod forms;

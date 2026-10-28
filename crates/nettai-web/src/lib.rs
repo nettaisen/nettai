@@ -10,6 +10,8 @@
 //! private file system). Built with Wasm's atomics, so the app's threads are Web Workers on its memory
 //! (nettai-platform's `thread`); build.sh builds it and the page, and serve.py serves them as a page with threads must be.
 
+#![forbid(unsafe_code)]
+
 /// Where the data folder is in the app's files (`nettai::paths::data`, in the browser).
 pub const DATA: &str = "/data";
 

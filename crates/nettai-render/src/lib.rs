@@ -13,6 +13,8 @@
 //! Drawing only: the window, the input, the sound and the sessions that
 //! run a battle are nettai-frontend's and its host's (nettai, nettai-tools).
 
+#![forbid(unsafe_code)]
+
 pub mod audit;
 pub mod bundled;
 pub mod chatbox;

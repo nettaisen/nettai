@@ -8,6 +8,8 @@
 //! read-only. Behavior is verified tick by tick against traces recorded
 //! from the original game (exe6-compat's `trace`).
 
+#![forbid(unsafe_code)]
+
 pub mod actor;
 pub mod battle;
 pub mod collision;

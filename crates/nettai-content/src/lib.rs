@@ -23,6 +23,8 @@
 //!
 //! What a check or a load found is said in a [`report::Report`].
 
+#![forbid(unsafe_code)]
+
 pub mod bundle;
 pub mod index;
 pub mod library;

@@ -29,6 +29,8 @@
 //! [`BattleAudio::handle_actions`]: confirmed cues play once, and cues
 //! played on a wrong prediction are stopped or undone.
 
+#![forbid(unsafe_code)]
+
 use m4a::{Driver, PlayerId, SongId, SoundBank};
 use std::sync::Arc;
 

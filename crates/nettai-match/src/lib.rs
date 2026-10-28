@@ -14,6 +14,8 @@
 //! with the game's navis, chips, forms and patch cards, every one named in
 //! the game's namespace alone (`ids`). There is no mixing of games.
 
+#![forbid(unsafe_code)]
+
 pub mod binary;
 pub mod build;
 pub mod check;

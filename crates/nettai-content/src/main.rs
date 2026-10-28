@@ -4,6 +4,8 @@
 //!     nettai-content publish <game> [--dry-run]
 //!     nettai-content lock [game ...]
 
+#![forbid(unsafe_code)]
+
 mod publish;
 
 use nettai_content::index;

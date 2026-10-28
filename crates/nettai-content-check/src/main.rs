@@ -5,6 +5,8 @@
 //! only the packs named (`nettai-content publish` checks a game and its
 //! support packs so). Exits non-zero on problems.
 
+#![forbid(unsafe_code)]
+
 fn main() {
     let mut dir = None;
     let mut only = Vec::new();

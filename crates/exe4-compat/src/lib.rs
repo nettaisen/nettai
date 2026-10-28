@@ -24,6 +24,8 @@
 //! as content writes them (docs/design/content-model-v2.md §4.0). The engine
 //! never reads any of it (a test guards it).
 
+#![forbid(unsafe_code)]
+
 pub mod codec;
 pub mod import;
 pub mod save;

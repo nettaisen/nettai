@@ -20,6 +20,8 @@
 //! against the content (`nettai_content::load::asset_numbers`, [`Extraction::timing_differences`]: `nettai-tool
 //! --audit-content`). The crate is a library alone.
 
+#![forbid(unsafe_code)]
+
 mod elements;
 mod gfx;
 pub mod letters;

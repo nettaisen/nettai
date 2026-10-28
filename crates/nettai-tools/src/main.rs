@@ -5,6 +5,8 @@
 //! replay checked (docs/tools.md). Its options are the retired
 //! nettai-demo's for the same.
 
+#![forbid(unsafe_code)]
+
 use nettai_frontend::driver::{Driver, InFight, LivePlayer, Opponent};
 use nettai_frontend::game::{Failed, Game, LoadError, RomSource, Sound};
 use nettai_frontend::player::Player;

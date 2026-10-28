@@ -25,6 +25,8 @@
 //! [`CoreApi`] and plans what the runtime binds ([`BindPlan`]) from the
 //! definitions the runtime read back as [`Data`].
 
+#![forbid(unsafe_code)]
+
 pub mod api;
 pub mod assets;
 pub mod data;

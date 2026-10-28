@@ -21,6 +21,8 @@
 //! The engine never reads any of it (a test guards it). docs/design/
 //! exe5-map.md §13 lists what of EXE5's records has no engine counterpart.
 
+#![forbid(unsafe_code)]
+
 pub mod codec;
 pub mod import;
 pub mod save;

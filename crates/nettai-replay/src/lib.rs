@@ -58,6 +58,8 @@
 //! replay plays only on the engine and content it was made with, so such a
 //! file would not play here whatever its layout.
 
+#![forbid(unsafe_code)]
+
 use std::fmt;
 use std::io::{self, Write};
 

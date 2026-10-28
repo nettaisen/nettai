@@ -6,6 +6,8 @@
 //! with the audio's lookups, [`sound_lookups`]); the replay of the
 //! original's recordings ([`trace`], with the compat crates).
 
+#![forbid(unsafe_code)]
+
 pub mod content_audit;
 pub mod headless;
 pub mod sound_lookups;

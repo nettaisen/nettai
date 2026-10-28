@@ -48,6 +48,8 @@
 //!
 //! See docs/design/rollback.md.
 
+#![forbid(unsafe_code)]
+
 pub mod battle;
 pub mod link;
 pub mod network;

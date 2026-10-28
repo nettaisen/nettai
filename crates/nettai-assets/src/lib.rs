@@ -5,6 +5,8 @@
 //! Colors are the GBA's 15-bit BGR555. Tiles are 8x8 with one palette index
 //! per pixel, where index 0 is transparent.
 
+#![forbid(unsafe_code)]
+
 pub mod custom;
 pub mod letters;
 pub mod lettering;

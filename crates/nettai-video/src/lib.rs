@@ -80,6 +80,8 @@
 //! // Err(Error::NoFfmpeg(_)) | Err(Error::FfmpegFailed { .. }) | Err(Error::Encoder(_)) | Err(Error::Canceled) ...
 //! ```
 
+#![forbid(unsafe_code)]
+
 pub mod encode;
 pub mod mp4;
 pub use mp4::Made;
