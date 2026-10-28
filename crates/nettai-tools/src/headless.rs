@@ -336,7 +336,7 @@ pub fn audit_traces(
     let next = AtomicUsize::new(0);
     let out: Mutex<Vec<Option<TraceAudit>>> = Mutex::new(vec![None; traces.len()]);
     let one = |path: &std::path::Path| -> Result<Audit, String> {
-        let rounds = crate::trace::trace_rounds(path, content).map_err(|e| format!("can't play it: {e}"))?;
+        let rounds = crate::trace::trace_rounds(path, content, None).map_err(|e| format!("can't play it: {e}"))?;
         let sessions: Vec<Session> = rounds.into_iter().map(|(_, r)| Session::new(r)).collect();
         let mut renderer = Renderer::with_graphics(setup.graphics.clone());
         renderer.set_strings(setup.strings.clone());

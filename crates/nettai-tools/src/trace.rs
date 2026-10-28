@@ -22,6 +22,17 @@ pub struct TracePlayer {
     frames: Vec<usize>,
     pos: usize,
     pub round_number: usize,
+    /// The console the frames are drawn for, where not the traced one's.
+    viewer: Option<u8>,
+}
+
+/// `b` drawn for `viewer`'s console, where one is given (the simulation's
+/// own perspective stays the traced console's, which the comparison reads).
+fn drawn_for(mut b: Battle, viewer: Option<u8>) -> Battle {
+    if let Some(v) = viewer {
+        b.setup.local_side = v & 1;
+    }
+    b
 }
 
 impl TracePlayer {
@@ -35,12 +46,13 @@ impl TracePlayer {
             .take_while(|(_, f)| f.state[0] == 4 || f.state[0] == 8)
             .map(|(i, _)| i)
             .collect();
-        TracePlayer { compat: Compat::exe6_for(&content), round, content, frames, pos: 0, round_number }
+        TracePlayer { compat: Compat::exe6_for(&content), round, content, frames, pos: 0, round_number, viewer: None }
     }
 
-    /// Every round of a trace file, on `content`.
-    pub fn load(path: &std::path::Path, content: &Arc<Content>) -> std::io::Result<Vec<TracePlayer>> {
-        Ok(trace::rounds(path)?.into_iter().enumerate().map(|(i, r)| TracePlayer::new(r, i + 1, content.clone())).collect())
+    /// Every round of a trace file, on `content`, drawn for `viewer`'s
+    /// console (none: the traced one's).
+    pub fn load(path: &std::path::Path, content: &Arc<Content>, viewer: Option<u8>) -> std::io::Result<Vec<TracePlayer>> {
+        Ok(trace::rounds(path)?.into_iter().enumerate().map(|(i, r)| TracePlayer { viewer, ..TracePlayer::new(r, i + 1, content.clone()) }).collect())
     }
 
     pub fn len(&self) -> usize {
@@ -65,7 +77,7 @@ impl TracePlayer {
 impl Driver for TracePlayer {
     fn start(&mut self) -> Battle {
         self.pos = 0;
-        self.round.start(self.content.clone(), self.compat)
+        drawn_for(self.round.start(self.content.clone(), self.compat), self.viewer)
     }
 
     fn next(&mut self, _b: &Battle, _keys: u16) -> Option<Step> {
@@ -111,7 +123,8 @@ impl Driver for TracePlayer {
 /// round's number: the recording is of the game its setup line states
 /// ([`trace_game`]), which is `content`'s; an EXE6 recording's rounds are
 /// [`TracePlayer`]s, an EXE5 one's [`Exe5TracePlayer`]s, an EXE4 one's
-/// [`Exe4TracePlayer`]s. A recording that
+/// [`Exe4TracePlayer`]s, each drawn for `viewer`'s console (none: the
+/// traced one's). A recording that
 /// states no game, another game than the content's, or a game no player
 /// here replays is refused.
 ///
@@ -119,22 +132,22 @@ impl Driver for TracePlayer {
 /// the original's own numbers, which each game's compat crate reads, so the
 /// recording's game picks the reader here (and nowhere else does this crate
 /// ask which game a content is).
-pub fn trace_rounds(path: &std::path::Path, content: &Arc<Content>) -> Result<Vec<(usize, Box<dyn Driver>)>, String> {
+pub fn trace_rounds(path: &std::path::Path, content: &Arc<Content>, viewer: Option<u8>) -> Result<Vec<(usize, Box<dyn Driver>)>, String> {
     let game = trace_game(path)?;
     if game != content.game() {
         return Err(format!("an {game} recording, and the content loaded is {}'s", content.game()));
     }
     match game.as_str() {
         exe6_compat::ROOT => {
-            let rounds = TracePlayer::load(path, content).map_err(|e| e.to_string())?;
+            let rounds = TracePlayer::load(path, content, viewer).map_err(|e| e.to_string())?;
             Ok(rounds.into_iter().map(|r| (r.round_number, Box::new(r) as Box<dyn Driver>)).collect())
         }
         exe5_compat::ROOT => {
-            let rounds = Exe5TracePlayer::load(path, content)?;
+            let rounds = Exe5TracePlayer::load(path, content, viewer)?;
             Ok(rounds.into_iter().map(|r| (r.round_number, Box::new(r) as Box<dyn Driver>)).collect())
         }
         exe4_compat::ROOT => {
-            let rounds = Exe4TracePlayer::load(path, content)?;
+            let rounds = Exe4TracePlayer::load(path, content, viewer)?;
             Ok(rounds.into_iter().map(|r| (r.round_number, Box::new(r) as Box<dyn Driver>)).collect())
         }
         other => Err(format!("a recording of {other}: no game this frontend replays recordings of")),
@@ -192,21 +205,22 @@ pub struct Exe5TracePlayer {
     frames: Vec<usize>,
     pos: usize,
     pub round_number: usize,
-    /// The traced console's version (its setup line's).
+    /// The drawn console's version (its setup line's).
     version: &'static str,
+    viewer: Option<u8>,
 }
 
 impl Exe5TracePlayer {
     /// Every round of an EXE5 recording, on `content`: each round's setup
     /// must be one the content defines (exe5-compat's `Round::needs`).
-    pub fn load(path: &std::path::Path, content: &Arc<Content>) -> Result<Vec<Exe5TracePlayer>, String> {
+    pub fn load(path: &std::path::Path, content: &Arc<Content>, viewer: Option<u8>) -> Result<Vec<Exe5TracePlayer>, String> {
         let compat = exe5_compat::Compat::exe5();
         let mut out = Vec::new();
         for (i, round) in exe5_compat::trace::rounds(path)?.into_iter().enumerate() {
             round.round_setup(content, compat).map_err(|e| format!("round {}: {e}", i + 1))?;
             let d = exe5_compat::trace::decode_setup(&round.setup)?;
-            let local = d.battle_state[0x0D] as usize & 1;
-            let version = match d.versions[local] {
+            let shown = viewer.map_or(d.battle_state[0x0D] as usize, usize::from) & 1;
+            let version = match d.versions[shown] {
                 exe5_compat::trace::Version::Protoman => "protoman",
                 exe5_compat::trace::Version::Colonel => "colonel",
             };
@@ -219,7 +233,7 @@ impl Exe5TracePlayer {
                 .take_while(|(_, f)| f.state[0] == 4 || f.state[0] == 8)
                 .map(|(i, _)| i)
                 .collect();
-            out.push(Exe5TracePlayer { round, content: content.clone(), compat, frames, pos: 0, round_number: i + 1, version });
+            out.push(Exe5TracePlayer { round, content: content.clone(), compat, frames, pos: 0, round_number: i + 1, version, viewer });
         }
         Ok(out)
     }
@@ -233,7 +247,7 @@ impl Driver for Exe5TracePlayer {
     fn start(&mut self) -> Battle {
         self.pos = 0;
         // (`load` saw the setup define.)
-        self.round.start(self.content.clone(), self.compat).unwrap_or_else(|e| panic!("round {}: {e}", self.round_number))
+        drawn_for(self.round.start(self.content.clone(), self.compat).unwrap_or_else(|e| panic!("round {}: {e}", self.round_number)), self.viewer)
     }
 
     fn next(&mut self, _b: &Battle, _keys: u16) -> Option<Step> {
@@ -292,18 +306,22 @@ pub struct Exe4TracePlayer {
     pub round_number: usize,
     /// The recording console's version (its setup line's).
     version: &'static str,
+    viewer: Option<u8>,
 }
 
 impl Exe4TracePlayer {
     /// Every round of an EXE4 recording, on `content`: each round's setup
     /// must be one the content defines (exe4-compat's `Round::needs`).
-    pub fn load(path: &std::path::Path, content: &Arc<Content>) -> Result<Vec<Exe4TracePlayer>, String> {
+    pub fn load(path: &std::path::Path, content: &Arc<Content>, viewer: Option<u8>) -> Result<Vec<Exe4TracePlayer>, String> {
         let compat = exe4_compat::Compat::exe4();
         let mut out = Vec::new();
         for (i, round) in exe4_compat::trace::rounds(path)?.into_iter().enumerate() {
             round.round_setup(content, compat).map_err(|e| format!("round {}: {e}", i + 1))?;
             let d = exe4_compat::trace::decode_setup(&round.setup)?;
-            let version = d.traced_rom().0.name();
+            let version = match viewer {
+                Some(v) => d.versions[v as usize & 1].name(),
+                None => d.traced_rom().0.name(),
+            };
             let start = round.setup.frame;
             let frames = round
                 .frames
@@ -313,7 +331,7 @@ impl Exe4TracePlayer {
                 .take_while(|(_, f)| f.state[0] == 4 || f.state[0] == 8)
                 .map(|(i, _)| i)
                 .collect();
-            out.push(Exe4TracePlayer { round, content: content.clone(), compat, frames, pos: 0, round_number: i + 1, version });
+            out.push(Exe4TracePlayer { round, content: content.clone(), compat, frames, pos: 0, round_number: i + 1, version, viewer });
         }
         Ok(out)
     }
@@ -327,7 +345,7 @@ impl Driver for Exe4TracePlayer {
     fn start(&mut self) -> Battle {
         self.pos = 0;
         // (`load` saw the setup define.)
-        self.round.start(self.content.clone(), self.compat).unwrap_or_else(|e| panic!("round {}: {e}", self.round_number))
+        drawn_for(self.round.start(self.content.clone(), self.compat).unwrap_or_else(|e| panic!("round {}: {e}", self.round_number)), self.viewer)
     }
 
     fn next(&mut self, _b: &Battle, _keys: u16) -> Option<Step> {
@@ -399,7 +417,7 @@ mod tests {
         // A recording of another game than the content's, or of none, plays
         // on no content.
         let content = nettai_match::testing::exe6_content();
-        let refused = |path: &std::path::Path| trace_rounds(path, &content).err().expect("refused");
+        let refused = |path: &std::path::Path| trace_rounds(path, &content, None).err().expect("refused");
         assert!(refused(&five).contains("an exe5 recording, and the content loaded is exe6's"), "{}", refused(&five));
         assert!(refused(&none).starts_with("a recording that names no game"));
         let _ = std::fs::remove_dir_all(dir);

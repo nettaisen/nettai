@@ -105,8 +105,10 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    digests it kept (what happened, and whether it
                    reproduced; exits 1 where it doesn't); with --headless F,
                    its frames F (ticks of the set) rendered
-  --side SIDE      with --replay and --headless or --mp4: the console
-                   shown, left or right (default: the side that recorded it);
+  --side SIDE      with --replay or a trace and --headless or --mp4: the
+                   console shown, left or right (default: the side that
+                   recorded it; a trace drawn for the other console keeps the
+                   traced console's simulation, as netplay's other peer does);
                    both: both players on one screen, the side that recorded
                    it on the left (both-left, both-right: that side's on the
                    left), the right player's pieces mirrored onto the right;
@@ -281,8 +283,11 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
     if sources != 1 {
         return Err("give one of a trace file (several with --audit), --match FILE or --replay FILE".into());
     }
-    if (a.side.is_some() || a.consoles == Consoles::Both) && a.replay.is_none() {
-        return Err("--side goes with --replay".into());
+    if (a.side.is_some() || a.consoles == Consoles::Both) && a.match_file.is_some() {
+        return Err("--side goes with --replay or a trace".into());
+    }
+    if a.consoles == Consoles::Both && a.replay.is_none() {
+        return Err("--side both, both-left and both-right go with --replay".into());
     }
     if a.consoles == Consoles::Both && a.both_sides {
         return Err("--side both shows both consoles on one screen, --both-sides side by side: one or the other".into());
@@ -731,7 +736,7 @@ fn main() {
         }
         drivers.push(Box::new(live));
     } else if let Some(path) = args.traces.first() {
-        let rounds = trace_rounds(path, &content).unwrap_or_else(|e| fail(format!("can't play {}: {e}", path.display())));
+        let rounds = trace_rounds(path, &content, args.side).unwrap_or_else(|e| fail(format!("can't play {}: {e}", path.display())));
         for (number, r) in rounds.into_iter().skip(args.round.unwrap_or(1).saturating_sub(1)) {
             if let Some((a, b)) = r.frame_range() {
                 eprintln!("round {number}: frames {a}..={b}");
@@ -822,7 +827,7 @@ mod tests {
             (vec!["t.jsonl"], "a trace is rendered (--headless F) or audited (--audit); no window watches one"),
             (vec!["--audit-content"], "give one of a trace file (several with --audit), --match FILE or --replay FILE"),
             (vec!["--match", "m.toml", "--keys", "1:a"], "--keys holds buttons in a match file's set played headless (--match FILE --headless F)"),
-            (vec!["--match", "m.toml", "--side", "left"], "--side goes with --replay"),
+            (vec!["--match", "m.toml", "--side", "left"], "--side goes with --replay or a trace"),
             (vec!["--match", "m.toml", "--opponent", "moves"], "--opponent plays the other side of a match file's set played headless (--match FILE --headless F)"),
             (vec!["--replay", "r.nettaireplay", "--headless", "1", "--opponent", "still"], "--opponent plays the other side of a match file's set played headless (--match FILE --headless F)"),
             (vec!["--match", "m.toml", "--headless", "1", "--opponent", "ai"], "bad --opponent \"ai\" (still, moves or attacks)"),
@@ -834,7 +839,7 @@ mod tests {
             (vec!["--replay", "r.nettaireplay", "--scale", "2"], "--scale, --ticks and --both-sides go with --mp4"),
             (vec!["--replay", "r.nettaireplay", "--both-sides"], "--scale, --ticks and --both-sides go with --mp4"),
             (vec!["--replay", "r.nettaireplay", "--mp4", "o.mp4", "--both-sides", "--side", "both"], "--side both shows both consoles on one screen, --both-sides side by side: one or the other"),
-            (vec!["--match", "m.toml", "--side", "both"], "--side goes with --replay"),
+            (vec!["--match", "m.toml", "--side", "both"], "--side goes with --replay or a trace"),
             (vec!["--replay", "r.nettaireplay", "--mp4", "o.mp4", "--round", "1", "--ticks", "1-9"], "a video shows a round (--round N) or a range of frames (--ticks A-B), not both"),
         ] {
             assert_eq!(args(&options).err().as_deref(), Some(why), "{options:?}");
