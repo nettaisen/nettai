@@ -296,17 +296,15 @@ declare extern type Sprite with
     function part_offset(self, n: number): (number, number)
     -- The game's flip value: bit 0 horizontal, bit 1 vertical.
     function set_flip(self, flip: number): ()
-    -- Fields of `from` (their names) as each side's console draws them: what an
-    -- attachment drawn as its owner is copies (reading a field and setting it
-    -- would make the local side's console's every console's).
-    function copy_from(self, from: Sprite, ...: string): ()
-    -- A field as each side's console draws it, where the original's consoles
-    -- each decide it by their own side (a palette by whose panel it is as
-    -- the console sees it, the parts a console hides): side 0's value, then
-    -- side 1's. Presentation; setting the field is every console's again,
-    -- and reading it gives the local side's console's. Only "palette",
-    -- "hflip", "color_shader", "alpha", "mosaic" and "hidden_parts".
-    function set_by_console(self, field: string, side0: any, side1: any): ()
+    -- A field as side `side`'s console (0 or 1) draws it: the consoles draw some fields of a sprite each its own
+    -- way, where the original's consoles decide a look by their own side (a palette by whose panel it is as the
+    -- console sees it, the parts a console hides): "palette", "hflip", "color_shader", "alpha", "mosaic" and
+    -- "hidden_parts"; the others read alike. Reading the field itself gives the local side's console's.
+    -- (@exelib/looks puts a field by console and copies an owner's look.)
+    function get(self, field: string, side: number): any
+    -- Set a field: with `side`, on that side's console alone (one of the fields above); without, on every console,
+    -- as setting the field does. Presentation.
+    function set(self, field: string, value: any, side: number?): ()
 end
 
 -- An object's collision registration.

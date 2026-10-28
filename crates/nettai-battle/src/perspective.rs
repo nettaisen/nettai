@@ -444,9 +444,9 @@ mod tests {
     }
 
     /// A mark each console turns to its own side faces each console's way,
-    /// a palette set by console is each console's, and a copy takes both.
+    /// and a field set on one console is that console's.
     #[test]
-    fn a_look_set_by_console_is_each_consoles() {
+    fn a_look_set_on_one_console_is_that_consoles() {
         use crate::content::EffectRole;
         use nettai_content_api::{CoreApi, SpriteField, Value};
         let mut b = battle();
@@ -454,16 +454,21 @@ mod tests {
         let e = crate::kinds::effect::spawn_by_console(&mut b, Default::default(), look, [0, 1], 0, 0).expect("a slot");
         b.run_objects();
         assert_eq!([0u8, 1].map(|v| b.look_for(e, v).hflip), [false, true]);
-        b.sprite_set_by_console(e, SpriteField::Palette, [Value::Int(2), Value::Int(3)]).unwrap();
+        b.sprite_set_for(e, SpriteField::Palette, 0, Value::Int(2)).unwrap();
+        b.sprite_set_for(e, SpriteField::Palette, 1, Value::Int(3)).unwrap();
         assert_eq!([0u8, 1].map(|v| b.look_for(e, v).palette), [2, 3]);
-        // A copy takes each console's (an attachment drawn as its owner).
-        let worn = crate::kinds::effect::spawn(&mut b, Default::default(), look, 0, 0, 0).expect("a slot");
-        b.sprite_copy(worn, e, &[SpriteField::Palette, SpriteField::HFlip]).unwrap();
-        assert_eq!([0u8, 1].map(|v| (b.look_for(worn, v).palette, b.look_for(worn, v).hflip)), [(2, false), (3, true)]);
-        // Set again, it is every console's.
+        assert_eq!([0u8, 1].map(|v| b.sprite_get_for(e, SpriteField::Palette, v)), [Value::Int(2), Value::Int(3)]);
+        // Setting the local side's keeps the other's, and the other's back to
+        // the local side's makes them alike again.
+        b.sprite_set_for(e, SpriteField::Palette, 0, Value::Int(4)).unwrap();
+        assert_eq!([0u8, 1].map(|v| b.look_for(e, v).palette), [4, 3]);
+        b.sprite_set_for(e, SpriteField::Palette, 1, Value::Int(4)).unwrap();
+        assert_eq!(b.objects.sprite(e).look.other.palette, None);
+        // Set without a side, it is every console's.
+        b.sprite_set_for(e, SpriteField::Palette, 1, Value::Int(3)).unwrap();
         b.sprite_set(e, SpriteField::Palette, Value::Int(5)).unwrap();
         assert_eq!([0u8, 1].map(|v| b.look_for(e, v).palette), [5, 5]);
-        assert!(b.sprite_set_by_console(e, SpriteField::VFlip, [Value::Bool(false), Value::Bool(true)]).is_err());
+        assert!(b.sprite_set_for(e, SpriteField::VFlip, 1, Value::Bool(true)).is_err());
     }
 
     /// The result's banner as each game's routine picks it (`sub_80081A4`,

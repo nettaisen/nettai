@@ -2247,18 +2247,16 @@ pub trait CoreApi {
     fn sprite_part_offset(&self, o: ObjectRef, n: u8) -> (i32, i32);
     fn sprite_get(&self, o: ObjectRef, f: SpriteField) -> Value;
     fn sprite_set(&mut self, o: ObjectRef, f: SpriteField, v: Value) -> ApiResult<()>;
-    /// Field `f` as each side's console draws it (`values`, by side): where
-    /// the original's consoles each decide it by their own side (a palette
-    /// by whose panel it is, the parts a console hides). Presentation;
-    /// setting the field is every console's again. An error for a field
-    /// the consoles can't draw apart: only the palette, `hflip`, the color
-    /// shader, the alpha, the mosaic and the hidden parts.
-    fn sprite_set_by_console(&mut self, o: ObjectRef, f: SpriteField, values: [Value; 2]) -> ApiResult<()>;
-    /// Fields `fields` of `from`'s sprite onto `o`'s, as each side's
-    /// console draws them (an attachment drawn as its owner is: what reading
-    /// a field and setting it would make every console's). An error for a
-    /// field content can't set.
-    fn sprite_copy(&mut self, o: ObjectRef, from: ObjectRef, fields: &[SpriteField]) -> ApiResult<()>;
+    /// Field `f` as side `side`'s console draws it: the consoles draw some
+    /// fields each its own way (where the original's consoles decide a look
+    /// by their own side), the palette, `hflip`, the color shader, the
+    /// alpha, the mosaic and the hidden parts; the others read alike.
+    /// ([`CoreApi::sprite_get`] reads the local side's console's.)
+    fn sprite_get_for(&self, o: ObjectRef, f: SpriteField, side: u8) -> Value;
+    /// Field `f` on side `side`'s console alone (presentation; setting the
+    /// field with [`CoreApi::sprite_set`] is every console's). An error for
+    /// a field every console draws alike.
+    fn sprite_set_for(&mut self, o: ObjectRef, f: SpriteField, side: u8, v: Value) -> ApiResult<()>;
 
     // ---- Collision -------------------------------------------------------------
 

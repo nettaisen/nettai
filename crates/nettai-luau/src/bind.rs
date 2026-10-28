@@ -175,6 +175,14 @@ fn u8_arg(v: LuaValue, what: &str) -> mlua::Result<u8> {
     Ok(int(&v, what)? as u8)
 }
 
+/// A side: 0 or 1.
+fn side_arg(v: LuaValue) -> mlua::Result<u8> {
+    match int(&v, "side")? {
+        s @ (0 | 1) => Ok(s as u8),
+        s => Err(mlua::Error::runtime(format!("side: {s} is no side (0 or 1)"))),
+    }
+}
+
 fn u16_arg(v: LuaValue, what: &str) -> mlua::Result<u16> {
     Ok(int(&v, what)? as u16)
 }
@@ -897,15 +905,22 @@ impl UserData for Sprite {
                 api.sprite_set(this.0, SpriteField::VFlip, Value::Bool(flip & 2 != 0)).map_err(api_error)
             })
         });
-        methods.add_method("copy_from", |_, this, (from, fields): (mlua::UserDataRef<Sprite>, mlua::Variadic<mlua::LuaString>)| {
-            let fields = fields.iter().map(|f| named(f, "sprite field", SpriteField::from_name)).collect::<mlua::Result<Vec<_>>>()?;
-            let from = from.0;
-            with(|api, _| api.sprite_copy(this.0, from, &fields).map_err(api_error))
-        });
-        methods.add_method("set_by_console", |_, this, (field, side0, side1): (mlua::LuaString, LuaValue, LuaValue)| {
+        methods.add_method("get", |lua, this, (field, side): (mlua::LuaString, LuaValue)| {
             let f = named(&field, "sprite field", SpriteField::from_name)?;
-            let values = [to_api(side0, &f.ty(), f.name())?, to_api(side1, &f.ty(), f.name())?];
-            with(|api, _| api.sprite_set_by_console(this.0, f, values).map_err(api_error))
+            let side = side_arg(side)?;
+            let v = with(|api, _| Ok(api.sprite_get_for(this.0, f, side)))?;
+            from_api(lua, v, &f.ty())
+        });
+        methods.add_method("set", |_, this, (field, value, side): (mlua::LuaString, LuaValue, Option<LuaValue>)| {
+            let f = named(&field, "sprite field", SpriteField::from_name)?;
+            let v = to_api(value, &f.ty(), f.name())?;
+            match side.filter(|s| !s.is_nil()) {
+                None => with(|api, _| api.sprite_set(this.0, f, v).map_err(api_error)),
+                Some(s) => {
+                    let side = side_arg(s)?;
+                    with(|api, _| api.sprite_set_for(this.0, f, side, v).map_err(api_error))
+                }
+            }
         });
     }
 }

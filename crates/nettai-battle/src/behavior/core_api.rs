@@ -2895,54 +2895,53 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn sprite_copy(&mut self, o: ObjectRef, from: ObjectRef, fields: &[SpriteField]) -> ApiResult<()> {
+    fn sprite_get_for(&self, o: ObjectRef, f: SpriteField, side: u8) -> Value {
+        if side & 1 == self.round.local_side & 1 {
+            return self.sprite_get(o, f);
+        }
+        let s = self.objects.sprite(o);
+        let theirs = s.look.for_other();
         use SpriteField as F;
-        if let Some(f) = fields.iter().find(|f| !f.writable()) {
-            return Err(ApiError::ReadOnly(f.name()));
+        match f {
+            F::Palette => Value::Int(theirs.palette as i64),
+            F::HFlip => Value::Bool(theirs.hflip),
+            F::ColorShader => Value::Int(theirs.color_shader as i64),
+            F::Alpha => theirs.alpha.map_or(Value::Nil, |a| Value::Int(a as i64)),
+            F::Mosaic => theirs.mosaic.map_or(Value::Nil, |a| Value::Int(a as i64)),
+            F::HiddenParts => Value::Int(theirs.hidden_parts as i64),
+            _ => self.sprite_get(o, f),
         }
-        let source = self.objects.sprite(from).look;
-        for &f in fields {
-            let v = self.sprite_get(from, f);
-            self.sprite_set(o, f, v)?;
-        }
-        // (And the other console's, where it draws the source otherwise.)
-        let (other, theirs) = (&mut self.objects.sprite_mut(o).look.other, source.other);
-        for &f in fields {
-            match f {
-                F::Palette => other.palette = theirs.palette,
-                F::HFlip => other.hflip = theirs.hflip,
-                F::ColorShader => other.color_shader = theirs.color_shader,
-                F::Alpha => other.alpha = theirs.alpha,
-                F::Mosaic => other.mosaic = theirs.mosaic,
-                F::HiddenParts => other.hidden_parts = theirs.hidden_parts,
-                _ => {}
-            }
-        }
-        Ok(())
     }
 
-    fn sprite_set_by_console(&mut self, o: ObjectRef, f: SpriteField, values: [Value; 2]) -> ApiResult<()> {
+    fn sprite_set_for(&mut self, o: ObjectRef, f: SpriteField, side: u8, v: Value) -> ApiResult<()> {
         use SpriteField as F;
         if !matches!(f, F::Palette | F::HFlip | F::ColorShader | F::Alpha | F::Mosaic | F::HiddenParts) {
-            return Err(ApiError::Other(format!("sprite:set_by_console: every console draws {:?} alike", f.name())));
+            return Err(ApiError::Other(format!("sprite:set: every console draws {:?} alike", f.name())));
         }
-        let local = self.round.local_side as usize & 1;
-        let (here, there) = (values[local], values[local ^ 1]);
-        let stored = store(f.name(), f.writable(), f.ty(), there)?;
-        // (The local side's, which is every console's, then the other's
-        // over it where it differs.)
-        self.sprite_set(o, f, here)?;
-        if here == there {
-            return Ok(());
+        let v = store(f.name(), f.writable(), f.ty(), v)?;
+        let local = side & 1 == self.round.local_side & 1;
+        let look = &mut self.objects.sprite_mut(o).look;
+        // (The local side's console's is the field; the other's, where it
+        // differs, its `other`: setting one keeps what the other draws.)
+        macro_rules! on {
+            ($field:ident, $v:expr) => {{
+                let v = $v;
+                if local {
+                    let theirs = look.other.$field.unwrap_or(look.$field);
+                    look.$field = v;
+                    look.other.$field = (theirs != v).then_some(theirs);
+                } else {
+                    look.other.$field = (look.$field != v).then_some(v);
+                }
+            }};
         }
-        let other = &mut self.objects.sprite_mut(o).look.other;
-        match (f, stored) {
-            (F::Palette, FieldValue::U8(x)) => other.palette = Some(x),
-            (F::HFlip, FieldValue::Bool(x)) => other.hflip = Some(x),
-            (F::ColorShader, FieldValue::U16(x)) => other.color_shader = Some(x),
-            (F::Alpha, FieldValue::OptionalU8(x)) => other.alpha = Some(x),
-            (F::Mosaic, FieldValue::OptionalU8(x)) => other.mosaic = Some(x),
-            (F::HiddenParts, FieldValue::U32(x)) => other.hidden_parts = Some(x),
+        match (f, v) {
+            (F::Palette, FieldValue::U8(x)) => on!(palette, x),
+            (F::HFlip, FieldValue::Bool(x)) => on!(hflip, x),
+            (F::ColorShader, FieldValue::U16(x)) => on!(color_shader, x),
+            (F::Alpha, FieldValue::OptionalU8(x)) => on!(alpha, x),
+            (F::Mosaic, FieldValue::OptionalU8(x)) => on!(mosaic, x),
+            (F::HiddenParts, FieldValue::U32(x)) => on!(hidden_parts, x),
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
