@@ -699,7 +699,6 @@ declare extern type Object with
     function highlight_collision_panels(self): ()
     function reserve_panel(self, x: number, y: number): boolean
     function unreserve_panel(self, x: number, y: number): boolean
-    function release_reservations(self): ()
     -- `sub_800E618`: could it step onto (x, y)?
     function can_step(self, x: number, y: number): boolean
     -- `sub_800A772`: its side's chips are enabled and its chip lockout over.
@@ -776,10 +775,8 @@ declare extern type Object with
     -- The buttons, and the record kept while the battle is dimmed.
     function held(self, key: Key): boolean
     function pressed(self, key: Key): boolean
-    function released(self, key: Key): boolean
     function dimmed_held(self, key: Key): boolean
     function dimmed_pressed(self, key: Key): boolean
-    function dimmed_released(self, key: Key): boolean
     -- `object_setDefaultCounterTime`: a counter window of 16 ticks, or of
     -- `ticks` (`object_setCounterTime`).
     function open_counter_window(self, ticks: number?): ()
@@ -979,11 +976,9 @@ declare extern type Object with
     function obstacle_flag(self, flag: ObstacleFlag): boolean
 end
 
--- A side's navi stats (read-only but the buster's levels, the custom
--- level, the hand-shrink bug's turn, the start weapons and the shoes; what
--- the patch cards change, which they write at the round's start; and what a
--- game's rules/save writes as the round is set up: the sun, the Regular
--- memory, the base HP and MegaMan's variant).
+-- A side's navi stats, each writable but `navi`, `base_form` and
+-- `bug_kinds`: what the patch cards and a game's rules/save write as the
+-- round is set up, and what chips and the rules change as it runs.
 declare extern type Navi with
     -- The form and the navi, as their definitions.
     form: FormDef
@@ -1463,9 +1458,6 @@ declare battle: {
     -- state zeroed; it runs later this tick, right after the spawner. nil
     -- if the pool is full.
     spawn: (kind: Kind, pos: Vec3?) -> Object?,
-    -- `sub_80033E4`: the same at the head of the update list (it first
-    -- runs next tick, before everything else).
-    spawn_first: (kind: Kind, pos: Vec3?) -> Object?,
     -- `sub_8003374` / `sub_800333C`: the same, at the end of the update
     -- list (it runs after everything else this tick).
     spawn_at_end: (kind: Kind, pos: Vec3?) -> Object?,
@@ -1824,10 +1816,9 @@ declare obstacle: {
     enter_stage: (me: Object) -> (),
     leave_stage: (me: Object) -> (),
     -- A chip's requests: `sub_800F884` removes it, `sub_800F898` makes it
-    -- blink out, `sub_800F8B0` has the absorber's side's navi absorb it.
+    -- blink out.
     remove: (obj: Object) -> (),
     vanish: (obj: Object) -> (),
-    absorb: (obj: Object, absorber: Object) -> (),
     -- EXE4's 0x0800B44C (ColdMan's): encase it in ice or in a bubble; at
     -- its next reaction it flickers 60 ticks, then the role `hooks.encased`
     -- puts an ice block or the bubble in its place.
@@ -1864,8 +1855,6 @@ declare obstacle: {
     -- the side's enemy, with one of the enemy's bodies on its row, into the
     -- side's soldier).
     arm_conversion: (side: number, melee: number, ranged: number) -> (),
-    -- 0x080CAC30: disarm side `side`; its words stay.
-    disarm_conversion: (side: number) -> (),
     -- 0x080CABF8 alone: side `side`'s soldiers' damage words become these,
     -- armed or not (EXE5's BusterUp in ColonelSoul, 0x08011C50).
     set_conversion_words: (side: number, melee: number, ranged: number) -> (),
@@ -3434,8 +3423,8 @@ declare custom: {
     -- pick's column cell; one of the rules'
     -- windows opened (`ticks`: the ticks it has had already), and its ticks
     -- so far; this console's camera shake; the window's frame counter; the
-    -- emblem's spin; a screen fade ("beast_out", "beast_out_back",
-    -- "end_to_white", "intro_from_white", "soul_flash", "soul_flash_back");
+    -- emblem's spin; a screen fade ("half_out", "half_out_back",
+    -- "end_to_white", "intro_from_white", "flash", "flash_back");
     -- the emotion window's face; the
     -- last pick moved first (its column icon `icon`, else its chip's); one
     -- of the rules' buttons' state; the availability redone; the emblem
@@ -3535,8 +3524,6 @@ declare rules: {
     -- What the player of that side brought (their setup of the rules):
     -- read-only.
     setup: () -> any,
-    -- That side (0 or 1).
-    side: () -> number,
     -- The rules' state of side `side`, for a game's rules alone: its API
     -- module (EXE6's rules/api.luau) reaches what the rules keep for its
     -- chips, which never call this themselves (the content check holds to

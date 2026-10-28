@@ -32,9 +32,6 @@ pub enum NaviAction {
 pub enum SpawnAt {
     /// Right after the object updating (it runs later this tick).
     AfterCurrent,
-    /// `sub_80033E4`: at the head (it first runs next tick, before
-    /// everything else).
-    First,
     /// `sub_8003374` / `sub_800333C`: at the end (it runs after everything
     /// else this tick).
     End,
@@ -878,10 +875,8 @@ named_flags! {
     pub enum Pad {
         Held = "held",
         Pressed = "pressed",
-        Released = "released",
         DimmedHeld = "dimmed_held",
         DimmedPressed = "dimmed_pressed",
-        DimmedReleased = "dimmed_released",
     }
 }
 
@@ -1150,14 +1145,12 @@ named_flags! {
 }
 
 named_flags! {
-    /// What a chip asks of an obstacle (`sub_800F884`, `sub_800F898`,
-    /// `sub_800F8B0`; EXE4's 0x0800B44C, ColdMan's: its flag2 0x2000 or
+    /// What a chip asks of an obstacle (`sub_800F884`, `sub_800F898`;
+    /// EXE4's 0x0800B44C, ColdMan's: its flag2 0x2000 or
     /// 0x4000, EXE6's 0x1000 or 0x2000).
     pub enum ObstacleRequest {
         Remove = "remove",
         Vanish = "vanish",
-        /// Absorbed by the requester's side's navi.
-        Absorb = "absorb",
         /// Encased in ice: the role `hooks.encased` then puts an ice block
         /// in its place.
         EncaseInIce = "encase_in_ice",
@@ -1813,8 +1806,6 @@ pub trait CoreApi {
     fn reserve_panel(&mut self, o: ObjectRef, p: PanelPos) -> bool;
     /// `object_removePanelReserve`.
     fn unreserve_panel(&mut self, o: ObjectRef, p: PanelPos) -> bool;
-    /// `sub_801BB78`.
-    fn release_reservations(&mut self, o: ObjectRef);
     /// `sub_800E618`: may `o` step onto `p`?
     fn can_step(&self, o: ObjectRef, p: PanelPos) -> bool;
     /// `sub_800A772`: its side's chips are enabled and its chip lockout
@@ -2427,9 +2418,8 @@ pub trait CoreApi {
     fn obstacle_enter_stage(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// `o` leaves the stage-object slot it holds.
     fn obstacle_leave_stage(&mut self, o: ObjectRef);
-    /// A chip's request of the obstacle `o` (`by`: the requester, whose
-    /// side absorbs).
-    fn obstacle_request(&mut self, o: ObjectRef, request: ObstacleRequest, by: ObjectRef);
+    /// A chip's request of the obstacle `o`.
+    fn obstacle_request(&mut self, o: ObjectRef, request: ObstacleRequest);
     /// `sub_80EFD74`: `absorber` pulls in every registered field object
     /// (except NameID 0xDA and those already leaving).
     fn obstacle_absorb_all(&mut self, absorber: ObjectRef);
@@ -2489,8 +2479,6 @@ pub trait CoreApi {
     /// `effects.obstacle_conversion`, standing on a panel of the side's enemy,
     /// turns into the side's soldier.
     fn obstacle_arm_conversion(&mut self, side: u8, melee: u32, ranged: u32);
-    /// 0x080CAC30: disarm side `side`; its words stay.
-    fn obstacle_disarm_conversion(&mut self, side: u8);
     /// 0x080CABF8 alone: side `side`'s soldiers' damage words (the sword
     /// soldier's and the gun soldier's) become these, armed or not (EXE5's
     /// BusterUp in ColonelSoul, 0x08011C50).

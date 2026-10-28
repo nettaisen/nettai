@@ -1632,10 +1632,6 @@ impl CoreApi for Battle {
         Battle::unreserve_panel(self, o, p.x, p.y)
     }
 
-    fn release_reservations(&mut self, o: ObjectRef) {
-        Battle::release_reservations(self, o);
-    }
-
     fn can_step(&self, o: ObjectRef, p: PanelPos) -> bool {
         Battle::can_step(self, o, p.x, p.y)
     }
@@ -2390,16 +2386,14 @@ impl CoreApi for Battle {
 
     fn key(&self, o: ObjectRef, pad: Pad, key: Key) -> ApiResult<bool> {
         let a = self.actor_of(o)?;
-        if matches!(pad, Pad::DimmedHeld | Pad::DimmedPressed | Pad::DimmedReleased) {
+        if matches!(pad, Pad::DimmedHeld | Pad::DimmedPressed) {
             self.dimmed_key_reads.note(self.objects.get(o).alliance, key_bit(key));
         }
         let word = match pad {
             Pad::Held => a.pad.held,
             Pad::Pressed => a.pad.pressed,
-            Pad::Released => a.pad.released,
             Pad::DimmedHeld => a.dimmed_pad.held,
             Pad::DimmedPressed => a.dimmed_pad.pressed,
-            Pad::DimmedReleased => a.dimmed_pad.released,
         };
         Ok(word & key_bit(key) != 0)
     }
@@ -3388,11 +3382,10 @@ impl CoreApi for Battle {
         self.field.objects.leave_stage(o);
     }
 
-    fn obstacle_request(&mut self, o: ObjectRef, request: ObstacleRequest, by: ObjectRef) {
+    fn obstacle_request(&mut self, o: ObjectRef, request: ObstacleRequest) {
         match request {
             ObstacleRequest::Remove => kinds::obstacle::remove(self, o),
             ObstacleRequest::Vanish => kinds::obstacle::vanish(self, o),
-            ObstacleRequest::Absorb => kinds::obstacle::absorb(self, o, by),
             ObstacleRequest::EncaseInIce => kinds::obstacle::encase(self, o, true),
             ObstacleRequest::EncaseInBubble => kinds::obstacle::encase(self, o, false),
         }
@@ -3422,10 +3415,6 @@ impl CoreApi for Battle {
 
     fn obstacle_arm_conversion(&mut self, side: u8, melee: u32, ranged: u32) {
         self.obstacle_conversion[side as usize & 1] = kinds::obstacle::Conversion { armed: true, words: [melee, ranged] };
-    }
-
-    fn obstacle_disarm_conversion(&mut self, side: u8) {
-        self.obstacle_conversion[side as usize & 1].armed = false;
     }
 
     fn obstacle_set_conversion_words(&mut self, side: u8, melee: u32, ranged: u32) {

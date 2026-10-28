@@ -1289,7 +1289,7 @@ fn fractions_cannot_enter_battle_state() {
 fn the_rules_state_is_out_of_reach_of_content() {
     // (docs/design/rules-in-luau.md §5.3: only the rules' own calls reach
     // their state.)
-    for call in ["rules.state()", "rules.setup()", "rules.side()"] {
+    for call in ["rules.state()", "rules.setup()"] {
         let e = play_error(load(&in_update(&format!("local _ = {call}"))).unwrap()).unwrap_or_else(|| panic!("{call} ran"));
         assert!(e.contains("only the rules' own calls reach their state"), "{call}: {e}");
     }

@@ -146,7 +146,7 @@ Each row is one routine. **Reach** says whether a netbattle between Japanese con
 | `sub_802CEF4` | the traps: see below | yes |
 | `sub_801B878` | US only: LilBolr's obstacle dispatcher (while it erupts, a crushing touch is as any hit) | yes |
 | `sub_80D774C` | LilBolr: JP calls the default dispatcher `sub_801B394` (a crushing touch drops the HP to 0), and doesn't set HP = MaxHP − (+0x2C & 0xFFF) while erupting | yes |
-| `sub_80033E4` | US only: a T4 spawn at the head of the update list. fmap.py pairs it with JP's tail spawn, its twin. Its one caller is `sub_80E360E`, whose JP behavior the engine has (§8.2), so the engine runs it nowhere (the content API keeps it as `battle.spawn_first`) | yes |
+| `sub_80033E4` | US only: a T4 spawn at the head of the update list. fmap.py pairs it with JP's tail spawn, its twin. Its one caller is `sub_80E360E`, whose JP behavior the engine has (§8.2), so the engine runs it nowhere (nor does the content API) | yes |
 | `sub_80E360E` | ElemTrap's counterattack (T4 0x2B): the US spawns it at the head of the list, so it acts next tick; JP calls `object_spawnType4`, which links it right after the trap, so it acts in the same tick. **The engine runs JP's on every console** (the user's decision, 2026-10-02; §8.2) | yes |
 | `sub_80BABAC` | ElmntMan: when the user doesn't pick an element in Param1·20 ticks, the US picks one (an RNG2 draw, `& 3`) and attacks; JP goes to action 0x18 and he leaves | yes |
 | `sub_80C9F98` | Tornado on a volcano, grass or ice panel: the US doubles the damage but keeps the flags 0xF800; JP doubles the whole halfword, so 0x8000 is lost and 0x4000 becomes 0x8000 | yes |

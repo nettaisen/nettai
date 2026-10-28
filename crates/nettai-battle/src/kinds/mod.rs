@@ -99,7 +99,6 @@ pub fn spawn(b: &mut Battle, kind: KindHandle, at: SpawnAt, pos: Vec3, params: [
     let new = New { pool: k.pool, kind, vars, state_size, pos, params };
     match at {
         SpawnAt::AfterCurrent => b.objects.spawn(new),
-        SpawnAt::First => b.objects.spawn_at_front(new),
         SpawnAt::End => b.objects.spawn_at_end(new),
     }
 }

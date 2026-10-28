@@ -486,7 +486,6 @@ impl UserData for Object {
             let p = panel(x, y)?;
             with(|api, _| Ok(api.unreserve_panel(this.0, p)))
         });
-        methods.add_method("release_reservations", |_, this, ()| with(|api, _| Ok(api.release_reservations(this.0))));
         methods.add_method("can_step", |_, this, (x, y): (LuaValue, LuaValue)| {
             let p = panel(x, y)?;
             with(|api, _| Ok(api.can_step(this.0, p)))
@@ -1854,7 +1853,6 @@ fn rules_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     let t = lua.create_table()?;
     lib_fn!(lua, t, "state", |_, ()| Ok(State(StateOf::Rules(rules_ctx("rules.state")?))));
     lib_fn!(lua, t, "setup", |_, ()| Ok(State(StateOf::Setup(rules_ctx("rules.setup")?))));
-    lib_fn!(lua, t, "side", |_, ()| Ok(rules_ctx("rules.side")?.side));
     // The rules' state of side `side`, for a game's rules alone (its API
     // module, docs/design/rules-in-luau.md, As built S8): the game's API
     // reaches what its rules keep (EXE6's bug frags) for its chips, which
@@ -2313,9 +2311,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "loop_register", |_, ()| with(|api, _| Ok(api.loop_register())));
     lib_fn!(lua, t, "spawn", |lua, (kind, pos): (LuaValue, Option<mlua::UserDataRef<LVec3>>)| {
         spawn_kind_def(lua, kind, vec3_arg(pos), SpawnAt::AfterCurrent)
-    });
-    lib_fn!(lua, t, "spawn_first", |lua, (kind, pos): (LuaValue, Option<mlua::UserDataRef<LVec3>>)| {
-        spawn_kind_def(lua, kind, vec3_arg(pos), SpawnAt::First)
     });
     lib_fn!(lua, t, "spawn_at_end", |lua, (kind, pos): (LuaValue, Option<mlua::UserDataRef<LVec3>>)| {
         spawn_kind_def(lua, kind, vec3_arg(pos), SpawnAt::End)
@@ -2860,10 +2855,6 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (melee, ranged) = (int(&melee, "melee word")? as u32, int(&ranged, "ranged word")? as u32);
         with(|api, _| Ok(api.obstacle_arm_conversion(side, melee, ranged)))
     });
-    lib_fn!(lua, t, "disarm_conversion", |_, side: LuaValue| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.obstacle_disarm_conversion(side)))
-    });
     lib_fn!(lua, t, "set_conversion_words", |_, (side, melee, ranged): (LuaValue, LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
         let (melee, ranged) = (int(&melee, "melee word")? as u32, int(&ranged, "ranged word")? as u32);
@@ -2876,16 +2867,7 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     for &r in ObstacleRequest::ALL {
         t.set(
             r.name(),
-            lua.create_function(move |_, (o, by): (Me, Option<Me>)| {
-                let by = match (r, by) {
-                    (_, Some(by)) => by.0,
-                    (ObstacleRequest::Absorb, None) => {
-                        return Err(mlua::Error::runtime("obstacle.absorb needs the absorber"));
-                    }
-                    (_, None) => o.0,
-                };
-                with(|api, _| Ok(api.obstacle_request(o.0, r, by)))
-            })?,
+            lua.create_function(move |_, o: Me| with(|api, _| Ok(api.obstacle_request(o.0, r))))?,
         )?;
     }
     Ok(t)
