@@ -194,9 +194,70 @@ pub fn native_code_supported() -> bool {
     false
 }
 
+/// What an interrupt check reads, on this thread (one thread-local: the
+/// checks are as frequent as content's calls and loops).
+pub(crate) struct Checks {
+    /// The checks left for the running call.
+    left: std::cell::Cell<u32>,
+    /// Whether coverage is recording ([`coverage::start`]).
+    pub(crate) recording: std::cell::Cell<bool>,
+}
+
+impl Checks {
+    pub(crate) fn get(&self) -> u32 {
+        self.left.get()
+    }
+
+    pub(crate) fn set(&self, left: u32) {
+        self.left.set(left)
+    }
+}
+
 thread_local! {
-    /// Interrupt checks left for the running call.
-    static BUDGET: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+    pub(crate) static BUDGET: Checks = const { Checks { left: std::cell::Cell::new(0), recording: std::cell::Cell::new(false) } };
+}
+
+/// The interrupt `Lua::set_interrupt` installs (mlua's, which runs the
+/// closure given it).
+type InterruptProc = unsafe extern "C-unwind" fn(*mut mlua::ffi::lua_State, std::ffi::c_int);
+static MLUA_INTERRUPT: std::sync::OnceLock<InterruptProc> = std::sync::OnceLock::new();
+
+/// Put an interrupt in front of the one `set_interrupt` installed, that
+/// counts a check with budget left itself, as the closure would, while no
+/// coverage is recorded: the closure's call through mlua costs more than
+/// the content between two checks (every call and loop back edge). A GC
+/// check (mlua's ignores those), a recording, and a budget run out go on to
+/// mlua's, and so to the closure.
+fn count_interrupts_directly(lua: &Lua) {
+    unsafe extern "C-unwind" fn interrupt(state: *mut mlua::ffi::lua_State, gc: std::ffi::c_int) {
+        if gc >= 0 {
+            return;
+        }
+        let counted = BUDGET.with(|b| {
+            let left = b.get();
+            let counted = left != 0 && !b.recording.get();
+            if counted {
+                b.set(left - 1);
+            }
+            counted
+        });
+        if counted {
+            return;
+        }
+        let mlua = *MLUA_INTERRUPT.get().expect("mlua's interrupt, kept as it was replaced");
+        // SAFETY: the interrupt `set_interrupt` installed, called as Luau
+        // would have called it.
+        unsafe { mlua(state, gc) }
+    }
+    // SAFETY: the VM's callbacks (shared by its threads), set while nothing
+    // runs; mlua's interrupt stays reachable through MLUA_INTERRUPT.
+    unsafe {
+        let callbacks = mlua::ffi::lua_callbacks(lua.state());
+        let installed = (*callbacks).interrupt.expect("set_interrupt installs an interrupt");
+        let kept = *MLUA_INTERRUPT.get_or_init(|| installed);
+        assert!(std::ptr::fn_addr_eq(kept, installed), "mlua installs one interrupt for every VM");
+        (*callbacks).interrupt = Some(interrupt);
+    }
 }
 
 /// What the binding reads while content runs: the state layouts, which
@@ -216,6 +277,8 @@ pub(crate) struct Bound {
     /// definition by it).
     keys: HashMap<(Registry, u16), String>,
     assets: RefCell<define::AssetTables>,
+    /// The handles given out again (`bind::Handles`).
+    pub handles: bind::Handles,
 }
 
 impl Bound {
@@ -327,6 +390,7 @@ impl LuauContent {
                 record_types,
                 keys,
                 assets: RefCell::new(assets),
+                handles: bind::Handles::default(),
             },
             functions,
             sources: plan.functions.clone(),
@@ -376,7 +440,7 @@ impl ContentHost for LuauContent {
     }
 
     fn update_object(&self, api: &mut dyn CoreApi, f: FnId, me: ObjectRef) -> Result<(), ContentError> {
-        let o = bind::object(&self.lua, me).map_err(|e| ContentError::new(e.to_string()))?;
+        let o = bind::object(&self.lua, &self.bound, me).map_err(|e| ContentError::new(e.to_string()))?;
         self.call(f, api, None, o)
     }
 
@@ -388,7 +452,7 @@ impl ContentHost for LuauContent {
         state: StateId,
         rules: Option<u8>,
     ) -> Result<(), ContentError> {
-        let o = bind::object(&self.lua, me).map_err(|e| ContentError::new(e.to_string()))?;
+        let o = bind::object(&self.lua, &self.bound, me).map_err(|e| ContentError::new(e.to_string()))?;
         // The state of the action being run, even after the update leaves
         // it (the game's attack variables outlive the action).
         let s = bind::action_state(&self.lua, me, state).map_err(|e| ContentError::new(e.to_string()))?;
@@ -579,6 +643,7 @@ fn open(pack: &Pack, options: Options) -> Result<Opened, ContentError> {
             }
         })
     });
+    count_interrupts_directly(&lua);
     // Each game's top module, and what it requires (in the order it
     // requires them, which no key depends on); a test's modules alone,
     // every one in name order. What each returns is what the walk starts

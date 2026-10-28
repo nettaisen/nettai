@@ -8,7 +8,7 @@
 //! thread-local read per interrupt check and per call. It doesn't change
 //! what content does.
 
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::collections::{BTreeSet, HashSet};
 use std::ffi::CStr;
 
@@ -29,7 +29,6 @@ pub struct Ran {
 }
 
 thread_local! {
-    static RECORDING: Cell<bool> = const { Cell::new(false) };
     static RAN: RefCell<Ran> = RefCell::new(Ran::default());
     /// The chunk names (interned strings, one per module) already counted
     /// since [`start`], by address: an interrupt check whose function's
@@ -41,17 +40,22 @@ thread_local! {
 pub fn start() {
     RAN.with(|r| *r.borrow_mut() = Ran::default());
     SEEN.with(|s| s.borrow_mut().clear());
-    RECORDING.with(|r| r.set(true));
+    set_recording(true);
 }
 
 /// Stop recording on this thread, and take what ran since [`start`].
 pub fn take() -> Ran {
-    RECORDING.with(|r| r.set(false));
+    set_recording(false);
     RAN.with(|r| std::mem::take(&mut *r.borrow_mut()))
 }
 
+/// (The flag lives with the interrupt checks' budget, which reads both.)
+fn set_recording(on: bool) {
+    crate::BUDGET.with(|b| b.recording.set(on));
+}
+
 pub(crate) fn recording() -> bool {
-    RECORDING.with(Cell::get)
+    crate::BUDGET.with(|b| b.recording.get())
 }
 
 /// The engine calls function `f`.

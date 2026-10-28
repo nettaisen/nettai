@@ -5,7 +5,8 @@
 //!
 //! Every call goes straight to the engine through [`CoreApi`]; nothing is
 //! cached or deferred, so later objects in the same tick see a change at
-//! once, as in the game.
+//! once, as in the game. (A handle, which only names what it reads, is made
+//! once and given again: [`Handles`].)
 //!
 //! Numbers: Luau numbers are doubles. Integer arithmetic on doubles is exact
 //! up to 2^53, far beyond the engine's 32-bit values, so scripts compute
@@ -117,6 +118,121 @@ fn bound<R>(f: impl FnOnce(&Bound) -> mlua::Result<R>) -> mlua::Result<R> {
     f(unsafe { &*bound.as_ptr() })
 }
 
+/// Handles made once for each VM and given out again: an object's
+/// (`Object`), `me.sprite`, `me.collision`, `me.state`, `me.attack_state`,
+/// `rules.state()` and `rules.setup()` (and of a side), `battle.navi(side)`,
+/// `battle.member(side, m)`. Such a handle only names what it reads (a value
+/// of its own type, which holds nothing else; an `Object`'s `__eq` compares
+/// what two name), while making a userdata costs two allocations (Lua's and
+/// mlua's) and the GC's work later, for each object updated, each hook's
+/// argument, each read through a new one. (Nothing in the content keys a
+/// table by a handle or compares two with `rawequal`, which would tell one
+/// given again from a new one; and a handle is borrowed only shared, a call
+/// further out may hold it: its fields' setters take it as a function's
+/// argument, `object_of`.)
+#[derive(Default)]
+pub(crate) struct Handles {
+    kept: std::cell::RefCell<Vec<Option<AnyUserData>>>,
+}
+
+/// What a handle names, for [`Handles`].
+#[derive(Clone, Copy)]
+enum Handle {
+    Object(ObjectRef),
+    Sprite(ObjectRef),
+    Collision(ObjectRef),
+    State(StateOf),
+    Navi(nettai_content_api::StatsOf),
+}
+
+impl Handles {
+    /// The objects' slots: four pools of 32.
+    const OBJECTS: usize = 4 * 32;
+    /// The members a side's party has room for, as handles go.
+    const MEMBERS: usize = 16;
+    const LEN: usize = 5 * Handles::OBJECTS + 4 + 2 * (1 + Handles::MEMBERS);
+
+    /// Where the handle of `h` is kept (none: one not kept, made each time).
+    fn place(h: Handle) -> Option<usize> {
+        let object = |o: ObjectRef| ((o.pool as usize) < 4 && o.slot < 32).then(|| (o.pool as usize) * 32 + o.slot as usize);
+        let side = |s: u8| (s < 2).then_some(s as usize);
+        let rules = 5 * Handles::OBJECTS;
+        let navis = rules + 4;
+        match h {
+            Handle::Object(o) => object(o),
+            Handle::State(StateOf::Object(o)) => object(o).map(|i| Handles::OBJECTS + i),
+            Handle::State(StateOf::Action(o)) => object(o).map(|i| 2 * Handles::OBJECTS + i),
+            Handle::Sprite(o) => object(o).map(|i| 3 * Handles::OBJECTS + i),
+            Handle::Collision(o) => object(o).map(|i| 4 * Handles::OBJECTS + i),
+            Handle::State(StateOf::Rules(c)) => side(c.side).map(|s| rules + s),
+            Handle::State(StateOf::Setup(c)) => side(c.side).map(|s| rules + 2 + s),
+            Handle::State(StateOf::ActionAs(..) | StateOf::Stats(_)) => None,
+            Handle::Navi(of) => {
+                let member = match of.member {
+                    None => Some(0),
+                    Some(m) => ((m as usize) < Handles::MEMBERS).then_some(m as usize + 1),
+                };
+                side(of.side).zip(member).map(|(s, m)| navis + s * (1 + Handles::MEMBERS) + m)
+            }
+        }
+    }
+
+    /// The handle of `h`: the one given before, if any.
+    fn get(lua: &Lua, h: Handle) -> mlua::Result<AnyUserData> {
+        match CTX.with(|c| c.get()) {
+            // SAFETY: set by a live `Enter`; the binding only ever reads it.
+            Some((_, bound)) => Handles::get_in(lua, unsafe { &*bound.as_ptr() }, h),
+            // (Outside a content call, as a module loads: one of its own.)
+            None => Handles::make(lua, h),
+        }
+    }
+
+    fn make(lua: &Lua, h: Handle) -> mlua::Result<AnyUserData> {
+        match h {
+            Handle::Object(o) => lua.create_userdata(Object(o)),
+            Handle::Sprite(o) => lua.create_userdata(Sprite(o)),
+            Handle::Collision(o) => lua.create_userdata(Collision(o)),
+            Handle::State(of) => lua.create_userdata(State(of)),
+            Handle::Navi(of) => lua.create_userdata(Navi(of)),
+        }
+    }
+
+    /// The handle of `h` in the VM `bound` is the binding of.
+    fn get_in(lua: &Lua, bound: &Bound, h: Handle) -> mlua::Result<AnyUserData> {
+        let make = || Handles::make(lua, h);
+        let Some(at) = Handles::place(h) else { return make() };
+        let handles = &bound.handles;
+        if let Some(Some(ud)) = handles.kept.borrow().get(at) {
+            return Ok(ud.clone());
+        }
+        let ud = make()?;
+        let mut kept = handles.kept.borrow_mut();
+        if kept.is_empty() {
+            kept.resize(Handles::LEN, None);
+        }
+        kept[at] = Some(ud.clone());
+        Ok(ud)
+    }
+}
+
+fn object_handle(lua: &Lua, o: ObjectRef) -> mlua::Result<AnyUserData> {
+    Handles::get(lua, Handle::Object(o))
+}
+
+/// Objects as a list (a sequence of their handles).
+fn object_list(lua: &Lua, list: Vec<ObjectRef>) -> mlua::Result<mlua::Table> {
+    let handles = list.into_iter().map(|o| object_handle(lua, o)).collect::<mlua::Result<Vec<_>>>()?;
+    lua.create_sequence_from(handles)
+}
+
+fn state_handle(lua: &Lua, of: StateOf) -> mlua::Result<AnyUserData> {
+    Handles::get(lua, Handle::State(of))
+}
+
+fn navi_handle(lua: &Lua, of: nettai_content_api::StatsOf) -> mlua::Result<AnyUserData> {
+    Handles::get(lua, Handle::Navi(of))
+}
+
 /// A definition of `registry` (a region, a collision type, an effect, a
 /// spark): its handle.
 fn def_arg(b: &Bound, v: &LuaValue, registry: Registry, what: &str) -> mlua::Result<u16> {
@@ -153,21 +269,30 @@ fn api_error(e: ApiError) -> mlua::Error {
 /// Largest integer a double holds exactly.
 const EXACT: f64 = 9_007_199_254_740_992.0;
 
-fn exact(n: f64, what: &str) -> mlua::Result<i64> {
+/// What a message names a value by, made only for the message (a state's
+/// part's name is built from its path).
+type What<'a> = &'a dyn Fn() -> String;
+
+fn exact(n: f64, what: What) -> mlua::Result<i64> {
     if n.fract() == 0.0 && n.abs() <= EXACT {
         Ok(n as i64)
     } else {
         Err(mlua::Error::runtime(format!(
-            "{what}: {n} is not an integer (engine values are integers; use // or the int library)"
+            "{}: {n} is not an integer (engine values are integers; use // or the int library)",
+            what()
         )))
     }
 }
 
 fn int(v: &LuaValue, what: &str) -> mlua::Result<i64> {
+    int_as(v, &|| what.to_string())
+}
+
+fn int_as(v: &LuaValue, what: What) -> mlua::Result<i64> {
     match v {
         LuaValue::Number(n) => exact(*n, what),
         LuaValue::Integer(i) => Ok(i64::from(*i)),
-        v => Err(mlua::Error::runtime(format!("{what}: expected an integer, got {}", v.type_name()))),
+        v => Err(mlua::Error::runtime(format!("{}: expected an integer, got {}", what(), v.type_name()))),
     }
 }
 
@@ -192,15 +317,167 @@ fn panel(x: LuaValue, y: LuaValue) -> mlua::Result<PanelPos> {
 }
 
 /// A name from a set of names (a flag, a key, a lifecycle state...).
-fn named<T>(s: &mlua::LuaString, what: &str, parse: impl Fn(&str) -> Option<T>) -> mlua::Result<T> {
-    let s = s.to_str()?;
-    parse(&s).ok_or_else(|| mlua::Error::runtime(format!("{:?} is not a {what}", &*s)))
+fn named<T>(s: &impl NameArg, what: &str, parse: impl Fn(&str) -> Option<T>) -> mlua::Result<T> {
+    s.with_str(|s| parse(s).ok_or_else(|| mlua::Error::runtime(format!("{s:?} is not a {what}"))))?
+}
+
+/// A string a script passes, read as text.
+trait NameArg {
+    fn with_str<R>(&self, f: impl FnOnce(&str) -> R) -> mlua::Result<R>;
+}
+
+impl NameArg for mlua::LuaString {
+    fn with_str<R>(&self, f: impl FnOnce(&str) -> R) -> mlua::Result<R> {
+        Ok(f(&self.to_str()?))
+    }
+}
+
+impl NameArg for Name {
+    fn with_str<R>(&self, f: impl FnOnce(&str) -> R) -> mlua::Result<R> {
+        Ok(f(self.to_str()?))
+    }
+}
+
+/// A string argument (a field's name, a flag's), its bytes copied from the
+/// stack: a `LuaString` argument holds a reference to the string, which
+/// mlua makes and frees for each call, and reads its text through another.
+/// What isn't a string converts as for a `LuaString` (a number to its
+/// text; anything else an error).
+pub(crate) enum Name {
+    /// Up to [`Name::SHORT`] bytes, kept without an allocation: its length
+    /// and its bytes.
+    Short(u8, [u8; Name::SHORT]),
+    Long(Box<[u8]>),
+}
+
+impl Name {
+    const SHORT: usize = 30;
+
+    fn of(bytes: &[u8]) -> Name {
+        if bytes.len() <= Name::SHORT {
+            let mut short = [0; Name::SHORT];
+            short[..bytes.len()].copy_from_slice(bytes);
+            Name::Short(bytes.len() as u8, short)
+        } else {
+            Name::Long(bytes.into())
+        }
+    }
+
+    fn as_bytes(&self) -> &[u8] {
+        match self {
+            Name::Short(len, bytes) => &bytes[..*len as usize],
+            Name::Long(bytes) => bytes,
+        }
+    }
+
+    /// Its text, for a message (a field it names is UTF-8).
+    fn lossy(&self) -> std::borrow::Cow<'_, str> {
+        String::from_utf8_lossy(self.as_bytes())
+    }
+
+    /// Its text (an error as `LuaString::to_str`'s, if it isn't UTF-8).
+    fn to_str(&self) -> mlua::Result<&str> {
+        std::str::from_utf8(self.as_bytes()).map_err(|e| mlua::Error::FromLuaConversionError {
+            from: "string",
+            to: "&str".to_string(),
+            message: Some(e.to_string()),
+        })
+    }
+}
+
+/// A key a script indexes a part of a state by: a name (a record's field,
+/// read as a [`Name`]), or another value (an element's number).
+pub(crate) enum PartKey {
+    Name(Name),
+    Other(LuaValue),
+}
+
+impl mlua::FromLua for PartKey {
+    fn from_lua(value: LuaValue, _: &Lua) -> mlua::Result<PartKey> {
+        Ok(match value {
+            LuaValue::String(s) => PartKey::Name(Name::of(&s.as_bytes())),
+            v => PartKey::Other(v),
+        })
+    }
+
+    unsafe fn from_stack(idx: std::ffi::c_int, lua: &mlua::state::RawLua) -> mlua::Result<PartKey> {
+        // SAFETY: as `Name::from_stack`.
+        unsafe {
+            if mlua::ffi::lua_type(lua.state(), idx) == mlua::ffi::LUA_TSTRING {
+                return Ok(PartKey::Name(<Name as mlua::FromLua>::from_stack(idx, lua)?));
+            }
+            Ok(PartKey::Other(<LuaValue as mlua::FromLua>::from_stack(idx, lua)?))
+        }
+    }
+}
+
+impl mlua::FromLua for Name {
+    fn from_lua(value: LuaValue, lua: &Lua) -> mlua::Result<Name> {
+        let s = mlua::LuaString::from_lua(value, lua)?;
+        Ok(Name::of(&s.as_bytes()))
+    }
+
+    unsafe fn from_stack(idx: std::ffi::c_int, lua: &mlua::state::RawLua) -> mlua::Result<Name> {
+        let state = lua.state();
+        // SAFETY: a string at `idx` of the running call's stack: its bytes
+        // live while it is there, and are copied out.
+        unsafe {
+            if mlua::ffi::lua_type(state, idx) == mlua::ffi::LUA_TSTRING {
+                let mut len = 0;
+                let data = mlua::ffi::lua_tolstring(state, idx, &mut len);
+                return Ok(Name::of(std::slice::from_raw_parts(data as *const u8, len)));
+            }
+            let s = <mlua::LuaString as mlua::FromLua>::from_stack(idx, lua)?;
+            Ok(Name::of(&s.as_bytes()))
+        }
+    }
 }
 
 // ---- Values -------------------------------------------------------------------------
 
+/// A named field's type, made once for the program: `ty()` makes it anew
+/// each time (an enum's, a list of its names).
+trait FieldTypes: Copy + 'static {
+    fn all() -> &'static [Self];
+    fn made(self) -> FieldType;
+    fn types() -> &'static std::sync::OnceLock<Vec<FieldType>>;
+    fn index(self) -> usize;
+
+    fn field_type(self) -> &'static FieldType {
+        &Self::types().get_or_init(|| Self::all().iter().map(|f| f.made()).collect())[self.index()]
+    }
+}
+
+macro_rules! field_types {
+    ($($t:ty),* $(,)?) => {$(
+        impl FieldTypes for $t {
+            fn all() -> &'static [Self] {
+                <$t>::ALL
+            }
+            fn made(self) -> FieldType {
+                self.ty()
+            }
+            fn types() -> &'static std::sync::OnceLock<Vec<FieldType>> {
+                static TYPES: std::sync::OnceLock<Vec<FieldType>> = std::sync::OnceLock::new();
+                &TYPES
+            }
+            fn index(self) -> usize {
+                // (`ALL` lists the variants in their order.)
+                self as usize
+            }
+        }
+    )*};
+}
+
+field_types!(ObjectField, ActorField, OverlayField, SpriteField, CollisionField, NaviStat, BattleInfo, HudField, HandField);
+
 /// A Luau value going into a field of type `ty`.
 fn to_api(v: LuaValue, ty: &FieldType, what: &str) -> mlua::Result<Value> {
+    to_api_as(v, ty, &|| what.to_string())
+}
+
+/// [`to_api`], the field named only for a message.
+fn to_api_as(v: LuaValue, ty: &FieldType, what: What) -> mlua::Result<Value> {
     Ok(match v {
         LuaValue::Nil => Value::Nil,
         LuaValue::Table(_) => bound(|b| {
@@ -210,7 +487,8 @@ fn to_api(v: LuaValue, ty: &FieldType, what: &str) -> mlua::Result<Value> {
                     && b.record_type(registry, h) != Some(want.as_str())
                 {
                     return Err(mlua::Error::runtime(format!(
-                        "{what}: expected a record:{want}, got a record:{}",
+                        "{}: expected a record:{want}, got a record:{}",
+                        what(),
                         b.record_type(registry, h).unwrap_or("?")
                     )));
                 }
@@ -219,7 +497,8 @@ fn to_api(v: LuaValue, ty: &FieldType, what: &str) -> mlua::Result<Value> {
                     && b.record_type(registry, h) != Some(want.as_str())
                 {
                     return Err(mlua::Error::runtime(format!(
-                        "{what}: expected an entry of {want}, got one of {}",
+                        "{}: expected an entry of {want}, got one of {}",
+                        what(),
                         b.record_type(registry, h).unwrap_or("?")
                     )));
                 }
@@ -228,7 +507,7 @@ fn to_api(v: LuaValue, ty: &FieldType, what: &str) -> mlua::Result<Value> {
             if let Some((kind, h)) = b.asset(&v) {
                 return Ok(Value::Asset(kind, h));
             }
-            Err(mlua::Error::runtime(format!("{what}: expected {ty}, got a table that is no definition or asset")))
+            Err(mlua::Error::runtime(format!("{}: expected {ty}, got a table that is no definition or asset", what())))
         })?,
         LuaValue::Boolean(b) => Value::Bool(b),
         LuaValue::String(s) => match ty {
@@ -236,17 +515,17 @@ fn to_api(v: LuaValue, ty: &FieldType, what: &str) -> mlua::Result<Value> {
                 let s = s.to_str()?;
                 match s.as_bytes() {
                     [c] if nettai_content_api::is_code(*c) => Value::Code(*c),
-                    _ => return Err(mlua::Error::runtime(format!("{what}: {:?} is no chip code (a letter A to Z, or *)", &*s))),
+                    _ => return Err(mlua::Error::runtime(format!("{}: {:?} is no chip code (a letter A to Z, or *)", what(), &*s))),
                 }
             }
             FieldType::Enum(names) => {
                 let s = s.to_str()?;
                 let i = names.iter().position(|n| *n == *s).ok_or_else(|| {
-                    mlua::Error::runtime(format!("{what}: {:?} is not one of {}", &*s, names.join(", ")))
+                    mlua::Error::runtime(format!("{}: {:?} is not one of {}", what(), &*s, names.join(", ")))
                 })?;
                 Value::Int(i as i64)
             }
-            _ => return Err(mlua::Error::runtime(format!("{what}: expected {ty}, got a string"))),
+            _ => return Err(mlua::Error::runtime(format!("{}: expected {ty}, got a string", what()))),
         },
         LuaValue::UserData(ud) => {
             if let Ok(o) = ud.borrow::<Object>() {
@@ -255,13 +534,14 @@ fn to_api(v: LuaValue, ty: &FieldType, what: &str) -> mlua::Result<Value> {
                 Value::Vec3(p.0)
             } else {
                 return Err(mlua::Error::runtime(format!(
-                    "{what}: expected {ty}, got {}",
+                    "{}: expected {ty}, got {}",
+                    what(),
                     ud.type_name().map(|s| s.to_string_lossy()).unwrap_or_default()
                 )));
             }
         }
-        v @ (LuaValue::Number(_) | LuaValue::Integer(_)) => Value::Int(int(&v, what)?),
-        v => return Err(mlua::Error::runtime(format!("{what}: expected {ty}, got {}", v.type_name()))),
+        v @ (LuaValue::Number(_) | LuaValue::Integer(_)) => Value::Int(int_as(&v, what)?),
+        v => return Err(mlua::Error::runtime(format!("{}: expected {ty}, got {}", what(), v.type_name()))),
     })
 }
 
@@ -279,7 +559,7 @@ fn from_api(lua: &Lua, v: Value, ty: &FieldType) -> mlua::Result<LuaValue> {
             },
             _ => LuaValue::Number(i as f64),
         },
-        Value::Object(o) => LuaValue::UserData(lua.create_userdata(Object(o))?),
+        Value::Object(o) => LuaValue::UserData(object_handle(lua, o)?),
         Value::Vec3(p) => LuaValue::UserData(lua.create_userdata(LVec3(p))?),
         Value::Def(r, h) => LuaValue::Table(bound(|b| b.def_value(r, h))?),
         Value::Asset(k, h) => LuaValue::Table(bound(|b| b.asset_value(k, h))?),
@@ -288,7 +568,7 @@ fn from_api(lua: &Lua, v: Value, ty: &FieldType) -> mlua::Result<LuaValue> {
 }
 
 fn object_value(lua: &Lua, o: Option<ObjectRef>) -> mlua::Result<LuaValue> {
-    o.map_or(Ok(LuaValue::Nil), |o| Ok(LuaValue::UserData(lua.create_userdata(Object(o))?)))
+    o.map_or(Ok(LuaValue::Nil), |o| Ok(LuaValue::UserData(object_handle(lua, o)?)))
 }
 
 fn object_arg(v: &LuaValue, what: &str) -> mlua::Result<Option<ObjectRef>> {
@@ -330,6 +610,14 @@ fn chip_value(b: &Bound, chip: Option<nettai_content_api::ChipHandle>) -> mlua::
 
 // ---- Object -------------------------------------------------------------------------
 
+/// The object a handle names, the handle borrowed for as long as it is read:
+/// a field's setter takes its handle so, as a handle given out again
+/// ([`Handles`]) may be borrowed by a call further out (a method's, whose
+/// engine call ran a hook), which a mutable borrow would refuse.
+fn object_of(ud: &AnyUserData) -> mlua::Result<ObjectRef> {
+    Ok(ud.borrow::<Object>()?.0)
+}
+
 /// A handle to an object slot (`Object` in core.d.luau). Like the game's
 /// pointers, it can outlive the object.
 #[derive(Clone, Copy)]
@@ -347,35 +635,38 @@ impl UserData for Object {
         for &f in ObjectField::ALL {
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| api.get(this.0, f).map_err(api_error))?;
-                from_api(lua, v, &f.ty())
+                from_api(lua, v, f.field_type())
             });
             if f.writable() {
-                fields.add_field_method_set(f.name(), move |_, this, v: LuaValue| {
-                    let v = to_api(v, &f.ty(), f.name())?;
-                    with(|api, _| api.set(this.0, f, v).map_err(api_error))
+                fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
+                    let o = object_of(&this)?;
+                    let v = to_api(v, f.field_type(), f.name())?;
+                    with(|api, _| api.set(o, f, v).map_err(api_error))
                 });
             }
         }
         for &f in ActorField::ALL {
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| api.actor_get(this.0, f).map_err(api_error))?;
-                from_api(lua, v, &f.ty())
+                from_api(lua, v, f.field_type())
             });
             if f.writable() {
-                fields.add_field_method_set(f.name(), move |_, this, v: LuaValue| {
-                    let v = to_api(v, &f.ty(), f.name())?;
-                    with(|api, _| api.actor_set(this.0, f, v).map_err(api_error))
+                fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
+                    let o = object_of(&this)?;
+                    let v = to_api(v, f.field_type(), f.name())?;
+                    with(|api, _| api.actor_set(o, f, v).map_err(api_error))
                 });
             }
         }
         for &f in OverlayField::ALL {
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| api.overlay_get(this.0, f).map_err(api_error))?;
-                from_api(lua, v, &f.ty())
+                from_api(lua, v, f.field_type())
             });
-            fields.add_field_method_set(f.name(), move |_, this, v: LuaValue| {
-                let v = to_api(v, &f.ty(), f.name())?;
-                with(|api, _| api.overlay_set(this.0, f, v).map_err(api_error))
+            fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
+                let o = object_of(&this)?;
+                let v = to_api(v, f.field_type(), f.name())?;
+                with(|api, _| api.overlay_set(o, f, v).map_err(api_error))
             });
         }
         fields.add_field_method_get("pool", |_, this| Ok(this.0.pool.name()));
@@ -387,15 +678,16 @@ impl UserData for Object {
             }
         });
         fields.add_field_method_get("lifecycle", |_, this| with(|api, _| Ok(api.lifecycle(this.0).name())));
-        fields.add_field_method_set("lifecycle", |_, this, name: mlua::LuaString| {
+        fields.add_field_function_set("lifecycle", |_, this, name: Name| {
+            let o = object_of(&this)?;
             let l = named(&name, "lifecycle state", Lifecycle::from_name)?;
-            with(|api, _| Ok(api.set_lifecycle_only(this.0, l)))
+            with(|api, _| Ok(api.set_lifecycle_only(o, l)))
         });
         fields.add_field_method_get("facing", |_, this| with(|api, _| Ok(api.facing(this.0))));
-        fields.add_field_method_get("sprite", |_, this| Ok(Sprite(this.0)));
-        fields.add_field_method_get("collision", |_, this| Ok(Collision(this.0)));
-        fields.add_field_method_get("state", |_, this| Ok(State(StateOf::Object(this.0))));
-        fields.add_field_method_get("attack_state", |_, this| Ok(State(StateOf::Action(this.0))));
+        fields.add_field_method_get("sprite", |lua, this| Handles::get(lua, Handle::Sprite(this.0)));
+        fields.add_field_method_get("collision", |lua, this| Handles::get(lua, Handle::Collision(this.0)));
+        fields.add_field_method_get("state", |lua, this| state_handle(lua, StateOf::Object(this.0)));
+        fields.add_field_method_get("attack_state", |lua, this| state_handle(lua, StateOf::Action(this.0)));
     }
 
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
@@ -407,15 +699,15 @@ impl UserData for Object {
         });
 
         // A field by console.
-        methods.add_method("get", |lua, this, (field, side): (mlua::LuaString, LuaValue)| {
+        methods.add_method("get", |lua, this, (field, side): (Name, LuaValue)| {
             let f = named(&field, "object field", ObjectField::from_name)?;
             let side = side_arg(side)?;
             let v = with(|api, _| api.get_for(this.0, f, side).map_err(api_error))?;
-            from_api(lua, v, &f.ty())
+            from_api(lua, v, f.field_type())
         });
-        methods.add_method("set", |_, this, (field, value, side): (mlua::LuaString, LuaValue, Option<LuaValue>)| {
+        methods.add_method("set", |_, this, (field, value, side): (Name, LuaValue, Option<LuaValue>)| {
             let f = named(&field, "object field", ObjectField::from_name)?;
-            let v = to_api(value, &f.ty(), f.name())?;
+            let v = to_api(value, f.field_type(), f.name())?;
             match side.filter(|s| !s.is_nil()) {
                 None => with(|api, _| api.set(this.0, f, v).map_err(api_error)),
                 Some(s) => {
@@ -426,7 +718,7 @@ impl UserData for Object {
         });
 
         // Lifecycle.
-        methods.add_method("set_lifecycle", |_, this, name: mlua::LuaString| {
+        methods.add_method("set_lifecycle", |_, this, name: Name| {
             let l = named(&name, "lifecycle state", Lifecycle::from_name)?;
             with(|api, _| Ok(api.set_lifecycle(this.0, l)))
         });
@@ -509,20 +801,20 @@ impl UserData for Object {
         });
 
         // Status.
-        methods.add_method("status", |_, this, name: mlua::LuaString| {
+        methods.add_method("status", |_, this, name: Name| {
             let flag = named(&name, "status flag", StatusFlag::from_name)?;
             with(|api, _| api.status(this.0, flag).map_err(api_error))
         });
-        methods.add_method("set_status", |_, this, (name, on): (mlua::LuaString, bool)| {
+        methods.add_method("set_status", |_, this, (name, on): (Name, bool)| {
             let flag = named(&name, "status flag", StatusFlag::from_name)?;
             with(|api, _| api.set_status(this.0, flag, on).map_err(api_error))
         });
         methods.add_method("clear_statuses", |_, this, ()| with(|api, _| api.clear_statuses(this.0).map_err(api_error)));
-        methods.add_method("status_timer", |_, this, name: mlua::LuaString| {
+        methods.add_method("status_timer", |_, this, name: Name| {
             let t = named(&name, "status timer", StatusTimer::from_name)?;
             with(|api, _| api.status_timer(this.0, t).map_err(api_error))
         });
-        methods.add_method("set_status_timer", |_, this, (name, v): (mlua::LuaString, LuaValue)| {
+        methods.add_method("set_status_timer", |_, this, (name, v): (Name, LuaValue)| {
             let t = named(&name, "status timer", StatusTimer::from_name)?;
             let v = u16_arg(v, "status timer")?;
             with(|api, _| api.set_status_timer(this.0, t, v).map_err(api_error))
@@ -578,28 +870,28 @@ impl UserData for Object {
         });
 
         // Navis: the attack, requests, state, buttons.
-        methods.add_method("request", |_, this, name: mlua::LuaString| {
+        methods.add_method("request", |_, this, name: Name| {
             let f = named(&name, "request", RequestFlag::from_name)?;
             with(|api, _| api.request(this.0, f).map_err(api_error))
         });
-        methods.add_method("set_request", |_, this, (name, on): (mlua::LuaString, bool)| {
+        methods.add_method("set_request", |_, this, (name, on): (Name, bool)| {
             let f = named(&name, "request", RequestFlag::from_name)?;
             with(|api, _| api.set_request(this.0, f, on).map_err(api_error))
         });
-        methods.add_method("navi_state", |_, this, name: mlua::LuaString| {
+        methods.add_method("navi_state", |_, this, name: Name| {
             let f = named(&name, "navi state", NaviState::from_name)?;
             with(|api, _| api.navi_state(this.0, f).map_err(api_error))
         });
-        methods.add_method("set_navi_state", |_, this, (name, on): (mlua::LuaString, bool)| {
+        methods.add_method("set_navi_state", |_, this, (name, on): (Name, bool)| {
             let f = named(&name, "navi state", NaviState::from_name)?;
             with(|api, _| api.set_navi_state(this.0, f, on).map_err(api_error))
         });
-        methods.add_method("form_trait", |_, this, name: mlua::LuaString| {
+        methods.add_method("form_trait", |_, this, name: Name| {
             let name = name.to_str()?.to_string();
             with(|api, _| api.form_trait(this.0, &name).map_err(api_error))
         });
         for &pad in Pad::ALL {
-            methods.add_method(pad.name(), move |_, this, name: mlua::LuaString| {
+            methods.add_method(pad.name(), move |_, this, name: Name| {
                 let key = named(&name, "button", Key::from_name)?;
                 with(|api, _| api.key(this.0, pad, key).map_err(api_error))
             });
@@ -759,7 +1051,7 @@ impl UserData for Object {
         });
 
         // Field objects (obstacles; the rest is the `obstacle` service).
-        methods.add_method("obstacle_flag", |_, this, name: mlua::LuaString| {
+        methods.add_method("obstacle_flag", |_, this, name: Name| {
             let f = named(&name, "obstacle flag", nettai_content_api::api::ObstacleFlag::from_name)?;
             with(|api, _| api.obstacle_flag(this.0, f).map_err(api_error))
         });
@@ -783,12 +1075,13 @@ impl UserData for Sprite {
         for &f in SpriteField::ALL {
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| Ok(api.sprite_get(this.0, f)))?;
-                from_api(lua, v, &f.ty())
+                from_api(lua, v, f.field_type())
             });
             if f.writable() {
-                fields.add_field_method_set(f.name(), move |_, this, v: LuaValue| {
-                    let v = to_api(v, &f.ty(), f.name())?;
-                    with(|api, _| api.sprite_set(this.0, f, v).map_err(api_error))
+                fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
+                    let o = this.borrow::<Sprite>()?.0;
+                    let v = to_api(v, f.field_type(), f.name())?;
+                    with(|api, _| api.sprite_set(o, f, v).map_err(api_error))
                 });
             }
         }
@@ -815,15 +1108,15 @@ impl UserData for Sprite {
                 api.sprite_set(this.0, SpriteField::VFlip, Value::Bool(flip & 2 != 0)).map_err(api_error)
             })
         });
-        methods.add_method("get", |lua, this, (field, side): (mlua::LuaString, LuaValue)| {
+        methods.add_method("get", |lua, this, (field, side): (Name, LuaValue)| {
             let f = named(&field, "sprite field", SpriteField::from_name)?;
             let side = side_arg(side)?;
             let v = with(|api, _| Ok(api.sprite_get_for(this.0, f, side)))?;
-            from_api(lua, v, &f.ty())
+            from_api(lua, v, f.field_type())
         });
-        methods.add_method("set", |_, this, (field, value, side): (mlua::LuaString, LuaValue, Option<LuaValue>)| {
+        methods.add_method("set", |_, this, (field, value, side): (Name, LuaValue, Option<LuaValue>)| {
             let f = named(&field, "sprite field", SpriteField::from_name)?;
-            let v = to_api(value, &f.ty(), f.name())?;
+            let v = to_api(value, f.field_type(), f.name())?;
             match side.filter(|s| !s.is_nil()) {
                 None => with(|api, _| api.sprite_set(this.0, f, v).map_err(api_error)),
                 Some(s) => {
@@ -850,12 +1143,13 @@ impl UserData for Collision {
         for &f in CollisionField::ALL {
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| api.collision_get(this.0, f).map_err(api_error))?;
-                from_api(lua, v, &f.ty())
+                from_api(lua, v, f.field_type())
             });
             if f.writable() {
-                fields.add_field_method_set(f.name(), move |_, this, v: LuaValue| {
-                    let v = to_api(v, &f.ty(), f.name())?;
-                    with(|api, _| api.collision_set(this.0, f, v).map_err(api_error))
+                fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
+                    let o = this.borrow::<Collision>()?.0;
+                    let v = to_api(v, f.field_type(), f.name())?;
+                    with(|api, _| api.collision_set(o, f, v).map_err(api_error))
                 });
             }
         }
@@ -887,7 +1181,7 @@ impl UserData for Collision {
         });
         methods.add_method("hit_by", |lua, this, ()| {
             let hitters = with(|api, _| api.collision_hit_by(this.0).map_err(api_error))?;
-            lua.create_sequence_from(hitters.into_iter().map(Object))
+            object_list(lua, hitters)
         });
         methods.add_method("add_damage", |_, this, (element, amount, raw): (LuaValue, LuaValue, bool)| {
             let (element, amount) = (u8_arg(element, "element")?, u16_arg(amount, "amount")?);
@@ -946,11 +1240,14 @@ pub enum StateOf {
 }
 
 impl State {
-    fn with_state<R>(
+    /// Run `f` on the state's fields (`write`: to store into them). `key`
+    /// names the field a write to a player's setup is refused for (made only
+    /// then).
+    fn with_fields<R>(
         self,
-        key: &str,
         write: bool,
-        f: impl FnOnce(&mut dyn nettai_content_api::Fields, &nettai_content_api::Schema, usize) -> mlua::Result<R>,
+        key: impl FnOnce(&Bound) -> mlua::Result<String>,
+        f: impl FnOnce(&mut dyn nettai_content_api::Fields, &Bound) -> mlua::Result<R>,
     ) -> mlua::Result<R> {
         with(|api, bound| {
             // (A setup is read through a copy: it can't be written. An
@@ -975,7 +1272,8 @@ impl State {
                 StateOf::Stats(side) => api.navi_game_stats_mut(side).map_err(api_error)?,
                 StateOf::Setup(_) if write => {
                     return Err(mlua::Error::runtime(format!(
-                        "setup field `{key}`: a player's setup is read-only in battle"
+                        "setup field `{}`: a player's setup is read-only in battle",
+                        key(bound)?
                     )));
                 }
                 StateOf::Setup(c) => {
@@ -983,36 +1281,71 @@ impl State {
                     &mut setup
                 }
             };
+            f(s, bound)
+        })
+    }
+
+    /// Run `f` on the state's field `key` (by its index in the state's
+    /// layout). (A key that is no UTF-8 is refused as `LuaString::to_str`
+    /// refuses it, before anything else: no field has its name.)
+    fn with_state<R>(
+        self,
+        key: &Name,
+        write: bool,
+        f: impl FnOnce(&mut dyn nettai_content_api::Fields, &nettai_content_api::Schema, usize) -> mlua::Result<R>,
+    ) -> mlua::Result<R> {
+        self.with_fields(write, |_| key.to_str().map(str::to_string), |s, bound| {
             let schema = bound.manifest.schema(s.id());
-            let i = schema.index_of(key).ok_or_else(|| {
-                let names: Vec<&str> = schema.fields().iter().map(|f| f.name.as_str()).collect();
-                mlua::Error::runtime(format!("state has no field `{key}` (it declares {})", names.join(", ")))
-            })?;
+            let i = match field_named(schema, key.as_bytes()) {
+                Some(i) => i,
+                None => return Err(field_missing(schema, key.to_str()?)),
+            };
             f(s, schema, i)
         })
     }
 }
 
+/// Field `name` of a layout or a record, as `Schema::index_of` finds it.
+fn field_named(schema: &nettai_content_api::Schema, n: &[u8]) -> Option<usize> {
+    let (Some(&first), Some(&last)) = (n.first(), n.last()) else {
+        return schema.fields().iter().position(|f| f.name.is_empty());
+    };
+    // (Names of the length with the same first and last letters compared
+    // whole: a comparison of each would cost a call.)
+    schema.fields().iter().position(|f| {
+        let b = f.name.as_bytes();
+        b.len() == n.len() && b[0] == first && b[b.len() - 1] == last && b == n
+    })
+}
+
+/// Field `key` of a state's layout.
+fn field_index(schema: &nettai_content_api::Schema, key: &str) -> mlua::Result<usize> {
+    field_named(schema, key.as_bytes()).ok_or_else(|| field_missing(schema, key))
+}
+
+fn field_missing(schema: &nettai_content_api::Schema, key: &str) -> mlua::Error {
+    let names: Vec<&str> = schema.fields().iter().map(|f| f.name.as_str()).collect();
+    mlua::Error::runtime(format!("state has no field `{key}` (it declares {})", names.join(", ")))
+}
+
 impl UserData for State {
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
-        methods.add_meta_method(MetaMethod::Index, |lua, this, key: mlua::LuaString| {
-            let key = key.to_str()?;
+        methods.add_meta_method(MetaMethod::Index, |lua, this, key: Name| {
+            // (A scalar's value; else the part the field is, in the state's
+            // layout.)
             let got = this.with_state(&key, false, |s, schema, i| {
-                let ty = schema.field(i).ty.clone();
-                Ok(ty.is_scalar().then(|| (s.get(schema, i).load(), ty)))
+                let ty = &schema.field(i).ty;
+                if ty.is_scalar() { from_api(lua, s.get(schema, i).load(), ty).map(Ok) } else { Ok(Err((s.id(), i))) }
             })?;
             match got {
-                Some((v, ty)) => from_api(lua, v, &ty),
-                None => Ok(LuaValue::UserData(lua.create_userdata(StatePart {
-                    state: State(this.0),
-                    field: key.to_string(),
-                    path: Vec::new(),
-                })?)),
+                Ok(v) => Ok(v),
+                Err((id, field)) => {
+                    Ok(LuaValue::UserData(lua.create_userdata(StatePart { state: State(this.0), id, field, path: Vec::new() })?))
+                }
             }
         });
-        methods.add_meta_method(MetaMethod::NewIndex, |_, this, (key, v): (mlua::LuaString, LuaValue)| {
-            let key = key.to_str()?;
-            this.with_state(&key, true, |s, schema, i| assign(s, schema.place(i), v, &format!("state field `{}`", &*key)))
+        methods.add_meta_method(MetaMethod::NewIndex, |_, this, (key, v): (Name, LuaValue)| {
+            this.with_state(&key, true, |s, schema, i| assign(s, schema.place(i), v, &|| format!("state field `{}`", key.lossy())))
         });
     }
 }
@@ -1022,33 +1355,33 @@ impl UserData for State {
 /// an array or a list from a table of its elements, from the first (a
 /// list's length the table's, an array's rest zero). `name` says the place
 /// in a message.
-fn assign(s: &mut dyn nettai_content_api::Fields, place: nettai_content_api::Place, v: LuaValue, name: &str) -> mlua::Result<()> {
+fn assign(s: &mut dyn nettai_content_api::Fields, place: nettai_content_api::Place, v: LuaValue, name: What) -> mlua::Result<()> {
     let ty = place.ty();
     if ty.is_scalar() {
-        let v = to_api(v, ty, name)?;
-        return s.set_at(place, v).map_err(|e| mlua::Error::runtime(format!("{name}: {e}")));
+        let v = to_api_as(v, ty, name)?;
+        return s.set_at(place, v).map_err(|e| mlua::Error::runtime(format!("{}: {e}", name())));
     }
     let LuaValue::Table(t) = v else {
-        return Err(mlua::Error::runtime(format!("{name} is a {ty}: give it a table, not a {}", v.type_name())));
+        return Err(mlua::Error::runtime(format!("{} is a {ty}: give it a table, not a {}", name(), v.type_name())));
     };
     match ty {
         FieldType::Record(fields) => {
             for pair in t.clone().pairs::<LuaValue, LuaValue>() {
                 let (k, _) = pair?;
                 let known = match &k {
-                    LuaValue::String(k) => fields.index_of(&k.to_str()?).is_some(),
+                    LuaValue::String(k) => field_named(fields, k.to_str()?.as_bytes()).is_some(),
                     _ => false,
                 };
                 if !known {
                     let names: Vec<&str> = fields.fields().iter().map(|f| f.name.as_str()).collect();
-                    return Err(mlua::Error::runtime(format!("{name} has no field {k:?} ({})", names.join(", "))));
+                    return Err(mlua::Error::runtime(format!("{} has no field {k:?} ({})", name(), names.join(", "))));
                 }
             }
             s.clear_at(place);
             for (i, f) in fields.fields().iter().enumerate() {
                 let x: LuaValue = t.raw_get(f.name.as_str())?;
                 if !x.is_nil() {
-                    assign(s, place.field_at(i), x, &format!("{name}.{}", f.name))?;
+                    assign(s, place.field_at(i), x, &|| format!("{}.{}", name(), f.name))?;
                 }
             }
             Ok(())
@@ -1057,7 +1390,7 @@ fn assign(s: &mut dyn nettai_content_api::Fields, place: nettai_content_api::Pla
             let n = t.raw_len();
             let room = place.capacity().expect("an array or a list");
             if n > room {
-                return Err(mlua::Error::runtime(format!("{name} holds {room}, not {n}")));
+                return Err(mlua::Error::runtime(format!("{} holds {room}, not {n}", name())));
             }
             s.clear_at(place);
             if matches!(ty, FieldType::List(..)) {
@@ -1065,7 +1398,7 @@ fn assign(s: &mut dyn nettai_content_api::Fields, place: nettai_content_api::Pla
             }
             for k in 0..n {
                 let x: LuaValue = t.raw_get(k + 1)?;
-                assign(s, place.elem(k).expect("within its room"), x, &format!("{name}[{}]", k + 1))?;
+                assign(s, place.elem(k).expect("within its room"), x, &|| format!("{}[{}]", name(), k + 1))?;
             }
             Ok(())
         }
@@ -1073,11 +1406,28 @@ fn assign(s: &mut dyn nettai_content_api::Fields, place: nettai_content_api::Pla
     }
 }
 
-/// A step into a part of a state field: a record's field, an element.
-#[derive(Clone, Debug)]
+/// A step into a part of a state field: a record's field (by its index in
+/// the record), an element.
+#[derive(Clone, Copy, Debug)]
 enum Step {
-    Field(String),
+    Field(usize),
     Elem(usize),
+}
+
+/// The part `step` names of `place` (none: no such part).
+fn place_step(place: nettai_content_api::Place<'_>, step: Step) -> Option<nettai_content_api::Place<'_>> {
+    match step {
+        Step::Field(i) => place.record().filter(|r| i < r.fields().len()).map(|_| place.field_at(i)),
+        Step::Elem(k) => place.elem(k),
+    }
+}
+
+/// What `step` adds to a part's name, from `place`: `.code`, `[2]`.
+fn step_name(place: nettai_content_api::Place<'_>, step: Step) -> String {
+    match step {
+        Step::Field(i) => format!(".{}", place.record().and_then(|r| r.fields().get(i)).map_or("?", |f| f.name.as_str())),
+        Step::Elem(k) => format!("[{}]", k + 1),
+    }
 }
 
 /// A part of a content state field that holds parts: an array's elements
@@ -1086,72 +1436,137 @@ enum Step {
 /// are 1-based like Luau arrays. A list grows by its next element
 /// (`s.list[#s.list + 1] = v`); a record, a list or an array takes a table
 /// whole (`s.folder[2] = { chip = c, code = "A" }`, [`assign`]).
+///
+/// A part holds its field and its steps by index, in the layout of the
+/// state it was made from (`id`); a state that has another layout by the
+/// time the part is used (its object's slot taken by another kind, its navi
+/// running another action) is reached by their names, as written.
 pub struct StatePart {
     state: State,
-    field: String,
+    id: StateId,
+    field: usize,
     path: Vec<Step>,
 }
 
+/// A part's place as the state's layout has it: the layout, its field and
+/// its steps (what a part of the part takes on).
+struct Resolved<'a> {
+    id: StateId,
+    field: usize,
+    path: &'a [Step],
+}
+
 impl StatePart {
-    /// What it is called in a message: `folder[2].code`.
-    fn name(&self, next: Option<&Step>) -> String {
-        let mut out = self.field.clone();
-        for step in self.path.iter().chain(next) {
-            match step {
-                Step::Field(f) => out.push_str(&format!(".{f}")),
-                Step::Elem(k) => out.push_str(&format!("[{}]", k + 1)),
-            }
+    /// The names of the part's field and of each of its steps, in the
+    /// layout it was made in: `folder`, `[2]`, `.code`.
+    fn names(&self, bound: &Bound) -> (String, Vec<String>) {
+        let schema = bound.manifest.schema(self.id);
+        let mut place = Some(schema.place(self.field));
+        let mut steps = Vec::with_capacity(self.path.len());
+        for &step in &self.path {
+            steps.push(place.map_or_else(|| "?".to_string(), |p| step_name(p, step)));
+            place = place.and_then(|p| place_step(p, step));
+        }
+        (schema.field(self.field).name.clone(), steps)
+    }
+
+    /// What it is called in a message: `folder[2].code`; then `next`'s
+    /// step, from the place it is a step of.
+    fn name(&self, bound: &Bound, next: Option<(nettai_content_api::Place, Step)>) -> String {
+        let (mut out, steps) = self.names(bound);
+        out.extend(steps);
+        if let Some((place, step)) = next {
+            out.push_str(&step_name(place, step));
         }
         out
+    }
+
+    /// Step `n` of its path leads to no part of the state.
+    fn no_part(&self, bound: &Bound, n: usize) -> mlua::Error {
+        let (mut out, steps) = self.names(bound);
+        let again = steps.get(n).cloned().unwrap_or_default();
+        out.extend(steps);
+        out.push_str(&again);
+        mlua::Error::runtime(format!("{out}: no such part"))
     }
 
     /// Run `f` on the state with this part's place.
     fn with_place<R>(
         &self,
         write: bool,
-        f: impl FnOnce(&mut dyn nettai_content_api::Fields, nettai_content_api::Place) -> mlua::Result<R>,
+        f: impl FnOnce(&mut dyn nettai_content_api::Fields, nettai_content_api::Place, &Bound, Resolved) -> mlua::Result<R>,
     ) -> mlua::Result<R> {
-        self.state.with_state(&self.field, write, |s, schema, i| {
-            let mut place = schema.place(i);
-            for (n, step) in self.path.iter().enumerate() {
-                place = match step {
-                    Step::Field(name) => place.field(name),
-                    Step::Elem(k) => place.elem(*k),
+        let field_name = |bound: &Bound| Ok(bound.manifest.schema(self.id).field(self.field).name.clone());
+        self.state.with_fields(write, field_name, |s, bound| {
+            let id = s.id();
+            let schema = bound.manifest.schema(id);
+            if id == self.id {
+                let mut place = schema.place(self.field);
+                for (n, &step) in self.path.iter().enumerate() {
+                    place = place_step(place, step).ok_or_else(|| self.no_part(bound, n))?;
                 }
-                .ok_or_else(|| mlua::Error::runtime(format!("{}: no such part", self.name(self.path.get(n)))))?;
+                return f(s, place, bound, Resolved { id, field: self.field, path: &self.path });
             }
-            f(s, place)
+            // (The state has another layout: the part's names, in it.)
+            let made = bound.manifest.schema(self.id);
+            let field = field_index(schema, &made.field(self.field).name)?;
+            let (mut was, mut place) = (made.place(self.field), schema.place(field));
+            let mut path = Vec::with_capacity(self.path.len());
+            for (n, &step) in self.path.iter().enumerate() {
+                let here = match step {
+                    Step::Field(i) => {
+                        let name = &was.record().expect("a part's steps are of its layout").field(i).name;
+                        place.record().and_then(|r| field_named(r, name.as_bytes())).map(Step::Field)
+                    }
+                    Step::Elem(k) => Some(Step::Elem(k)),
+                };
+                let (Some(here), Some(next)) = (here, here.and_then(|h| place_step(place, h))) else {
+                    return Err(self.no_part(bound, n));
+                };
+                place = next;
+                path.push(here);
+                was = place_step(was, step).expect("a part's steps are of its layout");
+            }
+            f(s, place, bound, Resolved { id, field, path: &path })
         })
     }
 
     /// The step `key` names into this part (a record's field by name, an
     /// element by its 1-based index), and whether the element is one the
     /// list may take next (one past its end, for a write).
-    fn step(&self, key: &LuaValue, s: &dyn nettai_content_api::Fields, place: nettai_content_api::Place, write: bool) -> mlua::Result<Step> {
+    fn step(&self, bound: &Bound, key: &PartKey, s: &dyn nettai_content_api::Fields, place: nettai_content_api::Place, write: bool) -> mlua::Result<Step> {
         match place.ty() {
             FieldType::Record(fields) => {
-                let LuaValue::String(name) = key else {
-                    return Err(mlua::Error::runtime(format!("{}: a record's fields have names", self.name(None))));
+                let PartKey::Name(name) = key else {
+                    return Err(mlua::Error::runtime(format!("{}: a record's fields have names", self.name(bound, None))));
                 };
-                let name = name.to_str()?.to_string();
-                if fields.index_of(&name).is_none() {
-                    let names: Vec<&str> = fields.fields().iter().map(|f| f.name.as_str()).collect();
-                    return Err(mlua::Error::runtime(format!("{} has no field `{name}` ({})", self.name(None), names.join(", "))));
+                match field_named(fields, name.as_bytes()) {
+                    Some(i) => Ok(Step::Field(i)),
+                    None => {
+                        let name = name.to_str()?;
+                        let names: Vec<&str> = fields.fields().iter().map(|f| f.name.as_str()).collect();
+                        Err(mlua::Error::runtime(format!("{} has no field `{name}` ({})", self.name(bound, None), names.join(", "))))
+                    }
                 }
-                Ok(Step::Field(name))
             }
             FieldType::Array(..) | FieldType::List(..) => {
-                let k = int(key, &self.name(None))?;
+                let k = match key {
+                    PartKey::Other(v) => int_as(v, &|| self.name(bound, None))?,
+                    // (As `int_as` refuses a string.)
+                    PartKey::Name(_) => {
+                        return Err(mlua::Error::runtime(format!("{}: expected an integer, got string", self.name(bound, None))));
+                    }
+                };
                 let len = s.len_at(place).expect("an array or a list") as i64;
                 let room = place.capacity().expect("an array or a list") as i64;
                 let last = if write && matches!(place.ty(), FieldType::List(..)) { (len + 1).min(room) } else { len };
                 if k < 1 || k > last {
                     let what = if matches!(place.ty(), FieldType::List(..)) { "list" } else { "array" };
-                    return Err(mlua::Error::runtime(format!("{}[{k}] is past the {what}'s end ({len})", self.name(None))));
+                    return Err(mlua::Error::runtime(format!("{}[{k}] is past the {what}'s end ({len})", self.name(bound, None))));
                 }
                 Ok(Step::Elem(k as usize - 1))
             }
-            ty => Err(mlua::Error::runtime(format!("{}: a {ty} has no parts", self.name(None)))),
+            ty => Err(mlua::Error::runtime(format!("{}: a {ty} has no parts", self.name(bound, None)))),
         }
     }
 }
@@ -1159,36 +1574,36 @@ impl StatePart {
 impl StatePart {
     /// `this[key]`: a scalar's value, or the part a record's field or a
     /// list's element is.
-    fn index(lua: &Lua, this: &StatePart, key: LuaValue) -> mlua::Result<LuaValue> {
-        let got = this.with_place(false, |s, place| {
-            let step = this.step(&key, s, place, false)?;
-            let at = match &step {
-                Step::Field(name) => place.field(name),
-                Step::Elem(k) => place.elem(*k),
+    fn index(lua: &Lua, this: &StatePart, key: PartKey) -> mlua::Result<LuaValue> {
+        let got = this.with_place(false, |s, place, bound, at| {
+            let step = this.step(bound, &key, s, place, false)?;
+            let part = place_step(place, step).expect("a step into the part");
+            let ty = part.ty();
+            if ty.is_scalar() {
+                return from_api(lua, s.get_at(part).load(), ty).map(Ok);
             }
-            .expect("a step into the part");
-            let ty = at.ty().clone();
-            Ok((step, ty.is_scalar().then(|| (s.get_at(at).load(), ty))))
+            let mut path = Vec::with_capacity(at.path.len() + 1);
+            path.extend_from_slice(at.path);
+            path.push(step);
+            Ok(Err(StatePart { state: State(this.state.0), id: at.id, field: at.field, path }))
         })?;
         match got {
-            (_, Some((v, ty))) => from_api(lua, v, &ty),
-            (step, None) => {
-                let mut path = this.path.clone();
-                path.push(step);
-                Ok(LuaValue::UserData(lua.create_userdata(StatePart { state: State(this.state.0), field: this.field.clone(), path })?))
-            }
+            Ok(v) => Ok(v),
+            Err(part) => Ok(LuaValue::UserData(lua.create_userdata(part)?)),
         }
     }
 
     /// How many elements the list or array this part is holds.
     fn len(&self) -> mlua::Result<usize> {
-        self.with_place(false, |s, place| s.len_at(place).ok_or_else(|| mlua::Error::runtime(format!("{}: a record has no length", self.name(None)))))
+        self.with_place(false, |s, place, bound, _| {
+            s.len_at(place).ok_or_else(|| mlua::Error::runtime(format!("{}: a record has no length", self.name(bound, None))))
+        })
     }
 }
 
 impl UserData for StatePart {
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
-        methods.add_meta_method(MetaMethod::Index, |lua, this, key: LuaValue| StatePart::index(lua, this, key));
+        methods.add_meta_method(MetaMethod::Index, |lua, this, key: PartKey| StatePart::index(lua, this, key));
         // `for i, x in list`: a list's or an array's elements from the
         // first, as a table's.
         methods.add_meta_method(MetaMethod::Iter, |lua, this, ()| {
@@ -1198,26 +1613,21 @@ impl UserData for StatePart {
                 if i < 0 || i as usize >= this.len()? {
                     return Ok((LuaValue::Nil, LuaValue::Nil));
                 }
-                Ok((LuaValue::Integer(i + 1), StatePart::index(lua, &this, LuaValue::Integer(i + 1))?))
+                Ok((LuaValue::Integer(i + 1), StatePart::index(lua, &this, PartKey::Other(LuaValue::Integer(i + 1)))?))
             })?;
-            let me = lua.create_userdata(StatePart { state: State(this.state.0), field: this.field.clone(), path: this.path.clone() })?;
+            let me = lua.create_userdata(StatePart { state: State(this.state.0), id: this.id, field: this.field, path: this.path.clone() })?;
             Ok((next, me, 0i64))
         });
-        methods.add_meta_method(MetaMethod::NewIndex, |_, this, (key, v): (LuaValue, LuaValue)| {
-            this.with_place(true, |s, place| {
-                let step = this.step(&key, s, place, true)?;
-                let name = this.name(Some(&step));
-                if let (Step::Elem(k), FieldType::List(..)) = (&step, place.ty())
-                    && Some(*k) == s.len_at(place)
+        methods.add_meta_method(MetaMethod::NewIndex, |_, this, (key, v): (PartKey, LuaValue)| {
+            this.with_place(true, |s, place, bound, _| {
+                let step = this.step(bound, &key, s, place, true)?;
+                if let (Step::Elem(k), FieldType::List(..)) = (step, place.ty())
+                    && Some(k) == s.len_at(place)
                 {
                     s.set_len_at(place, k + 1).map_err(mlua::Error::runtime)?;
                 }
-                let at = match &step {
-                    Step::Field(f) => place.field(f),
-                    Step::Elem(k) => place.elem(*k),
-                }
-                .expect("a step into the part");
-                assign(s, at, v, &name)
+                let at = place_step(place, step).expect("a step into the part");
+                assign(s, at, v, &|| this.name(bound, Some((place, step))))
             })
         });
         methods.add_meta_method(MetaMethod::Len, |_, this, ()| this.len().map(|n| n as i64));
@@ -1235,12 +1645,13 @@ impl UserData for Navi {
         for &f in NaviStat::ALL {
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| Ok(api.navi_stat(this.0, f)))?;
-                from_api(lua, v, &f.ty())
+                from_api(lua, v, f.field_type())
             });
             if f.writable() {
-                fields.add_field_method_set(f.name(), move |_, this, v: LuaValue| {
-                    let v = to_api(v, &f.ty(), f.name())?;
-                    with(|api, _| api.set_navi_stat(this.0, f, v).map_err(api_error))
+                fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
+                    let of = this.borrow::<Navi>()?.0;
+                    let v = to_api(v, f.field_type(), f.name())?;
+                    with(|api, _| api.set_navi_stat(of, f, v).map_err(api_error))
                 });
             }
         }
@@ -1248,17 +1659,11 @@ impl UserData for Navi {
 
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         // (A name the engine's stats haven't: the game's own.)
-        methods.add_meta_method(MetaMethod::Index, |lua, this, key: mlua::LuaString| {
-            let key = key.to_str()?;
-            let got = State(StateOf::Stats(this.0)).with_state(&key, false, |s, schema, i| {
-                let ty = schema.field(i).ty.clone();
-                Ok((s.get(schema, i).load(), ty))
-            })?;
-            from_api(lua, got.0, &got.1)
+        methods.add_meta_method(MetaMethod::Index, |lua, this, key: Name| {
+            State(StateOf::Stats(this.0)).with_state(&key, false, |s, schema, i| from_api(lua, s.get(schema, i).load(), &schema.field(i).ty))
         });
-        methods.add_meta_method(MetaMethod::NewIndex, |_, this, (key, v): (mlua::LuaString, LuaValue)| {
-            let key = key.to_str()?;
-            State(StateOf::Stats(this.0)).with_state(&key, true, |s, schema, i| assign(s, schema.place(i), v, &format!("stat `{}`", &*key)))
+        methods.add_meta_method(MetaMethod::NewIndex, |_, this, (key, v): (Name, LuaValue)| {
+            State(StateOf::Stats(this.0)).with_state(&key, true, |s, schema, i| assign(s, schema.place(i), v, &|| format!("stat `{}`", key.lossy())))
         });
     }
 }
@@ -1316,6 +1721,18 @@ macro_rules! lib_fn {
     ($lua:expr, $t:expr, $name:literal, $f:expr) => {
         $t.set($name, $lua.create_function($f)?)?;
     };
+}
+
+/// The keys of a table a library function makes on each call, made once:
+/// a key the function makes itself is hashed and looked up anew each time.
+/// (The table is made whole, `create_table_from`: each `raw_set` reaches
+/// it anew.)
+fn keys<const N: usize>(lua: &Lua, names: [&str; N]) -> mlua::Result<[mlua::LuaString; N]> {
+    let mut out = Vec::with_capacity(N);
+    for name in names {
+        out.push(lua.create_string(name)?);
+    }
+    Ok(out.try_into().unwrap_or_else(|_| unreachable!("N keys")))
 }
 
 /// A field of a table argument, as an integer (0 when absent).
@@ -1761,32 +2178,50 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
 /// the side they were called for, and that side.
 fn rules_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     let t = lua.create_table()?;
-    lib_fn!(lua, t, "state", |_, ()| Ok(State(StateOf::Rules(rules_ctx("rules.state")?))));
-    lib_fn!(lua, t, "setup", |_, ()| Ok(State(StateOf::Setup(rules_ctx("rules.setup")?))));
+    lib_fn!(lua, t, "state", |lua, ()| state_handle(lua, StateOf::Rules(rules_ctx("rules.state")?)));
+    lib_fn!(lua, t, "setup", |lua, ()| state_handle(lua, StateOf::Setup(rules_ctx("rules.setup")?)));
     // The rules' state of side `side`, for a game's rules alone (its API
     // module, docs/design/rules-in-luau.md, As built S8): the game's API
     // reaches what its rules keep (EXE6's bug frags) for its chips, which
     // never call it themselves.
     lib_fn!(lua, t, "state_of", |lua, side: LuaValue| {
         rules_only(lua, "rules.state_of", "state")?;
-        Ok(State(StateOf::Rules(RulesCtx { side: u8_arg(side, "side")? & 1 })))
+        state_handle(lua, StateOf::Rules(RulesCtx { side: u8_arg(side, "side")? & 1 }))
     });
     // Side `side`'s player's setup of the rules, read-only, likewise a
     // game's rules' alone (its API module: EXE6's and EXE5's navi level,
     // the rules' `level`).
     lib_fn!(lua, t, "setup_of", |lua, side: LuaValue| {
         rules_only(lua, "rules.setup_of", "setup")?;
-        Ok(State(StateOf::Setup(RulesCtx { side: u8_arg(side, "side")? & 1 })))
+        state_handle(lua, StateOf::Setup(RulesCtx { side: u8_arg(side, "side")? & 1 }))
     });
     Ok(t)
 }
 
 /// A call only a game's rules make (a module under rules/: its API module).
 fn rules_only(lua: &Lua, what: &str, reaches: &str) -> mlua::Result<()> {
-    let caller = crate::define::caller(lua);
-    if nettai_content_api::keys::local(&caller).starts_with("rules/") {
-        return Ok(());
+    // (The caller's module as `define::caller` names it, read in place: the
+    // chunk's name at stack level 1, as mlua's `inspect_stack` and `source`
+    // read it.)
+    let mut ar: mlua::ffi::lua_Debug = unsafe { std::mem::zeroed() };
+    // SAFETY: the running state, level 1, what `s` fills in: its chunk's
+    // name, a NUL-terminated string that lives as long as the function's
+    // prototype.
+    let found = unsafe { mlua::ffi::lua_getinfo(lua.state(), 1, c"s".as_ptr(), &mut ar) } != 0 && !ar.source.is_null();
+    if found {
+        let bytes = unsafe { std::ffi::CStr::from_ptr(ar.source) }.to_bytes();
+        // (As `from_utf8_lossy` reads it, its quicker check first.)
+        let source = std::str::from_utf8(bytes).map_or_else(|_| String::from_utf8_lossy(bytes), std::borrow::Cow::Borrowed);
+        // (`trim_end_matches(".luau")`, without its searcher's setup.)
+        let mut module = source.trim_start_matches('@');
+        while let Some(m) = module.strip_suffix(".luau") {
+            module = m;
+        }
+        if nettai_content_api::keys::local(module).starts_with("rules/") {
+            return Ok(());
+        }
     }
+    let caller = crate::define::caller(lua);
     Err(mlua::Error::runtime(format!(
         "{caller}: {what} is a game's rules' (a module under rules/, its API module): content reaches the rules' {reaches} through the game's API"
     )))
@@ -1841,7 +2276,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             f.name(),
             lua.create_function(move |lua, ()| {
                 let v = with(|api, _| Ok(api.battle_info(f)))?;
-                from_api(lua, v, &f.ty())
+                from_api(lua, v, f.field_type())
             })?,
         )?;
     }
@@ -1896,53 +2331,52 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.set_chips_enabled(side, on)))
     });
-    lib_fn!(lua, t, "burst", |_, navi: mlua::UserDataRef<Object>| {
-        with(|api, _| Ok(api.spawn_burst(navi.0).map(Object)))
+    lib_fn!(lua, t, "burst", |lua, navi: mlua::UserDataRef<Object>| {
+        let o = with(|api, _| Ok(api.spawn_burst(navi.0)))?;
+        object_value(lua, o)
     });
-    lib_fn!(lua, t, "screen_fade", |_, (fade, speed): (mlua::LuaString, LuaValue)| {
+    lib_fn!(lua, t, "screen_fade", |_, (fade, speed): (Name, LuaValue)| {
         let fade = named(&fade, "screen fade", ScreenFade::from_name)?;
         let speed = u8_arg(speed, "fade speed")?;
         with(|api, _| Ok(api.screen_fade(fade, speed)))
     });
-    lib_fn!(lua, t, "hud", |lua, (field, side): (mlua::LuaString, LuaValue)| {
+    lib_fn!(lua, t, "hud", |lua, (field, side): (Name, LuaValue)| {
         let f = named(&field, "HUD field", HudField::from_name)?;
         let side = side_arg(side)?;
         let v = with(|api, _| Ok(api.hud(f, side)))?;
-        from_api(lua, v, &f.ty())
+        from_api(lua, v, f.field_type())
     });
-    lib_fn!(lua, t, "set_hud", |_, (field, value, side): (mlua::LuaString, LuaValue, Option<LuaValue>)| {
+    lib_fn!(lua, t, "set_hud", |_, (field, value, side): (Name, LuaValue, Option<LuaValue>)| {
         let f = named(&field, "HUD field", HudField::from_name)?;
-        let v = to_api(value, &f.ty(), f.name())?;
+        let v = to_api(value, f.field_type(), f.name())?;
         let side = side.filter(|s| !s.is_nil()).map(side_arg).transpose()?;
         with(|api, _| api.set_hud(f, side, v).map_err(api_error))
     });
-    lib_fn!(lua, t, "navi", |_, side: LuaValue| Ok(Navi(nettai_content_api::StatsOf::side(u8_arg(side, "side")?))));
-    lib_fn!(lua, t, "member", |_, (side, m): (LuaValue, LuaValue)| {
+    lib_fn!(lua, t, "navi", |lua, side: LuaValue| navi_handle(lua, nettai_content_api::StatsOf::side(u8_arg(side, "side")?)));
+    lib_fn!(lua, t, "member", |lua, (side, m): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
         let m = u8_arg(m, "member")?;
         let count = with(|api, _| Ok(api.party(side).count))?;
-        Ok((m < count).then_some(Navi(nettai_content_api::StatsOf { side, member: Some(m) })))
+        (m < count).then(|| navi_handle(lua, nettai_content_api::StatsOf { side, member: Some(m) })).transpose()
     });
     lib_fn!(lua, t, "mic_level", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.mic_level(side)))
     });
-    lib_fn!(lua, t, "party", |lua, side: LuaValue| {
+    let party_keys = keys(lua, ["count", "active", "switches"])?;
+    lib_fn!(lua, t, "party", move |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         let p = with(|api, _| Ok(api.party(side)))?;
-        let t = lua.create_table()?;
-        t.raw_set("count", p.count)?;
-        t.raw_set("active", p.active)?;
-        t.raw_set("switches", p.switches)?;
-        Ok(t)
+        let [count, active, switches] = &party_keys;
+        lua.create_table_from([(count, p.count), (active, p.active), (switches, p.switches)])
     });
-    lib_fn!(lua, t, "join_party", |_, (side, navi): (LuaValue, LuaValue)| {
+    lib_fn!(lua, t, "join_party", |lua, (side, navi): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
         let m = with(|api, b| match b.def(&navi) {
             Some((Registry::Navi, h)) => api.join_party(side, h).map_err(api_error),
             _ => Err(mlua::Error::runtime("battle.join_party: expected a navi definition")),
         })?;
-        Ok(Navi(nettai_content_api::StatsOf { side, member: Some(m) }))
+        navi_handle(lua, nettai_content_api::StatsOf { side, member: Some(m) })
     });
     lib_fn!(lua, t, "emotion", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -2042,7 +2476,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "alive_actors", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         let list = with(|api, _| Ok(api.alive_actors(side)))?;
-        lua.create_sequence_from(list.into_iter().map(Object))
+        object_list(lua, list)
     });
     lib_fn!(lua, t, "tracked", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -2055,7 +2489,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             Some((r, _)) => Err(mlua::Error::runtime(format!("battle.objects_of: a {r} is not a kind"))),
             None => Err(mlua::Error::runtime("battle.objects_of: expected a kind definition")),
         })?;
-        lua.create_sequence_from(list.into_iter().map(Object))
+        object_list(lua, list)
     });
     lib_fn!(lua, t, "rng", |_, ()| with(|api, _| Ok(api.rng())));
     lib_fn!(lua, t, "rng_positive", |_, ()| with(|api, _| Ok(api.rng_positive())));
@@ -2327,16 +2761,16 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     // A hand's entries, by field (from 0; past the hand, as a negative
     // entry, none).
     let entry = |i: LuaValue| -> mlua::Result<u8> { Ok(u8::try_from(int(&i, "hand entry")?).unwrap_or(u8::MAX)) };
-    lib_fn!(lua, t, "hand_entry", move |lua, (side, i, field): (LuaValue, LuaValue, mlua::LuaString)| {
+    lib_fn!(lua, t, "hand_entry", move |lua, (side, i, field): (LuaValue, LuaValue, Name)| {
         let (side, i) = (u8_arg(side, "side")? & 1, entry(i)?);
         let f = named(&field, "hand entry field", HandField::from_name)?;
         let v = with(|api, _| Ok(api.hand_entry(side, i, f)))?;
-        from_api(lua, v, &f.ty())
+        from_api(lua, v, f.field_type())
     });
-    lib_fn!(lua, t, "set_hand_entry", move |_, (side, i, field, value): (LuaValue, LuaValue, mlua::LuaString, LuaValue)| {
+    lib_fn!(lua, t, "set_hand_entry", move |_, (side, i, field, value): (LuaValue, LuaValue, Name, LuaValue)| {
         let (side, i) = (u8_arg(side, "side")? & 1, entry(i)?);
         let f = named(&field, "hand entry field", HandField::from_name)?;
-        let v = to_api(value, &f.ty(), f.name())?;
+        let v = to_api(value, f.field_type(), f.name())?;
         with(|api, _| api.set_hand_entry(side, i, f, v).map_err(api_error))
     });
     lib_fn!(lua, t, "fold_hand_chip", |_, (side, i, whole): (LuaValue, LuaValue, bool)| {
@@ -2414,15 +2848,18 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (require, forbid) = (int(&require, "require")? as u32, int(&forbid, "forbid")? as u32);
         with(|api, _| Ok(api.panel_check(p, require, forbid)))
     });
-    lib_fn!(lua, t, "panel", |lua, (x, y): (LuaValue, LuaValue)| {
+    let panel_keys = keys(lua, ["kind", "alliance", "home"])?;
+    lib_fn!(lua, t, "panel", move |lua, (x, y): (LuaValue, LuaValue)| {
         let p = panel(x, y)?;
         let Some((info, name)) = with(|api, _| Ok(api.panel_info(p).map(|i| (i, api.panel_type_name(i.kind)))))? else {
             return Ok(LuaValue::Nil);
         };
-        let t = lua.create_table()?;
-        t.raw_set("kind", name)?;
-        t.raw_set("alliance", info.alliance)?;
-        t.raw_set("home", info.home)?;
+        let [kind, alliance, home] = &panel_keys;
+        let t = lua.create_table_from([
+            (kind, mlua::Either::Left(name)),
+            (alliance, mlua::Either::Right(info.alliance)),
+            (home, mlua::Either::Right(info.home)),
+        ])?;
         Ok(LuaValue::Table(t))
     });
     lib_fn!(lua, t, "all_objects", |lua, side: Option<LuaValue>| {
@@ -2438,12 +2875,12 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
                 list = sides[1].iter().chain(sides[0].iter()).chain(stage.iter()).copied().collect();
             }
         }
-        lua.create_sequence_from(list.into_iter().map(Object))
+        object_list(lua, list)
     });
     lib_fn!(lua, t, "objects", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         let list = with(|api, _| Ok(api.side_field_objects(side)))?;
-        lua.create_sequence_from(list.into_iter().map(Object))
+        object_list(lua, list)
     });
     lib_fn!(lua, t, "object_slot", |lua, (side, i): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
@@ -2454,13 +2891,12 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let o = with(|api, _| Ok(api.field_object_slot(side, (i - 1) as u8)))?;
         object_value(lua, o)
     });
-    lib_fn!(lua, t, "column", |lua, x: LuaValue| {
+    let column_keys = keys(lua, ["home", "timer"])?;
+    lib_fn!(lua, t, "column", move |lua, x: LuaValue| {
         let x = u8_arg(x, "column")?;
         let c = with(|api, _| Ok(api.column_info(x)))?;
-        let t = lua.create_table()?;
-        t.raw_set("home", c.home)?;
-        t.raw_set("timer", c.timer)?;
-        Ok(t)
+        let [home, timer] = &column_keys;
+        lua.create_table_from([(home, c.home as u16), (timer, c.timer)])
     });
     lib_fn!(lua, t, "set_column_timer", |_, (x, ticks): (LuaValue, LuaValue)| {
         let (x, ticks) = (u8_arg(x, "column")?, u16_arg(ticks, "ticks")?);
@@ -2470,7 +2906,7 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (p, side) = (panel(x, y)?, u8_arg(side, "side")?);
         with(|api, _| Ok(api.set_panel_alliance(p, side)))
     });
-    lib_fn!(lua, t, "set_type", |_, (x, y, kind): (LuaValue, LuaValue, mlua::LuaString)| {
+    lib_fn!(lua, t, "set_type", |_, (x, y, kind): (LuaValue, LuaValue, Name)| {
         let p = panel(x, y)?;
         let kind = panel_type_arg(&kind)?;
         with(|api, _| Ok(api.set_panel_type(p, kind)))
@@ -2517,7 +2953,7 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.highlight_panel(p)))
     });
     // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
-    lib_fn!(lua, t, "overwrite", |_, (x, y, kind, sound): (LuaValue, LuaValue, mlua::LuaString, LuaValue)| {
+    lib_fn!(lua, t, "overwrite", |_, (x, y, kind, sound): (LuaValue, LuaValue, Name, LuaValue)| {
         let p = panel(x, y)?;
         let kind = panel_type_arg(&kind)?;
         let sound = match sound {
@@ -2526,7 +2962,7 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         };
         with(|api, _| Ok(api.overwrite_panel(p, kind, sound)))
     });
-    lib_fn!(lua, t, "blink", |_, (x, y, kind, side): (LuaValue, LuaValue, mlua::LuaString, LuaValue)| {
+    lib_fn!(lua, t, "blink", |_, (x, y, kind, side): (LuaValue, LuaValue, Name, LuaValue)| {
         let (p, side) = (panel(x, y)?, u8_arg(side, "side")?);
         let kind = panel_type_arg(&kind)?;
         with(|api, _| Ok(api.blink_panel(p, kind, side)))
@@ -2540,7 +2976,7 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
 
 /// A panel type's name: one of the game's (its panel rules' `numbers`), as
 /// its number.
-fn panel_type_arg(name: &mlua::LuaString) -> mlua::Result<u8> {
+fn panel_type_arg(name: &Name) -> mlua::Result<u8> {
     let s = name.to_str()?.to_string();
     with(|api, _| Ok(api.panel_type_named(&s)))?
         .ok_or_else(|| mlua::Error::runtime(format!("{s:?} is none of the game's panel types (its rules' panels.numbers)")))
@@ -2631,7 +3067,7 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.obstacle_register(me.0, side, class)))
     });
     lib_fn!(lua, t, "unregister", |_, me: Me| with(|api, _| Ok(api.obstacle_unregister(me.0))));
-    lib_fn!(lua, t, "take_hits", |_, (me, push): (Me, Option<mlua::LuaString>)| {
+    lib_fn!(lua, t, "take_hits", |_, (me, push): (Me, Option<Name>)| {
         let push = match push {
             Some(p) => named(&p, "push", ObstaclePush::from_name)?,
             None => ObstaclePush::ForgetsDamage,
@@ -2639,7 +3075,7 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| api.obstacle_take_hits(me.0, push).map_err(api_error))
     });
     lib_fn!(lua, t, "tick_lifetime", |_, me: Me| with(|api, _| api.obstacle_tick_lifetime(me.0).map_err(api_error)));
-    lib_fn!(lua, t, "react", |_, (me, crush, hold): (Me, Option<mlua::LuaString>, Option<mlua::LuaString>)| {
+    lib_fn!(lua, t, "react", |_, (me, crush, hold): (Me, Option<Name>, Option<Name>)| {
         let crush = match crush {
             Some(c) => named(&c, "crush", ObstacleCrush::from_name)?,
             None => ObstacleCrush::Breaks,
@@ -2736,8 +3172,8 @@ fn int_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
 }
 
 /// Wrap the object being updated as a script value.
-pub fn object(lua: &Lua, o: ObjectRef) -> mlua::Result<AnyUserData> {
-    lua.create_userdata(Object(o))
+pub fn object(lua: &Lua, bound: &Bound, o: ObjectRef) -> mlua::Result<AnyUserData> {
+    Handles::get_in(lua, bound, Handle::Object(o))
 }
 
 /// Wrap the attack state of `o`, as a state of layout `state` (the action
@@ -2748,7 +3184,7 @@ pub fn action_state(lua: &Lua, o: ObjectRef, state: StateId) -> mlua::Result<Any
 
 /// A hook call's arguments.
 pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua::MultiValue> {
-    let obj = |o: ObjectRef| -> mlua::Result<LuaValue> { Ok(LuaValue::UserData(lua.create_userdata(Object(o))?)) };
+    let obj = |o: ObjectRef| -> mlua::Result<LuaValue> { Ok(LuaValue::UserData(Handles::get_in(lua, bound, Handle::Object(o))?)) };
     let values = match call {
         HookCall::Weapon { navi } => vec![obj(navi)?],
         HookCall::DimmingChip { user, spec } => {
@@ -2846,7 +3282,7 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             v
         }
     };
-    Ok(mlua::MultiValue::from_iter(values))
+    Ok(mlua::MultiValue::from_vec(values))
 }
 
 /// A hook's result as the engine takes it.
@@ -3059,5 +3495,31 @@ pub fn plain_data(v: &LuaValue, bound: &Bound, depth: u32) -> mlua::Result<netta
         }
         other => return Err(mlua::Error::runtime(format!("no data is a {}", other.type_name()))),
     })
+}
+
+#[cfg(test)]
+mod field_type_tests {
+    use super::*;
+
+    /// The types made once are each field's own: a variant's number is its
+    /// place in `ALL`.
+    #[test]
+    fn a_field_type_is_its_fields() {
+        fn check<T: FieldTypes + std::fmt::Debug>() {
+            for (i, &f) in T::all().iter().enumerate() {
+                assert_eq!(f.index(), i, "{f:?}");
+                assert_eq!(*f.field_type(), f.made(), "{f:?}");
+            }
+        }
+        check::<ObjectField>();
+        check::<ActorField>();
+        check::<OverlayField>();
+        check::<SpriteField>();
+        check::<CollisionField>();
+        check::<NaviStat>();
+        check::<BattleInfo>();
+        check::<HudField>();
+        check::<HandField>();
+    }
 }
 
