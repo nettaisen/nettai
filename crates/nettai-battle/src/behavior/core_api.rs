@@ -1736,6 +1736,34 @@ impl CoreApi for Battle {
         }
     }
 
+    fn set_drive(&mut self, o: ObjectRef, d: nettai_content_api::Drive) -> ApiResult<()> {
+        use nettai_content_api::{Drive, Held};
+        if self.objects.state(o).is_none() {
+            return Err(ApiError::NoState(o));
+        }
+        match d {
+            Drive::Follow(f) => {
+                if !self.objects.is_allocated(f.target) {
+                    return Err(ApiError::Other(format!("{o:?} follows {:?}, which is no object", f.target)));
+                }
+                if let Held::State { layout, .. } = f.held
+                    && self.objects.state(f.target).is_none_or(|s| s.id() != layout)
+                {
+                    return Err(ApiError::Other(format!("{:?}'s state isn't the layout that holds {o:?}", f.target)));
+                }
+            }
+            Drive::Fly(_) if self.objects.get(o).collision.is_none() => return Err(ApiError::NoCollision(o)),
+            _ => {}
+        }
+        self.objects.get_mut(o).drive = d;
+        // (A follower takes its first step at once: it is where its
+        // target is from the tick it starts following.)
+        if let Drive::Follow(_) = d {
+            kinds::drive::step(self, o);
+        }
+        Ok(())
+    }
+
     fn set_lifecycle_only(&mut self, o: ObjectRef, l: Lifecycle) {
         self.objects.get_mut(o).state = match l {
             Lifecycle::Init => state::INIT,

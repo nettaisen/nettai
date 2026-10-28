@@ -53,6 +53,15 @@ export type Pool = "actor" | "attack" | "effect"
 -- ("finish" is the fourth state of kinds that have one after "destroy":
 -- for them "destroy" is a last running phase, and "finish" frees them.)
 export type Lifecycle = "init" | "update" | "destroy" | "finish"
+-- How an object follows another (`Object:follow`).
+export type FollowSpec = {
+    offset: Vec3?,
+    looks: { string }?,
+    visibility: boolean?,
+    held: string?,
+    held_in_state: string?,
+    while_dimmed: boolean?,
+}
 -- How the first part of each of a sprite's frames is drawn, by the
 -- original's three routines: "ground" (`sprite_hasShadow`: it is a shadow,
 -- drawn on the ground under the object), "hidden" (`sprite_removeShadow`:
@@ -652,6 +661,27 @@ declare extern type Object with
     function set_action(self, action: number): ()
     -- Free the slot now.
     function free(self): ()
+    -- Drives: what the engine runs in the object's place of the update order instead of its kind's update, with the
+    -- calls the update would make, until the drive ends or wakes the update (which then runs that tick). A content
+    -- object's alone, in its "update" lifecycle (put in another, its update runs and the drive ends); setting one
+    -- replaces the last.
+    --
+    -- Each tick: at `target`'s position plus `offset`; with `visibility`, shown to each console as the target is;
+    -- wearing the target's sprite fields in `looks` as each console draws them. Once what holds it of the target is
+    -- empty (`held`: an object field of the target's, such as "overlay" or "related1"; `held_in_state`: a field of
+    -- the target's state), it is hidden, its lifecycle is "destroy" and the drive ends (its update runs from the next
+    -- tick); else it animates, unless the battle is paused, or dimmed without `while_dimmed`. The first step runs at
+    -- once.
+    function follow(self, target: Object, spec: FollowSpec): ()
+    -- Each tick: its collision taken out, its hit sparks; a panel's wait (`phase_init` and `timer` count it, `timer2`
+    -- ticks after the one it enters on), then a step of a panel in its facing, its coordinates from the panel (with
+    -- `climbs`, a pixel further down and a pixel higher than on the last panel) and its collision's panels; its
+    -- collision presented again, and it animates. Its update runs instead, and the drive ends, on a tick the battle
+    -- is over, its collision was hit, or its step would leave the field.
+    function fly(self, climbs: boolean?): ()
+    -- Its update skipped `ticks` times (with `animate`, it animates each time); it runs at once, and the drive ends,
+    -- on a tick its collision was hit (`wake_on_hit`) or its animation has finished (`wake_on_finish`).
+    function sleep(self, ticks: number, spec: { animate: boolean?, wake_on_hit: boolean?, wake_on_finish: boolean? }?): ()
     -- `object_genericDestroy`: release panel reservations and collision,
     -- then free.
     function destroy(self): ()

@@ -726,6 +726,60 @@ impl UserData for Object {
             let a = u8_arg(a, "action")?;
             with(|api, _| api.set_action(this.0, a).map_err(api_error))
         });
+        // Drives: what the engine runs in the object's place of the update order instead of its kind's update.
+        methods.add_method("follow", |_, this, (target, spec): (mlua::UserDataRef<Object>, mlua::Table)| {
+            use nettai_content_api::{Drive, Follow, Held};
+            let offset = vec3_arg(spec.raw_get::<Option<mlua::UserDataRef<LVec3>>>("offset")?);
+            let mut looks = 0u16;
+            if let Some(t) = spec.raw_get::<Option<mlua::Table>>("looks")? {
+                for name in t.sequence_values::<Name>() {
+                    let f = named(&name?, "sprite field", SpriteField::from_name)?;
+                    looks |= 1 << SpriteField::ALL.iter().position(|x| *x == f).expect("a sprite field of ALL");
+                }
+            }
+            let held = match (spec.raw_get::<Option<Name>>("held")?, spec.raw_get::<Option<Name>>("held_in_state")?) {
+                (Some(n), None) => {
+                    let object = nettai_content_api::FieldType::Object;
+                    let field = n.with_str(|n| (ObjectField::from_name(n), ActorField::from_name(n)))?;
+                    match field {
+                        (Some(f), _) if *f.field_type() == object => Held::Field(f),
+                        (None, Some(f)) if *f.field_type() == object => Held::Actor(f),
+                        _ => return Err(mlua::Error::runtime(format!("follow: `held` is an object field or a navi field that holds an object, not {:?}", n.lossy()))),
+                    }
+                }
+                (None, Some(n)) => with(|api, bound| {
+                    let layout = api.state_mut(target.0).map(|s| s.id()).ok_or_else(|| api_error(ApiError::NoState(target.0)))?;
+                    let field = field_named(bound.manifest.schema(layout), n.as_bytes())
+                        .ok_or_else(|| mlua::Error::runtime(format!("follow: the followed object's state has no field {:?}", n.lossy())))?;
+                    Ok(Held::State { layout, field: field as u16 })
+                })?,
+                _ => return Err(mlua::Error::runtime("follow: what holds it is `held` (an object field) or `held_in_state` (a state field), one of them")),
+            };
+            let f = Follow {
+                target: target.0,
+                offset,
+                looks,
+                visibility: spec.raw_get::<Option<bool>>("visibility")?.unwrap_or(false),
+                held,
+                while_dimmed: spec.raw_get::<Option<bool>>("while_dimmed")?.unwrap_or(false),
+            };
+            with(|api, _| api.set_drive(this.0, Drive::Follow(f)).map_err(api_error))
+        });
+        methods.add_method("fly", |_, this, climbs: Option<bool>| {
+            let d = nettai_content_api::Drive::Fly(nettai_content_api::Fly { climbs: climbs.unwrap_or(false) });
+            with(|api, _| api.set_drive(this.0, d).map_err(api_error))
+        });
+        methods.add_method("sleep", |_, this, (ticks, spec): (LuaValue, Option<mlua::Table>)| {
+            let ticks = u16::try_from(int(&ticks, "sleep: ticks")?).map_err(|_| mlua::Error::runtime("sleep: ticks from 0 to 65535"))?;
+            let flag = |key: &str| -> mlua::Result<bool> { Ok(spec.as_ref().map(|t| t.raw_get::<Option<bool>>(key)).transpose()?.flatten().unwrap_or(false)) };
+            let d = nettai_content_api::Drive::Sleep(nettai_content_api::Sleep {
+                ticks,
+                animate: flag("animate")?,
+                wake_on_hit: flag("wake_on_hit")?,
+                wake_on_finish: flag("wake_on_finish")?,
+            });
+            with(|api, _| api.set_drive(this.0, d).map_err(api_error))
+        });
         methods.add_method("free", |_, this, ()| with(|api, _| Ok(api.free(this.0))));
         methods.add_method("destroy", |_, this, ()| with(|api, _| Ok(api.destroy(this.0))));
         methods.add_method("add_parts", |_, this, (identity, arg): (LuaValue, LuaValue)| {

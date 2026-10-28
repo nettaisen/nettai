@@ -312,6 +312,7 @@ impl Hash for Object {
             vars,
             telop_chip: _,
             sight: _,
+            drive,
         } = self;
         (header & !flags::VISIBLE).hash(h);
         kind.hash(h);
@@ -327,6 +328,7 @@ impl Hash for Object {
         (pos, vel).hash(h);
         (related, second_overlay, collision, actor, saved_state).hash(h);
         vars.hash(h);
+        drive.hash(h);
     }
 }
 

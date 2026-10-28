@@ -8,6 +8,7 @@ pub mod burst;
 pub mod body_overlay;
 pub mod bubble_visual;
 pub mod charge_glow;
+pub(crate) mod drive;
 pub mod common;
 pub mod effect;
 pub mod form_overlay;
@@ -164,7 +165,11 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     use crate::content::KindImpl;
     let kind = b.objects.get(r).kind;
     match b.content.defs.kind(kind).implementation {
-        KindImpl::Script { update } => crate::behavior::run_object(b, kind, update, r),
+        KindImpl::Script { update } => {
+            if !drive::step(b, r) {
+                crate::behavior::run_object(b, kind, update, r)
+            }
+        }
         KindImpl::Engine(k) => match k {
             EngineKind::Player => player::update(b, r),
             EngineKind::Intro => intro::update(b, r),

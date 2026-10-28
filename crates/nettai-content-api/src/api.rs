@@ -1214,6 +1214,74 @@ named_flags! {
     }
 }
 
+/// What the engine runs for a content object in its place of the update
+/// order, instead of calling its kind's update (`Object:follow`,
+/// `Object:fly`, `Object:sleep`): the update runs again once the drive ends
+/// or wakes it, so an object that only follows, flies or waits makes no
+/// script call a tick.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum Drive {
+    /// The kind's update runs.
+    #[default]
+    None,
+    Follow(Follow),
+    Fly(Fly),
+    Sleep(Sleep),
+}
+
+/// Each tick: at `target`'s position plus `offset`; shown to each console
+/// as the target is (with `visibility`); wearing the target's sprite fields
+/// in `looks` as each console draws them. Once what `held` names of the
+/// target is empty it is hidden, its lifecycle is `destroy` and the drive
+/// ends (the update runs from the next tick); else it animates, unless the
+/// battle is paused, or dimmed without `while_dimmed`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Follow {
+    pub target: ObjectRef,
+    pub offset: Vec3,
+    /// Bit i: `SpriteField::ALL[i]`.
+    pub looks: u16,
+    pub visibility: bool,
+    pub held: Held,
+    pub while_dimmed: bool,
+}
+
+/// Where a followed object holds its follower: an object reference field
+/// of its own (an object's, or a navi's actor field), or a field of its
+/// state, by its place in the state's layout (while its state has that
+/// layout).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Held {
+    Field(ObjectField),
+    Actor(ActorField),
+    State { layout: crate::StateId, field: u16 },
+}
+
+/// Each tick: its collision taken out, its hit sparks, then a panel's
+/// wait (its `phase_init` and `timer` count it, `timer2` ticks after the
+/// tick it enters on); then a step of a panel in its facing, its
+/// coordinates from the panel (with `climbs`, a pixel further down and a
+/// pixel higher than on the last), its collision's panels; its collision
+/// presented again, and it animates. Its update runs instead, and the
+/// drive ends, on a tick the battle is over, its collision was hit, or its
+/// step would leave the field.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Fly {
+    pub climbs: bool,
+}
+
+/// Its update skipped `ticks` times (it animating each time, with
+/// `animate`); the update runs at once, and the drive ends, on a tick its
+/// collision was hit (with `wake_on_hit`) or its animation has finished
+/// (with `wake_on_finish`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Sleep {
+    pub ticks: u16,
+    pub animate: bool,
+    pub wake_on_hit: bool,
+    pub wake_on_finish: bool,
+}
+
 /// A one-tick hit region (attack object #3), as `object_spawnCollisionRegion`
 /// takes it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -1860,6 +1928,8 @@ pub trait CoreApi {
     /// Change only the lifecycle state, keeping the action and phase (the
     /// game's byte store).
     fn set_lifecycle_only(&mut self, o: ObjectRef, l: Lifecycle);
+    /// Put content object `o` on drive `d` (none: its update runs).
+    fn set_drive(&mut self, o: ObjectRef, d: Drive) -> ApiResult<()>;
     /// Switch to `action` from its first phase (the object's own action
     /// byte; a navi's action is a definition: `set_content_attack`).
     fn set_action(&mut self, o: ObjectRef, action: u8) -> ApiResult<()>;

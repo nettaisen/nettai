@@ -228,7 +228,9 @@ pub struct Object {
     pub telop_chip: Option<crate::hud::TelopChip>,
     /// Who sees it, where the viewers differ (presentation, see [`Sight`]):
     /// `Battle::visible_to` reads it with the `VISIBLE` flag.
-    pub sight: Sight,
+    pub sight: Sight,    /// What the engine runs in its place of the update order instead of
+    /// its kind's update (a content object's; `kinds::drive`).
+    pub drive: nettai_content_api::Drive,
 }
 
 impl Object {
