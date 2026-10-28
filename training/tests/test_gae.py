@@ -54,6 +54,7 @@ class StubPool:
             "phase": np.zeros((1, 2), np.int8),
             "legal_fight": np.ones((1, 2, 3), np.bool_),
             "legal_screen": np.ones((1, 2, 4), np.bool_),
+            "teacher": np.full((1, 2), -1, np.int8),
             "hp_gain": np.zeros((1, 2), np.float32),
             "done": np.zeros(1, np.bool_),
             "truncated": np.zeros(1, np.bool_),

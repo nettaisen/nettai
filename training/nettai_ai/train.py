@@ -414,7 +414,8 @@ class Trainer:
                     f"update {row['update']:6d}  decisions {row['decisions']:,}  reward/dec {row['reward_per_decision']:+.4f}  "
                     f"entropy {us.get('entropy', 0):.3f}  kl {us.get('approx_kl', 0):.4f}  ev {us.get('explained_variance', 0):+.2f}  "
                     f"{row['sps_loop']:,.0f} dec/s  collect {row['time/collect']:.1f}s update {row['time/update']:.1f}s  "
-                    f"lag {row['loop/policy_lag']}  hp {row['hp_level']}",
+                    f"lag {row['loop/policy_lag']}  hp {row['hp_level']}"
+                    + (f"  taught {us['teacher_labels']:,.0f} acc {us['teacher_acc']:.2f}" if us.get("teacher_labels") else ""),
                     flush=True,
                 )
         if self.checkpoint_due(self.update):

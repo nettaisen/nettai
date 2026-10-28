@@ -47,6 +47,8 @@ def make_pool(
         mirror=env.mirror,
         fixed_builds=env.fixed_builds,
         landed_bonus=env.landed_bonus,
+        teacher_rate=env.teacher_rate,
+        teacher_margin=env.teacher_margin,
     )
     if env.chip_holdout > 0:
         kwargs["chip_holdout"] = (env.chip_holdout, env.chip_holdout_seed, holdout_mode)
@@ -152,6 +154,7 @@ class PoolView:
         self.phase = t(buf["phase"]).view(S)
         self.legal_fight = t(buf["legal_fight"]).view(S, spec.fight_actions)
         self.legal_screen = t(buf["legal_screen"]).view(S, spec.screen_actions)
+        self.teacher = t(buf["teacher"]).view(S)  # the teacher's label at a fight decision, -1 none
         self.hp_gain = t(buf["hp_gain"]).view(S)
         self.done = t(buf["done"])
         self.truncated = t(buf["truncated"])

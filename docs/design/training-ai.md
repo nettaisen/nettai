@@ -703,6 +703,18 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
     within the noise, as its 2,450 had been even with its 2,000 (65 to 61). So it was stopped (2026-10-26), the
     large run back on its own league shares with its learning rate cut (`ppo.lr` 1.15e-4 from update 2,850: 1.0e-4
     there, falling as before, where the schedule had it at 2.6e-4).
+- **The lookahead as a teacher** (2026-10-28; §10.7 for the lookahead). Plain self-play stopped improving the large
+  network, and its lookahead beats it outright, so the lookahead teaches it. At `env.teacher_rate` of a policy seat's
+  fight decisions (drawn per env, not while dimmed), the env tries each direction with and without A, B as the seat
+  holds it, on copies of the battle as it stands (`Search::teach`: standing and pressing A first, the rest only where
+  either does something), and where the best is worth more than `env.teacher_margin` (0.02 of max HP) above the
+  worst it is the decision's label (the pool's `teacher`, -1 none). The update adds `ppo.teacher` times the
+  cross-entropy toward the labels, averaged over the minibatch's labeled decisions, to PPO's loss; the network
+  still decides from its own delayed view, so it learns what of the lookahead's knowledge that view allows. Logged:
+  `ppo/teacher_labels` (an update's), `ppo/teacher_loss`, `ppo/teacher_acc` (the network's first choice the label).
+  On FakePool's toy, labels of the target on 30% of fight decisions took the target pressed from 0.09 to 0.41 in 12
+  updates. Measured on the real pool (64 envs a game, random actions, a draw rate of 0.1): a label on 2.3% of the
+  drawn decisions in EXE6, 1.5% in EXE5, 1.4% in EXE4, a draw costing 2.8, 33 and 26 ms (the games' ticks, §10.7).
 - **Plans a round ahead.** The pool takes a seat's controller "from the next round", so each env's next round
   (the learner's seat; self-play, a snapshot or which scripted player) is sent with `set_seat` as the current
   one starts. Which snapshot plays a policy seat is the trainer's own choice, made when the round starts. The

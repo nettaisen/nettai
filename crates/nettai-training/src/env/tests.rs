@@ -680,3 +680,39 @@ fn landed_attack_chips_add_the_bonus_to_their_seats_gain() {
     }
     panic!("no round with two attack chips landed by each side");
 }
+
+/// The teacher's labels: with every fight decision drawn, some get one (a
+/// fight action), screen decisions never; with none drawn, none.
+#[test]
+fn fight_decisions_get_teachers_labels_as_drawn() {
+    for (rate, want_some) in [(1.0, true), (0.0, false)] {
+        let cfg = Config { max_fight_ticks: 3000, teacher_rate: rate, ..Config::default() };
+        let mut env = Env::new(games(&["exe6"]), cfg, 11).unwrap();
+        let mut rng = SplitMix64::new(5);
+        let mut actions = [0; 2];
+        let (mut fight, mut labeled) = (0, 0);
+        for _ in 0..3000 {
+            let out = env.step(actions).unwrap_or_else(|e| panic!("{e}"));
+            for s in 0..2 {
+                match out.phase[s] {
+                    FIGHT => {
+                        fight += 1;
+                        if env.teacher[s] >= 0 {
+                            labeled += 1;
+                            assert!((env.teacher[s] as usize) < spec::FIGHT_ACTIONS);
+                        }
+                        actions[s] = random_action(&mut rng, &env.legal_fight[s]);
+                    }
+                    SCREEN => {
+                        assert_eq!(env.teacher[s], -1, "a screen decision has no label");
+                        actions[s] = random_action(&mut rng, &env.legal_screen[s]);
+                    }
+                    _ => actions[s] = 0,
+                }
+            }
+        }
+        println!("teacher rate {rate}: {labeled} of {fight} fight decisions labeled, {} ms teaching", env.profile.teach / 1_000_000);
+        assert!(fight > 100);
+        assert_eq!(labeled > 0, want_some, "rate {rate}: {labeled} labeled");
+    }
+}

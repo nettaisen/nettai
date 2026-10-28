@@ -56,7 +56,7 @@ unsafe fn view<'py, T: Element>(owner: &Bound<'py, PyPool>, ptr: *const T, len: 
 #[pymethods]
 impl PyPool {
     #[new]
-    #[pyo3(signature = (games, envs=256, threads=8, seed=1, content=None, k=4, delay=(6, 30), max_fight_ticks=18000, hp=None, chip_holdout=(0.0, 0, "exclude".to_string()), practice=0.25, randomize=0.75, full_lists=0.5, combos=0.3, cache=None, builders=0, mirror=false, fixed_builds=0, landed_bonus=0.0))]
+    #[pyo3(signature = (games, envs=256, threads=8, seed=1, content=None, k=4, delay=(6, 30), max_fight_ticks=18000, hp=None, chip_holdout=(0.0, 0, "exclude".to_string()), practice=0.25, randomize=0.75, full_lists=0.5, combos=0.3, cache=None, builders=0, mirror=false, fixed_builds=0, landed_bonus=0.0, teacher_rate=0.0, teacher_margin=0.02))]
     #[allow(clippy::too_many_arguments)]
     fn new(
         py: Python<'_>,
@@ -79,11 +79,13 @@ impl PyPool {
         mirror: bool,
         fixed_builds: u32,
         landed_bonus: f32,
+        teacher_rate: f32,
+        teacher_margin: f32,
     ) -> PyResult<PyPool> {
         if k == 0 || delay.0 > delay.1 || hp.is_some_and(|(lo, hi)| lo == 0 || lo > hi) {
             return Err(PyValueError::new_err(format!("k {k}, delay {delay:?}, hp {hp:?}: k is at least 1, each range low to high, HP above 0")));
         }
-        let env = Config { k, delay, max_fight_ticks, hp, holdout: holdout(chip_holdout)?, practice, randomize, full_lists, combos, mirror, fixed_builds, landed_bonus, ..Config::default() };
+        let env = Config { k, delay, max_fight_ticks, hp, holdout: holdout(chip_holdout)?, practice, randomize, full_lists, combos, mirror, fixed_builds, landed_bonus, teacher_rate, teacher_margin, ..Config::default() };
         let cfg = PoolConfig { games, envs, threads, seed, content, env, cache, builders };
         let pool = py.detach(|| Pool::new(cfg)).map_err(err)?;
         Ok(PyPool { pool: Mutex::new(pool) })
@@ -149,6 +151,7 @@ impl PyPool {
             d.set_item("phase", view(this, b.phase.as_ptr(), b.phase.len(), &[e, 2]))?;
             d.set_item("legal_fight", view(this, b.legal_fight.as_ptr(), b.legal_fight.len(), &[e, 2, spec::FIGHT_ACTIONS]))?;
             d.set_item("legal_screen", view(this, b.legal_screen.as_ptr(), b.legal_screen.len(), &[e, 2, spec::SCREEN_ACTIONS]))?;
+            d.set_item("teacher", view(this, b.teacher.as_ptr(), b.teacher.len(), &[e, 2]))?;
             d.set_item("hp_gain", view(this, b.hp_gain.as_ptr(), b.hp_gain.len(), &[e, 2]))?;
             d.set_item("done", view(this, b.done.as_ptr(), b.done.len(), &[e]))?;
             d.set_item("truncated", view(this, b.truncated.as_ptr(), b.truncated.len(), &[e]))?;
@@ -277,6 +280,7 @@ impl PyPool {
         d.set_item("ticks", p.ticks)?;
         d.set_item("decisions", p.decisions)?;
         d.set_item("rounds", p.rounds)?;
+        d.set_item("teach_ns", p.teach)?;
         Ok(d)
     }
 

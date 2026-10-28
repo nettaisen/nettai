@@ -29,6 +29,7 @@ def test_buffers_match_the_spec():
         assert b["mask"][name].shape == (5, 2, s["count"]) and b["mask"][name].dtype == np.bool_
     expected = {
         "phase": ((5, 2), np.int8), "legal_fight": ((5, 2, 20), np.bool_), "legal_screen": ((5, 2, 17), np.bool_),
+        "teacher": ((5, 2), np.int8),
         "hp_gain": ((5, 2), np.float32), "done": ((5,), np.bool_), "truncated": ((5,), np.bool_), "ending": ((5,), np.int8),
         "result": ((5, 2), np.int8), "game": ((5,), np.int8), "delay": ((5, 2), np.int16),
     }

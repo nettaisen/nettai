@@ -106,6 +106,40 @@ impl Search {
         best.map(|(a, _)| a)
     }
 
+    /// A teacher's label for training (training-ai.md §8, the lookahead's
+    /// lesson): side `side`'s best fight action in `b` among each direction
+    /// with and without A, B as it holds it now (`holding_b`), each tried as
+    /// [`Search::outcome`] tries it; none while dimmed, or where the best is
+    /// worth no more than `margin` above the worst (nothing to dodge or to
+    /// hit: the choice is the network's own). Ties go to the first in the
+    /// order: no direction before the steps, A let go before pressed. Most
+    /// decisions have nothing in either, so standing and pressing A are
+    /// tried first: where standing costs nothing and neither deals anything,
+    /// the rest aren't tried.
+    pub fn teach(&self, b: &Battle, side: u8, k: u32, holding_b: bool, margin: f32) -> Option<usize> {
+        if b.is_dimmed() {
+            return None;
+        }
+        let stand = holding_b as usize;
+        let (stood, pressed) = (self.traded(b, side, k, stand), self.traded(b, side, k, stand + 2));
+        if stood == (0.0, 0.0) && pressed.0 == 0.0 {
+            return None;
+        }
+        let known = [(stand, stood.0 - stood.1), (stand + 2, pressed.0 - pressed.1)];
+        let (mut best, mut worst): (Option<(usize, f32)>, f32) = (None, f32::INFINITY);
+        for dir in 0..act::DIRECTIONS {
+            for a_held in [0, 2] {
+                let a = dir * 4 + a_held + holding_b as usize;
+                let o = known.iter().find(|&&(k, _)| k == a).map_or_else(|| self.outcome(b, side, k, a), |&(_, o)| o);
+                worst = worst.min(o);
+                if best.is_none_or(|(_, w)| o > w) {
+                    best = Some((a, o));
+                }
+            }
+        }
+        best.filter(|&(_, w)| w - worst > margin).map(|(a, _)| a)
+    }
+
     /// What action `a` held for `k` ticks comes to for side `side` of `b`:
     /// the other navi's HP lost less its own, as fractions of their max HP.
     pub fn outcome(&self, b: &Battle, side: u8, k: u32, a: usize) -> f32 {

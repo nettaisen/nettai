@@ -111,6 +111,12 @@ pub struct Config {
     /// weights) each time one of its attack chips lands: the other navi
     /// losing HP within `stats::LANDS` ticks of its use. 0: none.
     pub landed_bonus: f32,
+    /// The share of a policy seat's fight decisions given a teacher's label
+    /// (§8: `search::Search::teach`, the action the lookahead finds best
+    /// from the battle as it stands), and the margin the best must clear
+    /// over the worst for one. 0: none.
+    pub teacher_rate: f32,
+    pub teacher_margin: f32,
 }
 
 impl Default for Config {
@@ -131,6 +137,8 @@ impl Default for Config {
             mirror: false,
             fixed_builds: 0,
             landed_bonus: 0.0,
+            teacher_rate: 0.0,
+            teacher_margin: 0.02,
         }
     }
 }
@@ -220,6 +228,8 @@ pub struct Profile {
     pub ticks: u64,
     pub decisions: u64,
     pub rounds: u64,
+    /// The teacher's labels (`Config::teacher_rate`).
+    pub teach: u64,
 }
 
 /// One env: a round being played, and how it goes on.
@@ -256,6 +266,10 @@ pub struct Env {
     pub obs: [Obs; 2],
     pub legal_fight: [[bool; spec::FIGHT_ACTIONS]; 2],
     pub legal_screen: [[bool; spec::SCREEN_ACTIONS]; 2],
+    /// The seats' teacher's labels at the decisions asked (-1: none), and
+    /// the draws of which decisions get one.
+    pub teacher: [i8; 2],
+    teacher_rng: nettai_netplay::rng::SplitMix64,
 }
 
 /// How many builds of each game an env keeps made ahead.
@@ -396,6 +410,8 @@ impl Env {
             obs: [Obs::new(), Obs::new()],
             legal_fight: [[false; spec::FIGHT_ACTIONS]; 2],
             legal_screen: [[false; spec::SCREEN_ACTIONS]; 2],
+            teacher: [-1; 2],
+            teacher_rng: nettai_netplay::rng::SplitMix64::new(seed ^ 0x7EAC_4E12),
             games,
             cfg,
         };
@@ -749,6 +765,15 @@ impl Env {
                 self.profile.encode += started.elapsed().as_nanos() as u64;
                 self.legal_fight[s] = [true; spec::FIGHT_ACTIONS];
                 self.legal_screen[s] = [false; spec::SCREEN_ACTIONS];
+                self.teacher[s] = -1;
+                let rate = self.cfg.teacher_rate;
+                if rate > 0.0 && ((self.teacher_rng.next_u64() >> 40) as f32) < rate * (1u64 << 24) as f32 {
+                    let started = std::time::Instant::now();
+                    let holding_b = act::fight_buttons(self.seats[s].action) & nettai_battle::input::keys::B != 0;
+                    let label = crate::search::Search::default().teach(&self.battle, s as u8, k, holding_b, self.cfg.teacher_margin);
+                    self.teacher[s] = label.map_or(-1, |a| a as i8);
+                    self.profile.teach += started.elapsed().as_nanos() as u64;
+                }
             }
             _ => {
                 if self.seats[s].probe.is_none() {
@@ -763,6 +788,7 @@ impl Env {
                 self.profile.encode += started.elapsed().as_nanos() as u64;
                 self.legal_screen[s] = act::legal_screen(&self.battle, s as u8, &self.seats[s].nav, extra.only_ok);
                 self.legal_fight[s] = [false; spec::FIGHT_ACTIONS];
+                self.teacher[s] = -1;
             }
         }
     }

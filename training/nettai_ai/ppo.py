@@ -129,9 +129,17 @@ def ppo_update(
     legal_f, legal_s, phase_d = up(ro.legal_fight), up(ro.legal_screen), up(ro.phase)
     action_d, logp_d, value_d, reset_d = up(ro.action), up(ro.logp), up(ro.value), up(ro.ep_start)
     previous_d = up(ro.previous)
+    teacher_d = up(ro.teacher)
     adv_d, ret_d = up(adv), up(ret)
     fa, sa = legal_f.shape[-1], legal_s.shape[-1]
     acc = torch.zeros(len(names), device=dev)
+    taught = torch.zeros(3, device=dev)  # the teacher's labeled decisions, their cross-entropy, those already the network's first
+
+    def labeled(s: torch.Tensor, t: torch.Tensor, fight_rows: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        """Rows with a teacher's label the decision allowed, and the label (clamped where none)."""
+        T = teacher_d[s, t]
+        Tc = T.clamp(0, fa - 1)
+        return fight_rows & (T >= 0) & legal_f[s, t].gather(-1, Tc.unsqueeze(-1)).squeeze(-1), Tc
     first = torch.zeros(2, device=dev)
     mbs = first_mbs = 0
     for epoch in range(cfg.epochs):
@@ -146,6 +154,7 @@ def ppo_update(
             # The minibatch's sizes and its advantages' normalization, over all of it: each part of it (cfg.accumulate)
             # adds its share of the minibatch's mean losses, so the step is the one a single pass would take.
             nvalid = valid_all.sum().clamp(min=1)
+            nteach = labeled(s_all, t_all, valid_all & (phase_d[s_all, t_all] == 1))[0].sum().clamp(min=1)
             A_all = adv_d[s_all, t_all]
             mu = (A_all * valid_all).sum() / nvalid
             sd = torch.sqrt((((A_all - mu) ** 2) * valid_all).sum() / nvalid + 1e-8)
@@ -187,7 +196,15 @@ def ppo_update(
                 vl = 0.5 * torch.maximum((value - R) ** 2, (v_clip - R) ** 2)
                 part_pg, part_v, part_ent = vsum(pg), vsum(vl), vsum(ent)
                 loss = (part_pg + cfg.value_coef * part_v - cfg.entropy * part_ent) / nvalid
+                # The teacher's lesson (§8): the cross-entropy toward its labels, over the minibatch's labeled decisions.
+                lab, T = labeled(s, t, is_f)
+                ce = -logp_f.gather(-1, T.unsqueeze(-1)).squeeze(-1)
+                part_t = (ce * lab).sum()
+                if cfg.teacher > 0:
+                    loss = loss + cfg.teacher * part_t / nteach
                 loss.backward()
+                with torch.no_grad():
+                    taught += torch.stack([lab.sum(), part_t.detach(), ((lf.argmax(-1) == T) & lab).sum()]).to(taught.dtype)
                 with torch.no_grad():
                     kl = vsum((ratio - 1) - log_ratio)
                     clip = vsum(((ratio - 1).abs() > cfg.clip).float())
@@ -202,6 +219,10 @@ def ppo_update(
                     first_mbs += 1
             mbs += 1
     out = dict(zip(names, (acc / mbs).tolist()))
+    n_taught, ce_taught, right = taught.tolist()
+    out["teacher_labels"] = n_taught / cfg.epochs
+    out["teacher_loss"] = ce_taught / n_taught if n_taught else 0.0
+    out["teacher_acc"] = right / n_taught if n_taught else 0.0
     out["behavior_ratio"], out["behavior_kl"] = (first / max(first_mbs, 1)).tolist()
     closed = ro.closed
     rv = ret[closed]

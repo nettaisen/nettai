@@ -83,6 +83,8 @@ class FakePool:
         mirror: bool = False,  # (no builds: taken and unused)
         fixed_builds: int = 0,  # (the same)
         landed_bonus: float = 0.0,  # (the same)
+        teacher_rate: float = 0.0,  # the toy's target as a fight decision's label, at this share
+        teacher_margin: float = 0.02,  # (no outcomes: unused)
         spec: dict[str, Any] | None = None,
     ):
         self.games = list(games)
@@ -95,6 +97,7 @@ class FakePool:
             if not 0.0 <= fraction < 1.0 or mode not in ("exclude", "favor"):
                 raise ValueError(f"FakePool: bad chip_holdout {chip_holdout!r}")
         self.chip_holdout = chip_holdout
+        self.teacher_rate = teacher_rate
         self.E = envs
         self.k = k
         self.delay_range = (int(delay[0]), int(delay[1]))
@@ -119,6 +122,7 @@ class FakePool:
             "phase": np.zeros((E, 2), np.int8),
             "legal_fight": np.zeros((E, 2, self.fa), np.bool_),
             "legal_screen": np.zeros((E, 2, self.sa), np.bool_),
+            "teacher": np.full((E, 2), -1, np.int8),
             "hp_gain": np.zeros((E, 2), np.float32),
             "done": np.zeros(E, np.bool_),
             "truncated": np.zeros(E, np.bool_),
@@ -350,6 +354,8 @@ class FakePool:
 
         legal_f = (rng.random((E, 2, fa)) < 0.7) | (np.arange(fa)[None, None, :] == self.target[..., None])
         b["legal_fight"][:] = legal_f & (phase == 1)[..., None]
+        labeled = (phase == 1) & (rng.random((E, 2)) < self.teacher_rate)
+        b["teacher"][:] = np.where(labeled, self.target, -1)
 
         self.slot_value[:] = rng.random((E, 2, self.n_slots), dtype=np.float32)
         b["x"]["slots"][..., 0] = self.slot_value
@@ -433,3 +439,4 @@ class ComboPool(FakePool):
         legal = np.where(finishing[..., None], True, np.arange(fa)[None, None, :] == forced[..., None])
         b["legal_fight"][:] = legal & fight[..., None]
         self.target = np.where(finishing, COMBO + self.opener, -1)
+        b["teacher"][:] = -1

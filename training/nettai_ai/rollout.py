@@ -130,7 +130,7 @@ class Rollout:
     on CUDA, so the update's copies don't wait), the tokens and GRU states on the device."""
 
     # What an open decision takes with it into the next rollout (its reward and successor come there).
-    CARRIED = ("legal_fight", "legal_screen", "phase", "action", "logp", "value", "ep_start", "previous")
+    CARRIED = ("legal_fight", "legal_screen", "phase", "action", "logp", "value", "ep_start", "previous", "teacher")
 
     def __init__(self, spec: Spec, streams: int, steps: int, hidden: int, device: torch.device, pointer: str):
         S, Tc = streams, steps + 1
@@ -145,6 +145,7 @@ class Rollout:
         self.value = z()
         self.ep_start = z(dtype=torch.bool)  # the first decision of its round (h_in is zero)
         self.previous = z(dtype=torch.int64)  # the stream's previous decision's action, as the GRU read it
+        self.teacher = z(dtype=torch.int64)  # the teacher's label of a fight decision (env.teacher_rate), -1 none
         self.reward = z()
         self.term = z(dtype=torch.bool)
         self.trunc = z(dtype=torch.bool)
@@ -517,6 +518,7 @@ class Collector:
             ro.value[learner, t_l] = value_cpu
             ro.legal_fight[learner, t_l] = v.legal_fight[learner]
             ro.legal_screen[learner, t_l] = v.legal_screen[learner]
+            ro.teacher[learner, t_l] = v.teacher[learner].to(torch.int64)
             ro.phase[learner, t_l] = phase[learner].to(torch.int8)
             ro.ep_start[learner, t_l] = self.fresh[learner]
             ro.previous[learner, t_l] = previous[:nl]

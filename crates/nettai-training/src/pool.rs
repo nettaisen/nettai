@@ -60,6 +60,8 @@ pub struct Buffers {
     pub phase: Vec<i8>,
     pub legal_fight: Vec<bool>,
     pub legal_screen: Vec<bool>,
+    /// By seat, the teacher's label at its decision (-1: none).
+    pub teacher: Vec<i8>,
     pub hp_gain: Vec<f32>,
     pub done: Vec<bool>,
     pub truncated: Vec<bool>,
@@ -80,6 +82,7 @@ impl Buffers {
             phase: vec![0; seats],
             legal_fight: vec![false; seats * spec::FIGHT_ACTIONS],
             legal_screen: vec![false; seats * spec::SCREEN_ACTIONS],
+            teacher: vec![-1; seats],
             hp_gain: vec![0.0; seats],
             done: vec![false; envs],
             truncated: vec![false; envs],
@@ -103,6 +106,7 @@ struct Rows {
     phase: *mut i8,
     legal_fight: *mut bool,
     legal_screen: *mut bool,
+    teacher: *mut i8,
     hp_gain: *mut f32,
     done: *mut bool,
     truncated: *mut bool,
@@ -128,6 +132,7 @@ impl Rows {
             phase: b.phase.as_mut_ptr(),
             legal_fight: b.legal_fight.as_mut_ptr(),
             legal_screen: b.legal_screen.as_mut_ptr(),
+            teacher: b.teacher.as_mut_ptr(),
             hp_gain: b.hp_gain.as_mut_ptr(),
             done: b.done.as_mut_ptr(),
             truncated: b.truncated.as_mut_ptr(),
@@ -149,6 +154,7 @@ impl Rows {
                 *self.hp_gain.add(at) = out.hp_gain[s];
                 *self.result.add(at) = out.result[s];
                 *self.delay.add(at) = env.delay()[s] as i16;
+                *self.teacher.add(at) = if out.phase[s] == env::NONE { -1 } else { env.teacher[s] };
                 if out.phase[s] == env::NONE {
                     continue;
                 }
@@ -477,6 +483,7 @@ impl Pool {
                 p.ticks += q.ticks;
                 p.decisions += q.decisions;
                 p.rounds += q.rounds;
+                p.teach += q.teach;
             }
         }
         p

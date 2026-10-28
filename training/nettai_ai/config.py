@@ -81,6 +81,8 @@ class EnvConfig:
     mirror: bool = False  # both sides play side 0's build (evaluation's --mirror: play alone decides)
     fixed_builds: int = 0  # each game's builds drawn from this many, made once (0: random every round): a specialist's narrow matchups
     landed_bonus: float = 0.0  # added to a seat's hp_gain each time its attack chip lands (weighted by reward.hp_*)
+    teacher_rate: float = 0.0  # share of fight decisions the lookahead labels (search.rs `teach`; 0: none)
+    teacher_margin: float = 0.02  # the best's worth over the worst's (HP fractions) for a label
     cache: str | None = None  # a directory the pool keeps the chips' fingerprints in (EXE5's take 14 s to make)
 
 
@@ -104,6 +106,7 @@ class PPOConfig:
     value_clip: float = 0.2
     entropy: float = 0.01
     value_coef: float = 0.5
+    teacher: float = 0.0  # weight of the cross-entropy toward the teacher's labels (env.teacher_rate) on fight decisions
     max_grad_norm: float = 0.5
     name_dropout: float = 0.2  # per token, the learner plays without its name ids (rollouts and updates only)
     norm_warmup_steps: int = 32  # pool steps that set the input normalization before the first update
