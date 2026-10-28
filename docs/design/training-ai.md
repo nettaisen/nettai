@@ -730,6 +730,18 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
   labels from there. What it knows is what the network knew: the view and its own buttons (and the battle's
   hidden state, as the lookahead always reads it). Played on with both seats' presses, a kept view is the battle
   at the decision, digest for digest (a test).
+- **What each action comes to** (2026-10-28; branch worth-head, not merged: its §8 has the whole). Rather than copy
+  the lookahead's choice, the network was to learn what each action leads to: a drawn decision's view played on
+  as above and all ten of the teacher's actions tried, HP dealt and taken over the horizon, predicted from the core
+  by a head of its own (a Huber loss beside PPO's). Probed on the Mac from large1's update 3,250 (about 2,300
+  decisions tried an update): the network's core as it is (65 updates), learning it beside PPO (104 updates,
+  1.6 M decisions), and with the lesson twenty times PPO's weight (100 updates). R² of HP taken stayed 0.00 to
+  0.03 (of HP dealt 0.02 to 0.04), the AUC of "standing takes HP" 0.59 to 0.65, though standing takes some HP
+  within the horizon at 35% of the decisions; at the 4% where the actions differ by more than 2% of max HP, the
+  head's best was a best one 64 to 74% of the time (the policy's 62%, one at random 57%). The network barely
+  holds how much an action costs and didn't learn it at that scale, even taught first (its policy paid: KL 0.06
+  an update, entropy 1.47 to 1.66). Not run in the cloud (the branch's `configs/worth.toml` is ready: worth going
+  on only if R² of HP taken passes about 0.2 within 150 updates); the lookahead plays Hard instead (§10.7).
 - **The lookahead as an opponent** (2026-10-28, after the teacher failed). A seat may be the lookahead's player
   (`Controller::Searcher`, bot name "searcher"): a fixed network (`env.searcher`, an exported weights file) that
   plays as a policy seat does (its delayed view, `k`, the custom screen's navigator), the env deciding for it
