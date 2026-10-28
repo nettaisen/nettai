@@ -387,6 +387,7 @@ def main() -> None:
     ap.add_argument("--mirror", action="store_true", help="both sides play side 0's build: with --duplicate, play alone decides")
     ap.add_argument("--fixed-builds", type=int, default=0, help="each game's builds drawn from this many, made once (env.fixed_builds)")
     ap.add_argument("--records", default=None, help="write every counted round's record here (JSON lines)")
+    ap.add_argument("--searcher", default=None, help="the lookahead's player's weights (bot \"searcher\"); the checkpoint's own path isn't used")
     ap.add_argument("--device", default="cpu")
     a = ap.parse_args()
     device = torch.device(a.device)
@@ -395,6 +396,8 @@ def main() -> None:
     if a.mirror:
         cfg.env.mirror = True
     cfg.env.fixed_builds = a.fixed_builds
+    # (A run's searcher weights are a path on the machine it trained on: here only --searcher's.)
+    cfg.env.searcher = a.searcher
     games = a.games.split(",") if a.games else list(cfg.env.games)
     bots = [] if a.no_bots else [b for b in a.bots.split(",") if b]
     level = LEVELS[a.level]
