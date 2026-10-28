@@ -108,7 +108,11 @@ impl Driver for TracePlayer {
 
     fn feed_shift(&self) -> FeedShift {
         let round = &self.round;
-        self.current().map_or_else(FeedShift::default, |f| feed_shift(f.frame, round.local_ok(f.frame), round.first_local_ok(), round.link_delay()))
+        // (The drawn console's own OK: its screen took it then.)
+        self.current().map_or_else(FeedShift::default, |f| match self.viewer {
+            Some(v) => feed_shift(f.frame, round.ok_of(f.frame, v as usize), round.first_ok_of(v as usize), round.link_delay()),
+            None => feed_shift(f.frame, round.local_ok(f.frame), round.first_local_ok(), round.link_delay()),
+        })
     }
 
     fn position(&self) -> String {
@@ -280,7 +284,11 @@ impl Driver for Exe5TracePlayer {
 
     fn feed_shift(&self) -> FeedShift {
         let round = &self.round;
-        self.current().map_or_else(FeedShift::default, |f| feed_shift(f.frame, round.local_ok(f.frame), round.first_local_ok(), round.link_delay()))
+        // (The drawn console's own OK: its screen took it then.)
+        self.current().map_or_else(FeedShift::default, |f| match self.viewer {
+            Some(v) => feed_shift(f.frame, round.ok_of(f.frame, v as usize), round.first_ok_of(v as usize), round.link_delay()),
+            None => feed_shift(f.frame, round.local_ok(f.frame), round.first_local_ok(), round.link_delay()),
+        })
     }
 
     fn position(&self) -> String {
@@ -378,7 +386,11 @@ impl Driver for Exe4TracePlayer {
 
     fn feed_shift(&self) -> FeedShift {
         let round = &self.round;
-        self.current().map_or_else(FeedShift::default, |f| feed_shift(f.frame, round.local_ok(f.frame), round.first_local_ok(), round.link_delay()))
+        // (The drawn console's own OK: its screen took it then.)
+        self.current().map_or_else(FeedShift::default, |f| match self.viewer {
+            Some(v) => feed_shift(f.frame, round.ok_of(f.frame, v as usize), round.first_ok_of(v as usize), round.link_delay()),
+            None => feed_shift(f.frame, round.local_ok(f.frame), round.first_local_ok(), round.link_delay()),
+        })
     }
 
     fn position(&self) -> String {

@@ -666,7 +666,13 @@ impl Round {
     /// `link_delay` frames behind the original's until the fight resumes
     /// ([`Round::screen_late`]).
     pub fn local_ok(&self, frame: u32) -> Option<u32> {
-        self.screen_opened(frame).and_then(|o| self.screen_ok(o, self.local_side()))
+        self.ok_of(frame, self.local_side())
+    }
+
+    /// [`Round::local_ok`] of side `side` (its own console's screen took
+    /// its OK then: what a drawing of that console holds the shift to).
+    pub fn ok_of(&self, frame: u32, side: usize) -> Option<u32> {
+        self.screen_opened(frame).and_then(|o| self.screen_ok(o, side & 1))
     }
 
     /// The recording console's side's first OK of the round ([`Round::local_ok`]
@@ -675,11 +681,17 @@ impl Round {
     /// gauge's stripes, which "waiting" sets) runs that many frames behind
     /// the original's, to the round's end.
     pub fn first_local_ok(&self) -> Option<u32> {
+        self.first_ok_of(self.local_side())
+    }
+
+    /// [`Round::first_local_ok`] of side `side`.
+    pub fn first_ok_of(&self, side: usize) -> Option<u32> {
+        let side = side & 1;
         let custom = |f: &Frame| f.state[0] == 4 && f.state[1] == 8;
         let mut i = 0;
         while i < self.frames.len() {
             if custom(&self.frames[i]) {
-                if let Some(ok) = self.screen_ok(i, self.local_side()) {
+                if let Some(ok) = self.screen_ok(i, side) {
                     return Some(ok);
                 }
                 while i < self.frames.len() && custom(&self.frames[i]) {
