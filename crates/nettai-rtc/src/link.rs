@@ -105,6 +105,18 @@ use crate::native::direct::{Listener, MAX_DATAGRAM};
 const ASK_AGAIN: Duration = Duration::from_secs(2);
 /// The longest wait between two dials.
 const MAX_BACKOFF: Duration = Duration::from_secs(3);
+/// Nothing from the other side this long, and [`Link::send`] sends one
+/// datagram every [`QUIET_EVERY`] until something comes. What it holds back
+/// would only go into a path that is out: SCTP keeps each unacknowledged
+/// datagram in its congestion window, and a window full of them holds what
+/// is sent after back until its retransmission timer, backed off to seconds,
+/// fires, so a 1.5 s outage froze a match for 1.6 s more. One every 100 ms
+/// leaves the window room, and what is sent once the path is back goes at
+/// once (bn6battle-verify tools/dcbench, `--quiet 100,100`). Netplay loses
+/// nothing by it: each datagram carries every input not yet acknowledged;
+/// the lobby says its part again every 100 ms anyway.
+const QUIET_AFTER: Duration = Duration::from_millis(100);
+const QUIET_EVERY: Duration = Duration::from_millis(100);
 /// How often the host says the next reconnect code until it is
 /// acknowledged.
 const SAY_AGAIN: Duration = Duration::from_millis(100);
@@ -256,6 +268,8 @@ pub struct Link {
     meeting: Option<Instant>,
     /// When the open channel last heard from the other side.
     heard: Instant,
+    /// When it last sent a datagram of the game's.
+    sent: Option<Instant>,
     /// Since when it is down, and why (it was open before).
     down: Option<(Instant, String)>,
     /// The joiner: when to dial next, the wait after that, and when the
@@ -291,6 +305,7 @@ impl Link {
             ever_open: false,
             meeting: None,
             heard: now,
+            sent: None,
             down: None,
             next_dial: Some(now),
             backoff: Duration::ZERO,
@@ -434,15 +449,20 @@ impl Link {
     }
 
     /// Send a datagram to the other player: dropped while the channel is
-    /// down, as the network may drop one. An error: the link gave up.
+    /// down, as the network may drop one, and while nothing has come from
+    /// the other side for a moment all but one every 100 ms ([`QUIET_AFTER`]).
+    /// An error: the link gave up.
     pub fn send(&mut self, datagram: &[u8]) -> Result<(), Error> {
         if let Some(e) = &self.failed {
             return Err(e.clone());
         }
+        let now = Instant::now();
         if self.open
+            && sends(now, self.heard, self.sent)
             && let Some(pc) = &mut self.pc
         {
             pc.send(datagram);
+            self.sent = Some(now);
         }
         Ok(())
     }
@@ -926,5 +946,29 @@ impl Drop for Link {
         if let Way::Server(s) = &mut self.way {
             s.rooms.clear();
         }
+    }
+}
+
+/// Whether a datagram goes at `now`, the other side last heard at `heard`
+/// and the last one sent at `sent`: always, unless the other side has been
+/// silent for [`QUIET_AFTER`]; then one every [`QUIET_EVERY`].
+fn sends(now: Instant, heard: Instant, sent: Option<Instant>) -> bool {
+    now.saturating_duration_since(heard) < QUIET_AFTER || sent.is_none_or(|t| now.saturating_duration_since(t) >= QUIET_EVERY)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_silent_other_side_is_sent_one_datagram_every_100_ms() {
+        let start = Instant::now();
+        let at = |ms: u64| start + Duration::from_millis(ms);
+        // Heard just now: every datagram goes.
+        assert!(sends(at(50), at(0), Some(at(49))));
+        // Silent for 100 ms: one every 100 ms.
+        assert!(!sends(at(150), at(0), Some(at(100))));
+        assert!(sends(at(200), at(0), Some(at(100))));
+        assert!(sends(at(150), at(0), None));
     }
 }
