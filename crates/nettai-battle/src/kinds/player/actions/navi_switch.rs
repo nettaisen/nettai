@@ -585,9 +585,8 @@ fn finish_change(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).status &= !0x20;
     let side = b.objects.get(r).alliance as usize & 1;
     b.hands[side].charge_bonus = [0; 6];
-    // EXE5's (0x08011918) disarms the side's ColonelSoul army
-    // (`obstacle::Conversion`): EXE6 has none to disarm.
-    b.obstacle_conversion[side].armed = false;
+    // The rules' (EXE5's 0x08011918: the side's ColonelSoul army disarmed).
+    b.rules_switch_finished(side as u8, r);
     // `off_801426C`, by the navi: MegaMan's (the navi that changes form)
     // is his status reset; the others' are their `reset` (EXE6's link
     // navis' are nothing; EXE5's ToadMan dives again, 0x080119A0).

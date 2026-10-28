@@ -20,9 +20,9 @@ use nettai_content_api::{
 /// The record type of an absorbed obstacle's look (objects/absorbed_obstacle).
 const ABSORBED_LOOK: &str = "absorbed-look";
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
-use nettai_content_api::{ObstacleHold, ObstaclePush, WindSource};
+use nettai_content_api::{ObstacleHold, ObstaclePush};
 
-use crate::actor::{AbsorbedObstacle, ActorData, ActorType, request, status};
+use crate::actor::{ActorData, ActorType, request, status};
 use crate::battle::{Battle, LinkedRecord};
 use crate::collision::{CollisionData, f1, timer};
 use crate::field::PanelType;
@@ -90,9 +90,8 @@ fn timer_index(t: StatusTimer) -> usize {
 
 fn request_bit(f: RequestFlag) -> u32 {
     match f {
-        // (Not action requests: `request` and `set_request` read flag2,
-        // or the navi's own requests.)
-        RequestFlag::Flinch | RequestFlag::Slide | RequestFlag::Anger | RequestFlag::Drag | RequestFlag::TakeOff | RequestFlag::Land => 0,
+        // (Not action requests: `request` and `set_request` read flag2.)
+        RequestFlag::Flinch | RequestFlag::Slide | RequestFlag::Anger | RequestFlag::Drag => 0,
         RequestFlag::Buster => request::BUSTER,
         RequestFlag::ChargedShot => request::CHARGED_SHOT,
         RequestFlag::Chip => request::CHIP,
@@ -143,15 +142,6 @@ fn flag2_request(f: RequestFlag) -> Option<u32> {
     }
 }
 
-/// The bit of a navi's own requests a request that is one reads.
-fn own_request(f: RequestFlag) -> Option<u8> {
-    match f {
-        RequestFlag::TakeOff => Some(crate::actor::own_request::TAKE_OFF),
-        RequestFlag::Land => Some(crate::actor::own_request::LAND),
-        _ => None,
-    }
-}
-
 fn navi_state_bit(f: NaviState) -> u32 {
     match f {
         NaviState::Controllable => status::CONTROLLABLE,
@@ -174,8 +164,6 @@ fn navi_state_bit(f: NaviState) -> u32 {
         NaviState::Vanished => status::VANISHED,
         NaviState::Dives => status::DIVES,
         NaviState::Hovering => status::HOVERING,
-        NaviState::Guarded => status::GUARDED,
-        NaviState::Diving => status::DIVING,
     }
 }
 
@@ -1440,28 +1428,6 @@ impl CoreApi for Battle {
         self.side_stats[side as usize & 1][index as usize & 0xF] = n;
     }
 
-    // Subtype 8 (Wind and Fan).
-    fn wind(&self, side: u8) -> (Option<ObjectRef>, WindSource) {
-        let w = self.field.winds[side as usize & 1];
-        let source = match w.source {
-            crate::field::WindSource::Obstacle => WindSource::Obstacle,
-            crate::field::WindSource::Navi => WindSource::Navi,
-        };
-        (w.object, source)
-    }
-
-    fn set_wind(&mut self, o: ObjectRef, side: u8, source: WindSource) {
-        let source = match source {
-            WindSource::Obstacle => crate::field::WindSource::Obstacle,
-            WindSource::Navi => crate::field::WindSource::Navi,
-        };
-        kinds::obstacle::set_wind(self, o, side & 1, source);
-    }
-
-    fn clear_wind(&mut self, o: ObjectRef) {
-        kinds::obstacle::clear_wind(self, o);
-    }
-
     fn side_stat(&self, side: u8, index: u8) -> u8 {
         self.side_stats[side as usize & 1][index as usize & 0xF]
     }
@@ -2180,8 +2146,6 @@ impl CoreApi for Battle {
             ActorField::FaceTarget => at.face_target.map_or(Value::Nil, Value::Object),
             ActorField::AttackChip => at.chip.map_or(Value::Nil, |h| Value::Def(Registry::Chip, h.0)),
             ActorField::Marker => i(at.marker as i64),
-            ActorField::ThrownLook => at.thrown_look.map_or(Value::Nil, |h| Value::Def(Registry::Record, h.0)),
-            ActorField::ThrownAnim => i(at.thrown_anim as i64),
             ActorField::AttackCount => i(at.count as i64),
             ActorField::ActorType => i(actor_type_index(a.actor_type)),
             ActorField::AiIndex => i(a.ai_index as i64),
@@ -2208,7 +2172,6 @@ impl CoreApi for Battle {
             ActorField::BChargeGlow => a.b_charge_glow.map_or(Value::Nil, |s| Value::Asset(nettai_content_api::AssetKind::Sprite, s.0)),
             ActorField::BChargeAnim => a.b_charge_anim.map_or(Value::Nil, |n| i(n as i64)),
             ActorField::Primed => Value::Bool(a.primed),
-            ActorField::WeaponChip => a.weapon_chip.map_or(Value::Nil, |h| Value::Def(Registry::Chip, h.0)),
             ActorField::NoChargeTimer => i(a.no_charge_timer as i64),
             ActorField::InAutoBattle => Value::Bool(a.in_auto_battle),
             ActorField::AngerTicks => i(a.anger as i64),
@@ -2238,22 +2201,6 @@ impl CoreApi for Battle {
             }
             _ => None,
         };
-        // The weapon's chip by definition: a chip, or none.
-        let weapon_chip = match (f, v) {
-            (ActorField::WeaponChip, FieldValue::Ref(Some((Registry::Chip, h)))) => self.chip_from_api("weapon_chip", Some(ChipHandle(h)))?,
-            (ActorField::WeaponChip, FieldValue::Ref(Some((other, _)))) => {
-                return Err(ApiError::Other(format!("weapon_chip: a {other} is not a chip")));
-            }
-            _ => None,
-        };
-        // A thrown obstacle's look: an absorbed-look record, or none.
-        let thrown_look = match (f, v) {
-            (ActorField::ThrownLook, FieldValue::Ref(Some((Registry::Record, h)))) => Some(self.absorbed_look(h)?),
-            (ActorField::ThrownLook, FieldValue::Ref(Some((other, _)))) => {
-                return Err(ApiError::Other(format!("thrown_look: a {other} is not a record")));
-            }
-            _ => None,
-        };
         let a = self.actor_of_mut(o)?;
         let at = &mut a.attack;
         match (f, v) {
@@ -2276,8 +2223,6 @@ impl CoreApi for Battle {
             (ActorField::Exhausted, FieldValue::Bool(x)) => a.exhausted = x,
             (ActorField::AttackChip, FieldValue::Ref(_)) => at.chip = attack_chip,
             (ActorField::Marker, FieldValue::U32(x)) => at.marker = x,
-            (ActorField::ThrownLook, FieldValue::Ref(_)) => at.thrown_look = thrown_look,
-            (ActorField::ThrownAnim, FieldValue::U8(x)) => at.thrown_anim = x,
             (ActorField::AttackCount, FieldValue::U16(x)) => at.count = x,
             (ActorField::TargetMarker, FieldValue::Object(r)) => a.target_marker = r,
             (ActorField::ChargeGlow, FieldValue::Object(r)) => a.charge_glow = r,
@@ -2301,7 +2246,6 @@ impl CoreApi for Battle {
             (ActorField::BChargeGlow, FieldValue::Asset(_, h)) => a.b_charge_glow = h.map(SpriteId),
             (ActorField::BChargeAnim, FieldValue::OptionalU8(x)) => a.b_charge_anim = x,
             (ActorField::Primed, FieldValue::Bool(x)) => a.primed = x,
-            (ActorField::WeaponChip, FieldValue::Ref(_)) => a.weapon_chip = weapon_chip,
             (ActorField::NoChargeTimer, FieldValue::U16(x)) => a.no_charge_timer = x,
             (ActorField::InAutoBattle, FieldValue::Bool(x)) => a.in_auto_battle = x,
             (ActorField::AngerTicks, FieldValue::U16(x)) => a.anger = x,
@@ -2315,9 +2259,6 @@ impl CoreApi for Battle {
         if let Some(bit) = flag2_request(f) {
             return Ok(self.collision_of(o)?.f2 & bit != 0);
         }
-        if let Some(bit) = own_request(f) {
-            return Ok(self.actor_of(o)?.own_requests & bit != 0);
-        }
         Ok(self.actor_of(o)?.requests & request_bit(f) != 0)
     }
 
@@ -2325,11 +2266,6 @@ impl CoreApi for Battle {
         if let Some(bit) = flag2_request(f) {
             let c = self.collision_of_mut(o)?;
             c.f2 = if on { c.f2 | bit } else { c.f2 & !bit };
-            return Ok(());
-        }
-        if let Some(bit) = own_request(f) {
-            let a = self.actor_of_mut(o)?;
-            a.own_requests = if on { a.own_requests | bit } else { a.own_requests & !bit };
             return Ok(());
         }
         let a = self.actor_of_mut(o)?;
@@ -2664,24 +2600,6 @@ impl CoreApi for Battle {
 
     fn prepare_chip(&mut self, o: ObjectRef) {
         kinds::player::prepare_chip(self, o);
-    }
-
-    fn absorbed(&self, o: ObjectRef) -> ApiResult<Vec<(u16, u8)>> {
-        Ok(self.actor_of(o)?.absorbed.iter().map(|a| (a.look.0, a.anim)).collect())
-    }
-
-    fn push_absorbed(&mut self, o: ObjectRef, look: u16, anim: u8) -> ApiResult<bool> {
-        let look = self.absorbed_look(look)?;
-        let list = &mut self.actor_of_mut(o)?.absorbed;
-        if list.len() >= 8 {
-            return Ok(false);
-        }
-        list.push(AbsorbedObstacle { look, anim });
-        Ok(true)
-    }
-
-    fn pop_absorbed(&mut self, o: ObjectRef) -> ApiResult<Option<(u16, u8)>> {
-        Ok(self.actor_of_mut(o)?.absorbed.pop().map(|a| (a.look.0, a.anim)))
     }
 
     // ---- Sprites -------------------------------------------------------------------
@@ -3275,19 +3193,6 @@ impl CoreApi for Battle {
 
     fn obstacle_throw(&mut self, o: ObjectRef, side: u8, x: u8, y: u8, shake: u8, damage: u32) {
         kinds::obstacle::request_throw(self, o, side, x, y, shake, damage);
-    }
-
-    fn obstacle_arm_conversion(&mut self, side: u8, melee: u32, ranged: u32) {
-        self.obstacle_conversion[side as usize & 1] = kinds::obstacle::Conversion { armed: true, words: [melee, ranged] };
-    }
-
-    fn obstacle_set_conversion_words(&mut self, side: u8, melee: u32, ranged: u32) {
-        self.obstacle_conversion[side as usize & 1].words = [melee, ranged];
-    }
-
-    fn obstacle_conversion(&self, side: u8) -> (bool, u32, u32) {
-        let s = self.obstacle_conversion[side as usize & 1];
-        (s.armed, s.words[0], s.words[1])
     }
 
     fn obstacle_present(&self, o: ObjectRef) -> bool {

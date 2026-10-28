@@ -154,11 +154,6 @@ export type Request =
     | "takeover"
     | "volley"
     | "weakness_hit"
-    -- A navi's own requests, which its own `tick` sets and its own `idle`
-    -- reads; nothing else clears them (EXE5's GyroMan's: 0x10000000 and
-    -- 0x20000000 of his request word).
-    | "take_off"
-    | "land"
     -- The flinch request (the collision's flag2 0x4: a hit's).
     | "flinch"
     -- The slide request (the collision's flag2 0x10).
@@ -198,12 +193,6 @@ export type NaviStateFlag =
     -- In the air (EXE5's GyroMan over a panel that isn't solid): a step it
     -- takes sets no animation and leaves the one it has.
     | "hovering"
-    -- A guard of the rules' holds it (EXE5 DS's KnightMan's); a form's
-    -- reversion and break clear it.
-    | "guarded"
-    -- Its dive runs (EXE5's ToadMan's); a form's reversion and break clear
-    -- it.
-    | "diving"
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
 -- A navi's drag reaction step.
 export type DragStep = "start" | "slide" | "recover"
@@ -535,10 +524,6 @@ declare extern type Object with
     face_target: Object?
     -- A per-action word some actions keep.
     marker: number
-    -- The absorbed obstacle a throw carries (the marker word, as
-    -- DustCross's throws keep it): its look and animation.
-    thrown_look: AbsorbedLook?
-    thrown_anim: number
     -- The attack's count (AIAttackVars+0x12): what an action counts (its
     -- shots, swings, slashes, a hold's ticks, the recovery after a shot).
     -- Every action shares the word and none clears it, so an action that
@@ -603,10 +588,6 @@ declare extern type Object with
     -- Writable: EXE5's priming (AIData+0x0D): a form's `priming` chip used,
     -- its next doubling waiting.
     primed: boolean
-    -- Writable: the chip a weapon of the navi's loads (EXE5's AIData+0x32:
-    -- ColonelSoul's arm chip, which its charged shot's routine 0x13 fires;
-    -- nil: none).
-    weapon_chip: Chip?
     -- Writable: EXE5's no-charge drive (DarkInvs): its ticks left
     -- (AIData+0x36; counted down in the intake while the navi has the
     -- no-charge state, asking for the stun strike at 0; 0xFFFF holds), and
@@ -928,11 +909,6 @@ declare extern type Object with
     -- action last used it): how a weapon routine sets up the action it
     -- names before it starts. Cast it to the action's State type.
     function action_state(self, action: Action): any
-    -- The obstacles it absorbed, oldest first: their looks and
-    -- animations.
-    function absorbed(self): { { look: AbsorbedLook, anim: number } }
-    function push_absorbed(self, look: AbsorbedLook, anim: number): boolean
-    function pop_absorbed(self): (AbsorbedLook?, number?)
 
     -- Field objects (obstacles): whether another object asked this of it
     -- (the rest is the `obstacle` service).
@@ -1451,12 +1427,6 @@ declare battle: {
     -- status reset), or with their damage alone, each slot's bonuses and
     -- marks staying where they were (its custom screen's).
     fold_hand_chip: (side: number, i: number, whole: boolean) -> (),
-    -- Subtype 8 (Wind and Fan): a side's wind (`sub_80E543C`) and who
-    -- placed it; `sub_80E541A` makes `me` a side's wind (the one there
-    -- before is destroyed at once); `sub_80E544C` makes it no side's.
-    wind: (side: number) -> (Object?, WindSource),
-    set_wind: (me: Object, side: number, source: WindSource) -> (),
-    clear_wind: (me: Object) -> (),
     -- `sub_80E33FA`: a plain afterimage (effect object #0x28) of `owner`'s
     -- side at `pos`: a copy of a sprite that stays behind.
     afterimage: (owner: Object, pos: Vec3, spec: AfterimageSpec) -> Object?,
@@ -1665,7 +1635,6 @@ export type ObstacleCrush = "breaks" | "destroys" | "spares_bodies" | "ignores" 
 -- Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
 export type ObstacleHold = "after_appearing" | "always"
 export type ObstaclePush = "forgets_damage" | "keeps_damage" | "any_hit" | "ignored"
-export type WindSource = "obstacle" | "navi"
 export type ObstacleRemoval = "broken" | "removed" | "vanished" | "absorbed"
 -- How a removed field object's blink-out goes.
 export type BlinkOut = "no" | "blinking" | "done"
@@ -1767,20 +1736,6 @@ declare obstacle: {
     -- thrown at panel (x, y) after shaking `shake` ticks, hitting with the
     -- damage word `damage`.
     throw: (o: Object, side: number, x: number, y: number, shake: number, damage: number) -> (),
-    -- EXE5's ColonelSoul army (docs/design/exe5-map.md §15.11): arm side
-    -- `side` (BattleState+0x5C bit 0x10 or 0x20, 0x080CAC1E) with its
-    -- soldiers' damage words (0x080CABF8): the sword soldier's and the gun
-    -- soldier's. While a side is armed, an obstacle's reaction asks the
-    -- rules (`obstacle_reaction`: EXE5's turns one standing on a panel of
-    -- the side's enemy, with one of the enemy's bodies on its row, into the
-    -- side's soldier).
-    arm_conversion: (side: number, melee: number, ranged: number) -> (),
-    -- 0x080CABF8 alone: side `side`'s soldiers' damage words become these,
-    -- armed or not (EXE5's BusterUp in ColonelSoul, 0x08011C50).
-    set_conversion_words: (side: number, melee: number, ranged: number) -> (),
-    -- Whether side `side` is armed, and its words (0x080CAC06,
-    -- 0x080CAC12): what its soldiers strike with as they read them.
-    conversion: (side: number) -> (boolean, number, number),
 }
 
 -- Exact integer helpers.
@@ -2001,8 +1956,10 @@ export type RulesSpec = {
     -- What a player brings (a side's facts, by these names: the match
     -- format's), read-only in battle (`rules.setup()`).
     setup: StateSchema?,
-    -- The state of each navi no player controls that its `controller`
-    -- drives (the navi object's own: an object's state, 64 bytes at most).
+    -- The state of each navi (the navi object's own `state`: an object's
+    -- state, 64 bytes at most), zeroed as it spawns: a player's, which a
+    -- party's switch keeps (the object stays), and one no player controls
+    -- that the `controller` drives.
     navi_state: StateSchema?,
     -- A navi's stats of the game's own, beside the engine's (16 bytes at
     -- most: the stats' every copy carries them): `battle.navi(side)` reads
@@ -2241,10 +2198,18 @@ export type RulesSpec = {
         -- A hit on the side's player navi shows (white, then its sounds), before its sounds.
         navi_hit_shown: ((side: number, navi: Object) -> ())?,
         -- An obstacle's reaction (after the damage and the crushing hits) leaves it standing, outside the dimming and
-        -- past its first action, while a side is armed (`obstacle.arm_conversion`): the rules may turn it into
-        -- something else and break it (its HP and max HP to 0: EXE5's ColonelSoul army, 0x080CAB02). `side` is the
-        -- obstacle's.
+        -- past its first action: the rules may turn it into something else and break it (its HP and max HP to 0:
+        -- EXE5's ColonelSoul army while a side's is armed, 0x080CAB02). `side` is the obstacle's.
         obstacle_reaction: ((side: number, obstacle: Object) -> ())?,
+        -- The navi's status reset starts (`sub_80144CA`, after the hand's charge bonuses are cleared: EXE5's disarms
+        -- the side's ColonelSoul army).
+        status_reset: ((side: number, navi: Object) -> ())?,
+        -- A navi switch's change, or a party's knockout's take-back, finishes (`sub_8014216`, before the incoming
+        -- navi's reset: EXE5's disarms the side's ColonelSoul army).
+        switch_finished: ((side: number, navi: Object) -> ())?,
+        -- A form's revert or break finishes, its 30 ticks up (`sub_8015614`, `sub_8015766`: EXE5 DS's guard and dive
+        -- end).
+        revert_finished: ((side: number, navi: Object) -> ())?,
         -- Each tick of the idle action of a navi whose side's takeover runs
         -- (`sub_802D4C6`), in place of the player's decisions: what it did,
         -- as `controller` answers, or "own_chip" (an attack of its own
@@ -3263,9 +3228,11 @@ export type RolesSpec = {
         -- The NaviCust FirstBarrier: raise its barrier and the barrier's
         -- visual on the navi as it enters (`sub_8013892`).
         first_barrier: ((navi: Object) -> ())?,
-        -- `sub_801813A`'s end: what an obstacle encased in ice (`ice`) or a
-        -- bubble becomes on its panel; its field-object registry class (nil:
-        -- it wasn't registered).
+        -- `sub_801813A`'s end, the obstacle out of the field-object
+        -- registry: what is left of an obstacle encased in ice (`ice`) or a
+        -- bubble (the game's own of it, `sub_80E544C`'s wind registry, then
+        -- what it becomes on its panel); its registry class (nil: it wasn't
+        -- registered).
         encased: ((obstacle: Object, ice: boolean, class: number?) -> ())?,
         -- A navi no player controls is being deleted (EXE5's 0x08013DA0):
         -- what sparkles over it while it flashes, which its deletion's end

@@ -538,9 +538,10 @@ pub enum HookRole {
     /// (`sub_8013892`: `sub_801A7CC` with the navi stat, which the game's
     /// program sets to 1, and `sub_80E0D98`).
     FirstBarrier,
-    /// `(obstacle, ice, class)`: what an obstacle encased in ice or a
-    /// bubble becomes (`sub_801813A`'s end: an ice block, `sub_80CFBC4`
-    /// variant 3 in its registry class; or the bubble, attack #0xA3
+    /// `(obstacle, ice, class)`: what is left of an obstacle encased in ice
+    /// or a bubble (`sub_801813A`'s end: the game's wind registry,
+    /// `sub_80E544C`; then what it becomes, an ice block, `sub_80CFBC4`
+    /// variant 3 in its registry class, or the bubble, attack #0xA3
     /// `sub_80D99EC`).
     Encased,
     /// `(navi) -> Object?`: a navi no player controls is being deleted:

@@ -748,6 +748,21 @@ impl Battle {
         self.call_rules(side, RulesHook::ObstacleReaction, Some(obstacle), None, None);
     }
 
+    /// The rules' `status_reset(side, navi)`.
+    pub(crate) fn rules_status_reset(&mut self, side: u8, navi: ObjectRef) {
+        self.call_rules(side, RulesHook::StatusReset, Some(navi), None, None);
+    }
+
+    /// The rules' `switch_finished(side, navi)`.
+    pub(crate) fn rules_switch_finished(&mut self, side: u8, navi: ObjectRef) {
+        self.call_rules(side, RulesHook::SwitchFinished, Some(navi), None, None);
+    }
+
+    /// The rules' `revert_finished(side, navi)`.
+    pub(crate) fn rules_revert_finished(&mut self, side: u8, navi: ObjectRef) {
+        self.call_rules(side, RulesHook::RevertFinished, Some(navi), None, None);
+    }
+
     /// The rules' `hook`, if it answers a number.
     fn rules_ask(&mut self, side: u8, hook: RulesHook, navi: Option<ObjectRef>) -> Option<u8> {
         match self.call_rules(side, hook, navi, None, None)? {

@@ -202,7 +202,6 @@ fn misuse_of_the_core_api_is_a_type_error() {
         // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
         ("local function f(me: Object) obstacle.take_hits(me, \"shoved\") end", "not an obstacle push"),
         ("local function f(me: Object) local _ = obstacle.react(me, \"breaks\", \"never\") end", "not a dimming hold"),
-        ("local function f(me: Object) battle.set_wind(me, 0, \"chip\") end", "not a wind source"),
         // Dimming chip subtypes 2, 3, 5, 15 and 27.
         ("field.blink(1, 1, 3, 0)", "a blink to a panel type by number"),
         // The Gregar and Falzar chips.

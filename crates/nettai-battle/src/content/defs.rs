@@ -401,9 +401,10 @@ pub struct RulesDef {
     /// and a round doesn't start until the player's setup states it
     /// ([`RulesDef::setup_block`], `SideRules::for_player`).
     pub setup_default: nettai_content_api::Block,
-    /// The layout of its state of each navi no player controls that it
-    /// drives (its `controller`: the navi object's own state), if it
-    /// drives any.
+    /// The layout of its state of each navi (the navi object's own state):
+    /// a player's, given as it spawns, and one no player controls that it
+    /// drives (its `controller`). None: navis keep no state of the rules',
+    /// and the rules drive none.
     pub navi_state: Option<StateId>,
     /// Its hooks, in [`RulesHook::ALL`]'s order.
     hooks: Vec<Option<FnId>>,
@@ -1951,15 +1952,12 @@ impl Defs {
                 }
                 _ => return Err(what("`buttons` is a table of buttons by name")),
             }
-            // (A navi's state, as an object's.)
+            // (A navi's state, as an object's: each navi's, a player's or one
+            // the rules drive.)
             let navi_state = match d.spec.field("navi_state") {
                 Data::Nil => None,
                 _ => Some(layout("navi_state")?),
             };
-            let controller = RulesHook::ALL.iter().position(|&h| h == RulesHook::Controller).expect("listed");
-            if navi_state.is_some() && hooks[controller].is_none() {
-                return Err(what("a `navi_state` is the state of the navis its `controller` drives: it has no `controller`"));
-            }
             // Its custom-screen windows, by name.
             let mut own_windows = Vec::new();
             match d.spec.field("windows") {

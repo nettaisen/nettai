@@ -295,14 +295,8 @@ named_fields! {
         /// patterns 0x23, 0x31 and 0x33 (only the unused `sub_80116F6` sets
         /// one).
         FaceTarget = "face_target", Object, ro;
-        /// A per-action word some actions keep (a move's direction change,
-        /// a thrown obstacle).
+        /// A per-action word some actions keep (a move's direction change).
         Marker = "marker", U32, rw;
-        /// The absorbed obstacle a throw carries (the marker word, as
-        /// DustCross's throws keep it): its look (an absorbed-look record)
-        /// and animation.
-        ThrownLook = "thrown_look", Ref(Registry::Record, Some("absorbed-look".into())), rw;
-        ThrownAnim = "thrown_anim", U8, rw;
         /// The attack's count (AIAttackVars+0x12): what an action counts
         /// (its shots, swings, slashes, a hold's ticks, the recovery after
         /// a shot), a word every action shares and none clears, so an
@@ -370,10 +364,6 @@ named_fields! {
         /// EXE5's priming (AIData+0x0D): a form's `priming` chip used, its
         /// next doubling waiting.
         Primed = "primed", Bool, rw;
-        /// The chip a weapon of the navi's loads (EXE5's AIData+0x32:
-        /// ColonelSoul's arm chip, which its charged shot's routine 0x13
-        /// fires, 0x0800F7D8; none: 0xFFFF).
-        WeaponChip = "weapon_chip", Ref(Registry::Chip, None), rw;
         /// EXE5's no-charge drive (DarkInvs): its ticks left (AIData+0x36;
         /// counted down in the intake while the navi has the no-charge
         /// state, asking for the stun strike at 0; 0xFFFF holds), and the
@@ -819,11 +809,6 @@ named_flags! {
         Takeover = "takeover",
         Volley = "volley",
         WeaknessHit = "weakness_hit",
-        /// A navi's own requests, which its own tick sets and its own idle
-        /// reads (EXE5's GyroMan's take-off and landing, 0x10000000 and
-        /// 0x20000000 of his request word; EXE6 has neither).
-        TakeOff = "take_off",
-        Land = "land",
         /// The flinch request (the collision's flag2 0x4: a hit's).
         Flinch = "flinch",
         /// The slide request (the collision's flag2 0x10, not an action
@@ -870,10 +855,6 @@ named_flags! {
         /// In the air (EXE5's GyroMan over a panel that isn't solid): a
         /// step it takes sets no animation.
         Hovering = "hovering",
-        /// A guard of the rules' holds it (EXE5 DS's KnightMan's).
-        Guarded = "guarded",
-        /// Its dive runs (EXE5's ToadMan's action 8).
-        Diving = "diving",
     }
 }
 
@@ -1121,17 +1102,6 @@ named_flags! {
         AnyHit = "any_hit",
         /// `sub_801AD6A`: it is never pushed.
         Ignored = "ignored",
-    }
-}
-
-named_flags! {
-    /// Who placed a side's wind (`sub_80E541A`'s third argument).
-    pub enum WindSource {
-        /// Wind and Fan's fan (attack object #0x48).
-        Obstacle = "obstacle",
-        /// A navi's own wind (effect object #0x41, `sub_80E532C`), which a
-        /// fan's can't replace.
-        Navi = "navi",
     }
 }
 
@@ -1723,14 +1693,6 @@ pub trait CoreApi {
     fn set_side_stat(&mut self, side: u8, index: u8, n: u8);
     /// `sub_800AB3A`: a side's statistics counter.
     fn side_stat(&self, side: u8, index: u8) -> u8;
-    // Subtype 8 (Wind and Fan):
-    /// `sub_80E543C`: a side's wind (BattleState+0xC0) and who placed it.
-    fn wind(&self, side: u8) -> (Option<ObjectRef>, WindSource);
-    /// `sub_80E541A`: `o` is `side`'s wind; the one there before is
-    /// destroyed at once (`sub_80E5410`).
-    fn set_wind(&mut self, o: ObjectRef, side: u8, source: WindSource);
-    /// `sub_80E544C`: `o` is no side's wind.
-    fn clear_wind(&mut self, o: ObjectRef);
     /// The damage-carry record of the side that takes the damage
     /// (`dword_203CFB0`; CopyDmg's): what that side took this tick and
     /// last tick, the object that set it, and the target that also takes
@@ -2177,13 +2139,6 @@ pub trait CoreApi {
     /// `sub_80127C0(0)`: fill the attack variables from the chip at the
     /// hand's cursor (its damage, bonuses and modifiers).
     fn prepare_chip(&mut self, o: ObjectRef);
-    /// Obstacles the navi absorbed, oldest first: (look, animation), the
-    /// look an absorbed-look record's handle.
-    fn absorbed(&self, o: ObjectRef) -> ApiResult<Vec<(u16, u8)>>;
-    /// Add one (false when the navi has eight).
-    fn push_absorbed(&mut self, o: ObjectRef, look: u16, anim: u8) -> ApiResult<bool>;
-    /// Take the newest.
-    fn pop_absorbed(&mut self, o: ObjectRef) -> ApiResult<Option<(u16, u8)>>;
 
     // ---- Sprites -------------------------------------------------------------
 
@@ -2392,20 +2347,6 @@ pub trait CoreApi {
     /// thrown at panel (x, y) after shaking `shake` ticks, hitting with the
     /// damage word `damage` (`sub_8018002` does it).
     fn obstacle_throw(&mut self, o: ObjectRef, side: u8, x: u8, y: u8, shake: u8, damage: u32);
-    /// EXE5's ColonelSoul army (docs/design/exe5-map.md §15.11): arm side
-    /// `side` (BattleState+0x5C bit 0x10 or 0x20, 0x080CAC1E) with its
-    /// soldiers' damage words (0x080CABF8): the sword soldier's and the gun
-    /// soldier's. While it is armed, an obstacle of a game whose rules have
-    /// `effects.obstacle_conversion`, standing on a panel of the side's enemy,
-    /// turns into the side's soldier.
-    fn obstacle_arm_conversion(&mut self, side: u8, melee: u32, ranged: u32);
-    /// 0x080CABF8 alone: side `side`'s soldiers' damage words (the sword
-    /// soldier's and the gun soldier's) become these, armed or not (EXE5's
-    /// BusterUp in ColonelSoul, 0x08011C50).
-    fn obstacle_set_conversion_words(&mut self, side: u8, melee: u32, ranged: u32);
-    /// Whether side `side` is armed, and its words (0x080CAC06,
-    /// 0x080CAC12): what its soldiers strike with as they read them.
-    fn obstacle_conversion(&self, side: u8) -> (bool, u32, u32);
     // ---- Field objects (obstacles) -------------------------------------------
 
     /// Whether another object asked `flag` of the field object `o`.

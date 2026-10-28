@@ -205,7 +205,6 @@ impl Hash for Battle {
             sides,
             looks: _,
             side_stats,
-            obstacle_conversion,
             navi_hit_counts,
             linked,
             dimming,
@@ -251,7 +250,6 @@ impl Hash for Battle {
         custom.hash(h);
         sides.hash(h);
         side_stats.hash(h);
-        obstacle_conversion.hash(h);
         navi_hit_counts.hash(h);
         linked.hash(h);
         dimming.hash(h);

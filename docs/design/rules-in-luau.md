@@ -3548,3 +3548,27 @@ which builds may play it, so the simulation never reads it.
 - **Patch cards off** is a ruleset that allows no patch cards (the `senior` preset, Senior class): a build that holds cards is
   refused under it, where before it was played without them. `Side::without_patch_cards` stays for the NaviCust
   tab's effects alone.
+
+### Content state out of the engine (2026-10-27, for 0.15)
+
+Values only content used lived in the engine (an actor's fields, battle and field slots) with calls to reach them,
+because no hook ran where the engine changed them. Three hooks, named for the moment, are called where the engine did
+that work, in the same order, and the values are content's:
+
+- **`status_reset(side, navi)`**: the navi's status reset starts (`sub_80144CA`, after the hand's charge bonuses are
+  cleared). **`switch_finished(side, navi)`**: a navi switch's change, or a party's knockout's take-back, finishes
+  (`sub_8014216`, before the incoming navi's reset). **`revert_finished(side, navi)`**: a form's revert or break
+  finishes, its 30 ticks up (`sub_8015614`, `sub_8015766`).
+- **The navi's state**: the rules' `navi_state` is each navi's, a player's too, given as its object spawns (zeroed;
+  a party's switch keeps the object, and the state with it), not only a driven one's (a `controller` no longer
+  goes with it). EXE6's holds DustCross's absorbed obstacles and the one a throw took (`push_absorbed`,
+  `pop_absorbed`, `thrown_look`, `thrown_anim` are gone); EXE5's, a driven navi's AI (`ai`), ColonelSoul's arm chip
+  (`weapon_chip`), GyroMan's requests (`take_off`, `land`) and EXE5 DS's guard and dive (`guarded`, `diving`), which
+  its `revert_finished` ends where the engine did. The test content's holds EXE6's and the hooked navi's requests.
+- **EXE5's ColonelSoul army** is its rules' state (`army`, through rules/api), disarmed in `status_reset` and
+  `switch_finished`; `obstacle_reaction` is asked whenever the rules have it (the hook tests the army: the battle
+  state's +0x5C & 0x30), and `obstacle.arm_conversion`, `set_conversion_words` and `conversion` are gone.
+- **The wind** is each game's rules' state (`wind`: the object and who placed it), which @exelib/wind/registry sets
+  and clears through the accessor each game passes (the fan's look's `wind`; EXE4's rules/wind, EXE5's and EXE6's
+  rules/api); the role `encased` clears it where the engine did (`sub_80E544C` at `sub_801813A`'s end, before what
+  the obstacle becomes). `battle.wind`, `set_wind`, `clear_wind` and `field.winds` are gone.
