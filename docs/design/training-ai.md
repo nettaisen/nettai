@@ -1126,6 +1126,16 @@ game, each played both ways; the published 3,250): won both ways 120, lost both 
 other work running, a fight minute of CPU time: EXE6 13 s, EXE4 35 s, EXE5 82 s, where the network alone takes about
 1 s; it must come down before it plays in the app.
 
+**Cut** (the same day): while dimmed the network's choice is played (a third of fight time is dimmed, and each try
+played the dimming out whole); where standing costs nothing, only what can deal damage is tried besides the first.
+Over the same deals: won both ways 120, lost both ways 8 (EXE6 48–3, EXE5 46–2, EXE4 26–3), its CPU a fight minute
+EXE6 8.0 s, EXE5 28 s, EXE4 7.6 s. A decision now tries about 6 actions over about 270 ticks in every game; what
+differs is a tick (`search::tests::lookahead_costs_by_game`: a battle's copy 2 to 4 µs; a fight tick EXE6 10 µs,
+EXE4 81 µs, EXE5 192 µs). Sampled, EXE5's tick is mostly Luau: about half of it the rules' `controller` hook, asked
+every tick for each idle navi (`rules_controller_answer`, EXE5's no-charge drive), then `palette_pick` and the
+anti-damage traps' checks, each call building the bridge's userdata and copying field definitions. Making those
+calls cheap would speed up EXE5 and EXE4 everywhere, training's simulation too.
+
 ## 11. The cloud machine
 
 - **Shape: one GPU and many CPU cores.** The battles run on the cores. The network's updates, about ten times its

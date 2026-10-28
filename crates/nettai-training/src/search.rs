@@ -8,6 +8,12 @@
 //! HP, plus [`Search::prior`] times its log-probability under the network;
 //! the most worth is taken, the network's own order breaking ties.
 //!
+//! What it tries is cut where it can't matter: while dimmed the network's
+//! choice is played (inputs mostly wait a dimming out, and each try would
+//! play it out whole); and where standing (the first's A and B, no step)
+//! costs nothing, only what can deal damage is tried besides the first (A
+//! pressed, or B other than the first's), not the steps alone.
+//!
 //! It reads the battle as it is, not the delayed view the network decides
 //! from: what is already on the field and how it moves (attacks in flight,
 //! a charge about to be let go), not the other player's next press.
@@ -17,6 +23,13 @@ use crate::env::step_battle;
 use crate::spec;
 use crate::stats::navi_hp;
 use nettai_battle::Battle;
+use std::sync::atomic::{AtomicU64, Ordering};
+
+/// Every lookahead's decisions, tries and ticks stepped so far, in this
+/// process (for measuring its cost).
+pub static DECISIONS: AtomicU64 = AtomicU64::new(0);
+pub static TRIES: AtomicU64 = AtomicU64::new(0);
+pub static TICKS: AtomicU64 = AtomicU64::new(0);
 
 /// How a decision looks ahead.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -60,13 +73,32 @@ impl Search {
     /// The action side `side` takes in `b` at a decision held `k` ticks,
     /// the network's fight `logits` before it. None: no action is allowed.
     pub fn pick(&self, b: &Battle, side: u8, k: u32, logits: &[f32]) -> Option<usize> {
-        let tried = candidates(logits, self.candidates);
+        let mut tried = candidates(logits, self.candidates);
+        let first = *tried.first()?;
+        if b.is_dimmed() {
+            return Some(first);
+        }
+        DECISIONS.fetch_add(1, Ordering::Relaxed);
         let max = tried.iter().map(|&a| logits[a]).fold(f32::NEG_INFINITY, f32::max);
         let total: f32 = (0..logits.len()).filter(|&a| logits[a].is_finite()).map(|a| (logits[a] - max).exp()).sum();
+        // (Standing: the first's buttons, no step. Costing nothing, the steps alone can't help.)
+        let stand = first & 3;
+        let (dealt, taken) = self.traded(b, side, k, stand);
+        let mut known = vec![(stand, dealt - taken)];
+        if taken == 0.0 {
+            tried.retain(|&a| a == first || a & 2 != 0 || a & 1 != first & 1);
+        }
         let mut best: Option<(usize, f32)> = None;
         for &a in &tried {
-            let logp = logits[a] - max - total.ln();
-            let worth = self.outcome(b, side, k, a) + self.prior * logp;
+            let outcome = match known.iter().find(|&&(k, _)| k == a) {
+                Some(&(_, o)) => o,
+                None => {
+                    let o = self.outcome(b, side, k, a);
+                    known.push((a, o));
+                    o
+                }
+            };
+            let worth = outcome + self.prior * (logits[a] - max - total.ln());
             if best.is_none_or(|(_, w)| worth > w) {
                 best = Some((a, worth));
             }
@@ -77,12 +109,19 @@ impl Search {
     /// What action `a` held for `k` ticks comes to for side `side` of `b`:
     /// the other navi's HP lost less its own, as fractions of their max HP.
     pub fn outcome(&self, b: &Battle, side: u8, k: u32, a: usize) -> f32 {
+        let (dealt, taken) = self.traded(b, side, k, a);
+        dealt - taken
+    }
+
+    /// The same, the two apart: the other navi's HP lost, and its own.
+    fn traded(&self, b: &Battle, side: u8, k: u32, a: usize) -> (f32, f32) {
         let mut c = b.clone();
         let (mine0, theirs0) = (navi_hp(&c, side, Some(0)).unwrap_or(0), navi_hp(&c, side ^ 1, Some(0)).unwrap_or(0));
         let max = |c: &Battle, s: u8| c.player(s).filter(|&r| c.objects.is_allocated(r)).map_or(1, |r| c.objects.get(r).max_hp.max(1)) as f32;
         let (mine_max, theirs_max) = (max(&c, side), max(&c, side ^ 1));
         let held = act::fight_buttons(a as i32);
         let after = held & nettai_battle::input::keys::B;
+        TRIES.fetch_add(1, Ordering::Relaxed);
         let (mut undimmed, mut t) = (0, 0);
         while undimmed < self.horizon && t < self.cap {
             let mine = if t < k { held } else { after };
@@ -97,8 +136,9 @@ impl Search {
                 break;
             }
         }
+        TICKS.fetch_add(t as u64, Ordering::Relaxed);
         let (mine, theirs) = (navi_hp(&c, side, Some(0)).unwrap_or(0), navi_hp(&c, side ^ 1, Some(0)).unwrap_or(0));
-        theirs0.saturating_sub(theirs) as f32 / theirs_max - mine0.saturating_sub(mine) as f32 / mine_max
+        (theirs0.saturating_sub(theirs) as f32 / theirs_max, mine0.saturating_sub(mine) as f32 / mine_max)
     }
 }
 

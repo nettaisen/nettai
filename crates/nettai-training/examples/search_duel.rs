@@ -223,4 +223,7 @@ fn main() {
         sum.undecided += t.undecided;
     }
     println!("{:<6} {:>9} {:>10} {:>6} {:>10}", "all", sum.won_both, sum.lost_both, sum.split, sum.undecided);
+    use nettai_training::search::{DECISIONS, TICKS, TRIES};
+    let (d, n, k) = (DECISIONS.load(Ordering::Relaxed), TRIES.load(Ordering::Relaxed), TICKS.load(Ordering::Relaxed));
+    println!("lookahead: {d} decisions looked ahead, {:.1} tries and {:.0} ticks each ({:.0} a try)", n as f64 / d.max(1) as f64, k as f64 / d.max(1) as f64, k as f64 / n.max(1) as f64);
 }
