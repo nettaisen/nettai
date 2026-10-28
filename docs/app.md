@@ -1320,8 +1320,8 @@ Not built. What it would take:
     touches itself, every finger its own. No touch screen has run it.
   - Gamepads: gamepad-facade's native backend is SDL3, which has both platforms' controllers.
 - **Text:** the system IME works through winit on Android and iOS.
-- **Netplay:** nettai-rtc natively is libdatachannel (C++ and Mbed TLS through datachannel-facade, built with
-  CMake as SDL is), which builds for both platforms; not tried here.
+- **Netplay:** nettai-rtc natively is str0m (pure Rust, its sockets on tokio), which builds for both platforms;
+  not tried here.
 - **Lifecycle:** suspend and resume. Netplay can't tick in the background, so a suspended match is a dropped
   link, which reconnects within its 30 s or ends.
 
@@ -3869,9 +3869,8 @@ lists for the target being built, with the features a build of the app alone giv
 tools that build or test it; `cargo metadata` would unify the whole workspace's features and list packages the app
 never builds), and the sources of a library a build script compiles into it (a `*-src` package: SDL's, Luau's).
 `cargo metadata` says where each one's files are; its license files are those named LICENSE, LICENCE, COPYING,
-COPYRIGHT, NOTICE or UNLICENSE (in its folder or a folder of its own, and in that folder's `deps`: the libraries a
-vendored library vendors, as libdatachannel's ICE, SCTP and logging in libdatachannel-sys), everything in a
-`LICENSES` folder, and the file its manifest names. The workspace's own crates are not listed. The fonts and their
+COPYRIGHT, NOTICE or UNLICENSE (in its folder or a folder of its own), everything in a `LICENSES` folder, and the
+file its manifest names. The workspace's own crates are not listed. The fonts and their
 OFL files are named in the build script. What it writes (`licenses.rs`, in the build's output) holds each text
 once, as many packages ship the same one: 220 texts for 328 entries on macOS (2026-10-14, once the `rtc` crates
 had given way to libdatachannel), about 0.8 MB in the binary. It is written again when Cargo.lock, the app's
@@ -3974,10 +3973,8 @@ A package's build sets `NETTAI_PACKAGED`: it then has no development content dir
 only the content it downloads into its store (§20). The app builds without the content submodules, and the
 workflow's build jobs check none out. The version is `$NETTAI_VERSION` (`-Version` on Windows), else the app crate's.
 
-Besides Rust, a build needs CMake (SDL's, and libdatachannel's: nettai-rtc's WebRTC, C++ with Mbed TLS, its
-sources submodules of the facade's repository, which Cargo fetches with it) and libclang (bindgen, for
-libdatachannel's C API): Xcode's on macOS, the runner's LLVM on Windows, `libclang-dev` on Linux (the workflow
-installs it).
+Besides Rust, a build needs CMake, for SDL. (nettai-rtc's WebRTC is str0m, pure Rust: it needed CMake and libclang
+too while it was libdatachannel's.)
 
 The workflow (`.github/workflows/release.yml`) is run by hand on main (`gh workflow run release.yml --ref main`), after
 the version in Cargo.toml is bumped and pushed. The icons are made once, on Linux; then Windows (`windows-latest`),

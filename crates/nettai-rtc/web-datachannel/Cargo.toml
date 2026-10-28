@@ -1,8 +1,9 @@
-# datachannel-facade's web backend, at the revision Cargo.lock pins, with one
-# line changed (`handler` in src/lib.rs: `Closure::wrap_assert_unwind_safe`,
-# where `Closure::wrap` doesn't compile in a `-C panic=unwind` build, which
-# nettai's wasm build is). The workspace's `[patch]` puts it in place of the
-# facade's own until the facade has the change; then this copy goes.
+# nettai-rtc's web connections: datachannel-facade's web backend (revision
+# 66d09f8), nettai's own copy, with one line changed (`handler` in
+# src/lib.rs: `Closure::wrap_assert_unwind_safe`, where `Closure::wrap`
+# doesn't compile in a `-C panic=unwind` build, which nettai's wasm build
+# is). Natively nettai-rtc has its own (`native::rtc`, on str0m), shaped
+# like this one.
 [package]
 name = "web-datachannel"
 version = "0.1.0"

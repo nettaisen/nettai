@@ -1,10 +1,11 @@
 //! Direct connect (native only): a WebRTC connection to a host's address
 //! and port, with no signaling at all. Nothing is exchanged before ICE:
-//! each side makes up the other's description, which it can, since every
-//! field of it is fixed but two. It is built on what libdatachannel can do
-//! and a browser can't (datachannel-facade's `platform::native`): a fixed
-//! local port, local ICE credentials of the caller's choosing, and no DTLS
-//! fingerprint check.
+//! there are no descriptions, each side starting ICE, DTLS and SCTP knowing
+//! what a description would have told it (str0m's direct API,
+//! `PeerConnection::start_direct`). It is built on what the native
+//! connection can do and a browser can't: a fixed local port, local ICE
+//! credentials of the caller's choosing, a start without descriptions, and
+//! no DTLS fingerprint check.
 //!
 //! - **The ICE credentials** are fixed: the host's username fragment and
 //!   both passwords constants, the joiner's fragment its nonce (drawn once
@@ -15,18 +16,18 @@
 //!   own candidates are said to anyone.
 //! - **SCTP and the data channels**: the same as a room's (port 5000, the
 //!   channels negotiated as streams 0 and 1).
-//! - **The DTLS fingerprint** is the one thing a real exchange carries that
-//!   can't be made up (each side's certificate is its own, generated): it
-//!   isn't checked. So direct connect authenticates nobody, as the raw UDP
-//!   it replaced didn't; a room checks the fingerprints its descriptions
-//!   carry.
+//! - **The DTLS fingerprint** is the one thing a description carries that
+//!   can't be known beforehand (each side's certificate is its own,
+//!   generated): it isn't checked. So direct connect authenticates nobody,
+//!   as the raw UDP it replaced didn't; a room checks the fingerprints its
+//!   descriptions carry.
 //!
-//! The joiner dials (the offer, ICE's controlling side, the DTLS client),
+//! The joiner dials (ICE's controlling side, the DTLS and SCTP client),
 //! from a port the system picks. The host listens on its port with a plain
 //! UDP socket of its own ([`Listener`]) while it has no connection: the
 //! first connectivity check of a dial names its generation in its username,
 //! and the host then closes the socket and makes the connection answering
-//! that dial on the same port (libdatachannel binds it), which takes the
+//! that dial on the same port (the connection binds it), which takes the
 //! dial's next checks (the joiner sends each again, from half a second on).
 //! Once that connection is over (dropped, or not open within
 //! [`Config::dial_timeout`]) the host listens again. It takes only the first
@@ -42,8 +43,7 @@
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, UdpSocket};
 
-use datachannel_facade::platform::native::{ConfigurationExt, LocalDescriptionInit, PeerConnectionExt};
-use datachannel_facade::{Configuration, SdpType};
+use crate::rtc::Configuration;
 
 use crate::peer::PeerConnection;
 use crate::{Candidate, Config, Error, ErrorKind};
@@ -66,74 +66,42 @@ fn read_join_ufrag(ufrag: &str) -> Option<(u32, u32)> {
     Some((u32::from_str_radix(nonce, 16).ok()?, generation.parse().ok()?))
 }
 
-/// A made-up description: the one media section, the data channels', with
-/// these ICE credentials and this DTLS setup; its fingerprint a dummy
-/// (never checked).
-fn description(ufrag: &str, pwd: &str, setup: &str) -> String {
-    let fingerprint = vec!["00"; 32].join(":");
-    [
-        "v=0",
-        "o=- 1 1 IN IP4 0.0.0.0",
-        "s=-",
-        "t=0 0",
-        "a=group:BUNDLE 0",
-        "m=application 9 UDP/DTLS/SCTP webrtc-datachannel",
-        "c=IN IP4 0.0.0.0",
-        &format!("a=setup:{setup}"),
-        "a=mid:0",
-        &format!("a=ice-ufrag:{ufrag}"),
-        &format!("a=ice-pwd:{pwd}"),
-        &format!("a=fingerprint:sha-256 {fingerprint}"),
-        "a=sctp-port:5000",
-        "",
-    ]
-    .join("\r\n")
-}
-
 /// A host candidate at `addr`, the other side's one.
 fn candidate(addr: SocketAddr) -> Candidate {
     Candidate { candidate: format!("candidate:1 1 UDP 2122317823 {} {} typ host", addr.ip(), addr.port()), mid: Some("0".into()), mline: Some(0) }
 }
 
 /// A direct connection's configuration: no STUN or TURN server, bound to
-/// `bind` (`port` 0: one the system picks), no description made but when
-/// asked for (with these credentials), and no certificate check (direct
-/// connect exchanges no descriptions: nothing tells either side the other's
-/// fingerprint).
-fn configuration(bind: IpAddr, port: u16) -> Configuration {
-    let mut c = Configuration::new();
-    c.set_bind(Some(bind), port, port);
-    c.set_disable_auto_negotiation(true);
-    c.set_disable_fingerprint_verification(true);
-    c
-}
-
-fn credentials(ufrag: &str, pwd: &str) -> LocalDescriptionInit {
-    LocalDescriptionInit { ice_ufrag: Some(ufrag.to_string()), ice_pwd: Some(pwd.to_string()) }
+/// `bind` (port 0: one the system picks), these ICE credentials, no
+/// certificate check (direct connect exchanges no descriptions: nothing
+/// tells either side the other's fingerprint), and checks for as long as a
+/// dial is given.
+fn configuration(config: &Config, bind: SocketAddr, ufrag: &str, pwd: &str) -> Configuration {
+    Configuration {
+        bind: Some(bind),
+        ice_credentials: Some((ufrag.to_string(), pwd.to_string())),
+        skip_fingerprint_check: true,
+        checks_for: config.dial_timeout,
+        ..Configuration::default()
+    }
 }
 
 impl PeerConnection {
     /// The joiner's connection `generation` to the host at `host_addr`, from
-    /// a new port: dialing at once. (Its offer is told nobody; the host's
-    /// answer is made up: passive, so that the joiner is the DTLS client.)
+    /// a new port: dialing at once.
     pub(crate) fn direct_dial(config: &Config, host_addr: SocketAddr, nonce: u32, generation: u32) -> Result<PeerConnection, Error> {
         let any = if host_addr.is_ipv4() { IpAddr::V4(Ipv4Addr::UNSPECIFIED) } else { IpAddr::V6(Ipv6Addr::UNSPECIFIED) };
-        let mut c = PeerConnection::new(configuration(any, 0), config)?;
-        c.pc.set_local_description_ex(Some(SdpType::Offer), Some(&credentials(&join_ufrag(nonce, generation), JOIN_PWD)))
-            .map_err(|e| Error::internal(format!("can't make an offer: {e}")))?;
-        c.set_answer(&description(HOST_UFRAG, HOST_PWD, "passive"))?;
+        let mut c = PeerConnection::new(configuration(config, SocketAddr::new(any, 0), &join_ufrag(nonce, generation), JOIN_PWD), config)?;
+        c.start_direct(HOST_UFRAG, HOST_PWD, true)?;
         c.add_candidate(&candidate(host_addr))?;
         Ok(c)
     }
 
     /// The host's connection answering the joiner `nonce`'s dial
-    /// `generation`, whose check came from `joiner`, on `port`. (The joiner's
-    /// offer is made up: active, so that the host is the DTLS server.)
+    /// `generation`, whose check came from `joiner`, on `port`.
     fn direct_answer(config: &Config, port: u16, nonce: u32, generation: u32, joiner: SocketAddr) -> Result<PeerConnection, Error> {
-        let mut c = PeerConnection::new(configuration(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port), config)?;
-        c.take_remote(SdpType::Offer, &description(&join_ufrag(nonce, generation), JOIN_PWD, "active"))?;
-        c.pc.set_local_description_ex(Some(SdpType::Answer), Some(&credentials(HOST_UFRAG, HOST_PWD)))
-            .map_err(|e| Error::internal(format!("can't make an answer: {e}")))?;
+        let mut c = PeerConnection::new(configuration(config, SocketAddr::from((Ipv4Addr::UNSPECIFIED, port)), HOST_UFRAG, HOST_PWD), config)?;
+        c.start_direct(&join_ufrag(nonce, generation), JOIN_PWD, false)?;
         c.add_candidate(&candidate(joiner))?;
         Ok(c)
     }
@@ -167,8 +135,9 @@ impl Listener {
         self.port
     }
 
-    /// Listen again, once the connection that had the port is over (which
-    /// may take libdatachannel a moment: until then, not yet).
+    /// Listen again, once the connection that had the port is over (its
+    /// thread lets the port go a moment after it closes: until then, not
+    /// yet).
     pub(crate) fn listen(&mut self) {
         if self.socket.is_none() {
             self.socket = Listener::open(self.port).ok();
@@ -273,3 +242,4 @@ mod tests {
         assert_eq!(binding_username(b"not stun"), None);
     }
 }
+

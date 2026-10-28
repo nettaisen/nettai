@@ -1,11 +1,11 @@
 //! Netplay's transport: WebRTC data channels between two players
-//! (docs/design/rollback.md §4.7, §4.8), one API on both targets through
-//! datachannel-facade (Tango's): libdatachannel natively (C++, which does
-//! the sockets, the timers, ICE, DTLS and SCTP on threads of its own), and
-//! the browser's `RTCPeerConnection` on wasm32. The user's words: "instead
-//! of nettai-rtc you should use https://github.com/tangobattle/datachannel-facade,
-//! it's way more stable" (it replaced the `rtc` crate natively and web-sys's
-//! `RTCPeerConnection` on the web; this crate keeps what is above them).
+//! (docs/design/rollback.md §4.7, §4.8), one API on both targets: natively
+//! str0m (pure Rust, sans I/O: ICE, DTLS and SCTP), its sockets, timers,
+//! candidates and TURN relays this crate's, on a thread of its own
+//! (`native::rtc`); on wasm32 the browser's `RTCPeerConnection`
+//! (web-datachannel, nettai's copy of datachannel-facade's web backend). It
+//! took libdatachannel's place natively (C++, through datachannel-facade),
+//! which had taken the `rtc` crate's.
 //!
 //! What a game sends is a datagram: the netplay protocol's frames (and the
 //! lobby's messages before them), which tolerate loss, reordering and
@@ -19,9 +19,9 @@
 //!
 //! - [`PeerConnection`]: one WebRTC connection and its data channels, told
 //!   the other peer's description and candidates and handing over its own
-//!   ([`PeerEvent`]); event-driven, the facade's callbacks putting what
-//!   they learn in a queue its calls take from, so nothing waits and
-//!   nothing needs a runtime: the caller's frame loop polls.
+//!   ([`PeerEvent`]); event-driven, the backend's callbacks putting what
+//!   they learn in a queue its calls take from, so nothing waits: the
+//!   caller's frame loop polls.
 //! - [`Link`]: the channel a match is played on, which keeps a connection
 //!   up: it meets the other player (in an invite room of the signaling
 //!   server, `signal`: one it asks the server to make, [`Link::create_room`],
@@ -39,9 +39,9 @@
 //!   how long it has left).
 //!
 //! The link's own messages (the reconnect code and its acknowledgment) go
-//! on a channel of their own, stream 1, reliable and ordered: the facade's
-//! messages are bytes, with no text or binary type to tell the link's from
-//! the game's, and the channel they came on tells them apart at no cost in
+//! on a channel of their own, stream 1, reliable and ordered: a message is
+//! its bytes, with no text or binary type to tell the link's from the
+//! game's, and the channel they came on tells them apart at no cost in
 //! bytes, as the message type did (`peer`).
 //!
 //! What goes wrong is an [`Error`]: its [`ErrorKind`] is what a player can
@@ -68,6 +68,7 @@ pub mod signal;
 mod link;
 mod peer;
 mod room;
+mod rtc;
 
 #[cfg(not(target_arch = "wasm32"))]
 mod native;
@@ -76,15 +77,6 @@ mod web;
 
 #[cfg(all(feature = "testing", not(target_arch = "wasm32")))]
 pub mod testing;
-
-// libdatachannel's static libraries need these of Windows, which their
-// CMake build names and the facade's build script doesn't pass on: bcrypt
-// (`BCryptGenRandom`, libjuice's and Mbed TLS's randomness; Rust's standard
-// library links bcryptprimitives instead) and iphlpapi (usrsctp's).
-#[cfg(windows)]
-#[link(name = "bcrypt")]
-#[link(name = "iphlpapi")]
-unsafe extern "system" {}
 
 pub use link::Link;
 pub use peer::PeerConnection;
@@ -131,10 +123,7 @@ pub struct Config {
     /// Offer only relayed candidates (the browser's `iceTransportPolicy:
     /// "relay"`): every datagram goes through a TURN server, and nothing
     /// connects without one. (Tests: a connection relayed on one machine.)
-    /// Natively libdatachannel only says no other candidate: where the relay
-    /// shows each side the address the other's datagrams came from and that
-    /// address can be reached, libjuice tries it directly too (a TURN
-    /// server's permissions keep the two to their relayed addresses).
+    /// Natively nothing is checked but through the relays either.
     pub relay_only: bool,
 }
 
@@ -157,9 +146,9 @@ impl Default for Config {
 /// signaling server's welcome, [`signal`]): its URLs, `stun:HOST[:PORT]`,
 /// `turn:HOST[:PORT][?transport=udp|tcp]` or
 /// `turns:HOST[:PORT][?transport=tcp]`, and a TURN server's credentials.
-/// The browser takes every URL; natively libdatachannel relays over UDP only
-/// (`turn:` without `transport=tcp`, on up to two TURN servers) and asks one
-/// STUN server, and the others are left out.
+/// The browser takes every URL; natively the connection relays over UDP
+/// only (`turn:` without `transport=tcp`, on up to two TURN servers), and
+/// the others are left out.
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct IceServer {
     pub urls: Vec<String>,

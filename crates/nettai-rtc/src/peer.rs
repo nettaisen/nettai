@@ -1,26 +1,25 @@
-//! One WebRTC connection and its data channels, on datachannel-facade: one
-//! synchronous, callback-based API over libdatachannel natively (C++, which
-//! does the sockets, the timers, ICE, DTLS and SCTP on threads of its own)
-//! and the browser's `RTCPeerConnection` on wasm32. The user's words: "instead
-//! of nettai-rtc you should use https://github.com/tangobattle/datachannel-facade,
-//! it's way more stable". So this module is the same on both targets: the
-//! facade's callbacks put what they learn in a queue (natively behind a mutex,
-//! since they come from libdatachannel's threads; on the web in a `RefCell`,
-//! since the browser calls them on the page's one thread), and the calls here
-//! take from it, never waiting, from the caller's frame loop. Nothing needs
-//! pumping: there is no async runtime and no thread of this crate's.
+//! One WebRTC connection and its data channels, on one synchronous,
+//! callback-based API on both targets: nettai-rtc's own natively
+//! (`crate::native::rtc`, on str0m: its sockets, timers, ICE, DTLS and SCTP
+//! driven on a thread of this crate's) and web-datachannel's on wasm32 (the
+//! browser's `RTCPeerConnection`), the one shaped like the other. So this
+//! module is the same on both targets: the callbacks put what they learn in a
+//! queue (natively behind a mutex, since they come from the connections'
+//! thread; on the web in a `RefCell`, since the browser calls them on the
+//! page's one thread), and the calls here take from it, never waiting, from
+//! the caller's frame loop.
 //!
-//! **Candidates and servers** are the backend's: libdatachannel (libjuice)
-//! offers a host candidate on each of the machine's interfaces, asks one STUN
-//! server for its address as the Internet sees it, allocates a relayed address
-//! on up to two TURN servers (over UDP), and resolves their names on a thread
-//! of its own; the browser does the same its own way. [`Config::loopback`]
-//! adds, for each host candidate, the same port on 127.0.0.1 (two peers on one
-//! machine whatever its network).
+//! **Candidates and servers** are the backend's: natively a host candidate on
+//! each of the machine's interfaces, one STUN server asked for the address the
+//! Internet sees, a relayed address on up to two TURN servers (over UDP), their
+//! names resolved off the caller's thread; the browser does the same its own
+//! way. [`Config::loopback`] adds, for each host candidate, the same port on
+//! 127.0.0.1 (two peers on one machine whatever its network).
 //!
-//! **Two channels.** The facade's messages are bytes, with no text or binary
-//! type to tell them apart. So a connection has two channels, both negotiated
-//! out of band (no in-band announcement), opened together when SCTP is up:
+//! **Two channels.** A message's bytes are all there is of it: no text or
+//! binary type tells them apart. So a connection has two channels, both
+//! negotiated out of band (no in-band announcement), opened together when SCTP
+//! is up:
 //!
 //! - the game's, stream 0: unordered and without retransmits. What a game
 //!   sends is a datagram (the netplay protocol's frames, the lobby's messages
@@ -33,19 +32,11 @@
 //! carry no tag: they cost what they did when the link's messages were text on
 //! the one channel. (A one-byte tag on one channel was the other way, and
 //! would have cost every datagram a byte.) Nothing here sends a text message;
-//! one from the other side reaches the facade's libdatachannel binding with
-//! the negative size libdatachannel's C API gives a string, which the binding
-//! takes for a length: the facade's to fix (it should drop it, or hand it on
-//! as bytes).
-//!
-//! **ICE servers** go to the facade as URL strings with the credentials
-//! inline, libdatachannel's form (`turn:USER:PASSWORD@HOST:PORT?transport=udp`):
-//! see [`ice_urls`].
+//! one from the other side comes as its bytes.
 
 use std::collections::VecDeque;
 
-use datachannel_facade::{Configuration, DataChannel, DataChannelOptions, Description, Reliability, SdpType, State, TransportPolicy};
-
+use crate::rtc::{self, ChannelId, ChannelOptions, Configuration, Event, SdpType, State};
 use crate::{Candidate, Config, Error, IceServer, Instant, Message, PeerEvent};
 
 /// The game's channel's label (both sides make it, negotiated: the label is
@@ -55,91 +46,11 @@ const LINK_LABEL: &str = "nettai-link";
 
 /// The game's channel: negotiated out of band as stream 0, unordered, no
 /// retransmits.
-fn game_channel() -> DataChannelOptions {
-    DataChannelOptions {
-        reliability: Reliability { unordered: true, unreliable: true, max_retransmits: 0, ..Reliability::default() },
-        negotiated: true,
-        stream: Some(0),
-        ..DataChannelOptions::default()
-    }
-}
+const GAME_CHANNEL: ChannelOptions = ChannelOptions { stream: 0, ordered: false, max_retransmits: Some(0) };
 
 /// The link's own channel: negotiated out of band as stream 1, reliable and
 /// ordered.
-fn link_channel() -> DataChannelOptions {
-    DataChannelOptions { negotiated: true, stream: Some(1), ..DataChannelOptions::default() }
-}
-
-/// What the callbacks share with the connection: natively a mutex (they come
-/// from libdatachannel's threads), on the web a `RefCell` (the page's one
-/// thread).
-#[cfg(not(target_arch = "wasm32"))]
-type Shared<T> = std::sync::Arc<std::sync::Mutex<T>>;
-#[cfg(target_arch = "wasm32")]
-type Shared<T> = std::rc::Rc<std::cell::RefCell<T>>;
-
-/// `f` on what is shared. (Never call into the facade inside: a callback
-/// waiting on the lock may be holding one of libdatachannel's.)
-fn with<T, R>(shared: &Shared<T>, f: impl FnOnce(&mut T) -> R) -> R {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        f(&mut shared.lock().unwrap_or_else(|poisoned| poisoned.into_inner()))
-    }
-    #[cfg(target_arch = "wasm32")]
-    {
-        f(&mut shared.borrow_mut())
-    }
-}
-
-/// What the facade's callbacks found, for the next call.
-#[derive(Default)]
-struct Found {
-    events: VecDeque<PeerEvent>,
-    inbox: VecDeque<Message>,
-    /// The game's channel is open (and said so).
-    open: bool,
-    /// It opened during an outage: it is said open when the outage is over.
-    held_open: bool,
-    down: bool,
-    /// Drop everything sent and taken until then (tests: a network outage).
-    outage: Option<Instant>,
-    /// Say each host candidate's port on 127.0.0.1 too ([`Config::loopback`]),
-    /// and the ports said so.
-    loopback: bool,
-    looped: Vec<u16>,
-}
-
-impl Found {
-    fn out(&self, now: Instant) -> bool {
-        self.outage.is_some_and(|t| now < t)
-    }
-
-    fn down(&mut self, why: String) {
-        if !self.down {
-            self.down = true;
-            self.open = false;
-            self.held_open = false;
-            self.events.push_back(PeerEvent::Down(why));
-        }
-    }
-
-    /// A local candidate, said (and its loopback twin, if asked for).
-    fn candidate(&mut self, line: &str) {
-        // (The end of gathering, on the web: nothing to say.)
-        if line.is_empty() {
-            return;
-        }
-        let said = |candidate: String| PeerEvent::Candidate(Candidate { candidate, mid: Some("0".into()), mline: Some(0) });
-        self.events.push_back(said(line.to_string()));
-        if self.loopback
-            && let Some((line, port)) = loopback(line)
-            && !self.looped.contains(&port)
-        {
-            self.looped.push(port);
-            self.events.push_back(said(line));
-        }
-    }
-}
+const LINK_CHANNEL: ChannelOptions = ChannelOptions { stream: 1, ordered: true, max_retransmits: None };
 
 /// A UDP host candidate's port on 127.0.0.1 (`candidate:F C udp P ADDR PORT
 /// typ host ...`), a little less preferred, and the port.
@@ -158,80 +69,24 @@ fn err<E: std::fmt::Display>(what: &str) -> impl Fn(E) -> Error + '_ {
     move |e| Error::internal(format!("{what}: {e}"))
 }
 
-/// `servers`, as the facade takes them: one URL a server URL, a TURN server's
-/// credentials inline (`turn:USER:PASSWORD@HOST:PORT?transport=udp`).
-///
-/// Natively libdatachannel reads them: it takes the username up to the first
-/// `:` and the password up to the first `@`, and percent-decodes both (and
-/// nothing else of the URL's), so each is percent-encoded here, everything but
-/// RFC 3986's unreserved characters, which any credential survives (a TURN
-/// REST username's `:`, a base64 password's `+`, `/` and `=`, an `@`, a `%`).
-/// It uses `stun:` and `turn:` over UDP (no `transport`, or
-/// `transport=udp`); the others (`turns:`, TURN over TCP) are left out here,
-/// as it would leave them out.
-///
-/// On the web the facade splits them back for the browser: the username up to
-/// the first `:`, the password up to the last `@`, neither decoded. So they go
-/// in as they are, which any password survives, and any username without a
-/// `:` (Cloudflare's are hex; a username with one can't be said through the
-/// facade on the web). The browser takes every URL.
-pub(crate) fn ice_urls(servers: &[IceServer]) -> Vec<String> {
-    ice_urls_for(servers, cfg!(not(target_arch = "wasm32")))
-}
-
-/// [`ice_urls`], for libdatachannel (`native`) or for the facade's web split.
-fn ice_urls_for(servers: &[IceServer], native: bool) -> Vec<String> {
-    let mut urls = Vec::new();
-    for server in servers {
-        for url in &server.urls {
-            let Some((scheme, rest)) = url.split_once(':') else { continue };
-            if native {
-                let transport = rest.split_once('?').map_or("", |(_, query)| query).split('&').find_map(|kv| kv.strip_prefix("transport="));
-                let usable = match scheme {
-                    "stun" => true,
-                    "turn" => transport.is_none_or(|t| t.eq_ignore_ascii_case("udp")),
-                    _ => false,
-                };
-                if !usable {
-                    continue;
-                }
-            }
-            let relayed = matches!(scheme, "turn" | "turns");
-            if !relayed || server.username.is_empty() {
-                urls.push(url.clone());
-                continue;
-            }
-            let rest = rest.trim_start_matches("//");
-            urls.push(match native {
-                true => format!("{scheme}:{}:{}@{rest}", percent_encode(&server.username), percent_encode(&server.credential)),
-                false => format!("{scheme}:{}:{}@{rest}", server.username, server.credential),
-            });
-        }
-    }
-    urls
-}
-
-/// `text` with every byte but RFC 3986's unreserved characters (letters,
-/// digits, `-`, `.`, `_`, `~`) percent-encoded.
-fn percent_encode(text: &str) -> String {
-    let mut out = String::with_capacity(text.len());
-    for b in text.bytes() {
-        if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'.' | b'_' | b'~') {
-            out.push(b as char);
-        } else {
-            out.push_str(&format!("%{b:02X}"));
-        }
-    }
-    out
-}
-
 /// One WebRTC connection and its channels (the crate's docs).
 pub struct PeerConnection {
-    // (The channels before the connection: they are deleted first.)
-    game: DataChannel,
-    link: DataChannel,
-    pub(crate) pc: datachannel_facade::PeerConnection,
-    found: Shared<Found>,
+    pub(crate) pc: rtc::PeerConnection,
+    game: ChannelId,
+    link: ChannelId,
+    events: VecDeque<PeerEvent>,
+    inbox: VecDeque<Message>,
+    /// The game's channel is open (and said so).
+    open: bool,
+    /// It opened during an outage: it is said open when the outage is over.
+    held_open: bool,
+    down: bool,
+    /// Drop everything sent and taken until then (tests: a network outage).
+    outage: Option<Instant>,
+    /// Say each host candidate's port on 127.0.0.1 too ([`Config::loopback`]),
+    /// and the ports said so.
+    loopback: bool,
+    looped: Vec<u16>,
     /// Whether the other's description is in (candidates wait for it).
     remote: bool,
     early: Vec<Candidate>,
@@ -251,75 +106,39 @@ impl PeerConnection {
     }
 
     pub(crate) fn offer_with(config: &Config, servers: &[IceServer]) -> Result<PeerConnection, Error> {
-        let c = PeerConnection::new(configuration(config, servers), config)?;
-        c.pc.set_local_description(Some(SdpType::Offer)).map_err(err("can't make an offer"))?;
+        let mut c = PeerConnection::new(configuration(config, servers), config)?;
+        c.pc.set_local_description(SdpType::Offer).map_err(err("can't make an offer"))?;
         Ok(c)
     }
 
     pub(crate) fn answer_with(config: &Config, servers: &[IceServer], offer: &str) -> Result<PeerConnection, Error> {
         let mut c = PeerConnection::new(configuration(config, servers), config)?;
         c.take_remote(SdpType::Offer, offer)?;
-        c.pc.set_local_description(Some(SdpType::Answer)).map_err(err("can't make an answer"))?;
+        c.pc.set_local_description(SdpType::Answer).map_err(err("can't make an answer"))?;
         Ok(c)
     }
 
     /// A connection of `configuration` (its descriptions to come) with its
-    /// two channels, its callbacks set.
+    /// two channels.
     pub(crate) fn new(configuration: Configuration, config: &Config) -> Result<PeerConnection, Error> {
-        let found: Shared<Found> = Shared::default();
-        with(&found, |f| f.loopback = config.loopback && !config.relay_only);
-        let mut pc = datachannel_facade::PeerConnection::new(configuration).map_err(err("can't make a connection"))?;
-        let f = found.clone();
-        pc.set_on_local_description(Some(move |sdp: &str, _: SdpType| {
-            // (Before the candidates it has, if any came first.)
-            with(&f, |f| f.events.push_front(PeerEvent::Description(sdp.to_string())));
-        }));
-        let f = found.clone();
-        pc.set_on_local_candidate(Some(move |line: &str| with(&f, |f| f.candidate(line))));
-        let f = found.clone();
-        pc.set_on_state_change(Some(move |state: State| {
-            if matches!(state, State::Disconnected | State::Failed | State::Closed) {
-                with(&f, |f| f.down(format!("the connection is {}", format!("{state:?}").to_lowercase())));
-            }
-        }));
-        let mut game = pc.create_data_channel(GAME_LABEL, game_channel()).map_err(err("can't make the game's data channel"))?;
-        let mut link = pc.create_data_channel(LINK_LABEL, link_channel()).map_err(err("can't make the link's data channel"))?;
-        let f = found.clone();
-        game.set_on_open(Some(move || {
-            with(&f, |f| {
-                if f.down || f.open {
-                    return;
-                }
-                // (Opened during a test's outage: as if it opened after.)
-                if f.outage.is_some() {
-                    f.held_open = true;
-                } else {
-                    f.open = true;
-                    f.events.push_back(PeerEvent::Open);
-                }
-            })
-        }));
-        for (channel, which) in [(&mut game, "game's"), (&mut link, "link's")] {
-            let f = found.clone();
-            channel.set_on_closed(Some(move || with(&f, |f| f.down(format!("the {which} data channel closed")))));
-        }
-        let f = found.clone();
-        game.set_on_message(Some(move |data: &[u8]| {
-            with(&f, |f| {
-                if !f.out(Instant::now()) {
-                    f.inbox.push_back(Message::Datagram(data.to_vec()));
-                }
-            })
-        }));
-        let f = found.clone();
-        link.set_on_message(Some(move |data: &[u8]| {
-            with(&f, |f| {
-                if !f.out(Instant::now()) {
-                    f.inbox.push_back(Message::Link(String::from_utf8_lossy(data).into_owned()));
-                }
-            })
-        }));
-        Ok(PeerConnection { game, link, pc, found, remote: false, early: Vec::new() })
+        let mut pc = rtc::PeerConnection::new(configuration).map_err(err("can't make a connection"))?;
+        let game = pc.create_channel(GAME_LABEL, GAME_CHANNEL).map_err(err("can't make the game's data channel"))?;
+        let link = pc.create_channel(LINK_LABEL, LINK_CHANNEL).map_err(err("can't make the link's data channel"))?;
+        Ok(PeerConnection {
+            pc,
+            game,
+            link,
+            events: VecDeque::new(),
+            inbox: VecDeque::new(),
+            open: false,
+            held_open: false,
+            down: false,
+            outage: None,
+            loopback: config.loopback && !config.relay_only,
+            looped: Vec::new(),
+            remote: false,
+            early: Vec::new(),
+        })
     }
 
     /// The other side's description, taken: the candidates that waited for it
@@ -327,9 +146,21 @@ impl PeerConnection {
     pub(crate) fn take_remote(&mut self, type_: SdpType, sdp: &str) -> Result<(), Error> {
         let what = match type_ {
             SdpType::Offer => "can't take the offer",
-            _ => "can't take the answer",
+            SdpType::Answer => "can't take the answer",
         };
-        self.pc.set_remote_description(&Description { type_, sdp: sdp.to_string() }).map_err(err(what))?;
+        self.pc.set_remote_description(type_, sdp).map_err(err(what))?;
+        self.remote = true;
+        for c in std::mem::take(&mut self.early) {
+            self.add_candidate(&c)?;
+        }
+        Ok(())
+    }
+
+    /// Start without descriptions (direct connect), knowing the other side's
+    /// ICE credentials: the candidates that waited go.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn start_direct(&mut self, ufrag: &str, pwd: &str, dialing: bool) -> Result<(), Error> {
+        self.pc.start_direct(ufrag, pwd, dialing).map_err(err("can't start the connection"))?;
         self.remote = true;
         for c in std::mem::take(&mut self.early) {
             self.add_candidate(&c)?;
@@ -343,7 +174,7 @@ impl PeerConnection {
     }
 
     /// One of the other side's candidates (kept until its description is
-    /// in). Natively, what libdatachannel can't reach is left out: a
+    /// in). Natively, what the connection can't reach is left out: a
     /// browser's candidate under an mDNS name (`.local`), and TCP.
     pub fn add_candidate(&mut self, c: &Candidate) -> Result<(), Error> {
         if !self.remote {
@@ -371,39 +202,91 @@ impl PeerConnection {
     }
 
     pub(crate) fn next_event(&mut self) -> Option<PeerEvent> {
-        with(&self.found, |f| f.events.pop_front())
+        self.events.pop_front()
     }
 
     /// The next message that came, if any.
     pub(crate) fn next_message(&mut self) -> Option<Message> {
-        with(&self.found, |f| f.inbox.pop_front())
+        self.inbox.pop_front()
     }
 
-    /// What is due: a test's outage that is over, and the channel that opened
-    /// during it said open. (The backend does the rest on its own.)
+    /// Take what the connection has said, and what is due: a test's outage
+    /// that is over, and the channel that opened during it said open.
     pub(crate) fn pump(&mut self, now: Instant) {
-        with(&self.found, |f| {
-            if f.outage.is_some_and(|t| now >= t) {
-                f.outage = None;
-                if f.held_open && !f.down {
-                    f.held_open = false;
-                    f.open = true;
-                    f.events.push_back(PeerEvent::Open);
+        if self.outage.is_some_and(|t| now >= t) {
+            self.outage = None;
+            if self.held_open && !self.down {
+                self.held_open = false;
+                self.open = true;
+                self.events.push_back(PeerEvent::Open);
+            }
+        }
+        while let Some(e) = self.pc.poll() {
+            self.event(e, now);
+        }
+    }
+
+    fn event(&mut self, event: Event, now: Instant) {
+        let out = self.out(now);
+        match event {
+            Event::Description(sdp) => self.events.push_back(PeerEvent::Description(sdp)),
+            Event::Candidate(line) => self.candidate(&line),
+            Event::State(state @ (State::Disconnected | State::Failed | State::Closed)) => {
+                self.went_down(format!("the connection is {}", format!("{state:?}").to_lowercase()))
+            }
+            Event::State(_) => {}
+            Event::Open(c) if c == self.game && !self.down && !self.open => {
+                // (Opened during a test's outage: as if it opened after.)
+                if self.outage.is_some() {
+                    self.held_open = true;
+                } else {
+                    self.open = true;
+                    self.events.push_back(PeerEvent::Open);
                 }
             }
-        });
+            Event::Open(_) => {}
+            Event::Closed(c) => self.went_down(format!("the {} data channel closed", if c == self.game { "game's" } else { "link's" })),
+            Event::Message(_, _) if out => {}
+            Event::Message(c, data) if c == self.game => self.inbox.push_back(Message::Datagram(data)),
+            Event::Message(_, data) => self.inbox.push_back(Message::Link(String::from_utf8_lossy(&data).into_owned())),
+        }
     }
 
-    /// Whether what is sent now goes (the lock isn't held while sending).
+    fn out(&self, now: Instant) -> bool {
+        self.outage.is_some_and(|t| now < t)
+    }
+
+    fn went_down(&mut self, why: String) {
+        if !self.down {
+            self.down = true;
+            self.open = false;
+            self.held_open = false;
+            self.events.push_back(PeerEvent::Down(why));
+        }
+    }
+
+    /// A local candidate, said (and its loopback twin, if asked for).
+    fn candidate(&mut self, line: &str) {
+        let said = |candidate: String| PeerEvent::Candidate(Candidate { candidate, mid: Some("0".into()), mline: Some(0) });
+        self.events.push_back(said(line.to_string()));
+        if self.loopback
+            && let Some((line, port)) = loopback(line)
+            && !self.looped.contains(&port)
+        {
+            self.looped.push(port);
+            self.events.push_back(said(line));
+        }
+    }
+
+    /// Whether what is sent now goes.
     fn sending(&self) -> bool {
-        let now = Instant::now();
-        with(&self.found, |f| f.open && !f.down && !f.out(now))
+        self.open && !self.down && !self.out(Instant::now())
     }
 
     /// Send a datagram to the other side; dropped if the channel isn't open.
     pub fn send(&mut self, data: &[u8]) {
         if self.sending() {
-            let _ = self.game.send(data);
+            let _ = self.pc.send(self.game, data);
         }
     }
 
@@ -411,7 +294,7 @@ impl PeerConnection {
     /// open.
     pub(crate) fn send_link(&mut self, text: &str) {
         if self.sending() {
-            let _ = self.link.send(text.as_bytes());
+            let _ = self.pc.send(self.link, text.as_bytes());
         }
     }
 
@@ -428,19 +311,15 @@ impl PeerConnection {
     }
 
     pub fn is_open(&self) -> bool {
-        with(&self.found, |f| f.open && !f.down)
+        self.open && !self.down
     }
 
     /// Close it (the other side hears, if the path is up).
     pub fn close(&mut self) {
-        let _ = self.game.close();
-        let _ = self.link.close();
-        let _ = self.pc.close();
-        with(&self.found, |f| {
-            f.open = false;
-            f.held_open = false;
-            f.down = true;
-        });
+        self.pc.close();
+        self.open = false;
+        self.held_open = false;
+        self.down = true;
     }
 
     /// Drop every datagram sent and taken until `until` (a test's network
@@ -449,33 +328,28 @@ impl PeerConnection {
     /// outage connects only after it.
     #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn set_outage(&mut self, until: Option<Instant>) {
-        with(&self.found, |f| f.outage = until);
+        self.outage = until;
     }
 }
 
 impl Drop for PeerConnection {
     fn drop(&mut self) {
-        if !with(&self.found, |f| f.down) {
+        if !self.down {
             self.close();
         }
     }
 }
 
 /// A connection's configuration in a room: its servers, relayed only if
-/// asked; natively, no description made but when asked for (as in the
-/// browser).
+/// asked.
 fn configuration(config: &Config, servers: &[IceServer]) -> Configuration {
-    let mut c = Configuration::new();
-    c.ice_servers = ice_urls(servers);
-    if config.relay_only {
-        c.ice_transport_policy = TransportPolicy::Relay;
+    Configuration {
+        ice_servers: servers.to_vec(),
+        relay_only: config.relay_only,
+        #[cfg(not(target_arch = "wasm32"))]
+        checks_for: config.dial_timeout,
+        ..Configuration::default()
     }
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        use datachannel_facade::platform::native::ConfigurationExt;
-        c.set_disable_auto_negotiation(true);
-    }
-    c
 }
 
 // A connection goes to another thread with the link it is in (natively).
@@ -488,55 +362,6 @@ const _: () = {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn turn(username: &str, credential: &str) -> IceServer {
-        IceServer {
-            urls: vec![
-                "stun:stun.example.com:3478".into(),
-                "turn:turn.example.com:3478?transport=udp".into(),
-                "turn:turn.example.com:3478?transport=tcp".into(),
-                "turns:turn.example.com:5349?transport=tcp".into(),
-            ],
-            username: username.into(),
-            credential: credential.into(),
-        }
-    }
-
-    /// For libdatachannel, the credentials percent-encoded (it decodes them),
-    /// and only the URLs it uses.
-    #[test]
-    fn credentials_go_inline_percent_encoded() {
-        let ice_urls = |servers: &[IceServer]| ice_urls_for(servers, true);
-        assert_eq!(
-            ice_urls(&[turn("1700000000:nettai", "a+b/c=d@e:f%g~h")]),
-            ["stun:stun.example.com:3478", "turn:1700000000%3Anettai:a%2Bb%2Fc%3Dd%40e%3Af%25g~h@turn.example.com:3478?transport=udp"],
-        );
-        // (Cloudflare's are hex: as they are.)
-        assert_eq!(ice_urls(&[turn("0af3", "9b1e")])[1], "turn:0af3:9b1e@turn.example.com:3478?transport=udp");
-        // A TURN server without credentials, and a bare one, as they are.
-        assert_eq!(ice_urls(&[IceServer::new("turn:turn.example.com"), IceServer::new("stun:stun.example.com")]), ["turn:turn.example.com", "stun:stun.example.com"]);
-    }
-
-    /// For the facade's web split, as they are: it takes the username up to
-    /// the first `:` and the password up to the last `@`, and decodes neither.
-    #[test]
-    fn on_the_web_credentials_go_inline_as_they_are() {
-        assert_eq!(
-            ice_urls_for(&[turn("alice", "a+b/c=d@e:f%g")], false),
-            [
-                "stun:stun.example.com:3478",
-                "turn:alice:a+b/c=d@e:f%g@turn.example.com:3478?transport=udp",
-                "turn:alice:a+b/c=d@e:f%g@turn.example.com:3478?transport=tcp",
-                "turns:alice:a+b/c=d@e:f%g@turn.example.com:5349?transport=tcp",
-            ],
-        );
-    }
-
-    #[test]
-    fn percent_encoding_leaves_the_unreserved_alone() {
-        assert_eq!(percent_encode("AZaz09-._~"), "AZaz09-._~");
-        assert_eq!(percent_encode(" :@/+=%é"), "%20%3A%40%2F%2B%3D%25%C3%A9");
-    }
 
     #[test]
     fn a_host_candidate_has_a_loopback_twin() {

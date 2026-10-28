@@ -230,8 +230,7 @@ static LOG: Mutex<Option<nettai_platform::fs::File>> = Mutex::new(None);
 /// The local time's offset from UTC, read as the libraries' logs are caught ([`catch_library_logs`], at the
 /// start), which the log's times are told in. Not read again at each line: chrono reads the local zone through a
 /// thread-local, and a line can come as the process exits, after the main thread's thread-locals are gone (a
-/// connection libdatachannel still holds when the player quits says it closes from a static destructor), where
-/// reading it panics, and a panic in libdatachannel's log callback aborts.
+/// library's thread saying it closes), where reading it panics.
 static OFFSET: OnceLock<chrono::FixedOffset> = OnceLock::new();
 
 /// Write a line to the log: what was being done (`doing`) and what the code said of it. This is where an

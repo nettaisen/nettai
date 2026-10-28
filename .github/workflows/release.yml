@@ -64,11 +64,6 @@ jobs:
       - name: Rust
         run: rustup toolchain install stable --profile minimal --no-self-update && rustup default stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      # (datachannel-facade's libdatachannel has a submodule, nlohmann/json, whose test files' paths pass Windows'
-      # 260 characters under cargo's git folder: Git, and the libgit2 cargo checks submodules out with, take long
-      # paths only when asked.)
-      - name: Long paths for Git
-        run: git config --global core.longpaths true
       # (crates/nettai/build.rs lists the packages offline: every one is fetched first.)
       - name: Fetch the crates
         run: cargo fetch --locked
@@ -201,12 +196,11 @@ jobs:
         with:
           name: icons
           path: ${{ runner.temp }}/icons
-      # ALSA (cpal), fontconfig (Slint's text), udev (SDL's gamepads), Wayland and xkbcommon (the window), and
-      # libclang (bindgen, for libdatachannel's C API: nettai-rtc's datachannel-facade).
+      # ALSA (cpal), fontconfig (Slint's text), udev (SDL's gamepads), Wayland and xkbcommon (the window).
       - name: Libraries
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends cmake pkg-config libasound2-dev libfontconfig1-dev libudev-dev libwayland-dev libxkbcommon-dev libclang-dev
+          sudo apt-get install --yes --no-install-recommends cmake pkg-config libasound2-dev libfontconfig1-dev libudev-dev libwayland-dev libxkbcommon-dev
       - name: Rust
         run: rustup toolchain install stable --profile minimal --no-self-update && rustup default stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2

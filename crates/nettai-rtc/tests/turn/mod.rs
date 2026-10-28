@@ -1,15 +1,14 @@
-//! A TURN server for tests, on loopback over UDP: as much of RFC 5766 as
-//! libjuice's client (libdatachannel's) asks of one. Long-term credentials
-//! (one username and password: a request without them, or with others, is
-//! told 401 and the realm and nonce), an allocation a client with a relayed
-//! address of its own, permissions, Send and Data indications, channels and
-//! their data. A permission is for an address and a port (RFC 5766 grants an
-//! address's every port): on one machine every address is 127.0.0.1, and a
-//! client's own socket must not reach the other's relayed address past its
-//! own, or a test of relaying could be passed on a path that isn't one
-//! (libjuice learns the address a check came from as a candidate, and tries
-//! it directly). It counts the datagrams it relays, each way. Its
-//! STUN is its own (RFC 8489's messages, a few attributes).
+//! A TURN server for tests, on loopback over UDP: as much of RFC 5766 as a
+//! TURN client asks of one (turn-client-proto's, nettai-rtc's natively).
+//! Long-term credentials (one username and password: a request without
+//! them, or with others, is told 401 and the realm and nonce), an allocation
+//! a client with a relayed address of its own, permissions (an address's,
+//! every port), Send and Data indications, channels and their data. On one
+//! machine every address is 127.0.0.1, so what comes to a relayed address is
+//! let through only from another client's relayed address: a client's own
+//! socket can't reach the other's past its own, or a test of relaying could
+//! be passed on a path that isn't one. It counts the datagrams it relays,
+//! each way. Its STUN is its own (RFC 8489's messages, a few attributes).
 
 use std::collections::{HashMap, HashSet};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, UdpSocket};
@@ -202,8 +201,8 @@ struct Allocation {
     relay: UdpSocket,
     relayed: SocketAddr,
     channels: HashMap<u16, SocketAddr>,
-    /// The peers what comes is let through from.
-    permitted: HashSet<SocketAddr>,
+    /// The peers' addresses what comes is let through from.
+    permitted: HashSet<IpAddr>,
 }
 
 impl TurnServer {
@@ -262,10 +261,11 @@ impl Serve {
             any = true;
             self.client_says(from, &buf[..n]);
         }
+        let relayed: HashSet<SocketAddr> = self.allocations.values().map(|a| a.relayed).collect();
         for (client, a) in &self.allocations {
             while let Ok((n, peer)) = a.relay.recv_from(&mut buf) {
                 any = true;
-                if !a.permitted.contains(&peer) {
+                if !a.permitted.contains(&peer.ip()) || !relayed.contains(&peer) {
                     continue;
                 }
                 self.relayed.fetch_add(1, Ordering::Relaxed);
@@ -355,14 +355,14 @@ impl Serve {
                     && number.len() >= 2
                 {
                     a.channels.insert(u16::from_be_bytes([number[0], number[1]]), peer);
-                    a.permitted.insert(peer);
+                    a.permitted.insert(peer.ip());
                 }
                 out
             }
             CREATE_PERMISSION => {
                 if let Some(a) = self.allocations.get_mut(&from) {
                     let peers = m.attributes.iter().filter(|(k, _, _)| *k == XOR_PEER_ADDRESS);
-                    a.permitted.extend(peers.filter_map(|(_, v, _)| read_xor_address(v, &m.transaction)));
+                    a.permitted.extend(peers.filter_map(|(_, v, _)| read_xor_address(v, &m.transaction)).map(|p| p.ip()));
                 }
                 out
             }

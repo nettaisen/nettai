@@ -3,19 +3,33 @@ name = "nettai-rtc"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "WebRTC data channels for netplay: one API on both targets, through datachannel-facade (libdatachannel natively, the browser's RTCPeerConnection on the web)"
+description = "WebRTC data channels for netplay: one API on both targets (str0m natively, the browser's RTCPeerConnection on the web)"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 web-time = "1"
-# The connections, on both targets (libdatachannel natively: C++ and Mbed
-# TLS, built with CMake).
-datachannel-facade.workspace = true
+log = "0.4"
 
-# Native: the signaling server's WebSocket (on a thread of its own), and the
-# system's randomness (reconnect codes).
+# Native: the connections (`native::rtc`), the signaling server's WebSocket
+# (on a thread of its own), and the system's randomness (reconnect codes).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# WebRTC sans I/O: ICE, DTLS and SCTP, its crypto pure Rust (dimpl and
+# RustCrypto).
+str0m = { version = "0.24.1", default-features = false, features = ["rust-crypto"] }
+# The connections' runtime, a thread of its own: their sockets, timers and
+# the servers' names resolved.
+tokio = { version = "1", features = ["rt", "net", "time", "sync", "macros"] }
+# Each datagram's destination address (which candidate it came to), and the
+# sockets made IPv6-only.
+quinn-udp = { version = "0.6", default-features = false }
+socket2 = "0.6"
+# The interfaces' addresses: the host candidates.
+if-addrs = "0.15"
+# A STUN server asked the address the Internet sees, and a TURN server for
+# a relayed one (sans I/O).
+stun-proto = "2"
+turn-client-proto = "0.7"
 tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
 # The WebSocket's TLS needs a crypto backend, which tungstenite doesn't pick:
 # without one rustls panics at the first wss:// connection (the signaling
@@ -23,8 +37,10 @@ tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 getrandom = "0.3"
 
-# The web: the browser's WebSocket and randomness.
+# The web: the browser's connections (`web-datachannel`, nettai's copy of
+# datachannel-facade's web backend), WebSocket and randomness.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
+web-datachannel = { path = "web-datachannel" }
 wasm-bindgen = "0.2.126"
 js-sys = "0.3"
 web-sys = { version = "0.3", features = [

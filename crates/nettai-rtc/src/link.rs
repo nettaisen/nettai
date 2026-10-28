@@ -62,7 +62,7 @@
 //! peer message as the other comes, and the latest given are what the next
 //! connection uses, so a reconnection has the credentials its reconnect
 //! room gave. The backend resolves their names itself, without waiting
-//! (libdatachannel on a thread of its own, the browser its own way). The
+//! (natively on the connections' thread, the browser its own way). The
 //! servers come before anything the other side sends, so neither side
 //! starts ICE on servers it hasn't had. A direct link uses none.
 //!

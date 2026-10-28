@@ -709,8 +709,8 @@ fn without_a_welcomes_servers_a_link_uses_its_own() {
 /// `Config::relay_only`): they connect and trade datagrams through it, on
 /// the welcome's credentials. With others, which the server refuses, they
 /// can't connect. (The credentials have what a URL reserves, as a TURN REST
-/// username's `:` and a base64 password's `+`, `/` and `=`: they go to
-/// libdatachannel inline in the server's URL, percent-encoded.)
+/// username's `:` and a base64 password's `+`, `/` and `=`: they go to the
+/// TURN client as they are.)
 #[test]
 fn a_room_link_relays_through_the_welcomes_turn_server() {
     let (username, password) = ("1700000000:nettai", "p+ss/w=rd@:%");
