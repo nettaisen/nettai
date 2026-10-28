@@ -191,7 +191,7 @@ fn tail(b: &mut Battle, r: ObjectRef) {
     // last ticks).
     let side = b.objects.get(r).alliance;
     if let Some(shader) = b.rules_navi_shader(side, r) {
-        b.objects.sprite_mut(r).look.color_shader = shader;
+        b.objects.sprite_mut(r).look.set_color_shader(shader);
     }
     charge_brings_glow(b, r);
     dive_ripple(b, r);
@@ -1257,25 +1257,28 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
     if f & f1::FROZEN != 0 {
         shader = 0x7E94;
     }
-    b.objects.sprite_mut(r).look.color_shader = shader;
+    b.objects.sprite_mut(r).look.set_color_shader(shader);
 }
 
 /// The shaders after the visibility (presentation only; `sub_8016CA4`,
-/// `sub_801728E`): the other player's navi blinks blue while it can be
-/// countered, to a local player in Full Synchro; EXE5's no-charge drive
+/// `sub_801728E`): a navi blinks blue while it can be countered, on the
+/// console of the other player when that player is in Full Synchro (the
+/// original's local console blinks the other side's navi alone: each
+/// console's is kept, `Look::other_shader`); EXE5's no-charge drive
 /// flickers gray its last 180 ticks (0x080136E0, between the two); in the
 /// own-gauges mode a navi glows yellow while its SELECT special
-/// runs.
+/// runs. Those two are every console's.
 fn counter_shader(b: &mut Battle, r: ObjectRef) {
     let t = b.round.battle_time;
     let alliance = b.objects.get(r).alliance;
+    // By console: the shader so far, then the blink on the other side's.
+    let mut shown = [b.objects.sprite(r).look.color_shader; 2];
     if !b.is_battle_over()
-        && b.is_remote(alliance)
         && b.player(alliance ^ 1).is_some()
         && emotion_role(b, alliance ^ 1) == Some(EmotionRole::FullSynchro)
         && coll(b, r).counter_timer != 0
     {
-        b.objects.sprite_mut(r).look.color_shader = if t & 2 != 0 { 0x7C00 } else { 0 };
+        shown[(alliance ^ 1) as usize & 1] = if t & 2 != 0 { 0x7C00 } else { 0 };
     }
     // EXE5's 0x080136E0: the no-charge drive's last 180 ticks, the navi
     // flickers gray by its ticks left.
@@ -1284,7 +1287,7 @@ fn counter_shader(b: &mut Battle, r: ObjectRef) {
         let left = a.no_charge_timer;
         if a.status & crate::actor::status::NO_CHARGE != 0 && left != 0 && left <= 180 {
             let v = GLOW[(left & 0x1F) as usize];
-            b.objects.sprite_mut(r).look.color_shader = v | v << 5 | v << 10;
+            shown = [v | v << 5 | v << 10; 2];
         }
     }
     if own_gauges(b)
@@ -1292,8 +1295,12 @@ fn counter_shader(b: &mut Battle, r: ObjectRef) {
         && b.sides[alliance as usize & 1].select_special != 0
     {
         let glow = GLOW[(t & 0x1F) as usize];
-        b.objects.sprite_mut(r).look.color_shader = glow | glow << 5;
+        shown = [glow | glow << 5; 2];
     }
+    let local = b.round.local_side as usize & 1;
+    let look = &mut b.objects.sprite_mut(r).look;
+    look.color_shader = shown[local];
+    look.other_shader = (shown[0] != shown[1]).then_some(shown[local ^ 1]);
 }
 
 /// `sub_8016934`: visible unless flashing (2 ticks off, 2 on: off while

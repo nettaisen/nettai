@@ -26,12 +26,16 @@
 //!   the original decides an object's `VISIBLE` flag by its console's
 //!   rule, the engine decides it for both viewers ([`Battle::hide_from_blind`],
 //!   [`Battle::hide_from_other_side`]) and keeps the local side's in the
-//!   flag, which the recordings check.
+//!   flag, which the recordings check;
+//! - the custom screen's banner (a Program Advance's):
+//!   [`Battle::banner_block_for`], each viewer's own screen's;
+//! - the counter blink, which only the player in Full Synchro sees:
+//!   [`Battle::color_shader_for`].
 //!
 //! Still the local side's (docs/design/rollback.md §2.3): which navi
 //! appears at once at the intro and which fades in (simulation state), and
-//! a few looks (the counter blink, the parts a barrier visual hides unless
-//! its navi is the local MegaMan, the trap mark's facing).
+//! a few looks (the parts a barrier visual hides unless its navi is the
+//! local MegaMan, the trap mark's facing, EXE4's PanelShoot's colors).
 
 use crate::battle::{Battle, BattleResult, RoundEnd, fight};
 use crate::object::{ObjectRef, Sight, flags};
@@ -129,6 +133,19 @@ impl Battle {
         match o.sight {
             Sight::Shared => o.flags & flags::VISIBLE != 0,
             Sight::ByViewer(shown) => shown[viewer as usize & 1],
+        }
+    }
+
+    /// `r`'s color shader as `viewer`'s console draws it: its look's, or
+    /// the other side's console's own where the two differ
+    /// ([`Look::other_shader`]: the counter blink).
+    ///
+    /// [`Look::other_shader`]: crate::object::sprite::Look::other_shader
+    pub fn color_shader_for(&self, r: ObjectRef, viewer: u8) -> u16 {
+        let look = &self.objects.sprite(r).look;
+        match look.other_shader {
+            Some(shader) if viewer & 1 != self.round.local_side & 1 => shader,
+            _ => look.color_shader,
         }
     }
 
@@ -354,6 +371,46 @@ mod tests {
             assert_eq!(b.round.mode, mode::CUSTOM);
             assert_eq!((b.banner_for(side), b.banner_for(side ^ 1)), (Some(pa), None), "side {side}'s Program Advance");
             assert_eq!(b.banner_block_for(side).id, Some(pa));
+        }
+    }
+
+    /// A navi that can be countered blinks blue on the other player's
+    /// console alone, while that player is in Full Synchro, whichever side
+    /// the simulation's local side is.
+    #[test]
+    fn the_counter_blink_shows_only_to_the_player_in_full_synchro() {
+        use crate::battle::{TickEvents, mode};
+        use crate::input::PlayerTick;
+        use crate::kinds::player::{EmotionRole, hold_emotion};
+        let mut b = Battle::new(crate::scenario::setup(), crate::scenario::content());
+        let mut last = [0u16; 2];
+        for _ in 0..2000 {
+            if b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING {
+                break;
+            }
+            let input = [0, 1].map(|side| {
+                last[side] = crate::scenario::custom_buttons(&b, side, last[side]);
+                PlayerTick::buttons(last[side])
+            });
+            b.tick(&input, TickEvents::default());
+        }
+        assert_eq!(b.fight.state, fight::FIGHTING, "the fight starts");
+        let emotions = &b.game_rules().emotion;
+        let synchro = emotions.holdable().into_iter().map(|(e, _)| e).find(|&e| emotions.role(e) == Some(EmotionRole::FullSynchro));
+        let synchro = synchro.expect("the game has Full Synchro");
+        for (watcher, blinker) in [(0u8, 1u8), (1, 0)] {
+            let mut b = b.clone();
+            let r = b.player(blinker).expect("the navi is in");
+            let mut shown = Vec::new();
+            for _ in 0..4 {
+                assert!(hold_emotion(&mut b, watcher, synchro));
+                let c = b.objects.get(r).collision.expect("the navi has its collision");
+                b.collision.get_mut(c).counter_timer = 30;
+                b.tick(&[PlayerTick::default(); 2], TickEvents::default());
+                shown.push([0u8, 1].map(|v| b.color_shader_for(r, v)));
+            }
+            assert!(shown.iter().any(|s| s[watcher as usize] == 0x7C00), "side {watcher} sees side {blinker}'s navi blink: {shown:x?}");
+            assert!(shown.iter().all(|s| s[blinker as usize] != 0x7C00), "side {blinker} never sees its own navi blink: {shown:x?}");
         }
     }
 

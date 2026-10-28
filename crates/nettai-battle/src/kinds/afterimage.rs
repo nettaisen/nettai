@@ -227,7 +227,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // shadow, 0x83E0 less green), and the fourth parameter's flip.
     s.look.shadow = look.shadow.shadow();
     s.look.set_flip(flip);
-    s.look.color_shader = look.color_shader;
+    s.look.set_color_shader(look.color_shader);
     let o = b.objects.get_mut(r);
     o.anim = anim;
     o.anim_loaded = anim;
@@ -251,7 +251,7 @@ fn init_plain(b: &mut Battle, r: ObjectRef) {
     s.look.shadow = plain.shadow.shadow();
     s.look.palette = plain.palette;
     s.look.set_flip(flip);
-    s.look.color_shader = plain.color_shader;
+    s.look.set_color_shader(plain.color_shader);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.anim = anim;

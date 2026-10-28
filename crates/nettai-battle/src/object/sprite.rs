@@ -47,8 +47,16 @@ pub struct Look {
     pub under_objects: bool,
     /// `sprite_forceWhitePalette`: drawn solid white (a hit flash).
     pub white: bool,
-    /// `sprite_setColorShader`: a palette tint (0 = none).
+    /// `sprite_setColorShader`: a palette tint (0 = none), as the local
+    /// side's console draws it.
     pub color_shader: u16,
+    /// The tint the other side's console draws instead, where the two
+    /// consoles' differ: the counter blink, which only the player in Full
+    /// Synchro sees. Presentation ([`Battle::color_shader_for`]); a tint
+    /// set over it is every console's ([`Look::set_color_shader`]).
+    ///
+    /// [`Battle::color_shader_for`]: crate::battle::Battle::color_shader_for
+    pub other_shader: Option<u16>,
     /// `sprite_setAlpha`: blended over what is behind at alpha/16.
     pub alpha: Option<u8>,
     /// `sprite_setMosaicSize`: mosaic blocks of `n + 1` pixels.
@@ -76,6 +84,7 @@ impl Default for Look {
             under_objects: false,
             white: false,
             color_shader: 0,
+            other_shader: None,
             alpha: None,
             mosaic: None,
             priority: 2,
@@ -86,6 +95,19 @@ impl Default for Look {
 }
 
 impl Look {
+    /// `sprite_setColorShader`: the tint, every console's.
+    pub fn set_color_shader(&mut self, shader: u16) {
+        self.color_shader = shader;
+        self.other_shader = None;
+    }
+
+    /// The tint of `owner`'s look, as each console draws it (an overlay
+    /// that takes its owner's).
+    pub fn copy_color_shader(&mut self, owner: &Look) {
+        self.color_shader = owner.color_shader;
+        self.other_shader = owner.other_shader;
+    }
+
     /// `sprite_setFlip` with the game's flip value (bit 0 horizontal, bit
     /// 1 vertical).
     pub fn set_flip(&mut self, flip: u8) {

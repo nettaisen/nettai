@@ -24,10 +24,19 @@ use nettai_battle::object::{Object, Pool, flags};
 pub struct View {
     /// 16.16 camera offset (shakes move it).
     pub camera: (i32, i32, i32),
+    /// The right-hand player's console's view (side 1's).
     pub mirror: bool,
     /// A fade of the objects' palettes (the custom screen's Beast Out
     /// darkens sprite palettes 0-10, the battle's objects).
     pub fade: crate::compose::Fade,
+}
+
+impl View {
+    /// The side whose console's view it is (the right-hand player's is
+    /// mirrored).
+    pub fn side(&self) -> u8 {
+        self.mirror as u8
+    }
 }
 
 /// The hardware sprite limit.
@@ -490,6 +499,7 @@ pub fn queue_objects<'a>(
             let Some(frame) = frames.get(s.frame as usize).or(frames.last()) else { continue };
             let Some((parts, tiles, set)) = crate::lookups::frame_parts(sheet, frame) else { continue };
             let look = s.look;
+            let shader = b.color_shader_for(r, view.side());
             // The palette offset the sprite holds: the first part's of the
             // frame it last took one from (`Look::part_palette`; EXE5's
             // frame load leaves the last step's).
@@ -506,7 +516,7 @@ pub fn queue_objects<'a>(
             // The frame's sprite draw, before any culling: a sprite it has
             // no room for isn't drawn.
             if !lookups_only {
-                let shown = (!look.white).then(|| shade(set.get(palette_index).copied().unwrap_or([0; 16]), look.color_shader));
+                let shown = (!look.white).then(|| shade(set.get(palette_index).copied().unwrap_or([0; 16]), shader));
                 if !draw.take(tiles, shown.as_ref()) {
                     draw.left_out.push(format!("{:?} {} {}", r.pool, r.slot, b.content.defs.kind(o.kind).key));
                     continue;
@@ -544,7 +554,7 @@ pub fn queue_objects<'a>(
             } else {
                 let what = || format!("{} asks for {} on animation {}", kind(), look.palette, s.anim);
                 let p = crate::lookups::palette(set, &b.content, id, frame, palette_index, &what, problems).unwrap_or([0; 16]);
-                shade(p, look.color_shader)
+                shade(p, shader)
             };
             if lookups_only {
                 continue;

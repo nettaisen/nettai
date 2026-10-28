@@ -241,7 +241,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     if rules.palette_each_tick {
         look.palette = palette;
     }
-    look.color_shader = owner_look.color_shader;
+    look.copy_color_shader(&owner_look);
     look.white = owner_look.white;
     look.mosaic = owner_look.mosaic;
     look.alpha = owner_look.alpha;

@@ -42,7 +42,7 @@ fn appear(b: &mut Battle, r: ObjectRef) {
             o.timer = 0x14;
             o.timer2 = 0x1E;
             // sprite_setColorShader(white)
-            b.objects.sprite_mut(r).look.color_shader = gray(0x1F);
+            b.objects.sprite_mut(r).look.set_color_shader(gray(0x1F));
             set_invulnerable(b, r, 0xFFFF);
             let pos = b.objects.get(r).pos;
             flash(b, pos, APPEAR_LOOK);
@@ -66,7 +66,7 @@ fn appear(b: &mut Battle, r: ObjectRef) {
                 return show(b, r);
             }
             // sprite_zeroColorShader
-            b.objects.sprite_mut(r).look.color_shader = 0;
+            b.objects.sprite_mut(r).look.set_color_shader(0);
             let o = b.objects.get_mut(r);
             o.phase = 8;
             o.phase_init = 0;
@@ -99,7 +99,7 @@ fn flash(b: &mut Battle, pos: crate::object::Vec3, look: EffectRole) {
 /// `loc_801655A`: the navi shows, in the gray of the second timer's level.
 fn show(b: &mut Battle, r: ObjectRef) {
     let level = b.objects.get(r).timer2;
-    b.objects.sprite_mut(r).look.color_shader = gray(level);
+    b.objects.sprite_mut(r).look.set_color_shader(gray(level));
     b.objects.get_mut(r).set_visible(true);
 }
 

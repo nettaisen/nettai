@@ -2885,7 +2885,7 @@ impl CoreApi for Battle {
             }
             (SpriteField::UnderObjects, FieldValue::Bool(x)) => look.under_objects = x,
             (SpriteField::White, FieldValue::Bool(x)) => look.white = x,
-            (SpriteField::ColorShader, FieldValue::U16(x)) => look.color_shader = x,
+            (SpriteField::ColorShader, FieldValue::U16(x)) => look.set_color_shader(x),
             (SpriteField::Alpha, FieldValue::OptionalU8(x)) => look.alpha = x,
             (SpriteField::Mosaic, FieldValue::OptionalU8(x)) => look.mosaic = x,
             (SpriteField::Priority, FieldValue::U8(x)) => look.priority = x,

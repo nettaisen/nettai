@@ -111,7 +111,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let owner_look = b.objects.sprite(owner).look;
     let look = &mut b.objects.sprite_mut(r).look;
     look.palette = owner_look.palette;
-    look.color_shader = owner_look.color_shader;
+    look.copy_color_shader(&owner_look);
     look.white = owner_look.white;
     look.mosaic = owner_look.mosaic;
     look.alpha = owner_look.alpha;

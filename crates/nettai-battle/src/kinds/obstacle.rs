@@ -553,7 +553,7 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u
         }
     }
     // sprite_zeroColorShader
-    b.objects.sprite_mut(r).look.color_shader = 0;
+    b.objects.sprite_mut(r).look.set_color_shader(0);
     update_visibility(b, r);
     Some(current_action(b, r))
 }

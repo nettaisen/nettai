@@ -1356,7 +1356,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 fn navi_palette(b: &mut Battle, r: ObjectRef) {
     if let Some(glow) = &form_of(b, r).glow {
         let shader = glow[(b.round.battle_time % glow.len() as u32) as usize];
-        b.objects.sprite_mut(r).look.color_shader = shader;
+        b.objects.sprite_mut(r).look.set_color_shader(shader);
         return;
     }
     let palette = palette_pick(b, r);
