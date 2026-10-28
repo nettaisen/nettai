@@ -1361,10 +1361,6 @@ declare battle: {
     -- icons show over it; a status reset takes it out again).
     show_opponent_chip_icons: (side: number) -> (),
     fill_custom_gauge: () -> (),
-    -- The battle's flags word's bits the engine owns none of (0x80 and up): the rules' own, kept for the battle (EXE5
-    -- DS's Mag-Barr's once-a-battle marks, 0x200 and 0x400). `rules_flag` reads one bit, `set_rules_flag` sets it.
-    rules_flag: (bit: number) -> boolean,
-    set_rules_flag: (bit: number) -> (),
     -- `sub_801DFD0` (EXE5's CusVolt): the custom gauge drops by `n`, to 0 at least.
     drain_custom_gauge: (n: number) -> (),
     -- `sub_801DF8C`: the custom gauge fills `rate` a tick (full at 0x4000).
@@ -1374,10 +1370,6 @@ declare battle: {
     -- `sub_8010B78`: the damage a side's custom gauge gives (its own gauge
     -- when each side has one, `own_gauges`, else the shared one).
     gauge_damage: (side: number) -> number,
-    -- A side's sword pick (`sub_802E070`+0x12): the swing a variable sword
-    -- makes for a navi no buttons drive (EXE5's auto battle draws it).
-    sword_pick: (side: number) -> number,
-    set_sword_pick: (side: number, pick: number) -> (),
     -- Presentation: whether the side's emotion window shows its form's second set of faces (`mugshot.variant`): in the
     -- base form ("base", the default: EXE5's Hub Style), or whatever the form while its navi's rules' B charge is
     -- armed ("charged": EXE5's Chaos Unison look).

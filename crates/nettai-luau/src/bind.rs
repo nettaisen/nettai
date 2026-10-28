@@ -1937,8 +1937,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.shake_camera_secondary(magnitude, ticks)))
     });
     lib_fn!(lua, t, "set_shake_through_pause", |_, on: bool| with(|api, _| Ok(api.set_shake_through_pause(on))));
-    lib_fn!(lua, t, "rules_flag", |_, bit: u16| with(|api, _| Ok(api.rules_flag(bit))));
-    lib_fn!(lua, t, "set_rules_flag", |_, bit: u16| with(|api, _| Ok(api.set_rules_flag(bit))));
     lib_fn!(lua, t, "set_chips_enabled", |_, (side, on): (LuaValue, bool)| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.set_chips_enabled(side, on)))
@@ -2204,14 +2202,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "gauge_damage", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.gauge_damage(side)))
-    });
-    lib_fn!(lua, t, "sword_pick", |_, side: LuaValue| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.sword_pick(side)))
-    });
-    lib_fn!(lua, t, "set_sword_pick", |_, (side, pick): (LuaValue, LuaValue)| {
-        let (side, pick) = (u8_arg(side, "side")? & 1, u8_arg(pick, "sword pick")?);
-        with(|api, _| Ok(api.set_sword_pick(side, pick)))
     });
     lib_fn!(lua, t, "set_face_variant", |_, (side, variant, mode): (LuaValue, bool, Option<mlua::LuaString>)| {
         let side = u8_arg(side, "side")? & 1;

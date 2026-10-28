@@ -1422,11 +1422,6 @@ pub trait CoreApi {
     /// shake even while the battle is paused (EXE5's TomahawkSoul's change,
     /// 0x08012138; the change's end clears it, 0x080121B6).
     fn set_shake_through_pause(&mut self, on: bool);
-    /// The battle's flags word's bits the engine owns none of (0x80 and
-    /// up): the rules' own, kept for the battle (EXE5 DS's Mag-Barr's
-    /// once-a-battle marks, battle flags 0x200 and 0x400).
-    fn rules_flag(&self, bit: u16) -> bool;
-    fn set_rules_flag(&mut self, bit: u16);
     /// `sub_8001382` / `sub_800138E` with a side's chips-enabled bit (the
     /// intro bits' 0x04 for side 0, 0x08 for side 1, which a round starts
     /// with set; `sub_800A772` reads them): the side's navi may use chips,
@@ -1698,11 +1693,6 @@ pub trait CoreApi {
     /// `sub_8010B78`: the damage a side's custom gauge gives (its own gauge
     /// in the own-gauges mode, else the shared one).
     fn gauge_damage(&self, side: u8) -> u16;
-    /// A side's sword pick (`sub_802E070`+0x12): the swing a variable sword
-    /// makes for a navi no buttons drive (EXE5's auto battle draws it,
-    /// 0x0802A330).
-    fn sword_pick(&self, side: u8) -> u8;
-    fn set_sword_pick(&mut self, side: u8, pick: u8);
     /// Presentation: whether side `side`'s emotion window shows its form's
     /// second set of faces (`variant`): in the base form (EXE5's Hub
     /// Style), or with `charged` while its navi's rules' B charge is armed,

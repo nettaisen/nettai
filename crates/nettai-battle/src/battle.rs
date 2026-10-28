@@ -48,8 +48,6 @@ pub mod battle_flags {
     ///   Advance window. `sub_800A8F8` tests it. A netbattle without gates
     ///   never has it.
     pub const OWN_GAUGES: u16 = 0x40;
-    /// The bits the engine owns; the rest are the rules' (`rules_flag`).
-    pub const ENGINE: u16 = 0x7F;
 }
 
 /// Top-level battle states (the game's jump-table offsets).
@@ -609,9 +607,6 @@ pub struct SideState {
     /// FstGauge), counted down by `sub_80107D4`.
     pub slow_gauge_ticks: u16,
     pub fast_gauge_ticks: u16,
-    /// +0x12: the swing a variable sword makes for a navi no buttons drive
-    /// (EXE5's auto battle draws it before VarSwrd or NeoVari, 0x0802A330).
-    pub sword_pick: u8,
     /// +0x44: the target the side tracks (an actor of the other side), which
     /// an obstacle leaving hands on (`sub_802EF74`).
     pub tracked: Option<ObjectRef>,
@@ -2667,10 +2662,10 @@ mod tests {
         let mut b = Battle::new(testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c)), c);
         let looks = SideLooks { face_variant: true, face_variant_charged: false, window_count: false, name_variant: true };
         b.looks = [looks; 2];
-        b.sides[1].sword_pick = 3;
+        b.sides[1].takeover_ticks = 3;
         b.spawn_actors();
         b.run_objects();
-        assert_eq!(b.sides[1].sword_pick, 0, "the init clears the side's block");
+        assert_eq!(b.sides[1].takeover_ticks, 0, "the init clears the side's block");
         assert_eq!(b.looks, [looks; 2]);
     }
 

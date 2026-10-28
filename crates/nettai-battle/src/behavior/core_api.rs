@@ -525,16 +525,6 @@ impl CoreApi for Battle {
         }
     }
 
-    fn rules_flag(&self, bit: u16) -> bool {
-        assert!(bit & crate::battle::battle_flags::ENGINE == 0, "battle flag {bit:#x} is the engine's");
-        self.round.flags & bit != 0
-    }
-
-    fn set_rules_flag(&mut self, bit: u16) {
-        assert!(bit & crate::battle::battle_flags::ENGINE == 0, "battle flag {bit:#x} is the engine's");
-        self.set_flags(bit);
-    }
-
     fn set_chips_enabled(&mut self, side: u8, on: bool) {
         let bit = 0x04 << (side & 1);
         if on {
@@ -1395,14 +1385,6 @@ impl CoreApi for Battle {
 
     fn gauge_damage(&self, side: u8) -> u16 {
         kinds::gauge_damage(self, side)
-    }
-
-    fn sword_pick(&self, side: u8) -> u8 {
-        self.sides[side as usize & 1].sword_pick
-    }
-
-    fn set_sword_pick(&mut self, side: u8, pick: u8) {
-        self.sides[side as usize & 1].sword_pick = pick;
     }
 
     fn set_face_variant(&mut self, side: u8, variant: bool, charged: bool) {
