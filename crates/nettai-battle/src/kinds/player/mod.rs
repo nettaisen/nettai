@@ -30,17 +30,6 @@ pub(crate) fn move_lag(b: &Battle, r: ObjectRef) -> u16 {
     idle::move_lag(b, r)
 }
 
-/// EXE5's 0x081042E6: a navi's status visuals forgotten (`sub_801A5E2`)
-/// and its chips off the HUD (`sub_801DC36`, BattleObject +0x1A, +0x2A).
-pub(crate) fn drop_links(b: &mut Battle, r: ObjectRef) {
-    let c = coll_mut(b, r);
-    c.links[crate::collision::link::CONFUSE] = None;
-    c.links[crate::collision::link::BLIND] = None;
-    let o = b.objects.get_mut(r);
-    o.chips_held = 0;
-    o.chip = None;
-}
-
 /// EXE5's 0x08104306: a navi no player controls leaves: no HP, the side's
 /// damage-carry record forgets it (`sub_802CDD0`), its reservation goes,
 /// it leaves every slot of the alive lists (0x08006BC2) and its object
@@ -86,7 +75,7 @@ mod intake;
 mod reactions;
 mod status;
 pub(crate) use entry::show_hp_number;
-pub(crate) use status::end_anger;
+pub(crate) use status::slide_state;
 
 pub(crate) use intake::strip_body_programs;
 pub use intake::take_navi_bug;

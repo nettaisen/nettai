@@ -135,10 +135,6 @@ pub enum HookCall {
     InstantChip { user: ObjectRef, spec: InstantChipSpec },
     /// A kind's `place(spec)`: returns what it placed, or nil.
     Place { spec: PlaceSpec },
-    /// A kind's `navi_left(controller)`: what an object of the kind brought
-    /// (a navi chip's navi, EXE5's DethPhnx's the last navi chip's) is done.
-    /// Its result is unused.
-    NaviLeft { controller: ObjectRef },
     /// A kind's `encased(me)`: an obstacle of the kind starts being encased
     /// (the obstacle framework's encasing, its first step). Its result is
     /// unused.

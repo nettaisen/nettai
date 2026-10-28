@@ -424,7 +424,7 @@ return { eraseman = eraseman, ["erasemn-ex"] = erasemn_ex, ["erasemn-sp"] = eras
 ```
 
 Each chip's controller (@exelib/navi_chips/chip, the chip's `navi`) calls the chip's summon when the navi comes,
-and waits for `navi_chip.navi_left(controller)`. What differs between the chips of the series is the hook's argument and the
+and waits for the navi to call its `navi_left` (@exelib/navi_chips/left). What differs between the chips of the series is the hook's argument and the
 record; a routine's own immediates (his 0x168-tick aim limit, his aim table) are the script's constants, as
 they are the routine's in the game.
 

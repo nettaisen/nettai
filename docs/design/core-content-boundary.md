@@ -120,8 +120,8 @@ These are the game's, kept bit-exact; the API exposes them and must not smooth t
 - **Spawning.** A spawn takes the lowest free slot of the kind's pool; a full pool gives none, and callers carry
   on. The new object goes into the update list right after the object updating, so it runs later this tick;
   several spawns from one update run in reverse spawn order. With no object updating, or when the current
-  object freed itself and the new one took its slot, it goes to the tail. `spawn_first` and `spawn_at_end` are
-  the game's two other insertions. A content kind starts with its state zeroed and its lifecycle at init.
+  object freed itself and the new one took its slot, it goes to the tail. `spawn_at_end` is the game's other
+  insertion (its head insertion, `sub_80033E4`, no content uses). A content kind starts with its state zeroed and its lifecycle at init.
 - **Freeing** clears the slot and unlinks the node; the freed node's own links stay, and the loop reads the
   current object's successor after its handler returns, so an object may free itself or its successor. Free
   releases nothing else: collision, reservations and actor data are `destroy`'s (`object_genericDestroy`).
@@ -245,7 +245,7 @@ the rest of that tick. A cut-in prepares the cutting-in side's chip into a detac
 navi's own attack and action are untouched, and the two sides' controllers wait on each other. A navi chip's
 controller is content too, each chip's own (@exelib/navi_chips/controller: the course, AntiNavi, the name): the
 chip's `navi` spawns it, as a dimming chip's `dimming` does, through the engine's generic action that hands a chip off
-to its controller; it brings the chip's navi and waits for `navi_chip.navi_left`.
+to its controller; it brings the chip's navi and waits for its kind's `navi_left` (@exelib/navi_chips/left).
 
 ### 4.11 Content the ruleset knows
 
