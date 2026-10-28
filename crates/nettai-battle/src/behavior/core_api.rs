@@ -2073,8 +2073,8 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn spawn_effect(&mut self, pos: Vec3, look: EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
-        kinds::effect::spawn(self, pos, look, flip, palette_add, priority)
+    fn spawn_effect(&mut self, pos: Vec3, look: EffectHandle, flips: [u8; 2], palette_add: u8, priority: u8) -> Option<ObjectRef> {
+        kinds::effect::spawn_by_console(self, pos, look, flips, palette_add, priority)
     }
 
     fn spawn_effect_after_spawn(&mut self, z: i32, look: EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef> {
@@ -2873,8 +2873,8 @@ impl CoreApi for Battle {
         let v = store(f.name(), f.writable(), f.ty(), v)?;
         let look = &mut self.objects.sprite_mut(o).look;
         match (f, v) {
-            (SpriteField::Palette, FieldValue::U8(x)) => look.palette = x,
-            (SpriteField::HFlip, FieldValue::Bool(x)) => look.hflip = x,
+            (SpriteField::Palette, FieldValue::U8(x)) => look.set_palette(x),
+            (SpriteField::HFlip, FieldValue::Bool(x)) => look.set_hflip(x),
             (SpriteField::VFlip, FieldValue::Bool(x)) => look.vflip = x,
             (SpriteField::Shadow, FieldValue::Enum(i)) => {
                 look.shadow = match Shadow::ALL[i as usize] {
@@ -2886,10 +2886,37 @@ impl CoreApi for Battle {
             (SpriteField::UnderObjects, FieldValue::Bool(x)) => look.under_objects = x,
             (SpriteField::White, FieldValue::Bool(x)) => look.white = x,
             (SpriteField::ColorShader, FieldValue::U16(x)) => look.set_color_shader(x),
-            (SpriteField::Alpha, FieldValue::OptionalU8(x)) => look.alpha = x,
-            (SpriteField::Mosaic, FieldValue::OptionalU8(x)) => look.mosaic = x,
+            (SpriteField::Alpha, FieldValue::OptionalU8(x)) => look.set_alpha(x),
+            (SpriteField::Mosaic, FieldValue::OptionalU8(x)) => look.set_mosaic(x),
             (SpriteField::Priority, FieldValue::U8(x)) => look.priority = x,
-            (SpriteField::HiddenParts, FieldValue::U32(x)) => look.hidden_parts = x,
+            (SpriteField::HiddenParts, FieldValue::U32(x)) => look.set_hidden_parts(x),
+            (f, v) => unreachable!("{f:?} stored as {v:?}"),
+        }
+        Ok(())
+    }
+
+    fn sprite_set_by_console(&mut self, o: ObjectRef, f: SpriteField, values: [Value; 2]) -> ApiResult<()> {
+        use SpriteField as F;
+        if !matches!(f, F::Palette | F::HFlip | F::ColorShader | F::Alpha | F::Mosaic | F::HiddenParts) {
+            return Err(ApiError::Other(format!("sprite:set_by_console: every console draws {:?} alike", f.name())));
+        }
+        let local = self.round.local_side as usize & 1;
+        let (here, there) = (values[local], values[local ^ 1]);
+        let stored = store(f.name(), f.writable(), f.ty(), there)?;
+        // (The local side's, which is every console's, then the other's
+        // over it where it differs.)
+        self.sprite_set(o, f, here)?;
+        if here == there {
+            return Ok(());
+        }
+        let other = &mut self.objects.sprite_mut(o).look.other;
+        match (f, stored) {
+            (F::Palette, FieldValue::U8(x)) => other.palette = Some(x),
+            (F::HFlip, FieldValue::Bool(x)) => other.hflip = Some(x),
+            (F::ColorShader, FieldValue::U16(x)) => other.color_shader = Some(x),
+            (F::Alpha, FieldValue::OptionalU8(x)) => other.alpha = Some(x),
+            (F::Mosaic, FieldValue::OptionalU8(x)) => other.mosaic = Some(x),
+            (F::HiddenParts, FieldValue::U32(x)) => other.hidden_parts = Some(x),
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -3427,7 +3454,7 @@ impl CoreApi for Battle {
         obj.anim_loaded = 0xFF;
         let look = &mut self.objects.sprite_mut(o).look;
         look.shadow = sprite::Shadow::Ground;
-        look.palette = palette;
+        look.set_palette(palette);
         Ok(own)
     }
 
@@ -3450,7 +3477,7 @@ impl CoreApi for Battle {
         obj.anim_loaded = 0xFF;
         let look = &mut self.objects.sprite_mut(o).look;
         look.shadow = sprite::Shadow::Ground;
-        look.palette = palette;
+        look.set_palette(palette);
         Ok(())
     }
 
@@ -3493,7 +3520,7 @@ impl CoreApi for Battle {
         let s = self.objects.sprite_mut(o);
         s.look.shadow = if l.shadow { sprite::Shadow::Ground } else { sprite::Shadow::WithSprite };
         s.set_animation(l.anim, &self.content);
-        s.look.palette = l.palette;
+        s.look.set_palette(l.palette);
         // The time bombs' looks keep their own flip and set a drawing bit
         // instead (sub_8002EAC: presentation).
         if !l.keeps_flip {

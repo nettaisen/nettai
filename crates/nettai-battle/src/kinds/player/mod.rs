@@ -889,7 +889,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     load_sprite(b, r);
     // sub_801002C, sprite_setPalette.
     let palette = palette_pick(b, r);
-    b.objects.sprite_mut(r).look.palette = palette;
+    b.objects.sprite_mut(r).look.set_palette(palette);
     // sub_80142B0: bodies deal 10 in link battles (the rules'
     // `link_body_damage`: EXE6's and EXE5's; EXE4 has none).
     if is_link(b)
@@ -1360,7 +1360,7 @@ fn navi_palette(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let palette = palette_pick(b, r);
-    b.objects.sprite_mut(r).look.palette = palette;
+    b.objects.sprite_mut(r).look.set_palette(palette);
 }
 
 /// `sub_801002C`: the navi's sprite palette (`navi_palette`'s), which its

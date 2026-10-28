@@ -29,13 +29,13 @@
 //!   flag, which the recordings check;
 //! - the custom screen's banner (a Program Advance's):
 //!   [`Battle::banner_block_for`], each viewer's own screen's;
-//! - the counter blink, which only the player in Full Synchro sees:
-//!   [`Battle::color_shader_for`].
-//!
-//! Still the local side's (docs/design/rollback.md §2.3): which navi
-//! appears at once at the intro and which fades in (simulation state), and
-//! a few looks (the parts a barrier visual hides unless its navi is the
-//! local MegaMan, the trap mark's facing, EXE4's PanelShoot's colors).
+//! - how each console draws a sprite ([`Battle::look_for`]): the counter
+//!   blink only the player in Full Synchro sees, a mark turned to each
+//!   console's own side, a palette by whose panel it is as each console
+//!   sees it, the parts a console hides; and the round intro's, where each
+//!   console's own navi shows at once and the other side's fades in (the
+//!   simulation runs the local side's console's; the other console's view
+//!   is drawn from it, `kinds::player::entry`).
 
 use crate::battle::{Battle, BattleResult, RoundEnd, fight};
 use crate::object::{ObjectRef, Sight, flags};
@@ -136,17 +136,14 @@ impl Battle {
         }
     }
 
-    /// `r`'s color shader as `viewer`'s console draws it: its look's, or
-    /// the other side's console's own where the two differ
-    /// ([`Look::other_shader`]: the counter blink).
+    /// How `viewer`'s console draws `r`'s sprite: its look, or where the
+    /// other side's console draws it otherwise, that console's
+    /// ([`Look::other`]).
     ///
-    /// [`Look::other_shader`]: crate::object::sprite::Look::other_shader
-    pub fn color_shader_for(&self, r: ObjectRef, viewer: u8) -> u16 {
+    /// [`Look::other`]: crate::object::sprite::Look::other
+    pub fn look_for(&self, r: ObjectRef, viewer: u8) -> crate::object::sprite::Look {
         let look = &self.objects.sprite(r).look;
-        match look.other_shader {
-            Some(shader) if viewer & 1 != self.round.local_side & 1 => shader,
-            _ => look.color_shader,
-        }
+        if viewer & 1 == self.round.local_side & 1 { *look } else { look.for_other() }
     }
 
     /// `r`'s header flags as `viewer`'s console has them: its `VISIBLE`
@@ -407,11 +404,62 @@ mod tests {
                 let c = b.objects.get(r).collision.expect("the navi has its collision");
                 b.collision.get_mut(c).counter_timer = 30;
                 b.tick(&[PlayerTick::default(); 2], TickEvents::default());
-                shown.push([0u8, 1].map(|v| b.color_shader_for(r, v)));
+                shown.push([0u8, 1].map(|v| b.look_for(r, v).color_shader));
             }
             assert!(shown.iter().any(|s| s[watcher as usize] == 0x7C00), "side {watcher} sees side {blinker}'s navi blink: {shown:x?}");
             assert!(shown.iter().all(|s| s[blinker as usize] != 0x7C00), "side {blinker} never sees its own navi blink: {shown:x?}");
         }
+    }
+
+    /// The round intro as each console draws it: its own navi shows at
+    /// once and the other side's fades in, so the other side's console sees
+    /// the local side's view with the navis the other way round.
+    #[test]
+    fn each_console_shows_its_own_navi_at_once_and_fades_the_other_in() {
+        // (Either side the simulation's: the navis update in either order.)
+        for local in [0usize, 1] {
+            let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::stats(100));
+            setup.local_side = local as u8;
+            let mut b = Battle::new(setup, testing::content());
+            let no_buttons = [crate::input::PlayerTick::default(); 2];
+            // By viewer, by navi: each tick's visibility, alpha and mosaic.
+            let mut seen: [[Vec<(bool, Option<u8>, Option<u8>)>; 2]; 2] = Default::default();
+            for _ in 0..200 {
+                b.tick(&no_buttons, Default::default());
+                let (Some(n0), Some(n1)) = (b.player(0), b.player(1)) else { continue };
+                for v in 0..2u8 {
+                    for (k, n) in [n0, n1].into_iter().enumerate() {
+                        let look = b.look_for(n, v);
+                        seen[v as usize][k].push((b.visible_to(n, v), look.alpha, look.mosaic));
+                    }
+                }
+            }
+            let other = local ^ 1;
+            let fades = seen[local][other].iter().any(|&(_, alpha, _)| alpha.is_some_and(|a| a > 0 && a < 16));
+            assert!(fades, "local side {local}: the other side's navi fades in");
+            assert!(seen[local][local].iter().all(|&(_, alpha, _)| alpha.is_none()), "local side {local}: its own shows at once");
+            assert_eq!(seen[other][local], seen[local][other], "local side {local}: the other console fades the local navi in alike");
+            assert_eq!(seen[other][other], seen[local][local], "local side {local}: and shows its own at once");
+        }
+    }
+
+    /// A mark each console turns to its own side faces each console's way,
+    /// and a palette set by console is each console's.
+    #[test]
+    fn a_look_set_by_console_is_each_consoles() {
+        use crate::content::EffectRole;
+        use nettai_content_api::{CoreApi, SpriteField, Value};
+        let mut b = battle();
+        let look = b.roles().effect(EffectRole::TrapMark);
+        let e = crate::kinds::effect::spawn_by_console(&mut b, Default::default(), look, [0, 1], 0, 0).expect("a slot");
+        b.run_objects();
+        assert_eq!([0u8, 1].map(|v| b.look_for(e, v).hflip), [false, true]);
+        b.sprite_set_by_console(e, SpriteField::Palette, [Value::Int(2), Value::Int(3)]).unwrap();
+        assert_eq!([0u8, 1].map(|v| b.look_for(e, v).palette), [2, 3]);
+        // Set again, it is every console's.
+        b.sprite_set(e, SpriteField::Palette, Value::Int(5)).unwrap();
+        assert_eq!([0u8, 1].map(|v| b.look_for(e, v).palette), [5, 5]);
+        assert!(b.sprite_set_by_console(e, SpriteField::VFlip, [Value::Bool(false), Value::Bool(true)]).is_err());
     }
 
     /// The result's banner as each game's routine picks it (`sub_80081A4`,

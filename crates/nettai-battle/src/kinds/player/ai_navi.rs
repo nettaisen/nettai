@@ -125,7 +125,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     sprite.load(body.sprite);
     // sprite_hasShadow, or sprite_noShadow (drawn with the sprite).
     sprite.look.shadow = if body.shadow { crate::object::sprite::Shadow::Ground } else { crate::object::sprite::Shadow::WithSprite };
-    sprite.look.palette = palette;
+    sprite.look.set_palette(palette);
     sprite.look.set_flip(flip);
     let o = b.objects.get_mut(r);
     o.anim = 0;
@@ -167,7 +167,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // sub_800F378: its post-init hook (EXE5's Dark MegaMan's 0x08104270:
     // palette 1; its flag and its HP number are the body's).
     if let Some(p) = body.palette {
-        b.objects.sprite_mut(r).look.palette = p;
+        b.objects.sprite_mut(r).look.set_palette(p);
     }
     b.objects.get_mut(r).state = state::UPDATE;
     super::set_action(b, r, NaviAction::Entry);

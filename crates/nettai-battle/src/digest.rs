@@ -15,7 +15,8 @@
 //!
 //! - the tick's sound cues (`Battle::sound_cues`) and the pause its
 //!   players asked a host for (`Battle::pause_requests`);
-//! - how sprites are drawn ([`Look`](crate::object::sprite::Look));
+//! - how sprites are drawn ([`Look`](crate::object::sprite::Look)), and how
+//!   the other side's console turns an effect (`effect::Vars::other_flip`);
 //! - which banner is showing ([`Banner::id`](crate::hud::Banner::id)) and
 //!   what a telop says ([`Banner::telop`](crate::hud::Banner::telop), from
 //!   the controller's `Object::telop_chip`: that a block shows a telop is

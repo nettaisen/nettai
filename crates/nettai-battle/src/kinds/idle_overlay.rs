@@ -78,7 +78,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.load(sprite);
     s.look.shadow = Shadow::WithSprite;
     s.set_animation(0, &b.content);
-    s.look.palette = owner_palette;
+    s.look.set_palette(owner_palette);
     s.look.set_flip(flip);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
@@ -110,11 +110,8 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let alliance = o.alliance;
     let owner_look = b.objects.sprite(owner).look;
     let look = &mut b.objects.sprite_mut(r).look;
-    look.palette = owner_look.palette;
-    look.copy_color_shader(&owner_look);
-    look.white = owner_look.white;
-    look.mosaic = owner_look.mosaic;
-    look.alpha = owner_look.alpha;
+    look.copy_palette(&owner_look);
+    look.copy_shading(&owner_look);
     look.set_flip(alliance ^ owner_flip);
     if b.is_dimmed() || b.paused {
         return;

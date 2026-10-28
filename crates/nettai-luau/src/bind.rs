@@ -897,6 +897,11 @@ impl UserData for Sprite {
                 api.sprite_set(this.0, SpriteField::VFlip, Value::Bool(flip & 2 != 0)).map_err(api_error)
             })
         });
+        methods.add_method("set_by_console", |_, this, (field, side0, side1): (mlua::LuaString, LuaValue, LuaValue)| {
+            let f = named(&field, "sprite field", SpriteField::from_name)?;
+            let values = [to_api(side0, &f.ty(), f.name())?, to_api(side1, &f.ty(), f.name())?];
+            with(|api, _| api.sprite_set_by_console(this.0, f, values).map_err(api_error))
+        });
     }
 }
 
@@ -2307,10 +2312,15 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             Option<LuaValue>
         )| {
             let opt = |v: Option<LuaValue>, what| v.map_or(Ok(0), |v| u8_arg(v, what));
-            let (flip, add, prio) = (opt(flip, "flip")?, opt(palette_add, "palette")?, opt(priority, "priority")?);
+            // (A flip, or each side's console's: { side 0's, side 1's }.)
+            let flips = match flip {
+                Some(LuaValue::Table(t)) => [u8_arg(t.raw_get(1)?, "flip")?, u8_arg(t.raw_get(2)?, "flip")?],
+                flip => [opt(flip, "flip")?; 2],
+            };
+            let (add, prio) = (opt(palette_add, "palette")?, opt(priority, "priority")?);
             let o = with(|api, b| {
                 let look = EffectHandle(def_arg(b, &id, Registry::Effect, "battle.effect")?);
-                Ok(api.spawn_effect(pos.0, look, flip, add, prio))
+                Ok(api.spawn_effect(pos.0, look, flips, add, prio))
             })?;
             object_value(lua, o)
         }

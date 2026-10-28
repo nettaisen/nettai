@@ -296,6 +296,13 @@ declare extern type Sprite with
     function part_offset(self, n: number): (number, number)
     -- The game's flip value: bit 0 horizontal, bit 1 vertical.
     function set_flip(self, flip: number): ()
+    -- A field as each side's console draws it, where the original's consoles
+    -- each decide it by their own side (a palette by whose panel it is as
+    -- the console sees it, the parts a console hides): side 0's value, then
+    -- side 1's. Presentation; setting the field is every console's again,
+    -- and reading it gives the local side's console's. Only "palette",
+    -- "hflip", "color_shader", "alpha", "mosaic" and "hidden_parts".
+    function set_by_console(self, field: string, side0: any, side1: any): ()
 end
 
 -- An object's collision registration.
@@ -1461,8 +1468,10 @@ declare battle: {
     -- list (it runs after everything else this tick).
     spawn_at_end: (kind: Kind, pos: Vec3?) -> Object?,
     -- The generic one-shot effect (effect object #0) an effect definition
-    -- describes.
-    effect: (pos: Vec3, effect: Effect, flip: number?, palette_add: number?, priority: number?) -> Object?,
+    -- describes. `flip` is the game's flip value, or each side's console's
+    -- ({ side 0's, side 1's }: an effect each console turns its own way,
+    -- where the original passes the console's side).
+    effect: (pos: Vec3, effect: Effect, flip: (number | { number })?, palette_add: number?, priority: number?) -> Object?,
     -- The same spawner called again straight after a spawn, at height z:
     -- its X and Y what the object allocator left in their registers (list
     -- node addresses), which the engine doesn't know.

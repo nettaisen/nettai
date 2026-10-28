@@ -249,7 +249,7 @@ fn init_plain(b: &mut Battle, r: ObjectRef) {
     s.set_animation(anim, &b.content);
     s.update(&b.content);
     s.look.shadow = plain.shadow.shadow();
-    s.look.palette = plain.palette;
+    s.look.set_palette(plain.palette);
     s.look.set_flip(flip);
     s.look.set_color_shader(plain.color_shader);
     let o = b.objects.get_mut(r);

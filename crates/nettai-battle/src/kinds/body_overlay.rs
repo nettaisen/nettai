@@ -114,7 +114,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.load(sprite);
     // sprite_noShadow; its palette 0, or its owner's.
     s.look.shadow = Shadow::WithSprite;
-    s.look.palette = if own_palette { 0 } else { owner_palette };
+    s.look.set_palette(if own_palette { 0 } else { owner_palette });
     s.set_animation(anim, &b.content);
     s.update(&b.content);
     let o = b.objects.get_mut(r);
@@ -168,12 +168,9 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let owner_look = b.objects.sprite(owner).look;
     let look = &mut b.objects.sprite_mut(r).look;
     if !own_palette {
-        look.palette = owner_look.palette;
+        look.copy_palette(&owner_look);
     }
-    look.copy_color_shader(&owner_look);
-    look.white = owner_look.white;
-    look.mosaic = owner_look.mosaic;
-    look.alpha = owner_look.alpha;
+    look.copy_shading(&owner_look);
     look.set_flip(alliance ^ owner_flip);
     // Action 0, `sub_80C4484`.
     if always_step {

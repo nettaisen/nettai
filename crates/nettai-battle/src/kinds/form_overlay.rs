@@ -149,7 +149,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let s = b.objects.sprite_mut(r);
     s.load(sprite);
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;
-    s.look.palette = palette;
+    s.look.set_palette(palette);
     s.set_animation(anim, &b.content);
     s.update(&b.content);
     let o = b.objects.get_mut(r);
@@ -239,12 +239,9 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let owner_look = b.objects.sprite(owner).look;
     let look = &mut b.objects.sprite_mut(r).look;
     if rules.palette_each_tick {
-        look.palette = palette;
+        look.set_palette(palette);
     }
-    look.copy_color_shader(&owner_look);
-    look.white = owner_look.white;
-    look.mosaic = owner_look.mosaic;
-    look.alpha = owner_look.alpha;
+    look.copy_shading(&owner_look);
     if rules.facing_each_tick {
         look.set_flip(alliance ^ owner_flip);
     }

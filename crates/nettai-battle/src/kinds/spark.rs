@@ -60,7 +60,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             sprite.load(id);
             sprite.set_animation(anim, &b.content);
             sprite.look.shadow = crate::object::sprite::Shadow::WithSprite;
-            sprite.look.palette = palette;
+            sprite.look.set_palette(palette);
             // (EXE5's spark, 0x080E0870, doesn't step at its start: the
             // arena's `effects` section.)
             if steps {

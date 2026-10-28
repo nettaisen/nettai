@@ -91,7 +91,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.load(sprite);
     // sprite_hasShadow; the navi's palette (sub_801002C); its facing.
     s.look.shadow = Shadow::Ground;
-    s.look.palette = palette;
+    s.look.set_palette(palette);
     s.look.set_flip(flip);
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;

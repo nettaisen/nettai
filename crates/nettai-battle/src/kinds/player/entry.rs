@@ -19,6 +19,42 @@ pub(super) fn entry(b: &mut Battle, r: ObjectRef) {
         4 => fade_in(b, r),
         _ => wait_for_intro(b, r),
     }
+    intro_for_other_console(b);
+}
+
+/// The round intro as the other side's console draws it (presentation;
+/// `sub_80163B4` on that console): there its own navi shows at once and
+/// the local side's fades in, on the ticks the other side's fades in here
+/// (each console's queue holds the one navi of the side that isn't its
+/// own). While the other side's navi enters, after each navi's step (the
+/// status tail before it has set each navi's visibility for every console
+/// again): the other side's navi is drawn there plain, and the local side's
+/// as the other side's is here. Its overlays, later in the update order,
+/// copy each console's look.
+fn intro_for_other_console(b: &mut Battle) {
+    let local = b.round.local_side & 1;
+    let (Some(own), Some(other)) = (b.player(local), b.player(local ^ 1)) else { return };
+    if super::navi_action(b, other) != super::NaviAction::Entry || ai(b, other).not_counted != 0 {
+        return;
+    }
+    let there = (local ^ 1) as usize;
+    let fading = b.visible_to(other, local);
+    let (alpha, mosaic) = {
+        let look = &b.objects.sprite(other).look;
+        (look.alpha, look.mosaic)
+    };
+    let mut shown = [0u8, 1].map(|v| b.visible_to(other, v));
+    shown[there] = true;
+    b.set_visible_by_viewer(other, shown);
+    let look = &mut b.objects.sprite_mut(other).look;
+    look.other.alpha = alpha.is_some().then_some(None);
+    look.other.mosaic = mosaic.is_some().then_some(None);
+    let mut shown = [0u8, 1].map(|v| b.visible_to(own, v));
+    shown[there] = fading;
+    b.set_visible_by_viewer(own, shown);
+    let look = &mut b.objects.sprite_mut(own).look;
+    look.other.alpha = (look.alpha != alpha).then_some(alpha);
+    look.other.mosaic = (look.mosaic != mosaic).then_some(mosaic);
 }
 
 /// `sub_80164A0`: a navi that isn't one of the battle's combatants
@@ -125,7 +161,7 @@ fn wait_for_fade(b: &mut Battle, r: ObjectRef) {
     } else if b.round.intro_bits & 0x01 != 0 && b.fadein_is_head(r) {
         b.sound(crate::content::SoundRole::Appear);
         // The sprite starts transparent.
-        b.objects.sprite_mut(r).look.alpha = Some(0);
+        b.objects.sprite_mut(r).look.set_alpha(Some(0));
         let o = b.objects.get_mut(r);
         o.timer = 2;
         o.timer2 = 0x10;
@@ -149,13 +185,13 @@ fn fade_in(b: &mut Battle, r: ObjectRef) {
         o.set_visible(true);
         let t = o.timer2 as u8;
         let look = &mut b.objects.sprite_mut(r).look;
-        look.mosaic = Some(t);
-        look.alpha = Some(16u8.wrapping_sub(t));
+        look.set_mosaic(Some(t));
+        look.set_alpha(Some(16u8.wrapping_sub(t)));
         return;
     }
     let look = &mut b.objects.sprite_mut(r).look;
-    look.alpha = None;
-    look.mosaic = None;
+    look.set_alpha(None);
+    look.set_mosaic(None);
     b.fadein_dequeue(r);
     let o = b.objects.get_mut(r);
     o.phase = 8;

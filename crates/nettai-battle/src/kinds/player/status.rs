@@ -1264,7 +1264,7 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
 /// `sub_801728E`): a navi blinks blue while it can be countered, on the
 /// console of the other player when that player is in Full Synchro (the
 /// original's local console blinks the other side's navi alone: each
-/// console's is kept, `Look::other_shader`); EXE5's no-charge drive
+/// console's is kept, `OtherLook::color_shader`); EXE5's no-charge drive
 /// flickers gray its last 180 ticks (0x080136E0, between the two); in the
 /// own-gauges mode a navi glows yellow while its SELECT special
 /// runs. Those two are every console's.
@@ -1300,7 +1300,7 @@ fn counter_shader(b: &mut Battle, r: ObjectRef) {
     let local = b.round.local_side as usize & 1;
     let look = &mut b.objects.sprite_mut(r).look;
     look.color_shader = shown[local];
-    look.other_shader = (shown[0] != shown[1]).then_some(shown[local ^ 1]);
+    look.other.color_shader = (shown[0] != shown[1]).then_some(shown[local ^ 1]);
 }
 
 /// `sub_8016934`: visible unless flashing (2 ticks off, 2 on: off while

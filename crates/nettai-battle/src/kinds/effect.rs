@@ -10,7 +10,7 @@ use crate::object::{ObjectRef, Vec3, flags, state};
 use nettai_content_api::{EffectHandle, RegionHandle};
 
 /// Effect-private state.
-#[derive(Clone, Debug, Default, Hash)]
+#[derive(Clone, Debug, Default)]
 pub struct Vars {
     /// What it shows (the original's first spawn parameter, a row of its
     /// table of looks).
@@ -22,6 +22,19 @@ pub struct Vars {
     /// its `pos.x` and `pos.y` are placeholders. Nothing reads an
     /// effect's position.
     pub xy_unknown: bool,
+    /// The flip the other side's console spawned it with, where it differs
+    /// (a mark each console turns to its own side): its horizontal flip
+    /// there. Presentation, left out of the digest.
+    pub other_flip: Option<u8>,
+}
+
+/// The digest's: what it shows and how it lives, not how each console
+/// turns it.
+impl std::hash::Hash for Vars {
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
+        let Vars { look, follow_related, xy_unknown, other_flip: _ } = self;
+        (look, follow_related, xy_unknown).hash(h);
+    }
 }
 
 /// `SpawnT4BattleObjectWithId0`: the effect `look` at `pos`.
@@ -29,6 +42,18 @@ pub fn spawn(b: &mut Battle, pos: Vec3, look: EffectHandle, flip: u8, palette_ad
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Effect, pos, [0, flip, palette_add, priority])?;
     if let crate::kinds::Vars::Effect(v) = &mut b.objects.get_mut(r).vars {
         v.look = Some(look);
+    }
+    Some(r)
+}
+
+/// [`spawn`] with each side's console's flip (`flips`, by side): an effect
+/// the consoles turn each their own way (the original passes the
+/// console's side). The simulation's is the local side's.
+pub fn spawn_by_console(b: &mut Battle, pos: Vec3, look: EffectHandle, flips: [u8; 2], palette_add: u8, priority: u8) -> Option<ObjectRef> {
+    let local = b.round.local_side as usize & 1;
+    let r = spawn(b, pos, look, flips[local], palette_add, priority)?;
+    if let crate::kinds::Vars::Effect(v) = &mut b.objects.get_mut(r).vars {
+        v.other_flip = (flips[0] != flips[1]).then_some(flips[local ^ 1]);
     }
     Some(r)
 }
@@ -117,8 +142,14 @@ fn init(b: &mut Battle, r: ObjectRef) {
     sprite.update(&b.content);
     let look = &mut sprite.look;
     look.shadow = Shadow::WithSprite;
-    look.palette = palette.wrapping_add(palette_add);
+    look.set_palette(palette.wrapping_add(palette_add));
     look.set_flip(flip);
+    if let crate::kinds::Vars::Effect(v) = &b.objects.get(r).vars
+        && let Some(other) = v.other_flip
+    {
+        b.objects.sprite_mut(r).look.other.hflip = Some(other & 1 != 0);
+    }
+    let look = &mut b.objects.sprite_mut(r).look;
     if priority != 0 {
         look.priority = 0;
     }

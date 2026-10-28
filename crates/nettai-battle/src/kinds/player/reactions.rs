@@ -118,13 +118,13 @@ fn fade_out(b: &mut Battle, r: ObjectRef) {
         // Mosaic and alpha follow the timer.
         let t = (o.timer >> 1) as u8;
         let look = &mut b.objects.sprite_mut(r).look;
-        look.mosaic = (t != 0).then_some(t);
-        look.alpha = Some(16u8.wrapping_sub(t));
+        look.set_mosaic((t != 0).then_some(t));
+        look.set_alpha(Some(16u8.wrapping_sub(t)));
         return;
     }
     let look = &mut b.objects.sprite_mut(r).look;
-    look.mosaic = None;
-    look.alpha = None;
+    look.set_mosaic(None);
+    look.set_alpha(None);
     let o = b.objects.get_mut(r);
     o.set_visible(false);
     // sub_802CDD0: the side's damage-carry record forgets this navi.

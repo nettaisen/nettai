@@ -1963,8 +1963,11 @@ pub trait CoreApi {
     /// Side `side`'s navi's stats of its game's own (the rules' `stats`):
     /// one block in the navi's stats, by the rules' schema.
     fn navi_game_stats_mut(&mut self, of: StatsOf) -> ApiResult<&mut crate::SmallBlock>;
-    /// `SpawnT4BattleObjectWithId0`: the one-shot effect `look`.
-    fn spawn_effect(&mut self, pos: Vec3, look: crate::EffectHandle, flip: u8, palette_add: u8, priority: u8) -> Option<ObjectRef>;
+    /// `SpawnT4BattleObjectWithId0`: the one-shot effect `look`, turned as
+    /// each side's console turns it (`flips`, by side: the same flip
+    /// twice, or each console's own, where the original passes the
+    /// console's side).
+    fn spawn_effect(&mut self, pos: Vec3, look: crate::EffectHandle, flips: [u8; 2], palette_add: u8, priority: u8) -> Option<ObjectRef>;
     /// `SpawnT4BattleObjectWithId0` called again straight after a spawn, at
     /// height `z`: its X and Y what the object allocator left in their
     /// registers, which the engine doesn't know.
@@ -2244,6 +2247,13 @@ pub trait CoreApi {
     fn sprite_part_offset(&self, o: ObjectRef, n: u8) -> (i32, i32);
     fn sprite_get(&self, o: ObjectRef, f: SpriteField) -> Value;
     fn sprite_set(&mut self, o: ObjectRef, f: SpriteField, v: Value) -> ApiResult<()>;
+    /// Field `f` as each side's console draws it (`values`, by side): where
+    /// the original's consoles each decide it by their own side (a palette
+    /// by whose panel it is, the parts a console hides). Presentation;
+    /// setting the field is every console's again. An error for a field
+    /// the consoles can't draw apart: only the palette, `hflip`, the color
+    /// shader, the alpha, the mosaic and the hidden parts.
+    fn sprite_set_by_console(&mut self, o: ObjectRef, f: SpriteField, values: [Value; 2]) -> ApiResult<()>;
 
     // ---- Collision -------------------------------------------------------------
 
