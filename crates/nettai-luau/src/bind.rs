@@ -33,7 +33,7 @@ use nettai_content_api::{ChipHandle, CollisionHandle, EffectHandle, RegionHandle
 
 use crate::Bound;
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
-use nettai_content_api::{ObstacleHold, ObstaclePush, WindSource};
+use nettai_content_api::{ObstacleHold, ObstaclePush};
 use mlua::{AnyUserData, Lua, MetaMethod, UserData, UserDataFields, UserDataMethods, Value as LuaValue};
 
 type Ctx = (NonNull<dyn CoreApi>, NonNull<Bound>);
@@ -741,24 +741,6 @@ impl UserData for Object {
         });
         methods.add_method("buster_damage", |_, this, ()| with(|api, _| Ok(api.buster_damage(this.0))));
         methods.add_method("prepare_chip", |_, this, ()| with(|api, _| Ok(api.prepare_chip(this.0))));
-        methods.add_method("absorbed", |lua, this, ()| {
-            let list = with(|api, _| api.absorbed(this.0).map_err(api_error))?;
-            let t = lua.create_table_with_capacity(list.len(), 0)?;
-            for (i, (look, anim)) in list.into_iter().enumerate() {
-                let e = lua.create_table()?;
-                e.raw_set("look", bound(|b| b.def_value(Registry::Record, look))?)?;
-                e.raw_set("anim", anim)?;
-                t.raw_set(i + 1, e)?;
-            }
-            Ok(t)
-        });
-        methods.add_method("push_absorbed", |_, this, (look, anim): (LuaValue, LuaValue)| {
-            let anim = u8_arg(anim, "anim")?;
-            with(|api, b| {
-                let look = record_arg(b, &look, "push_absorbed")?;
-                api.push_absorbed(this.0, look, anim).map_err(api_error)
-            })
-        });
         methods.add_method("action_state", |_, this, action: LuaValue| {
             let id = with(|api, bound| {
                 let action = match bound.def(&action) {
@@ -774,13 +756,6 @@ impl UserData for Object {
                 api.action_schema(action).map_err(api_error)
             })?;
             Ok(State(StateOf::ActionAs(this.0, id)))
-        });
-        methods.add_method("pop_absorbed", |_, this, ()| {
-            let popped = with(|api, _| api.pop_absorbed(this.0).map_err(api_error))?;
-            match popped {
-                None => Ok((None, None)),
-                Some((look, anim)) => Ok((Some(bound(|b| b.def_value(Registry::Record, look))?), Some(anim))),
-            }
         });
 
         // Field objects (obstacles; the rest is the `obstacle` service).
@@ -2368,17 +2343,6 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?);
         with(|api, _| Ok(api.fold_hand_chip(side, i, whole)))
     });
-    // Subtype 8 (Wind and Fan).
-    lib_fn!(lua, t, "wind", |lua, side: LuaValue| {
-        let side = u8_arg(side, "side")? & 1;
-        let (o, source) = with(|api, _| Ok(api.wind(side)))?;
-        Ok((object_value(lua, o)?, source.name()))
-    });
-    lib_fn!(lua, t, "set_wind", |_, (o, side, source): (mlua::UserDataRef<Object>, LuaValue, mlua::LuaString)| {
-        let (side, source) = (u8_arg(side, "side")? & 1, named(&source, "wind source", WindSource::from_name)?);
-        with(|api, _| Ok(api.set_wind(o.0, side, source)))
-    });
-    lib_fn!(lua, t, "clear_wind", |_, o: mlua::UserDataRef<Object>| with(|api, _| Ok(api.clear_wind(o.0))));
     lib_fn!(
         lua,
         t,
@@ -2720,20 +2684,6 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             api.obstacle_throw(o.0, side, x, y, shake, damage);
             Ok(())
         })
-    });
-    lib_fn!(lua, t, "arm_conversion", |_, (side, melee, ranged): (LuaValue, LuaValue, LuaValue)| {
-        let side = u8_arg(side, "side")? & 1;
-        let (melee, ranged) = (int(&melee, "melee word")? as u32, int(&ranged, "ranged word")? as u32);
-        with(|api, _| Ok(api.obstacle_arm_conversion(side, melee, ranged)))
-    });
-    lib_fn!(lua, t, "set_conversion_words", |_, (side, melee, ranged): (LuaValue, LuaValue, LuaValue)| {
-        let side = u8_arg(side, "side")? & 1;
-        let (melee, ranged) = (int(&melee, "melee word")? as u32, int(&ranged, "ranged word")? as u32);
-        with(|api, _| Ok(api.obstacle_set_conversion_words(side, melee, ranged)))
-    });
-    lib_fn!(lua, t, "conversion", |_, side: LuaValue| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.obstacle_conversion(side)))
     });
     for &r in ObstacleRequest::ALL {
         t.set(

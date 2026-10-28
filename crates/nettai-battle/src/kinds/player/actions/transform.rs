@@ -165,8 +165,10 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         return;
     }
     ai_mut(b, r).requests &= !0x1000_863D;
-    // (EXE5 DS's the guard and the dive too, 0x020605A0.)
-    ai_mut(b, r).status &= !(status::HEAT_TRAP | status::TRAP_ARMED | status::REVERTING_FORM | status::GUARDED | status::DIVING);
+    ai_mut(b, r).status &= !(status::HEAT_TRAP | status::TRAP_ARMED | status::REVERTING_FORM);
+    // The rules' (EXE5 DS's guard and dive end, 0x020605A0).
+    let side = b.objects.get(r).alliance;
+    b.rules_revert_finished(side, r);
     if ai(b, r).attack.step_init != 2 {
         return exit_attack_state(b, r);
     }
@@ -287,8 +289,10 @@ pub(in crate::kinds::player) fn break_form(b: &mut Battle, r: ObjectRef) -> bool
         return true;
     }
     if any_form {
-        // (EXE5 DS's the guard and the dive too, 0x020606AA.)
-        ai_mut(b, r).status &= !(status::FORM_BREAKING | status::GUARDED | status::DIVING);
+        ai_mut(b, r).status &= !status::FORM_BREAKING;
+        // The rules' (EXE5 DS's guard and dive end, 0x020606AA).
+        let side = b.objects.get(r).alliance;
+        b.rules_revert_finished(side, r);
         b.clear_flags(battle_flags::DIMMED);
         let a = &mut ai_mut(b, r).attack;
         a.step = 0;
@@ -296,6 +300,8 @@ pub(in crate::kinds::player) fn break_form(b: &mut Battle, r: ObjectRef) -> bool
         return false;
     }
     ai_mut(b, r).status &= !(status::FORM_BREAKING | status::HEAT_TRAP | status::TRAP_ARMED);
+    let side = b.objects.get(r).alliance;
+    b.rules_revert_finished(side, r);
     if let Some(o) = b.objects.get(r).related[1] {
         form::normal_overlay_stepping(b, o);
     }

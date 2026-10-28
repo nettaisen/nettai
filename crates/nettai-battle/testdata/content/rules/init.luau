@@ -48,6 +48,16 @@ local rules_: Rules = {
         side = "u8",
         bonus = "u16",
     },
+    -- The state of each navi, its object's own: EXE6's (DustCross's absorbed obstacles and the one its last throw took:
+    -- content/exe6/rules/api's `NaviState`), and the requests the navi with hooks makes of its own idle
+    -- (../navis/test).
+    navi_state = {
+        absorbed = schema.list({ look = "record:absorbed-look", anim = "u8" }, 8),
+        thrown_look = "record:absorbed-look",
+        thrown_anim = "u8",
+        take_off = "bool",
+        land = "bool",
+    },
     -- EXE6's stats of its own (content/exe6/rules).
     stats = {
         beast_out_counter = schema.role("window_count", "u8"),

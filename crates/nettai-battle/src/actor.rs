@@ -6,7 +6,7 @@
 //! full old-name mapping is in docs/engine/field-names.md.
 
 use crate::object::ObjectRef;
-use nettai_content_api::{ChipHandle, RecordHandle, WeaponHandle};
+use nettai_content_api::{ChipHandle, WeaponHandle};
 
 pub const SLOTS: usize = 8;
 
@@ -24,22 +24,9 @@ pub enum ActorType {
     Player = 2,
 }
 
-/// A navi's own requests (`own_requests`): what its own tick asks of its
-/// own idle. In the original they are bits of the request word
-/// (AIData+0x44) like the rest; they are kept apart from `requests`
-/// because the two games give the same bits different meanings. EXE5's
-/// 0x10000000 and 0x20000000 are GyroMan's alone (his tick sets them,
-/// 0x080F0A16 and 0x080F0A34; his idle and his landing clear them, and no
-/// attack's or reaction's end does); EXE6's same bits are the mode-9 A
-/// press and the takeover (`request::MODE9_A`, `request::TAKEOVER`).
-pub mod own_request {
-    /// EXE5's 0x10000000: the navi asks to take off.
-    pub const TAKE_OFF: u8 = 0x1;
-    /// EXE5's 0x20000000: it asks to land.
-    pub const LAND: u8 = 0x2;
-}
-
-/// Action-request bits (`requests`).
+/// Action-request bits (`requests`). (EXE5's 0x10000000 and 0x20000000 are
+/// GyroMan's own, his take-off and landing, which content keeps in his
+/// navi's state; EXE6's are the mode-9 A press and the takeover.)
 pub mod request {
     pub const BUSTER: u32 = 0x1;
     pub const CHARGED_SHOT: u32 = 0x2;
@@ -172,18 +159,8 @@ pub mod status {
     /// swallowed and, if it did other damage, sends another bee
     /// (`sub_802CEF4`).
     pub const HEAT_TRAP: u32 = 0x20_0000;
-    /// A guard of the rules' holds the navi (EXE5 DS's 0x400000: KnightMan's
-    /// guard, action 0x5B, sets it as it starts and clears it as it ends,
-    /// 0x020497B6, 0x020497E4): the rules' `hit_guard` swallows its hits.
-    /// A form's reversion and break, a soul change and the rules' revival
-    /// clear it too.
-    pub const GUARDED: u32 = 0x40_0000;
-    /// The navi's dive runs (EXE5 DS's 0x01000000: ToadMan's action 8 sets it
-    /// as it starts and clears it as it ends, 0x0204A364, 0x0204A574; his
-    /// flinch, drag and paralysis hooks clear it too, 0x02077B18; the GBA's
-    /// has none): no guard of the rules' swallows its hits. A form's
-    /// reversion and break and a soul change clear it.
-    pub const DIVING: u32 = 0x0100_0000;
+    // (EXE5 DS's 0x400000 and 0x01000000, KnightMan's guard and ToadMan's
+    // dive, are content's, in the navi's state.)
     /// The rules' revival runs (`request::REVIVAL`'s action; the DS's
     /// 0x200000, its ToadMan rescue). Takes over the action dispatch; the
     /// navi isn't deleted at 0 HP while it runs.
@@ -239,14 +216,10 @@ pub struct AttackVars {
     /// clear it (`sub_80116AE`); only the unused `sub_80116F6` sets one.
     pub face_target: Option<ObjectRef>,
     /// +0x30: a marker: the move's "direction changed", or a heat trap
-    /// swallowing a hit.
+    /// swallowing a hit. (As a throw of an absorbed obstacle keeps it,
+    /// DustCross's, the obstacle's look and animation are content's, in
+    /// the navi's state.)
     pub marker: u32,
-    /// +0x30 as a throw of an absorbed obstacle keeps it (DustCross's
-    /// weapons 0x2B and 0x2C; the buster's shot throws it): the obstacle's
-    /// look and animation (the original packs its kind and animation into
-    /// the marker word). Kept until the next throw sets them.
-    pub thrown_look: Option<RecordHandle>,
-    pub thrown_anim: u8,
     /// +0x12: the attack's count (its shots, swings, slashes, a hold's
     /// ticks, the recovery after a shot: each action its own). Every
     /// action shares the word and none clears it, so one that reads it
@@ -402,8 +375,6 @@ pub struct ActorData {
     pub target_marker: Option<ObjectRef>,
     /// Action requests from input (`request::*`).
     pub requests: u32,
-    /// The navi's own requests (`own_request::*`).
-    pub own_requests: u8,
     /// Actor state bits (`status::*`).
     pub status: u32,
     /// AIData+0x4C: consecutive ticks spent flinching or paralyzed
@@ -436,10 +407,6 @@ pub struct ActorData {
     /// Its saved lifecycle position (`obj+0x5C`), which a status action
     /// and a form change return to.
     pub saved_word: Option<crate::kinds::player::NaviWord>,
-    /// Obstacles the obstacle-absorbing chip pulled in, in arrival order
-    /// (at most eight; the game keeps them at +0x6C with the count at
-    /// +0x0D).
-    pub absorbed: Vec<AbsorbedObstacle>,
     /// A B charge the side's rules arm in place of the charged shot's
     /// (EXE5's Chaos Unison charge, which its soul change arms): the ticks
     /// to a full charge (in place of the charged shot's by the Charge
@@ -454,9 +421,6 @@ pub struct ActorData {
     /// EXE5's AIData+0x0D: its form's priming is up (GyroSoul's, after a
     /// Wind chip: `FormData::priming`). EXE6 never primes.
     pub primed: bool,
-    /// EXE5's AIData+0x32: the chip a weapon of the navi's loads
-    /// (ColonelSoul's arm chip; none: its 0xFFFF). EXE6 has none.
-    pub weapon_chip: Option<nettai_content_api::ChipHandle>,
     /// A navi no player controls (actor type navi): who brought it
     /// (AIData+0x54, `sub_80076A0`'s caller), its target (AIData+0x78: the
     /// other side's player, `sub_800F318`), and the rules that drive it.
@@ -465,16 +429,6 @@ pub struct ActorData {
     pub controller: Option<crate::kinds::player::Controller>,
     /// AIData+0x74: what sparkles over it while its deletion runs.
     pub deletion_sparkles: Option<ObjectRef>,
-}
-
-/// An obstacle the obstacle-absorbing chip pulled in.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct AbsorbedObstacle {
-    /// How it looks thrown: its absorbed look, content's record (the
-    /// original's obstacle kind, an index into `byte_80E98C0`'s sprites).
-    pub look: RecordHandle,
-    /// Its animation when absorbed.
-    pub anim: u8,
 }
 
 /// The actor-data pool.

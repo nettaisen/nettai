@@ -501,9 +501,6 @@ pub struct Battle {
     pub looks: [SideLooks; 2],
     /// Per-side statistics counters (`byte_203EAE0`, `sub_800AB46`).
     pub side_stats: [[u8; 16]; 2],
-    /// Per side: EXE5's ColonelSoul army, armed or not, and its soldiers'
-    /// damage words (`kinds::obstacle::Conversion`).
-    pub obstacle_conversion: [crate::kinds::obstacle::Conversion; 2],
     /// The first four counters of EXE5's per-player battle record
     /// (`sub_802D064`'s, 0x0802AEA6): the counter hits and inflicted bugs
     /// that land on the other side's navis no player controls, at most 10
@@ -813,7 +810,6 @@ impl Battle {
             sides: [SideState::default(); 2],
             looks: [SideLooks::default(); 2],
             side_stats: [[0; 16]; 2],
-            obstacle_conversion: Default::default(),
             navi_hit_counts: [[0; 4]; 2],
             linked: [LinkedRecord::default(); 2],
             dimming: Default::default(),

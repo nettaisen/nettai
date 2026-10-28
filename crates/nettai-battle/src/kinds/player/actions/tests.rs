@@ -108,8 +108,14 @@ fn hooked() -> NaviStats {
 
 #[test]
 fn a_navis_own_hooks_run_where_the_originals_tables_call_them() {
-    use crate::actor::{own_request, status};
-    let own = |b: &Battle, r: ObjectRef| super::super::ai(b, r).own_requests;
+    use crate::actor::status;
+    // Its requests to its own idle, its state's (the rules' `navi_state`).
+    const TAKE_OFF: u8 = 1;
+    const LAND: u8 = 2;
+    let own = |b: &Battle, r: ObjectRef| {
+        let on = |name| navi_state_value(b, r, name) == nettai_content_api::Value::Bool(true);
+        (if on("take_off") { TAKE_OFF } else { 0 }) | (if on("land") { LAND } else { 0 })
+    };
     let state = |b: &Battle, r: ObjectRef| super::super::ai(b, r).status;
     let (mut b, p0, p1) = fight_with(hooked());
     let p = [p0, p1];
@@ -126,12 +132,12 @@ fn a_navis_own_hooks_run_where_the_originals_tables_call_them() {
     assert_eq!((state(&b, p0) & status::HOVERING, own(&b, p0)), (0, 0));
     run_to(&mut b, p, &mut t, 3, 0);
     assert_eq!(b.objects.get(p0).panel, PanelPos { x: 2, y: 1 });
-    assert_eq!((state(&b, p0) & status::HOVERING, own(&b, p0)), (status::HOVERING, own_request::TAKE_OFF));
+    assert_eq!((state(&b, p0) & status::HOVERING, own(&b, p0)), (status::HOVERING, TAKE_OFF));
     // In the air the rest of the step sets no animation (the arrival's
     // would be 0) and leaves the one it has; no end clears the request.
     let anim = b.objects.get(p0).anim;
     run_to(&mut b, p, &mut t, 12, 0);
-    assert_eq!((act(&b, p0), b.objects.get(p0).anim, own(&b, p0)), (IDLE, anim, own_request::TAKE_OFF));
+    assert_eq!((act(&b, p0), b.objects.get(p0).anim, own(&b, p0)), (IDLE, anim, TAKE_OFF));
     // Its idle runs before the common one: the test navi's answers the
     // take-off with nothing more, and the common idle goes on (a step).
     b.objects.get_mut(p0).anim = 9;
@@ -142,14 +148,14 @@ fn a_navis_own_hooks_run_where_the_originals_tables_call_them() {
     // tick (the held B fires nothing).
     t = 0;
     run_to(&mut b, p, &mut t, 3, 0);
-    assert_eq!((b.objects.get(p0).panel, own(&b, p0)), (PanelPos { x: 2, y: 2 }, own_request::LAND));
+    assert_eq!((b.objects.get(p0).panel, own(&b, p0)), (PanelPos { x: 2, y: 2 }, LAND));
     run_to(&mut b, p, &mut t, 12, 0);
-    assert_eq!((act(&b, p0), b.objects.get(p0).anim, own(&b, p0)), (IDLE, 9, own_request::LAND));
+    assert_eq!((act(&b, p0), b.objects.get(p0).anim, own(&b, p0)), (IDLE, 9, LAND));
     tick(&mut b, p0, p1, keys::B);
     let landing = testing::content().defs.actions.iter().position(|a| nettai_content_api::keys::local(&a.key) == "test/landing").unwrap();
     assert_eq!(act(&b, p0), NaviAction::Content(nettai_content_api::ActionHandle(landing as u16)));
     // (Its tick asked again on that tick: it is still in the air.)
-    assert_eq!(own(&b, p0), own_request::LAND);
+    assert_eq!(own(&b, p0), LAND);
     for _ in 0..4 {
         tick(&mut b, p0, p1, 0);
     }
@@ -157,7 +163,7 @@ fn a_navis_own_hooks_run_where_the_originals_tables_call_them() {
     // The landing's request from its last ticks is answered once more,
     // out of the air: the navi's own to clear (EXE5's GyroMan's landing
     // clears it as it ends).
-    assert_eq!(own(&b, p0), own_request::LAND);
+    assert_eq!(own(&b, p0), LAND);
 }
 
 /// A navi's charge glow sits at its attach point 0, and higher by what the
@@ -841,12 +847,12 @@ fn the_absorbed_obstacle_flies_at_the_enemy() {
     let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.buster = testing::weapon("dustcross/throw-absorbed")));
     let p = [p0, p1];
     let look = absorbed_look(&b);
-    ai_mut(&mut b, p0).absorbed.push(crate::actor::AbsorbedObstacle { look, anim: 2 });
+    absorb(&mut b, p0, look, 2);
     tick(&mut b, p0, p1, keys::B);
     let mut t = 0;
     tick(&mut b, p0, p1, 0);
     assert_eq!(runs(&b, p0), "megaman/buster/shot");
-    assert!(ai_mut(&mut b, p0).absorbed.is_empty());
+    assert!(absorbed(&b, p0).is_empty());
 
     // Tick 2: it flies from the center of the panel in front, 12 pixels
     // up, drawn as the obstacle; a second arm in the first related slot.
@@ -894,7 +900,7 @@ fn a_throw_waits_the_last_shots_recovery() {
     run_to(&mut b, p, &mut t, 12, 0);
     assert_eq!(act(&b, p0), IDLE);
     let look = absorbed_look(&b);
-    ai_mut(&mut b, p0).absorbed.push(crate::actor::AbsorbedObstacle { look, anim: 0 });
+    absorb(&mut b, p0, look, 0);
     tick(&mut b, p0, p1, keys::B);
     let mut t = 0;
     tick(&mut b, p0, p1, 0);
@@ -1739,16 +1745,17 @@ fn the_beast_busters_raise_the_arm_for_their_projectile() {
 fn dustcross_beast_throws_its_newest_obstacle_or_fires_the_beast_buster() {
     let (mut b, p0, _) = fight();
     assert_eq!(start_weapon(&mut b, p0, "dustcross-beast/throw-absorbed"), "megaman/falzar-beast-buster/action");
-    let actor = b.objects.get(p0).actor.unwrap();
     let look = absorbed_look(&b);
-    b.actors.get_mut(actor).absorbed.push(crate::actor::AbsorbedObstacle { look, anim: 1 });
+    absorb(&mut b, p0, look, 1);
     start_weapon(&mut b, p0, "dustcross-beast/throw-absorbed");
     assert_eq!(runs(&b, p0), "megaman/buster/shot");
     // (The shot throws: its setup states its throw.)
     assert!(attack_state_def(&b, p0, "throw").is_some());
-    let a = &ai_mut(&mut b, p0).attack;
-    assert_eq!((a.damage, a.thrown_look, a.thrown_anim), (200, Some(look), 1));
-    assert!(b.actors.get(actor).absorbed.is_empty());
+    // What it throws is the navi's state's.
+    let thrown = (navi_state_value(&b, p0, "thrown_look"), navi_state_value(&b, p0, "thrown_anim"));
+    let look = nettai_content_api::Value::Def(nettai_content_api::Registry::Record, look.0);
+    assert_eq!((ai_mut(&mut b, p0).attack.damage, thrown), (200, (look, nettai_content_api::Value::Int(1))));
+    assert!(absorbed(&b, p0).is_empty());
 }
 
 /// Two navis idle and fighting on the test content's stage `stage`, with
@@ -1827,8 +1834,7 @@ fn dustcross_back_special_pulls_the_rocks_in() {
     assert_eq!(runs(&b, p0), "megaman/absorb/action");
     run_to(&mut b, p, &mut t, 21, 0);
     assert_eq!(act(&b, p0), IDLE);
-    let actor = b.objects.get(p0).actor.unwrap();
-    assert_eq!(b.actors.get(actor).absorbed.len(), 2);
+    assert_eq!(absorbed(&b, p0).len(), 2);
     // The B+Back cooldown (40 ticks, counted down once already).
     assert_eq!(ai_mut(&mut b, p0).back_special_cooldown, 0x27);
 }
@@ -2237,6 +2243,47 @@ fn state_field(b: &Battle, r: ObjectRef, name: &str) -> i64 {
     let Some(s) = b.objects.state(r) else { panic!("{r:?} has no content state") };
     let schema = b.content.defs.schema(s.id());
     s.get(schema, schema.index_of(name).expect("the field")).load().int().expect("an integer")
+}
+
+/// A field of a navi's own state (the rules' `navi_state`).
+fn navi_state_value(b: &Battle, r: ObjectRef, name: &str) -> nettai_content_api::Value {
+    let Some(s) = b.objects.state(r) else { panic!("{r:?} has no navi state") };
+    let schema = b.content.defs.schema(s.id());
+    s.get(schema, schema.index_of(name).expect("the field")).load()
+}
+
+/// The obstacles a navi absorbed, oldest first, as its state keeps them
+/// (EXE6's DustCross's `absorbed`): their looks and animations.
+fn absorbed(b: &Battle, r: ObjectRef) -> Vec<(nettai_content_api::RecordHandle, u8)> {
+    use nettai_content_api::FieldValue;
+    let s = b.objects.state(r).expect("a navi state");
+    let schema = b.content.defs.schema(s.id());
+    let list = schema.place(schema.index_of("absorbed").expect("the list"));
+    (0..s.len_at(list).expect("a list"))
+        .map(|k| {
+            let e = list.elem(k).expect("within the list");
+            let FieldValue::Ref(Some((nettai_content_api::Registry::Record, look))) = s.get_at(e.field("look").expect("its look")) else {
+                panic!("an absorbed obstacle without its look")
+            };
+            let FieldValue::U8(anim) = s.get_at(e.field("anim").expect("its animation")) else { panic!("its animation") };
+            (nettai_content_api::RecordHandle(look), anim)
+        })
+        .collect()
+}
+
+/// An obstacle joins a navi's absorbed list, as objects/absorbed_obstacle
+/// puts it there.
+fn absorb(b: &mut Battle, r: ObjectRef, look: nettai_content_api::RecordHandle, anim: u8) {
+    use nettai_content_api::Value;
+    let content = b.content.clone();
+    let mut s = b.objects.state_mut(r).expect("a navi state");
+    let schema = content.defs.schema(s.id());
+    let list = schema.place(schema.index_of("absorbed").expect("the list"));
+    let k = s.len_at(list).expect("a list");
+    s.set_len_at(list, k + 1).expect("room");
+    let e = list.elem(k).expect("within the list");
+    s.set_at(e.field("look").expect("its look"), Value::Def(nettai_content_api::Registry::Record, look.0)).expect("a record");
+    s.set_at(e.field("anim").expect("its animation"), Value::Int(anim as i64)).expect("a byte");
 }
 
 /// How many ticks the navi stays in the content action `action` from now.

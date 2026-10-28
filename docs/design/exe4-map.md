@@ -2288,7 +2288,7 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       through 0x080E6932: its first parameter the entry's first byte (every record's 0), its side the entry's second
       (gen_rules writes `side`; the entry has no panel), its third 1, not running while dimmed, its position the
       registers. Unseen, it plays sound 0x121 (`wind`) as it starts, then (phase 0, 0x080E687C) while its side has no
-      registered wind (BS+0x88 + 4 * side, `battle.wind`: a stage's waits) counts its row down by turns from 3 (+0x6C:
+      registered wind (BS+0x88 + 4 * side, the rules' wind slot, rules/wind: a stage's waits) counts its row down by turns from 3 (+0x6C:
       2, 1, 3, ...), takes the other side's first panel of the row from the far edge (0x080E6950:
       `object_getClosestPanelMatchingRowFiltered` for the other side with 0x080E69AC's {0x20, 0} / {0, 0x20}; none
       where a neutral object, panel flag 0x800000, stands; a first parameter walks it on along the side's forward to

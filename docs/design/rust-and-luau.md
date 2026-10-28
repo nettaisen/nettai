@@ -307,7 +307,9 @@ Each with what it was and what it is now.
   search 0x080CAB02 and the soldier's spawn 0x080CAAE2), which an obstacle's reaction asks outside the dimming and
   past its first action while a side is armed (`obstacle.arm_conversion`, which stays the framework's).
   `conversion_call`, the rule `effects.obstacle_conversion` and the role `KindRole::ConvertedObstacle` are gone. A Luau
-  call per obstacle reaction while a side is armed.
+  call per obstacle reaction while a side is armed. Since 2026-10-27 the army is EXE5's rules' state too: the hook is
+  asked at every such reaction of a game whose rules have it and tests the army itself, and the rules disarm it at
+  the hooks `status_reset` and `switch_finished` (rules-in-luau.md, "Content state out of the engine").
 
 - **D1.** The navi chip controller is content (2026-10-07). Each EXE6 and EXE5 navi chip makes its own controller
   (`navi = navi_chips.make { id, summon, course, ... }`, @exelib/navi_chips/chip, on @exelib/navi_chips/controller,

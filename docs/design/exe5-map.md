@@ -1622,7 +1622,7 @@ them.
     B, with the picks as they were then, puts it back (0x08024CFC). At OK it is the turn's arm chip (the transform
     record's +6, 0x080123FC; the system's `arm_chip`) and leaves the folder (0x080250C8, the Regular chip's flag
     untouched). At the turn's start, before either side changes form (0x08011DDC, 0x080124AE: the hook
-    `turn_opened`), a MegaMan in ColonelSoul takes it (AIData +0x32, the navi's `weapon_chip`) and his charged
+    `turn_opened`), a MegaMan in ColonelSoul takes it (AIData +0x32, his navi state's `weapon_chip`) and his charged
     shot is the weapon routine 0x13 (0x0800F7D8: the chip loaded as the attack and used, the charge table's row
     0x13, 120 ticks at every Charge; forms/colonelsoul/arm) for that turn; without one, the soul's own (0x14). A
     weapons' reload (a change of form, a status reset) puts the soul's own back. The soul change copies the
@@ -2166,15 +2166,15 @@ are ColonelSoul's start's: 40 + 10 a buster attack level (`sub_800FE5E`) and 10 
 moves bits too (removed 0x10000, encased 0x6000; EXE6's 0x8000 and 0x3000): the engine's names keep EXE6's, which
 nothing outside reads.
 
-As built: the engine keeps each side's army (`kinds::obstacle::Soldiers`: armed, the two words; in the snapshot and
-the digest), which content arms and reads with `obstacle.arm_soldiers(side, sword, gun)`, `obstacle.disarm_soldiers
-(side)` and `obstacle.soldiers(side)`. ColonelSoul's status reset arms it (navis/megaman/forms/colonelsoul: its
-`reset`), and the engine's status resets disarm it first, as EXE5's do (0x08011918 in `sub_8014216`'s counterpart,
-0x08011B3C in `sub_80144C0`'s and `sub_80144CA`'s; EXE6 has nothing to disarm). The step runs in `obstacle.react`
-for an obstacle whose own game's rules have `effects.obstacle_soldiers` (EXE5's), spawning the role
-`kinds.obstacle_soldier` (objects/soldier, `exe5:colonel-soldier`; its sprite 10-20 is `colonel-soldier`) with its
-state `gun` set; the soldier's element byte is what the search left in r2 (0x0800BD1D's low byte for the sword's,
-the body mask's for the gun's). The chip lab's souls/07-obstacle/soldiers-gun and soldiers-sword record it.
+As built: each side's army is EXE5's rules' state (`army`: armed, the two words), which content arms and reads
+through the rules' API (rules/api: `arm_army`, `set_army_words`, `army`). ColonelSoul's status reset arms it
+(navis/megaman/forms/colonelsoul: its `reset`), and the rules disarm it first, as EXE5 does, at the hooks the engine
+calls where the original disarms it (`switch_finished`, 0x08011918 in `sub_8014216`'s counterpart; `status_reset`,
+0x08011B3C in `sub_80144CA`'s). The step runs in `obstacle.react`: the obstacle's side's rules' `obstacle_reaction`
+(objects/soldier's), which does nothing unless a side is armed, spawns the soldier (`exe5:colonel-soldier`; its
+sprite 10-20 is `colonel-soldier`) with its state `ranged` set; the soldier's element byte is what the search left
+in r2 (0x0800BD1D's low byte for the sword's, the body mask's for the gun's). The chip lab's
+souls/07-obstacle/soldiers-gun and soldiers-sword record it.
 
 **Shared modules moved to content/exelib** (makers taking a game's look; EXE6's modules wrap them with the same
 APIs): anubis, guardian, otenko, justcone, batcan, colorpt, geddon (controller, quake), barriers (visual,
@@ -2183,8 +2183,8 @@ controller), rflectr, rock (rock, debris), boulder, bugfix (glow, controller), h
 
 **Engine.** The damage formula `gauge_level` (EXE5's 73 to 75, CusVolt's: `base` plus 100 by the custom gauge's level,
 none when full); `battle.gauge_full` (battle flag 2) and `battle.drain_custom_gauge` (`sub_801DFD0`, CusVolt's drain
-outside link battles); ColonelSoul's army (above): `obstacle.arm_soldiers`, `disarm_soldiers` and `soldiers`, the rule
-`effects.obstacle_soldiers`, the role `kinds.obstacle_soldier`.
+outside link battles); ColonelSoul's army (above): the rules' hooks `obstacle_reaction`, `status_reset` and
+`switch_finished` (the army itself is the rules' state).
 
 **Chips.** In the range, the branch's 135 chips match all their recordings, and with exe5-navichips' AirSpin1–3,
 AqWhirl1–3, Z-Saver, NumbrBl and NeoVari 144 do (525 of the range's 548 recordings, after merging main on
@@ -2820,8 +2820,8 @@ under him: over one that isn't solid it sets the state bit 0x8000 (the navi stat
 0x10000000; with the bit set on a solid panel, the request 0x20000000; his idle (0x080F0978) answers them with his
 own action 9, variant 0 (take off) or 1 (land). Nothing else in the ROM sets or clears the bit or either request,
 and no end of an attack or a reaction clears them (their masks are 0x1803F and 0x1843F: the reactions section's
-`request_clears`). The engine keeps the two apart from the request word as a navi's own requests (`take_off`,
-`land`): the same bits are EXE6's mode-9 A press and takeover. While the bit is set a step sets no animation and
+`request_clears`). Content keeps the two apart from the request word, in the navi's own state (the rules'
+`navi_state`'s `take_off` and `land`, navis/gyroman/hover): the same bits are EXE6's mode-9 A press and takeover. While the bit is set a step sets no animation and
 its ends leave the one he has (0x080F01CA; the move's start also sets a byte for AI index 2, 0x0800F234, which the
 bit makes redundant).
 

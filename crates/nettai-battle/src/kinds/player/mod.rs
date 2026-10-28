@@ -120,6 +120,12 @@ pub fn spawn(b: &mut Battle, entry: &ActorEntry) -> Option<ObjectRef> {
         b.objects.free(r);
         return None;
     };
+    // The rules' state of the navi, zeroed: the object's own, kept through
+    // the battle (a party's switch keeps the object).
+    if let Some(navi_state) = b.content.defs.rules().and_then(|r| r.navi_state) {
+        let size = b.content.defs.schema(navi_state).size();
+        b.objects.set_state(r, navi_state, size);
+    }
     b.objects.get_mut(r).actor = Some(a);
     b.actors.get_mut(a).actor_type = ActorType::Player;
     let identity = b.navi(entry.side as usize).identity;
@@ -1139,10 +1145,9 @@ pub(crate) fn reset_status(b: &mut Battle, r: ObjectRef) {
 fn reset_status_tail(b: &mut Battle, r: ObjectRef, reload_weapons: bool) {
     let side = b.objects.get(r).alliance as usize;
     b.hands[side].charge_bonus = [0; 6];
-    // EXE5's (0x08011B3C, 0x080CAC30) disarms the side's ColonelSoul army
-    // (`obstacle::Conversion`; the form's reset below arms it again): EXE6
-    // has none to disarm.
-    b.obstacle_conversion[side & 1].armed = false;
+    // The rules' (EXE5's 0x08011B3C, 0x080CAC30: the side's ColonelSoul
+    // army disarmed, which the form's reset below arms again).
+    b.rules_status_reset(side as u8 & 1, r);
     ai_mut(b, r).status &= !0x20;
     // (Netbattle, local player: removes the opponent's HUD entry: its chip
     // icons, which EXE5's SearchSoul's reset below puts back.)

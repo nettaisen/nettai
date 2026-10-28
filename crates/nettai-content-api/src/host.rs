@@ -147,10 +147,11 @@ pub enum HookCall {
     /// chip's `setup`, called with the navi whose use of it is prepared.
     /// Its result is unused.
     FormNavi { navi: ObjectRef },
-    /// `encased(obstacle, ice, class)` (`sub_801813A`'s end): put what an
-    /// obstacle encased in ice (`ice`) or a bubble becomes on its panel; its
-    /// field-object registry class (none: it wasn't registered). Its result
-    /// is unused.
+    /// `encased(obstacle, ice, class)` (`sub_801813A`'s end, the obstacle out
+    /// of the field-object registry): the game's own of an obstacle encased
+    /// in ice (`ice`) or a bubble (its wind registry, `sub_80E544C`), then
+    /// what it becomes on its panel; its registry class (none: it wasn't
+    /// registered). Its result is unused.
     RoleEncased { obstacle: ObjectRef, ice: bool, class: Option<u8> },
     /// A definition's function of a side, which the round's setup asks
     /// once for each side after its rules' `round_setup` (a chip's
@@ -594,12 +595,28 @@ pub enum RulesHook {
     NaviSwitched,
     /// `obstacle_reaction(side, obstacle)`: an obstacle's reaction (after
     /// the damage and the crushing hits) leaves it standing, outside the
-    /// dimming and past its first action, while a side is armed
-    /// (`obstacle.arm_conversion`): the rules may turn it into something
-    /// else and break it (its HP and max HP to 0: EXE5's ColonelSoul army,
-    /// 0x080CAB02 from its four obstacle reactions). `side` is the
-    /// obstacle's. Its result is unused.
+    /// dimming and past its first action: the rules may turn it into
+    /// something else and break it (its HP and max HP to 0: EXE5's
+    /// ColonelSoul army, 0x080CAB02 from its four obstacle reactions, while
+    /// a side's army is armed). `side` is the obstacle's. Its result is
+    /// unused.
     ObstacleReaction,
+    /// `status_reset(side, navi)`: the navi's status reset starts
+    /// (`sub_80144CA`, after the hand's charge bonuses are cleared; EXE5's
+    /// disarms the side's ColonelSoul army there, 0x08011B3C). Its result
+    /// is unused.
+    StatusReset,
+    /// `switch_finished(side, navi)`: a navi switch's change, or a party's
+    /// knockout's take-back, finishes (`sub_8014216`, after the hand's
+    /// charge bonuses are cleared, before the incoming navi's reset; EXE5's
+    /// disarms the side's ColonelSoul army there, 0x08011918). Its result
+    /// is unused.
+    SwitchFinished,
+    /// `revert_finished(side, navi)`: a form's revert (`sub_8015614`) or
+    /// break (`sub_8015766`) finishes, its 30 ticks up, after the states it
+    /// ends are cleared (EXE5 DS's guard and dive end there, 0x020605A0 and
+    /// 0x020606AA). Its result is unused.
+    RevertFinished,
     /// `custom.hand_size(side)`: how many chips the side's custom screen
     /// deals (`sub_802A40C`; EXE5's `sub_802A49C`), asked as it opens. The
     /// first part that answers decides; none answering, the framework's
@@ -762,6 +779,9 @@ impl RulesHook {
             RulesHook::ChipEnded => "chip_ended",
             RulesHook::NaviHitShown => "navi_hit_shown",
             RulesHook::ObstacleReaction => "obstacle_reaction",
+            RulesHook::StatusReset => "status_reset",
+            RulesHook::SwitchFinished => "switch_finished",
+            RulesHook::RevertFinished => "revert_finished",
             RulesHook::CustomHandSize => "custom.hand_size",
             RulesHook::CustomDeal => "custom.deal",
             RulesHook::CustomOpen => "custom.open",
@@ -781,7 +801,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 68] = [
+    pub const ALL: [RulesHook; 71] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -831,6 +851,9 @@ impl RulesHook {
         RulesHook::ChipEnded,
         RulesHook::NaviHitShown,
         RulesHook::ObstacleReaction,
+        RulesHook::StatusReset,
+        RulesHook::SwitchFinished,
+        RulesHook::RevertFinished,
         RulesHook::CustomHandSize,
         RulesHook::ButtonShown,
         RulesHook::ButtonState,

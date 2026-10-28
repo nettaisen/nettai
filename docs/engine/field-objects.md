@@ -283,10 +283,9 @@ EXE5's four reactions (0x08018000, 0x08018168, 0x080182D4, 0x08018404) add
 a step between step 1's crushing hits and the destroy test: outside the
 dimming and past action 0, an obstacle on a solid panel whose other side
 has ColonelSoul's army armed turns into that side's soldier, its HP and
-max HP zeroed (`soldier_step`, behind the obstacle's own game's rule
-`effects.obstacle_soldiers`; the per-side state `obstacle::Soldiers`, the
-`obstacle.arm_soldiers` / `disarm_soldiers` / `soldiers` calls and the
-role `kinds.obstacle_soldier`; docs/design/exe5-map.md §15.11).
+max HP zeroed (`conversion_step`: the obstacle's side's rules'
+`obstacle_reaction`, EXE5's objects/soldier, whose army is its rules'
+state; docs/design/exe5-map.md §15.11).
 
 `sub_801823C` (dimming hold): `sub_80181F6`; first time (PreventAnim ==
 0) save X16/Z16 in Unk_30/Unk_32, Unk_19 = 0, PreventAnim = 4 (which also
@@ -457,10 +456,11 @@ off the field → T4#0 effect 0x12 at Z + 16 px, destroy; else move, panel
 from coordinates, and while the navi's CurAction is 0x58: `--Timer <= 0` →
 if the navi's AIData+0x0D < 8, store Param1 | CurAnim << 4 at AIData+0x6C +
 count, count += 1, destroy (a full list leaves the timer to wrap: 65534
-ticks before it tries again). Then a bare `sprite_update`. Engine: the
-navi's `ActorData::absorbed` list (each entry its look's record and its
-animation, which a throw moves into the attack: `thrown_look`,
-`thrown_anim`); the kind is the content's `objects/absorbed_obstacle`.
+ticks before it tries again). Then a bare `sprite_update`. Content: the
+navi's own state's `absorbed` list (EXE6's rules' `navi_state`: each entry
+its look's record and its animation, which a throw moves into the state's
+`thrown_look` and `thrown_anim`); the kind is the content's
+`objects/absorbed_obstacle`.
 
 **T4#0x38 rock debris (`sub_80E46D8`).** Init: VISIBLE, sprite (0x10, 1),
 animation RNG2 & 1, palette Param1, r = RNG2: Xvel = ((r & 15) − 7) << 15,

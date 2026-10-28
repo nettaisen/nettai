@@ -70,7 +70,9 @@ local worn = new.kind {
 -- and asks to take off, and out of the top row asks to land; its idle
 -- answers a take-off with nothing more, and a landing with its action. Its
 -- identity's own part routine (its record's init hook, as EXE5's NumberMan's
--- goes) puts on what it wears and keeps it in its second related slot.
+-- goes) puts on what it wears and keeps it in its second related slot. Its
+-- requests are its own state's (the rules' `navi_state`).
+type Requests = { take_off: boolean, land: boolean }
 type Hooks = {
     tick: (navi: Object) -> (),
     idle: (navi: Object) -> (),
@@ -89,19 +91,21 @@ local HOOKS: Hooks = {
         navi:set_navi_state("dives", true)
     end,
     tick = function(navi: Object)
+        local own = navi.state :: Requests
         local hovering = navi:navi_state("hovering")
         if navi.panel_y == 1 and not hovering then
             navi:set_navi_state("hovering", true)
-            navi:set_request("take_off", true)
+            own.take_off = true
         elseif navi.panel_y ~= 1 and hovering then
-            navi:set_request("land", true)
+            own.land = true
         end
     end,
     idle = function(navi: Object)
-        if navi:request("take_off") then
-            navi:set_request("take_off", false)
-        elseif navi:request("land") then
-            navi:set_request("land", false)
+        local own = navi.state :: Requests
+        if own.take_off then
+            own.take_off = false
+        elseif own.land then
+            own.land = false
             navi:set_attack(landing, 0)
         end
     end,

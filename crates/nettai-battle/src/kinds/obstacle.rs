@@ -558,30 +558,15 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u
     Some(current_action(b, r))
 }
 
-/// Per side: EXE5's ColonelSoul army (docs/design/exe5-map.md §15.11). Armed
-/// is BattleState+0x5C's bit 0x10 (side 0) or 0x20 (side 1), which
-/// ColonelSoul's start sets (0x080CAC1E) and its end clears (0x080CAC30);
-/// the words are the side's soldiers' damage words (0x02034000 + 8 × side,
-/// 0x080CABF8: the sword soldier's, the gun soldier's), which they read as
-/// they strike (0x080CAC06, 0x080CAC12), and which disarming leaves. While
-/// a side is armed, an obstacle's reaction asks the rules
-/// (`obstacle_reaction`: EXE5's, which turn it into the side's soldier where
-/// the side can use it; [`conversion_step`]).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Conversion {
-    pub armed: bool,
-    pub words: [u32; 2],
-}
-
 /// EXE5's step in its four obstacle reactions (0x08018000, 0x08018168,
 /// 0x080182D4 and 0x08018404, after the damage and the crushing hits,
 /// for an obstacle they leave standing): outside the dimming and past its
-/// first action, while a side is armed, the obstacle's side's rules are
-/// asked (`obstacle_reaction`: EXE5's 0x080CAB02, which turns it into the
-/// armed side's soldier where that side can use it and puts its HP and max
-/// HP to 0, so the reaction breaks it).
+/// first action, the obstacle's side's rules are asked (`obstacle_reaction`:
+/// EXE5's, while a side's ColonelSoul army is armed, 0x080CAB02, turns it
+/// into the armed side's soldier where that side can use it and puts its HP
+/// and max HP to 0, so the reaction breaks it).
 fn conversion_step(b: &mut Battle, r: ObjectRef) {
-    if b.is_dimmed() || b.objects.get(r).action == Action::Appear as u8 || !b.obstacle_conversion.iter().any(|c| c.armed) {
+    if b.is_dimmed() || b.objects.get(r).action == Action::Appear as u8 {
         return;
     }
     let side = b.objects.get(r).alliance;
@@ -864,9 +849,9 @@ const ENCASE_TICKS: u8 = 0x3C;
 /// (The effect it flickers with is the role `effects.encased`.)
 
 /// `sub_801813A`, by PreventAnim (`off_801814C`): encased in ice or a
-/// bubble, it flickers for 60 ticks, then leaves the registry (and its
-/// side's wind) for what content's role `hooks.encased` puts on its panel
-/// (an ice block of its registry class, or the bubble), and goes.
+/// bubble, it flickers for 60 ticks, then leaves the registry for content's
+/// role `hooks.encased` (it is no side's wind, and what it becomes goes on
+/// its panel: an ice block of its registry class, or the bubble), and goes.
 fn encased(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).prevent_anim {
         // sub_8018154: ice or a bubble, remembered in f1. (First what its
@@ -902,11 +887,10 @@ fn encased(b: &mut Battle, r: ObjectRef) {
             if o.shake_timer != 0 {
                 return;
             }
-            // sub_800F806 (0xFF when not registered), sub_800F656,
-            // sub_80E544C.
+            // sub_800F806 (0xFF when not registered), sub_800F656; then
+            // the role's (sub_80E544C, the game's wind registry, first).
             let class = b.field.objects.class_of(r);
             unregister(b, r);
-            clear_wind(b, r);
             let ice = f1_of(b, r) & obstacle_f1::ENCASED_ICE != 0;
             // (A game without the role has nothing for it to do: EXE5,
             // docs/design/exe5-map.md §15.3 item 4.)
@@ -1167,27 +1151,6 @@ fn rest_after_slide(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     let w = o.saved_state.take().unwrap_or_default();
     common::set_progress(b, r, Progress { state: w.state, action: w.action, phase: w.phase, phase_init: w.phase_init });
-}
-
-// ---- The wind registry -----------------------------------------------------
-
-/// `sub_80E541A`: `o` is `side`'s wind. The wind there before is destroyed
-/// at once (`sub_80E5410`: its state word goes to destroy, and its first
-/// variable, a fan's record, to 0, which nothing reads after).
-pub fn set_wind(b: &mut Battle, o: ObjectRef, side: u8, source: field::WindSource) {
-    if let Some(old) = b.field.winds[side as usize].object {
-        common::set_progress(b, old, Progress::DESTROY);
-    }
-    b.field.winds[side as usize] = field::Wind { object: Some(o), source };
-}
-
-/// `sub_80E544C`: `o` is no side's wind.
-pub fn clear_wind(b: &mut Battle, o: ObjectRef) {
-    for w in &mut b.field.winds {
-        if w.object == Some(o) {
-            *w = field::Wind::default();
-        }
-    }
 }
 
 // ---- Leaving the field -----------------------------------------------------

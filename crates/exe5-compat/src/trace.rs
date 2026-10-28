@@ -1897,16 +1897,25 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, exchange:
     // asks this tick (the member + 1, 0 none); +0x71, the microphone's
     // level the navi copied; +0x72, the member its in-battle switch goes to
     // (kept after).
-    // And of AIData +0x48 the two states the DS's party battle adds, the
-    // engine's by the same numbers: KnightMan's guard (0x400000) and
-    // ToadMan's dive (0x01000000).
+    // And of AIData +0x48 the two states the DS's party battle adds:
+    // KnightMan's guard (0x400000) and ToadMan's dive (0x01000000), the
+    // navi's state's `guarded` and `diving` (content's: the rules'
+    // `navi_state`).
     if let Some(ai) = &f.party_ai {
         for side in 0..2 {
             let Some((_, status, hex)) = &ai[side] else { continue };
-            let Some(a) = b.player(side as u8).and_then(|r| b.objects.get(r).actor) else { continue };
+            let Some(r) = b.player(side as u8) else { continue };
+            let Some(a) = b.objects.get(r).actor else { continue };
             let a = b.actors.get(a);
-            let ds_states = nettai_battle::actor::status::GUARDED | nettai_battle::actor::status::DIVING;
-            check(&format!("side {side}'s navi's guard and dive (+0x48)"), format!("{:#x}", a.status & ds_states), format!("{:#x}", status & ds_states));
+            let own = |name: &str| {
+                b.objects.state(r).is_some_and(|s| {
+                    let schema = b.content.defs.schema(s.id());
+                    schema.index_of(name).is_some_and(|i| s.get(schema, i) == nettai_content_api::FieldValue::Bool(true))
+                })
+            };
+            let (guarded, diving) = (0x40_0000u32, 0x0100_0000u32);
+            let ours = if own("guarded") { guarded } else { 0 } | if own("diving") { diving } else { 0 };
+            check(&format!("side {side}'s navi's guard and dive (+0x48)"), format!("{ours:#x}"), format!("{:#x}", status & (guarded | diving)));
             let ours = [a.switch_input.map_or(0, |m| m + 1), b.mic_levels[side], a.switch_member.unwrap_or(0)];
             match unhex(hex) {
                 Ok(raw) if raw.len() >= 3 => check(&format!("side {side}'s navi's switch (+0x70..+0x72)"), format!("{ours:?}"), format!("{:?}", &raw[..3])),

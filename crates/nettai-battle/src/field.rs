@@ -165,29 +165,9 @@ pub struct Field {
     pub cycle: u32,
     /// Ticks a broken panel stays broken.
     pub hole_ticks: u16,
-    /// Obstacles on the field, per side.
+    /// Obstacles on the field, per side. (Each side's wind, BattleState
+    /// +0xC0, is content's, in its rules' state.)
     pub objects: FieldObjects,
-    /// Each side's wind (Wind and Fan's fan, a navi's own).
-    pub winds: [Wind; 2],
-}
-
-/// A side's wind (BattleState+0xC0 + 4·side, and its source at +0xC8):
-/// the object blowing for the side, one at a time (`sub_80E541A`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct Wind {
-    pub object: Option<ObjectRef>,
-    pub source: WindSource,
-}
-
-/// Who placed a side's wind.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub enum WindSource {
-    /// Wind and Fan's fan (attack object #0x48; the game's 0).
-    #[default]
-    Obstacle,
-    /// A navi's own wind (effect object #0x41; 1), which a fan's can't
-    /// replace (`sub_80E532C`).
-    Navi,
 }
 
 /// The field-object registry (BattleState+0xA0..+0xC0): the obstacles
@@ -325,7 +305,6 @@ impl Field {
             cycle: rules.cycle.unwrap_or(0),
             hole_ticks,
             objects: FieldObjects::default(),
-            winds: [Wind::default(); 2],
         };
         f.build_home_runs();
         f
