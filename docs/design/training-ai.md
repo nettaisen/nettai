@@ -724,6 +724,12 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
   6 to 30 ticks old, so where the label answers what the view doesn't hold yet (a shot about to come), the network
   learns the label's average over the moments that look alike to it: stepping at random. A teacher for this
   network has to answer from what its view holds, or teach only what that view decides.
+  **So the teacher now answers from the view** (2026-10-28, not yet run at scale): a decision is drawn when its view
+  is encoded, and the battle that view shows is kept; at the decision it is played on to the decision's tick with
+  the seat's own presses since (each seat's presses are kept for 64 ticks) and the other's none, and the lookahead
+  labels from there. What it knows is what the network knew: the view and its own buttons (and the battle's
+  hidden state, as the lookahead always reads it). Played on with both seats' presses, a kept view is the battle
+  at the decision, digest for digest (a test).
 - **The lookahead as an opponent** (2026-10-28, after the teacher failed). A seat may be the lookahead's player
   (`Controller::Searcher`, bot name "searcher"): a fixed network (`env.searcher`, an exported weights file) that
   plays as a policy seat does (its delayed view, `k`, the custom screen's navigator), the env deciding for it

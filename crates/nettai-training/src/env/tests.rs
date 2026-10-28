@@ -748,3 +748,39 @@ fn the_lookaheads_seat_decides_without_the_caller() {
         assert!(r.error.is_none(), "{:?}", r.error);
     }
 }
+
+/// A kept view's battle played on with both seats' presses since is the
+/// battle now (the teacher's view-and-presses replay, its presses' ticks
+/// right): its digest the same, at decisions a few ticks and a delay apart.
+#[test]
+fn a_view_played_on_with_both_seats_presses_is_the_battle_now() {
+    let mut env = Env::new(games(&["exe6"]), Config { max_fight_ticks: 3000, ..Config::default() }, 7).unwrap();
+    let mut rng = SplitMix64::new(9);
+    let mut actions = [0; 2];
+    let mut checked = 0;
+    let mut kept: Option<(Battle, u32)> = None;
+    for step in 0..2000 {
+        let out = env.step(actions).unwrap_or_else(|e| panic!("{e}"));
+        if out.done {
+            kept = None;
+        }
+        if out.phase[0] == FIGHT {
+            if let Some((view, from)) = kept.take() {
+                let now = env.played_on(0, view, from, true).expect("presses kept that far back");
+                assert_eq!(now.digest(), env.battle.digest(), "step {step}: from tick {from} to {}", env.t);
+                checked += 1;
+            }
+            if step % 5 == 0 {
+                kept = Some((env.battle.clone(), env.t));
+            }
+        }
+        for s in 0..2 {
+            actions[s] = match out.phase[s] {
+                FIGHT => random_action(&mut rng, &env.legal_fight[s]),
+                SCREEN => random_action(&mut rng, &env.legal_screen[s]),
+                _ => 0,
+            };
+        }
+    }
+    assert!(checked > 20, "{checked} replays checked");
+}

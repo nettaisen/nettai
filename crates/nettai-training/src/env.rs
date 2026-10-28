@@ -113,8 +113,9 @@ pub struct Config {
     pub landed_bonus: f32,
     /// The share of a policy seat's fight decisions given a teacher's label
     /// (§8: `search::Search::teach`, the action the lookahead finds best
-    /// from the battle as it stands), and the margin the best must clear
-    /// over the worst for one. 0: none.
+    /// from what the seat's view held: the battle at its view's tick played
+    /// on to the decision with the seat's own presses, the other's none),
+    /// and the margin the best must clear over the worst for one. 0: none.
     pub teacher_rate: f32,
     pub teacher_margin: f32,
     /// The network a [`Controller::Searcher`] seat plays (none: no seat
@@ -246,7 +247,16 @@ struct Seat {
     bot: Bot,
     /// The lookahead's network's state, where the seat is its.
     mem: Option<crate::net::Memory>,
+    /// The battle at each ring view's tick, kept where that view's decision
+    /// was drawn for a teacher's label; and the seat's presses by tick
+    /// (modulo [`PRESSES`]), to play it on with.
+    views: Vec<Option<Box<Battle>>>,
+    presses: [u16; PRESSES],
 }
+
+/// Ticks of a seat's presses kept: past the longest delay and a decision's
+/// hold.
+const PRESSES: usize = 64;
 
 /// Where an env's time went, in nanoseconds, and what it did: for the
 /// throughput measures (§6.5).
@@ -411,6 +421,8 @@ impl Env {
             ring: (0..ring).map(|_| (None, Obs::new())).collect(),
             bot: Bot::new(BotKind::Still, n),
             mem: None,
+            views: (0..ring).map(|_| None).collect(),
+            presses: [0; PRESSES],
         };
         let mut picks = Picks::new((seed ^ (seed >> 32)) as u32);
         // (The draws of one seed differ from another's from the first.)
@@ -592,6 +604,8 @@ impl Env {
             if seat.ring.len() < len {
                 seat.ring.resize_with(len, || (None, Obs::new()));
             }
+            seat.views.clear();
+            seat.views.resize_with(seat.ring.len(), || None);
             seat.action = 0;
             seat.nav.reset();
             seat.probe = None;
@@ -783,6 +797,27 @@ impl Env {
         Ok(())
     }
 
+    /// `view`, the battle after tick `from`, played on to now (`self.t`) as
+    /// seat `s` knows it: its own presses since, the other's none (with
+    /// `both`, the other's too: then it is the battle now). None: the
+    /// presses kept don't reach back that far.
+    fn played_on(&self, s: usize, mut view: Battle, from: u32, both: bool) -> Option<Battle> {
+        if (self.t - from) as usize >= PRESSES {
+            return None;
+        }
+        for t in from..self.t {
+            let mut press = [0u16; 2];
+            press[s] = self.seats[s].presses[t as usize % PRESSES];
+            if both {
+                press[s ^ 1] = self.seats[s ^ 1].presses[t as usize % PRESSES];
+            }
+            if !step_battle(&mut view, press) {
+                return None;
+            }
+        }
+        Some(view)
+    }
+
     /// The seats a policy decides for now.
     fn asks(&self) -> [u8; 2] {
         let b = &self.battle;
@@ -840,11 +875,14 @@ impl Env {
                 self.legal_fight[s] = [true; spec::FIGHT_ACTIONS];
                 self.legal_screen[s] = [false; spec::SCREEN_ACTIONS];
                 self.teacher[s] = -1;
-                let rate = self.cfg.teacher_rate;
-                if rate > 0.0 && self.seats[s].controller == Controller::Policy && ((self.teacher_rng.next_u64() >> 40) as f32) < rate * (1u64 << 24) as f32 {
+                // A view drawn for a label (in `tick`): what it held, played on to now.
+                let at = ((self.t / k) as usize) % self.seats[s].views.len().max(1);
+                let delayed = want.is_some() && self.seats[s].ring[at].0 == want;
+                if let Some(view) = self.seats[s].views.get_mut(at).and_then(Option::take).filter(|_| delayed) {
                     let started = std::time::Instant::now();
+                    let now = self.played_on(s, *view, want.expect("a delayed view"), false);
                     let holding_b = act::fight_buttons(self.seats[s].action) & nettai_battle::input::keys::B != 0;
-                    let label = crate::search::Search::default().teach(&self.battle, s as u8, k, holding_b, self.cfg.teacher_margin);
+                    let label = now.and_then(|b| crate::search::Search::default().teach(&b, s as u8, k, holding_b, self.cfg.teacher_margin));
                     self.teacher[s] = label.map_or(-1, |a| a as i8);
                     self.profile.teach += started.elapsed().as_nanos() as u64;
                 }
@@ -910,6 +948,9 @@ impl Env {
         if self.full_gauge && self.battle.gauge.enabled && self.battle.gauge.value < CustomGauge::FULL {
             self.battle.gauge.value = CustomGauge::FULL;
         }
+        for s in 0..2 {
+            self.seats[s].presses[self.t as usize % PRESSES] = held[s];
+        }
         step_battle(&mut self.battle, held);
         self.t += 1;
         self.profile.ticks += 1;
@@ -938,6 +979,10 @@ impl Env {
             slot.0 = Some(self.t);
             observe::encode(&self.battle, s as u8, names, &extra, &mut slot.1);
             self.profile.encode += started.elapsed().as_nanos() as u64;
+            // (The decision this view is for drawn for a teacher's label: the battle it shows, kept.)
+            let rate = self.cfg.teacher_rate;
+            let drawn = rate > 0.0 && self.seats[s].controller == Controller::Policy && ((self.teacher_rng.next_u64() >> 40) as f32) < rate * (1u64 << 24) as f32;
+            self.seats[s].views[at] = drawn.then(|| Box::new(self.battle.clone()));
         }
     }
 
