@@ -444,7 +444,7 @@ mod tests {
     }
 
     /// A mark each console turns to its own side faces each console's way,
-    /// and a palette set by console is each console's.
+    /// a palette set by console is each console's, and a copy takes both.
     #[test]
     fn a_look_set_by_console_is_each_consoles() {
         use crate::content::EffectRole;
@@ -456,6 +456,10 @@ mod tests {
         assert_eq!([0u8, 1].map(|v| b.look_for(e, v).hflip), [false, true]);
         b.sprite_set_by_console(e, SpriteField::Palette, [Value::Int(2), Value::Int(3)]).unwrap();
         assert_eq!([0u8, 1].map(|v| b.look_for(e, v).palette), [2, 3]);
+        // A copy takes each console's (an attachment drawn as its owner).
+        let worn = crate::kinds::effect::spawn(&mut b, Default::default(), look, 0, 0, 0).expect("a slot");
+        b.sprite_copy(worn, e, &[SpriteField::Palette, SpriteField::HFlip]).unwrap();
+        assert_eq!([0u8, 1].map(|v| (b.look_for(worn, v).palette, b.look_for(worn, v).hflip)), [(2, false), (3, true)]);
         // Set again, it is every console's.
         b.sprite_set(e, SpriteField::Palette, Value::Int(5)).unwrap();
         assert_eq!([0u8, 1].map(|v| b.look_for(e, v).palette), [5, 5]);

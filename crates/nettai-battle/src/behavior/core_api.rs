@@ -2895,6 +2895,32 @@ impl CoreApi for Battle {
         Ok(())
     }
 
+    fn sprite_copy(&mut self, o: ObjectRef, from: ObjectRef, fields: &[SpriteField]) -> ApiResult<()> {
+        use SpriteField as F;
+        if let Some(f) = fields.iter().find(|f| !f.writable()) {
+            return Err(ApiError::ReadOnly(f.name()));
+        }
+        let source = self.objects.sprite(from).look;
+        for &f in fields {
+            let v = self.sprite_get(from, f);
+            self.sprite_set(o, f, v)?;
+        }
+        // (And the other console's, where it draws the source otherwise.)
+        let (other, theirs) = (&mut self.objects.sprite_mut(o).look.other, source.other);
+        for &f in fields {
+            match f {
+                F::Palette => other.palette = theirs.palette,
+                F::HFlip => other.hflip = theirs.hflip,
+                F::ColorShader => other.color_shader = theirs.color_shader,
+                F::Alpha => other.alpha = theirs.alpha,
+                F::Mosaic => other.mosaic = theirs.mosaic,
+                F::HiddenParts => other.hidden_parts = theirs.hidden_parts,
+                _ => {}
+            }
+        }
+        Ok(())
+    }
+
     fn sprite_set_by_console(&mut self, o: ObjectRef, f: SpriteField, values: [Value; 2]) -> ApiResult<()> {
         use SpriteField as F;
         if !matches!(f, F::Palette | F::HFlip | F::ColorShader | F::Alpha | F::Mosaic | F::HiddenParts) {

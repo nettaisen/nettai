@@ -296,6 +296,10 @@ declare extern type Sprite with
     function part_offset(self, n: number): (number, number)
     -- The game's flip value: bit 0 horizontal, bit 1 vertical.
     function set_flip(self, flip: number): ()
+    -- Fields of `from` (their names) as each side's console draws them: what an
+    -- attachment drawn as its owner is copies (reading a field and setting it
+    -- would make the local side's console's every console's).
+    function copy_from(self, from: Sprite, ...: string): ()
     -- A field as each side's console draws it, where the original's consoles
     -- each decide it by their own side (a palette by whose panel it is as
     -- the console sees it, the parts a console hides): side 0's value, then

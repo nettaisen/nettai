@@ -897,6 +897,11 @@ impl UserData for Sprite {
                 api.sprite_set(this.0, SpriteField::VFlip, Value::Bool(flip & 2 != 0)).map_err(api_error)
             })
         });
+        methods.add_method("copy_from", |_, this, (from, fields): (mlua::UserDataRef<Sprite>, mlua::Variadic<mlua::LuaString>)| {
+            let fields = fields.iter().map(|f| named(f, "sprite field", SpriteField::from_name)).collect::<mlua::Result<Vec<_>>>()?;
+            let from = from.0;
+            with(|api, _| api.sprite_copy(this.0, from, &fields).map_err(api_error))
+        });
         methods.add_method("set_by_console", |_, this, (field, side0, side1): (mlua::LuaString, LuaValue, LuaValue)| {
             let f = named(&field, "sprite field", SpriteField::from_name)?;
             let values = [to_api(side0, &f.ty(), f.name())?, to_api(side1, &f.ty(), f.name())?];

@@ -2254,6 +2254,11 @@ pub trait CoreApi {
     /// the consoles can't draw apart: only the palette, `hflip`, the color
     /// shader, the alpha, the mosaic and the hidden parts.
     fn sprite_set_by_console(&mut self, o: ObjectRef, f: SpriteField, values: [Value; 2]) -> ApiResult<()>;
+    /// Fields `fields` of `from`'s sprite onto `o`'s, as each side's
+    /// console draws them (an attachment drawn as its owner is: what reading
+    /// a field and setting it would make every console's). An error for a
+    /// field content can't set.
+    fn sprite_copy(&mut self, o: ObjectRef, from: ObjectRef, fields: &[SpriteField]) -> ApiResult<()>;
 
     // ---- Collision -------------------------------------------------------------
 
