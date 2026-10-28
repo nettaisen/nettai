@@ -38,6 +38,7 @@
 //! Nothing here names a game.
 
 use crate::act::{self, Navigator};
+use crate::danger;
 use crate::env::{self, fight_runs};
 use crate::fingerprint::{self, Fingerprints};
 use crate::net::{self, Action, Heads, Knobs, Memory, Net};
@@ -560,10 +561,13 @@ impl NetAi {
         &self.knobs
     }
 
+    /// What its view takes besides the battle (no danger map: the fight's
+    /// views add it, `danger::foresee`).
     fn extra(&self, r: &Round) -> Extra {
         Extra {
             delay: self.knobs.delay,
             log: r.log,
+            danger: Default::default(),
             probe: r.probe,
             refused: r.nav.refused,
             screen_decisions: r.decisions,
@@ -660,7 +664,8 @@ impl NetAi {
         let names = &self.names.as_ref().expect("names").0;
         // The view a later decision will need (the env's ring).
         if r.t > 0 && (r.t + d).is_multiple_of(k) {
-            let extra = self.extra(r);
+            let danger = danger::foresee(b, self.rng.next_u64());
+            let extra = Extra { danger, ..self.extra(r) };
             let at = (((r.t + d) / k) as usize) % r.ring.len();
             let slot = &mut r.ring[at];
             slot.0 = Some(r.t);
@@ -682,7 +687,8 @@ impl NetAi {
                 let obs = if delayed {
                     &slot.1
                 } else {
-                    let extra = self.extra(r);
+                    let danger = danger::foresee(b, self.rng.next_u64());
+                    let extra = Extra { danger, ..self.extra(r) };
                     observe::encode(b, side, names, &extra, &mut self.obs);
                     &self.obs
                 };
@@ -705,7 +711,8 @@ impl NetAi {
                 &slot.1
             } else {
                 // (A decision earlier than the delay: what it sees now.)
-                let extra = self.extra(r);
+                let danger = danger::foresee(b, self.rng.next_u64());
+                let extra = Extra { danger, ..self.extra(r) };
                 observe::encode(b, side, names, &extra, &mut self.obs);
                 &self.obs
             };

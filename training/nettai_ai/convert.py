@@ -1,7 +1,9 @@
 """A checkpoint of an older layout as this code's (§8): its network warm-started (`model.warm_start`) on the
-pool's observation spec now, for evaluation, export and `--init-from`. Its observation must be the pool's; what
-may differ is what warm_start knows (the screen's actions after the slots seven keys, as the first two cloud runs'
-were; a GRU that read no previous action). Not for `--resume`: the optimizer's state and the league are left out.
+pool's observation spec now, for evaluation, export and `--init-from`. Its observation must be the pool's, or the
+pool's but for features a set gained (the danger map's in the panels, §3.2): those come in as columns the network
+reads nothing of (zero weights) until trained to. What may differ besides is what warm_start knows (the screen's
+actions after the slots seven keys, as the first two cloud runs' were; a GRU that read no previous action). Not for
+`--resume`: the optimizer's state and the league are left out.
 
     uv run python -m nettai_ai.convert CHECKPOINT OUT
 
@@ -32,21 +34,110 @@ def same_observation(a: dict[str, Any], b: dict[str, Any]) -> bool:
     return a["buckets"] == b["buckets"] and sets(a) == sets(b) and a.get("split") == b.get("split")
 
 
+# The input statistics' weight a widened set keeps (in tokens, a small share of one rollout's): a gained feature's
+# start (mean 0, variance 1) gives way to what the first rollouts measure, and the others' to the same as before.
+WIDENED_COUNT = 100_000
+
+
+def widening(old: dict[str, Any], new: dict[str, Any]) -> dict[str, tuple[int, list[int]]] | None:
+    """How `new`'s observation only adds features to `old`'s sets: by set that gained some, its width now and each
+    of its old columns' place now (a feature found by name and width). None where they differ otherwise (another
+    set, count, ids, buckets or split, a feature gone or of another width)."""
+    if old["buckets"] != new["buckets"] or old.get("split") != new.get("split") or list(old["sets"]) != list(new["sets"]):
+        return None
+    out: dict[str, tuple[int, list[int]]] = {}
+    for name, o in old["sets"].items():
+        n = new["sets"][name]
+        if (o.get("count"), o.get("ids")) != (n.get("count"), n.get("ids")):
+            return None
+        if o.get("features") == n.get("features"):
+            if o.get("width") != n.get("width"):
+                return None
+            continue
+        if o.get("features") is None or n.get("features") is None:
+            return None
+        at, col = {}, 0
+        for f, w in n["features"]:
+            at[f] = (col, w)
+            col += w
+        cols: list[int] = []
+        for f, w in o["features"]:
+            if at.get(f, (0, -1))[1] != w:
+                return None
+            cols += range(at[f][0], at[f][0] + w)
+        out[name] = (int(n["width"]), cols)
+    return out
+
+
+def widen_model(weights: dict[str, torch.Tensor], wide: dict[str, tuple[int, list[int]]]) -> dict[str, torch.Tensor]:
+    """A network's weights with each widened set's input columns where they are now: its first layer's gained
+    columns zero, their input normalization the identity."""
+    out = dict(weights)
+    for name, (width, cols) in wide.items():
+        idx = torch.tensor(cols, dtype=torch.long)
+        w = weights[f"enc.{name}.fc1.weight"]
+        fc1 = torch.zeros(w.shape[0], width, dtype=w.dtype)
+        fc1[:, idx] = w
+        out[f"enc.{name}.fc1.weight"] = fc1
+        for key, fill in (("norm_mean", 0.0), ("norm_inv_std", 1.0)):
+            v = weights[f"enc.{name}.{key}"]
+            new = torch.full((width,), fill, dtype=v.dtype)
+            new[idx] = v
+            out[f"enc.{name}.{key}"] = new
+    return out
+
+
+def widen_norm(norm: dict[str, Any], wide: dict[str, tuple[int, list[int]]]) -> dict[str, Any]:
+    """The trainer's input statistics (`ppo.RunningNorm`'s) with each widened set's columns where they are now: a
+    gained feature's mean 0 and variance 1, and the set's weight cut to `WIDENED_COUNT` tokens (its variances
+    kept), so what the run measures of the gained features soon counts."""
+    out = {k: dict(v) for k, v in norm.items()}
+    for name, (width, cols) in wide.items():
+        idx = torch.tensor(cols, dtype=torch.long)
+        count = float(norm["count"][name])
+        keep = min(count, WIDENED_COUNT)
+        mean = torch.zeros(width, dtype=torch.float64)
+        mean[idx] = norm["mean"][name].to(torch.float64)
+        m2 = torch.full((width,), keep, dtype=torch.float64)
+        m2[idx] = norm["m2"][name].to(torch.float64) * (keep / count if count else 0.0)
+        out["count"][name] = torch.tensor(keep, dtype=torch.float64)
+        out["mean"][name] = mean
+        out["m2"][name] = m2
+    return out
+
+
+def widen_fixture(fx: dict[str, Any], wide: dict[str, tuple[int, list[int]]]) -> dict[str, Any]:
+    """Recorded decisions with each widened set's features where they are now, the gained ones zero."""
+    if not wide:
+        return fx
+    out = dict(fx)
+    out["x"] = dict(fx["x"])
+    for name, (width, cols) in wide.items():
+        x = fx["x"][name]
+        new = torch.zeros(*x.shape[:-1], width, dtype=x.dtype)
+        new[..., torch.tensor(cols, dtype=torch.long)] = x
+        out["x"][name] = new
+    return out
+
+
 def convert(state: dict[str, Any], spec_raw: dict[str, Any]) -> dict[str, Any]:
     """Checkpoint `state` with its network on `spec_raw` (the pool's spec now)."""
     old = state["spec"]
-    if not same_observation(old, spec_raw):
-        raise SystemExit(f"convert: the checkpoint's observation (spec {old['hash']}) isn't the pool's ({spec_raw['hash']})")
+    wide = {} if same_observation(old, spec_raw) else widening(old, spec_raw)
+    if wide is None:
+        raise SystemExit(f"convert: the checkpoint's observation (spec {old['hash']}) isn't the pool's ({spec_raw['hash']}), nor the pool's but for features it gained")
     cfg = config_from_dict(state["config"])
     model = Model(parse_spec(spec_raw), cfg.model)
-    warm_start(model, state["model"])
-    out = {k: v for k, v in state.items() if k not in ("model", "spec", "optimizer", "league", "fixture")}
+    warm_start(model, widen_model(state["model"], wide))
+    out = {k: v for k, v in state.items() if k not in ("model", "spec", "optimizer", "league", "fixture", "norm")}
+    if state.get("norm") is not None:
+        out["norm"] = widen_norm(state["norm"], wide)
     out["model"] = {k: v.detach().cpu() for k, v in model.state_dict().items()}
     out["spec"] = spec_raw
     out["params"] = count_params(model)
     out["converted_from"] = {"spec_hash": old["hash"], "screen_actions": old["screen_actions"]}
     if state.get("fixture") is not None:
-        out["fixture"] = convert_fixture(state["fixture"], int(old["screen_actions"]), model)
+        out["fixture"] = convert_fixture(widen_fixture(state["fixture"], wide), int(old["screen_actions"]), model)
     return out
 
 

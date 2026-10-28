@@ -1,0 +1,105 @@
+# The danger map's first run (danger1, training-ai.md §3.2): large1's settings as they were at its update 3,250
+# (its learning rate after the cut at 2,850), warm-started from that update converted to the danger map's spec
+# (nettai_ai.convert: the panels' gained columns read as nothing until trained). The danger map is the one change.
+
+[model]
+d = 128
+heads = 4
+layers = 2
+ffn = 256
+token_hidden = 128
+pool_heads = 4
+summary = 256
+hidden = 256
+head_hidden = 256
+pointer_hidden = 128
+pointer_set = "slots"
+pool_only = ["rules"]
+norm_clip = 5.0
+
+[env]
+games = ["exe6", "exe5", "exe4"]
+envs = 2048
+threads = 52
+seed = 1
+k = 8
+screen_decisions = 24
+delay = [6, 30]
+max_fight_ticks = 18000
+chip_holdout = 0.0
+chip_holdout_seed = 7
+full_lists = 0.5
+builders = 6
+mirror = false
+
+[ppo]
+steps = 128
+chunk = 128
+epochs = 3
+minibatch_chunks = 64
+accumulate = 1
+lr = 0.000115
+lr_final = 0.1
+adam_eps = 1e-05
+gamma = 0.999
+lam = 0.98
+clip = 0.2
+value_clip = 0.2
+entropy = 0.003
+value_coef = 0.5
+max_grad_norm = 0.5
+name_dropout = 0.2
+norm_warmup_steps = 32
+
+[reward]
+result = 1.0
+judged_cost = 0.75
+limit = -1.0
+hp_start = 0.2
+hp_end = 0.2
+hp_anneal_updates = 3000
+
+[league]
+self_play = 0.5
+snapshots = 0.35
+bots = 0.15
+external = 0.0
+bot_names = ["still", "mover", "masher", "shooter", "dodger"]
+snapshot_every = 10
+pfsp_power = 2.0
+active = 2
+draining = 2
+cache = 8
+keep = 200
+elo_k = 16.0
+winrate_window = 200
+
+[eval]
+games = ["exe6", "exe5", "exe4"]
+bots = ["masher", "shooter"]
+every = 100
+envs = 40
+threads = 2
+rounds = 2
+level = "normal"
+hp = 1000
+
+[run]
+updates = 20000
+checkpoint_every = 50
+device = "auto"
+torch_threads = 3
+update_threads = 2
+seed = 1
+fixture_decisions = 16
+
+[curriculum]
+start = 1000
+final = 1000
+step = 125
+band = 250
+bot = "masher"
+winrate = 0.75
+min_rounds = 100
+max_updates = 500
+final_fraction = 0.25

@@ -957,6 +957,14 @@ impl Battle {
         self.attacked.panels[side as usize & 1]
     }
 
+    /// The most damage an attack of side `side` presented on panel bit
+    /// `panel` (`y * 8 + x`) carried during the last tick (its collision
+    /// data's damage, before the target's defenses); 0 where none was.
+    /// Like [`Battle::attacked_panels`], a look at what happened.
+    pub fn attack_damage(&self, side: u8, panel: u32) -> u16 {
+        self.attacked.damage[side as usize & 1].get(panel as usize).copied().unwrap_or(0)
+    }
+
     pub fn set_flags(&mut self, f: u16) {
         self.round.flags |= f;
     }

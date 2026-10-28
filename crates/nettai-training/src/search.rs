@@ -88,6 +88,15 @@ pub fn candidates(logits: &[f32], n: usize) -> Vec<usize> {
     out
 }
 
+/// A copy's random numbers drawn anew from `luck` (the battle's and both
+/// consoles'), so what it foresees can't be the battle's luck.
+pub fn own_luck(c: &mut Battle, luck: u64) {
+    c.rng = Rng::new(luck as u32);
+    for (i, console) in c.consoles.iter_mut().enumerate() {
+        console.rng = Rng::new((luck >> 32) as u32 ^ i as u32);
+    }
+}
+
 impl Search {
     /// The action side `side` takes in `b` at a decision held `k` ticks,
     /// the network's fight `logits` before it. None: no action is allowed.
@@ -133,10 +142,7 @@ impl Search {
     /// then. None: no action is allowed.
     pub fn ahead(&self, b: &Battle, side: u8, k: u32, held: u16, logits: &[f32], luck: u64) -> Option<usize> {
         let mut c = b.clone();
-        c.rng = Rng::new(luck as u32);
-        for (i, console) in c.consoles.iter_mut().enumerate() {
-            console.rng = Rng::new((luck >> 32) as u32 ^ i as u32);
-        }
+        own_luck(&mut c, luck);
         for _ in 0..self.lead {
             let mut press = [0u16; 2];
             press[side as usize] = held;

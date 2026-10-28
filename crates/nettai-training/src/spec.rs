@@ -64,8 +64,9 @@ features! {
     /// on the left): its place, its type's rule, its owners (now, at the
     /// round's start, whether stolen), its state (cracked, shown, the hole's
     /// and the type's timers, a blink, the blink of a stolen panel going
-    /// back), what is on it, and the attacks presented on it in the last
-    /// ticks.
+    /// back), what is on it, the attacks presented on it in the last ticks,
+    /// and the danger map's (§3.2): how soon the other side's attacks under
+    /// way land on it and how hard, its own side's the same.
     panels {
         place: 2,
         rule: 12,
@@ -74,6 +75,7 @@ features! {
         highlight: 1,
         on_it: 7,
         attacked: 2 * super::LOG_TICKS,
+        danger: 4,
     }
 }
 

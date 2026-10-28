@@ -7,7 +7,9 @@
 //!
 //! - [`observe`]: a side's view as fixed-size token sets ([`spec`]), names
 //!   as hashed ids ([`names`]), mirrored to the viewer's side, tested for
-//!   fairness (nothing it must not see changes it).
+//!   fairness (nothing it must not see changes it); and [`danger`], where
+//!   the attacks under way will land, the one part of it read off a copy of
+//!   the battle played on.
 //! - [`act`]: the fight's 20 joint actions; the custom screen's pointer and
 //!   the navigator that presses the way there.
 //! - [`builds`]: random builds the rules accept.
@@ -29,6 +31,7 @@ pub mod act;
 pub mod ai;
 pub mod bots;
 pub mod builds;
+pub mod danger;
 pub mod env;
 pub mod fingerprint;
 pub mod names;
