@@ -109,7 +109,7 @@ impl SharedLoads {
         self.was_paused = paused;
         let restarted = |step: u8, was: Option<u8>| was.is_some_and(|w| step == 0 && w != 0);
         let telops = b.telops_for(local);
-        let step = b.banner.step;
+        let step = b.banner_block_for(local).step;
         let banner = b.banner_for(local).filter(|_| telops[0].is_none());
         if let Some(id) = banner
             && (self.was_banner.map(|(w, _)| w) != Some(id) || restarted(step, self.was_banner.map(|(_, s)| s)))
@@ -929,7 +929,8 @@ pub fn draw<'a>(
     // banner's lookup is the banner's own, below.)
     // (The graphics say when: EXE4's only from the banner's hold, until its
     // release slides it out.)
-    let judge_shown = if hud.layout.judge_from_hold { b.banner.step == 4 } else { b.banner.step < 8 };
+    let step = b.banner_block_for(local).step;
+    let judge_shown = if hud.layout.judge_from_hold { step == 4 } else { step < 8 };
     if seat.draws_shared() && b.banner_for(local).is_some_and(|id| crate::lookups::is_judge(graphics, &b.content, id)) && judge_shown {
         let pal = &hud.hp_palettes[0];
         let j = &b.fight.judge;
@@ -1201,6 +1202,7 @@ pub fn draw<'a>(
     // own game's HUD draws it, by its number there.) On a screen of both the
     // round's result's is each player's own, over its own half.
     let banner = banner_of(b, seat);
+    let block = b.banner_block_for(seat.side);
     let telops = telops_of(b, seat);
     if let (Some(id), None) = (banner, telops[0]) {
         let mut group = Vec::new();
@@ -1218,7 +1220,7 @@ pub fn draw<'a>(
                 && let Some(logo) = &layout.logo
             {
                 let (x, y) = (layout.x as i32, layout.y as i32);
-                let vscale = Some(banner_scale(&b.banner));
+                let vscale = Some(banner_scale(block));
                 let clip = Rect::new(x, 0, 160, crate::compose::HEIGHT as i32);
                 let d = crate::shapes::drawn(logo, |_, c| h.banner_palette[c as usize & 15], (false, false), None);
                 let item = TextItem { vscale, ..crate::shapes::item(d, (x, y), (logo.size[0] as i32, logo.size[1] as i32)) };
@@ -1228,9 +1230,9 @@ pub fn draw<'a>(
                     words.push(TextItem { rect: item.rect.offset(x, y), vscale, clip, ..item });
                 }
             } else {
-                words = clean.then(|| lettered_banner(b, h, layout, number, id, text, problems)).flatten().unwrap_or_default();
+                words = clean.then(|| lettered_banner(b, block, h, layout, number, id, text, problems)).flatten().unwrap_or_default();
             }
-            banner_parts(b, h, layout, number, !words.is_empty(), &mut group);
+            banner_parts(b, block, h, layout, number, !words.is_empty(), &mut group);
             if words.is_empty() {
                 // (The glyphs and the palette a telop loaded over the
                 // banner's: `TelopTiles`.)
@@ -2102,8 +2104,8 @@ const OWN_ICON_PRIORITY: u8 = 1;
 /// `layout` is banner `id`'s (its number in `hud`'s game's graphics).
 /// `blank`: blank parts in the glyphs' places, as many (the enhanced mode's
 /// lettering draws the words: `lettered_banner`).
-fn banner_parts<'a>(b: &Battle, hud: &'a Hud, layout: &'a nettai_assets::BannerLayout, id: u8, blank: bool, out: &mut Vec<SpritePart<'a>>) {
-    let vscale = Some(banner_scale(&b.banner));
+fn banner_parts<'a>(b: &Battle, block: &Banner, hud: &'a Hud, layout: &'a nettai_assets::BannerLayout, id: u8, blank: bool, out: &mut Vec<SpritePart<'a>>) {
+    let vscale = Some(banner_scale(block));
     let pal = hud.banner_palette;
     let tiles = |own: &'a Tiles| if blank { &*BLANK_GLYPH } else { own };
     let k_of = |k: usize| if blank { 0 } else { k };
@@ -2222,6 +2224,7 @@ fn banner_number(b: &Battle, id: u8) -> usize {
 /// in `hud`'s game's graphics.
 fn lettered_banner(
     b: &Battle,
+    block: &Banner,
     hud: &Hud,
     layout: &nettai_assets::BannerLayout,
     number: u8,
@@ -2237,7 +2240,7 @@ fn lettered_banner(
     let pal = &hud.banner_palette;
     let letters = &found.letters;
     let (x, y) = (layout.x as i32, layout.y as i32);
-    let vscale = Some(banner_scale(&b.banner));
+    let vscale = Some(banner_scale(block));
     let (face, shadow) = crate::lettering::face(letters, pal);
     // A run of the words, centered on the picture's letters in its columns
     // `span` (where it has letters there).
@@ -2906,7 +2909,7 @@ mod tests {
         let mut ticks = 0;
         while b.banner.active {
             let mut parts = Vec::new();
-            banner_parts(&b, &hud, &layout, 0, false, &mut parts);
+            banner_parts(&b, &b.banner, &hud, &layout, 0, false, &mut parts);
             assert_eq!(parts.len(), 20);
             let whole = banner_scale(&b.banner) == 0x100;
             for part in &parts {

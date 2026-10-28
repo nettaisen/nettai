@@ -180,8 +180,26 @@ impl Battle {
         self.set_visible_by_viewer(to, shown);
     }
 
+    /// The other viewer's own custom screen's banner block while the custom
+    /// screen is up (where its Program Advance's banner runs): the
+    /// simulation's banner is the local side's screen's then, which only
+    /// the local console shows.
+    fn screen_banner(&self, viewer: u8) -> Option<&Banner> {
+        let s = self.custom.sides[viewer as usize & 1].screen.as_ref()?;
+        (viewer & 1 != self.round.local_side & 1 && self.round.mode == crate::battle::mode::CUSTOM).then_some(&s.hud)
+    }
+
+    /// The banner block as `viewer`'s console runs it (its step and timer:
+    /// how far its banner has slid).
+    pub fn banner_block_for(&self, viewer: u8) -> &Banner {
+        self.screen_banner(viewer).unwrap_or(&self.banner)
+    }
+
     /// The banner on screen as `viewer`'s console shows it.
     pub fn banner_for(&self, viewer: u8) -> Option<BannerId> {
+        if let Some(block) = self.screen_banner(viewer) {
+            return block.id.filter(|_| block.active);
+        }
         let id = self.banner.id.filter(|_| self.banner.active)?;
         let local = self.round.local_side;
         if viewer == local {
@@ -309,6 +327,34 @@ mod tests {
         let navi = b.content.navi(b.content.navi_by_key(testing::MEGAMAN)).clone();
         b.start_banner(navi.win_banner);
         assert_eq!((b.banner_for(0), b.banner_for(1)), (Some(navi.win_banner), Some(navi.lose_banner)));
+    }
+
+    /// A Program Advance's banner runs on its player's own custom screen:
+    /// the other console shows none of it, whichever side the simulation's
+    /// local side is.
+    #[test]
+    fn a_program_advances_banner_shows_only_to_its_player() {
+        use crate::battle::mode;
+        use crate::content::BannerRole;
+        let mut b = battle();
+        let no_buttons = [crate::input::PlayerTick::default(); 2];
+        for _ in 0..600 {
+            if b.round.mode == mode::CUSTOM && b.round.init != 0 {
+                break;
+            }
+            b.tick(&no_buttons, Default::default());
+        }
+        assert!(b.round.mode == mode::CUSTOM && b.custom.sides.iter().all(|s| s.screen.is_some()), "the custom screens open");
+        let pa = b.roles().banner(BannerRole::ProgramAdvance);
+        let steps = b.content.rules().effects.banner;
+        for side in [0u8, 1] {
+            let mut b = b.clone();
+            assert!(b.custom.sides[side as usize].screen.as_mut().unwrap().hud.start(pa, true, steps));
+            b.tick(&no_buttons, Default::default());
+            assert_eq!(b.round.mode, mode::CUSTOM);
+            assert_eq!((b.banner_for(side), b.banner_for(side ^ 1)), (Some(pa), None), "side {side}'s Program Advance");
+            assert_eq!(b.banner_block_for(side).id, Some(pa));
+        }
     }
 
     /// The result's banner as each game's routine picks it (`sub_80081A4`,
