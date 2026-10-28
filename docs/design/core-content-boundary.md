@@ -245,7 +245,7 @@ the rest of that tick. A cut-in prepares the cutting-in side's chip into a detac
 navi's own attack and action are untouched, and the two sides' controllers wait on each other. A navi chip's
 controller is content too, each chip's own (@exelib/navi_chips/controller: the course, AntiNavi, the name): the
 chip's `navi` spawns it, as a dimming chip's `dimming` does, through the engine's generic action that hands a chip off
-to its controller; it brings the chip's navi and waits for `navi_chip.navi_left`.
+to its controller; it brings the chip's navi and waits for its kind's `navi_left` (@exelib/navi_chips/left).
 
 ### 4.11 Content the ruleset knows
 

@@ -37,7 +37,7 @@ pub mod state;
 pub mod types;
 
 pub use api::{
-    ACTOR_TYPES, ActorField, ApiError, ApiResult, BattleInfo, BlinkOut, CollisionField, ColumnInfo, CoreApi,
+    ACTOR_TYPES, ActorField, ApiError, ApiResult, BattleInfo, BlinkOut, CollisionField, ColumnInfo, CoreApi, HandField,
     DimmingStep, HitboxSpec, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState, ObjectField, NaviAction, SpawnAt,
     OVERLAY_STEPPINGS,
     ObstacleAction, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, ScreenFade,

@@ -119,6 +119,10 @@ pub const DRAG_STEPS: [&str; 3] = ["start", "slide", "recover"];
 /// rows and the move's direction (ice's), the panel's own carry (a road's,
 /// EXE5's magnet's).
 pub const SLIDE_TYPES: [&str; 4] = ["none", "push", "rows", "panel"];
+/// Where a navi's slide is (the slide machine's state): to start
+/// (`sub_80166D0`, the game's 0), sliding toward its next panel
+/// (`sub_8016730`, 4).
+pub const SLIDE_STEPS: [&str; 2] = ["start", "sliding"];
 
 fn enum_type(names: &[&str]) -> FieldType {
     FieldType::Enum(names.iter().map(|s| s.to_string()).collect())
@@ -199,9 +203,9 @@ named_fields! {
         /// BattleObject +0x1A: a player's chips left in its hand as the HUD
         /// shows them; another actor's own count (EXE5's Jealousy reads it).
         ChipsHeld = "chips_held", U8, rw;
-        /// BattleObject +0x2A holds a chip (a player's: its hand's at the
-        /// cursor, which its HUD shows).
-        HasChip = "has_chip", Bool, ro;
+        /// BattleObject +0x2A: its chip (a player's: its hand's at the
+        /// cursor, which its HUD shows; none: the game's 0xFFFF).
+        Chip = "chip", Ref(Registry::Chip, None), rw;
         Pos = "pos", Vec3, rw;
         Vel = "vel", Vec3, rw;
         Related1 = "related1", Object, rw;
@@ -223,6 +227,9 @@ named_fields! {
         /// A navi's slide type ([`SLIDE_TYPES`]), which its slide request
         /// starts.
         SlideType = "slide_type", enum_type(&SLIDE_TYPES), rw;
+        /// Where a navi's slide is ([`SLIDE_STEPS`]): to start, or sliding
+        /// toward its next panel.
+        SlideStep = "slide_step", enum_type(&SLIDE_STEPS), rw;
         /// It holds a panel reservation (released when it is destroyed).
         HoldsReservation = "holds_reservation", Bool, rw;
     }
@@ -321,8 +328,9 @@ named_fields! {
         /// A, 2 B); its counter. The source and the counter are writable:
         /// EXE4's dark soul's AI shows a B charge as it dodges (0x0800E69C:
         /// AIData +9 and its count, +0x32, of which the next tick's input
-        /// makes the level, 0x0800BB66).
-        ChargeLevel = "charge_level", U8, ro;
+        /// makes the level, 0x0800BB66), and the level with them (the
+        /// charge's reset, `sub_8012EA8`).
+        ChargeLevel = "charge_level", U8, rw;
         ChargeSource = "charge_source", U8, rw;
         ChargeCounter = "charge_counter", U16, rw;
         /// EXE4's rapid presses (AIData +0x12, +0x11): the B presses
@@ -373,6 +381,11 @@ named_fields! {
         /// reads).
         NoChargeTimer = "no_charge_timer", U16, rw;
         InAutoBattle = "in_auto_battle", Bool, rw;
+        /// The ticks of anger left (AIData's anger count), and the
+        /// consecutive ticks spent flinching or paralyzed (AIData+0x4C; 120
+        /// make MegaMan angry): what anger's end zeroes (`sub_80143A6`).
+        AngerTicks = "anger_ticks", U16, rw;
+        StunTicks = "stun_ticks", U32, rw;
     }
 }
 
@@ -468,15 +481,20 @@ named_fields! {
         /// The hit modifiers of what hit it this window (+0x0E,
         /// HitModifierFinal): 0x3C the pushes, 0x40 a pushing hit.
         HitModFinal = "hit_mod_final", U8, ro;
-        /// Its barrier ([`BARRIER_STATES`]), the barrier's HP byte, and the
-        /// hit modifier that popped it (+0x15).
-        Barrier = "barrier", enum_type(&BARRIER_STATES), ro;
+        /// Its barrier ([`BARRIER_STATES`]; writable to none or popped: a
+        /// barrier goes up with `raise_barrier`), the barrier's HP byte, and
+        /// the hit modifier that popped it (+0x15).
+        Barrier = "barrier", enum_type(&BARRIER_STATES), rw;
         BarrierHp = "barrier_hp", U8, ro;
         BarrierPopHitMod = "barrier_pop_hit_mod", U8, ro;
         /// A bubble is its barrier (BblWrap's, the barrier byte 8), and the
         /// barrier's timer (+0x1A: a bubble's 0 while it is down).
         Bubble = "bubble", Bool, ro;
         BarrierTimer = "barrier_timer", U16, ro;
+        /// Its status visuals (+0x48, +0x4C): the confusion stars and the
+        /// blindness mark over it, which their statuses' ends take down.
+        ConfusionVisual = "confusion_visual", Object, rw;
+        BlindnessVisual = "blindness_visual", Object, rw;
     }
 }
 
@@ -628,6 +646,28 @@ named_fields! {
         /// custom-screen damage, emotion swings, the two HP drains, a
         /// battle-start hook, a shrinking hand).
         BugKinds = "bug_kinds", U8, ro;
+    }
+}
+
+named_fields! {
+    /// An entry of a side's hand (the game's chip block), its fields by
+    /// entry.
+    pub enum HandField {
+        /// The chip (none: the hand ends before it).
+        Chip = "chip", Ref(Registry::Chip, None), rw;
+        /// Its base damage, and the Atk+ (or Navi+) bonus folded into it.
+        Damage = "damage", U16, rw;
+        AttackBonus = "attack_bonus", U16, rw;
+        /// The bonus a charge raises (the hand's +0x26: what a form's A
+        /// charge builds up, and what EXE4's souls' status resets give
+        /// their chips, 0x0800E1CA). The status reset clears it.
+        ChargeBonus = "charge_bonus", U16, rw;
+        /// The turn (custom screens opened before, from 0) it was picked in.
+        Turn = "turn", U8, rw;
+        /// Its marks (its modifier flags: what its game's chip-use rules
+        /// read at the use, and what its rules keep there: EXE4's install
+        /// marks each entry 0x04 as it takes a dark chip's cost, 0x0801EA1E).
+        Marks = "marks", U8, rw;
     }
 }
 
@@ -1425,14 +1465,6 @@ pub trait CoreApi {
     fn emotion(&self, side: u8) -> String;
     /// Set a side's mood, unless its navi's emotion is held (`sub_8015BEC`).
     fn set_mood(&mut self, side: u8, mood: u8);
-    /// Raise a side's mood by `n`, capped at 254; a mood of 0 or 0xFF
-    /// stays (EXE5's 0x08012802: its recovery chips, docs/design/exe5-map.md
-    /// §15.3 item 6).
-    fn gain_mood(&mut self, side: u8, n: u16);
-    /// Lower a side's mood by `n`, to 1 at least; a mood of 0 stays
-    /// (`sub_8015C12`, EXE5's 0x08012820: the hits' loss, EXE5's navi chips
-    /// leaving).
-    fn lose_mood(&mut self, side: u8, n: u16);
     /// Whether `side`'s console starts its emotion window glitching (the
     /// save's NaviCust bug flag; the rules decide it as the round
     /// is set up, as EXE6's patch cards do).
@@ -1603,6 +1635,10 @@ pub trait CoreApi {
     fn tracked(&self, side: u8) -> Option<ObjectRef>;
     /// Slot `i` (from 0, of four) of a side's list of alive actors.
     fn alive_actor_slot(&self, side: u8, i: u8) -> Option<ObjectRef>;
+    /// A side's count of alive navis (`sub_800A142` takes one off as a
+    /// deletion starts; a side at 0 has lost), read and written.
+    fn alive_count(&self, side: u8) -> u8;
+    fn set_alive_count(&mut self, side: u8, n: u8);
     /// The objects of content kind `kind` (a kind handle) in the update
     /// list, in update order, whatever their lifecycle state (the game's
     /// walks of the list, such as `sub_80C67A4`).
@@ -1629,42 +1665,17 @@ pub trait CoreApi {
     fn hand_cursor(&self, side: u8) -> u8;
     /// `sub_800FC7C`: the cursor moves to the next chip.
     fn advance_hand(&mut self, side: u8);
-    // Subtype 18 (Otenko):
-    /// The turn (custom screens opened before, from 0) the chip at `i` of a
-    /// side's hand was picked in.
-    fn hand_turn(&self, side: u8, i: u8) -> u8;
-    /// Add to the Atk+ bonus of the chip at `i` of a side's hand
-    /// (wrapping).
-    fn add_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16);
-    /// EXE5's DarkPlus (0x0800E1D6): the Atk+ bonus of a hand's chip at `i`
-    /// becomes `n`.
-    fn set_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16);
-    /// Add to the charge bonus of the chip at `i` of a side's hand (the
-    /// hand's +0x26: what a form's A charge builds up, and what EXE4's
-    /// souls' status resets give their chips, 0x0800E1CA), wrapping. The
-    /// status reset clears it.
-    fn add_hand_charge_bonus(&mut self, side: u8, i: u8, n: u16);
-    /// A side's hand has a chip at `i` and it does damage (its record's
-    /// flag 0x02, "has_damage").
-    fn hand_chip_damages(&self, side: u8, i: u8) -> bool;
+    /// A field of entry `i` (from 0) of a side's hand (the hand from its
+    /// first chip, used ones too); nil past its entries.
+    fn hand_entry(&self, side: u8, i: u8, f: HandField) -> Value;
+    /// Set a field of entry `i` of a side's hand. An error past its entries.
+    fn set_hand_entry(&mut self, side: u8, i: u8, f: HandField, v: Value) -> ApiResult<()>;
     /// The chip after `i` of a side's hand folds into the chip at `i` (its
     /// damage and bonuses added) and leaves the hand, the chips after it
     /// moving up one: with every per-slot field (`whole`: EXE4's WoodSoul's
     /// status reset, 0x0800E294), or with their damage alone, each slot's
     /// bonuses and marks staying (its custom screen's, 0x0801F242).
     fn fold_hand_chip(&mut self, side: u8, i: u8, whole: bool);
-    /// The chip at `i` of a side's hand, if any (the hand from its first
-    /// chip, used ones too).
-    fn hand_chip(&self, side: u8, i: u8) -> Option<ChipHandle>;
-    /// The marks of the entry at `i` of a side's hand (its modifier flags:
-    /// what its game's chip-use rules read at the use, and what its rules
-    /// keep there), and marks added to them (EXE4's install marks each
-    /// entry 0x04 as it takes a dark chip's cost, 0x0801EA1E).
-    fn hand_marks(&self, side: u8, i: u8) -> u8;
-    fn add_hand_marks(&mut self, side: u8, i: u8, marks: u8);
-    /// EXE5's Jealousy (0x080E4596): the chips left in a side's hand, from
-    /// its cursor to the first empty slot.
-    fn hand_left(&self, side: u8) -> u8;
     /// A side's defensive-chip record.
     fn linked(&self, side: u8) -> LinkedChip;
     fn set_linked(&mut self, side: u8, rec: LinkedChip);
@@ -1817,23 +1828,10 @@ pub trait CoreApi {
     /// window goes, as an attack's start from idle hides it (its console's,
     /// or every console's by the rules' `chip_use`).
     fn hide_chip_window(&mut self, o: ObjectRef) -> ApiResult<()>;
-    /// A navi's links let go as it leaves (EXE5's 0x081042E6): its status
-    /// visuals (`sub_801A5E2`) and its chips on the HUD (`sub_801DC36`).
-    fn drop_links(&mut self, o: ObjectRef) -> ApiResult<()>;
-    /// `sub_801A5E2`: a navi's status visuals forgotten (its collision's
-    /// confusion and blindness links).
-    fn drop_status_visuals(&mut self, o: ObjectRef) -> ApiResult<()>;
-    /// A navi's chip (BattleObject +0x2A) none, its chip count kept.
-    fn drop_chip(&mut self, o: ObjectRef) -> ApiResult<()>;
-    /// `sub_800A142` (EXE4's 0x080079C6): one fewer alive navi on `o`'s
-    /// side; the alive lists kept.
-    fn drop_alive_count(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// A panel that burns (its type's `burn`) burns `o`, an object not a
     /// player's (held while the battle is dimmed): EXE5's 0x08016D80,
     /// EXE4's 0x0801309E.
     fn burn_on_panel(&mut self, o: ObjectRef) -> ApiResult<()>;
-    /// `o`'s collision's barrier byte cleared (`sub_801A7F4`'s store).
-    fn drop_barrier(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// A navi no player controls leaves (EXE5's 0x08104306): no HP, the
     /// damage-carry record forgets it, its reservation goes, it leaves its
     /// side's lists and is destroyed.
@@ -2069,13 +2067,9 @@ pub trait CoreApi {
 
     // ---- What a game's rules do to a navi (docs/design/rules-in-luau.md §4.5) ----
 
-    /// The invulnerability ends: its timer and its flag.
-    fn clear_invulnerable(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// `sub_800F46C` + `sub_800F2C6`: face the default way under the
     /// standard column patterns, and the sprite with it.
     fn face_default(&mut self, o: ObjectRef) -> ApiResult<()>;
-    /// The charge drops: its counters and the hold requests.
-    fn reset_charge(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// `sub_80C4C3A` on the navi's aura: the Full Synchro aura goes.
     fn end_full_synchro_aura(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// `sub_80158FA`: movement, reactions and the slower statuses end.
@@ -2101,10 +2095,6 @@ pub trait CoreApi {
     fn take_off_form_parts(&mut self, o: ObjectRef, form: crate::FormHandle);
     /// The default put-on routine of `form`: its identity's parts.
     fn put_on_form_parts(&mut self, o: ObjectRef, form: crate::FormHandle);
-    /// `sub_800FC9E` and a form change's load: the navi's sprite in `form`,
-    /// its animation 0 from the start, shadow on the ground, facing its
-    /// way, white.
-    fn load_form_sprite(&mut self, o: ObjectRef, form: crate::FormHandle) -> ApiResult<()>;
     /// `sub_80144C0`: the full status reset (NaviCust state, hand bonuses,
     /// hit modifier, region, charge, weapons, the form's flags, element,
     /// body damage).
@@ -2119,8 +2109,6 @@ pub trait CoreApi {
     /// `sub_801A554`'s work for a status now: its timer set and its
     /// requests raised (a bug's paralysis and blindness, `sub_801A77A`).
     fn take_status(&mut self, o: ObjectRef, status: crate::StatusHandle) -> ApiResult<()>;
-    /// Anger ends, and the mood is back to 0x80.
-    fn end_anger(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// The form the navi's side asked to change into at this turn's start
     /// (none: none, or the base form).
     fn form_change_target(&self, o: ObjectRef) -> Option<crate::FormHandle>;
@@ -2132,10 +2120,6 @@ pub trait CoreApi {
     /// whether it is the alternate (the turn's transform record's +3, +1:
     /// EXE5's soul's turns, and Chaos Unison).
     fn form_change_terms(&self, o: ObjectRef) -> (u8, bool);
-    /// EXE5's soul change's first step (0x08011FAC): the navi stops moving,
-    /// flinching, being paralyzed and sliding, and forgets a slide request
-    /// and its slide's step (a part of EXE6's `sub_80158FA`).
-    fn stop_moving(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// `sub_80C4526(overlay, 1)`: an overlay on an image sits in front (an
     /// idle overlay keeps its owner's height).
     fn pin_overlay(&mut self, o: ObjectRef);
@@ -2216,23 +2200,10 @@ pub trait CoreApi {
     /// `sprite_load`: load a sprite (its animation and look reset) and let
     /// it animate (`no_sprite_update` off).
     fn sprite_load(&mut self, o: ObjectRef, id: SpriteId);
-    /// `sub_800F29C`, then `sub_800FC9E` or `sub_800F26C`, and
-    /// `sprite_load`: load the sprite `like` is drawn with (a player navi's
-    /// by its side's navi and form, a field object's by its NameID's
-    /// look): a stand-in for its user.
-    fn sprite_load_like(&mut self, o: ObjectRef, like: ObjectRef) -> ApiResult<()>;
-    /// Load the sprite `owner`'s NameID record gives it: a player's own by
-    /// its navi stats (`sub_800FC9E`), another object's its NameID look
-    /// (`sub_800F26C`).
-    fn sprite_load_look_of(&mut self, o: ObjectRef, owner: ObjectRef);
     /// Start animation `anim` from its first frame.
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8);
     /// Advance the animation one tick (no gating).
     fn sprite_step(&mut self, o: ObjectRef);
-    /// `sub_800F26C`: whether the look `o`'s NameID gives is `sprite` (an
-    /// object's NameID look; a navi's or form's NameID gives its sprite).
-    /// An error for a NameID the content has no look for.
-    fn name_look_is(&self, o: ObjectRef, sprite: SpriteId) -> ApiResult<bool>;
     /// `sub_80030BA`: where part `n` of the current frame sits, in pixels
     /// from the object, unflipped; (0, 0) when the frame has fewer parts.
     fn sprite_part_offset(&self, o: ObjectRef, n: u8) -> (i32, i32);
@@ -2346,11 +2317,6 @@ pub trait CoreApi {
     /// `sub_80E14AC` it is back: EXE5's Django's coffin.
     fn hide_actor(&mut self, o: ObjectRef);
     fn show_actor(&mut self, o: ObjectRef);
-    /// `sub_80E49C4` (BugFix): a side's NaviCust bugs are fixed: the stats
-    /// processing, the panel trail's level, the buster's blanks, the
-    /// on-hit status, the custom damage, the emotion, the custom and HP
-    /// drains, the battle-start bug and the hand-shrink turn are zeroed.
-    fn clear_bugs(&mut self, side: u8);
     /// `sub_801E658` (BugFix): the save's emotion window glitch is gone
     /// from every console's emotion window, which then flickers (and
     /// draws its console's RNG1) for NaviCust bugs only.
@@ -2359,9 +2325,6 @@ pub trait CoreApi {
     /// console's chip-icon table gets the opponent's navi (presentation:
     /// its icons show over it; a status reset takes it out again).
     fn show_opponent_chip_icons(&mut self, side: u8);
-    /// What controller `controller` brought is done: its kind's
-    /// `navi_left`.
-    fn navi_left(&mut self, controller: ObjectRef);
     /// `sub_80E1332`: a navi chip's user warps out (`out`) or back in (the
     /// navi warp, actor 0x2D).
     fn navi_warp(&mut self, user: ObjectRef, out: bool);
@@ -2427,47 +2390,14 @@ pub trait CoreApi {
     /// (removed by a chip, blinking out or absorbed): the test `sub_80C9EE6`
     /// and `sub_80EFD8C` make before taking an obstacle.
     fn obstacle_present(&self, o: ObjectRef) -> bool;
-    /// DustMan's take (`sub_80BC100`): the look the field object `o` would
-    /// have thrown back as junk, which its taker keeps: the object's
-    /// identity (`sub_800F26C`'s argument); None for the objects DustMan
-    /// leaves (`sub_800F486`) and for one with no identity.
-    fn absorbed_look(&self, o: ObjectRef) -> Option<crate::IdentityHandle>;
     /// The r3 the object update loop (`object_800372A`) leaves for the
     /// object updating now: 4 × how many objects of the previous object's
     /// pool it passed before that one this tick. Routines that never set
     /// r3 spawn with it as a position (DustMan's junk).
     fn loop_register(&self) -> u32;
-    /// CrosOver's MegaMan (`sub_80BDBC8`): `o` takes its user's identity
-    /// when the user is MegaMan (`megaman`) or one of his forms, else
-    /// MegaMan's own; that identity's sprite (a player's by its side's navi
-    /// and form, `sub_800FC9E`; MegaMan's base sprite for another user's),
-    /// with a ground shadow at animation 0 (loaded by the next sprite
-    /// update); and its side's form's palette (`byte_80203EA`). True when
-    /// it took the user's.
-    fn wear_navi_image(&mut self, o: ObjectRef, user: ObjectRef, megaman: crate::NaviHandle) -> ApiResult<bool>;
-    /// MstrCros's Crosses (`sub_80BE7BC`) and Darkness's Dark MegaMan
-    /// (`sub_80BF710`): `o` takes the identity of `navi` (MegaMan) in
-    /// `form` (the form's; the navi's own for his base form), the form's
-    /// sprite (`sub_800FC9E(0, form)`) with a ground shadow at animation 0
-    /// (loaded by the next sprite update), and the form's palette
-    /// (`byte_80203EA`).
-    fn wear_form_image(&mut self, o: ObjectRef, navi: crate::NaviHandle, form: crate::FormHandle) -> ApiResult<()>;
     /// `sub_8010DF6` (`on`, its r2 1) or `sub_8011044` by the actor record
     /// of `o`'s identity: the parts the navi image wears.
     fn navi_image_parts(&mut self, o: ObjectRef, on: bool);
-    /// `sub_80DBB64`: put the absorbed look `look` (a field object's identity)
-    /// on `o`'s sprite (`sub_800F26C`: the sprite, a shadow if the look has
-    /// one, its animation and palette; flipped by `o`'s side unless the
-    /// look keeps its own); false when the look shows nothing (the table's
-    /// category 0xFF).
-    fn wear_absorbed_look(&mut self, o: ObjectRef, look: crate::IdentityHandle) -> ApiResult<bool>;
-    /// `sub_80DC3B2`'s test: a field object by its identity (the
-    /// original's NameID word 0xCD to 0xFF, its +0x2A half 0) but those
-    /// `sub_800F486` excludes, which BlzrdBal's ball swallows.
-    fn obstacle_swallowable(&self, o: ObjectRef) -> bool;
-    /// EXE5's Poltergeist's test (0x080E8CA0): the object's identity is
-    /// `throwable`.
-    fn obstacle_throwable(&self, o: ObjectRef) -> bool;
     /// `sub_800F6AC`: ask the field object `o` to be picked up by `side` and
     /// thrown at panel (x, y) after shaking `shake` ticks, hitting with the
     /// damage word `damage` (`sub_8018002` does it).

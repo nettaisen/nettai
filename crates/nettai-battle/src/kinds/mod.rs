@@ -189,22 +189,6 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
     }
 }
 
-/// What a controller brought is done (`sub_80BADE4` and the like write 0
-/// through the pointer they were given): the controller's kind's
-/// `navi_left`.
-pub fn navi_left(b: &mut Battle, controller: ObjectRef) {
-    let kind = b.objects.get(controller).kind;
-    match b.content.defs.kind(kind).navi_left {
-        Some(hook) => {
-            crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::NaviLeft { controller });
-        }
-        None => panic!(
-            "what a controller brought left, but the controller is a {}, which has no `navi_left`",
-            b.content.defs.kind(kind).key
-        ),
-    }
-}
-
 /// `object_genericDestroy`: drop reservations, free collision, free.
 pub fn generic_destroy(b: &mut Battle, r: ObjectRef) {
     b.release_reservations(r);

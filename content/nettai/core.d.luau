@@ -207,6 +207,8 @@ export type NaviStateFlag =
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
 -- A navi's drag reaction step.
 export type DragStep = "start" | "slide" | "recover"
+-- A field of a hand's entry (`battle.hand_entry`).
+export type HandEntryField = "chip" | "damage" | "attack_bonus" | "charge_bonus" | "turn" | "marks"
 -- A navi's slide type: none, a push's, by the arena's rows and the move's
 -- direction (the rules' `reactions.slide_rows`: ice's), the panel's own carry
 -- (a type's `carries` or `carries_by_move`: a road's, EXE5's magnet's).
@@ -276,16 +278,9 @@ declare extern type Sprite with
     -- The animation has played to its end (read-only).
     finished: boolean
     -- `sprite_load`: load a sprite (resets the animation and the look) and
-    -- let it animate (the object's `no_sprite_update` off).
+    -- let it animate (the object's `no_sprite_update` off). (@exelib/looks
+    -- loads the sprite an identity or a navi in a form is drawn with.)
     function load(self, sprite: SpriteAsset): ()
-    -- `sub_800F29C` with `sub_800FC9E` or `sub_800F26C`, then `load`: the
-    -- sprite `like` is drawn with (a player navi's by its side's navi and
-    -- form; a field object's by its look): a stand-in for a chip's user.
-    function load_like(self, like: Object): ()
-    -- The sprite `owner`'s NameID record gives it: a player's own by its
-    -- navi stats (`sub_800FC9E`), another object's its NameID look
-    -- (`sub_800F26C`); loaded as `load` does.
-    function load_look_of(self, owner: Object): ()
     -- Start an animation from its first frame.
     function set_animation(self, anim: number): ()
     -- Advance the animation one tick (no gating).
@@ -367,14 +362,19 @@ declare extern type Collision with
     -- The hit modifiers of what hit it this window (HitModifierFinal; 0x3C
     -- the pushes, 0x40 a pushing hit; read-only).
     hit_mod_final: number
-    -- Its barrier (read-only): none, up, or popped (blown away by wind);
-    -- the barrier's HP byte; the hit modifier that popped it.
+    -- Its barrier: none, up, or popped (blown away by wind; written none or
+    -- popped alone: a barrier goes up with `raise_barrier`); the barrier's
+    -- HP byte; the hit modifier that popped it (read-only).
     barrier: BarrierState
     barrier_hp: number
     barrier_pop_hit_mod: number
     -- A bubble is its barrier (BblWrap's), and the barrier's timer (a bubble's 0 while it is down; read-only).
     bubble: boolean
     barrier_timer: number
+    -- Its status visuals: the confusion stars and the blindness mark over it
+    -- (`sub_801A5E2` forgets them).
+    confusion_visual: Object?
+    blindness_visual: Object?
     -- Register on the region's panels, clearing the last results.
     function present(self): ()
     -- Unregister, resolving hits against what is registered there.
@@ -446,9 +446,9 @@ declare extern type Object with
     -- BattleObject +0x1A: a player's chips left in its hand as the HUD shows
     -- them; another actor's own count (EXE5's Jealousy).
     chips_held: number
-    -- BattleObject +0x2A holds a chip (a player's: its hand's at the cursor;
-    -- read-only).
-    has_chip: boolean
+    -- BattleObject +0x2A: its chip (a player's: its hand's at the cursor;
+    -- nil: none).
+    chip: Chip?
     pos: Vec3
     vel: Vec3
     related1: Object?
@@ -467,8 +467,10 @@ declare extern type Object with
     no_sprite_update: boolean
     -- A navi's drag reaction step (the byte other kinds use otherwise).
     drag_step: DragStep
-    -- A navi's slide type, which its slide request starts.
+    -- A navi's slide type, which its slide request starts, and where its
+    -- slide is: to start, or sliding toward its next panel.
     slide_type: SlideType
+    slide_step: "start" | "sliding"
     -- It holds a panel reservation (released when it is destroyed).
     holds_reservation: boolean
     sprite: Sprite
@@ -557,9 +559,9 @@ declare extern type Object with
     target_marker: Object?
     charge_glow: Object?
     full_synchro_aura: Object?
-    -- The charge: level 0 none, 1 charging, 2 full; source 0 none, 1 A, 2 B.
-    -- The source and the counter are writable (EXE4's dark soul's AI shows a
-    -- B charge as it dodges; the level follows the count).
+    -- The charge: level 0 none, 1 charging, 2 full; source 0 none, 1 A, 2 B
+    -- (writable: EXE4's dark soul's AI shows a B charge as it dodges, the
+    -- level following the count; `sub_8012EA8` drops all three).
     charge_level: number
     charge_source: number
     charge_counter: number
@@ -612,11 +614,11 @@ declare extern type Object with
     -- reads).
     no_charge_timer: number
     in_auto_battle: boolean
-
-    -- `sub_800F26C`: the look its NameID gives is `sprite` (an object's
-    -- NameID look; a navi's or form's NameID gives its sprite). An error
-    -- for a NameID the content has no look for.
-    function name_look_is(self, sprite: SpriteAsset): boolean
+    -- Writable: the ticks of anger left, and the consecutive ticks spent
+    -- flinching or paralyzed (120 make MegaMan angry): what anger's end
+    -- zeroes (`sub_80143A6`).
+    anger_ticks: number
+    stun_ticks: number
 
     -- Enter a lifecycle state from its first action and phase (the game's
     -- word store).
@@ -708,22 +710,10 @@ declare extern type Object with
     -- `sub_801DACC(0x40)` (EXE4's 0x08015B9E(0x10)): the chip window goes, as
     -- an attack's start from idle hides it.
     function hide_chip_window(self): ()
-    -- As a navi leaves (EXE5's 0x081042E6): its status visuals forgotten and
-    -- its chips off the HUD.
-    function drop_links(self): ()
-    -- `sub_801A5E2`: its status visuals forgotten (confusion's, blindness').
-    function drop_status_visuals(self): ()
-    -- Its chip (BattleObject +0x2A) none, its chip count kept.
-    function drop_chip(self): ()
-    -- `sub_800A142` (EXE4's 0x080079C6): one fewer alive navi on its side,
-    -- the alive lists kept.
-    function drop_alive_count(self): ()
     -- A panel that burns (its type's `burn`) burns it, an object not a
     -- player's (held while the battle is dimmed): EXE5's 0x08016D80, EXE4's
     -- 0x0801309E.
     function burn_on_panel(self): ()
-    -- Its collision's barrier byte cleared (`sub_801A7F4`'s store).
-    function drop_barrier(self): ()
     -- A navi no player controls leaves (EXE5's 0x08104306): no HP, the
     -- damage-carry record forgets it, its reservation goes, it leaves its
     -- side's lists and is destroyed.
@@ -801,13 +791,9 @@ declare extern type Object with
     function exit_attack(self, keeps_lockout: boolean?): ()
 
     -- What a game's rules do to a navi (docs/design/rules-in-luau.md §4.5).
-    -- The invulnerability ends (its timer and flag).
-    function clear_invulnerable(self): ()
     -- `sub_800F46C` + `sub_800F2C6`: face the default way under the
     -- standard column patterns, and the sprite with it.
     function face_default(self): ()
-    -- The charge drops: its counters and the hold requests.
-    function reset_charge(self): ()
     -- `sub_80C4C3A`: the Full Synchro aura goes.
     function end_full_synchro_aura(self): ()
     -- `sub_80158FA`: movement, reactions and the slower statuses end.
@@ -834,9 +820,6 @@ declare extern type Object with
     -- the default and more calls these.
     function take_off_form_parts(self, form: FormDef): ()
     function put_on_form_parts(self, form: FormDef): ()
-    -- `sub_800FC9E` and a form change's load: the navi's sprite in `form`,
-    -- its animation 0 from the start, shadow on the ground, facing, white.
-    function load_form_sprite(self, form: FormDef): ()
     -- `sub_80144C0`: the full status reset.
     function reset_status(self): ()
     -- `sub_8014080` (`sub_80140EE` without `undershirt`): MegaMan's body
@@ -848,8 +831,6 @@ declare extern type Object with
     -- `sub_801A554`'s work for `status` now: its timer set and its
     -- requests raised (a bug's paralysis and blindness).
     function take_status(self, status: Status): ()
-    -- Anger ends; the mood is back to 0x80 (EXE5's: a mood of 0 stays).
-    function end_anger(self): ()
     -- A party's switch knockout's take-back (a side with partners; the in-battle knockout's step): the fallen
     -- member's block keeps the navi's stats at its HP, and member 0, the side's own navi, comes back.
     function take_back(self): ()
@@ -863,9 +844,6 @@ declare extern type Object with
     -- The terms of the change its side asked for: its turns, and whether it is
     -- the alternate (EXE5's Soul Unison: the soul's turns, and Chaos Unison).
     function form_change_terms(self): (number, boolean)
-    -- EXE5's soul change's first step: no longer moving, flinching,
-    -- paralyzed or sliding (nor asked to slide).
-    function stop_moving(self): ()
     -- `sub_80C4526(overlay, 1)`: an overlay on an image sits in front (an
     -- idle overlay keeps its owner's height).
     function pin_overlay(self): ()
@@ -930,23 +908,8 @@ declare extern type Object with
     function freeze_target_marker(self, on: boolean): ()
     -- `sub_800F2FC`: turn to face `target`'s column.
     function face_toward(self, target: Object): ()
-    -- `sub_80DBB64`: put an absorbed look (`obstacle.absorbed_look`) on the sprite:
-    -- the sprite, a shadow if the look has one, its animation and palette,
-    -- flipped by the object's side unless the look keeps its own; false
-    -- when the look is the table's none.
-    function wear_absorbed_look(self, look: Identity): boolean
-    -- CrosOver's MegaMan (`sub_80BDBC8`): take the user's identity when the
-    -- user is MegaMan (`megaman`) or one of his forms (true), else
-    -- MegaMan's own: its sprite (a ground shadow, animation 0 loaded by the
-    -- next sprite update) and the side's form's palette.
-    function wear_navi_image(self, user: Object, megaman: NaviDef): boolean
-    -- MstrCros's Crosses (`sub_80BE7BC`), Darkness's Dark MegaMan
-    -- (`sub_80BF710`): take the identity of `navi` (MegaMan) in `form` (the
-    -- form's; in his base form his own): its sprite (a ground shadow,
-    -- animation 0 loaded by the next sprite update) and palette.
-    function wear_form_image(self, navi: NaviDef, form: FormDef): ()
-    -- The parts of that identity (`sub_8010DF6` with r2 1, or
-    -- `sub_8011044`).
+    -- The parts of the identity it wears as a navi's image (`sub_8010DF6`
+    -- with r2 1, or `sub_8011044`).
     function navi_image_parts(self, on: boolean): ()
     -- `sub_800E2FC`: heal up to the maximum HP, with the recovery sparkle
     -- and sound; with `anti_recovery`, the opponent's armed AntiRecv turns
@@ -1322,12 +1285,6 @@ declare battle: {
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
     set_mood: (side: number, mood: number) -> (),
-    -- The mood rises by `n` to 254 at most; 0 and 0xFF stay (EXE5's
-    -- 0x08012802: its recovery chips).
-    gain_mood: (side: number, n: number) -> (),
-    -- The mood falls by `n` to 1 at least; 0 stays (`sub_8015C12`, EXE5's
-    -- 0x08012820: its navi chips leaving).
-    lose_mood: (side: number, n: number) -> (),
     -- Whether the side's console starts its emotion window glitching (the
     -- save's NaviCust bug flag): the rules decide it in `round_setup` (EXE6's
     -- patch cards do).
@@ -1353,6 +1310,10 @@ declare battle: {
     player: (side: number) -> Object?,
     -- A side's combatants still in, in slot order.
     alive_actors: (side: number) -> { Object },
+    -- A side's count of alive navis (a deletion's start takes one off,
+    -- `sub_800A142`; a side at 0 has lost), read and written.
+    alive_count: (side: number) -> number,
+    set_alive_count: (side: number, n: number) -> (),
     -- `sub_802EFEE`: the actor `side` tracks when each side has its own
     -- gauge (`own_gauges`), if any.
     tracked: (side: number) -> Object?,
@@ -1391,11 +1352,6 @@ declare battle: {
     -- rules' `anti_navi_sparkle` puts it from the panel's center), with its
     -- sound (the role `sounds.cut_in`): its height.
     trap_mark: (o: Object) -> number,
-    -- `sub_80E49C4` (BugFix): a side's NaviCust bugs are fixed (the stats
-    -- processing, the panel trail's level, the buster's blanks, the on-hit
-    -- status, the custom damage, the emotion, the drains, the battle-start
-    -- bug and the hand-shrink turn zeroed).
-    clear_bugs: (side: number) -> (),
     -- `sub_801E658` (BugFix): the save's emotion window glitch is gone from
     -- every console's emotion window, which then flickers (and draws its
     -- console's RNG1) for NaviCust bugs only.
@@ -1486,37 +1442,23 @@ declare battle: {
     -- `sub_80C468C`: a form overlay (actor object #0x57) on `owner`,
     -- following it every tick.
     form_overlay: (owner: Object, spec: FormOverlaySpec) -> Object?,
-    -- Subtype 18 (Otenko): the turn (from 0) a hand's chip at i was picked
-    -- in, and adding to its Atk+ bonus.
-    hand_turn: (side: number, i: number) -> number,
-    add_hand_attack_bonus: (side: number, i: number, n: number) -> (),
-    -- EXE5's DarkPlus: the Atk+ bonus of a hand's chip at i becomes n.
-    set_hand_attack_bonus: (side: number, i: number, n: number) -> (),
-    -- Adding to the charge bonus of a hand's chip at i (what a form's A
-    -- charge builds up, and EXE4's souls' status resets give: the status
-    -- reset clears it).
-    add_hand_charge_bonus: (side: number, i: number, n: number) -> (),
-    -- A side's hand has a chip at i and it does damage (its record's
-    -- "has_damage" flag).
-    hand_chip_damages: (side: number, i: number) -> boolean,
+    -- A field of entry i (from 0) of a side's hand, the hand from its first
+    -- chip, used ones too (nil past its entries), and setting it (an error
+    -- past them): its "chip" (nil: the hand ends before it), its base
+    -- "damage", its "attack_bonus" (Atk+ or Navi+) and "charge_bonus" (what
+    -- a form's A charge builds up, and EXE4's souls' status resets give: the
+    -- status reset clears it), the "turn" (from 0) it was picked in, and its
+    -- "marks" (its modifier flags: what its game's chip-use rules read at the
+    -- use, `mark_damage` and `mark_heals`, and what its rules keep there).
+    -- (@exelib/chip_hand reads and adds to them.)
+    hand_entry: (side: number, i: number, field: HandEntryField) -> any,
+    set_hand_entry: (side: number, i: number, field: HandEntryField, value: any) -> (),
     -- The chip after i of a side's hand folds into the chip at i (its
     -- damage and bonuses added) and leaves the hand, the chips after it
     -- moving up one: with every per-slot field (`whole`: EXE4's WoodSoul's
     -- status reset), or with their damage alone, each slot's bonuses and
     -- marks staying where they were (its custom screen's).
     fold_hand_chip: (side: number, i: number, whole: boolean) -> (),
-    -- The chip at i of a side's hand (from its first chip, used ones too),
-    -- if any.
-    hand_chip: (side: number, i: number) -> Chip?,
-    -- The marks of the entry at i of a side's hand (its modifier flags: what
-    -- its game's chip-use rules read at the use, `mark_damage` and
-    -- `mark_heals`, and what its rules keep there), and marks added to them
-    -- (EXE4's install marks each entry 0x04 as it takes a dark chip's cost).
-    hand_marks: (side: number, i: number) -> number,
-    add_hand_marks: (side: number, i: number, marks: number) -> (),
-    -- EXE5's Jealousy (0x080E4596): the chips left in a side's hand, from
-    -- its cursor to the first empty slot.
-    hand_left: (side: number) -> number,
     -- Subtype 8 (Wind and Fan): a side's wind (`sub_80E543C`) and who
     -- placed it; `sub_80E541A` makes `me` a side's wind (the one there
     -- before is destroyed at once); `sub_80E544C` makes it no side's.
@@ -1691,9 +1633,6 @@ declare dimming: {
 }
 
 declare navi_chip: {
-    -- What a controller brought is done: the controller's kind's
-    -- `navi_left`.
-    navi_left: (controller: Object) -> (),
     -- `sub_80E1332`: the user warps out (`out`) or back in (the navi warp,
     -- the engine's actor #0x2D).
     warp: (user: Object, out: boolean) -> (),
@@ -1832,17 +1771,6 @@ declare obstacle: {
     -- (removed, blinking out or absorbed): the test `sub_80C9EE6` and
     -- `sub_80EFD8C` make before taking an obstacle.
     present: (o: Object) -> boolean,
-    -- DustMan's take (`sub_80BC100`): what field object `o` would look like
-    -- thrown back as junk: its identity, which its taker keeps in an
-    -- "identity" state field (`me:wear_absorbed_look`); nil for the objects
-    -- DustMan leaves (`sub_800F486`: an identity with `scrap = false`).
-    absorbed_look: (o: Object) -> Identity?,
-    -- `sub_80DC3B2`'s test: a field object by its identity, but those
-    -- `sub_800F486` excludes (`scrap = false`): what BlzrdBal's ball
-    -- swallows.
-    swallowable: (o: Object) -> boolean,
-    -- EXE5's Poltergeist's test (0x080E8CA0): `o`'s identity is `throwable`.
-    throwable: (o: Object) -> boolean,
     -- `sub_800F6AC`: ask the field object `o` to be picked up by `side` and
     -- thrown at panel (x, y) after shaking `shake` ticks, hitting with the
     -- damage word `damage`.
@@ -1973,7 +1901,8 @@ export type KindSpec = {
     -- what it placed, if anything.
     place: ((spec: PlaceSpec) -> Object?)?,
     -- An object of it brought a navi chip's navi itself (passing itself as
-    -- the navi's controller): the navi is done (`navi_chip.navi_left`).
+    -- the navi's controller): the navi is done. Content's own (the navi
+    -- calls it, @exelib/navi_chips/left); the engine reads none.
     navi_left: ((me: Object) -> ())?,
     -- An obstacle of it starts being encased (in ice or a bubble: the
     -- obstacle framework's encasing calls it in its first step; the

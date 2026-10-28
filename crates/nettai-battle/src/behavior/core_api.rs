@@ -7,7 +7,7 @@ use nettai_content_api::api::ApiResult;
 use nettai_content_api::api::ObstacleFlag;
 use nettai_content_api::{
     ActorField, ApiError, BattleInfo, BlinkOut, CollisionField, ColumnInfo, CoreApi, DimmingStep,
-    FieldType, FieldValue, HitboxSpec, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState,
+    FieldType, FieldValue, HandField, HitboxSpec, HudPart, Key, Lifecycle, LinkedChip, NaviStat, NaviState,
     ObjectField, ObstacleAction, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag,
     PartyInfo, ScreenFade, Shadow, StatsOf,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
@@ -794,14 +794,6 @@ impl CoreApi for Battle {
         kinds::player::set_mood(self, side & 1, mood);
     }
 
-    fn gain_mood(&mut self, side: u8, n: u16) {
-        kinds::player::gain_mood(self, side & 1, n);
-    }
-
-    fn lose_mood(&mut self, side: u8, n: u16) {
-        kinds::player::lose_mood(self, side & 1, n);
-    }
-
     fn set_emotion_window_glitch(&mut self, side: u8, on: bool) {
         self.consoles[side as usize & 1].emotion_window_glitch = on;
     }
@@ -1261,6 +1253,14 @@ impl CoreApi for Battle {
         Battle::player(self, side & 1)
     }
 
+    fn alive_count(&self, side: u8) -> u8 {
+        self.round.alive[side as usize & 1]
+    }
+
+    fn set_alive_count(&mut self, side: u8, n: u8) {
+        self.round.alive[side as usize & 1] = n;
+    }
+
     fn alive_actor_slot(&self, side: u8, i: u8) -> Option<ObjectRef> {
         self.round.alive_actors[side as usize & 1].get(i as usize).copied().flatten()
     }
@@ -1309,56 +1309,51 @@ impl CoreApi for Battle {
         self.hands[side as usize & 1].advance();
     }
 
-    // Subtype 18 (Otenko).
-    fn hand_turn(&self, side: u8, i: u8) -> u8 {
-        // (The cursor never passes 5.)
-        self.hands[side as usize & 1].turn.get(i as usize).copied().unwrap_or(0)
-    }
-
-    fn add_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16) {
-        if let Some(b) = self.hands[side as usize & 1].attack_bonus.get_mut(i as usize) {
-            *b = b.wrapping_add(n);
-        }
-    }
-
-    fn set_hand_attack_bonus(&mut self, side: u8, i: u8, n: u16) {
-        if let Some(b) = self.hands[side as usize & 1].attack_bonus.get_mut(i as usize) {
-            *b = n;
-        }
-    }
-
-    fn add_hand_charge_bonus(&mut self, side: u8, i: u8, n: u16) {
-        if let Some(b) = self.hands[side as usize & 1].charge_bonus.get_mut(i as usize) {
-            *b = b.wrapping_add(n);
-        }
-    }
-
-    fn hand_left(&self, side: u8) -> u8 {
+    fn hand_entry(&self, side: u8, i: u8, f: HandField) -> Value {
         let h = &self.hands[side as usize & 1];
-        h.ids.iter().skip(h.cursor as usize).take_while(|c| c.is_some()).count() as u8
+        let i = i as usize;
+        if i >= h.ids.len() {
+            return Value::Nil;
+        }
+        let int = |v: i64| Value::Int(v);
+        match f {
+            HandField::Chip => h.ids[i].map_or(Value::Nil, |c| Value::Def(Registry::Chip, c.0)),
+            HandField::Damage => int(h.damage[i] as i64),
+            HandField::AttackBonus => int(h.attack_bonus[i] as i64),
+            HandField::ChargeBonus => int(h.charge_bonus[i] as i64),
+            HandField::Turn => int(h.turn[i] as i64),
+            HandField::Marks => int(h.modifiers[i] as i64),
+        }
     }
 
-    fn hand_chip_damages(&self, side: u8, i: u8) -> bool {
-        let chip = self.hands[side as usize & 1].ids.get(i as usize).copied().flatten();
-        chip.is_some_and(|h| self.content.chip(h).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0)
+    fn set_hand_entry(&mut self, side: u8, i: u8, f: HandField, v: Value) -> ApiResult<()> {
+        let v = store(f.name(), f.writable(), f.ty(), v)?;
+        let chip = match (f, v) {
+            (HandField::Chip, FieldValue::Ref(Some((Registry::Chip, c)))) => self.chip_from_api("chip", Some(ChipHandle(c)))?,
+            (HandField::Chip, FieldValue::Ref(Some((other, _)))) => {
+                return Err(ApiError::Other(format!("hand entry chip: a {other} is not a chip")));
+            }
+            _ => None,
+        };
+        let h = &mut self.hands[side as usize & 1];
+        let i = i as usize;
+        if i >= h.ids.len() {
+            return Err(ApiError::Other(format!("hand entry {i}: a hand has {} entries", h.ids.len())));
+        }
+        match (f, v) {
+            (HandField::Chip, FieldValue::Ref(_)) => h.ids[i] = chip,
+            (HandField::Damage, FieldValue::U16(x)) => h.damage[i] = x,
+            (HandField::AttackBonus, FieldValue::U16(x)) => h.attack_bonus[i] = x,
+            (HandField::ChargeBonus, FieldValue::U16(x)) => h.charge_bonus[i] = x,
+            (HandField::Turn, FieldValue::U8(x)) => h.turn[i] = x,
+            (HandField::Marks, FieldValue::U8(x)) => h.modifiers[i] = x,
+            (f, v) => unreachable!("{f:?} stored as {v:?}"),
+        }
+        Ok(())
     }
 
     fn fold_hand_chip(&mut self, side: u8, i: u8, whole: bool) {
         self.hands[side as usize & 1].fold_next(i as usize, whole);
-    }
-
-    fn hand_chip(&self, side: u8, i: u8) -> Option<ChipHandle> {
-        self.hands[side as usize & 1].ids.get(i as usize).copied().flatten()
-    }
-
-    fn hand_marks(&self, side: u8, i: u8) -> u8 {
-        self.hands[side as usize & 1].modifiers.get(i as usize).copied().unwrap_or(0)
-    }
-
-    fn add_hand_marks(&mut self, side: u8, i: u8, marks: u8) {
-        if let Some(m) = self.hands[side as usize & 1].modifiers.get_mut(i as usize) {
-            *m |= marks;
-        }
     }
 
     fn linked(&self, side: u8) -> LinkedChip {
@@ -1653,40 +1648,9 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn drop_links(&mut self, o: ObjectRef) -> ApiResult<()> {
-        self.actor_of(o)?;
-        kinds::player::drop_links(self, o);
-        Ok(())
-    }
-
-    fn drop_status_visuals(&mut self, o: ObjectRef) -> ApiResult<()> {
-        let c = self.collision_of_mut(o)?;
-        c.links[crate::collision::link::CONFUSE] = None;
-        c.links[crate::collision::link::BLIND] = None;
-        Ok(())
-    }
-
-    fn drop_chip(&mut self, o: ObjectRef) -> ApiResult<()> {
-        self.actor_of(o)?;
-        self.objects.get_mut(o).chip = None;
-        Ok(())
-    }
-
     fn burn_on_panel(&mut self, o: ObjectRef) -> ApiResult<()> {
         self.collision_of(o)?;
         crate::kinds::common::panel_burn(self, o, false);
-        Ok(())
-    }
-
-    fn drop_alive_count(&mut self, o: ObjectRef) -> ApiResult<()> {
-        self.actor_of(o)?;
-        let side = self.objects.get(o).alliance as usize;
-        self.round.alive[side] = self.round.alive[side].wrapping_sub(1);
-        Ok(())
-    }
-
-    fn drop_barrier(&mut self, o: ObjectRef) -> ApiResult<()> {
-        self.collision_of_mut(o)?.barrier = 0;
         Ok(())
     }
 
@@ -1857,7 +1821,7 @@ impl CoreApi for Battle {
             ObjectField::Identity => ob.identity.map_or(Value::Nil, |h| Value::Def(Registry::Identity, h.0)),
             ObjectField::PreventAnim => i(ob.prevent_anim as i64),
             ObjectField::ChipsHeld => i(ob.chips_held as i64),
-            ObjectField::HasChip => Value::Bool(ob.chip.is_some()),
+            ObjectField::Chip => ob.chip.map_or(Value::Nil, |h| Value::Def(Registry::Chip, h.0)),
             ObjectField::HasCollision => Value::Bool(ob.collision.is_some()),
             ObjectField::Pos => Value::Vec3(ob.pos),
             ObjectField::Vel => Value::Vec3(ob.vel),
@@ -1869,6 +1833,7 @@ impl CoreApi for Battle {
                 crate::object::DragStep::Recover => 2,
             }),
             ObjectField::SlideType => i(ob.slide_type as i64),
+            ObjectField::SlideStep => i((ob.slide_state != kinds::player::slide_state::START) as i64),
             ObjectField::Active
             | ObjectField::Visible
             | ObjectField::RunWhilePaused
@@ -1886,6 +1851,14 @@ impl CoreApi for Battle {
         if f == ObjectField::Action && self.objects.get(o).actor.is_some() {
             return Err(navi_action_byte());
         }
+        // Its chip by definition: a chip, or none.
+        let chip = match (f, v) {
+            (ObjectField::Chip, FieldValue::Ref(Some((Registry::Chip, h)))) => self.chip_from_api("chip", Some(ChipHandle(h)))?,
+            (ObjectField::Chip, FieldValue::Ref(Some((other, _)))) => {
+                return Err(ApiError::Other(format!("chip: a {other} is not a chip")));
+            }
+            _ => None,
+        };
         let ob = self.objects.get_mut(o);
         if let Some(bit) = flag_bit(f) {
             let FieldValue::Bool(on) = v else { unreachable!() };
@@ -1923,6 +1896,7 @@ impl CoreApi for Battle {
             }
             (ObjectField::PreventAnim, FieldValue::U8(x)) => ob.prevent_anim = x,
             (ObjectField::ChipsHeld, FieldValue::U8(x)) => ob.chips_held = x,
+            (ObjectField::Chip, FieldValue::Ref(_)) => ob.chip = chip,
             (ObjectField::Pos, FieldValue::Vec3(p)) => ob.pos = p,
             (ObjectField::Vel, FieldValue::Vec3(p)) => ob.vel = p,
             (ObjectField::Related1, FieldValue::Object(r)) => ob.related[0] = r,
@@ -1932,6 +1906,10 @@ impl CoreApi for Battle {
                 ob.drag_step = [DragStep::Start, DragStep::Slide, DragStep::Recover][i as usize]
             }
             (ObjectField::SlideType, FieldValue::Enum(i)) => ob.slide_type = i as u8,
+            (ObjectField::SlideStep, FieldValue::Enum(i)) => {
+                use kinds::player::slide_state::{SLIDING, START};
+                ob.slide_state = [START, SLIDING][i as usize]
+            }
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -2251,6 +2229,8 @@ impl CoreApi for Battle {
             ActorField::WeaponChip => a.weapon_chip.map_or(Value::Nil, |h| Value::Def(Registry::Chip, h.0)),
             ActorField::NoChargeTimer => i(a.no_charge_timer as i64),
             ActorField::InAutoBattle => Value::Bool(a.in_auto_battle),
+            ActorField::AngerTicks => i(a.anger as i64),
+            ActorField::StunTicks => i(a.stun_ticks as i64),
         })
     }
 
@@ -2322,6 +2302,7 @@ impl CoreApi for Battle {
             (ActorField::ResetLinkedObject, FieldValue::Object(r)) => a.reset_linked_object = r,
             (ActorField::FullSynchroAura, FieldValue::Object(r)) => a.full_synchro_aura = r,
             (ActorField::BufferedMove, FieldValue::U8(x)) => a.buffered_move = x,
+            (ActorField::ChargeLevel, FieldValue::U8(x)) => a.charge_level = x,
             (ActorField::ChargeSource, FieldValue::U8(x)) => a.charge_source = x,
             (ActorField::ChargeCounter, FieldValue::U16(x)) => a.charge_counter = x,
             (ActorField::RapidPresses, FieldValue::U8(x)) => a.rapid_presses = x,
@@ -2341,6 +2322,8 @@ impl CoreApi for Battle {
             (ActorField::WeaponChip, FieldValue::Ref(_)) => a.weapon_chip = weapon_chip,
             (ActorField::NoChargeTimer, FieldValue::U16(x)) => a.no_charge_timer = x,
             (ActorField::InAutoBattle, FieldValue::Bool(x)) => a.in_auto_battle = x,
+            (ActorField::AngerTicks, FieldValue::U16(x)) => a.anger = x,
+            (ActorField::StunTicks, FieldValue::U32(x)) => a.stun_ticks = x,
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())
@@ -2484,21 +2467,9 @@ impl CoreApi for Battle {
         }
     }
 
-    fn clear_invulnerable(&mut self, o: ObjectRef) -> ApiResult<()> {
-        self.actor_of(o)?;
-        kinds::player::clear_invulnerable(self, o);
-        Ok(())
-    }
-
     fn face_default(&mut self, o: ObjectRef) -> ApiResult<()> {
         self.actor_of(o)?;
         kinds::player::actions::transform::face_default(self, o);
-        Ok(())
-    }
-
-    fn reset_charge(&mut self, o: ObjectRef) -> ApiResult<()> {
-        self.actor_of(o)?;
-        kinds::player::reset_charge(self, o);
         Ok(())
     }
 
@@ -2553,27 +2524,6 @@ impl CoreApi for Battle {
         kinds::player::form::put_on_form_parts(self, o, form);
     }
 
-    fn load_form_sprite(&mut self, o: ObjectRef, form: nettai_content_api::FormHandle) -> ApiResult<()> {
-        self.actor_of(o)?;
-        let side = self.objects.get(o).alliance as usize & 1;
-        let sprite = self.content.navi_sprite(self.stats[side].navi, form);
-        let flip = self.objects.get(o).alliance ^ self.objects.get(o).flip;
-        let s = self.objects.sprite_mut(o);
-        s.load(sprite);
-        // sprite_hasShadow, sprite_setFlip(object_getFlip()), white.
-        s.look.shadow = crate::object::sprite::Shadow::Ground;
-        s.look.set_flip(flip);
-        s.look.white = true;
-        let ob = self.objects.get_mut(o);
-        ob.flags &= !crate::object::flags::NO_SPRITE_UPDATE;
-        // object_setAnimation(0), then the sprite restarts it directly.
-        ob.anim = 0;
-        ob.anim_loaded = 0xFF;
-        let content = self.content.clone();
-        self.objects.sprite_mut(o).set_animation(0, &content);
-        Ok(())
-    }
-
     fn strip_body_programs(&mut self, o: ObjectRef, undershirt: bool) -> ApiResult<bool> {
         self.actor_of(o)?;
         Ok(kinds::player::strip_body_programs(self, o, undershirt))
@@ -2597,12 +2547,6 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn end_anger(&mut self, o: ObjectRef) -> ApiResult<()> {
-        self.actor_of(o)?;
-        kinds::player::end_anger(self, o);
-        Ok(())
-    }
-
     fn form_change_target(&self, o: ObjectRef) -> Option<nettai_content_api::FormHandle> {
         kinds::player::form_change_target(self, o)
     }
@@ -2612,12 +2556,6 @@ impl CoreApi for Battle {
         let side = self.objects.get(o).alliance as usize & 1;
         self.turn_transforms[side].form = Some(form);
         self.actor_of_mut(o)?.requests |= crate::actor::request::FORM_CHANGE;
-        Ok(())
-    }
-
-    fn stop_moving(&mut self, o: ObjectRef) -> ApiResult<()> {
-        self.actor_of(o)?;
-        kinds::player::actions::transform::stop_moving(self, o);
         Ok(())
     }
 
@@ -2772,63 +2710,12 @@ impl CoreApi for Battle {
         self.objects.get_mut(o).flags &= !flags::NO_SPRITE_UPDATE;
     }
 
-    fn sprite_load_look_of(&mut self, o: ObjectRef, owner: ObjectRef) {
-        let identity = self.content.identity(self.objects.get(owner).identity);
-        let id = if identity.record.actor_type == crate::actor::ActorType::Player {
-            kinds::player::stats_sprite(self, self.objects.get(owner).alliance)
-        } else {
-            identity
-                .look
-                .and_then(|l| l.sprite)
-                .unwrap_or_else(|| panic!("identity {:?} has no look (sub_800F26C)", identity.key))
-        };
-        self.sprite_load(o, id);
-    }
-
-    fn sprite_load_like(&mut self, o: ObjectRef, like: ObjectRef) -> ApiResult<()> {
-        let identity = self.content.identity(self.objects.get(like).identity);
-        let id = if identity.record.actor_type == crate::actor::ActorType::Player {
-            // sub_800FC9E(navi stat 0x29, form stat 0x2C): MegaMan's form's
-            // sprite, or the link navi's.
-            let side = self.objects.get(like).alliance as usize & 1;
-            let s = &self.stats[side];
-            self.content.navi_sprite(s.navi, s.form)
-        } else {
-            // sub_800F26C: a field object's look by its identity (NameID
-            // 0xCD and up); other identities' sprites (viruses, bosses)
-            // aren't in the content: no netbattle object stands in for one.
-            identity.look.and_then(|l| l.sprite).ok_or_else(|| {
-                ApiError::Other(format!(
-                    "sub_800F26C: identity {:?} has no sprite in the content (a netbattle's stand-in copies a player)",
-                    identity.key
-                ))
-            })?
-        };
-        self.sprite_load(o, id);
-        Ok(())
-    }
-
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8) {
         self.objects.sprite_mut(o).set_animation(anim, &self.content);
     }
 
     fn sprite_step(&mut self, o: ObjectRef) {
         self.objects.sprite_mut(o).update(&self.content);
-    }
-
-    fn name_look_is(&self, o: ObjectRef, sprite: SpriteId) -> ApiResult<bool> {
-        use crate::content::{IdentityClass, IdentityOwner};
-        let identity = self.content.identity(self.objects.get(o).identity);
-        // A field object's look (none: no sprite), or a navi's or form's
-        // own sprite.
-        let look = match (identity.class, identity.owner) {
-            (IdentityClass::FieldObject, _) => identity.look.map(|l| l.sprite),
-            (_, Some(IdentityOwner::Navi(n))) => Some(Some(self.content.navi(n).sprite)),
-            (_, Some(IdentityOwner::Form(f))) => Some(Some(self.content.form(f).sprite)),
-            _ => None,
-        };
-        look.map(|l| l == Some(sprite))
-            .ok_or_else(|| ApiError::Other(format!("identity {:?} has no look in the content (sub_800F26C)", identity.key)))
     }
 
     fn sprite_part_offset(&self, o: ObjectRef, n: u8) -> (i32, i32) {
@@ -2965,6 +2852,8 @@ impl CoreApi for Battle {
             CollisionField::Region => return def(Registry::Region, c.region.map(|h| h.0)),
             CollisionField::HitEffect => return def(Registry::Spark, c.hit_effect.map(|h| h.0)),
             CollisionField::HitsWhileDimmed => return Ok(Value::Bool(c.self_flags & DIMMED_HITTER != 0)),
+            CollisionField::ConfusionVisual => return Ok(c.links[crate::collision::link::CONFUSE].into()),
+            CollisionField::BlindnessVisual => return Ok(c.links[crate::collision::link::BLIND].into()),
             _ => {}
         }
         Ok(Value::Int(match f {
@@ -2972,7 +2861,9 @@ impl CoreApi for Battle {
             | CollisionField::HitEffect
             | CollisionField::StatusBase
             | CollisionField::StatusFinal
-            | CollisionField::HitsWhileDimmed => unreachable!("handled above"),
+            | CollisionField::HitsWhileDimmed
+            | CollisionField::ConfusionVisual
+            | CollisionField::BlindnessVisual => unreachable!("handled above"),
             CollisionField::PanelX => c.panel.x as i64,
             CollisionField::PanelY => c.panel.y as i64,
             CollisionField::Element => c.element as i64,
@@ -3044,9 +2935,30 @@ impl CoreApi for Battle {
             return Ok(());
         }
         let c = self.collision_of_mut(o)?;
-        if let (CollisionField::HitsWhileDimmed, FieldValue::Bool(on)) = (f, v) {
-            c.self_flags = if on { c.self_flags | DIMMED_HITTER } else { c.self_flags & !DIMMED_HITTER };
-            return Ok(());
+        match (f, v) {
+            (CollisionField::HitsWhileDimmed, FieldValue::Bool(on)) => {
+                c.self_flags = if on { c.self_flags | DIMMED_HITTER } else { c.self_flags & !DIMMED_HITTER };
+                return Ok(());
+            }
+            (CollisionField::ConfusionVisual, FieldValue::Object(r)) => {
+                c.links[crate::collision::link::CONFUSE] = r;
+                return Ok(());
+            }
+            (CollisionField::BlindnessVisual, FieldValue::Object(r)) => {
+                c.links[crate::collision::link::BLIND] = r;
+                return Ok(());
+            }
+            // BARRIER_STATES: none, or popped (as wind leaves it); a barrier
+            // goes up with its spec.
+            (CollisionField::Barrier, FieldValue::Enum(i)) => {
+                c.barrier = match i {
+                    0 => 0,
+                    2 => 0x10,
+                    _ => return Err(ApiError::Other("barrier: a barrier goes up with raise_barrier".into())),
+                };
+                return Ok(());
+            }
+            _ => {}
         }
         let x = int(v);
         match f {
@@ -3054,7 +2966,10 @@ impl CoreApi for Battle {
             | CollisionField::HitEffect
             | CollisionField::StatusBase
             | CollisionField::StatusFinal
-            | CollisionField::HitsWhileDimmed => unreachable!("handled above"),
+            | CollisionField::HitsWhileDimmed
+            | CollisionField::ConfusionVisual
+            | CollisionField::BlindnessVisual
+            | CollisionField::Barrier => unreachable!("handled above"),
             CollisionField::PanelX => c.panel.x = x as u8,
             CollisionField::PanelY => c.panel.y = x as u8,
             CollisionField::Element => c.element = x as u8,
@@ -3072,7 +2987,6 @@ impl CoreApi for Battle {
             | CollisionField::DamageElements
             | CollisionField::HitModFinal
             | CollisionField::Direction
-            | CollisionField::Barrier
             | CollisionField::BarrierHp
             | CollisionField::BarrierPopHitMod
             | CollisionField::Bubble
@@ -3230,30 +3144,12 @@ impl CoreApi for Battle {
         crate::dimming::show_actor(self, o);
     }
 
-    fn clear_bugs(&mut self, side: u8) {
-        let b = &mut self.stats[side as usize & 1].bugs;
-        b.processing = 0;
-        b.panel_trail_level = 0;
-        b.buster_blanks = 0;
-        b.hit_status = 0;
-        b.custom_damage = 0;
-        b.emotion = 0;
-        b.custom_drain = 0;
-        b.hp_drain = 0;
-        b.battle_start = 0;
-        b.hand_shrink_turn = 0;
-    }
-
     fn clear_emotion_window_glitch(&mut self) {
         Battle::clear_emotion_window_glitch(self);
     }
 
     fn show_opponent_chip_icons(&mut self, side: u8) {
         self.chip_hud[side as usize & 1].opponent = true;
-    }
-
-    fn navi_left(&mut self, controller: ObjectRef) {
-        kinds::navi_left(self, controller);
     }
 
     fn navi_warp(&mut self, user: ObjectRef, out: bool) {
@@ -3395,20 +3291,6 @@ impl CoreApi for Battle {
         kinds::obstacle::absorb_all(self, absorber);
     }
 
-    fn obstacle_swallowable(&self, o: ObjectRef) -> bool {
-        let ob = self.objects.get(o);
-        // The original tests the NameID word, whose high half is an
-        // actor's next chip (0xFFFF for none) and 0 for anything else: an
-        // actor's word is a field object's only with chip 0 next.
-        let plain = ob.actor.is_none() || (ob.chip.is_some() && ob.chip == self.zeroed_chip());
-        let identity = self.content.identity(ob.identity);
-        plain && identity.class == crate::content::IdentityClass::FieldObject && identity.scrap
-    }
-
-    fn obstacle_throwable(&self, o: ObjectRef) -> bool {
-        self.content.identity(self.objects.get(o).identity).throwable
-    }
-
     fn obstacle_throw(&mut self, o: ObjectRef, side: u8, x: u8, y: u8, shake: u8, damage: u32) {
         kinds::obstacle::request_throw(self, o, side, x, y, shake, damage);
     }
@@ -3438,63 +3320,6 @@ impl CoreApi for Battle {
         self.objects.loop_register()
     }
 
-    fn wear_navi_image(&mut self, o: ObjectRef, user: ObjectRef, megaman: nettai_content_api::NaviHandle) -> ApiResult<bool> {
-        // The user's identity when it is MegaMan's or one of his forms'
-        // (the original's NameID 0x1A0, or past the link navis'), else
-        // MegaMan's.
-        let base = self.content.base_form_for(megaman);
-        let megaman_identity = self.content.navi(megaman).identity;
-        let user_name = self.objects.get(user).identity;
-        let own = self.content.identity(user_name).changes_form;
-        let name = if own { user_name } else { megaman_identity };
-        let sprite = if !own {
-            self.content.navi_sprite(megaman, base)
-        } else if self.content.navi_record(name).actor_type == crate::actor::ActorType::Player {
-            kinds::player::stats_sprite(self, self.objects.get(user).alliance)
-        } else {
-            return Err(ApiError::Other(format!(
-                "identity {:?} is no player's: its sprite would be sub_800F26C's (enemy_getStruct1)",
-                self.content.identity(name).key
-            )));
-        };
-        let side = self.objects.get(o).alliance;
-        // byte_80203EA covers the base form and the Crosses; the bytes
-        // after it (the Beast forms') are 0: the form's `palette`.
-        let palette = self.content.form(self.stats[side as usize].form).palette;
-        self.sprite_load(o, sprite);
-        let obj = self.objects.get_mut(o);
-        obj.identity = name;
-        obj.anim = 0;
-        obj.anim_loaded = 0xFF;
-        let look = &mut self.objects.sprite_mut(o).look;
-        look.shadow = sprite::Shadow::Ground;
-        look.set_palette(palette);
-        Ok(own)
-    }
-
-    fn wear_form_image(&mut self, o: ObjectRef, navi: nettai_content_api::NaviHandle, form: nettai_content_api::FormHandle) -> ApiResult<()> {
-        let data = self.content.form(form);
-        // The base form has no identity of its own: it is the navi's.
-        let Some(name) = self.content.form_identity(navi, form) else {
-            return Err(ApiError::Other(format!(
-                "form {:?} has no identity (nor has navi {:?})",
-                self.content.defs.form(form).key,
-                self.content.defs.navi(navi).key
-            )));
-        };
-        let sprite = data.sprite;
-        let palette = data.palette;
-        self.sprite_load(o, sprite);
-        let obj = self.objects.get_mut(o);
-        obj.identity = Some(name);
-        obj.anim = 0;
-        obj.anim_loaded = 0xFF;
-        let look = &mut self.objects.sprite_mut(o).look;
-        look.shadow = sprite::Shadow::Ground;
-        look.set_palette(palette);
-        Ok(())
-    }
-
     fn navi_image_parts(&mut self, o: ObjectRef, on: bool) {
         let identity = self.objects.get(o).identity;
         if on {
@@ -3502,45 +3327,6 @@ impl CoreApi for Battle {
         } else {
             kinds::player::form::navi_death_hook(self, o, identity);
         }
-    }
-
-    fn absorbed_look(&self, o: ObjectRef) -> Option<nettai_content_api::IdentityHandle> {
-        // sub_800F486: the identities DustMan leaves. (An object with no
-        // identity has none to give either; the original's junk would
-        // then look up a virus's sprite, which no field object is.)
-        let identity = self.objects.get(o).identity;
-        identity.filter(|_| self.content.identity(identity).scrap)
-    }
-
-    fn wear_absorbed_look(&mut self, o: ObjectRef, look: nettai_content_api::IdentityHandle) -> ApiResult<bool> {
-        // sub_800F26C: a field object's look (byte_8021220); any other
-        // identity is an actor's (enemy_getStruct1), which no field object
-        // is.
-        let Some(identity) = self.content.defs.identities.get(look.index()) else {
-            return Err(ApiError::Other(format!("no identity has handle {}", look.0)));
-        };
-        let Some(l) = identity.look.filter(|_| identity.class == crate::content::IdentityClass::FieldObject) else {
-            return Err(ApiError::Other(format!("identity {:?} has no absorbed look (enemy_getStruct1's sprite)", identity.key)));
-        };
-        let Some(id) = l.sprite else { return Ok(false) };
-        self.sprite_load(o, id);
-        let alliance = {
-            let obj = self.objects.get_mut(o);
-            obj.set_visible(true);
-            obj.anim = l.anim;
-            obj.anim_loaded = l.anim;
-            obj.alliance
-        };
-        let s = self.objects.sprite_mut(o);
-        s.look.shadow = if l.shadow { sprite::Shadow::Ground } else { sprite::Shadow::WithSprite };
-        s.set_animation(l.anim, &self.content);
-        s.look.set_palette(l.palette);
-        // The time bombs' looks keep their own flip and set a drawing bit
-        // instead (sub_8002EAC: presentation).
-        if !l.keeps_flip {
-            s.look.set_flip(alliance);
-        }
-        Ok(true)
     }
 
     // ---- Field objects (obstacles) -------------------------------------------

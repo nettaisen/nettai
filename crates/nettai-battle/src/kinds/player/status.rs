@@ -662,7 +662,7 @@ fn start_drag(b: &mut Battle, r: ObjectRef) {
 }
 
 /// `slide_state` values: where the slide machine is.
-mod slide_state {
+pub(crate) mod slide_state {
     /// Start a slide (`sub_80166D0`).
     pub const START: u8 = 0;
     /// Sliding toward the destination panel (`sub_8016730`).
