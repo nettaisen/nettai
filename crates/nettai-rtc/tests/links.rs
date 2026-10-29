@@ -637,6 +637,20 @@ fn a_native_link_meets_a_browser() {
     }
 }
 
+/// Two relay-only links in a room of the server `NETTAI_TEST_SIGNAL` names,
+/// one whose welcomes give TURN credentials (the Worker under `wrangler dev`
+/// with its TURN secrets): they connect through its TURN server, on those
+/// credentials as they are, and trade datagrams.
+#[test]
+#[ignore]
+fn a_room_link_relays_through_its_servers_turn() {
+    let Ok(url) = std::env::var("NETTAI_TEST_SIGNAL") else { panic!("NETTAI_TEST_SIGNAL, please") };
+    let (mut sides, _) = room(&url, Config { relay_only: true, ..config() });
+    connected(&mut sides);
+    let got = sides.each_ref().map(|s| s.got.len());
+    run(&mut sides, Duration::from_secs(5), heard_more(got));
+}
+
 /// A UDP socket on loopback posing as a STUN or TURN server: it answers
 /// nothing, and says what came to it.
 struct Listening(UdpSocket);

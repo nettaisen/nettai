@@ -51,10 +51,11 @@
 //   given the China servers instead, and only those: the owner's own STUN
 //   and TURN server there, a coturn (the secrets CHINA_TURN_URLS and
 //   CHINA_TURN_SECRET), with credentials the server makes itself, which
-//   also last TURN_TTL_SECONDS. Without those secrets, Cloudflare's, as any
-//   other client is given. The two players of a room may be given different
-//   servers: each relays through its own, and the two relays reach each
-//   other.
+//   also last TURN_TTL_SECONDS. Their username names the match and the
+//   client's place in it by an opaque tag (`chinaServers`). Without those
+//   secrets, Cloudflare's, as any other client is given. The two players of
+//   a room may be given different servers: each relays through its own, and
+//   the two relays reach each other.
 // - TURN credentials cost the key's owner what is relayed on them, so they
 //   go only to a room with both its places taken (a room one client made
 //   alone is no match, and a socket opened to collect credentials gets
@@ -115,6 +116,11 @@ interface IceServer {
 
 type Role = "host" | "join";
 type Places = Partial<Record<Role, string>>;
+/** A client's place: its room's object ID, and its role there. */
+interface Place {
+	room: string;
+	role: Role;
+}
 type Reason = "not-found" | "full" | "version" | "bad-request" | "busy";
 /** An invite room, or a reconnect room. */
 type Kind = "invite" | "reconnect";
@@ -164,9 +170,10 @@ const CHINA = "CN";
  * (the comment at the top): for a client in `country` China, the China
  * servers when the owner has set them; else Cloudflare's TURN service's,
  * with credentials made for it; or STUN alone. `client` is who the limit
- * counts it against (`clientOf`). Never fails, and never says a secret: a
+ * counts it against (`clientOf`), `place` its room and role (the China
+ * servers' usernames say them). Never fails, and never says a secret: a
  * failure's log is its kind or its HTTP status. */
-async function iceServers(env: Env, client: string, country: string): Promise<IceServer[]> {
+async function iceServers(env: Env, client: string, country: string, place: Place): Promise<IceServer[]> {
 	const china = country === CHINA && env.CHINA_TURN_URLS && env.CHINA_TURN_SECRET ? { urls: env.CHINA_TURN_URLS, secret: env.CHINA_TURN_SECRET } : undefined;
 	if (!china && (!env.CLOUDFLARE_TURN_KEY_ID || !env.CLOUDFLARE_TURN_KEY_API_TOKEN)) {
 		return STUN;
@@ -180,33 +187,50 @@ async function iceServers(env: Env, client: string, country: string): Promise<Ic
 		console.error(`no TURN credentials: ${e instanceof Error ? e.name : "an error"} asking the TURN limit`);
 		return STUN;
 	}
-	return china ? chinaServers(china.urls, china.secret) : cloudflareServers(env.CLOUDFLARE_TURN_KEY_ID!, env.CLOUDFLARE_TURN_KEY_API_TOKEN!);
+	return china ? chinaServers(china.urls, china.secret, place) : cloudflareServers(env.CLOUDFLARE_TURN_KEY_ID!, env.CLOUDFLARE_TURN_KEY_API_TOKEN!);
 }
 
 /** The China servers (`CHINA_TURN_URLS`), all with one username and
  * credential made here by coturn's TURN REST scheme (its `use-auth-secret`),
- * with no call to it: the username is when they expire (Unix seconds,
- * TURN_TTL_SECONDS from now) and nothing more, since a client on the web
- * can't be given a username with a `:` in it (nettai-rtc's `ice_urls`), and
- * the credential is base64(HMAC-SHA1(secret, username)). A `stun:` URL
+ * with no call to it: the username is `EXPIRY:MATCH-ROLE`, EXPIRY when they
+ * expire (Unix seconds, TURN_TTL_SECONDS from now), MATCH the room's tag
+ * (`matchTag`, the same for both players) and ROLE the client's place, and
+ * the credential is base64(HMAC-SHA1(secret, username)). coturn names the
+ * username in its log (its refusals; with `verbose`, every session), and
+ * counts a `user-quota` by what follows the `:`. A `stun:` URL
  * among them needs none, and the clients give it none. Never fails: STUN
  * alone, logged, when the URLs are empty or the credential can't be made. */
-async function chinaServers(urls: string, secret: string): Promise<IceServer[]> {
+async function chinaServers(urls: string, secret: string, place: Place): Promise<IceServer[]> {
 	const list = urls.split(/[\s,]+/).filter((u) => u !== "");
 	if (list.length === 0) {
 		console.error("no TURN credentials: CHINA_TURN_URLS names no server");
 		return STUN;
 	}
 	try {
-		const username = String(Math.floor(Date.now() / 1000) + TURN_TTL_SECONDS);
-		const utf8 = new TextEncoder();
-		const key = await crypto.subtle.importKey("raw", utf8.encode(secret), { name: "HMAC", hash: "SHA-1" }, false, ["sign"]);
-		const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, utf8.encode(username)));
+		const match = await matchTag(secret, place.room);
+		const username = `${Math.floor(Date.now() / 1000) + TURN_TTL_SECONDS}:${match}-${place.role}`;
+		const mac = await hmac("SHA-1", secret, username);
 		return [{ urls: list, username, credential: btoa(String.fromCharCode(...mac)) }];
 	} catch (e) {
 		console.error(`no TURN credentials: ${e instanceof Error ? e.name : "an error"} making the China server's`);
 		return STUN;
 	}
+}
+
+/** A room's tag in the China servers' usernames: the first six bytes of
+ * HMAC-SHA256(secret, its object's ID), in hex. It goes over the wire in
+ * the clear, so it says nothing a client could use (not the room's code,
+ * nor a peer's ID, which takes a place back). */
+async function matchTag(secret: string, room: string): Promise<string> {
+	const mac = await hmac("SHA-256", secret, room);
+	return [...mac.slice(0, 6)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** HMAC(`secret`, `text`) by `hash`, both UTF-8. */
+async function hmac(hash: "SHA-1" | "SHA-256", secret: string, text: string): Promise<Uint8Array> {
+	const utf8 = new TextEncoder();
+	const key = await crypto.subtle.importKey("raw", utf8.encode(secret), { name: "HMAC", hash }, false, ["sign"]);
+	return new Uint8Array(await crypto.subtle.sign("HMAC", key, utf8.encode(text)));
 }
 
 /** Cloudflare's TURN service's STUN and TURN servers, with credentials it
@@ -431,7 +455,13 @@ export class Room extends DurableObject<Env> {
 		// socket (which waited with none, or comes back to it), each by its
 		// own country.
 		const waiting = both ? this.ctx.getWebSockets(other(role)).map((ws) => ws.deserializeAttachment() as Attachment).find((a) => !a.replaced) : undefined;
-		const [ice, theirs] = both ? await Promise.all([iceServers(this.env, client, country), waiting ? iceServers(this.env, client, waiting.country) : undefined]) : [undefined, undefined];
+		const room = this.ctx.id.toString();
+		const [ice, theirs] = both
+			? await Promise.all([
+					iceServers(this.env, client, country, { room, role }),
+					waiting ? iceServers(this.env, client, waiting.country, { room, role: other(role) }) : undefined,
+				])
+			: [undefined, undefined];
 		const [socket, server] = Object.values(new WebSocketPair());
 		// The client's socket from before, if it is still here, goes.
 		for (const old of this.ctx.getWebSockets(role)) {

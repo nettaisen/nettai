@@ -846,9 +846,12 @@ by default, "you don't even need a google default right? direct connect doesn't 
   of a room may be given different servers: each relays through its own, and the relays reach each other. coturn
   has no API to ask for credentials: the Worker makes them itself by coturn's TURN REST scheme (its
   `use-auth-secret`), with the secret it shares with the coturn (`CHINA_TURN_SECRET`, the coturn's
-  `static-auth-secret`). The username is the time they expire, four hours on as Cloudflare's, and nothing more
-  (no `:user` part); the credential is
-  base64(HMAC-SHA1(secret, username)); coturn checks both and refuses them once that time has passed. They go
+  `static-auth-secret`). The username is `EXPIRY:MATCH-ROLE`: the time they expire, four hours on as
+  Cloudflare's; the room's tag, the same for both players (the first six bytes of HMAC-SHA256(secret, the room
+  object's ID), in hex: it goes over the wire in the clear, so it is neither the room's code nor a peer's ID,
+  which takes a place back); and the client's place, `host` or `join`. coturn names it in its log (its refusals;
+  with `verbose`, every session) and counts a `user-quota` by what follows the `:`. The credential is base64(HMAC-SHA1(secret, username)); coturn checks both and
+  refuses them once that time has passed. They go
   with each of the URLs in `CHINA_TURN_URLS` (its `stun:` URL needs none, and the clients give it none). The
   same rules hold as for Cloudflare's: only for a room both players are in, counted against the same limit.
   Without those two secrets, a client in China is given Cloudflare's.
