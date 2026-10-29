@@ -511,7 +511,7 @@ impl Shell {
             return;
         }
         let Some(fit) = self.room_fit(&mut stage.surface) else { return };
-        let shown = stage.picture(fit, self.gl.as_mut());
+        let shown = stage.picture(fit);
         self.place_picture(fit, shown);
     }
 
@@ -523,15 +523,14 @@ impl Shell {
             return;
         }
         let Some(fit) = self.room_fit(surface) else { return };
-        let shown = surface.picture(fit, self.gl.as_mut(), present);
+        let shown = surface.picture(fit, present);
         self.place_picture(fit, shown);
     }
 
     /// A second, small picture over the window's one (the replay viewer's other console): `multiple` times the
-    /// frame in the display's pixels, presented at the window's density as the picture is (`stage::fit`), into
-    /// a texture of its own (`inset_gl`; else an image made anew), when `surface` is out of date or its size
-    /// changed. Its image when there is a new one to show, and its size in the window's logical pixels; none in
-    /// a frame the window doesn't draw.
+    /// frame in the display's pixels, presented at the window's density as the picture is (`stage::fit`), as an
+    /// image of its own, when `surface` is out of date or its size changed. Its image when there is a new one to
+    /// show, and its size in the window's logical pixels; none in a frame the window doesn't draw.
     pub fn show_inset(&mut self, surface: &mut Surface, multiple: u32, present: impl FnOnce(&mut [u32], usize, usize)) -> Option<(Option<slint::Image>, f32, f32)> {
         if !self.drawing {
             return None;
@@ -539,10 +538,7 @@ impl Shell {
         let factor = self.ui().window().scale_factor();
         let (width, height) = ((nettai_render::compose::WIDTH as u32 * multiple) as f32, (nettai_render::compose::HEIGHT as u32 * multiple) as f32);
         let fit = stage::fit(width, height, self.scale.os, self.sharp, self.settings.enhanced);
-        let image = match surface.picture(fit, self.inset_gl.as_mut(), present) {
-            stage::Shown::New(image) => Some(image),
-            stage::Shown::Same | stage::Shown::Written => None,
-        };
+        let image = surface.picture(fit, present);
         Some((image, width / factor, height / factor))
     }
 
@@ -554,7 +550,7 @@ impl Shell {
     }
 
     /// How the picture fits the room the screen's `Picture` has, if there is one; `surface` is shown this frame
-    /// (`stage::Showing`), and is to be presented anew if the window's texture holds another's picture. None
+    /// (`stage::Showing`), and is to be presented anew if the window's picture is another's. None
     /// while a screen leaves: the room is still the leaving one's, and its `Picture` keeps what it showed.
     fn room_fit(&mut self, surface: &mut Surface) -> Option<stage::Fit> {
         let ui = self.ui();
@@ -569,12 +565,12 @@ impl Shell {
     }
 
     /// The picture's image (a new one), its size and its place in its room.
-    fn place_picture(&mut self, fit: stage::Fit, shown: stage::Shown) {
+    fn place_picture(&mut self, fit: stage::Fit, shown: Option<slint::Image>) {
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
         let factor = ui.window().scale_factor();
         let (width, height) = (shell.get_picture_room_width() * factor, shell.get_picture_room_height() * factor);
-        if let stage::Shown::New(image) = shown {
+        if let Some(image) = shown {
             shell.set_picture(image);
         }
         let size = (nettai_render::compose::WIDTH as f32 * fit.scale as f32, nettai_render::compose::HEIGHT as f32 * fit.scale as f32);

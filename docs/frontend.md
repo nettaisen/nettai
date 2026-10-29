@@ -2404,7 +2404,7 @@ such host (a Slint window whose rendering is the loop below: docs/app.md §1),
 nettai-tools another (the command line, with no window: docs/tools.md), and
 `crates/nettai-frontend/examples/embed.rs` a third, with no window at all.
 
-How nettai shows the picture (one OpenGL texture written in place), keeps
+How nettai shows the picture (a new image each picture, on any renderer), keeps
 its clock and measures its input's latency (`NETTAI_PLAY_STATS`,
 `NETTAI_KEY_PROBE`) is docs/app.md's, §1 and §5. What the first desktop host
 learned on the way (nettai-demo, an iced program, retired 2026-10-06):

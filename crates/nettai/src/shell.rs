@@ -11,7 +11,6 @@ use crate::battle::{Battle, Loading};
 use crate::updates::Holding;
 use crate::errors::UserError;
 use crate::games::{Games, Notice, Ready, State};
-use crate::gl::GlPicture;
 use crate::input::{Action, Bindings, KeyPress, Keys, Pad, Scroll, menu_action, scroll_key};
 use crate::nav::{Did, Direction, Key, Nav, Rect};
 use crate::screens::{self, Screen, ScreenId};
@@ -215,14 +214,10 @@ pub struct Shell {
     pad_shown: u16,
     /// The language shown: its code and its rules (capitals, lists), made when it was chosen (`lang::select`).
     pub i18n: Rc<crate::lang::I18n>,
-    /// The window's texture the picture is written into (femtovg's OpenGL); none: a new image each picture.
-    pub gl: Option<GlPicture>,
-    /// A second texture, for a small picture over the window's one (the replay viewer's other console: `Shell::show_inset`).
-    pub inset_gl: Option<GlPicture>,
     pub scale: Scale,
     /// Present the picture at the display's density (`NETTAI_PHYSICAL_PIXELS`).
     pub(crate) sharp: bool,
-    /// Which surface's picture the texture holds, and whether one is shown (docs/app.md §1).
+    /// Which surface's image the picture is, and whether one is shown (docs/app.md §1).
     pub(crate) showing: crate::stage::Showing,
     /// Samples a screen played this frame (`Shell::play_samples`), and the ticks that made them.
     pub(crate) own_samples: Vec<[f32; 2]>,
@@ -986,8 +981,6 @@ impl App {
             touch: Default::default(),
             pad_shown: 0,
             i18n,
-            gl: None,
-            inset_gl: None,
             scale: Scale { os: 1.0, unit: 1.0, ..Scale::default() },
             sharp: std::env::var_os("NETTAI_PHYSICAL_PIXELS").is_some(),
             showing: Default::default(),

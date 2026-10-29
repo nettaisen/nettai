@@ -12,7 +12,7 @@
 
 use nettai_frontend::player::Player;
 use nettai_render::compose::{HEIGHT, WIDTH};
-use slint::{Image, Rgb8Pixel, SharedPixelBuffer};
+use slint::{Image, Rgba8Pixel, SharedPixelBuffer};
 use std::time::Duration;
 use nettai_platform::time::Instant;
 
@@ -106,19 +106,9 @@ impl Times {
     }
 }
 
-/// What [`Stage::picture`] did.
-pub enum Shown {
-    /// Nothing changed.
-    Same,
-    /// The picture was written into the image shown.
-    Written,
-    /// A new image to show.
-    New(Image),
-}
-
 /// A picture on the window: the buffer something presents itself into (a battle's player, a replay's viewer),
-/// how it fits its room, and whether it is out of date. The window has one texture: what it holds is the
-/// surface last presented (`Shell::show_surface`), shown only while some surface is ([`Showing`]).
+/// how it fits its room, and whether it is out of date. The window has one picture: the image of the surface
+/// last presented (`Shell::show_surface`), shown only while some surface is ([`Showing`]).
 pub struct Surface {
     /// Which surface this is, of those made: another one shown after it presents its own picture whether or
     /// not anything changed.
@@ -127,6 +117,11 @@ pub struct Surface {
     pub stale: bool,
     fit: Option<Fit>,
     buffer: Vec<u32>,
+    /// The images' pixels: two, written in turn. The one written last is the image the window shows while the
+    /// other is written, which the window let go of when it drew the last picture, so writing it allocates
+    /// nothing. (Were an image of it still held, Slint copies it first rather than write under it.)
+    pixels: [SharedPixelBuffer<Rgba8Pixel>; 2],
+    turn: usize,
 }
 
 impl Default for Surface {
@@ -138,7 +133,14 @@ impl Default for Surface {
 impl Surface {
     pub fn new() -> Surface {
         static MADE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
-        Surface { id: MADE.fetch_add(1, std::sync::atomic::Ordering::Relaxed), stale: true, fit: None, buffer: Vec::new() }
+        Surface {
+            id: MADE.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
+            stale: true,
+            fit: None,
+            buffer: Vec::new(),
+            pixels: [SharedPixelBuffer::new(0, 0), SharedPixelBuffer::new(0, 0)],
+            turn: 0,
+        }
     }
 
     /// The fit last presented at.
@@ -146,67 +148,61 @@ impl Surface {
         self.fit
     }
 
-    /// Show the picture again from the start (the window's texture holds another surface's).
+    /// Show the picture again from the start (the window's picture is another surface's).
     pub fn refresh(&mut self) {
         self.stale = true;
         self.fit = None;
     }
 
     /// The picture for `fit`, if it changed since the last: `present` draws it into a buffer of the width and
-    /// height it is given, which goes into the window's texture (`gl`: written in place), or else into a new
-    /// image. The image to show, when there is a new one (with a texture, only when it is made anew);
-    /// `Shown::Same` when the picture didn't change.
-    pub fn picture(&mut self, fit: Fit, gl: Option<&mut crate::gl::GlPicture>, present: impl FnOnce(&mut [u32], usize, usize)) -> Shown {
+    /// height it is given, which becomes a new image (an image is what every renderer draws: docs/app.md §1),
+    /// its pixels the next of the two kept. None when the picture didn't change.
+    pub fn picture(&mut self, fit: Fit, present: impl FnOnce(&mut [u32], usize, usize)) -> Option<Image> {
         if self.fit != Some(fit) {
             self.fit = Some(fit);
             self.stale = true;
         }
         if !self.stale {
-            return Shown::Same;
+            return None;
         }
         self.stale = false;
         let (w, h) = (WIDTH * fit.density as usize, HEIGHT * fit.density as usize);
         self.buffer.resize(w * h, 0);
         present(&mut self.buffer, w, h);
-        // (A texture OpenGL refused, now or before: the picture is an image, made anew, and the log says why once.)
-        let written = match gl {
-            Some(gl) if !gl.broken() => match gl.write(&mut self.buffer, w as u32, h as u32) {
-                Ok(image) => Some(image),
-                Err(why) => {
-                    crate::errors::log("drawing the picture as a texture (an image from now on)", &why);
-                    None
-                }
-            },
-            _ => None,
-        };
-        let image = match written {
-            Some(image) => image,
-            None => Some(image_of(&self.buffer, w, h)),
-        };
-        match image {
-            Some(image) => Shown::New(image),
-            None => Shown::Written,
+        let pixels = &mut self.pixels[self.turn];
+        self.turn ^= 1;
+        if (pixels.width(), pixels.height()) != (w as u32, h as u32) {
+            *pixels = SharedPixelBuffer::new(w as u32, h as u32);
         }
+        rgba(&self.buffer, pixels.make_mut_slice());
+        Some(Image::from_rgba8_premultiplied(pixels.clone()))
     }
 }
 
-/// An image of `w` by `h` presented pixels (0x00RRGGBB, as `present` writes them).
+/// An image of `w` by `h` presented pixels (0x00RRGGBB, as `present` writes them), of its own (a replay's
+/// preview, kept).
 pub fn image_of(buffer: &[u32], w: usize, h: usize) -> Image {
-    let mut pixels = SharedPixelBuffer::<Rgb8Pixel>::new(w as u32, h as u32);
-    for (out, &px) in pixels.make_mut_slice().iter_mut().zip(buffer) {
-        *out = Rgb8Pixel { r: (px >> 16) as u8, g: (px >> 8) as u8, b: px as u8 };
-    }
-    Image::from_rgb8(pixels)
+    let mut pixels = SharedPixelBuffer::<Rgba8Pixel>::new(w as u32, h as u32);
+    rgba(buffer, pixels.make_mut_slice());
+    Image::from_rgba8_premultiplied(pixels)
 }
 
-/// The window's one picture, which every `Picture` shows: which surface's picture its texture holds, and whether
+/// Presented pixels (0x00RRGGBB) as opaque RGBA, which every renderer uploads as it is (wgpu has no RGB format,
+/// and OpenGL ES takes RGBA from any driver); opaque, it is the same premultiplied, which Skia keeps.
+fn rgba(buffer: &[u32], out: &mut [Rgba8Pixel]) {
+    for (out, &px) in out.iter_mut().zip(buffer) {
+        *out = Rgba8Pixel { r: (px >> 16) as u8, g: (px >> 8) as u8, b: px as u8, a: 0xFF };
+    }
+}
+
+/// The window's one picture, which every `Picture` shows: which surface's image it is, and whether
 /// it is shown. It is shown only in a frame in which some surface was (a battle, the menu's reel, a replay's
 /// still or its viewer), and not past a change of what the window shows (another screen, a battle ended): a
 /// screen with nothing of its own to present (a replay that can't be played, a still not made yet, a screen
 /// just arrived) shows its `Picture`'s ground, never what another presented last.
 #[derive(Default)]
 pub struct Showing {
-    /// The surface whose picture the texture holds (0: none).
+    /// The surface whose image the picture is (0: none).
     holds: u64,
     /// A surface was shown since the frame began and since what the window shows last changed.
     used: bool,
@@ -220,7 +216,7 @@ impl Showing {
         self.used = false;
     }
 
-    /// `surface` is shown this frame: presented anew where the texture holds another's picture.
+    /// `surface` is shown this frame: presented anew where the picture is another's.
     pub fn show(&mut self, surface: &mut Surface) {
         if self.holds != surface.id {
             self.holds = surface.id;
@@ -311,11 +307,11 @@ impl Stage {
 
     /// The picture for `fit`, if it changed since the last ([`Surface::picture`]), with what it cost noted for
     /// the latency figures.
-    pub fn picture(&mut self, fit: Fit, gl: Option<&mut crate::gl::GlPicture>) -> Shown {
+    pub fn picture(&mut self, fit: Fit) -> Option<Image> {
         let started = Instant::now();
         let player = &mut self.player;
-        let shown = self.surface.picture(fit, gl, |buffer, w, h| player.present(buffer, w, h));
-        if matches!(shown, Shown::Same) {
+        let shown = self.surface.picture(fit, |buffer, w, h| player.present(buffer, w, h));
+        if shown.is_none() {
             return shown;
         }
         self.drawing = Some((Instant::now(), self.seen.take()));
@@ -412,10 +408,37 @@ mod tests {
         assert_eq!(fit(1920.0, 1280.0, 2.0, true, false), Fit { scale: 8, density: 1 });
     }
 
+    /// A surface's pictures are written into two buffers in turn: once the window let go of a picture's image,
+    /// the picture after the next is written into its pixels, nothing allocated; an image still held is never
+    /// written under (Slint copies its pixels first).
+    #[test]
+    fn a_surfaces_pictures_are_written_into_two_buffers_in_turn() {
+        let mut surface = Surface::new();
+        let fit = Fit { scale: 1, density: 1 };
+        let next = |surface: &mut Surface, n: u32| {
+            surface.stale = true;
+            surface.picture(fit, |buffer, _, _| buffer.fill(n)).expect("a stale picture is presented")
+        };
+        let pixels = |image: &Image| image.to_rgba8_premultiplied().expect("an image of pixels");
+        let (first, second) = (next(&mut surface, 1), next(&mut surface, 2));
+        let (at_first, at_second) = (pixels(&first).as_slice().as_ptr(), pixels(&second).as_slice().as_ptr());
+        assert_ne!(at_first, at_second);
+        // The window drew the second: the first is let go, and the third is written into its pixels.
+        drop(first);
+        let third = next(&mut surface, 3);
+        assert_eq!(pixels(&third).as_slice().as_ptr(), at_first, "the first's pixels, nothing allocated");
+        assert_eq!(pixels(&third).as_slice()[0], Rgba8Pixel { r: 0, g: 0, b: 3, a: 0xFF });
+        // The second still held: the fourth is written elsewhere, and the second is as it was.
+        let fourth = next(&mut surface, 4);
+        assert_ne!(pixels(&fourth).as_slice().as_ptr(), at_second);
+        assert_eq!(pixels(&second).as_slice()[0], Rgba8Pixel { r: 0, g: 0, b: 2, a: 0xFF });
+        assert_eq!(pixels(&fourth).as_slice()[0], Rgba8Pixel { r: 0, g: 0, b: 4, a: 0xFF });
+    }
+
     /// The window's picture is shown only in a frame in which some surface was: after the menu's reel, a screen
     /// with nothing of its own (Replays with a replay that can't be played selected) shows none of the reel. A
     /// surface shown after another's is presented anew; one shown again after frames with none isn't (the
-    /// texture still holds its own). A change of what the window shows (another screen, a battle ended) takes the
+    /// picture is still its own). A change of what the window shows (another screen, a battle ended) takes the
     /// picture away in the frame it comes, whatever was shown before it in that frame. The UI is told only of a
     /// change.
     #[test]
@@ -439,13 +462,13 @@ mod tests {
             showing.reset();
             assert_eq!(showing.tell(), None);
         }
-        // Another is selected and its still comes: presented anew (the texture held the reel's), and shown.
+        // Another is selected and its still comes: presented anew (the picture was the reel's), and shown.
         showing.reset();
         showing.show(&mut still);
         assert!(still.stale);
         presented(&mut still);
         assert_eq!(showing.tell(), Some(true));
-        // A frame without it, then it again: shown again as it is, the texture still its own.
+        // A frame without it, then it again: shown again as it is, the picture still its own.
         showing.reset();
         assert_eq!(showing.tell(), Some(false));
         showing.reset();

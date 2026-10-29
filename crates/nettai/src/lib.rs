@@ -18,7 +18,6 @@ mod builds;
 mod contents;
 mod errors;
 mod games;
-mod gl;
 mod input;
 mod lang;
 mod look;
@@ -82,8 +81,9 @@ pub fn run() -> Result<(), slint::PlatformError> {
         eprintln!("nettai: this build has no screenshot pass (NETTAI_TOUR): build it with `--features tour`");
         std::process::exit(2);
     }
-    // (The clock needs the renderer that tells when it draws: femtovg.)
-    let mut backend = slint::BackendSelector::new().backend_name("winit".into()).renderer_name("femtovg".into());
+    // (The renderer is whichever the build has: the clock needs one that tells when it draws, as every GPU
+    // renderer does, femtovg's and Skia's; Slint's software renderer doesn't, and the window says so below.)
+    let mut backend = slint::BackendSelector::new().backend_name("winit".into());
     if tour.is_some() {
         // (The screenshot pass's window doesn't take the keyboard.)
         backend = backend.with_winit_window_attributes_hook(|a| a.with_active(false));
@@ -117,22 +117,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
     // The clock: before each frame is drawn, the app's frame; after it, the next frame asked for.
     let (weak, state) = (ui.as_weak(), app.clone());
     ui.window()
-        .set_rendering_notifier(move |s, _api| match s {
-            // The window's OpenGL: the picture's texture is made in it.
-            #[cfg(not(target_arch = "wasm32"))]
-            RenderingState::RenderingSetup => {
-                if let slint::GraphicsAPI::NativeOpenGL { get_proc_address } = _api
-                    && std::env::var_os("NETTAI_NO_TEXTURE").is_none()
-                {
-                    let shell = &mut state.borrow_mut().shell;
-                    shell.gl = Some(gl::GlPicture::new(get_proc_address));
-                    shell.inset_gl = Some(gl::GlPicture::new(get_proc_address));
-                }
-            }
-            RenderingState::RenderingTeardown => {
-                let shell = &mut state.borrow_mut().shell;
-                (shell.gl, shell.inset_gl) = (None, None);
-            }
+        .set_rendering_notifier(move |s, _| match s {
             // (The app is busy only while one of the system's dialogs is up, which a screen opened and which
             // runs the window's loop itself: those frames are drawn as the last was.)
             RenderingState::BeforeRendering => {

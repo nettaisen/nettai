@@ -53,7 +53,6 @@ variables are for development:
 | `NETTAI_WINDOW_PROBE=<minimize\|hide>:<after>:<for>` | Minimizes or hides the window `after` seconds from the start, for `for` seconds (§1, "The clock when the window isn't drawn"). |
 | `NETTAI_NO_TIMER_CLOCK` | Leaves the timer's clock out, to see what the window's frames do alone. |
 | `NETTAI_PHYSICAL_PIXELS` | Presents the picture at the display's density. |
-| `NETTAI_NO_TEXTURE` | Shows the picture as a new image each time, not in the texture (§1). |
 | `NETTAI_CATALOG=<url>` | The catalog of games the content is downloaded by (§20), instead of `https://nettai.n1gp.net/catalog.json`: a site of indexes and bundles served from elsewhere, to test with. |
 | `NETTAI_AI_WEIGHTS=<file>` | In a build with the `ai` feature, the practice dummy that fights plays these weights (a `nettai_ai.export` file) instead of downloading the nettai-ai repository's ("The dummy that fights"). |
 | `NETTAI_TOUR=<folder>` | The screenshot pass (§13); `NETTAI_TOUR_MOTION=1` its motion probe; `NETTAI_TOUR_ONLY=replays` one screen's steps alone. A build with the `tour` feature's alone (`--features tour`): a player's has none of it. |
@@ -89,7 +88,7 @@ and the clock is the drawing: a battle in one stood still for as long, and a lin
 which the other player sees as a stalled peer. So a timer (16 ms, `main.rs`) runs the app's frame itself
 (`App::idle`) when the window hasn't drawn one for 50 ms and something must go on: a battle, the cards before
 one, or a screen's link (`Shell::stay_awake`). Such a frame is the whole frame but its picture (`Shell::show`
-presents nothing: there is no frame to show it in, and the window's OpenGL isn't the thread's), so the battle
+presents nothing: there is no frame to show it in), so the battle
 ticks by the clock, the sound plays, and `Screen::frame` and `Screen::frame_end` run, which is where a link is
 fed and polled. Each asks the window for a redraw, so the window's own frames take over again when it shows.
 While the window draws, the timer does nothing.
@@ -112,29 +111,35 @@ ms against 10.6, measured back to back). A link's polling rides the same frames,
 apps since (§4, "The window away under a link"). Not tested: the app's own window moved to another desktop
 (nothing moves one without the user), and other systems.
 
-Slint on Apple's systems draws its frames from a display link with no window event before them. Its Skia renderer
-on Metal never calls `BeforeRendering`, so the clock needs femtovg, on OpenGL here and WebGL on the web; the app
-asks for it by name and is built with no other renderer (§14).
+Slint on Apple's systems draws its frames from a display link with no window event before them, so the clock is
+the rendering notifier: it needs a renderer that calls `BeforeRendering` and `AfterRendering`. In Slint 1.18
+every GPU renderer does: femtovg on OpenGL (WebGL on the web), femtovg on wgpu, and Skia, which draws through
+wgpu (Metal, Direct3D 12, Vulkan) and calls them there (read in its source; not run here). Slint's software
+renderer doesn't. The app names no renderer and nothing of one: the build's features choose it, femtovg alone
+today (§14). (Until 2026-10-29 the app asked for femtovg by name: the Skia it was written against drew on Metal
+directly and never called `BeforeRendering`, and the picture was an OpenGL texture of the app's own.)
 
-**The picture is one texture, written in place** (`gl.rs`). When femtovg's `RenderingSetup` hands over its OpenGL,
-the app makes one texture there, the picture's size, and shows it as a borrowed texture
-(`BorrowedOpenGLTextureBuilder`), set as the UI's `Shell.picture` once. Each new picture is written into it with
-`glTexSubImage2D`, and nothing is allocated for it:
+**The picture is a new image each time** (`Surface::picture`). Each new picture's buffer (0x00RRGGBB) is written
+as opaque RGBA into a `SharedPixelBuffer`, whose image is set as the UI's `Shell.picture`, which the renderer
+uploads as it draws it. RGBA is the format every renderer takes as it is: wgpu has no three-byte format, OpenGL ES
+takes RGBA from any driver, and an opaque image is the same premultiplied, which Skia keeps. A surface keeps two
+such buffers and writes them in turn: the one written last is the image shown while the other is written, and the
+window let go of that one when it drew the last picture, so nothing is allocated or cleared for a picture (an image
+still held, Slint copies first rather than write under it; `stage::tests::a_surfaces_pictures_are_written_into_two_buffers_in_turn`).
+It is one way on every renderer, the desktop's, the web's and a phone's. Until 2026-10-29 the desktop wrote each
+picture into one OpenGL texture of its own, in place (`gl.rs`: `glTexSubImage2D` into a
+`BorrowedOpenGLTextureBuilder` texture). Measured against it in a release build, a tick's picture reaches the
+frame drawn about 1 ms later, and the window still draws every frame (§5, "One way for every renderer"). The first
+prototype's lag (§5) had a new image each picture among its causes, measured in a dev build, with an RGB image
+allocated each time and its sound queued 200 ms deep.
 
-- The presented buffer goes as it is. Its 0x00RRGGBB pixels are B, G, R and an unused byte in memory, which
-  OpenGL takes as BGRA, so only the unused byte is made opaque.
-- The texture is made again only when the picture's size changes.
-
-Without that OpenGL (`NETTAI_NO_TEXTURE`, the web), each picture is a new `SharedPixelBuffer` image. That was the
-first prototype's only way, and it was the lag the user saw (§5).
-
-There is one texture and it holds one picture: the battle's, the main menu's reel's, a replay's viewer's, or the
-still of the replay selected in the list. Each
-is a `Surface` (`stage.rs`: the buffer something presents itself into, how it fits, whether it is out of date),
-and the one last shown is the one in the texture; another shown after it presents its own picture anew.
+There is one picture: the battle's, the main menu's reel's, a replay's viewer's, or the still of the replay
+selected in the list. Each is a `Surface` (`stage.rs`: the buffer something presents itself into, how it fits,
+whether it is out of date), and the one last shown is the one in the picture; another shown after it presents
+its own picture anew.
 
 **The picture is shown only in a frame in which something was shown in it** (`stage::Showing`: the UI's
-`Shell.picture-shown`, which every `Picture` follows). The texture keeps what was presented last, and every
+`Shell.picture-shown`, which every `Picture` follows). The picture keeps what was presented last, and every
 `Picture` would show it: a screen with nothing of its own to present showed whatever had been there, at its
 size and place. The user saw it ("if a replay rendering errors it ends up showing the demo video below"): Replays
 with a replay that can't be played selected, come from the main menu, had the menu's reel in its box, spilling
@@ -457,7 +462,7 @@ again, and so that the UI can be built without optimization (§14).
     crates/nettai/src/main.rs             the window, its clock, its events
                       shell.rs            `Shell` (what a screen is handed) and `App` (who carries what happens)
                       nav.rs input.rs     the focus; the keys and the pads
-                      battle.rs stage.rs gl.rs sound.rs games.rs      the battle's host (§1)
+                      battle.rs stage.rs sound.rs games.rs            the battle's host (§1)
                       awake.rs                                          the app's time kept (§1)
                       settings.rs lang.rs paths.rs errors.rs tour.rs  §9, §3, §12, §13
                       tour/<name>.rs                                    a screen's steps of the screenshot pass
@@ -1207,6 +1212,29 @@ Under the menu the battle now costs what it costs running: a picture a tick, and
 drawn over it (the frame is drawn 0.8 ms after its picture, against 0.3 with nothing over it). The keys go to the
 menu, so no press is timed then.
 
+**One way for every renderer** (2026-10-29, this Mac, 120 Hz display, a 1280x800-point window: a 10x picture
+presented at 5x, 1200x800 pixels; release builds; `NETTAI_PRACTICE=exe6` with both variables, enhanced graphics,
+sound at 0; three runs back to back, each six 2-second windows after its first, load average 25 to 30). The
+picture as an OpenGL texture written in place (the app before), as a new RGB image allocated each picture (the
+app before with `NETTAI_NO_TEXTURE`, as the web had it), and as RGBA images in two buffers written in turn (now,
+§1):
+
+| nettai, `release` | OpenGL texture | RGB image, allocated | RGBA image, two buffers |
+|---|---|---|---|
+| frames a second | 118.0 to 118.5 | 117.0 to 118.5 | 117.8 to 119.0 |
+| frame time p95 / p99 | 8.41 to 8.44 / 12.71 to 14.57 ms | 8.86 to 8.92 / 11.39 to 14.65 ms | 8.73 to 8.81 / 10.66 to 15.95 ms |
+| long frames in 2 s | 3 to 4 | 2 to 4 | 1 to 4 |
+| a picture, then to the frame drawn | 4.29 to 4.35 ms, then 0.51 to 0.54 ms | 3.91 to 4.00 ms, then 2.83 to 2.97 ms | 3.30 to 3.36 ms, then 2.38 to 2.45 ms |
+| key to its picture drawn (the windows' means) | 10.6 to 16.0 ms (13.1) | 8.9 to 14.2 ms (11.6) | 9.0 to 14.1 ms (11.9) |
+| a key's tick to its picture drawn | 4.8 ms | 6.9 ms | 5.8 ms |
+
+The image costs the renderer about 1.9 ms more a picture (a texture made and filled as it draws), and presenting
+it costs 1 ms less (no texture written, nothing allocated or cleared): about 1 ms more from a tick to its picture
+drawn, and the window still draws every frame. An earlier run of the same three ways (load not noted) had an RGBA
+image allocated each picture at 3.95 to 4.07 ms, then 2.23 to 2.38 ms, against the texture's 4.27 to 4.40 and 0.43
+to 0.46: writing two buffers in turn took 0.65 ms off presenting. The key-to-picture means are mostly the wait for
+the next tick (8.4 ms on average). The dev profile wasn't measured.
+
 ## 6. The web
 
 The app runs in a browser (Chromium: the folder dialog is `showDirectoryPicker`): crates/nettai-web is the module
@@ -1283,9 +1311,6 @@ isolated (COOP and COEP), which a page with threads must be.
 - **The page**: the app fills it and follows its size; a preload screen (the app's loading screen's sun,
   wordmark and bar, in its places) shows the download (against build.sh's sizes.json) and the kept files' loading,
   and fades as the app draws.
-- **Not yet:** the picture's texture (the battle's picture is drawn as an image, not into WebGL directly: Slint
-  1.18 borrows no texture on wasm, its femtovg renderer builds that only off it, so a texture would need Slint
-  changed).
 - **Text typed.** winit gives the canvas no input method, so a field being edited has an HTML `<input>` laid over
   it (`nettai_platform::text_entry`), in its place, in the system's face: it takes the keys, the input method's
   composing and candidates, the caret and the selection; its changes go to the app as the field's own would, and
@@ -1304,11 +1329,13 @@ isolated (COOP and COEP), which a page with threads must be.
 Not built. What it would take:
 
 - **Slint:**
-  - Android is supported (`backend-android-activity-06`, built with `cargo apk` or xbuild and the NDK).
+  - Android is supported (`backend-android-activity-06`, built with `cargo apk` or xbuild and the NDK). It
+    isn't winit there, so the app's winit hooks (`on_winit_window_event`: the keys, the on-screen pad's
+    fingers, the input method) need an Android way of their own.
   - iOS is supported through winit (an Xcode project around the static library, as Slint's iOS template has it).
-  - The femtovg renderer runs on Android (GLES), and the clock carries over. iOS renders with Skia on Metal,
-    which doesn't call the rendering notifier (§1): the clock would move to a display link of the app's own
-    or a timer.
+  - The renderer: femtovg on GLES on Android; on iOS, where Slint has no OpenGL, Skia or femtovg on wgpu
+    (Metal). Each calls the rendering notifier, so the clock carries over, and the picture is an image on every
+    renderer (§1): nothing of the app's drawing changes.
 - **The layout** is there: a window taller than wide is the phone's (§9), with the main menu and Settings laid
   out for it, and the battle's pad drawn under the picture.
 - **The engine:** Luau's C++ builds with the platforms' clang (`cc`); nothing in the engine is
@@ -2742,8 +2769,9 @@ Slint compiler in the build script was 8 s, and linking 2. Three things made it 
    | a `Label`, a `Button` | 7.2, 9.4 KB |
    | an `if` around a rectangle | 15.7 KB |
    | a `ListView` beside its rows; a `ScrollPage` | 17.7, 15.5 KB |
-4. **One renderer and no more features than are used:** femtovg alone (the clock needs it: §1), without the
-   software renderer and the accessibility backend the first app also built. No standard widgets are imported.
+4. **One renderer and no more features than are used:** femtovg alone (any GPU renderer keeps the clock, §1;
+   the app names none, so another is a feature changed), without the software renderer and the accessibility
+   backend the first app also built. No standard widgets are imported.
    The fonts are embedded as files (7.4 MB in all: 3.9 of it M PLUS 1 Code and 1.8 M PLUS 1 at 800, each with
    its Japanese), which costs the linker nothing measurable.
 5. **The build script writes a file only when what it says changed** (the merged catalogs, which Slint has cargo
@@ -3622,8 +3650,8 @@ screen runs the ticks due, presents the picture into the window's texture if one
     on the display's pixels. It is presented from the same tick as the picture (the library's
     `Viewer::present_view`: the replay is played once, the other console drawn from the same battle with its
     own HUD state), whenever the picture is, at the window's density as the picture is (`stage::fit`: in the
-    original mode the frame itself, 115 KB), into a second texture of its own (`Shell::inset_gl`, written in
-    place as the picture's is; `Shell::show_inset`): the window's one picture and its `Showing` are untouched.
+    original mode the frame itself, 115 KB), as an image of its own (`Shell::show_inset`): the window's one
+    picture and its `Showing` are untouched.
     So it keeps step with every seek, step, drag and pause, and costs a second frame drawn per tick shown.
   Neither has a footer hint: with them the pseudo-locale's hints no longer left the status its room.
 - *On a phone* the picture has the window's whole width, as the battle's has (§9): a window 780 of the display's

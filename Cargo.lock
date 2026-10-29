@@ -1708,7 +1708,7 @@ dependencies = [
  "bitflags 2.13.2",
  "bytemuck",
  "fnv",
- "glow 0.18.0",
+ "glow",
  "imgref",
  "itertools 0.15.0",
  "log",
@@ -2137,18 +2137,6 @@ name = "glob"
 version = "0.3.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4eba85ea1d0a966a983acd07deee566e67395d2d96b6fb39e62b5a833f1eb0b"
-
-[[package]]
-name = "glow"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c5e5ea60d70410161c8bf5da3fdfeaa1c72ed2c15f8bbb9d19fe3a4fad085f08"
-dependencies = [
- "js-sys",
- "slotmap",
- "wasm-bindgen",
- "web-sys",
-]
 
 [[package]]
 name = "glow"
@@ -2672,7 +2660,7 @@ dependencies = [
  "cfg-if",
  "const-field-offset",
  "femtovg",
- "glow 0.18.0",
+ "glow",
  "i-slint-common",
  "i-slint-core",
  "i-slint-core-macros",
@@ -2695,7 +2683,7 @@ dependencies = [
  "cfg_aliases",
  "clru",
  "const-field-offset",
- "glow 0.18.0",
+ "glow",
  "glutin",
  "i-slint-common",
  "i-slint-core",
@@ -3698,7 +3686,6 @@ dependencies = [
  "exe5-compat",
  "exe6-compat",
  "gamepad-facade",
- "glow 0.16.0",
  "icu_casemap",
  "icu_list",
  "icu_locale_core",

@@ -20,7 +20,7 @@
 //! ([`Overlays`]): the input display, both players' buttons as the tick shown holds them (Practice's display,
 //! the console shown's player's row over the other's); and the other console's picture, small in the picture's
 //! corner, presented from the same tick as the one shown (the library's `Viewer::present_view`: the replay is
-//! played once) into a texture of its own (`Shell::show_inset`). Each follows the replay wherever it goes,
+//! played once) as an image of its own (`Shell::show_inset`). Each follows the replay wherever it goes,
 //! playing, paused, stepped or sought, since each is drawn from the tick the picture is.
 //!
 //! Its sound is at the levels Settings has (the shell's `battle_levels`: Music is the replay's music too). And
@@ -200,7 +200,7 @@ pub struct Watching {
     /// The match's two sides, where its builds may be shown; and whether they are.
     sides: Option<Box<[Side; 2]>>,
     builds: bool,
-    /// What else is on over the picture; the other console's picture (its own texture); and the buttons the
+    /// What else is on over the picture; the other console's picture (its own image); and the buttons the
     /// input display was last told each side holds.
     overlays: Overlays,
     inset: Surface,
