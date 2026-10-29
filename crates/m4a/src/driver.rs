@@ -15,7 +15,7 @@
 
 use crate::apu::{Apu, DirectSound, FRAME_CYCLES, Reg};
 use crate::bank::*;
-use crate::mixer::{self, CgbChannel, DsChannel, Note, PcmRing, Phase, Status, TrackOrder, TrackRef};
+use crate::mixer::{self, CgbChannel, DsChannel, HqMix, Mixer, Note, PcmRing, Phase, Status, TrackOrder, TrackRef};
 use crate::tables;
 use std::sync::Arc;
 
@@ -412,6 +412,8 @@ pub struct Driver {
     /// The frame the DMA is on in the PCM ring (`pcmDmaCounter`).
     dma_counter: u8,
     ring: PcmRing,
+    /// The HQ mixer's state, when it mixes ([`Mixer::Hq`]).
+    hq: Option<HqMix>,
     /// The slot mixed last, which the FIFOs play next.
     last_slot: Option<usize>,
     /// The memory area MEMACC works on (the game's `gMPlayMemAccArea` and
@@ -467,6 +469,7 @@ impl Driver {
             psg_tick: 0,
             dma_counter: ring.frames as u8,
             ring,
+            hq: None,
             last_slot: None,
             memory: [0; MEMORY_SIZE],
             apu,
@@ -515,6 +518,25 @@ impl Driver {
     /// (songs with a reverb set it when they start).
     pub fn set_reverb(&mut self, level: u8) {
         self.reverb = level & 0x7F;
+    }
+
+    /// How the Direct Sound channels are mixed ([`Mixer::Original`] at first).
+    pub fn mixer(&self) -> Mixer {
+        if self.hq.is_some() { Mixer::Hq } else { Mixer::Original }
+    }
+
+    /// Mix the Direct Sound channels as `mixer` says from the next frame on.
+    /// What plays is the same either way (the channels, where each is in
+    /// its sample, the ring and its timing); only the buffer's bytes differ.
+    pub fn set_mixer(&mut self, mixer: Mixer) {
+        match mixer {
+            Mixer::Original => self.hq = None,
+            Mixer::Hq => {
+                if self.hq.is_none() {
+                    self.hq = Some(HqMix::new(self.ring.samples_per_frame));
+                }
+            }
+        }
     }
 
     /// The PSG envelopes' 15-frame counter: when it reaches 0, every
@@ -781,10 +803,21 @@ impl Driver {
         let c = self.dma_counter as usize;
         let slot = if c >= 2 { frames - (c - 1) } else { 0 };
         let next = if c == 2 { 0 } else { (slot + 1) % frames };
-        mixer::reverb_or_clear(&mut self.ring, slot, next, self.reverb);
         let level = |levels: &[u16], note: &Note| levels.get(note.player as usize).copied().unwrap_or(256);
-        for ch in self.ds.iter_mut() {
-            mixer::mix_ds(ch, &self.bank, self.master_volume, self.div_freq, &mut self.ring, slot, level(&self.levels, &ch.note));
+        match &mut self.hq {
+            None => {
+                mixer::reverb_or_clear(&mut self.ring, slot, next, self.reverb);
+                for ch in self.ds.iter_mut() {
+                    mixer::mix_ds(ch, &self.bank, self.master_volume, self.div_freq, &mut self.ring, slot, level(&self.levels, &ch.note));
+                }
+            }
+            Some(hq) => {
+                hq.reverb_or_clear(&self.ring, slot, next, self.reverb);
+                for ch in self.ds.iter_mut() {
+                    mixer::mix_ds_hq(ch, &self.bank, self.master_volume, self.div_freq, hq, level(&self.levels, &ch.note));
+                }
+                hq.downsample(&mut self.ring, slot);
+            }
         }
         self.apu.set_levels(std::array::from_fn(|i| level(&self.levels, &self.psg[i].note)));
         self.play_hardware();

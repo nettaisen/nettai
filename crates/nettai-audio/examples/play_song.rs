@@ -2,17 +2,18 @@
 //! (`$NETTAI_ROMS`, else the Legacy Collection Steam installed) by its
 //! recipe in the repository's content (`$NETTAI_CONTENT`).
 //!
-//!     play_song <game> <id>[,<id>...] [--every FRAMES] [--seconds S] [--wav OUT.wav]
+//!     play_song <game> <id>[,<id>...] [--every FRAMES] [--seconds S] [--mixer hq|original] [--wav OUT.wav]
 //!
 //! Starts each song-table entry (ids in hex or decimal; several are started
 //! `--every` frames apart, 60 by default) on its music player and plays
-//! for `--seconds` (5 by default), in real time or into a WAV file.
+//! for `--seconds` (5 by default), in real time or into a WAV file, its
+//! Direct Sound mixed by the HQ mixer (the default) or the game's own.
 
 use nettai_audio::{AudioOut, BattleAudio, FPS, SAMPLE_RATE, SoundCue, SoundId, wav};
 use std::time::{Duration, Instant};
 
 fn usage() -> ! {
-    eprintln!("usage: play_song <game> <id>[,<id>...] [--every FRAMES] [--seconds S] [--wav OUT.wav]");
+    eprintln!("usage: play_song <game> <id>[,<id>...] [--every FRAMES] [--seconds S] [--mixer hq|original] [--wav OUT.wav]");
     std::process::exit(2);
 }
 
@@ -37,7 +38,7 @@ fn main() {
         });
     let bank = std::sync::Arc::new(extracted.sound);
     let ids: Vec<u16> = args[1].split(',').map(parse_id).collect();
-    let (mut every, mut seconds, mut out_path) = (60usize, 5.0f64, None);
+    let (mut every, mut seconds, mut out_path, mut mixer) = (60usize, 5.0f64, None, m4a::Mixer::Hq);
     let mut i = 2;
     while i < args.len() {
         let v = args.get(i + 1).unwrap_or_else(|| usage());
@@ -45,6 +46,13 @@ fn main() {
             "--every" => every = v.parse().unwrap_or_else(|_| usage()),
             "--seconds" => seconds = v.parse().unwrap_or_else(|_| usage()),
             "--wav" => out_path = Some(v.clone()),
+            "--mixer" => {
+                mixer = match v.as_str() {
+                    "hq" => m4a::Mixer::Hq,
+                    "original" => m4a::Mixer::Original,
+                    _ => usage(),
+                }
+            }
             _ => usage(),
         }
         i += 2;
@@ -68,6 +76,7 @@ fn main() {
     match out_path {
         Some(path) => {
             let mut audio = BattleAudio::new(bank.clone(), nettai_audio::Songs::numbers(bank.songs.len()));
+            audio.set_mixer(mixer);
             let mut samples = Vec::new();
             for f in 0..frames {
                 audio.handle(&cues(f));
@@ -82,6 +91,7 @@ fn main() {
                 eprintln!("{e}");
                 std::process::exit(1);
             });
+            out.audio_mut().set_mixer(mixer);
             let mut next = Instant::now();
             for f in 0..frames {
                 out.handle(&cues(f));

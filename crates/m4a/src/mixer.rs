@@ -8,6 +8,10 @@
 //!
 //! Both follow the driver's code step for step, in its integer arithmetic,
 //! so the PCM buffer holds the bytes the game's buffer holds.
+//!
+//! [`Mixer::Hq`] mixes the same channels the way ipatix's HQ mixer
+//! (gba-hq-mixer, MIT) does instead: at a higher precision, rounded to the
+//! buffer's eight bits once.
 
 use crate::apu::{Apu, Reg};
 use crate::bank::{Envelope, NO_SWEEP, Sample, SampleId, SoundBank, VoiceKind, WaveId};
@@ -253,12 +257,12 @@ pub(crate) fn reverb_or_clear(ring: &mut PcmRing, slot: usize, next: usize, reve
     }
 }
 
-/// One Direct Sound channel for a frame: its envelope, then its mix into
-/// frame slot `slot` of the ring, at the host's level for its player
-/// (`host`: 256 is as the driver mixes it, to the bit).
-pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq: u32, ring: &mut PcmRing, slot: usize, host: u16) {
+/// A Direct Sound channel's envelope for a frame, and its volumes for the
+/// mix (`mix_right`, `mix_left`): the sample it plays, or none if it is
+/// silent or stops instead.
+fn envelope<'a>(ch: &mut DsChannel, bank: &'a SoundBank, master: u8) -> Option<&'a Sample> {
     if !ch.status.active() {
-        return;
+        return None;
     }
     let sample = &bank.samples[ch.sample.0 as usize];
     let e = ch.note.envelope;
@@ -266,7 +270,7 @@ pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq:
     if ch.status.start {
         if ch.status.stop {
             ch.status = Status::off();
-            return;
+            return None;
         }
         ch.status = Status { phase: Phase::Attack, looping: sample.loop_start.is_some(), ..Status::off() };
         ch.position = 0;
@@ -284,7 +288,7 @@ pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq:
             ch.note.echo_length = was.wrapping_sub(1);
             if was <= 1 {
                 ch.status = Status::off();
-                return;
+                return None;
             }
         } else if ch.status.stop {
             env = (env * e.release as u32) >> 8;
@@ -292,7 +296,7 @@ pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq:
                 env = ch.note.echo_volume as u32;
                 if env == 0 {
                     ch.status = Status::off();
-                    return;
+                    return None;
                 }
                 ch.status.echo = true;
             }
@@ -306,7 +310,7 @@ pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq:
                             env = ch.note.echo_volume as u32;
                             if env == 0 {
                                 ch.status = Status::off();
-                                return;
+                                return None;
                             }
                             ch.status.echo = true;
                         } else {
@@ -329,16 +333,16 @@ pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq:
     let level = (env * (master as u32 + 1)) >> 4;
     ch.mix_right = ((ch.note.right_volume as u32 * level) >> 8) as u8;
     ch.mix_left = ((ch.note.left_volume as u32 * level) >> 8) as u8;
+    Some(sample)
+}
 
-    let n = ring.samples_per_frame;
-    let base = slot * n;
-    let (vr, vl) = ((ch.mix_right as i32 * host as i32) >> 8, (ch.mix_left as i32 * host as i32) >> 8);
-    let mut out = |k: usize, s: i32| {
-        let r = &mut ring.right[base + k];
-        *r = r.wrapping_add(((vr * s) >> 8) as i8);
-        let l = &mut ring.left[base + k];
-        *l = l.wrapping_add(((vl * s) >> 8) as i8);
-    };
+/// A Direct Sound channel's samples for a frame of `n`, from where it is:
+/// `out(k, s, d)` for output sample `k`, with `s` the sample of the data
+/// it is on and `d` the way to the next one it has gone, times 2^23 (the
+/// fraction past `s` times the step to the next: the driver interpolates
+/// linearly between the two; 0 at a fixed frequency). It stops at the end
+/// of data that doesn't loop.
+fn walk(ch: &mut DsChannel, sample: &Sample, div_freq: u32, n: usize, mut out: impl FnMut(usize, i32, i32)) {
     let data = &sample.data;
     let at = |i: u32| -> i32 { data.get(i as usize).copied().unwrap_or(sample.tail) as i32 };
     let loop_start = if ch.status.looping { sample.loop_start } else { None };
@@ -348,7 +352,7 @@ pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq:
         let mut pos = ch.position;
         let mut remaining = ch.remaining;
         for k in 0..n {
-            out(k, at(pos));
+            out(k, at(pos), 0);
             pos += 1;
             remaining -= 1;
             if remaining <= 0 {
@@ -376,7 +380,7 @@ pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq:
     let mut cur = at(pos);
     let mut delta = at(pos + 1) - cur;
     for k in 0..n {
-        out(k, cur + ((frac as i32).wrapping_mul(delta) >> 23));
+        out(k, cur, (frac as i32).wrapping_mul(delta));
         frac = frac.wrapping_add(step);
         let advance = frac >> 23;
         if advance == 0 {
@@ -411,6 +415,121 @@ pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq:
     ch.fraction = frac;
     ch.remaining = remaining;
     ch.position = pos;
+}
+
+/// One Direct Sound channel for a frame: its envelope, then its mix into
+/// frame slot `slot` of the ring, at the host's level for its player
+/// (`host`: 256 is as the driver mixes it, to the bit).
+pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq: u32, ring: &mut PcmRing, slot: usize, host: u16) {
+    let Some(sample) = envelope(ch, bank, master) else {
+        return;
+    };
+    let n = ring.samples_per_frame;
+    let base = slot * n;
+    let (vr, vl) = ((ch.mix_right as i32 * host as i32) >> 8, (ch.mix_left as i32 * host as i32) >> 8);
+    walk(ch, sample, div_freq, n, |k, s, d| {
+        let s = s + (d >> 23);
+        let r = &mut ring.right[base + k];
+        *r = r.wrapping_add(((vr * s) >> 8) as i8);
+        let l = &mut ring.left[base + k];
+        *l = l.wrapping_add(((vl * s) >> 8) as i8);
+    });
+}
+
+// ---- The HQ mixer ----------------------------------------------------------------
+
+/// How the Direct Sound channels go into the PCM buffer.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Mixer {
+    /// The driver's own `SoundMainRAM`: each channel rounded to eight bits
+    /// and added into the buffer in turn, wrapping, and the reverb rounded
+    /// too (the game's buffer, to the byte).
+    #[default]
+    Original,
+    /// ipatix's HQ mixer (gba-hq-mixer, MIT): the reverb and every channel
+    /// added up at a higher precision, the sum clamped and rounded to eight
+    /// bits once, each sample's rounding error carried into the next (noise
+    /// shaping). The rounding noise is then one rounding's, not one per
+    /// channel, and mostly in the treble. The envelopes, the interpolation,
+    /// the volumes, the reverb's level and timing, and where each channel
+    /// is in its sample stay the game's; none of the HQ mixer's 16-bit
+    /// register shortcuts are kept (halved volumes, the reverb level in
+    /// steps of four, both sides packed in one word).
+    Hq,
+}
+
+/// Steps of the HQ mix to one step of the PCM buffer (the HQ mixer's
+/// seven bits below the buffer's eight).
+const HQ_STEP: i32 = 128;
+
+/// The HQ mixer's state: the frame's mix at its precision, and what the
+/// last rounding of each side left over.
+#[derive(Clone, Debug)]
+pub(crate) struct HqMix {
+    /// The frame being mixed, (right, left) a sample, in 1/[`HQ_STEP`]ths
+    /// of the buffer's steps.
+    mix: Vec<[i32; 2]>,
+    /// The part of each side's last sample its rounding dropped
+    /// (0..[`HQ_STEP`]), added to that side's next.
+    carry: [i32; 2],
+}
+
+impl HqMix {
+    pub fn new(samples_per_frame: usize) -> HqMix {
+        HqMix { mix: vec![[0; 2]; samples_per_frame], carry: [0; 2] }
+    }
+
+    /// The frame's start: the ring's reverb at the mix's precision (from the
+    /// slot itself and `next`, as [`reverb_or_clear`] takes it), or silence.
+    pub fn reverb_or_clear(&mut self, ring: &PcmRing, slot: usize, next: usize, reverb: u8) {
+        let n = ring.samples_per_frame;
+        let (cur, nxt) = (slot * n, next * n);
+        for (k, m) in self.mix.iter_mut().enumerate() {
+            let sum = ring.left[cur + k] as i32 + ring.right[cur + k] as i32 + ring.left[nxt + k] as i32 + ring.right[nxt + k] as i32;
+            // The driver's (sum * reverb) >> 9, in the mix's steps.
+            let v = (sum * reverb as i32 * HQ_STEP) >> 9;
+            *m = [v, v];
+        }
+    }
+
+    /// The frame's mix into frame slot `slot` of the ring: each side clamped
+    /// to the buffer's range and rounded down to its steps, the part rounded
+    /// off carried into the side's next sample.
+    pub fn downsample(&mut self, ring: &mut PcmRing, slot: usize) {
+        let base = slot * ring.samples_per_frame;
+        for (k, m) in self.mix.iter().enumerate() {
+            let mut byte = |side: usize| -> i8 {
+                let v = (m[side] + self.carry[side]).clamp(-128 * HQ_STEP, 128 * HQ_STEP - 1);
+                self.carry[side] = v.rem_euclid(HQ_STEP);
+                v.div_euclid(HQ_STEP) as i8
+            };
+            ring.right[base + k] = byte(0);
+            ring.left[base + k] = byte(1);
+        }
+    }
+}
+
+/// One Direct Sound channel for a frame as [`Mixer::Hq`] mixes it: its
+/// envelope (as [`mix_ds`]), then its mix into `hq`'s frame at the HQ
+/// mix's precision: the interpolated sample whole, times the volumes with
+/// nothing rounded off.
+pub(crate) fn mix_ds_hq(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq: u32, hq: &mut HqMix, host: u16) {
+    let Some(sample) = envelope(ch, bank, master) else {
+        return;
+    };
+    // The driver's volume, ((volume * ((envelope * (master + 1)) >> 4)) >> 8)
+    // * host >> 8, with nothing rounded off: full volume is 2^28.
+    let level = ch.note.envelope_volume as i64 * (master as i64 + 1) * host as i64;
+    let (vr, vl) = (level * ch.note.right_volume as i64, level * ch.note.left_volume as i64);
+    // (The sample is times 2^23 and the volume times 2^28; the mix's steps
+    // are 2^7 to the buffer's.)
+    let shift = 23 + 28 - HQ_STEP.trailing_zeros();
+    let mix = &mut hq.mix;
+    walk(ch, sample, div_freq, mix.len(), |k, s, d| {
+        let s = ((s as i64) << 23) + d as i64;
+        mix[k][0] += ((vr * s) >> shift) as i32;
+        mix[k][1] += ((vl * s) >> shift) as i32;
+    });
 }
 
 /// A sample's playback rate for a note (`MidiKeyToFreq` of its wave).
@@ -722,5 +841,42 @@ fn write_registers(ch: &mut CgbChannel, apu: &mut Apu, n: usize, regs: (Reg, Reg
                 apu.write(r4, ch.nrx4 | 0x80);
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn the_hq_rounding_carries_what_it_drops() {
+        let n = 176;
+        let mut ring = PcmRing::new(n);
+        let mut hq = HqMix::new(n);
+        // 2.34 steps of the buffer on the right, -0.7 on the left: rounded
+        // down alone, 2 and -1; with the error carried, each frame's bytes
+        // add up to the level times the frame's length.
+        for m in hq.mix.iter_mut() {
+            *m = [300, -90];
+        }
+        hq.downsample(&mut ring, 0);
+        let sum = |s: &[i8]| s.iter().map(|&b| b as i32).sum::<i32>();
+        assert_eq!(sum(&ring.right[..n]), 300 * n as i32 / HQ_STEP);
+        assert_eq!(sum(&ring.left[..n]), (-90 * n as i32).div_euclid(HQ_STEP));
+        assert!(ring.right[..n].iter().all(|&b| b == 2 || b == 3));
+        assert!(ring.left[..n].iter().all(|&b| b == -1 || b == 0));
+    }
+
+    #[test]
+    fn the_hq_mix_clamps_instead_of_wrapping() {
+        let n = 176;
+        let mut ring = PcmRing::new(n);
+        let mut hq = HqMix::new(n);
+        for m in hq.mix.iter_mut() {
+            *m = [3 * 127 * HQ_STEP, -3 * 128 * HQ_STEP];
+        }
+        hq.downsample(&mut ring, 1);
+        assert!(ring.right[n..2 * n].iter().all(|&b| b == 127));
+        assert!(ring.left[n..2 * n].iter().all(|&b| b == -128));
     }
 }

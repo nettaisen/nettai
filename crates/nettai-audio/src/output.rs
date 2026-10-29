@@ -440,6 +440,10 @@ impl AudioOut {
     pub fn audio(&self) -> &BattleAudio {
         &self.audio
     }
+
+    pub fn audio_mut(&mut self) -> &mut BattleAudio {
+        &mut self.audio
+    }
 }
 
 #[cfg(test)]

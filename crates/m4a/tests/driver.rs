@@ -4,7 +4,7 @@
 
 use m4a::bank::*;
 use m4a::driver::{ChannelInfo, Hardware};
-use m4a::{Driver, PlayerId, SongId};
+use m4a::{Driver, Mixer, PlayerId, SongId};
 use std::sync::Arc;
 
 use Command::*;
@@ -150,6 +150,34 @@ fn the_fifos_play_each_frames_mix_during_the_next() {
     let first = right.iter().position(|&b| b != 0).unwrap();
     assert!(heard.contains(&level(right[first])));
     assert_eq!(dac.len(), 1097);
+}
+
+#[test]
+fn the_hq_mixer_plays_the_same_channels_rounded_once() {
+    let track = |key: u8| {
+        vec![Tempo(75), Volume(40), Voice(SAMPLE), Note { gate: 40, key: Some(key), velocity: Some(127) }, Wait(60), Fine]
+    };
+    let b = bank(vec![(2, 20, vec![track(60), track(64), track(67)])], 4);
+    let (mut original, mut hq) = (Driver::new(b.clone()), Driver::new(b));
+    hq.set_mixer(Mixer::Hq);
+    assert_eq!((original.mixer(), hq.mixer()), (Mixer::Original, Mixer::Hq));
+    original.start(SongId(0));
+    hq.start(SongId(0));
+    let mut sums = (0, 0);
+    for _ in 0..60 {
+        original.step_frame();
+        hq.step_frame();
+        assert_eq!(original.ds_states(), hq.ds_states(), "the same channels, each as far into its sample");
+        let ((or, ol), (hr, hl)) = (original.last_mix().unwrap(), hq.last_mix().unwrap());
+        for (&o, &h) in or.iter().chain(ol).zip(hr.iter().chain(hl)) {
+            // Three notes, each rounded down alone (its volume and its
+            // interpolated sample too), against their sum rounded once.
+            assert!((h as i32 - o as i32).abs() <= 4, "{o} against {h}");
+            sums.0 += o as i32;
+            sums.1 += h as i32;
+        }
+    }
+    assert!(sums.1 > sums.0, "the original's three roundings each lose a little: {sums:?}");
 }
 
 #[test]

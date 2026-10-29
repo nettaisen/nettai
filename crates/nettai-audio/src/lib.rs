@@ -11,7 +11,8 @@
 //!   each cue in songs (EXE6's wrappers: `PlayMusic`'s current-music check,
 //!   the pinch effect's pitch and tempo, ...), as [`Request`]s.
 //! - [`BattleAudio`]: cues in, samples out, a frame at a time, with the
-//!   game's timing (calls queue up and run on the next frame).
+//!   game's timing (calls queue up and run on the next frame), its Direct
+//!   Sound mixed by ipatix's HQ mixer (`m4a::Mixer::Hq`).
 //! - [`AudioOut`] (feature `playback`): the same on the default output device;
 //!   [`Output`] is that device alone, playing samples it is given.
 //! - [`wav`]: writing rendered audio.
@@ -31,7 +32,7 @@
 
 #![forbid(unsafe_code)]
 
-use m4a::{Driver, PlayerId, SongId, SoundBank};
+use m4a::{Driver, Mixer, PlayerId, SongId, SoundBank};
 use std::sync::Arc;
 
 pub use nettai_battle::cues::CueAction;
@@ -320,6 +321,8 @@ pub struct BattleAudio {
     /// The host's levels ([`BattleAudio::set_levels`]), for a bank added
     /// later.
     levels: (f32, f32),
+    /// How the drivers mix ([`BattleAudio::set_mixer`]), for a bank added later.
+    mixer: Mixer,
     mix: Vec<[f32; 2]>,
 }
 
@@ -351,8 +354,17 @@ impl BattleAudio {
     /// The sound of several banks, `banks` by `BankId`.
     pub fn with_banks(banks: Vec<Arc<SoundBank>>, songs: Songs) -> BattleAudio {
         assert!(!banks.is_empty(), "a bank");
-        let banks = banks.into_iter().map(|b| BankSound { driver: Driver::new(b), calls: SoundCalls::new(), queue: Vec::new() }).collect();
-        BattleAudio { banks, songs, music: None, moved_from: None, heard: None, heard_before: None, pinch: false, levels: (1.0, 1.0), mix: Vec::new() }
+        let mixer = Mixer::Hq;
+        let banks = banks
+            .into_iter()
+            .map(|b| {
+                let mut driver = Driver::new(b);
+                driver.set_mixer(mixer);
+                BankSound { driver, calls: SoundCalls::new(), queue: Vec::new() }
+            })
+            .collect();
+        let (music, moved_from, heard, heard_before) = (None, None, None, None);
+        BattleAudio { banks, songs, music, moved_from, heard, heard_before, pinch: false, levels: (1.0, 1.0), mixer, mix: Vec::new() }
     }
 
     /// The bank a cue plays on, and the cue in its songs: a sound's own
@@ -488,6 +500,16 @@ impl BattleAudio {
         }
     }
 
+    /// Mix every bank's Direct Sound as `mixer` says from the next frame on
+    /// ([`m4a::Driver::set_mixer`]; [`Mixer::Hq`] at first). The driver's
+    /// own mix, [`Mixer::Original`], is the game's to the byte.
+    pub fn set_mixer(&mut self, mixer: Mixer) {
+        self.mixer = mixer;
+        for p in &mut self.banks {
+            p.driver.set_mixer(mixer);
+        }
+    }
+
     /// Play the battle's sounds as `songs` says from now on, with `banks`
     /// (by the `BankId`s `songs` names): a host's change of the battle's
     /// music while it runs (a battle theme picked, or the game's own again:
@@ -521,6 +543,7 @@ impl BattleAudio {
             return p;
         }
         let mut driver = Driver::new(bank.clone());
+        driver.set_mixer(self.mixer);
         leveled(&mut driver, self.levels);
         self.banks.push(BankSound { driver, calls: SoundCalls::new(), queue: Vec::new() });
         self.banks.len() - 1

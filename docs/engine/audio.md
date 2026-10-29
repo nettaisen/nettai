@@ -167,6 +167,21 @@ game's code.
   end; the "fixed" voices play a sample a sample), loop or end. The ring
   holds nine frames; with reverb, each frame's slot starts as the sum of
   itself and the next slot (nine and eight frames ago) times the level.
+- **The HQ mix** (`Mixer::Hq`, `Driver::set_mixer`): the techniques of
+  ipatix's HQ mixer (gba-hq-mixer, MIT). The reverb and every channel are
+  added up at seven bits more than the buffer's eight, with the volumes
+  and the interpolated sample unrounded; the sum is clamped (not wrapped)
+  and rounded down to eight bits once, the part dropped carried into the
+  side's next sample (first-order noise shaping). The game rounds each
+  channel to eight bits and adds them wrapping, so its rounding noise is
+  one rounding per channel and the HQ mix's one in all, mostly in the
+  treble. The envelopes, the interpolation, the volumes, the reverb's
+  level and timing and where each channel is in its sample stay the
+  game's, so the channels are the same either way and only the buffer's
+  bytes differ; the HQ mixer's 16-bit shortcuts (halved volumes, the reverb
+  level in steps of four, both sides packed in one word) are not kept.
+  `Driver::new` mixes as the game does (§6 compares that with the
+  original); `BattleAudio` mixes with the HQ mix (`set_mixer` changes it).
 - **The hardware** (`m4a::apu`): the PSG as the GB APU of the GBA (duty
   steps, the 512 Hz sequencer's lengths, sweep and envelope steps, the
   noise LFSR, the wave channel's banks), driven by the registers the
@@ -221,9 +236,11 @@ the path into a jump target is refused at extraction (none in EXE6).
 
     NETTAI_ROMS=<roms> cargo run -p nettai-audio --example play_song -- exe6 0x15,0x94 --every 120
     NETTAI_ROMS=<roms> cargo run -p nettai-audio --example play_song -- exe6 0x15 --wav out.wav
+    NETTAI_ROMS=<roms> cargo run -p nettai-audio --example play_song -- exe6 0x15 --mixer original --wav game.wav
 
 `play_song` extracts the game's sound from its ROMs and plays song-table
-entries in real time, or renders them into a WAV. (A trace's rounds with
+entries in real time, or renders them into a WAV, with the HQ mix or the
+game's own (`--mixer`). (A trace's rounds with
 their cues are nettai-tool's: `--audit` checks each cue's song, and a
 replay's video carries its sound.)
 
