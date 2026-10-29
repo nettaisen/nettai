@@ -65,9 +65,9 @@ nettai-extract = { path = "../nettai-extract" }
 # window's loop runs can use reqwest (`nettai_platform::http`).
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 # Updates (`updates.rs`): the installed app's own (Velopack's packages: packaging/), from the project's GitHub
-# releases. 1.2.161 (the `vpk` the release workflow packs with) and the commit after it that moved to zip 9: every
-# release on crates.io asks for zip 8, all of whose versions are yanked. Back to crates.io at its next release.
-velopack = { git = "https://github.com/velopack/velopack", rev = "ae2e8818973aa18ac63732a5c7ef9895116592f9" }
+# releases. The version the release workflow's `vpk` is (VPK_VERSION), exactly: the first release on crates.io that
+# asks for zip 9 (the ones before asked for zip 8, all of whose versions are yanked).
+velopack = "=1.3.39-g8d2844f"
 # The picture's texture, kept and written in place in the window's OpenGL.
 glow = "0.16"
 

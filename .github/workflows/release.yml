@@ -31,7 +31,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   # Velopack's vpk: the version crates/nettai's velopack is.
-  VPK_VERSION: 1.2.161
+  VPK_VERSION: 1.3.39-g8d2844f
 
 jobs:
   icons:

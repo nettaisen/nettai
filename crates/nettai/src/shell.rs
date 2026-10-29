@@ -8,6 +8,7 @@
 //! The window's rendering is the app's clock: [`App::frame`] runs before each frame is drawn (docs/app.md §1).
 
 use crate::battle::{Battle, Loading};
+use crate::updates::Holding;
 use crate::errors::UserError;
 use crate::games::{Games, Notice, Ready, State};
 use crate::gl::GlPicture;
@@ -259,7 +260,7 @@ pub struct Shell {
     /// player, before and between their battles): the app isn't napped while this is set, as it isn't while a
     /// battle runs (`awake.rs`).
     pub stay_awake: bool,
-    /// The app's update: found, asked about, downloading (`updates.rs`).
+    /// The app's update: checked for and downloaded at the loading screen as the app starts (`updates.rs`).
     pub updates: crate::updates::Updates,
     awake: Option<crate::awake::Awake>,
     /// This frame is being drawn (the window's rendering runs it). When the window isn't drawn (minimized,
@@ -1042,7 +1043,8 @@ impl App {
         // without it. A newer revision of what it has is looked for unless Settings turned that off.)
         let newer = self.shell.settings.check_updates && !self.shell.still;
         self.shell.games.download(newer);
-        // (An installed app asks for an update, unless Settings turned that off; the screenshot pass never does.)
+        // (An installed app asks for an update, the loading screen waiting on it, unless Settings turned that off;
+        // the screenshot pass never does.)
         if self.shell.settings.check_updates && !self.shell.still {
             self.shell.updates.check();
         }
@@ -1221,7 +1223,6 @@ impl App {
                 self.call(owner, |s, shell| s.answered(shell, asked.tag, choice));
             }
             None if asked.tag == SOURCE && choice == 0 => self.choose_source(),
-            None if asked.tag == crate::updates::ASK && choice == 1 => self.shell.download_update(),
             None => {}
         }
     }
@@ -1988,9 +1989,33 @@ impl App {
         }
     }
 
-    /// The games as they load: the bar while the selected one does, the screens shown again once it is ready,
-    /// the others loaded behind it; one that can't load is passed over.
+    /// The loading screen as the games load (`follow_game_loading`), and, as the app starts, while its update is
+    /// checked for and downloaded (`updates.rs`): the bar the download's, and the line the update's.
     fn follow_games(&mut self) {
+        let holding = self.shell.updates.holding();
+        self.follow_game_loading(holding.is_some());
+        let ui = self.shell.ui();
+        let shell = ui.global::<nettai_ui::Shell>();
+        let words = ui.global::<nettai_ui::UpdateWords>();
+        shell.set_update_checking(matches!(holding, Some(Holding::Checking)));
+        match holding {
+            None => shell.set_update_line("".into()),
+            Some(Holding::Checking) => {
+                shell.set_loading(true);
+                shell.set_update_line(words.get_checking());
+            }
+            Some(Holding::Downloading { version, progress }) => {
+                shell.set_loading(true);
+                shell.set_loading_progress(progress);
+                shell.set_update_line(words.invoke_updating(version.into()));
+            }
+        }
+    }
+
+    /// The games as they load: the bar while the selected one does, the screens shown again once it is ready (not
+    /// while the app's update holds the loading screen: `update_held`), the others loaded behind it; one that can't
+    /// load is passed over.
+    fn follow_game_loading(&mut self, update_held: bool) {
         let ui = self.shell.ui();
         let shell = ui.global::<nettai_ui::Shell>();
         self.shell.games.poll_downloads();
@@ -2058,6 +2083,8 @@ impl App {
                     self.shell.games.load_runtime(&id);
                 }
             }
+            // (Ready, and shown once the update lets the loading screen go.)
+            Some(State::Ready(_)) if update_held => {}
             Some(State::Ready(ready)) => {
                 shell.set_loading(false);
                 shell.set_loading_progress(1.0);

@@ -3930,7 +3930,7 @@ A package is the program, the license (LICENSE), the third-party notices (THIRD-
 it: the app downloads each game's (§20). No ROM and no extracted asset is in
 any of them, ever: the app extracts each game's assets from the player's own Legacy Collection as the game loads,
 in memory (§17). Each platform's script is in `packaging/`, runs on that platform alone, stages the app, and makes
-**Velopack's release** of it with `vpk pack` (`$VPK`, else `vpk` on the PATH; version 1.2.161, the one
+**Velopack's release** of it with `vpk pack` (`$VPK`, else `vpk` on the PATH; version 1.3.39-g8d2844f, the one
 crates/nettai's `velopack` is) into `target/package/<platform>/releases/` (on macOS,
 `target/package/macos/<arch>/releases/`): the platform's installer, the app alone, and the update package and its
 feed the installed app's updater reads from the GitHub release (below, "Updates").
@@ -4018,13 +4018,16 @@ first in `main` (`updates::startup`: run by the installer or the updater, it doe
 installed app asks `https://github.com/nettaisen/nettai`'s published releases at start, on a thread, whether a newer one
 is out on its channel (`velopack::sources::GithubSource`; unauthenticated, one request a start; the channel its package
 was made on, but on a Mac: below); a build run from the repository isn't installed and asks nothing, and neither does
-the screenshot pass. Settings → General → Check for updates (`check_updates`, on by default) turns it off; turned on, it
-asks at once. One found, the main menu asks once, with nothing over it and no battle (`UpdateWords`: nettai <version> is
-out, LATER or UPDATE). UPDATE downloads it on a thread, the footer saying how far (`Shell.updating`, in place of the
-screen's status); once it is down, the next time the main menu shows with nothing over it the app restarts into it
-(`apply_updates_and_restart`; the settings are written as each changes, so nothing is lost). A failure is logged and
-said in the footer. `velopack` is taken from its repository at the commit after 1.2.161 that moved it to zip 9 (every
-release on crates.io asks for zip 8, all of whose versions are yanked), until its next release.
+the screenshot pass. Settings → General → Check for updates (`check_updates`, on by default) turns it off; turned on,
+the app checks at its next start. Nothing is asked of the player: the loading screen waits for the answer (five seconds
+at most, `CHECK_WAIT`: releases that don't answer by then are let go, and asked again next start; the game loads behind
+it meanwhile), its line "Checking for updates". An update found is downloaded there, on a thread, the bar its progress
+and the line "Updating to nettai <version>"; then the app ends, and Velopack's updater puts the update in place without
+a window of its own and starts the app again (`wait_exit_then_apply_updates`, silent; the settings are written as each
+changes, so nothing is lost). Nothing is updated during a session. A download that fails is logged and said in the
+footer, and the app goes on as it is. `velopack` is 1.3.39-g8d2844f from crates.io, exactly the `vpk` the release
+workflow packs with: the first release that asks for zip 9 (the ones before asked for zip 8, all of whose versions are
+yanked, so it was taken from Velopack's repository until then).
 
 **A Mac's channel.** Up to 0.12.0 a Mac had the universal package alone, on Velopack's default channel `osx`, and an
 app asks the channel its package was made on, so those installs ask `osx` for good: every release keeps the universal

@@ -232,12 +232,12 @@ impl Settings {
         self.show(shell);
     }
 
-    /// The check for updates on or off: turned on, it checks now, the app's and the games' content's.
+    /// The check for updates on or off: turned on, the games' content is checked now, and the app at its next start
+    /// (its loading screen is where it updates: `updates.rs`).
     fn set_check_updates(&mut self, shell: &mut Shell, on: bool) {
         shell.settings.check_updates = on;
         shell.save_settings();
         if on {
-            shell.updates.check();
             shell.games.download(true);
         }
         self.show(shell);

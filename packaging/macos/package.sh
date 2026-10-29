@@ -30,7 +30,7 @@
 # MACOS_NOTARY_PROFILE   with the identity, a notarytool keychain profile (`xcrun notarytool store-credentials`):
 #                        the app is notarized and stapled; else it isn't
 # MACOS_KEYCHAIN         the keychain those are in; else the default
-# VPK                    Velopack's vpk (the version crates/nettai's velopack is: 1.2.161); else vpk on the PATH
+# VPK                    Velopack's vpk (the version crates/nettai's velopack is: 1.3.39-g8d2844f); else vpk on the PATH
 set -euo pipefail
 # shellcheck source-path=SCRIPTDIR source=../build.sh
 source "$(dirname "$0")/../build.sh"

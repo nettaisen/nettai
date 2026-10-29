@@ -145,9 +145,13 @@ export struct PatternPaths {
 }
 
 export global Shell {
-    // What an update of the app says in the footer, in place of the screen's status (src/updates.rs): how far it
-    // has downloaded, that it is ready, or that it failed. Empty: nothing.
+    // What an update of the app says in the footer, in place of the screen's status (src/updates.rs): that it
+    // failed. Empty: nothing.
     in property <string> updating;
+    // The loading screen's line while the app's update is checked for or downloaded as the app starts, in place of
+    // the game's (src/updates.rs; empty: none), and whether it is the check (no percentage then).
+    in property <string> update-line;
+    in property <bool> update-checking;
     in property <Screen> screen;
     // The screen shown is leaving for another: its body slides and fades for the theme's `leave`, and then the
     // other is shown. (A press meanwhile cuts it short.)
@@ -329,19 +333,13 @@ export enum ErrorKind {
     other,
 }
 
-// An update of the app (src/updates.rs; docs/app.md §19, "Updates"): the question asked at the main menu when a newer
-// release is out, and the footer's lines while it downloads.
+// An update of the app (src/updates.rs; docs/app.md §19, "Updates"): the loading screen's lines as the app starts,
+// while it checks for one and while one downloads, and the footer's if it fails.
 export global UpdateWords {
-    public pure function title(version: string) -> string {
-        return @tr("nettai {} is out", version);
+    out property <string> checking: @tr("Checking for updates");
+    public pure function updating(version: string) -> string {
+        return @tr("Updating to nettai {}", version);
     }
-    out property <string> message: @tr("Update now? It downloads while you play, and nettai restarts into it at the main menu.");
-    out property <string> later: I18n.upper(@tr("Later"));
-    out property <string> update: I18n.upper(@tr("Update"));
-    public pure function downloading(percent: int) -> string {
-        return @tr("Downloading the update… {}%", percent);
-    }
-    out property <string> ready: @tr("Update ready: nettai restarts into it at the main menu.");
     out property <string> failed: @tr("The update couldn't be downloaded. It's tried again next start.");
 }
 
@@ -1340,8 +1338,8 @@ export component Page inherits Rectangle {
     in property <string> title-nav;
     in property <[Hint]> hints;
     // The footer's right end (docs/design/app-ui.md §2.80): how many of what the screen lists there are, "N things",
-    // or "N of M things" where the build has a limit; nothing on a screen that lists nothing. (An update's line takes
-    // its place while it downloads: `Shell.updating`.)
+    // or "N of M things" where the build has a limit; nothing on a screen that lists nothing. (An update that failed
+    // says so in its place: `Shell.updating`.)
     in property <string> status;
     out property <length> body-width: body.width;
     out property <length> body-height: body.height;

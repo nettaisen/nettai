@@ -18,6 +18,8 @@ export component LoadingScreen inherits Rectangle {
     // No game, and the Legacy Collection not found: its error's line, and the way to its folder. (No game for want
     // of the games' content: that error's line alone.)
     property <bool> wants-folder: Shell.no-games && !Shell.no-content;
+    // The app's update is checked for or downloading, as the app starts (its line in place of the game's).
+    property <bool> updating: Shell.update-line != "";
     // The room the line's steps from Steam take below what the bar's would (two lines more).
     property <length> steps: root.wants-folder ? 32px : 0px;
     // The logo settles into place as the app starts.
@@ -64,7 +66,7 @@ export component LoadingScreen inherits Rectangle {
     Bar {
         y: root.top + 122px;
         width: root.column;
-        visible: !Shell.no-games;
+        visible: !Shell.no-games || root.updating;
         value: Shell.loading-progress;
     }
 
@@ -73,9 +75,10 @@ export component LoadingScreen inherits Rectangle {
         y: root.top + 142px;
         width: root.column - 56px;
         height: 16px;
-        // (No game known yet: the catalog of games is being read, the bar alone.)
-        visible: !Shell.no-games && Shell.game != "";
-        text: Shell.downloading ? I18n.upper(@tr("Downloading {}", Shell.game)) : I18n.upper(@tr("Loading {}", Shell.game));
+        // (No game known yet: the catalog of games is being read, the bar alone. The app's update, as it starts:
+        // its line.)
+        visible: root.updating || (!Shell.no-games && Shell.game != "");
+        text: root.updating ? I18n.upper(Shell.update-line) : Shell.downloading ? I18n.upper(@tr("Downloading {}", Shell.game)) : I18n.upper(@tr("Loading {}", Shell.game));
     }
 
     Mono {
@@ -83,7 +86,7 @@ export component LoadingScreen inherits Rectangle {
         y: root.top + 142px;
         width: 48px;
         height: 16px;
-        visible: !Shell.no-games && Shell.game != "";
+        visible: root.updating ? !Shell.update-checking : !Shell.no-games && Shell.game != "";
         text: "\{round(Shell.loading-progress * 100)}%";
         horizontal-alignment: right;
     }
@@ -97,7 +100,7 @@ export component LoadingScreen inherits Rectangle {
         height: root.wants-folder ? 64px + root.steps : 88px;
         vertical-alignment: TextVerticalAlignment.top;
         wrap: word-wrap;
-        visible: Shell.no-games;
+        visible: Shell.no-games && !root.updating;
         text: Shell.no-content ? Errors.line(Shell.unpublished ? ErrorKind.content-unpublished : ErrorKind.download-failed, "") : Shell.incomplete != "" ? Errors.line(ErrorKind.incomplete-legacy-collection, Shell.incomplete) : Errors.line(ErrorKind.no-legacy-collection, "");
         horizontal-alignment: center;
     }
@@ -105,8 +108,8 @@ export component LoadingScreen inherits Rectangle {
     Button {
         x: (parent.width - self.width) / 2;
         y: root.top + 184px + root.steps;
-        visible: root.wants-folder;
-        enabled: root.wants-folder;
+        visible: root.wants-folder && !root.updating;
+        enabled: root.wants-folder && !root.updating;
         nav: "source.choose";
         kind: ButtonKind.main;
         text: Errors.choose-folder();

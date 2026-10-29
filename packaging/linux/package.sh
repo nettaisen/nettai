@@ -16,7 +16,7 @@
 # NETTAI_ICONS     a folder packaging/icons.sh made; else it is made here (needs librsvg and ImageMagick)
 # NETTAI_BUNDLE_FFMPEG   the ffmpeg to bundle; else the release packaging/ffmpeg.sha256 pins (a static program),
 #                  downloaded and checked
-# VPK              Velopack's vpk (the version crates/nettai's velopack is: 1.2.161); else vpk on the PATH
+# VPK              Velopack's vpk (the version crates/nettai's velopack is: 1.3.39-g8d2844f); else vpk on the PATH
 set -euo pipefail
 # shellcheck source-path=SCRIPTDIR source=../build.sh
 source "$(dirname "$0")/../build.sh"

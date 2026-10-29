@@ -18,7 +18,7 @@
 # $env:WINDOWS_CERTIFICATE_PATH, $env:WINDOWS_CERTIFICATE_PASSWORD
 #            a code-signing certificate (.pfx) vpk signs every program of the release with (the app's, ffmpeg,
 #            Velopack's installer and updater); else none is signed
-# $env:VPK   Velopack's vpk (the version crates/nettai's velopack is: 1.2.161); else vpk on the PATH
+# $env:VPK   Velopack's vpk (the version crates/nettai's velopack is: 1.3.39-g8d2844f); else vpk on the PATH
 param(
     [string]$Version = $env:NETTAI_VERSION,
     [string]$Icon,

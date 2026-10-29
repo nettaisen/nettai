@@ -379,25 +379,13 @@ msgstr "详情请查看日志文件。"
 msgid "Game's own"
 msgstr "游戏原曲"
 
-# ---- An update of the app: the question at the main menu, and the footer's lines while it downloads ----
+# ---- An update of the app: the loading screen's lines as the app starts, and the footer's if it fails ----
 
-msgid "nettai {} is out"
-msgstr "nettai {} 已发布"
+msgid "Checking for updates"
+msgstr "正在检查更新"
 
-msgid "Update now? It downloads while you play, and nettai restarts into it at the main menu."
-msgstr "现在更新吗？更新会在你游玩时下载，nettai 会在回到主菜单时重启并完成更新。"
-
-msgid "Later"
-msgstr "稍后"
-
-msgid "Update"
-msgstr "更新"
-
-msgid "Downloading the update… {}%"
-msgstr "正在下载更新… {}%"
-
-msgid "Update ready: nettai restarts into it at the main menu."
-msgstr "更新已就绪：nettai 会在回到主菜单时重启并完成更新。"
+msgid "Updating to nettai {}"
+msgstr "正在更新到 nettai {}"
 
 msgid "The update couldn't be downloaded. It's tried again next start."
 msgstr "无法下载更新。下次启动时将重试。"
