@@ -12,7 +12,8 @@
 //! The driver follows the GBA library's code (`MPlayMain`, `ply_note`,
 //! `TrkVolPitSet`, `CgbSound`, `SoundMainRAM` in m4a_1.s and m4a.c) in
 //! its integer arithmetic, so that its PCM buffer and PSG registers hold
-//! what the game's do. It began as a port of the `m4a-core` and
+//! what the game's do (the PCM buffer with [`Mixer::Original`]; it mixes
+//! with the HQ mixer's techniques, [`Mixer::Hq`], unless told to). It began as a port of the `m4a-core` and
 //! `m4a-engine` crates of bnmusic's arranger (MIT license).
 
 #![forbid(unsafe_code)]

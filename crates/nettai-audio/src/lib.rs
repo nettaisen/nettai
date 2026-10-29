@@ -12,7 +12,8 @@
 //!   the pinch effect's pitch and tempo, ...), as [`Request`]s.
 //! - [`BattleAudio`]: cues in, samples out, a frame at a time, with the
 //!   game's timing (calls queue up and run on the next frame), its Direct
-//!   Sound mixed by ipatix's HQ mixer (`m4a::Mixer::Hq`).
+//!   Sound mixed with ipatix's HQ mixer's techniques (`m4a::Mixer::Hq`, the
+//!   driver's default).
 //! - [`AudioOut`] (feature `playback`): the same on the default output device;
 //!   [`Output`] is that device alone, playing samples it is given.
 //! - [`wav`]: writing rendered audio.
@@ -354,17 +355,9 @@ impl BattleAudio {
     /// The sound of several banks, `banks` by `BankId`.
     pub fn with_banks(banks: Vec<Arc<SoundBank>>, songs: Songs) -> BattleAudio {
         assert!(!banks.is_empty(), "a bank");
-        let mixer = Mixer::Hq;
-        let banks = banks
-            .into_iter()
-            .map(|b| {
-                let mut driver = Driver::new(b);
-                driver.set_mixer(mixer);
-                BankSound { driver, calls: SoundCalls::new(), queue: Vec::new() }
-            })
-            .collect();
+        let banks = banks.into_iter().map(|b| BankSound { driver: Driver::new(b), calls: SoundCalls::new(), queue: Vec::new() }).collect();
         let (music, moved_from, heard, heard_before) = (None, None, None, None);
-        BattleAudio { banks, songs, music, moved_from, heard, heard_before, pinch: false, levels: (1.0, 1.0), mixer, mix: Vec::new() }
+        BattleAudio { banks, songs, music, moved_from, heard, heard_before, pinch: false, levels: (1.0, 1.0), mixer: Mixer::Hq, mix: Vec::new() }
     }
 
     /// The bank a cue plays on, and the cue in its songs: a sound's own

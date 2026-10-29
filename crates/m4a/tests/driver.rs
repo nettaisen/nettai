@@ -159,8 +159,8 @@ fn the_hq_mixer_plays_the_same_channels_rounded_once() {
     };
     let b = bank(vec![(2, 20, vec![track(60), track(64), track(67)])], 4);
     let (mut original, mut hq) = (Driver::new(b.clone()), Driver::new(b));
-    hq.set_mixer(Mixer::Hq);
-    assert_eq!((original.mixer(), hq.mixer()), (Mixer::Original, Mixer::Hq));
+    assert_eq!(hq.mixer(), Mixer::Hq, "by default");
+    original.set_mixer(Mixer::Original);
     original.start(SongId(0));
     hq.start(SongId(0));
     let mut sums = (0, 0);

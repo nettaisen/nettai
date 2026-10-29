@@ -468,8 +468,8 @@ impl Driver {
             div_freq: ((16_777_216 / pcm_freq.max(1)) + 1) >> 1,
             psg_tick: 0,
             dma_counter: ring.frames as u8,
+            hq: Some(HqMix::new(ring.samples_per_frame)),
             ring,
-            hq: None,
             last_slot: None,
             memory: [0; MEMORY_SIZE],
             apu,
@@ -520,7 +520,7 @@ impl Driver {
         self.reverb = level & 0x7F;
     }
 
-    /// How the Direct Sound channels are mixed ([`Mixer::Original`] at first).
+    /// How the Direct Sound channels are mixed ([`Mixer::Hq`] at first).
     pub fn mixer(&self) -> Mixer {
         if self.hq.is_some() { Mixer::Hq } else { Mixer::Original }
     }

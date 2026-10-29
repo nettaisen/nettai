@@ -9,8 +9,9 @@
 //! Both follow the driver's code step for step, in its integer arithmetic,
 //! so the PCM buffer holds the bytes the game's buffer holds.
 //!
-//! [`Mixer::Hq`] mixes the same channels the way ipatix's HQ mixer
-//! (gba-hq-mixer, MIT) does instead: at a higher precision, rounded to the
+//! That is [`Mixer::Original`]. The driver mixes with [`Mixer::Hq`] unless
+//! told otherwise: the same channels the way ipatix's HQ mixer
+//! (gba-hq-mixer, MIT) mixes them, at a higher precision, rounded to the
 //! buffer's eight bits once.
 
 use crate::apu::{Apu, Reg};
@@ -443,8 +444,8 @@ pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq:
 pub enum Mixer {
     /// The driver's own `SoundMainRAM`: each channel rounded to eight bits
     /// and added into the buffer in turn, wrapping, and the reverb rounded
-    /// too (the game's buffer, to the byte).
-    #[default]
+    /// too (the game's buffer, to the byte: what verification compares with
+    /// the original).
     Original,
     /// ipatix's HQ mixer (gba-hq-mixer, MIT): the reverb and every channel
     /// added up at a higher precision, the sum clamped and rounded to eight
@@ -455,6 +456,7 @@ pub enum Mixer {
     /// is in its sample stay the game's; none of the HQ mixer's 16-bit
     /// register shortcuts are kept (halved volumes, the reverb level in
     /// steps of four, both sides packed in one word).
+    #[default]
     Hq,
 }
 

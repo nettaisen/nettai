@@ -180,8 +180,9 @@ game's code.
   game's, so the channels are the same either way and only the buffer's
   bytes differ; the HQ mixer's 16-bit shortcuts (halved volumes, the reverb
   level in steps of four, both sides packed in one word) are not kept.
-  `Driver::new` mixes as the game does (§6 compares that with the
-  original); `BattleAudio` mixes with the HQ mix (`set_mixer` changes it).
+  The driver mixes with the HQ mix by default; `Mixer::Original` is the
+  game's mix, which §6 compares with the original (`set_mixer` on the
+  driver or on `BattleAudio` picks one).
 - **The hardware** (`m4a::apu`): the PSG as the GB APU of the GBA (duty
   steps, the 512 Hz sequencer's lengths, sweep and envelope steps, the
   noise LFSR, the wave channel's banks), driven by the registers the
