@@ -290,7 +290,7 @@ The art (icon, image, palette) is `chips.py`'s list:
   0x08749C78, JP Gregar 0x08747BAC). Gregar's and Falzar's are in no ROM: the chips' definitions give them
   (`art_palette`, chips/gregar and chips/falzar), the colors Tango's netplay saves have at 0xB10
   (tango-gamesupport-bn6, saves/g_jp.raw and f_jp.raw). Rendered with them, the pictures are the JP consoles'
-  exactly (bn6battle-verify's JP-console recordings of both chips).
+  exactly (nettai-verify's JP-console recordings of both chips).
 
 `exe6-extract` takes the eleven pictures from the JP ROMs (GunDelEX, Otenko, Count (HackJack) ×3, Django ×3, DblBeast and
 Falzar from JP Falzar, Gregar from JP Gregar), each chip's own on every console. The pack keeps no mark of where
@@ -343,7 +343,7 @@ in the US ROMs (both), with one more tileset and layout in the JP sheet. As long
 12 ticks. The extractor reads the sheets from a US ROM before a JP one, so the pack has the US flames;
 `navis/heatman-minibomb` (a US console, pixel-exact with them) and `jp/heatman-minibomb` (a JP console, whose
 frames 372-374 and 443-445 differ, which the frame comparison's table knows in that animation alone) show it. The
-sheets the extractor writes from each ROM alone were compared, all 310, 2026-10-12 (bn6battle-verify's
+sheets the extractor writes from each ROM alone were compared, all 310, 2026-10-12 (nettai-verify's
 tools/cross-rom/packs.py).
 
 ### 4.6 Where the JP-only code is
@@ -390,7 +390,7 @@ knows a console's region: its packs carry no region, and the renderer draws ever
 a console of the other region shows otherwise (a US console's placeholders and its chip window's later start below;
 a Japanese console's own art: EXE5's background 0x05, HeatMan's flames) is the verification's to know: its frame comparison knows each
 recording's console, asks the frontend where it draws those things (nettai-tool's `--mark`, `marks.tsv`) and
-counts them as known differences (bn6battle-verify's tools/frontend-compare/consoles.tsv, by game, region and
+counts them as known differences (nettai-verify's tools/frontend-compare/consoles.tsv, by game, region and
 version). The compat crates, which read recordings, keep what they need of a console's ROM.
 
 **Visibility.** The US added these:
@@ -555,7 +555,7 @@ behavior there, by the user's choice (§8.2).
 | 13 | DustMan's pull's collision type (`sub_80F20A0`) | 1 byte | the pull regions' self type (row 0x04 against 0x1E): what they reach and how a hit counts | content/exe6/navis/dustman/chip.luau (`pull`: `self_type`) |
 | 14 | GroundCross's drill burrows while moving (`sub_80EF004`) | US: +3 instructions | the drill's timing | content/exe6/navis/megaman/forms/groundcross/drill.luau |
 | 15 | SpoutMan's DripShwr flags (`sub_80F1694`) | JP: +5 instructions | SpoutMan's ObjectFlags1 0x40 and 0x80000 during the spray (what reads them then is **unverified**) | content/exe6/navis/spoutman/chip.luau |
-| 16 | Otenko's statue as DustMan's junk (`byte_8021220`, NameID 0xCF) | 5 data bytes | US: no junk (look none, freed); JP: a junk with sprite 0C-49, animation 1, shadow, which flies and hits | content/exe6/chips/otenko/statue.luau (the identity's `look`): **the content has the JP row on every console** (the user's call), so a US console's trace of it differs; bn6battle-verify records it on JP consoles (jp/chips/0x099-otenko/dustman), and gen-content's check expects the JP row |
+| 16 | Otenko's statue as DustMan's junk (`byte_8021220`, NameID 0xCF) | 5 data bytes | US: no junk (look none, freed); JP: a junk with sprite 0C-49, animation 1, shadow, which flies and hits | content/exe6/chips/otenko/statue.luau (the identity's `look`): **the content has the JP row on every console** (the user's call), so a US console's trace of it differs; nettai-verify records it on JP consoles (jp/chips/0x099-otenko/dustman), and gen-content's check expects the JP row |
 | 17 | The emotion window's glitch from patch cards (`sub_813BF1C`) | JP: +3 instructions | the console's emotion-window flicker | content/exe6/rules/patch_cards/init.luau: with cards installed (a JP save's), the glitch is the stats' NaviCust bugs after the cards (flag 0x1723), the HUD's `emotion_window_glitch`; without, the NaviCust's (0x1720: its compile's, or the stats' bugs'). Verified: chip lab jp/cards/ (the setup check compares it) |
 
 Not counted:
@@ -616,7 +616,7 @@ one ran. The region belongs in the setup:
 ### 8.2 Chosen JP
 
 The variants the engine runs as the Japanese games do, on every console, by the user's choice. A US console's
-recording that reaches one differs from the engine there; bn6battle-verify records them on Japanese consoles, and
+recording that reaches one differs from the engine there; nettai-verify records them on Japanese consoles, and
 keeps the US consoles' recordings as known deviations (its trace-tests' src/deviations.rs: each matches up to the
 variant's first frame and first differs on exactly that frame).
 
@@ -638,7 +638,7 @@ cases in nettai"). The US original stops there: its `off_802CCB4` entries 34 and
 jumps to address 0 as the controller would spawn, before the field dims, and an opponent's counter cut-in never
 comes. Nothing in the simulation knows a console's region (a round's setup states none; the region is the
 presentation's, nettai-render's, and compat's, to read a recording), so there is no switch to leave out:
-content/exe6/chips/gregar and falzar are the Japanese games' records and routines. bn6battle-verify records them on
+content/exe6/chips/gregar and falzar are the Japanese games' records and routines. nettai-verify records them on
 Japanese consoles (jp/chips/0x138-gregar and 0x139-falzar, the counter cut-ins among them); the chip lab writes no
 US console counter cut-in for them (gen_library.py's `NO_COUNTER_CUT_IN`), since the original can't record one.
 

@@ -596,7 +596,7 @@ NaviStats-like layout), so EXE5's seams should fit it with less new work. The sa
   another with `--pack`), **EXE6_COMPAT** and the **EXE6_LAB_***
   variables: they select EXE6's pack, compat and lab (the content directory, every game's, is `$NETTAI_CONTENT` since
   rules-in-luau.md's R4).
-- **The bn6battle-verify workspace**: EXE6's oracle, traces and chip lab.
+- **The nettai-verify workspace**: EXE6's oracle, traces and chip lab.
 - **docs/engine**'s content (wherever it ends up), and the EXE6-only modules once they are behind the `exe6`
   boundary.
 
@@ -619,7 +619,7 @@ NaviStats-like layout), so EXE5's seams should fit it with less new work. The sa
    or a shared content library from the start?
 8. **Where the generic API declarations live**: in the engine crate, or in a shared content root.
 9. **Docs**: docs/engine stays as EXE6's in place, or moves to docs/exe6 now.
-10. **Verification**: one workspace per game (a bn5battle-verify), or bn6battle-verify grown into one workspace
+10. **Verification**: one workspace per game (a bn5battle-verify), or nettai-verify grown into one workspace
     for every game?
 11. **Pack format names**: rename `nettai-content/hud` and `nettai-content/custom` as EXE6's now (a re-extract), or
     when EXE5's arrive?

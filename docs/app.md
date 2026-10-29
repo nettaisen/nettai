@@ -2730,7 +2730,7 @@ Slint compiler in the build script was 8 s, and linking 2. Three things made it 
    - *A long list is a `ListView`*, whose rows exist only in view.
    - *A part written twice is one component* (the three libraries' heads were three copies).
 
-   What each thing costs in the generated Rust, a use (bn6battle-verify's tools/slint-size/cost.py, which adds
+   What each thing costs in the generated Rust, a use (nettai-verify's tools/slint-size/cost.py, which adds
    ten of it to the main menu's screen):
 
    | | |
@@ -2929,7 +2929,7 @@ its layer 0.02, of which a starfield uses all three and the others one); the the
 Slint wrote into each use, are read from the theme now, about 0.05 MB over their uses; the theme's own code 0.015
 more. The display texts' weights from the theme cost nothing measurable (0.004 MB less than constants).
 
-The tools that measured it are bn6battle-verify's tools/slint-size: the module's size from the build script
+The tools that measured it are nettai-verify's tools/slint-size: the module's size from the build script
 alone, its breakdown by kind of code and by component, what one component's code is, a construct's cost, and
 the components used in one place (given the child, or measured copied in).
 

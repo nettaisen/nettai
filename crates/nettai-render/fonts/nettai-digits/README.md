@@ -16,7 +16,7 @@ far its box squeezes the design, so the bars stay the game's 2 pixels (the enemi
 numbering font looks weird when used as-is for enemy hp. you should implement opentype variable weight and thicken the
 font appropriately to match the hp").
 
-Built by bn6battle-verify's `tools/digits/build_digits_vf.py` (the outlines `tools/digits/build_otf.py` traces) from
+Built by nettai-verify's `tools/digits/build_digits_vf.py` (the outlines `tools/digits/build_otf.py` traces) from
 EXE6's pack (EXE5's digits are the same); its README has the tracing rules and the user's calls on them.
 
 Part of nettai, under the Mozilla Public License 2.0 (the repository's); the digits' design is the games' own.

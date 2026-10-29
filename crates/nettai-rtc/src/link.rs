@@ -112,7 +112,7 @@ const MAX_BACKOFF: Duration = Duration::from_secs(3);
 /// is sent after back until its retransmission timer, backed off to seconds,
 /// fires, so a 1.5 s outage froze a match for 1.6 s more. One every 100 ms
 /// leaves the window room, and what is sent once the path is back goes at
-/// once (bn6battle-verify tools/dcbench, `--quiet 100,100`). Netplay loses
+/// once (nettai-verify tools/dcbench, `--quiet 100,100`). Netplay loses
 /// nothing by it: each datagram carries every input not yet acknowledged;
 /// the lobby says its part again every 100 ms anyway.
 const QUIET_AFTER: Duration = Duration::from_millis(100);

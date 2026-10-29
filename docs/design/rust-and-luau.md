@@ -338,7 +338,7 @@ Each with what it was and what it is now.
   (`navi = navi_chips.make { id, summon, course, ... }`, @exelib/navi_chips/chip, on @exelib/navi_chips/controller,
   which EXE4's navi chips and EXE5's Phoenix and DethPhnx were already on), its course data (`PLAIN`, `USER_STAYS`,
   `USER_RETURNED`); compat maps every chip's controller to the original's one object, effect #0x10 (kinds.toml, written
-  by bn6battle-verify's tools/content/navi_chip_kinds.py). AntiNavi's check and turn and the navi chip's name went
+  by nettai-verify's tools/content/navi_chip_kinds.py). AntiNavi's check and turn and the navi chip's name went
   to Luau on generic dimming steps (`dimming.telop_running`, `run`, `chip_telop`, `telop_done`, `turn`,
   `battle.trap_mark`); AntiRecv's spring on Roll's chips is the chip's hook's (`navi_chip.spring_anti_recovery`), and
   the last navi chip used is EXE5's rules' state (rules/api, for DethPhnx). kinds/navi_chip.rs, `EngineKind::NaviChip`,

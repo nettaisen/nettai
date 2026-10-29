@@ -5,7 +5,7 @@ Chips 0x138 Gregar and 0x139 Falzar are giga cut-in chips (action 0x15, subtypes
 address 0), and the object slots their routines would fill point at placeholders. The Japanese ROMs (BR6J
 Falzar, BR5J Gregar) have the routines; the port's are content/exe6's chips/gregar, chips/falzar and
 lib/beast_chips. This is those routines, from the Japanese ROMs' bytes (there is no Japanese disassembly; every
-routine they call is the US one of the same name, which bn6battle-verify's `tools/gregar/fmap.py --to` maps).
+routine they call is the US one of the same name, which nettai-verify's `tools/gregar/fmap.py --to` maps).
 Conventions as in dimming-chip-effects.md (§0: the controllers' common shape, "counts", "Tn#x").
 
 ## 0. Where the routines are
@@ -180,7 +180,7 @@ not > 0 → destroy. Blow 0: dx 0 and 1 (region 1), dx 2 (region 4); blow 1: dx 
 
 ## 7. Verified on Japanese consoles
 
-bn6battle-verify's chip lab records both chips on two JP Falzar consoles (base `jp-falzar`) and two JP Gregar
+nettai-verify's chip lab records both chips on two JP Falzar consoles (base `jp-falzar`) and two JP Gregar
 consoles (`jp-gregar`), side 0's console traced: library/jp/chips/0x138-gregar and 0x139-falzar, 50 scenarios
 each (`gen_jp_beast.py`, and `gen_jp.py`'s `hit`). The engine matches every one on every frame, sounds included.
 What they reach:
@@ -221,7 +221,7 @@ Still unverified: the battle flag 0x40 HUD mask (no netbattle sets it); the aim'
 panel (only the navi has an enemy's body there in a netbattle: the field cleaner breaks every obstacle before
 the first aim); the whole area's list empty or of one panel (unreachable: a side keeps a whole column); the
 feather's Param2 0 (no caller); a summon, arrival or flame spawn failing, or a flame without a collision slot.
-The traces don't compare the HUD's hiding or the fades; the frontend's frames do (bn6battle-verify's
+The traces don't compare the HUD's hiding or the fades; the frontend's frames do (nettai-verify's
 tools/frontend-compare, on `hit` of both chips, Gregar's `side1` and Falzar's `as-counter`). The fade to black and
 back, the hidden gauge and emotion window, the feathers, flames, rocks and whirlwind are exact on every frame.
 What differs is the summons' and the arrival's look (sprites 0c-66 and 0c-68, which the US ROMs fill with a

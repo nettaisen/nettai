@@ -1,7 +1,7 @@
 # Dimming chip effects: subtypes 2, 3, 7, 8, 12, 14–19, 21–24, 29, 30, 32, 37 (EXE6 US Falzar, BR6E)
 
 The controllers of the dimming chips `off_802CCB4` indexes (docs/engine/chips.md §3.6, §3.6.10) and every
-object they spawn, routine by routine, from the disassembly. The chip lab's scenarios (bn6battle-verify
+object they spawn, routine by routine, from the disassembly. The chip lab's scenarios (nettai-verify
 `data/traces/lab`) name the branches they reach; a branch no scenario reaches is marked **unverified**.
 
 Conventions: routine names are the original's. "Tn#x" is object type n (1 actor, 3 attack, 4 effect), index x.

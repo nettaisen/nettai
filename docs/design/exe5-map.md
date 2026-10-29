@@ -2126,7 +2126,7 @@ navi left undrawn after Cannon's hit (452-553; before this work too).
 Program Advances: EXE6's 30 and EXE5's 30 load together). EXE5's full table (0x08027FC8) is 21 recipes and then the
 netbattles' table (0x0802801C); only EXE5's operation battle (battle flag 0x40, each side its own gauge: EXE5's setter,
 0x0802D590, tests NaviStats +0x2A) tries those 21: a recipe's `operation_battle_only = true`, which
-`find_program_advance` skips unless the battle is one (`battle.own_gauges()`, the engine's `OWN_GAUGES`). A recipe's `order` is its index in the full table. bn6battle-verify's
+`find_program_advance` skips unless the battle is one (`battle.own_gauges()`, the engine's `OWN_GAUGES`). A recipe's `order` is its index in the full table. nettai-verify's
 tools/exe5/recipes.py writes EXE5's recipes (and the flag) into the Program Advances' chip files, naming only chips
 that have a use; rerun it as chips get theirs.
 

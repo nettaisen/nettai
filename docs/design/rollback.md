@@ -763,7 +763,7 @@ in turn (`rtc::Event`: this side's description, its candidates, the state, a cha
 with no callbacks, so the connection above them is one module for both targets (`peer`). It took the place of
 libdatachannel (C++ with Mbed TLS, through datachannel-facade), which had taken the `rtc` crate's (webrtc-rs's
 sans-I/O WebRTC, driven from the frame loop); dcbench in the verify workspace measured str0m against it
-(bn6battle-verify tools/dcbench). nettai-rtc keeps everything above the connection: the link, rooms, the signaling
+(nettai-verify tools/dcbench). nettai-rtc keeps everything above the connection: the link, rooms, the signaling
 protocol and its WebSockets, reconnection, the test server. It depends on no engine crate. Two layers:
 
 - `PeerConnection`: one connection and its data channels. It is told the other side's description and candidates

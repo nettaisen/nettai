@@ -1466,7 +1466,7 @@ A frame shows the local side's console's screen (`Renderer::consoles`,
 `Consoles::One`, what every console of the game shows), or both players on
 one 240x160 screen (`Consoles::Both`: a replay watched from both sides, the
 user's "dual perspective replay on a single screen"; the mockups the user
-chose are bn6battle-verify's docs/nettai-ui/spectator). The renderer
+chose are nettai-verify's docs/nettai-ui/spectator). The renderer
 follows both consoles' HUDs every tick (`Renderer::hud_state`, the local
 console's, and `other_hud`), so either way is drawn from the same state.
 

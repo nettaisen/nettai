@@ -2318,7 +2318,7 @@ write ids and names without their game.) The resolved value is a handle into the
   name is a load error naming both modules. Where content reads a part's place (`sprite:part_offset(n)`), the
   sprite states that part's offsets, and only that part's (`{ parts = { [1] = ... } }`: AirRaid's plane, whose
   part 1 its propeller sits on). The timing was written once from the packs' `animations.json`
-  (bn6battle-verify's tools/content/sprite_timing.py, which places the modules by these rules and keeps its
+  (nettai-verify's tools/content/sprite_timing.py, which places the modules by these rules and keeps its
   judgment calls in a table), and its `check` keeps it equal to the extracted packs', so a drift from the ROM is
   seen; content may still change it (a mod's timing is its own). A pack's `animations.json` keeps the pictures'
   frames and their own durations, which the frontend reads for what only it animates.

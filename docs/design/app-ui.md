@@ -7,7 +7,7 @@ document is that design. docs/app.md is the app as it is built: its foundation i
 input, Settings, the battle's host), and Play, Practice, Builds and Replays are to be filled in on it.
 
 The mockups are the picture of every screen: https://claude.ai/artifact/5Kg4TfQhZeMXB5C45rXM2Z, a copy of which is
-`bn6battle-verify/docs/nettai-ui/mockups.html` (not in this repository: it embeds chip icons and art taken from a
+`nettai-verify/docs/nettai-ui/mockups.html` (not in this repository: it embeds chip icons and art taken from a
 pack). Its CSS is the reference for sizes, colors and spacing, in units where the window is 1280 by 800; this
 document gives the same numbers. Where the two differ, this document is right.
 
@@ -98,7 +98,7 @@ Each is settled unless the user changes it.
     every message that names a game. Each game states its name in its locales (the text table `game`, `name`);
     the app reads it from the content, so a game without its pack is named too.
 23. **Each game has a look of its own** (2026-10-13): "each selected game in nettai should also have a different
-    visual identity". From the mockup of three (`bn6battle-verify/docs/nettai-ui/game-identities.html`) the user
+    visual identity". From the mockup of three (`nettai-verify/docs/nettai-ui/game-identities.html`) the user
     took BN4's comet ("i like bn4c"), BN5's liberation map and BN6's look as it was. Switching the game changes the
     colors, the glow and the backdrop's pattern (§4); the layout, the sizes, the keys, the motion and the type stay
     the same. The rest of what they said of it:
@@ -1694,7 +1694,7 @@ Each is settled unless the user changes it.
     fit, its lists take the height that is left.
 99. **The whole build in the overview** (2026-10-21). The user: "when i hold tab to see the builds entire sections are
     missing like auto battle, partycust specifics, etc.", then of Play's overview: "you should also unify it with the
-    regular builds screen". Of mockups of each (bn6battle-verify docs/nettai-ui/peek/), the user chose D for the
+    regular builds screen". Of mockups of each (nettai-verify docs/nettai-ui/peek/), the user chose D for the
     builds over a match and U1 for Play's, then: "there's no need to show the slot gauge or hp for the party navi",
     "no need to say how much MB is being used by patch cards". The overview shows every part of a build, each read as
     its editor's tab reads it, every item of each whole (no "+3 more"):

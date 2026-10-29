@@ -1435,9 +1435,9 @@ nothing here reaches the simulation, its snapshot or `Content::hash()`.
 | Murecho | as before (§9): chip names, the telop's and the hand window's names, the chatbox, the HUD's lines, "VS", and now the HUD's "????" marks and EXE6's Cross names (§12.11) | 700, 300; 900 for the Cross names | `crates/nettai-render/fonts/murecho` |
 | **M PLUS 1 Code** (OFL, Japanese too) | the lettering: the banners' words, "PAUSE", the waiting label, CUSTOM, L or R, FINAL TURN, the help pictures | 700; narrowed to 78% for the display words (the banners, PAUSE, the waiting label, FINAL TURN: the user's audition, "ok do that"); at its own width for the small labels (CUSTOM, L or R, the help pictures' titles); 500 for the help pictures' words | `crates/nettai-render/fonts/mplus1code` (moved from nettai-ui's fonts, the same Google Fonts file, which the UI's theme now imports from here) |
 | **Bungee** (OFL) | the window's labels (§12.6: "pick bungee"); the chip codes until 2026-10-21 (§12.11); the numbers until 2026-10-20 | its one cut, each glyph's ink stretched to the game glyph's box | `crates/nettai-render/fonts/bungee` (Google Fonts' `ofl/bungee`) |
-| **Nettai Digits** (nettai's own, MPL-2.0) | every number but the banners' (§12.4), its '+', the times sign of "x2" (`×` alone: no `x`), the '?' (from 2026-10-21; Saira 75/700 and Teko 600 before it) | the game's HP box digits traced, sharp corners, as a variable font (CFF2): its weight axis, `wght` 400 to 700, thickens the bars into the counters, set for each place from its box (§12.4) | `crates/nettai-render/fonts/nettai-digits/NettaiDigits[wght].otf`, the one file (built by bn6battle-verify's `tools/digits/build_digits_vf.py`, from the outlines `build_otf.py` traces) |
+| **Nettai Digits** (nettai's own, MPL-2.0) | every number but the banners' (§12.4), its '+', the times sign of "x2" (`×` alone: no `x`), the '?' (from 2026-10-21; Saira 75/700 and Teko 600 before it) | the game's HP box digits traced, sharp corners, as a variable font (CFF2): its weight axis, `wght` 400 to 700, thickens the bars into the counters, set for each place from its box (§12.4) | `crates/nettai-render/fonts/nettai-digits/NettaiDigits[wght].otf`, the one file (built by nettai-verify's `tools/digits/build_digits_vf.py`, from the outlines `build_otf.py` traces) |
 | **Nettai Banner Digits** (nettai's own, MPL-2.0) | the numbered banners' numbers (§12.4) | its one cut: the game's banner digits traced, another drawing | `crates/nettai-render/fonts/nettai-banner-digits` (the same tool) |
-| **Nettai Chip Codes** (nettai's own, MPL-2.0) | the chip window's code, the big one beside the chip's picture (§12.11, from 2026-10-21) | its one cut: the game's codes A to Z and `*`, 7 by 11 pixels, traced | `crates/nettai-render/fonts/nettai-chip-codes` (bn6battle-verify's `tools/digits/build_codes_otf.py`) |
+| **Nettai Chip Codes** (nettai's own, MPL-2.0) | the chip window's code, the big one beside the chip's picture (§12.11, from 2026-10-21) | its one cut: the game's codes A to Z and `*`, 7 by 11 pixels, traced | `crates/nettai-render/fonts/nettai-chip-codes` (nettai-verify's `tools/digits/build_codes_otf.py`) |
 | **Nettai Slot Codes** (nettai's own, MPL-2.0) | the codes under the slots' icons (§12.11, from 2026-10-21) | its one cut: the game's small codes, 6 by 5 pixels, traced | `crates/nettai-render/fonts/nettai-slot-codes` (the same tool) |
 
 They are compiled in (`vfont::LETTERING`, `numbers::FONT`, `numbers::DIGITS_FONT`, `numbers::BANNER_DIGITS_FONT`,
@@ -1550,7 +1550,7 @@ whatever?", so the one font stretched to their boxes; the damage digits' 7, a pi
 another drawing, and EXE4's own 7s take its shapes); "the banner i think is actually a different font? maybe those
 should have variants?" (Nettai Banner Digits, a family of its own: "i think "Nettai Digits Condensed" is a misleading
 name because it's a different font"; EXE4's banner digits, a third drawing, take its shapes); then "replace them
-outright" (no setting: Saira is gone). The fonts are built by bn6battle-verify's `tools/digits/build_otf.py` from
+outright" (no setting: Saira is gone). The fonts are built by nettai-verify's `tools/digits/build_otf.py` from
 EXE6's pack (EXE5's digits are the same), whose README has the tracing rules; Nettai Digits' variable font by its
 `build_digits_vf.py` from those outlines.
 
@@ -1980,7 +1980,7 @@ japanese should do that either".
 
 Mega Man Battle Network Legacy Collection Vol. 2 runs the Japanese ROMs and draws its own text in English,
 Japanese, Simplified and Traditional Chinese from message packs keyed by the Japanese ROMs' text archives, and
-its card reader's texts (the patch cards', EXE4's e-Reader chips'). bn6battle-verify's tools/bnlc reads them
+its card reader's texts (the patch cards', EXE4's e-Reader chips'). nettai-verify's tools/bnlc reads them
 (bnlc.py: the formats) and places every table string in them (locales.py `places`, places/GAME.tsv: by the chip's
 number, by the table's string, near matches where the original wrote a button the collection draws as an icon,
 the area menu for backgrounds, the card reader). The game's strings of all four tables are the collection's

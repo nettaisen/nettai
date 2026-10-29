@@ -33,13 +33,13 @@ its own.
 
 To build nettai with side 0's behavior for every side, set `CANONICAL_SIDE` to 0 and rebuild. The engine's tests
 are written relative to the constant and pass either way (all of nettai-battle's, nettai-content-api's and
-nettai-luau's, checked with each). bn6battle-verify's known deviations (`src/deviations.rs`) are listed for one
+nettai-luau's, checked with each). nettai-verify's known deviations (`src/deviations.rs`) are listed for one
 build: those of side 0 canonical, the recordings in which side 1 ran a changed branch; with side 1 canonical it is
 the recordings in which side 0 ran one that differ.
 
 ## The mirror check
 
-bn6battle-verify's trace-tests (`src/mirror.rs`, `tests/mirror.rs`) plays each recorded round (the chip labs of
+nettai-verify's trace-tests (`src/mirror.rs`, `tests/mirror.rs`) plays each recorded round (the chip labs of
 the three games, EXE6's golden traces and 2022 rounds) twice: as recorded, and as its mirror image (sides swapped,
 the stage the mirror one, the same buttons). After every tick it compares the two runs: the RNGs, the round and
 fight state, every object (slot by slot in the update order; as sets of objects once only their order differs,
@@ -81,7 +81,7 @@ whirl, AirHocky's puck, JudgeMan's books, MrkCan, EXE4's DarkNeo and gear). With
 two columns is in the column toward its own side, for both sides.
 
 **WindRack against a barrier up close (EXE5, EXE6).** The case the user raised. WindRack hits the column ahead
-and blows a gust down each row from its center, 10 pixels a tick. Recorded in the original (bn6battle-verify's
+and blows a gust down each row from its center, 10 pixels a tick. Recorded in the original (nettai-verify's
 chip lab, `chips/0x050-windrack/barrier`, `barrier-side1`, `barrier-far`, `barrier-far-side1`): a navi with
 Barr100 right in front of a side-0 user is not pushed; in front of a side-1 user it is; from further away both are.
 The cause is the line: a side-0 gust reaches the line 20 pixels on, its second tick, which the original puts in
@@ -245,7 +245,7 @@ first in the navi's side's order.
 ## 2. The recordings it changes
 
 Each change departs from the original, so a recording in which a changed branch ran on the other side than the
-canonical stops matching where it shows. bn6battle-verify's trace-tests lists each as a known
+canonical stops matching where it shows. nettai-verify's trace-tests lists each as a known
 deviation (`src/deviations.rs`, the reason naming the entry above), by the default build.
 
 Measured 2026-10-17 by replaying every recording with each fix turned off in turn (the fix whose turning off moves

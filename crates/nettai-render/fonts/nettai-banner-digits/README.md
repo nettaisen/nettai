@@ -6,7 +6,7 @@ walls), so a family of its own; digits alone. Traced from their pixels with shar
 (the digits 1400 tall, the same stroke weight as Nettai Digits'), each glyph in the game's 8-pixel cell (advance 800,
 the face from 100).
 
-Built by bn6battle-verify's `tools/digits/build_otf.py` from EXE6's pack (EXE5's banner digits are the same; EXE4's
+Built by nettai-verify's `tools/digits/build_otf.py` from EXE6's pack (EXE5's banner digits are the same; EXE4's
 are another drawing again, left out).
 
 Part of nettai, under the Mozilla Public License 2.0 (the repository's); the digits' design is the games' own.

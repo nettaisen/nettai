@@ -1310,7 +1310,7 @@ double-damage flag is verified too (`chips/0x0bd-antirecv/roll-full-synchro`: Ro
 
 **The controller, T4 0x10 (`sub_80E17E8`).** Content: each navi chip's own controller (`navi = navi_chips.make {
 id, summon, course, ... }`: @exelib/navi_chips/chip, on @exelib/navi_chips/controller with the course below as data:
-`PLAIN`, `USER_STAYS`, `USER_RETURNED`), which compat maps to T4 0x10 (kinds.toml, written by bn6battle-verify's
+`PLAIN`, `USER_STAYS`, `USER_RETURNED`), which compat maps to T4 0x10 (kinds.toml, written by nettai-verify's
 tools/content/navi_chip_kinds.py). Spawned with r1..r3 = panel Y, element, subtype as its position (so
 Z = the subtype; register garbage nothing reads). Object +0x19 = the subtype (which navi, `off_802CD5C`), +0x18 is
 a flag its navi clears. Actions: 0 `object_dimScreen`; 4 `sub_800BDB2` (AntiNavi: for chips 0xDD..0x118 when the
@@ -1538,7 +1538,7 @@ follows, come a tick earlier. The engine runs the Japanese games' on every conso
 aqua, elec and wood, `sprung-dimmed` (sprung inside the other side's dimming: it waits for the dimming to end), and
 every other ElemTrap scenario, `null-hit` among them: a hit without an element leaves the trap). The US consoles'
 recordings that spring it (`chips/0x0c5-elemtrap/sprung-fire`, `sprung-elec`, `sprung-dimmed`) match up to the
-counterattack's first tick and differ from there, as the user chose: bn6battle-verify lists them as known deviations.
+counterattack's first tick and differ from there, as the user chose: nettai-verify lists them as known deviations.
 
 #### 3.6.10 TimeBom, Mine, Guardian (subtypes 10, 11, 14)
 

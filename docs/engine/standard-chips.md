@@ -18,7 +18,7 @@ Conventions (chips.md §3.3):
 - Spawners that call `object_spawnType3` with the caller's registers leave those registers as the object's
   position until its init places it; the scripts spawn with the same values.
 
-**Verification.** The chip lab (bn6battle-verify, tools/chiplab) records every chip in the scenarios `hit`, `miss`,
+**Verification.** The chip lab (nettai-verify, tools/chiplab) records every chip in the scenarios `hit`, `miss`,
 `adjacent`, `atk10`, `counter`, `guard`, `obstacle`, the stages, Beast Out and Cross Charge. "Matched" below means
 the engine matches the original on every frame of the scenario; scenarios that stop at another group's or the
 framework's gap are listed with it. Branches no scenario reaches are marked **[unverified]**.
