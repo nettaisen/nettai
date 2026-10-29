@@ -97,7 +97,7 @@ all zeros. Widths as built (`spec.rs` names every feature; `spec()` lists them):
 | Set | Count | Width | Ids | What each holds |
 |---|---|---|---|---|
 | general | 1 | 71 | own navi, other navi | round phase (custom screen, fight, dimmed, between), own screen's phase, gauge (own view) and full, turn, late turns and their timer, fight time; own HP, max and share; the other's (whether shown); own charge level, source, counter; the other's charge level if its glow shows; own stats (attack, rapid, charge, custom, mega, giga, Regular memory, base HP); chips left in hand and folder, Regular pending; both telop blocks (shown, the other's, "????", damage); the other's used chip shown and how long; the reaction delay; the key probe (done, and the 7 keys); own screen (picks, form chosen, open, decisions, a trade or hold, only OK left); both navis seen, blind |
-| panels | 18 | 51 | type | place; its type's rule (doubles and its element, damage shift, expires, submerges, unbreakable, traps, cleared by, carries, carries by move, solid, flags); owner, home, stolen; cracked, visible, hole and type timers, blink, a stolen panel's blink as it goes back; the attack highlight; own and other bodies, floating, blocker, neutral object, own and other attacks registered now; the attack log (§5): own and other attacks presented in each of the last 8 ticks; and the danger map (§3.2): how soon the other side's attacks under way land on it and how hard, its own side's the same |
+| panels | 18 | 47 | type | place; its type's rule (doubles and its element, damage shift, expires, submerges, unbreakable, traps, cleared by, carries, carries by move, solid, flags); owner, home, stolen; cracked, visible, hole and type timers, blink, a stolen panel's blink as it goes back; the attack highlight; own and other bodies, floating, blocker, neutral object, own and other attacks registered now; and the attack log (§5): own and other attacks presented in each of the last 8 ticks |
 | objects | 48 | 119 | kind, identity, action | every object seen, actors first, then attacks, then effects: pool, identity class (virus, field object, navi, player, none), side (own, other, neutral), own or other player, panel and next panel, sub-panel offset, velocity, facing toward the other side, HP (has, value, max, share), damage, element and its secondary bits, collision (has, own/other attack, own/other body, other bodies, neutral, floating, blocker, breaks guard, pierces invisibility, ground only), the panels it is registered on, 21 status bits, status timers (own side's only), barrier (and its HP, own side's only), actor (charge, B's, lockout, chips held where shown), navi action (the engine's 11), animation |
 | chips | 7 | 250 | chip, changes_to, leaves, kind_1, kind_2, kind_3 | 6 own hand (next first), then the other's last used chip as its telop named it. Each: its role, hand place; what the record says (element, class, this copy's code, how it is used, the flag, extra flag and trait bits, trap kind, modifier kind, damage formula kind, damage, MB, hit strength, lockout, a Program Advance's result, a link navi's own chip, codes); in hand, damage as shown, bonus and marks; the used chip's damage, bonus, x2; and its fingerprint, 114 (§3.1), whose names are the token's ids after the chip's |
 | slots | 12 | 250 | as chips (the chip, or a button's name) | the custom screen's 12 slots in the screen's order, what its pointer points at (the trainer's requirement: a set of their own, named `slots`), with the chips' features: the slot, its chip's record, the slot's kind and state, cursor, pick order, button uses, marks; the pointer (legal, refused, steps away); what picking it would add (§4.2); its chip's fingerprint |
@@ -107,8 +107,7 @@ all zeros. Widths as built (`spec.rs` names every feature; `spec()` lists them):
 The attack log is in the panel tokens rather than a set of its own (the coordinator's change: fewer tokens). The
 sets' names name the trainer's weights: Python identifiers and no keyword (so `general`, not `global`). The spec's
 hash is FNV-1a 64 of the layout's text (every set's name, count, width, ids and features in order, the actions and
-the names' hash): `c4d9e4a61b0f54ba` as built; `f27f9a4a126e990f` with the form list's entries (§4.2);
-`50d499f854df08cf` with the danger map (§3.2).
+the names' hash): `c4d9e4a61b0f54ba` as built.
 
 **Chips** are described by what the content states: damage, element, class, codes, MB, the flag and trait bits,
 trap kind, modifier kind, damage formula kind, hit strength, lockout, and how it's used (action, cut-in, hand-off,
@@ -219,37 +218,6 @@ chips are fingerprinted with it (the coordinator's call, 2026-10-23: live play m
   s (EXE5, 8,602), 3.7 s (EXE4, 8,184); both folders' chips on one thread and on four: §10.3. Every chip of the three
   games, the packs' and the test content's, runs with no run the engine stops (tested on the test content:
   `every_chip_of_every_game_runs_without_a_stop`).
-
-### 3.2 The danger map
-
-**Why** (2026-10-28). The network gets hit by everything, and the outcomes probe (§8) found why: from its view it
-can't tell how much a move costs (R² of HP taken about 0, "standing takes HP" told apart at an AUC of 0.6), and it
-didn't learn it with the answers as its lesson. It sees each object's kind, place, velocity and animation, but not
-how far into the animation it is (the pose a player reads), and the timing an attack lands at it never worked out.
-So the view says it outright.
-
-**What** (`danger::foresee`, in `Extra::danger`). At each fight view (every `k` ticks, at its tick), a copy of the
-battle is played on for 40 undimmed ticks (at most 480 in all: a dimming plays out whole), both sides pressing
-nothing, its random numbers drawn anew (`search::own_luck`: it can't foresee the battle's luck). Each tick's attacked
-panels (`Battle::attacked_panels`) and the most damage an attack carried there (`Battle::attack_damage`, the
-engine's log beside them: no part of the simulation, left out of the digest) are kept by the side whose attack it
-is: the first undimmed tick one lands on the panel, and the most damage. Each panel token gets four features (the
-`danger` block): the other side's attacks' soonness (1 − (first − 1)/40; 0 where none lands; while the other side is
-seen) and damage (/1000, at most 2), its own side's the same. No map on the custom screen. Both seats' views of a
-tick share one map (the env makes it once a tick).
-
-It reads the battle as it is, as the lookahead does (§10.7): what is on the field and how it moves, not the other
-player's next press; it is the one part of the view that does. The fairness test (§3) holds for the rest: it
-gives `encode` no map.
-
-**Cost** (`danger::tests::map_costs_by_game`: a map every 8 ticks of fights the scripted players play, the
-repository's content, this Mac): EXE6 0.61 ms a map on average (the most 4.8 ms), EXE5 0.40 ms (2.7), EXE4 0.25 ms
-(25: a dimming played out whole). In the app it is made on the battle's thread, a map every `k` ticks.
-
-**The network.** Its spec is new (`50d499f854df08cf`): a network of the old one plays it once converted
-(`nettai_ai.convert`: a set's gained features come in as columns the network reads nothing of, its input statistics'
-weight cut so the gained features' are measured soon; tested), as it played before. The first run, danger1, starts
-from large1's update 3,250 so converted, with large1's settings.
 
 ## 4. What it presses
 
@@ -774,6 +742,15 @@ As built in `training/nettai_ai/` (ppo.py, rollout.py, league.py, curriculum.py,
   holds how much an action costs and didn't learn it at that scale, even taught first (its policy paid: KL 0.06
   an update, entropy 1.47 to 1.66). Not run in the cloud (the branch's `configs/worth.toml` is ready: worth going
   on only if R² of HP taken passes about 0.2 within 150 updates); the lookahead plays Hard instead (§10.7).
+- **A danger map in the view** (2026-10-28, b0da52be6, reverted). Each panel token got four features more: how
+  soon each side's attacks under way land there and how hard (a copy of the battle played on 40 undimmed ticks,
+  nobody pressing). large1's update 3,250 was converted (the new columns' weights zero) and trained on with its
+  settings for 500 updates in the cloud. Head-to-head against the 3,250 it came out even (Elo 984, 1,008, 1,000 at
+  updates 100, 250, 500); against the masher at Hard without the lookahead it lost 13.7% and 9.7% of rounds at
+  250 and 500 (the 3,250: 8.3%). The new columns' changes from one checkpoint to the next didn't correlate
+  (cosine about 0) and grew as a random walk would: PPO gave the map no signal. In the 3,250's lost rounds,
+  attacks a map can see coming in time (boomerangs, meteors, rocks, eruptions, stars) were about a quarter of the
+  HP lost; a buster shot lands about 3 ticks after it's fired, before any view shows it.
 - **The lookahead as an opponent** (2026-10-28, after the teacher failed). A seat may be the lookahead's player
   (`Controller::Searcher`, bot name "searcher"): a fixed network (`env.searcher`, an exported weights file) that
   plays as a policy seat does (its delayed view, `k`, the custom screen's navigator), the env deciding for it

@@ -15,7 +15,6 @@
 //! (x mirrored for side 1, velocities, offsets, facing and regions with it),
 //! so both sides of a round are one problem.
 
-use crate::danger::{self, Danger};
 use crate::names;
 use crate::spec::{self, chips, forms, general, objects, panels, rules, LOG_TICKS};
 use nettai_battle::Battle;
@@ -240,16 +239,13 @@ impl AttackHistory {
 }
 
 /// What a viewer's player knows that the battle doesn't hold for it: its
-/// reaction delay, the attacks of the last ticks, the danger map (§3.2:
-/// where the attacks under way will land, read off a copy of the battle
-/// played on), which keys open a window on its custom screen (the key
-/// probe, §4.2), the slots its screen refused, and how many decisions it
-/// has made on the screen.
+/// reaction delay, the attacks of the last ticks, which keys open a window
+/// on its custom screen (the key probe, §4.2), the slots its screen
+/// refused, and how many decisions it has made on the screen.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Extra {
     pub delay: u16,
     pub log: AttackHistory,
-    pub danger: Danger,
     pub probe: Option<[bool; spec::PROBED_KEYS.len()]>,
     pub refused: u16,
     pub screen_decisions: u16,
@@ -544,16 +540,6 @@ fn encode_panels(v: &View, extra: &Extra, out: &mut Obs) {
                 row[panels::attacked + 2 * k] = flag(tick[v.me as usize] & bit != 0);
                 row[panels::attacked + 2 * k + 1] = flag(tick[v.them as usize] & bit != 0 && v.sees);
             }
-            // The danger map's: the other side's attacks (while it is seen), then its own.
-            let at = (y * 8 + x) as usize;
-            let (theirs, own) = (extra.danger.at(v.them, at), extra.danger.at(v.me, at));
-            let soon = |l: danger::Landing| if l.first == 0 { 0.0 } else { 1.0 - (l.first - 1) as f32 / danger::HORIZON as f32 };
-            if v.sees {
-                row[panels::danger] = soon(theirs);
-                row[panels::danger + 1] = clip(theirs.damage as f32 / 1000.0, 0.0, 2.0);
-            }
-            row[panels::danger + 2] = soon(own);
-            row[panels::danger + 3] = clip(own.damage as f32 / 1000.0, 0.0, 2.0);
         }
     }
 }

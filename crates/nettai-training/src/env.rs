@@ -315,10 +315,6 @@ pub struct Env {
     /// the draws of which decisions get one.
     pub teacher: [i8; 2],
     teacher_rng: nettai_netplay::rng::SplitMix64,
-    /// The danger map (§3.2) of the tick it was last made for (both seats'
-    /// views of a tick share it), and the draws of its copies' luck.
-    danger: Option<(u32, crate::danger::Danger)>,
-    danger_rng: nettai_netplay::rng::SplitMix64,
 }
 
 /// How many builds of each game an env keeps made ahead.
@@ -464,8 +460,6 @@ impl Env {
             legal_screen: [[false; spec::SCREEN_ACTIONS]; 2],
             teacher: [-1; 2],
             teacher_rng: nettai_netplay::rng::SplitMix64::new(seed ^ 0x7EAC_4E12),
-            danger: None,
-            danger_rng: nettai_netplay::rng::SplitMix64::new(seed ^ 0xDA6E_5EED),
             games,
             cfg,
         };
@@ -845,26 +839,11 @@ impl Env {
         out
     }
 
-    /// The danger map of the battle now (§3.2), made once a tick.
-    fn danger_now(&mut self) -> crate::danger::Danger {
-        match self.danger {
-            Some((t, d)) if t == self.t => d,
-            _ => {
-                let d = crate::danger::foresee(&self.battle, self.danger_rng.next_u64());
-                self.danger = Some((self.t, d));
-                d
-            }
-        }
-    }
-
-    /// What seat `s`'s view takes besides the battle (no danger map: the
-    /// fight's views add it, [`Env::danger_now`]).
     fn extra(&self, s: usize) -> Extra {
         let seat = &self.seats[s];
         Extra {
             delay: seat.delay,
             log: self.log,
-            danger: Default::default(),
             probe: seat.probe,
             refused: seat.nav.refused,
             screen_decisions: seat.decisions,
@@ -877,19 +856,20 @@ impl Env {
     fn ask(&mut self, s: usize, phase: u8) {
         self.seats[s].decided_at = Some(self.t);
         self.profile.decisions += 1;
+        let names = &self.games[self.game].names;
         match phase {
             FIGHT => {
-                let k = self.seats[s].k;
-                let want = self.t.checked_sub(self.seats[s].delay as u32);
+                let seat = &self.seats[s];
+                let k = seat.k;
+                let want = self.t.checked_sub(seat.delay as u32);
+                let slot = &seat.ring[((self.t / k) as usize) % seat.ring.len()];
                 let started = std::time::Instant::now();
-                let kept = self.seats[s].ring[((self.t / k) as usize) % self.seats[s].ring.len()].0 == want;
-                if want.is_some() && kept {
-                    let seat = &self.seats[s];
-                    self.obs[s].clone_from(&seat.ring[((self.t / k) as usize) % seat.ring.len()].1);
+                if want.is_some() && slot.0 == want {
+                    self.obs[s].clone_from(&slot.1);
                 } else {
                     // (A decision earlier than the delay: what it sees now.)
-                    let extra = Extra { danger: self.danger_now(), ..self.extra(s) };
-                    observe::encode(&self.battle, s as u8, &self.games[self.game].names, &extra, &mut self.obs[s]);
+                    let extra = self.extra(s);
+                    observe::encode(&self.battle, s as u8, names, &extra, &mut self.obs[s]);
                 }
                 self.profile.encode += started.elapsed().as_nanos() as u64;
                 self.legal_fight[s] = [true; spec::FIGHT_ACTIONS];
@@ -916,7 +896,7 @@ impl Env {
                 }
                 let extra = self.extra(s);
                 let started = std::time::Instant::now();
-                observe::encode(&self.battle, s as u8, &self.games[self.game].names, &extra, &mut self.obs[s]);
+                observe::encode(&self.battle, s as u8, names, &extra, &mut self.obs[s]);
                 self.profile.encode += started.elapsed().as_nanos() as u64;
                 self.legal_screen[s] = act::legal_screen(&self.battle, s as u8, &self.seats[s].nav, extra.only_ok);
                 self.legal_fight[s] = [false; spec::FIGHT_ACTIONS];
@@ -985,10 +965,6 @@ impl Env {
             }
         }
         // The observations later decisions will need.
-        let viewed = |seat: &Seat| seat.controller.decides() && (self.t + seat.delay as u32).is_multiple_of(seat.k);
-        let started = std::time::Instant::now();
-        let danger = if self.seats.iter().any(viewed) { self.danger_now() } else { Default::default() };
-        self.profile.encode += started.elapsed().as_nanos() as u64;
         let names = &self.games[self.game].names;
         for s in 0..2 {
             let seat = &self.seats[s];
@@ -996,7 +972,7 @@ impl Env {
             if !seat.controller.decides() || !(self.t + d).is_multiple_of(seat.k) {
                 continue;
             }
-            let extra = Extra { danger, ..self.extra(s) };
+            let extra = self.extra(s);
             let at = (((self.t + d) / seat.k) as usize) % seat.ring.len();
             let started = std::time::Instant::now();
             let slot = &mut self.seats[s].ring[at];

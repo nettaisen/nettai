@@ -75,17 +75,13 @@ pub mod f1 {
 pub const ATTACK_OF: [u32; 2] = [0x8000_0000, 0x4000_0000];
 
 /// The panels each side's attacks were presented on during a tick (a bit a
-/// panel at `y * 8 + x`, as `Collision::masks` index them), by side, and
-/// the most damage one of them carried there: what
-/// [`crate::Battle::attacked_panels`] and [`crate::Battle::attack_damage`]
-/// read. Kept for a reader of the battle (an AI's view of it), as the
-/// panels' highlight is: nothing in the simulation reads it, and the digest
-/// leaves it out.
+/// panel at `y * 8 + x`, as `Collision::masks` index them), by side: what
+/// [`crate::Battle::attacked_panels`] reads. Kept for a reader of the
+/// battle (an AI's view of it), as the panels' highlight is: nothing in
+/// the simulation reads it, and the digest leaves it out.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct AttackLog {
     pub panels: [u64; 2],
-    /// By side and panel bit (the field's 32 first: every playable panel).
-    pub damage: [[u16; 32]; 2],
 }
 
 /// Per-registration-window hit results (zeroed on present).
@@ -404,18 +400,14 @@ impl Battle {
         }
         s.status_final = None;
         s.acc = Accumulators::default();
-        let (bit, self_flags, self_damage) = (s.bit, s.self_flags, s.self_damage);
+        let (bit, self_flags) = (s.bit, s.self_flags);
         let whole_field = self.collision.covers_whole_field(&self.content, id);
         for (x, y) in self.collision.region_panels(&self.content, &self.field, id) {
             self.collision.masks[(y * 8 + x) as usize] |= bit;
             // (The panels attacked this tick, for a reader of the battle.)
             for (side, attack) in ATTACK_OF.iter().enumerate() {
                 if self_flags & attack != 0 {
-                    let p = (y * 8 + x) as usize;
-                    self.attacked.panels[side] |= 1 << p;
-                    if let Some(d) = self.attacked.damage[side].get_mut(p) {
-                        *d = (*d).max(self_damage);
-                    }
+                    self.attacked.panels[side] |= 1 << (y * 8 + x);
                 }
             }
             // Whole-field registrations refresh the wrong panel (a no-op).

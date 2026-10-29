@@ -232,7 +232,7 @@ mod tests {
             Battle::new(setup, testing::content())
         };
         let (mut b, mut scrambled) = (armed(), armed());
-        let (mut seen, mut dealt) = ([false; 2], [false; 2]);
+        let mut seen = [false; 2];
         for f in 0..900 {
             let i = shoot(&b, f);
             b.step(&i);
@@ -242,19 +242,11 @@ mod tests {
                 seen[side as usize] |= b.attacked_panels(side) != 0;
                 // (Only the playable panels' bits.)
                 assert_eq!(b.attacked_panels(side) & !0x7E_7E7E_00, 0, "tick {f}");
-                // (A panel's damage only where it was attacked.)
-                for p in 0..32 {
-                    let attacked = b.attacked_panels(side) & (1 << p) != 0;
-                    assert!(attacked || b.attack_damage(side, p) == 0, "tick {f}: panel {p}");
-                    dealt[side as usize] |= attacked && b.attack_damage(side, p) > 0;
-                }
             }
             let d = scrambled.digest();
             scrambled.attacked.panels = [u64::MAX, 0x1234];
-            scrambled.attacked.damage = [[0xFFFF; 32], [7; 32]];
             assert_eq!(scrambled.digest(), d, "tick {f}: the log isn't digested");
         }
         assert_eq!(seen, [true, true], "both sides' shots were logged");
-        assert_eq!(dealt, [true, true], "with their damage");
     }
 }
