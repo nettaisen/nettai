@@ -1,6 +1,8 @@
 # nettai's signaling server (src/index.ts): rooms where two players meet and
 # trade their WebRTC offer, answer and candidates, and the STUN and TURN
-# servers their connections use. Run it here with `npx wrangler dev`
+# servers their connections use. After `npm install` (the wrangler that
+# package.json pins: wrangler 4.15 left out the TURN rate limit below, with
+# only a warning), run it here with `npx wrangler dev`
 # (http://127.0.0.1:8787; nettai with NETTAI_SIGNAL=ws://127.0.0.1:8787).
 # Deploying it is `npx wrangler deploy`, on your own Cloudflare account: the
 # owner's step, as is everything below.
