@@ -73,9 +73,9 @@ pub struct Joypad {
 
 impl Joypad {
     /// Frames of holding before a button starts repeating.
-    const REPEAT_DELAY: u8 = 16;
+    pub const REPEAT_DELAY: u8 = 16;
     /// Frames between repeats.
-    const REPEAT_PERIOD: u8 = 5;
+    pub const REPEAT_PERIOD: u8 = 5;
 
     /// A joypad with nothing held whose first update runs at repeat beat
     /// `phase` (0..=4).

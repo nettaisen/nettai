@@ -2335,7 +2335,10 @@ tells the app where it is in the window and takes its clicks. From those rectang
   instead of enter+esc"; tried, the keyboard went back: "actually z and x for navigation is not very good,
   enter + esc was fine". The pad kept its half.) Settings, asking for a key to bind, takes every key but Esc,
   which stops the question.
-- A key held repeats a move; a choice is pressed once.
+- A key held repeats a move; a choice is pressed once. A held key or pad direction repeats on the app's clock at
+  the game's own menus' rate (`input::Held`, from `Joypad`: after 16 frames, then every 5th, some 268 ms and then
+  every 84), not the system's key repeat, which can be far quicker (macOS's quickest is every 30 ms) and ran the
+  cursor's sounds together. A text field being edited keeps the system's.
 
 So no screen writes key handling, and a control added to a screen is reachable by being there. A screen opens
 with the focus on its main control (`Screen::main`) and remembers where it was; a dialog or a menu is a scope,

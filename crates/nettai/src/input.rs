@@ -14,10 +14,10 @@
 
 use crate::nav::Rect;
 use gamepad_facade::{Axis, Button, EventKind, Id};
-use nettai_battle::input::keys;
+use nettai_battle::input::{Joypad, keys};
+use nettai_frontend::player::time_of;
 use slint::winit_030::winit::event::{ElementState, KeyEvent};
 use slint::winit_030::winit::keyboard::{KeyCode, PhysicalKey};
-use std::time::Duration;
 use nettai_platform::time::Instant;
 
 /// A party battle's switch to the member the left of the party panel's two buttons names (EXE5 DS's Y, docs/design/
@@ -79,6 +79,13 @@ pub enum Action {
     PageDown,
     Home,
     End,
+}
+
+impl Action {
+    /// Whether it repeats while its key or button is held (a move; a choice or a way back is pressed once).
+    pub fn repeats(self) -> bool {
+        matches!(self, Action::Up | Action::Down | Action::Left | Action::Right | Action::NextFocus | Action::PreviousFocus | Action::PageUp | Action::PageDown)
+    }
 }
 
 /// A scroll that leaves the focus where it is, as the wheel does (`App::scroll`): the pad's right stick, and Shift
@@ -467,6 +474,8 @@ pub struct Keys {
     pub pressed: Vec<Instant>,
     /// Tab is held: in an online match, both builds show while it is (no button is bound to it).
     pub tab: bool,
+    /// The key held that repeats in the menus (a move, a scroll), on the app's clock (`App::repeat_key`).
+    pub moving: Held<KeyCode>,
 }
 
 impl Keys {
@@ -500,12 +509,56 @@ impl Keys {
     pub fn release(&mut self) {
         self.held = 0;
         self.tab = false;
+        self.moving.stop();
     }
 }
 
-/// How long a direction is held before it repeats in the menus, and how often it does then.
-const REPEAT_AFTER: Duration = Duration::from_millis(380);
-const REPEAT_EVERY: Duration = Duration::from_millis(90);
+/// A move held in the menus (a key, a pad's direction), repeated on the app's own clock as the game's menus repeat
+/// a held button (`Joypad`): after 16 of its frames, then every 5th (some 268 ms, then every 84). The system's
+/// repeat of a key isn't used there: it may be far quicker (macOS's quickest is every 30 ms), and each move
+/// sounds the cursor, which ran together.
+pub struct Held<T> {
+    /// What is held, and when it next repeats.
+    held: Option<(T, Instant)>,
+}
+
+impl<T> Default for Held<T> {
+    fn default() -> Held<T> {
+        Held { held: None }
+    }
+}
+
+impl<T: Copy + PartialEq> Held<T> {
+    /// `what` was pressed at `now`: it is the one held.
+    pub fn start(&mut self, what: T, now: Instant) {
+        self.held = Some((what, now + time_of(Joypad::REPEAT_DELAY.into())));
+    }
+
+    /// Nothing is held.
+    pub fn stop(&mut self) {
+        self.held = None;
+    }
+
+    /// `what` was let go: nothing is held, if it was the one.
+    pub fn let_go(&mut self, what: T) {
+        if self.held.is_some_and(|(held, _)| held == what) {
+            self.held = None;
+        }
+    }
+
+    /// What repeats at `now`, if it's time. (The repeats keep their beat from the press, not from the frame that
+    /// last repeated, so a display whose frames don't divide it doesn't slow it; after a stall they start again
+    /// from `now` rather than catching up.)
+    pub fn due(&mut self, now: Instant) -> Option<T> {
+        let (what, next) = self.held.as_mut()?;
+        if now < *next {
+            return None;
+        }
+        let every = time_of(Joypad::REPEAT_PERIOD.into());
+        *next = if now >= *next + every { now + every } else { *next + every };
+        Some(*what)
+    }
+}
 
 /// How far the right stick is tilted before it scrolls, and how fast it scrolls tilted all the way (units a
 /// second). Between, the speed grows as the square of the tilt past the dead zone, for fine control near it.
@@ -540,8 +593,8 @@ pub struct Pad {
     /// The second pad is practice's dummy's (its Action "a second pad"): its buttons aren't the player's, and
     /// its presses don't reach the menus.
     pub apart: bool,
-    /// The direction held in the menus, since when, and when it last repeated.
-    repeat: Option<(Action, Instant, Instant)>,
+    /// The direction held in the menus.
+    repeat: Held<Action>,
 }
 
 impl Pad {
@@ -604,13 +657,13 @@ impl Pad {
                     let Some(action) = bindings.pad_action(button) else { continue };
                     out.actions.push(action);
                     if matches!(action, Action::Up | Action::Down | Action::Left | Action::Right) {
-                        self.repeat = Some((action, now, now));
+                        self.repeat.start(action, now);
                     }
                 }
                 EventKind::ButtonUp(button) => {
                     self.down.retain(|d| *d != (id, button));
                     if !dummys && matches!(button, Button::DPadUp | Button::DPadDown | Button::DPadLeft | Button::DPadRight) {
-                        self.repeat = None;
+                        self.repeat.stop();
                     }
                 }
                 EventKind::AxisMotion { axis: Axis::RightY, value } => match self.tilts.iter_mut().find(|(of, _)| *of == id) {
@@ -655,9 +708,9 @@ impl Pad {
                             _ => Action::Right,
                         };
                         out.actions.push(action);
-                        self.repeat = Some((action, now, now));
+                        self.repeat.start(action, now);
                     } else if now_held == 0 && was != 0 {
-                        self.repeat = None;
+                        self.repeat.stop();
                     }
                 }
                 EventKind::Disconnected => {
@@ -666,19 +719,15 @@ impl Pad {
                     self.tilts.retain(|(of, _)| *of != id);
                     self.pads.retain(|of| *of != id);
                     if !dummys {
-                        self.repeat = None;
+                        self.repeat.stop();
                     }
                 }
                 EventKind::Connected => {}
             }
         }
         // A direction held repeats, as a key does.
-        if let Some((action, since, last)) = &mut self.repeat
-            && now.duration_since(*since) >= REPEAT_AFTER
-            && now.duration_since(*last) >= REPEAT_EVERY
-        {
-            *last = now;
-            out.actions.push(*action);
+        if let Some(action) = self.repeat.due(now) {
+            out.actions.push(action);
         }
         out
     }
@@ -800,6 +849,7 @@ impl TouchPad {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
 
     /// The pad as the UI lays it out on a 390-wide phone (battle.slint): the directions in a plus at the left,
     /// A and B at the right, L and R over them.
@@ -815,6 +865,28 @@ mod tests {
         pad.place(9, at(16.0, 484.0, 120.0, 48.0));
         pad.place(8, at(254.0, 484.0, 120.0, 48.0));
         pad
+    }
+
+    /// A key held repeats as the game's menus do, 16 frames after the press, then every 5th, on a 60 Hz display's
+    /// frames too (which don't divide the beat); after a stall it starts again rather than catching up, and another
+    /// key let go leaves it held.
+    #[test]
+    fn a_held_move_repeats_at_the_games_rate() {
+        let start = Instant::now();
+        let at = |ms: f64| start + Duration::from_secs_f64(ms / 1000.0);
+        let mut held = Held::default();
+        held.start(KeyCode::ArrowDown, start);
+        let frames = (0..120).map(|f| f as f64 * 1000.0 / 60.0);
+        let repeats: Vec<f64> = frames.filter(|&ms| held.due(at(ms)).is_some()).collect();
+        // (16 frames: 267.9 ms; then every 83.7 ms, 21 of them inside two seconds.)
+        assert_eq!(repeats.len(), 21);
+        assert!((266.0..285.0).contains(&repeats[0]), "{repeats:?}");
+        assert_eq!(held.due(at(2600.0)), Some(KeyCode::ArrowDown));
+        assert_eq!(held.due(at(2610.0)), None);
+        held.let_go(KeyCode::ArrowUp);
+        assert_eq!(held.due(at(2700.0)), Some(KeyCode::ArrowDown));
+        held.let_go(KeyCode::ArrowDown);
+        assert_eq!(held.due(at(2800.0)), None);
     }
 
     /// Two fingers hold two buttons, and one lifting leaves the other's held: a direction and A together.

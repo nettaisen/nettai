@@ -1618,8 +1618,43 @@ impl App {
         self.shell.keys.key(&self.shell.bindings, code, pressed, repeat, now);
         let editing = self.shell.nav.editing();
         if !pressed {
+            self.shell.keys.moving.let_go(code);
             return !editing;
         }
+        // A move held repeats on the app's clock (`App::repeat_key`), not the system's; a text field being edited
+        // keeps the system's.
+        if self.moves(code) {
+            if !repeat {
+                self.shell.keys.moving.start(code, now);
+            } else if !editing {
+                return true;
+            }
+        }
+        self.key_down(code, text, repeat, now)
+    }
+
+    /// Whether `code` held repeats as a move does in the menus (`Action::repeats`, a scroll; while a battle's owner
+    /// keeps the keys from it, the keys bound to Up and Down too).
+    fn moves(&self, code: KeyCode) -> bool {
+        let (shift, bindings) = (self.shell.shift, &self.shell.bindings);
+        scroll_key(code, shift).is_some()
+            || menu_action(code, shift, bindings).is_some_and(Action::repeats)
+            || (self.shell.battle_has_keys() && self.shell.keys_kept() && matches!(bindings.of_key(code), Some(keys::UP | keys::DOWN)))
+    }
+
+    /// The move key held, repeated on the app's clock (`Keys::moving`), while no text field is being edited.
+    fn repeat_key(&mut self, now: Instant) {
+        if self.shell.nav.editing() {
+            return;
+        }
+        if let Some(code) = self.shell.keys.moving.due(now) {
+            self.key_down(code, None, true, now);
+        }
+    }
+
+    /// A key pressed, or a held one's repeat: the battle's, a text field's, a screen's, or the menus'.
+    fn key_down(&mut self, code: KeyCode, text: Option<String>, repeat: bool, now: Instant) -> bool {
+        let editing = self.shell.nav.editing();
         self.shell.last_input = Some(now);
         let press = KeyPress { code, text, repeat, shift: self.shell.shift };
         // The battle has the keys: Esc is nettai's menu, a key bound to no button may be its owner's.
@@ -1695,7 +1730,7 @@ impl App {
         }
         let Some(action) = menu_action(code, self.shell.shift, &self.shell.bindings) else { return false };
         // (A key held repeats a move; a choice or a way back is pressed once.)
-        if repeat && !matches!(action, Action::Up | Action::Down | Action::Left | Action::Right | Action::NextFocus | Action::PreviousFocus | Action::PageUp | Action::PageDown) {
+        if repeat && !action.repeats() {
             return true;
         }
         self.shell.nav.used_keys(false);
@@ -1770,6 +1805,7 @@ impl App {
             self.shell.refresh();
         }
         self.read_pad(now);
+        self.repeat_key(now);
         self.tilt(now);
         self.follow_games();
         // (A change of game's colors a step further.)
