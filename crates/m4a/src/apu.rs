@@ -417,14 +417,17 @@ impl Noise {
 /// One Direct Sound FIFO: 8 words the DMA fills 4 at a time from the PCM
 /// buffer when fewer than 4 are left, and a word being shifted out a byte
 /// per timer overflow.
+/// A FIFO, its bytes as the PCM buffer's samples ([`crate::BYTE_STEP`]ths
+/// of a byte's step: whole bytes from the game's mix, the HQ mix's samples
+/// at its precision).
 #[derive(Clone, Debug, Default)]
 struct Fifo {
-    queue: std::collections::VecDeque<i8>,
-    word: [i8; 4],
+    queue: std::collections::VecDeque<i16>,
+    word: [i16; 4],
     /// Bytes of `word` still to play.
     left: u8,
     /// The byte the DAC sees.
-    out: i8,
+    out: i16,
 }
 
 impl Fifo {
@@ -442,7 +445,7 @@ impl Fifo {
         // The word shifts right a byte at a time (an arithmetic shift: an
         // emptied word repeats its top byte's sign).
         self.out = self.word[0];
-        self.word = [self.word[1], self.word[2], self.word[3], if self.word[3] < 0 { -1 } else { 0 }];
+        self.word = [self.word[1], self.word[2], self.word[3], if self.word[3] < 0 { -crate::BYTE_STEP } else { 0 }];
         self.left = self.left.saturating_sub(1);
         request
     }
@@ -470,7 +473,7 @@ impl DirectSound {
     /// refill them from `right` and `left` (the PCM buffer's halves; past
     /// the right half the DMA reads on into the left one, past the left
     /// one into whatever follows it, read as 0).
-    pub fn tick(&mut self, right: &[i8], left: &[i8]) {
+    pub fn tick(&mut self, right: &[i16], left: &[i16]) {
         let refill_right = self.right.tick();
         let refill_left = self.left.tick();
         if refill_right || refill_left {
@@ -487,8 +490,8 @@ impl DirectSound {
         }
     }
 
-    /// The bytes the DAC sees: (right, left).
-    pub fn output(&self) -> (i8, i8) {
+    /// The bytes the DAC sees: (right, left), as the PCM buffer's samples.
+    pub fn output(&self) -> (i16, i16) {
         (self.right.out, self.left.out)
     }
 }

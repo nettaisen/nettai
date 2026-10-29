@@ -468,7 +468,7 @@ impl Driver {
             div_freq: ((16_777_216 / pcm_freq.max(1)) + 1) >> 1,
             psg_tick: 0,
             dma_counter: ring.frames as u8,
-            hq: Some(HqMix::new(ring.samples_per_frame)),
+            hq: Some(HqMix::new(ring.samples_per_frame, m.ds_channels as usize)),
             ring,
             last_slot: None,
             memory: [0; MEMORY_SIZE],
@@ -533,7 +533,7 @@ impl Driver {
             Mixer::Original => self.hq = None,
             Mixer::Hq => {
                 if self.hq.is_none() {
-                    self.hq = Some(HqMix::new(self.ring.samples_per_frame));
+                    self.hq = Some(HqMix::new(self.ring.samples_per_frame, self.ds.len()));
                 }
             }
         }
@@ -570,9 +570,11 @@ impl Driver {
         self.ds_phase = cycles % period;
     }
 
-    /// The Direct Sound bytes the last frame mixed: (right, left), the
-    /// PCM buffer's slot for it (FIFO A plays the right, B the left).
-    pub fn last_mix(&self) -> Option<(&[i8], &[i8])> {
+    /// The Direct Sound samples the last frame mixed: (right, left), the
+    /// PCM buffer's slot for it (FIFO A plays the right, B the left), in
+    /// [`crate::BYTE_STEP`]ths of a byte's step (the game's bytes times it,
+    /// with [`Mixer::Original`]).
+    pub fn last_mix(&self) -> Option<(&[i16], &[i16])> {
         let slot = self.last_slot?;
         let n = self.ring.samples_per_frame;
         Some((&self.ring.right[slot * n..(slot + 1) * n], &self.ring.left[slot * n..(slot + 1) * n]))
@@ -813,10 +815,12 @@ impl Driver {
             }
             Some(hq) => {
                 hq.reverb_or_clear(&self.ring, slot, next, self.reverb);
-                for ch in self.ds.iter_mut() {
-                    mixer::mix_ds_hq(ch, &self.bank, self.master_volume, self.div_freq, hq, level(&self.levels, &ch.note));
+                for (i, ch) in self.ds.iter_mut().enumerate() {
+                    let host = level(&self.levels, &ch.note);
+                    hq.channel(i, ch, &self.bank, self.master_volume, self.div_freq, host);
                 }
-                hq.downsample(&mut self.ring, slot);
+                hq.fades(&self.bank, self.div_freq);
+                hq.store(&mut self.ring, slot);
             }
         }
         self.apu.set_levels(std::array::from_fn(|i| level(&self.levels, &self.psg[i].note)));
@@ -848,11 +852,10 @@ impl Driver {
                 let (pl, pr) = self.apu.sample();
                 let (dr, dl) = self.fifo.output();
                 // FIFO A (right) and B (left) at full volume, four DAC
-                // steps a level; the bias clamps to the 10-bit DAC.
-                let side = |psg: i32, ds: i8| -> i16 {
-                    let v = (psg + ((ds as i32) << 2)).clamp(-0x200, 0x1FF);
-                    ((v * 0x100 * 3) >> 4) as i16
-                };
+                // steps a byte's step; the bias clamps to the 10-bit DAC.
+                // In the output's steps (48 a DAC step), a sample (in
+                // BYTE_STEPths of a byte's step) is 4 * 48 / 128 = 3/2.
+                let side = |psg: i32, ds: i16| -> i16 { ((psg * 96 + ds as i32 * 3) >> 1).clamp(-0x200 * 48, 0x1FF * 48) as i16 };
                 self.pending.push([side(pl, dl), side(pr, dr)]);
             }
             if overflow {

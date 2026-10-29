@@ -10,9 +10,8 @@
 //! so the PCM buffer holds the bytes the game's buffer holds.
 //!
 //! That is [`Mixer::Original`]. The driver mixes with [`Mixer::Hq`] unless
-//! told otherwise: the same channels the way ipatix's HQ mixer
-//! (gba-hq-mixer, MIT) mixes them, at a higher precision, rounded to the
-//! buffer's eight bits once.
+//! told otherwise: the same channels mixed after ipatix's HQ mixer
+//! (gba-hq-mixer, MIT), at a higher precision, and played at it.
 
 use crate::apu::{Apu, Reg};
 use crate::bank::{Envelope, NO_SWEEP, Sample, SampleId, SoundBank, VoiceKind, WaveId};
@@ -212,12 +211,14 @@ pub(crate) fn set_volume(note: &mut Note, track_right: u8, track_left: u8) {
     note.left_volume = (((0x7F - rpan) * vel * track_left as i32) >> 14).min(255) as u8;
 }
 
-/// The Direct Sound PCM buffer: a ring of frames, right and left, eight
-/// bits a sample (the driver's `pcmBuffer`, which the FIFOs play from).
+/// The Direct Sound PCM buffer: a ring of frames, right and left (the
+/// driver's `pcmBuffer`, which the FIFOs play from), in [`BYTE_STEP`]ths
+/// of a byte's step: the game's mix holds whole bytes in it (its samples
+/// are eight bits), the HQ mix its samples at its precision.
 #[derive(Clone, Debug)]
 pub(crate) struct PcmRing {
-    pub right: Vec<i8>,
-    pub left: Vec<i8>,
+    pub right: Vec<i16>,
+    pub left: Vec<i16>,
     pub samples_per_frame: usize,
     /// Frames the ring holds (`pcmDmaPeriod`).
     pub frames: usize,
@@ -226,11 +227,27 @@ pub(crate) struct PcmRing {
 /// The driver's PCM buffer, in samples a side.
 const PCM_DMA_BUF_SIZE: usize = 1584;
 
+/// A byte's step of the PCM buffer (and the FIFOs), in the units the ring
+/// holds its samples in: the HQ mix's precision, seven bits below the
+/// eight a game's sample has.
+pub const BYTE_STEP: i16 = 128;
+
 impl PcmRing {
     pub fn new(samples_per_frame: usize) -> PcmRing {
         let frames = (PCM_DMA_BUF_SIZE / samples_per_frame).max(1);
         PcmRing { right: vec![0; PCM_DMA_BUF_SIZE], left: vec![0; PCM_DMA_BUF_SIZE], samples_per_frame, frames }
     }
+}
+
+/// The byte a sample of the ring is in the game's buffer (the HQ mix's
+/// sample rounded down).
+fn byte(v: i16) -> i8 {
+    v.div_euclid(BYTE_STEP) as i8
+}
+
+/// A byte of the game's buffer as a sample of the ring.
+fn from_byte(b: i8) -> i16 {
+    b as i16 * BYTE_STEP
 }
 
 // ---- SoundMainRAM: Direct Sound --------------------------------------------------
@@ -245,16 +262,17 @@ pub(crate) fn reverb_or_clear(ring: &mut PcmRing, slot: usize, next: usize, reve
         ring.left[cur..cur + n].fill(0);
         return;
     }
+    let b = |v: i16| byte(v) as i32;
     for k in 0..n {
-        let sum = ring.left[cur + k] as i32 + ring.right[cur + k] as i32 + ring.left[nxt + k] as i32 + ring.right[nxt + k] as i32;
+        let sum = b(ring.left[cur + k]) + b(ring.right[cur + k]) + b(ring.left[nxt + k]) + b(ring.right[nxt + k]);
         let mut v = (sum * reverb as i32) >> 9;
         // (A negative result rounds toward zero, but one less than a
         // multiple of 512 rounds to zero too.)
         if v & 0x80 != 0 {
             v += 1;
         }
-        ring.right[cur + k] = v as i8;
-        ring.left[cur + k] = v as i8;
+        ring.right[cur + k] = from_byte(v as i8);
+        ring.left[cur + k] = from_byte(v as i8);
     }
 }
 
@@ -428,12 +446,11 @@ pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq:
     let n = ring.samples_per_frame;
     let base = slot * n;
     let (vr, vl) = ((ch.mix_right as i32 * host as i32) >> 8, (ch.mix_left as i32 * host as i32) >> 8);
+    let add = |v: &mut i16, x: i32| *v = from_byte(byte(*v).wrapping_add(x as i8));
     walk(ch, sample, div_freq, n, |k, s, d| {
         let s = s + (d >> 23);
-        let r = &mut ring.right[base + k];
-        *r = r.wrapping_add(((vr * s) >> 8) as i8);
-        let l = &mut ring.left[base + k];
-        *l = l.wrapping_add(((vl * s) >> 8) as i8);
+        add(&mut ring.right[base + k], (vr * s) >> 8);
+        add(&mut ring.left[base + k], (vl * s) >> 8);
     });
 }
 
@@ -447,91 +464,161 @@ pub enum Mixer {
     /// too (the game's buffer, to the byte: what verification compares with
     /// the original).
     Original,
-    /// ipatix's HQ mixer (gba-hq-mixer, MIT): the reverb and every channel
-    /// added up at a higher precision, the sum clamped and rounded to eight
-    /// bits once, each sample's rounding error carried into the next (noise
-    /// shaping). The rounding noise is then one rounding's, not one per
-    /// channel, and mostly in the treble. The envelopes, the interpolation,
-    /// the volumes, the reverb's level and timing, and where each channel
-    /// is in its sample stay the game's; none of the HQ mixer's 16-bit
-    /// register shortcuts are kept (halved volumes, the reverb level in
-    /// steps of four, both sides packed in one word).
+    /// After ipatix's HQ mixer (gba-hq-mixer, MIT): the reverb and every
+    /// channel added up at a higher precision (seven bits below the
+    /// buffer's eight, with the volumes and the interpolated sample
+    /// unrounded) and the sum clamped, not wrapped; then played at that
+    /// precision, never rounded to eight bits (which the GBA's FIFOs would
+    /// need). The driver sets each channel's volume once a frame: here it
+    /// glides across the frame from the last frame's to this one's, and a
+    /// note the driver cuts off (another note taking its channel, a stop,
+    /// the end of its echo) fades out over [`CUT_FADE`] samples instead of
+    /// stopping at once; a note starts at its volume (its sample's own
+    /// attack). The rest stays the game's: the envelopes, the
+    /// interpolation, the volumes each frame reaches, the reverb's level
+    /// and timing, and where each channel is in its sample, so the channels
+    /// are the same either way. None of the HQ mixer's 16-bit register
+    /// shortcuts are kept (halved volumes, the reverb level in steps of
+    /// four, both sides packed in one word).
     #[default]
     Hq,
 }
 
-/// Steps of the HQ mix to one step of the PCM buffer (the HQ mixer's
-/// seven bits below the buffer's eight).
-const HQ_STEP: i32 = 128;
+/// Samples a note the driver cuts off takes to fade out with [`Mixer::Hq`]
+/// (6 ms at EXE6's 10512 Hz).
+pub const CUT_FADE: u32 = 64;
 
-/// The HQ mixer's state: the frame's mix at its precision, and what the
-/// last rounding of each side left over.
+/// The HQ mix's volume, right and left, of a channel whose envelope has
+/// run this frame: the driver's ((volume * ((envelope * (master + 1)) >>
+/// 4)) >> 8) * host >> 8, with nothing rounded off (full volume is 2^28).
+fn hq_volume(ch: &DsChannel, master: u8, host: u16) -> [i64; 2] {
+    let level = ch.note.envelope_volume as i64 * (master as i64 + 1) * host as i64;
+    [level * ch.note.right_volume as i64, level * ch.note.left_volume as i64]
+}
+
+/// `n` samples of a channel added into `mix` at the volume `volume(k)`
+/// gives for sample `k` (as [`hq_volume`]).
+fn hq_add(mix: &mut [[i32; 2]], ch: &mut DsChannel, sample: &Sample, div_freq: u32, n: usize, volume: impl Fn(usize) -> [i64; 2]) {
+    // (The sample is times 2^23 and the volume times 2^28; a byte's step is
+    // BYTE_STEP of the mix's.)
+    let shift = 23 + 28 - BYTE_STEP.trailing_zeros();
+    walk(ch, sample, div_freq, n, |k, s, d| {
+        let s = ((s as i64) << 23) + d as i64;
+        let v = volume(k);
+        mix[k][0] += ((v[0] * s) >> shift) as i32;
+        mix[k][1] += ((v[1] * s) >> shift) as i32;
+    });
+}
+
+/// A channel as the HQ mix last played it: its state after the frame, and
+/// the volumes it reached.
+#[derive(Clone, Debug)]
+struct Played {
+    ch: DsChannel,
+    volume: [i64; 2],
+}
+
+/// A note the driver cut off, fading out: its channel as it was, the
+/// volumes it fades from, and the samples of its fade played so far.
+#[derive(Clone, Debug)]
+struct Fading {
+    ch: DsChannel,
+    volume: [i64; 2],
+    done: u32,
+}
+
+/// The HQ mixer's state: the frame being mixed, and what each channel
+/// played last.
 #[derive(Clone, Debug)]
 pub(crate) struct HqMix {
-    /// The frame being mixed, (right, left) a sample, in 1/[`HQ_STEP`]ths
-    /// of the buffer's steps.
+    /// The frame, (right, left) a sample, in the ring's units
+    /// ([`BYTE_STEP`]ths of a byte's step).
     mix: Vec<[i32; 2]>,
-    /// The part of each side's last sample its rounding dropped
-    /// (0..[`HQ_STEP`]), added to that side's next.
-    carry: [i32; 2],
+    /// Each channel as the last frame played it (none: silent, or its data
+    /// ended): where its volumes glide from, and what fades out if the
+    /// driver cuts it off.
+    last: Vec<Option<Played>>,
+    fading: Vec<Fading>,
 }
 
 impl HqMix {
-    pub fn new(samples_per_frame: usize) -> HqMix {
-        HqMix { mix: vec![[0; 2]; samples_per_frame], carry: [0; 2] }
+    pub fn new(samples_per_frame: usize, channels: usize) -> HqMix {
+        HqMix { mix: vec![[0; 2]; samples_per_frame], last: vec![None; channels], fading: Vec::new() }
     }
 
-    /// The frame's start: the ring's reverb at the mix's precision (from the
-    /// slot itself and `next`, as [`reverb_or_clear`] takes it), or silence.
+    /// The frame's start: the ring's reverb at its precision (from the slot
+    /// itself and `next`, as [`reverb_or_clear`] takes it), or silence.
     pub fn reverb_or_clear(&mut self, ring: &PcmRing, slot: usize, next: usize, reverb: u8) {
         let n = ring.samples_per_frame;
         let (cur, nxt) = (slot * n, next * n);
         for (k, m) in self.mix.iter_mut().enumerate() {
             let sum = ring.left[cur + k] as i32 + ring.right[cur + k] as i32 + ring.left[nxt + k] as i32 + ring.right[nxt + k] as i32;
-            // The driver's (sum * reverb) >> 9, in the mix's steps.
-            let v = (sum * reverb as i32 * HQ_STEP) >> 9;
+            // The driver's (sum * reverb) >> 9.
+            let v = (sum * reverb as i32) >> 9;
             *m = [v, v];
         }
     }
 
-    /// The frame's mix into frame slot `slot` of the ring: each side clamped
-    /// to the buffer's range and rounded down to its steps, the part rounded
-    /// off carried into the side's next sample.
-    pub fn downsample(&mut self, ring: &mut PcmRing, slot: usize) {
-        let base = slot * ring.samples_per_frame;
-        for (k, m) in self.mix.iter().enumerate() {
-            let mut byte = |side: usize| -> i8 {
-                let v = (m[side] + self.carry[side]).clamp(-128 * HQ_STEP, 128 * HQ_STEP - 1);
-                self.carry[side] = v.rem_euclid(HQ_STEP);
-                v.div_euclid(HQ_STEP) as i8
-            };
-            ring.right[base + k] = byte(0);
-            ring.left[base + k] = byte(1);
+    /// Channel `i` for the frame: its envelope (as [`mix_ds`]), then its
+    /// mix, its volumes gliding from the last frame's; the note it played
+    /// last frame fading out if the driver cut it off.
+    pub fn channel(&mut self, i: usize, ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq: u32, host: u16) {
+        let was = self.last[i].take();
+        let new_note = ch.status.start;
+        let Some(sample) = envelope(ch, bank, master) else {
+            if let Some(p) = was {
+                self.fade(p);
+            }
+            return;
+        };
+        let to = hq_volume(ch, master, host);
+        let from = match was {
+            // Another note took the channel: it starts at its volume.
+            Some(p) if new_note => {
+                self.fade(p);
+                to
+            }
+            Some(p) => p.volume,
+            None => to,
+        };
+        let n = self.mix.len() as i64;
+        let glide = |k: usize| -> [i64; 2] { std::array::from_fn(|c| from[c] + (to[c] - from[c]) * (k as i64 + 1) / n) };
+        hq_add(&mut self.mix, ch, sample, div_freq, n as usize, glide);
+        if ch.status.active() {
+            self.last[i] = Some(Played { ch: ch.clone(), volume: to });
         }
     }
-}
 
-/// One Direct Sound channel for a frame as [`Mixer::Hq`] mixes it: its
-/// envelope (as [`mix_ds`]), then its mix into `hq`'s frame at the HQ
-/// mix's precision: the interpolated sample whole, times the volumes with
-/// nothing rounded off.
-pub(crate) fn mix_ds_hq(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq: u32, hq: &mut HqMix, host: u16) {
-    let Some(sample) = envelope(ch, bank, master) else {
-        return;
-    };
-    // The driver's volume, ((volume * ((envelope * (master + 1)) >> 4)) >> 8)
-    // * host >> 8, with nothing rounded off: full volume is 2^28.
-    let level = ch.note.envelope_volume as i64 * (master as i64 + 1) * host as i64;
-    let (vr, vl) = (level * ch.note.right_volume as i64, level * ch.note.left_volume as i64);
-    // (The sample is times 2^23 and the volume times 2^28; the mix's steps
-    // are 2^7 to the buffer's.)
-    let shift = 23 + 28 - HQ_STEP.trailing_zeros();
-    let mix = &mut hq.mix;
-    walk(ch, sample, div_freq, mix.len(), |k, s, d| {
-        let s = ((s as i64) << 23) + d as i64;
-        mix[k][0] += ((vr * s) >> shift) as i32;
-        mix[k][1] += ((vl * s) >> shift) as i32;
-    });
+    fn fade(&mut self, p: Played) {
+        if p.volume != [0; 2] {
+            self.fading.push(Fading { ch: p.ch, volume: p.volume, done: 0 });
+        }
+    }
+
+    /// The notes fading out, each for the rest of its fade or of the frame.
+    pub fn fades(&mut self, bank: &SoundBank, div_freq: u32) {
+        let mix = &mut self.mix;
+        self.fading.retain_mut(|f| {
+            let n = mix.len().min((CUT_FADE - f.done) as usize);
+            let sample = &bank.samples[f.ch.sample.0 as usize];
+            let (from, done) = (f.volume, f.done as i64);
+            let fade = |k: usize| -> [i64; 2] { from.map(|v| v * (CUT_FADE as i64 - done - k as i64 - 1) / CUT_FADE as i64) };
+            hq_add(mix, &mut f.ch, sample, div_freq, n, fade);
+            f.done += n as u32;
+            f.done < CUT_FADE && f.ch.status.active()
+        });
+    }
+
+    /// The frame into frame slot `slot` of the ring, each side clamped to
+    /// the buffer's range.
+    pub fn store(&self, ring: &mut PcmRing, slot: usize) {
+        let base = slot * ring.samples_per_frame;
+        let clamp = |v: i32| v.clamp(-128 * BYTE_STEP as i32, 128 * BYTE_STEP as i32 - 1) as i16;
+        for (k, m) in self.mix.iter().enumerate() {
+            ring.right[base + k] = clamp(m[0]);
+            ring.left[base + k] = clamp(m[1]);
+        }
+    }
 }
 
 /// A sample's playback rate for a note (`MidiKeyToFreq` of its wave).
@@ -851,34 +938,28 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_hq_rounding_carries_what_it_drops() {
+    fn the_hq_mix_keeps_its_precision_and_clamps() {
         let n = 176;
         let mut ring = PcmRing::new(n);
-        let mut hq = HqMix::new(n);
-        // 2.34 steps of the buffer on the right, -0.7 on the left: rounded
-        // down alone, 2 and -1; with the error carried, each frame's bytes
-        // add up to the level times the frame's length.
+        let mut hq = HqMix::new(n, 4);
         for m in hq.mix.iter_mut() {
             *m = [300, -90];
         }
-        hq.downsample(&mut ring, 0);
-        let sum = |s: &[i8]| s.iter().map(|&b| b as i32).sum::<i32>();
-        assert_eq!(sum(&ring.right[..n]), 300 * n as i32 / HQ_STEP);
-        assert_eq!(sum(&ring.left[..n]), (-90 * n as i32).div_euclid(HQ_STEP));
-        assert!(ring.right[..n].iter().all(|&b| b == 2 || b == 3));
-        assert!(ring.left[..n].iter().all(|&b| b == -1 || b == 0));
+        hq.store(&mut ring, 0);
+        assert!(ring.right[..n].iter().all(|&v| v == 300) && ring.left[..n].iter().all(|&v| v == -90));
+        for m in hq.mix.iter_mut() {
+            *m = [3 * 127 * BYTE_STEP as i32, -3 * 128 * BYTE_STEP as i32];
+        }
+        hq.store(&mut ring, 1);
+        assert!(ring.right[n..2 * n].iter().all(|&v| v == 128 * BYTE_STEP - 1));
+        assert!(ring.left[n..2 * n].iter().all(|&v| v == -128 * BYTE_STEP));
     }
 
     #[test]
-    fn the_hq_mix_clamps_instead_of_wrapping() {
-        let n = 176;
-        let mut ring = PcmRing::new(n);
-        let mut hq = HqMix::new(n);
-        for m in hq.mix.iter_mut() {
-            *m = [3 * 127 * HQ_STEP, -3 * 128 * HQ_STEP];
+    fn the_games_bytes_are_whole_steps_of_the_ring() {
+        for b in [-128i8, -1, 0, 1, 127] {
+            assert_eq!(byte(from_byte(b)), b);
         }
-        hq.downsample(&mut ring, 1);
-        assert!(ring.right[n..2 * n].iter().all(|&b| b == 127));
-        assert!(ring.left[n..2 * n].iter().all(|&b| b == -128));
+        assert_eq!((byte(-1), byte(127)), (-1, 0), "an HQ sample's byte is it rounded down");
     }
 }

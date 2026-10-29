@@ -115,7 +115,12 @@ later still: the FIFOs play each frame's mix during the next). Output is
 capacitor, which takes out the PSG's offset). `AudioOut` (feature `playback`,
 on by default) does the same on the default output device through cpal,
 buffering a few frames and resampling to the device rate; the frontend
-calls `tick` at the game's 59.73 Hz. `wav::write` saves rendered audio.
+calls `tick` at the game's 59.73 Hz. The resampler is linear interpolation
+times a low-pass (a polyphase table): the tone linear interpolation gives
+(its gentle roll-off of the top octave, about -2.7 dB at 10 kHz) to a
+thousandth of a decibel, without its images above 16 kHz (90 dB and more
+down, where linear interpolation leaves a 14 kHz tone's image 5 dB under
+it). `wav::write` saves rendered audio.
 
 ## 3. The driver: `m4a`
 
@@ -167,22 +172,25 @@ game's code.
   end; the "fixed" voices play a sample a sample), loop or end. The ring
   holds nine frames; with reverb, each frame's slot starts as the sum of
   itself and the next slot (nine and eight frames ago) times the level.
-- **The HQ mix** (`Mixer::Hq`, `Driver::set_mixer`): the techniques of
-  ipatix's HQ mixer (gba-hq-mixer, MIT). The reverb and every channel are
-  added up at seven bits more than the buffer's eight, with the volumes
-  and the interpolated sample unrounded; the sum is clamped (not wrapped)
-  and rounded down to eight bits once, the part dropped carried into the
-  side's next sample (first-order noise shaping). The game rounds each
-  channel to eight bits and adds them wrapping, so its rounding noise is
-  one rounding per channel and the HQ mix's one in all, mostly in the
-  treble. The envelopes, the interpolation, the volumes, the reverb's
-  level and timing and where each channel is in its sample stay the
-  game's, so the channels are the same either way and only the buffer's
-  bytes differ; the HQ mixer's 16-bit shortcuts (halved volumes, the reverb
-  level in steps of four, both sides packed in one word) are not kept.
-  The driver mixes with the HQ mix by default; `Mixer::Original` is the
-  game's mix, which §6 compares with the original (`set_mixer` on the
-  driver or on `BattleAudio` picks one).
+- **The HQ mix** (`Mixer::Hq`, `Driver::set_mixer`), after ipatix's HQ
+  mixer (gba-hq-mixer, MIT). The reverb and every channel are added up at
+  seven bits more than the buffer's eight (`BYTE_STEP`), with the volumes
+  and the interpolated sample unrounded, and the sum is clamped (not
+  wrapped); the ring, the FIFOs and the DAC's sum carry that precision,
+  so nothing is rounded to eight bits (the game's FIFOs take bytes; the
+  game's mix holds whole bytes in the ring). The driver sets a channel's
+  volume once a frame: here it glides across the frame from the last
+  frame's to this one's, and a note the driver cuts off (another note
+  taking its channel, a stop, its echo's end) fades out over `CUT_FADE`
+  samples (6 ms) instead of stopping at once; a new note starts at its
+  volume, so its sample's attack is its own. The envelopes, the
+  interpolation, the volumes each frame reaches, the reverb's level and
+  timing and where each channel is in its sample stay the game's, so the
+  channels are the same either way; the HQ mixer's 16-bit shortcuts
+  (halved volumes, the reverb level in steps of four, both sides packed in
+  one word) are not kept. The driver mixes with the HQ mix by default;
+  `Mixer::Original` is the game's mix, which §6 compares with the original
+  (`set_mixer` on the driver or on `BattleAudio` picks one).
 - **The hardware** (`m4a::apu`): the PSG as the GB APU of the GBA (duty
   steps, the 512 Hz sequencer's lengths, sweep and envelope steps, the
   noise LFSR, the wave channel's banks), driven by the registers the

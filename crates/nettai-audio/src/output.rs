@@ -2,9 +2,9 @@
 //!
 //! The host renders a frame of audio per battle tick on its own thread and
 //! queues it ([`Output::queue`]); the device callback plays the queue,
-//! resampled linearly from 32768 Hz to the device rate (after m4a-engine's
-//! `Player`). The two meet in a lock-free ring (one writer, one reader), so
-//! the callback never waits on the host.
+//! resampled from 32768 Hz to the device rate ([`Kernel`]: linear
+//! interpolation's tone without its images). The two meet in a lock-free
+//! ring (one writer, one reader), so the callback never waits on the host.
 //!
 //! The host's ticks come on its display's frames, a frame's ticks at once,
 //! and its clock is not the device's: the queue swings by a few ticks and
@@ -161,6 +161,107 @@ struct Shared {
     counters: Counters,
 }
 
+/// The resampler's filter, as a table of taps by the read position's
+/// fraction: linear interpolation (what the queue was first read with)
+/// times a low-pass. Linear interpolation lets through images of the queue's
+/// sound above its half rate (16384 Hz), faint and high; the low-pass takes
+/// them out, and below it the tone is linear interpolation's to a tenth of
+/// a decibel (its gentle roll-off of the top octave, about -2.7 dB at
+/// 10 kHz, stays: it is how the game has always sounded here).
+struct Kernel {
+    /// Queued samples the filter reaches either side of the read position.
+    half: usize,
+    /// `taps[p * width + i]`, `width` = 2 * `half`: the weight of the
+    /// queued sample `i + 1 - half` places from the oldest (the one the
+    /// read position is past) when the position is `p / PHASES` past it;
+    /// `PHASES + 1` rows.
+    taps: Vec<f32>,
+}
+
+/// Rows of the [`Kernel`]'s table a sample apart (positions between two
+/// rows interpolate between them).
+const PHASES: usize = 256;
+/// The low-pass's half-length, in samples of the slower of the two rates.
+const LOW_PASS_HALF: f64 = 32.0;
+/// Its cutoff (where it is half down), as a share of the slower rate: its
+/// passband reaches about 0.44 of it, its stopband (70 dB) starts at
+/// about 0.5.
+const LOW_PASS_CUTOFF: f64 = 0.47;
+/// Its Kaiser window's beta (70 dB).
+const KAISER_BETA: f64 = 6.76;
+
+impl Kernel {
+    /// The filter for reading `step` queued samples a device frame.
+    fn new(step: f64) -> Kernel {
+        // (Reading slower than the queue's rate, the low-pass is the device's
+        // half rate, in the queue's samples; its length grows as much.)
+        let scale = (1.0 / step).min(1.0);
+        let cutoff = LOW_PASS_CUTOFF * scale;
+        let reach = LOW_PASS_HALF / scale;
+        // The low-pass and the triangle (linear interpolation's weights), a
+        // PHASES-th of a sample apart; their convolution is the filter.
+        let p = PHASES as f64;
+        let lp_n = (reach * p).ceil() as i64;
+        let i0 = |x: f64| {
+            let (mut sum, mut term, mut k) = (1.0f64, 1.0f64, 1.0f64);
+            while term > 1e-12 * sum {
+                term *= (x / (2.0 * k)).powi(2);
+                sum += term;
+                k += 1.0;
+            }
+            sum
+        };
+        let low_pass: Vec<f64> = (-lp_n..=lp_n)
+            .map(|m| {
+                let t = m as f64 / p;
+                let sinc = if m == 0 { 1.0 } else { (std::f64::consts::PI * 2.0 * cutoff * t).sin() / (std::f64::consts::PI * 2.0 * cutoff * t) };
+                let w = (1.0 - (t / reach).powi(2)).max(0.0);
+                2.0 * cutoff * sinc * i0(KAISER_BETA * w.sqrt()) / i0(KAISER_BETA) / p
+            })
+            .collect();
+        let tri: Vec<f64> = (-(PHASES as i64)..=PHASES as i64).map(|m| 1.0 - (m as f64 / p).abs()).collect();
+        let conv_n = lp_n + PHASES as i64;
+        let at = |m: i64| -> f64 {
+            // The convolution at m / PHASES samples.
+            if m.abs() > conv_n {
+                return 0.0;
+            }
+            let lo = (m - PHASES as i64).max(-lp_n);
+            let hi = (m + PHASES as i64).min(lp_n);
+            (lo..=hi).map(|j| low_pass[(j + lp_n) as usize] * tri[(m - j + PHASES as i64) as usize]).sum()
+        };
+        let half = (conv_n as f64 / p).ceil() as usize + 1;
+        let width = 2 * half;
+        let mut taps = vec![0f32; (PHASES + 1) * width];
+        for ph in 0..=PHASES {
+            let row: Vec<f64> = (0..width).map(|i| at((i as i64 + 1 - half as i64) * PHASES as i64 - ph as i64)).collect();
+            let sum: f64 = row.iter().sum();
+            for (t, w) in taps[ph * width..(ph + 1) * width].iter_mut().zip(&row) {
+                *t = (w / sum) as f32;
+            }
+        }
+        Kernel { half, taps }
+    }
+
+    /// The filter's output at `frac` (0..1) past queued sample 0, sample `i`
+    /// being `sample(i)` (from 1 - `half` to `half`).
+    fn read(&self, frac: f64, sample: impl Fn(isize) -> [f32; 2]) -> [f32; 2] {
+        let width = 2 * self.half;
+        let x = frac * PHASES as f64;
+        let ph = (x as usize).min(PHASES - 1);
+        let a = (x - ph as f64).min(1.0) as f32;
+        let (r0, r1) = (&self.taps[ph * width..(ph + 1) * width], &self.taps[(ph + 1) * width..(ph + 2) * width]);
+        let mut v = [0f32; 2];
+        for i in 0..width {
+            let w = r0[i] + (r1[i] - r0[i]) * a;
+            let s = sample(i as isize + 1 - self.half as isize);
+            v[0] += s[0] * w;
+            v[1] += s[1] * w;
+        }
+        v
+    }
+}
+
 /// The callback's own state.
 struct Reader {
     /// Read position between the two oldest queued samples.
@@ -173,11 +274,29 @@ struct Reader {
     last: [f32; 2],
     from: [f32; 2],
     blend: u32,
+    kernel: Kernel,
+    /// The samples the reader has passed that the filter still reaches
+    /// (the newest last).
+    passed: std::collections::VecDeque<[f32; 2]>,
 }
 
 impl Reader {
-    fn new() -> Reader {
-        Reader { frac: 0.0, playing: false, fill: TARGET_FILL as f64, last: [0.0; 2], from: [0.0; 2], blend: 0 }
+    /// A reader for `base` queued samples a device frame (the queue's rate
+    /// over the device's).
+    fn new(base: f64) -> Reader {
+        let kernel = Kernel::new(base);
+        let passed = std::iter::repeat_n([0.0; 2], kernel.half).collect();
+        Reader { frac: 0.0, playing: false, fill: TARGET_FILL as f64, last: [0.0; 2], from: [0.0; 2], blend: 0, kernel, passed }
+    }
+
+    /// Let the `n` oldest queued samples go, keeping those the filter still
+    /// reaches.
+    fn pass(&mut self, ring: &Ring, n: usize) {
+        for i in n.saturating_sub(self.kernel.half)..n {
+            self.passed.pop_front();
+            self.passed.push_back(ring.peek(i));
+        }
+        ring.skip(n);
     }
 
     /// Fade from what was last heard, over the next frames (a start, a
@@ -207,9 +326,11 @@ impl Reader {
             c.silent_frames.fetch_add(1, Ordering::Relaxed);
             return self.dry();
         }
-        let t = self.frac as f32;
-        let (a, b) = (ring.peek(0), ring.peek(1));
-        let mut v = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+        // (Past the queue's end, its last sample, held.)
+        let passed = &self.passed;
+        let mut v = self.kernel.read(self.frac, |i| {
+            if i < 0 { passed[(passed.len() as isize + i) as usize] } else { ring.peek((i as usize).min(len - 1)) }
+        });
         if self.blend > 0 {
             let k = self.blend as f32 / FADE_FRAMES as f32;
             v = [v[0] + (self.from[0] - v[0]) * k, v[1] + (self.from[1] - v[1]) * k];
@@ -217,7 +338,7 @@ impl Reader {
         }
         self.frac += step;
         let n = (self.frac as usize).min(len);
-        ring.skip(n);
+        self.pass(ring, n);
         self.frac -= n as f64;
         self.last = v;
         v
@@ -239,7 +360,7 @@ impl Reader {
         let mut len = ring.len();
         if len > MOST_FILL {
             let skip = len - TARGET_FILL;
-            ring.skip(skip);
+            self.pass(ring, skip);
             len -= skip;
             self.fill = len as f64;
             if self.playing {
@@ -291,7 +412,7 @@ impl Output {
         });
         let st = shared.clone();
         let base = SAMPLE_RATE as f64 / device_rate as f64;
-        let mut reader = Reader::new();
+        let mut reader = Reader::new(base);
         let mut fill = move |out: &mut [f32]| {
             let (ring, c) = (&st.ring, &st.counters);
             let frames = out.len() / channels.max(1);
@@ -469,17 +590,17 @@ mod tests {
     fn the_reader_fades_out_dry_and_back_in() {
         let ring = Ring::new(ROOM);
         let c = Counters::default();
-        let mut r = Reader::new();
+        let mut r = Reader::new(1.0);
         ring.push(&vec![[0.5, 0.5]; RESUME_FILL - 1]);
         assert_eq!(r.next(&ring, 1.0, &c), [0.0; 2], "not yet");
         ring.push(&[[0.5, 0.5]]);
         let first = r.next(&ring, 1.0, &c);
         assert!(first[0] < 0.01, "faded in from silence: {first:?}");
         let mut v = first;
-        for _ in 0..FADE_FRAMES {
+        for _ in 0..FADE_FRAMES + r.kernel.half as u32 {
             v = r.next(&ring, 1.0, &c);
         }
-        assert_eq!(v, [0.5, 0.5]);
+        assert!((v[0] - 0.5).abs() < 1e-5 && (v[1] - 0.5).abs() < 1e-5, "{v:?}");
         while ring.len() >= 2 {
             r.next(&ring, 1.0, &c);
         }
@@ -501,7 +622,7 @@ mod tests {
     fn the_rate_keeps_the_queue_at_its_target() {
         let c = Counters::default();
         let ring = Ring::new(ROOM);
-        let mut r = Reader::new();
+        let mut r = Reader::new(1.0);
         r.playing = true;
         ring.push(&vec![[0.0; 2]; 2 * TARGET_FILL]);
         let mut step = 1.0;
@@ -528,8 +649,8 @@ mod tests {
     fn uneven_frames_and_two_clocks_leave_no_gap() {
         let c = Counters::default();
         let ring = Ring::new(ROOM);
-        let mut r = Reader::new();
         let base = SAMPLE_RATE as f64 / 44100.0;
+        let mut r = Reader::new(base);
         // (The device's clock 0.2% fast against the host's.)
         let device_rate = 44100.0 * 1.002;
         let tick = 1.0 / 59.7275;
@@ -568,5 +689,76 @@ mod tests {
         assert_eq!(c.underruns.load(Ordering::Relaxed), 0, "least {least}");
         assert_eq!(c.skips.load(Ordering::Relaxed), 0);
         assert!(least > 300, "least {least}");
+    }
+
+    /// A sine at `freq` read through the filter from the queue's rate to
+    /// `rate`: its level at `freq` and at `at` (another frequency), in dB.
+    fn through_the_filter(freq: f64, rate: f64, at: f64) -> (f64, f64) {
+        let step = SAMPLE_RATE as f64 / rate;
+        let k = Kernel::new(step);
+        let input = |i: isize| {
+            let v = (2.0 * std::f64::consts::PI * freq * i as f64 / SAMPLE_RATE as f64).sin() as f32;
+            [v, v]
+        };
+        let n = rate as usize / 2;
+        let out: Vec<f64> = (0..n)
+            .map(|j| {
+                let pos = 1000.0 + j as f64 * step;
+                let base = pos.floor() as isize;
+                k.read(pos - base as f64, |i| input(base + i))[0] as f64
+            })
+            .collect();
+        let level = |f: f64| {
+            let (mut re, mut im) = (0.0, 0.0);
+            for (j, v) in out.iter().enumerate() {
+                let w = 2.0 * std::f64::consts::PI * f * j as f64 / rate;
+                re += v * w.cos();
+                im += v * w.sin();
+            }
+            20.0 * ((re * re + im * im).sqrt() * 2.0 / n as f64).max(1e-12).log10()
+        };
+        (level(freq), level(at))
+    }
+
+    /// Linear interpolation's level at `freq`, dB (its weights' response).
+    fn linear(freq: f64) -> f64 {
+        let x = std::f64::consts::PI * freq / SAMPLE_RATE as f64;
+        20.0 * ((x.sin() / x).powi(2)).log10()
+    }
+
+    /// The filter keeps linear interpolation's tone and drops its images:
+    /// a tone comes out at linear interpolation's level, its image (where
+    /// the queue's rate mirrors it) 70 dB or more under it.
+    #[test]
+    fn the_resampler_keeps_the_tone_without_the_images() {
+        for rate in [44100.0, 48000.0, 96000.0] {
+            for freq in [440.0, 3000.0, 10000.0, 14000.0] {
+                let image = SAMPLE_RATE as f64 - freq;
+                let (tone, mirrored) = through_the_filter(freq, rate, image);
+                assert!((tone - linear(freq)).abs() < 0.1, "{freq} Hz at {rate}: {tone:.2} dB, linear {:.2}", linear(freq));
+                if image < rate / 2.0 {
+                    assert!(mirrored < tone - 70.0, "{freq} Hz at {rate}: its image at {mirrored:.1} dB");
+                }
+            }
+        }
+    }
+
+    /// Read slower than the queue's rate, the filter stops at the device's
+    /// half rate: a tone above it doesn't fold back.
+    #[test]
+    fn the_resampler_filters_for_a_slower_device() {
+        let rate = 22050.0;
+        let (_, folded) = through_the_filter(13000.0, rate, rate - 13000.0);
+        assert!(folded < -60.0, "folded back at {folded:.1} dB");
+        let (tone, _) = through_the_filter(3000.0, rate, 1.0);
+        assert!((tone - linear(3000.0)).abs() < 0.1, "{tone:.2} dB");
+    }
+
+    #[test]
+    fn each_row_of_the_filter_adds_up_to_one() {
+        let k = Kernel::new(SAMPLE_RATE as f64 / 48000.0);
+        for row in k.taps.chunks(2 * k.half) {
+            assert!((row.iter().sum::<f32>() - 1.0).abs() < 1e-5);
+        }
     }
 }

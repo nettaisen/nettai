@@ -4,7 +4,7 @@
 
 use m4a::bank::*;
 use m4a::driver::{ChannelInfo, Hardware};
-use m4a::{Driver, Mixer, PlayerId, SongId};
+use m4a::{BYTE_STEP, CUT_FADE, Driver, Mixer, PlayerId, SongId, SoundBank};
 use std::sync::Arc;
 
 use Command::*;
@@ -145,39 +145,118 @@ fn the_fifos_play_each_frames_mix_during_the_next() {
     d.take_dac_output(&mut dac);
     // Each byte of it, held a timer period, four DAC steps a level (the
     // FIFOs' latency moves it by a few samples).
-    let level = |b: i8| (((b as i32) << 2) * 0x100 * 3 >> 4) as i16;
+    let level = |v: i16| ((v as i32 * 3) >> 1) as i16;
     let heard: Vec<i16> = dac.iter().map(|s| s[1]).collect();
     let first = right.iter().position(|&b| b != 0).unwrap();
     assert!(heard.contains(&level(right[first])));
     assert_eq!(dac.len(), 1097);
 }
 
+/// Two drivers on one bank: the game's mix and the HQ mix.
+fn both(b: Arc<SoundBank>) -> (Driver, Driver) {
+    let (mut original, hq) = (Driver::new(b.clone()), Driver::new(b));
+    original.set_mixer(Mixer::Original);
+    (original, hq)
+}
+
+/// The last frame's Direct Sound, right then left, in byte steps.
+fn mixed(d: &Driver) -> Vec<f64> {
+    let (r, l) = d.last_mix().unwrap();
+    r.iter().chain(l).map(|&v| v as f64 / BYTE_STEP as f64).collect()
+}
+
 #[test]
-fn the_hq_mixer_plays_the_same_channels_rounded_once() {
+fn the_hq_mixer_plays_the_same_channels_unrounded() {
     let track = |key: u8| {
         vec![Tempo(75), Volume(40), Voice(SAMPLE), Note { gate: 40, key: Some(key), velocity: Some(127) }, Wait(60), Fine]
     };
     let b = bank(vec![(2, 20, vec![track(60), track(64), track(67)])], 4);
-    let (mut original, mut hq) = (Driver::new(b.clone()), Driver::new(b));
-    assert_eq!(hq.mixer(), Mixer::Hq, "by default");
-    original.set_mixer(Mixer::Original);
+    assert_eq!(Driver::new(b.clone()).mixer(), Mixer::Hq, "by default");
+    let (mut original, mut hq) = both(b);
     original.start(SongId(0));
     hq.start(SongId(0));
-    let mut sums = (0, 0);
-    for _ in 0..60 {
+    let mut sums = (0.0, 0.0);
+    for frame in 0..60 {
         original.step_frame();
         hq.step_frame();
         assert_eq!(original.ds_states(), hq.ds_states(), "the same channels, each as far into its sample");
-        let ((or, ol), (hr, hl)) = (original.last_mix().unwrap(), hq.last_mix().unwrap());
-        for (&o, &h) in or.iter().chain(ol).zip(hr.iter().chain(hl)) {
+        if frame >= 38 {
+            // (The notes end: the HQ mix fades them out.)
+            continue;
+        }
+        for (o, h) in mixed(&original).into_iter().zip(mixed(&hq)) {
             // Three notes, each rounded down alone (its volume and its
-            // interpolated sample too), against their sum rounded once.
-            assert!((h as i32 - o as i32).abs() <= 4, "{o} against {h}");
-            sums.0 += o as i32;
-            sums.1 += h as i32;
+            // interpolated sample too), against their sum unrounded.
+            assert!(o == o.trunc() && (h - o).abs() <= 4.0, "{o} against {h}");
+            sums.0 += o;
+            sums.1 += h;
         }
     }
-    assert!(sums.1 > sums.0, "the original's three roundings each lose a little: {sums:?}");
+    assert!(sums.1 > sums.0, "the original's roundings each lose a little: {sums:?}");
+}
+
+#[test]
+fn a_note_cut_off_fades_out_with_the_hq_mixer() {
+    let track = vec![Tempo(75), Volume(127), Voice(SAMPLE), Note { gate: 10, key: Some(60), velocity: Some(127) }, Wait(30), Fine];
+    let (mut original, mut hq) = both(bank(vec![(2, 20, vec![track])], 4));
+    original.start(SongId(0));
+    hq.start(SongId(0));
+    let peak = |m: &[f64]| m.iter().fold(0.0f64, |p, v| p.max(v.abs()));
+    let mut held = 0.0;
+    for _ in 0..30 {
+        original.step_frame();
+        hq.step_frame();
+        let (o, h) = (mixed(&original), mixed(&hq));
+        if held > 0.0 && peak(&o) == 0.0 {
+            // The game's mix stops the note at once (no release); the HQ mix
+            // fades it out over CUT_FADE samples.
+            let fade = CUT_FADE as usize;
+            let quarter = |q: usize| peak(&h[q * fade / 4..(q + 1) * fade / 4]);
+            assert!(quarter(0) > 0.8 * held, "still sounding as it starts: {} of {held}", quarter(0));
+            assert!(quarter(0) > quarter(1) && quarter(1) > quarter(2) && quarter(2) > quarter(3), "fading");
+            assert!(h[fade..h.len() / 2].iter().all(|&v| v == 0.0), "silent after it");
+            return;
+        }
+        held = peak(&h);
+    }
+    panic!("the note didn't end");
+}
+
+#[test]
+fn a_volume_change_glides_across_the_frame_with_the_hq_mixer() {
+    let track = vec![
+        Tempo(75),
+        Volume(127),
+        Voice(SAMPLE),
+        Note { gate: 60, key: Some(60), velocity: Some(127) },
+        Wait(10),
+        Volume(32),
+        Wait(30),
+        Fine,
+    ];
+    let (mut original, mut hq) = both(bank(vec![(2, 20, vec![track])], 4));
+    original.start(SongId(0));
+    hq.start(SongId(0));
+    let level = |m: &[f64]| m.iter().map(|v| v.abs()).sum::<f64>() / m.len() as f64;
+    let mut before = 0.0;
+    for _ in 0..30 {
+        original.step_frame();
+        hq.step_frame();
+        let (o, h) = (mixed(&original), mixed(&hq));
+        let n = o.len() / 2;
+        let now = level(&o[..n]);
+        if before > 0.0 && now < before / 2.0 {
+            // The game's mix drops at the frame's start; the HQ mix glides
+            // down across the frame to the same level at its end.
+            let (start, end) = (level(&h[..16]), level(&h[n - 16..n]));
+            assert!((start - before).abs() < before * 0.15, "{start} from {before}");
+            assert!((end - now).abs() < 2.0, "{end} to {now}");
+            assert!(level(&o[..16]) < before / 2.0, "the original drops at once");
+            return;
+        }
+        before = now;
+    }
+    panic!("the volume didn't change");
 }
 
 #[test]
