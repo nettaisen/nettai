@@ -187,8 +187,7 @@ const LOW_PASS_HALF: f64 = 32.0;
 /// passband reaches about 0.44 of it, its stopband (70 dB) starts at
 /// about 0.5.
 const LOW_PASS_CUTOFF: f64 = 0.47;
-/// Its Kaiser window's beta (70 dB).
-const KAISER_BETA: f64 = 6.76;
+use m4a::filter::KAISER_BETA;
 
 impl Kernel {
     /// The filter for reading `step` queued samples a device frame.
@@ -202,23 +201,7 @@ impl Kernel {
         // PHASES-th of a sample apart; their convolution is the filter.
         let p = PHASES as f64;
         let lp_n = (reach * p).ceil() as i64;
-        let i0 = |x: f64| {
-            let (mut sum, mut term, mut k) = (1.0f64, 1.0f64, 1.0f64);
-            while term > 1e-12 * sum {
-                term *= (x / (2.0 * k)).powi(2);
-                sum += term;
-                k += 1.0;
-            }
-            sum
-        };
-        let low_pass: Vec<f64> = (-lp_n..=lp_n)
-            .map(|m| {
-                let t = m as f64 / p;
-                let sinc = if m == 0 { 1.0 } else { (std::f64::consts::PI * 2.0 * cutoff * t).sin() / (std::f64::consts::PI * 2.0 * cutoff * t) };
-                let w = (1.0 - (t / reach).powi(2)).max(0.0);
-                2.0 * cutoff * sinc * i0(KAISER_BETA * w.sqrt()) / i0(KAISER_BETA) / p
-            })
-            .collect();
+        let low_pass: Vec<f64> = (-lp_n..=lp_n).map(|m| m4a::filter::low_pass(m as f64 / p, cutoff, reach, KAISER_BETA) / p).collect();
         let tri: Vec<f64> = (-(PHASES as i64)..=PHASES as i64).map(|m| 1.0 - (m as f64 / p).abs()).collect();
         let conv_n = lp_n + PHASES as i64;
         let at = |m: i64| -> f64 {

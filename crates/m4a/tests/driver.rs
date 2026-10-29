@@ -492,8 +492,11 @@ fn stopping_ends_notes_at_once() {
     d.stop_all();
     let out = frames(&mut d, 2);
     assert!(d.channels().is_empty());
-    // (The hardware plays a frame behind the mix.)
-    assert!(!loud(&out[out.len() * 3 / 4..]));
+    // (The hardware plays a frame behind the mix. What is left is the
+    // output capacitor letting go of the PSG's offset: a slow decay, no
+    // sound.)
+    let tail = &out[out.len() * 3 / 4..];
+    assert!(tail.windows(2).all(|w| (w[1][0] - w[0][0]).abs() < 1e-3), "silent");
     assert!(!d.player(PlayerId(2)).unwrap().is_playing());
 }
 

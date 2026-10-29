@@ -14,6 +14,7 @@
 //! PCM buffer as the GBA's sound hardware does.
 
 use crate::apu::{Apu, DirectSound, FRAME_CYCLES, Reg};
+use crate::filter::Decimator;
 use crate::bank::*;
 use crate::mixer::{self, CgbChannel, DsChannel, HqMix, Mixer, Note, PcmRing, Phase, Status, TrackOrder, TrackRef};
 use crate::tables;
@@ -429,8 +430,8 @@ pub struct Driver {
     dac_phase: u32,
     /// Output at the DAC's rate, not taken yet: (left, right).
     pending: Vec<[i16; 2]>,
-    /// Half a 32768 Hz sample waiting for its other half (at 65536 Hz).
-    carry: Vec<[i16; 2]>,
+    /// The DAC's output taken down to the host's rate ([`Driver::take_output`]).
+    decimator: Decimator,
     /// The output capacitor's last input and output, left and right.
     dc_in: [f32; 2],
     dc_out: [f32; 2],
@@ -478,7 +479,7 @@ impl Driver {
             ds_phase: 0,
             dac_phase: 0,
             pending: Vec::new(),
-            carry: Vec::new(),
+            decimator: Decimator::new((m.dac_rate() / crate::OUT_RATE).max(1) as usize),
             dc_in: [0.0; 2],
             dc_out: [0.0; 2],
             levels: vec![256; bank.players.len()],
@@ -896,19 +897,17 @@ impl Driver {
     }
 
     /// Output at 32768 Hz (+-1.0 full scale) finished so far, appended to
-    /// `out`: the DAC's output averaged down to the rate, through the
-    /// GBA's output capacitor (a high-pass at about 20 Hz, which takes out
-    /// the PSG's offset).
+    /// `out`: the DAC's output taken down to the rate (a [`Decimator`]: the
+    /// average of the samples each stands for, without what lies above the
+    /// rate's half folding back), through the GBA's output capacitor (a
+    /// high-pass at about 20 Hz, which takes out the PSG's offset).
     pub fn take_output(&mut self, out: &mut Vec<[f32; 2]>) {
-        let ratio = (self.dac_rate() / crate::OUT_RATE).max(1) as usize;
-        let mut samples = std::mem::take(&mut self.carry);
-        samples.append(&mut self.pending);
-        let whole = samples.len() / ratio * ratio;
-        let scale = 1.0 / (ratio as f32 * 24576.0);
+        let scale = 1.0 / 24576.0;
         let pole = 1.0 - 2.0 * std::f32::consts::PI * 20.0 / crate::OUT_RATE as f32;
-        for chunk in samples[..whole].chunks(ratio) {
-            let (l, r) = chunk.iter().fold((0i32, 0i32), |a, s| (a.0 + s[0] as i32, a.1 + s[1] as i32));
-            let x = [l as f32 * scale, r as f32 * scale];
+        for s in self.pending.drain(..) {
+            let Some(x) = self.decimator.push([s[0] as f32 * scale, s[1] as f32 * scale]) else {
+                continue;
+            };
             let mut y = [0.0; 2];
             for c in 0..2 {
                 y[c] = x[c] - self.dc_in[c] + pole * self.dc_out[c];
@@ -917,7 +916,6 @@ impl Driver {
             }
             out.push(y);
         }
-        self.carry = samples[whole..].to_vec();
     }
 
     fn ds_note(&mut self, i: usize) -> &mut Note {

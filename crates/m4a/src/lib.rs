@@ -21,6 +21,7 @@
 pub mod apu;
 pub mod bank;
 pub mod driver;
+pub mod filter;
 mod mixer;
 pub mod rom;
 pub mod tables;
