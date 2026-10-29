@@ -72,8 +72,14 @@ fn toadman_switched_in_dives_on_sea() {
 fn starting_as(content: &std::sync::Arc<nettai_battle::Content>, navi: &str) -> Battle {
     let megaman = crate::double_attacks::side(&[]);
     let left = megaman.replacen("navi = \"megaman\"", &format!("navi = \"{navi}\""), 1).replace("party = []\n", "");
+    fighting_sides(content, &left, &megaman)
+}
+
+/// A round of the sides `left` and `right` (a match file's), both pressing
+/// through their custom screens until the fight runs.
+fn fighting_sides(content: &std::sync::Arc<nettai_battle::Content>, left: &str, right: &str) -> Battle {
     let stage = crate::ids::local(&content.defs.stage(crate::link_battle_stages(content, "exe5")[0]).key);
-    let text = format!("game = \"exe5\"\n\n[[round]]\nstage = \"{stage}\"\n\n[left]\n{left}\n\n[right]\n{megaman}\n");
+    let text = format!("game = \"exe5\"\n\n[[round]]\nstage = \"{stage}\"\n\n[left]\n{left}\n\n[right]\n{right}\n");
     let m = crate::parse(content, &text).unwrap_or_else(|p| panic!("{p:?}"));
     let mut b = Battle::new(m.round(content, 0x5EED), content.clone());
     let mut last = [0u16; 2];
@@ -252,4 +258,40 @@ fn gyroman_switched_in_hovers_over_a_broken_panel() {
     assert_ne!(navi_status(&b) & status::HOVERING, 0, "GyroMan hovers");
     switch_to(&mut b, 0);
     assert_eq!(navi_status(&b) & status::HOVERING, 0, "MegaMan doesn't");
+}
+
+/// A dark MegaMan switches in battle as a light one does: EXE5 DS's switch
+/// paths read no emotion and no light/dark value (the input handler's
+/// request, 0x0203C5F6, and 0x0200E064; the bottom screen's panel,
+/// 0x02036F80; action 0x59, 0x0202C67C), only its Double Attacks and
+/// supports do. MegaMan of a dark value (evil from his start: mood 0) uses
+/// DarkPlus (a dark chip that doesn't dim, its cost the step bug), is still
+/// evil, switches to ProtoMan, and ProtoMan back to him.
+#[test]
+fn a_dark_megaman_switches() {
+    use nettai_battle::input::keys;
+    use nettai_battle::kinds::player::emotion_name;
+    let content = exe5_content();
+    let left = crate::double_attacks::side(&["protoman"]) + "karma = 0\n";
+    let mut b = fighting_sides(&content, &left, &crate::double_attacks::side(&[]));
+    assert_eq!(emotion_name(&b, 0), "evil", "a dark value starts him evil");
+    b.hands[0].ids[0] = crate::ids::chip(&content, "exe5", "darkplus");
+    b.hands[0].cursor = 0;
+    b.tick(&[PlayerTick::buttons(keys::A), Default::default()], Default::default());
+    for _ in 0..60 {
+        b.tick(&Default::default(), Default::default());
+    }
+    assert_eq!((b.hands[0].cursor, b.stats[0].bugs.processing), (1, 1), "DarkPlus used, its step bug his");
+    assert_eq!(emotion_name(&b, 0), "evil");
+    let ask = |b: &mut Battle, member: u8| {
+        b.tick(&[PlayerTick { switch_to: Some(member), ..Default::default() }, Default::default()], Default::default());
+        for _ in 0..80 {
+            b.tick(&Default::default(), Default::default());
+        }
+    };
+    ask(&mut b, 1);
+    assert_eq!((b.party[0].active, b.party[0].switches), (1, 1), "the dark MegaMan switched to ProtoMan");
+    ask(&mut b, 0);
+    assert_eq!((b.party[0].active, b.party[0].switches), (0, 2), "and back to him");
+    assert_eq!(emotion_name(&b, 0), "evil", "his mood kept in his block");
 }

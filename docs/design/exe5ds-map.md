@@ -280,6 +280,12 @@ Two places read it, so a switch is taken in battle or on the custom screen.
   the partner for a Double Attack without a swap (§5).
 - **The live pause handler** (0x020621A0 onward) turns bit 0x04000000 into AIData +0x48 0x1000 and **action
   0x59** (0x0202C67C): the in-battle swap (§4.6).
+- **No emotion or light/dark test** is on any switch path: neither the panel, the input handler (its one call of
+  the emotion routine 0x02007E1C, at 0x0203C66A, is mode 6's partner call), 0x0200C82C (§4.4) nor action 0x59 calls
+  the emotion routine, the light test (0x02004DD8) or the light/dark value (0x02007FF4). A dark MegaMan (mood 0)
+  switches as a light one does; only the Double Attacks (§5) and the supports (§4.7) test it. While the battle is
+  dimmed (a dimming chip, dark ones too, or dark MegaMan's last stand) the input handler takes no switch: X and Y
+  request for a frame, so a press then is lost.
 
 ### 4.4 On the custom screen
 
