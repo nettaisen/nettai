@@ -4,7 +4,7 @@
 
 use m4a::bank::*;
 use m4a::driver::{ChannelInfo, Hardware};
-use m4a::{BYTE_STEP, CUT_FADE, Driver, Mixer, PlayerId, SongId, SoundBank};
+use m4a::{BYTE_STEP, CUT_FADE, Driver, END_FADE, Mixer, PlayerId, SongId, SoundBank};
 use std::sync::Arc;
 
 use Command::*;
@@ -28,8 +28,21 @@ fn voice(kind: VoiceKind, sustain: u8) -> m4a::bank::Voice {
 }
 
 /// Players: 0 and 1 are effect players (priority rules, 2 tracks), 2 the
-/// music player (any song replaces its song, 4 tracks).
+/// music player (any song replaces its song, 4 tracks); the Direct Sound
+/// voice plays a square wave that loops.
 fn bank(songs: Vec<(u8, u8, Vec<Vec<Command>>)>, ds_channels: u8) -> Arc<SoundBank> {
+    let square = Sample {
+        rate: 13379 * 1024,
+        loop_start: Some(0),
+        data: (0..64).map(|i| if i < 32 { 60 } else { -60 }).collect(),
+        tail: 60,
+    };
+    bank_with(songs, ds_channels, square)
+}
+
+/// [`bank`] with `sample` for its Direct Sound voice (at key 60 it plays a
+/// sample of it per sample of the mix).
+fn bank_with(songs: Vec<(u8, u8, Vec<Vec<Command>>)>, ds_channels: u8, sample: Sample) -> Arc<SoundBank> {
     let voices = vec![
         voice(VoiceKind::Square1 { duty: 2, sweep: NO_SWEEP, fixed: false }, 15),
         voice(VoiceKind::DirectSound { sample: SampleId(0), fixed: false }, 255),
@@ -51,12 +64,6 @@ fn bank(songs: Vec<(u8, u8, Vec<Vec<Command>>)>, ds_channels: u8) -> Arc<SoundBa
         PlayerConfig { max_tracks: 2, uses_priority: true, track_order: 1 },
         PlayerConfig { max_tracks: 4, uses_priority: false, track_order: 2 },
     ];
-    let sample = Sample {
-        rate: 13379 * 1024,
-        loop_start: Some(0),
-        data: (0..64).map(|i| if i < 32 { 60 } else { -60 }).collect(),
-        tail: 60,
-    };
     let bank = SoundBank {
         mixer: MixerConfig { mix_rate: 13379, ds_channels, master_volume: 15, reverb: 0, dac_resolution: 1 },
         players,
@@ -257,6 +264,76 @@ fn a_volume_change_glides_across_the_frame_with_the_hq_mixer() {
         before = now;
     }
     panic!("the volume didn't change");
+}
+
+#[test]
+fn a_bend_glides_across_the_frame_with_the_hq_mixer() {
+    // A rising ramp: the mix's samples climb as fast as the pitch is high.
+    let ramp = Sample { rate: 13379 * 1024, loop_start: Some(0), data: (0..240).map(|i| (i - 120) as i8).collect(), tail: -120 };
+    let track = vec![
+        Tempo(75),
+        Volume(127),
+        Voice(SAMPLE),
+        Note { gate: 60, key: Some(60), velocity: Some(127) },
+        Wait(10),
+        Bend(0x7F),
+        Wait(30),
+        Fine,
+    ];
+    let (mut original, mut hq) = both(bank_with(vec![(2, 20, vec![track])], 4, ramp));
+    original.start(SongId(0));
+    hq.start(SongId(0));
+    // How fast a stretch of a frame climbs, its wraps left out.
+    let climb = |m: &[f64]| {
+        let d: Vec<f64> = m.windows(2).map(|w| w[1] - w[0]).filter(|&d| d > 0.0).collect();
+        d.iter().sum::<f64>() / d.len() as f64
+    };
+    let mut frames = Vec::new();
+    let mut bent = None;
+    for f in 0..20 {
+        original.step_frame();
+        hq.step_frame();
+        assert_eq!(original.ds_states(), hq.ds_states(), "the driver's channel moves on as the game's");
+        let frequency = original.ds_states()[0].note.frequency;
+        if f > 2 && bent.is_none() && frames.last().is_some_and(|&(_, was)| frequency != was) {
+            bent = Some(f);
+        }
+        let h = mixed(&hq);
+        frames.push((h[..h.len() / 2].to_vec(), frequency));
+    }
+    // The frame the bend comes in (the game's pitch jumps from its start).
+    let at = bent.expect("the bend");
+    let h = &frames[at].0;
+    let (before, after) = (climb(&frames[at - 1].0), climb(&frames[at + 1].0));
+    assert!((after / before - 2f64.powf(2.0 / 12.0)).abs() < 0.03, "two semitones up: {before} to {after}");
+    assert!((climb(&h[..30]) / before - 1.0).abs() < 0.03, "the HQ mix starts at the old pitch: {} from {before}", climb(&h[..30]));
+    assert!((climb(&h[h.len() - 30..]) / after - 1.0).abs() < 0.03, "and reaches the new one: {} to {after}", climb(&h[h.len() - 30..]));
+}
+
+#[test]
+fn a_sample_that_ends_fades_out_with_the_hq_mixer() {
+    // A sample that stops at a loud value, shorter than the note.
+    let short = Sample { rate: 13379 * 1024, loop_start: None, data: vec![60; 200], tail: 0 };
+    let track = vec![Tempo(75), Volume(127), Voice(SAMPLE), Note { gate: 30, key: Some(60), velocity: Some(127) }, Wait(30), Fine];
+    let (mut original, mut hq) = both(bank_with(vec![(2, 20, vec![track])], 4, short));
+    original.start(SongId(0));
+    hq.start(SongId(0));
+    let mut heard = (Vec::new(), Vec::new());
+    for _ in 0..4 {
+        original.step_frame();
+        hq.step_frame();
+        let (o, h) = (mixed(&original), mixed(&hq));
+        heard.0.extend_from_slice(&o[..o.len() / 2]);
+        heard.1.extend_from_slice(&h[..h.len() / 2]);
+    }
+    let start = heard.0.iter().position(|&v| v > 0.0).unwrap();
+    let end = start + heard.0[start..].iter().position(|&v| v == 0.0).unwrap();
+    let level = heard.0[end - 1];
+    assert!(level > 20.0, "the game's stops at {level}");
+    let fade = END_FADE as usize;
+    assert!(heard.1[end - fade - 1] > 0.95 * level, "the HQ mix is at its level before its last samples");
+    assert!(heard.1[end - fade / 2] < 0.6 * level && heard.1[end - 1] < 0.1 * level, "and fades out over them");
+    assert!(heard.1[end..].iter().all(|&v| v == 0.0), "ending where the game's does");
 }
 
 #[test]

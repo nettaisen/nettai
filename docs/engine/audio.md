@@ -111,7 +111,7 @@ first tick on the VBlank after. `tick` keeps that order, so a cue sounds
 two frames after its tick, as in the game (the Direct Sound part a frame
 later still: the FIFOs play each frame's mix during the next). Output is
 32768 Hz stereo (`SAMPLE_RATE`), about 549 samples a frame: the DAC's
-65536 Hz averaged down, through a 20 Hz high-pass (the GBA's output
+65536 Hz taken down (§3), through a 20 Hz high-pass (the GBA's output
 capacitor, which takes out the PSG's offset). `AudioOut` (feature `playback`,
 on by default) does the same on the default output device through cpal,
 buffering a few frames and resampling to the device rate; the frontend
@@ -179,14 +179,18 @@ game's code.
   wrapped); the ring, the FIFOs and the DAC's sum carry that precision,
   so nothing is rounded to eight bits (the game's FIFOs take bytes; the
   game's mix holds whole bytes in the ring). The driver sets a channel's
-  volume once a frame: here it glides across the frame from the last
-  frame's to this one's, and a note the driver cuts off (another note
-  taking its channel, a stop, its echo's end) fades out over `CUT_FADE`
-  samples (6 ms) instead of stopping at once; a new note starts at its
-  volume, so its sample's attack is its own. The envelopes, the
-  interpolation, the volumes each frame reaches, the reverb's level and
-  timing and where each channel is in its sample stay the game's, so the
-  channels are the same either way; the HQ mixer's 16-bit shortcuts
+  volume and pitch once a frame: here they glide across the frame from
+  the last frame's to this one's (vibrato and bends without steps; the
+  mix reads each note on its own copy of the channel, so the driver's
+  moves on as the game's does, the copy at most a few samples from it). A
+  note the driver cuts off (another note taking its channel, a stop, its
+  echo's end) fades out over `CUT_FADE` samples (6 ms) instead of stopping
+  at once, and a sample that doesn't loop fades out over its last
+  `END_FADE` samples (1.5 ms; data stopping short of zero would click); a
+  new note starts at its volume and pitch, so its sample's attack is its
+  own. The envelopes, the interpolation, the volumes and pitches each
+  frame reaches, the reverb's level and timing and where each channel is
+  in its sample stay the game's, so the channels are the same either way; the HQ mixer's 16-bit shortcuts
   (halved volumes, the reverb level in steps of four, both sides packed in
   one word) are not kept. The driver mixes with the HQ mix by default;
   `Mixer::Original` is the game's mix, which §6 compares with the original
@@ -199,8 +203,13 @@ game's code.
   (SOUNDCNT_H: PSG at 100%, FIFO A right and B left at full volume; the
   bias clamps to 10 bits). `Driver::take_dac_output` gives the DAC's
   samples at its rate (65536 Hz for EXE6's 8-bit setting), in mGBA's scale;
-  `take_output` averages them to 32768 Hz through the output capacitor (a
-  20 Hz high-pass that takes out the PSG's offset).
+  `take_output` takes them to 32768 Hz through the output capacitor (a
+  20 Hz high-pass that takes out the PSG's offset). Averaging each pair
+  (as it first did) folds what lies between 16 and 32 kHz back into the
+  sound, which on a GBA is ultrasonic (the PSG's square waves' harmonics,
+  mostly); `m4a::filter`'s decimator is the pair's average times a
+  low-pass, so the tone below 16 kHz is the average's to a few
+  thousandths of a decibel and the fold-back is 85 dB down or more.
 - **MEMACC** (0xB9): all 18 operations on the driver's memory area
   (`Driver::memory`, `set_memory`): set, add, subtract (by a value or by
   another byte of the area) and jump if equal, not equal, greater, at

@@ -355,13 +355,16 @@ fn envelope<'a>(ch: &mut DsChannel, bank: &'a SoundBank, master: u8) -> Option<&
     Some(sample)
 }
 
-/// A Direct Sound channel's samples for a frame of `n`, from where it is:
-/// `out(k, s, d)` for output sample `k`, with `s` the sample of the data
-/// it is on and `d` the way to the next one it has gone, times 2^23 (the
-/// fraction past `s` times the step to the next: the driver interpolates
-/// linearly between the two; 0 at a fixed frequency). It stops at the end
-/// of data that doesn't loop.
-fn walk(ch: &mut DsChannel, sample: &Sample, div_freq: u32, n: usize, mut out: impl FnMut(usize, i32, i32)) {
+/// A Direct Sound channel's samples for a frame of `n`, from where it is,
+/// moving on by `step(k)` after output sample `k` (in 2^23ths of a sample
+/// of the data; a fixed-frequency channel moves on by one): `out(k, s, d,
+/// left)` for output sample `k`, with `s` the sample of the data it is on,
+/// `d` the way to the next one it has gone, times 2^23 (the fraction past
+/// `s` times the step to the next: the driver interpolates linearly
+/// between the two; 0 at a fixed frequency), and `left` the samples of the
+/// data left from `s` to its end. It stops at the end of data that doesn't
+/// loop.
+fn walk(ch: &mut DsChannel, sample: &Sample, step: impl Fn(usize) -> u32, n: usize, mut out: impl FnMut(usize, i32, i32, i32)) {
     let data = &sample.data;
     let at = |i: u32| -> i32 { data.get(i as usize).copied().unwrap_or(sample.tail) as i32 };
     let loop_start = if ch.status.looping { sample.loop_start } else { None };
@@ -371,7 +374,7 @@ fn walk(ch: &mut DsChannel, sample: &Sample, div_freq: u32, n: usize, mut out: i
         let mut pos = ch.position;
         let mut remaining = ch.remaining;
         for k in 0..n {
-            out(k, at(pos), 0);
+            out(k, at(pos), 0, remaining);
             pos += 1;
             remaining -= 1;
             if remaining <= 0 {
@@ -392,15 +395,14 @@ fn walk(ch: &mut DsChannel, sample: &Sample, div_freq: u32, n: usize, mut out: i
         return;
     }
     // Linear interpolation, the position in 23-bit fixed point.
-    let step = div_freq.wrapping_mul(ch.note.frequency);
     let mut frac = ch.fraction;
     let mut remaining = ch.remaining;
     let mut pos = ch.position;
     let mut cur = at(pos);
     let mut delta = at(pos + 1) - cur;
     for k in 0..n {
-        out(k, cur, (frac as i32).wrapping_mul(delta));
-        frac = frac.wrapping_add(step);
+        out(k, cur, (frac as i32).wrapping_mul(delta), remaining);
+        frac = frac.wrapping_add(step(k));
         let advance = frac >> 23;
         if advance == 0 {
             continue;
@@ -447,7 +449,8 @@ pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq:
     let base = slot * n;
     let (vr, vl) = ((ch.mix_right as i32 * host as i32) >> 8, (ch.mix_left as i32 * host as i32) >> 8);
     let add = |v: &mut i16, x: i32| *v = from_byte(byte(*v).wrapping_add(x as i8));
-    walk(ch, sample, div_freq, n, |k, s, d| {
+    let step = div_freq.wrapping_mul(ch.note.frequency);
+    walk(ch, sample, |_| step, n, |k, s, d, _| {
         let s = s + (d >> 23);
         add(&mut ring.right[base + k], (vr * s) >> 8);
         add(&mut ring.left[base + k], (vl * s) >> 8);
@@ -469,17 +472,20 @@ pub enum Mixer {
     /// buffer's eight, with the volumes and the interpolated sample
     /// unrounded) and the sum clamped, not wrapped; then played at that
     /// precision, never rounded to eight bits (which the GBA's FIFOs would
-    /// need). The driver sets each channel's volume once a frame: here it
-    /// glides across the frame from the last frame's to this one's, and a
-    /// note the driver cuts off (another note taking its channel, a stop,
-    /// the end of its echo) fades out over [`CUT_FADE`] samples instead of
-    /// stopping at once; a note starts at its volume (its sample's own
-    /// attack). The rest stays the game's: the envelopes, the
-    /// interpolation, the volumes each frame reaches, the reverb's level
-    /// and timing, and where each channel is in its sample, so the channels
-    /// are the same either way. None of the HQ mixer's 16-bit register
-    /// shortcuts are kept (halved volumes, the reverb level in steps of
-    /// four, both sides packed in one word).
+    /// need). The driver sets each channel's volume and pitch once a frame:
+    /// here they glide across the frame from the last frame's to this
+    /// one's (the mix reads each note on a copy of its channel, so the
+    /// driver's own moves on as the game's does); a note the driver cuts
+    /// off (another note taking its channel, a stop, the end of its echo)
+    /// fades out over [`CUT_FADE`] samples instead of stopping at once, and
+    /// a sample that ends fades out over its last [`END_FADE`]; a note
+    /// starts at its volume and pitch (its sample's own attack). The rest
+    /// stays the game's: the envelopes, the interpolation, the volumes and
+    /// pitches each frame reaches, the reverb's level and timing, and where
+    /// each channel is in its sample, so the channels are the same either
+    /// way. None of the HQ mixer's 16-bit register shortcuts are kept
+    /// (halved volumes, the reverb level in steps of four, both sides
+    /// packed in one word).
     #[default]
     Hq,
 }
@@ -487,6 +493,11 @@ pub enum Mixer {
 /// Samples a note the driver cuts off takes to fade out with [`Mixer::Hq`]
 /// (6 ms at EXE6's 10512 Hz).
 pub const CUT_FADE: u32 = 64;
+
+/// The samples at the end of a sample that doesn't loop that fade out with
+/// [`Mixer::Hq`] (1.5 ms at 10512 Hz: data that stops short of zero would
+/// click).
+pub const END_FADE: u32 = 16;
 
 /// The HQ mix's volume, right and left, of a channel whose envelope has
 /// run this frame: the driver's ((volume * ((envelope * (master + 1)) >>
@@ -496,34 +507,49 @@ fn hq_volume(ch: &DsChannel, master: u8, host: u16) -> [i64; 2] {
     [level * ch.note.right_volume as i64, level * ch.note.left_volume as i64]
 }
 
-/// `n` samples of a channel added into `mix` at the volume `volume(k)`
-/// gives for sample `k` (as [`hq_volume`]).
-fn hq_add(mix: &mut [[i32; 2]], ch: &mut DsChannel, sample: &Sample, div_freq: u32, n: usize, volume: impl Fn(usize) -> [i64; 2]) {
+/// `n` samples of a channel added into `mix`, moving on by `step(k)` (as
+/// [`walk`]), at the volume `volume(k)` gives for sample `k` (as
+/// [`hq_volume`]); the last [`END_FADE`] before the end of data that
+/// doesn't loop fading out.
+fn hq_add(mix: &mut [[i32; 2]], ch: &mut DsChannel, sample: &Sample, step: impl Fn(usize) -> u32, n: usize, volume: impl Fn(usize) -> [i64; 2]) {
     // (The sample is times 2^23 and the volume times 2^28; a byte's step is
     // BYTE_STEP of the mix's.)
     let shift = 23 + 28 - BYTE_STEP.trailing_zeros();
-    walk(ch, sample, div_freq, n, |k, s, d| {
+    let ends = !(ch.status.looping && sample.loop_start.is_some());
+    let fixed = ch.fixed;
+    walk(ch, sample, &step, n, |k, s, d, left| {
         let s = ((s as i64) << 23) + d as i64;
-        let v = volume(k);
+        let mut v = volume(k);
+        if ends {
+            // (Output samples to the end, about.)
+            let to_end = if fixed { left as i64 } else { ((left as i64) << 23) / step(k).max(1) as i64 };
+            if to_end < END_FADE as i64 {
+                v = v.map(|x| x * to_end.max(0) / END_FADE as i64);
+            }
+        }
         mix[k][0] += ((v[0] * s) >> shift) as i32;
         mix[k][1] += ((v[1] * s) >> shift) as i32;
     });
 }
 
-/// A channel as the HQ mix last played it: its state after the frame, and
-/// the volumes it reached.
+/// A channel as the HQ mix last played it: the copy of it the mix reads
+/// its note on (the driver's moves on at the game's pitch, this one's
+/// glides), and the volumes and step it reached.
 #[derive(Clone, Debug)]
 struct Played {
     ch: DsChannel,
     volume: [i64; 2],
+    step: u32,
 }
 
-/// A note the driver cut off, fading out: its channel as it was, the
-/// volumes it fades from, and the samples of its fade played so far.
+/// A note the driver cut off, fading out: the mix's copy of its channel,
+/// the volumes and step it fades from, and the samples of its fade played
+/// so far.
 #[derive(Clone, Debug)]
 struct Fading {
     ch: DsChannel,
     volume: [i64; 2],
+    step: u32,
     done: u32,
 }
 
@@ -535,8 +561,8 @@ pub(crate) struct HqMix {
     /// ([`BYTE_STEP`]ths of a byte's step).
     mix: Vec<[i32; 2]>,
     /// Each channel as the last frame played it (none: silent, or its data
-    /// ended): where its volumes glide from, and what fades out if the
-    /// driver cuts it off.
+    /// ended): where its volume and pitch glide from, and what fades out if
+    /// the driver cuts it off.
     last: Vec<Option<Played>>,
     fading: Vec<Fading>,
 }
@@ -560,8 +586,8 @@ impl HqMix {
     }
 
     /// Channel `i` for the frame: its envelope (as [`mix_ds`]), then its
-    /// mix, its volumes gliding from the last frame's; the note it played
-    /// last frame fading out if the driver cut it off.
+    /// mix, its volumes and pitch gliding from the last frame's; the note it
+    /// played last frame fading out if the driver cut it off.
     pub fn channel(&mut self, i: usize, ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq: u32, host: u16) {
         let was = self.last[i].take();
         let new_note = ch.status.start;
@@ -572,38 +598,50 @@ impl HqMix {
             return;
         };
         let to = hq_volume(ch, master, host);
-        let from = match was {
-            // Another note took the channel: it starts at its volume.
-            Some(p) if new_note => {
-                self.fade(p);
-                to
+        let step = div_freq.wrapping_mul(ch.note.frequency);
+        let (mut read, from, from_step) = match was {
+            Some(p) if !new_note => (p.ch, p.volume, p.step),
+            was => {
+                // A new note starts where the driver starts it, at its volume
+                // and pitch; one it took the channel from fades out.
+                if let Some(p) = was {
+                    self.fade(p);
+                }
+                (ch.clone(), to, step)
             }
-            Some(p) => p.volume,
-            None => to,
         };
-        let n = self.mix.len() as i64;
-        let glide = |k: usize| -> [i64; 2] { std::array::from_fn(|c| from[c] + (to[c] - from[c]) * (k as i64 + 1) / n) };
-        hq_add(&mut self.mix, ch, sample, div_freq, n as usize, glide);
-        if ch.status.active() {
-            self.last[i] = Some(Played { ch: ch.clone(), volume: to });
+        let n = self.mix.len();
+        // The driver's channel moves on as the game's does.
+        walk(ch, sample, |_| step, n, |_, _, _, _| {});
+        // (The mix's copy may end a few samples before or after it: the
+        // difference its glides made, bounded by the pitch's change since
+        // the note started.)
+        let n64 = n as i64;
+        let glide = |k: usize| -> [i64; 2] { std::array::from_fn(|c| from[c] + (to[c] - from[c]) * (k as i64 + 1) / n64) };
+        let pitch = |k: usize| -> u32 { (from_step as i64 + (step as i64 - from_step as i64) * (k as i64 + 1) / n64) as u32 };
+        if read.status.active() {
+            hq_add(&mut self.mix, &mut read, sample, pitch, n, glide);
+        }
+        if ch.status.active() || read.status.active() {
+            self.last[i] = Some(Played { ch: read, volume: to, step });
         }
     }
 
     fn fade(&mut self, p: Played) {
-        if p.volume != [0; 2] {
-            self.fading.push(Fading { ch: p.ch, volume: p.volume, done: 0 });
+        if p.volume != [0; 2] && p.ch.status.active() {
+            self.fading.push(Fading { ch: p.ch, volume: p.volume, step: p.step, done: 0 });
         }
     }
 
     /// The notes fading out, each for the rest of its fade or of the frame.
-    pub fn fades(&mut self, bank: &SoundBank, div_freq: u32) {
+    pub fn fades(&mut self, bank: &SoundBank) {
         let mix = &mut self.mix;
         self.fading.retain_mut(|f| {
             let n = mix.len().min((CUT_FADE - f.done) as usize);
             let sample = &bank.samples[f.ch.sample.0 as usize];
-            let (from, done) = (f.volume, f.done as i64);
+            let (from, done, step) = (f.volume, f.done as i64, f.step);
             let fade = |k: usize| -> [i64; 2] { from.map(|v| v * (CUT_FADE as i64 - done - k as i64 - 1) / CUT_FADE as i64) };
-            hq_add(mix, &mut f.ch, sample, div_freq, n, fade);
+            hq_add(mix, &mut f.ch, sample, |_| step, n, fade);
             f.done += n as u32;
             f.done < CUT_FADE && f.ch.status.active()
         });

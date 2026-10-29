@@ -28,7 +28,7 @@ pub mod tables;
 
 pub use bank::{PlayerId, SongId, SoundBank};
 pub use driver::Driver;
-pub use mixer::{BYTE_STEP, CUT_FADE, Mixer, Phase, Status};
+pub use mixer::{BYTE_STEP, CUT_FADE, END_FADE, Mixer, Phase, Status};
 
 /// GBA frames per second; the driver runs once per frame.
 pub const FPS: f64 = 59.7275;

@@ -820,7 +820,7 @@ impl Driver {
                     let host = level(&self.levels, &ch.note);
                     hq.channel(i, ch, &self.bank, self.master_volume, self.div_freq, host);
                 }
-                hq.fades(&self.bank, self.div_freq);
+                hq.fades(&self.bank);
                 hq.store(&mut self.ring, slot);
             }
         }
