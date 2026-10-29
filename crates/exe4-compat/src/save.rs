@@ -16,10 +16,13 @@
 //! version and region their names give: [`Save::from_image`].)
 //!
 //! Once unshifted: MegaMan's HP and maximum HP at 0x2150 and 0x2152, the
-//! equipped folder's number at 0x2132, the Regular chip in battle at 0x214C
-//! (an entry of the folder, 0xFF none) and each folder's at 0x214D, the
-//! Regular memory at 0x2148 (less 4), the base max HP at 0x21CA, the folders at 0x262C (three of 30 halfwords: the chip in the low
-//! 9 bits, the code above), the NaviCust's list at 0x4564 (25 parts of 8
+//! equipped folder's number at 0x2132, each folder's Regular chip at 0x214D
+//! (three bytes: an entry of the folder as its screen shows it, 0xFF none)
+//! and the equipped folder's again at 0x214C (which a battle reads only for
+//! whether there is one), the Regular memory at 0x2148 (less 4), the base
+//! max HP at 0x21CA, the folders at 0x262C (three of 30 halfwords: the chip
+//! in the low 9 bits, the code above; a folder with a Regular chip keeps it
+//! in its first entry: [`Save::folder`]), the NaviCust's list at 0x4564 (25 parts of 8
 //! bytes: the part id, 0 none; its column, row, rotation and compression
 //! flag at +2 to +5) and its 5x5 grid at 0x4540 (a cell the list's entry
 //! from 1, 0 empty), the patch cards at 0x464C (seven slots, a card on) and
@@ -49,7 +52,13 @@ fn checksum_start(v: Version) -> u32 {
 }
 
 const EQUIPPED_FOLDER: usize = 0x2132;
+/// The equipped folder's Regular chip (the game state's +0x1C, 0xFF none),
+/// which the folder screen copies from the folder's own as it closes
+/// (0x0802EF7A) and a battle tests only for 0xFF (0x08007B3E); and each
+/// folder's (+0x1D on, three bytes): an entry of the folder as its screen
+/// shows it.
 const REGULAR_CHIP: usize = 0x214C;
+const REGULAR_CHIPS: usize = 0x214D;
 const REGULAR_MEMORY: usize = 0x2148;
 const BASE_MAX_HP: usize = 0x21CA;
 /// The wins less the losses in link battles against the other version's
@@ -201,19 +210,40 @@ impl Save {
         self.image[EQUIPPED_FOLDER] as usize
     }
 
-    /// Folder `f`'s chips (an entry with no chip: none).
+    /// Folder `f`'s chips as the folder screen shows them (an entry with no
+    /// chip: none). The save keeps a folder's Regular chip in its first
+    /// entry, the entries before its own one later: the folder screen moves
+    /// each folder's there as it closes (0x0802EF88, the entries before it
+    /// one on) and back as it opens (0x0802EFE0), and a battle deals the
+    /// first entry as the Regular chip (it shuffles the other 29,
+    /// 0x08007B44). This is the folder with its Regular chip back at its
+    /// entry ([`Save::regular_chip`]'s).
     pub fn folder(&self, f: usize) -> [Option<FolderChip>; FOLDER_SIZE] {
-        std::array::from_fn(|i| {
+        let mut chips: [Option<FolderChip>; FOLDER_SIZE] = std::array::from_fn(|i| {
             let v = self.u16(FOLDERS + 2 * (FOLDER_SIZE * f + i));
             let (id, code) = (v & 0x1FF, (v >> 9) as u8);
             (code <= 26).then_some(FolderChip { id, code })
-        })
+        });
+        if let Some(r) = self.folder_regular_chip(f) {
+            chips[..=r].rotate_left(1);
+        }
+        chips
     }
 
-    /// The equipped folder's Regular chip in battle: its entry.
-    pub fn regular_chip(&self) -> Option<usize> {
-        let i = self.image[REGULAR_CHIP] as usize;
+    /// Folder `f`'s Regular chip: its entry as the folder screen shows it.
+    fn folder_regular_chip(&self, f: usize) -> Option<usize> {
+        let i = self.image[REGULAR_CHIPS + f] as usize;
         (i < FOLDER_SIZE).then_some(i)
+    }
+
+    /// The equipped folder's Regular chip in battle: its entry of
+    /// [`Save::folder`]'s. (A battle has one when 0x214C isn't 0xFF, and
+    /// it is the save's first entry. A save the game wrote says the same at
+    /// 0x214C and the folder's own byte; one an editor made may not: the
+    /// battle's word is 0x214C's, and with no folder's own the first entry
+    /// is the Regular chip as it is.)
+    pub fn regular_chip(&self) -> Option<usize> {
+        (self.image[REGULAR_CHIP] != 0xFF).then(|| self.folder_regular_chip(self.equipped_folder()).unwrap_or(0))
     }
 
     /// The Regular memory (the largest MB a Regular chip may have).
@@ -293,20 +323,21 @@ mod tests {
     use super::*;
 
     /// An image of a version: the game's name, a folder of Cannons (code A,
-    /// then B) and an AirShot, a Regular chip, a part, a patch card on and one
-    /// off.
+    /// then B) and an AirShot, its Regular chip (the AirShot, kept first),
+    /// a part, a patch card on and one off.
     fn image() -> Vec<u8> {
         let mut img = vec![0; IMAGE_SIZE];
         img[GAME_NAME..GAME_NAME + NAME.len()].copy_from_slice(NAME);
         img[EQUIPPED_FOLDER] = 1;
         let folder = FOLDERS + 2 * FOLDER_SIZE;
-        img[folder..folder + 2].copy_from_slice(&(1u16).to_le_bytes());
-        img[folder + 2..folder + 4].copy_from_slice(&(1u16 | 1 << 9).to_le_bytes());
-        img[folder + 4..folder + 6].copy_from_slice(&(4u16 | 26 << 9).to_le_bytes());
+        img[folder..folder + 2].copy_from_slice(&(4u16 | 26 << 9).to_le_bytes());
+        img[folder + 2..folder + 4].copy_from_slice(&(1u16).to_le_bytes());
+        img[folder + 4..folder + 6].copy_from_slice(&(1u16 | 1 << 9).to_le_bytes());
         for i in 3..FOLDER_SIZE {
             img[folder + 2 * i..folder + 2 * i + 2].copy_from_slice(&[0xFF, 0xFF]);
         }
         img[REGULAR_CHIP] = 2;
+        img[REGULAR_CHIPS..REGULAR_CHIPS + 3].copy_from_slice(&[0xFF, 2, 0xFF]);
         img[REGULAR_MEMORY] = 6;
         img[BASE_MAX_HP..BASE_MAX_HP + 2].copy_from_slice(&760u16.to_le_bytes());
         img[NAVICUST..NAVICUST + 8].copy_from_slice(&[0xA5, 0, 1, 4, 1, 0, 0, 0]);
@@ -354,6 +385,32 @@ mod tests {
             assert_eq!(s.patch_cards()[..3], [Some(PatchCard { id: 7, on: true }), Some(PatchCard { id: 9, on: false }), None]);
             assert_eq!(s.auto_battle()[..3], [1, AUTO_BATTLE_PATTERN | 2, AUTO_BATTLE_EMPTY]);
         }
+    }
+
+    /// A folder's Regular chip is its first entry in the save and its own
+    /// entry on the folder screen: a folder of six chips 1 to 6 whose
+    /// Regular chip, the fifth on the screen (entry 4), the save keeps
+    /// first, the four before it one on. The battle's byte says whether
+    /// there is one; without the folder's own, the first entry is.
+    #[test]
+    fn a_folders_regular_chip_is_kept_first() {
+        let with = |stored: [u16; 6], active: u8, own: u8| {
+            let mut img = image();
+            img[EQUIPPED_FOLDER] = 0;
+            for (i, id) in stored.into_iter().enumerate() {
+                img[FOLDERS + 2 * i..FOLDERS + 2 * i + 2].copy_from_slice(&id.to_le_bytes());
+            }
+            img[REGULAR_CHIP] = active;
+            img[REGULAR_CHIPS] = own;
+            let s = Save::from_image(&img, Version::BlueMoon, false).unwrap();
+            let ids: Vec<u16> = s.folder(0)[..6].iter().map(|c| c.unwrap().id).collect();
+            (ids, s.regular_chip())
+        };
+        assert_eq!(with([5, 1, 2, 3, 4, 6], 4, 4), (vec![1, 2, 3, 4, 5, 6], Some(4)));
+        assert_eq!(with([1, 2, 3, 4, 5, 6], 0, 0), (vec![1, 2, 3, 4, 5, 6], Some(0)));
+        assert_eq!(with([1, 2, 3, 4, 5, 6], 0xFF, 0xFF), (vec![1, 2, 3, 4, 5, 6], None));
+        assert_eq!(with([5, 1, 2, 3, 4, 6], 3, 0xFF), (vec![5, 1, 2, 3, 4, 6], Some(0)));
+        assert_eq!(with([5, 1, 2, 3, 4, 6], 0xFF, 4), (vec![1, 2, 3, 4, 5, 6], None));
     }
 
     #[test]

@@ -56,7 +56,9 @@ pub fn import(compat: &crate::Compat, content: &Content, game: &str, side: &mut 
     // Its wins less its losses against the other version's players (0x21D6:
     // EXE4's rules/sun_and_moon).
     state(side, "rival_wins", &[Fact::Value(Value::Int(save.rival_wins() as i64))]);
-    // Its equipped folder, by the chips' numbers' names.
+    // Its equipped folder as the folder screen shows it, by the chips'
+    // numbers' names, and its Regular chip there (`Save::folder`: the save
+    // keeps it first, which is where a battle's layout puts it again).
     let mut chips = [None; 30];
     let mut nameless: Vec<u16> = Vec::new();
     for (slot, c) in chips.iter_mut().zip(save.folder(save.equipped_folder())) {
@@ -143,6 +145,7 @@ mod tests {
             img[folder + 2 * i..folder + 2 * i + 2].copy_from_slice(&[0xFF, 0xFF]);
         }
         img[0x214C] = 0;
+        img[0x214D..0x2150].copy_from_slice(&[0xFF, 0, 0xFF]);
         img[0x2148] = 6;
         img[0x21CA..0x21CC].copy_from_slice(&760u16.to_le_bytes());
         img[0x21D6..0x21D8].copy_from_slice(&35u16.to_le_bytes());
@@ -244,6 +247,33 @@ mod tests {
                 "of the save: the auto battle data holds chip numbers the content has no chip for (0x1ff): their places are left empty",
             ]
         );
+    }
+
+    /// The side's Regular chip is the one the game deals first, in the
+    /// folder as its screen shows it: a save whose folder screen shows a
+    /// Cannon A, a LifeAura D and a FullCust *, the FullCust its Regular
+    /// chip (entry 2), keeps the FullCust first and the two before it one
+    /// on (chip numbers 0x001, 0x0C9, 0x0D1).
+    #[test]
+    fn the_regular_chip_is_the_one_the_game_deals_first() {
+        let content = exe4_content();
+        let mut img = image();
+        let folder = 0x262C + 2 * 30;
+        for (i, v) in [0x0D1u16 | 26 << 9, 0x001, 0x0C9 | 3 << 9].into_iter().enumerate() {
+            img[folder + 2 * i..folder + 2 * i + 2].copy_from_slice(&v.to_le_bytes());
+        }
+        img[0x214C] = 2;
+        img[0x214D..0x2150].copy_from_slice(&[0xFF, 2, 0xFF]);
+        let save = read(&img).unwrap();
+        let mut side = Side::fresh(&content, "exe4").unwrap();
+        import(crate::Compat::exe4(), &content, "exe4", &mut side, &save);
+        let folder = side.folder(&content);
+        let named = |c: Option<FolderChip>| c.map(|c| (ids::local(&content.defs.chip(c.id).key).to_string(), c.code.letter()));
+        assert_eq!(
+            [named(folder.chips[0]), named(folder.chips[1]), named(folder.chips[2])],
+            [Some(("cannon".to_string(), 'A')), Some(("lifeaura".to_string(), 'D')), Some(("fullcust".to_string(), '*'))]
+        );
+        assert_eq!(folder.regular, Some(2));
     }
 
     /// The e-Reader cards' chips in a save's folder (Duo, chip number 0x137,

@@ -777,9 +777,19 @@ custom screen; the two B+Left patch cards; both e-Reader chips.
 
 Tango's BN4 save support (T): the image is 0x73D2 bytes; the mask word at 0x1554, the shift word at 0x1550 (a region
 from 0x2130 to 0x5E20 moves by it, up to 0x1FC, a multiple of 4), the checksum at 0x21E8, the game's name at 0x2208;
-the equipped folder at 0x2132, the Regular chip at 0x214C; the NaviCust and patch cards (§8). Tango ships twelve raw
-netbattle saves (tango-gamesupport-bn4/src/saves): light with HP 1000 or 999 and dark with HP 997, for each version and
-region; with the .sav on disk (Blue Moon US), the chip lab's bases and the save import's tests have what EXE5's had.
+the equipped folder at 0x2132; the NaviCust and patch cards (§8). Tango ships twelve raw netbattle saves
+(tango-gamesupport-bn4/src/saves): light with HP 1000 or 999 and dark with HP 997, for each version and region; with
+the .sav on disk (Blue Moon US), the chip lab's bases and the save import's tests have what EXE5's had.
+
+**The Regular chip** (the ROM's, not Tango's reading): each folder's at 0x214D (three bytes, the game state's +0x1D on:
+an entry of the folder as the folder screen shows it, 0xFF none) and the equipped folder's again at 0x214C (+0x1C).
+The save keeps a folder's Regular chip in its **first entry**, the entries before its own one on: the folder screen
+moves each folder's back to its entry as it opens (0x0802EFE0, from 0x0802EC96) and to the front again as it closes
+(0x0802EF88), then copies the equipped folder's byte to 0x214C (0x0802EF7A). A battle tests 0x214C only for 0xFF
+(0x08007B3E): with one, the first entry is the Regular chip and it shuffles the other 29 (0x0203BE82, 29 swaps); without,
+all 30. The four ROMs have the same code. Reading the folder as stored and the index into it marks the chip before
+the Regular chip on the screen (exe4-compat's `Save::folder` turns the folder back; the engine's layout, the Regular
+chip first and the rest in order, gives the stored folder again).
 
 **The import** (exe4-compat's `import`, which the app's build creator calls): a .sav or a raw image (which says
 neither version nor region; the import reads neither) gives MegaMan, the equipped folder and its Regular chip, the
