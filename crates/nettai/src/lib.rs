@@ -330,7 +330,7 @@ fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
     let r = registry.clone();
     nav.on_place(move |id, index, x, y, w, h, enabled| r.borrow_mut().place(&id, index, Rect { x, y, w, h }, enabled));
     let r = registry.clone();
-    nav.on_page(move |id, x, y, w, h, _, _| r.borrow_mut().page(&id, Rect { x, y, w, h }));
+    nav.on_page(move |id, x, y, w, h, content, scroll| r.borrow_mut().page(&id, Rect { x, y, w, h }, content, scroll));
     let r = registry.clone();
     nav.on_list(move |id, rows, pitch, row_height, scroll, row_width| r.borrow_mut().list(&id, rows, pitch, row_height, scroll, row_width));
     nav.on_scrolled(|| {});

@@ -91,6 +91,11 @@ export global PlayView {
     in property <BuildEntry> build;
     in property <BuildSheet> sheet;
     in property <bool> readable;
+    // How far the overview's column is scrolled (0 or less), how far it can be, and how tall its frame is: the wheel
+    // and a drag over it scroll it, and the app by the right stick and Shift's scrolls (`Play::scroll_view`).
+    in-out property <length> sheet-y;
+    in-out property <length> sheet-span;
+    in-out property <length> sheet-view;
     // A dialog for a build's name: a new build's, with its version, or the chosen build's new name. The game's
     // versions, in its own order, and the one chosen; what a version sets, in the game's words.
     in property <BuildDialog> dialog;
@@ -931,6 +936,17 @@ export component PlayScreen inherits Page {
                 visible: !Theme.phone && root.usable && PlayView.sheet.name != "";
                 build: PlayView.sheet;
                 tools: edit.width + 8px + root.more-width;
+                scroll <=> PlayView.sheet-y;
+                init => {
+                    PlayView.sheet-span = self.span;
+                    PlayView.sheet-view = self.view;
+                }
+                changed span => {
+                    PlayView.sheet-span = self.span;
+                }
+                changed view => {
+                    PlayView.sheet-view = self.view;
+                }
             }
 
             edit := Button {

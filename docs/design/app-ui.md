@@ -1745,6 +1745,17 @@ Each is settled unless the user changes it.
        where A presses).
      - *Japanese:* Seek 巻き戻し/早送り; "Set start or end" 開始点/終了点を設定 (zh-Hans 快退/快进 and 设置起点/终点; zh-Hant
        倒轉/快轉 and 設定起點/終點). "Move a handle" is gone from the catalogs.
+101. **The right stick and Shift scroll** (2026-10-28). The user, of Play's overview, which only the wheel and a drag
+     scrolled: "can you make right stick scroll everywhere scrollable then? same with the keyboard binding". A scroll
+     that leaves the focus where it is, as the wheel does: the pad's right stick (past a dead zone of 0.2, faster the
+     further it is tilted, up to 1600 a second at full tilt, with no sound), and Shift with Page Up and Page Down (a
+     page less a step), Home and End (the ends), which slide there and sound as a move does. Without Shift those keys
+     move the focus, as before.
+     - *What it scrolls:* a view of the screen's own the focus never enters, where one shows: the builds Tab shows over
+       the match (and over the match itself, while they show), the chosen build's overview beside Play's list (its
+       column, where it runs past the frame; the list scrolls with the focus), About's license (beside the list, or
+       its sheet on a phone). Else the list or the page the focus is in, where it can scroll; else the list or page
+       under what is open (a dialog, a menu) with the most to scroll. Over a battle that has the keys nothing scrolls.
 
 ## 3. Chosen where the user gave no answer
 

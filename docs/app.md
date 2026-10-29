@@ -200,6 +200,7 @@ player:
   south button B, the west and north buttons the navi changes left and right (the DS's Y and X), the shoulders L and R, Start and Back;
 - in a practice battle, with the dummy's Action "A second pad", the second pad used plays the dummy instead (§15);
 - the left stick moves whatever is bound;
+- the right stick scrolls, the focus left where it is, faster the further it is tilted (§11, "Scrolls");
 - the Guide button opens nettai's menu, and in a practice battle the north button starts over.
 
 In the menus the same presses navigate (§11), and the key hints switch to the pad's buttons once it is used.
@@ -503,6 +504,7 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
 | `key`, `button` | A key or a pad's button the screen may want for itself, before the menus read it (a key being bound; R in a practice battle). |
 | `action` | Previous and next (the shoulders, the keys bound to L and R), delete, the pad's north button. The shell changes the game with the first two unless the screen takes them. |
 | `scroll` | Up, Down, Page Up, Page Down, Home, End (keys, D-pad, stick), before the focus moves: for a page of the screen's own that scrolls with no control in it to move to (the builds Tab shows over the match's menu). |
+| `scroll_view` | A scroll that leaves the focus where it is (the right stick; Shift with Page Up, Page Down, Home, End), before the nav's list or page takes it: for a view of the screen's own the nav doesn't know of (the builds over the match, Play's overview, a license). Some(whether it moved) if the screen took it. |
 | `back` | Esc or Back: true if the screen went back within itself; false and the shell goes to the menu. |
 | `answered(tag, choice)` | A dialog the screen asked was answered; or something it asked of another screen was (`Shell::tell`: a row it added to the practice menu was chosen). |
 | `dropped(path)` | A file was dropped on the window. |
@@ -831,14 +833,16 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
 Where a build is shown whole, it is the build overview (`BuildOverview`, filled by
 `builds::overview::sheet`, §8): beside the list, the wide sheet of the build as it is (made again only when
 the build chosen or the language changes; its left column scrolls inside the frame by the wheel and a drag where it
-runs past it, docs/design/app-ui.md §2.99, the keys never reaching it); a player's panel in a match, while Tab is held, the narrow sheet of
+runs past it, docs/design/app-ui.md §2.99; the arrows pass it by, and the right stick and Shift's scrolls scroll it,
+§2.101: `PlayView.sheet-y`, with `sheet-span` and `sheet-view` from the UI, `Play::scroll_view`); a player's panel in a match, while Tab is held, the narrow sheet of
 the agreement's side, which is the build as the match plays it (without its patch cards where those were off),
 under the player's name. Each is in a box as tall as it, or as the window less its margins (and, over the menu,
 its footer) where it is taller; on a phone each is half the window. Where one is taller than its box the two
 scroll together, by one offset (`PlayView.peek-y`, each no further than its own end): by the wheel and a drag
 over them (`Scrub`), and by Up and Down (a step of two chips' rows; over the match the keys bound to Up and Down
 too), Page Up and Down, Home and End, the pad's too, which the screen takes before the menu's focus would move
-(`Play::scroll`, with `peek-span` and `peek-view` from the UI). Over the match, while they show, the shell keeps
+(`Play::scroll`, with `peek-span` and `peek-view` from the UI), and by the right stick and Shift's scrolls
+(`Play::scroll_view`). Over the match, while they show, the shell keeps
 the keys from the battle (`Shell::keep_keys`): no button reaches it, and the moves are the builds' (the user:
 "holding tab should allow you to scroll the build instead of passing input to the game"). A thumb along each one's right
 edge says where it is. They show from their tops each time. This player's card in the lobby says the build's
@@ -2373,6 +2377,17 @@ click on a build's row, `RowTouch.menu`): 200 wide with its right edge at what o
 buttons' type, the cursor on the first, and those from `Shell.picker-apart` on under a line in the error color
 (DELETE).
 
+**Scrolls** (docs/design/app-ui.md §2.101). The pad's right stick and Shift with Page Up, Page Down, Home and End
+scroll without moving the focus, as the wheel does (`App::scroll`, `input::Scroll`). The stick scrolls each frame
+by its tilt past a dead zone (`Pad::scroll_speed`, `App::tilt`), at once and silently; Shift's keys go a page
+less a step or to an end, slid there, and sound as a move does where something moved. What scrolls: first a view
+of the screen's own the nav doesn't know of (`Screen::scroll_view`: the builds over the match, Play's overview,
+About's license), unless a dialog or a select's list is open; else the nav's list or page the focus is in, where
+it can scroll; else the list or page under the scope open with the most to scroll (`Nav::scroll`). The nav asks
+a `ListView` or a `ScrollPage` to move as it asks one to reveal the focus (`Nav.reveal-dy`, with `reveal-slides`
+false for the stick), and each tells it how tall what it holds is and how far it is scrolled (`Nav.page`) as either
+changes. Over a battle that has the keys nothing scrolls, unless its owner keeps them (the builds over the match).
+
 **Pads** (rule 10) follow the pad's bindings in the same way (`Bindings::pad_action`): the D-pad or the stick
 moves, the button bound to A confirms and B's goes back (the east and south buttons until rebound; east and
 south stand in where A or B is bound to a direction or shares a button), the buttons bound to L and R are
@@ -3887,7 +3902,8 @@ with none.
 license, where Up and Down scroll it a step, Page Up and Page Down a page, Home and End to its ends
 (`About::scroll`, as the builds over the match's menu scroll), and Back (or Left) returns to the list; Back
 from the list goes back to the settings, the focus on SHOW LICENSES. A click on a row chooses it and leaves the
-focus there; the wheel or a drag scrolls the license wherever the focus is. L and R do nothing here: the header
+focus there; the wheel or a drag, the right stick and Shift's scrolls (`About::scroll_view`), scroll the license
+wherever the focus is. L and R do nothing here: the header
 offers no game. Opened again, About has the focus on the row it was on, the list scrolled to it (a list made anew
 starts at its top, and a remembered focus alone doesn't scroll it). Settings left while it is open (the shell
 going elsewhere) closes it.

@@ -5,7 +5,7 @@
 //! shown in the settings' place, a view of its own to the focus; Back from its list goes back to them. A phone
 //! reads a license on a sheet over the list.
 
-use crate::input::Action;
+use crate::input::{Action, Scroll};
 use crate::nav::Key;
 use crate::shell::Shell;
 use crate::sound::Cue;
@@ -28,9 +28,6 @@ mod licenses {
 }
 
 use licenses::{FONTS, PACKAGES, Software, TEXTS};
-
-/// How far Up and Down scroll a license.
-const STEP: f32 = 56.0;
 
 /// Its view's name, where the focus is remembered apart from the settings'.
 const VIEW: &str = "settings.about";
@@ -186,26 +183,29 @@ impl About {
     /// The license with the focus on it: Up and Down scroll it a step, Page Up and Down a page less a step,
     /// Home and End to its ends. It takes them all, at an end too (its view is the one control there).
     pub fn scroll(&mut self, shell: &mut Shell, action: Action) -> bool {
-        if !Self::reading(shell) {
-            return false;
-        }
-        let ui = shell.ui();
-        let view = ui.global::<AboutView>();
-        let (at, span, page) = (-view.get_text_y(), view.get_text_span(), (view.get_text_view() - STEP).max(STEP));
-        let to = match action {
-            Action::Up => at - STEP,
-            Action::Down => at + STEP,
-            Action::PageUp => at - page,
-            Action::PageDown => at + page,
-            Action::Home => 0.0,
-            Action::End => span,
-            _ => return false,
-        }
-        .clamp(0.0, span.max(0.0));
-        if to != at {
-            view.set_text_y(-to);
+        let Some(by) = Scroll::of(action).filter(|_| Self::reading(shell)) else { return false };
+        if Self::scroll_text(shell, by) {
             shell.sound.play(Cue::Cursor);
         }
+        true
+    }
+
+    /// The right stick and Shift's scrolls: the license, wherever the focus is, while it shows (beside the list;
+    /// on a phone, its sheet open).
+    pub fn scroll_view(&mut self, shell: &mut Shell, by: Scroll) -> Option<bool> {
+        (self.open && (!shell.scale.phone || self.sheet)).then(|| Self::scroll_text(shell, by))
+    }
+
+    /// The license scrolled by `by`: whether it moved.
+    fn scroll_text(shell: &Shell, by: Scroll) -> bool {
+        let ui = shell.ui();
+        let view = ui.global::<AboutView>();
+        let at = -view.get_text_y();
+        let to = by.to(at, view.get_text_span(), view.get_text_view());
+        if (to - at).abs() < 0.01 {
+            return false;
+        }
+        view.set_text_y(-to);
         true
     }
 

@@ -11,7 +11,7 @@ use crate::battle::{Battle, Loading};
 use crate::errors::UserError;
 use crate::games::{Games, Notice, Ready, State};
 use crate::gl::GlPicture;
-use crate::input::{Action, Bindings, KeyPress, Keys, Pad, menu_action};
+use crate::input::{Action, Bindings, KeyPress, Keys, Pad, Scroll, menu_action, scroll_key};
 use crate::nav::{Did, Direction, Key, Nav, Rect};
 use crate::screens::{self, Screen, ScreenId};
 use crate::settings::Settings;
@@ -57,6 +57,9 @@ pub fn button(text: &str, kind: ButtonKind) -> DialogButton {
 /// The shell's own question, no screen's: no Legacy Collection is found, and its first button chooses the
 /// collection's folder (`Shell::ask_for_source`). And the control that does the same where no game can be played
 /// (the loading screen's).
+/// A frame at 60 a second: the right stick's first scroll, and the most one frame of it scrolls (`App::tilt`).
+const FRAME: Duration = Duration::from_micros(16_667);
+
 const SOURCE: &str = "source";
 const CHOOSE_SOURCE: &str = "source.choose";
 
@@ -948,6 +951,8 @@ pub struct App {
     pending: Vec<(Action, u8)>,
     /// When the window last drew a frame.
     drawn_at: Option<Instant>,
+    /// When the pad's right stick last scrolled, while it is tilted.
+    tilted: Option<Instant>,
     /// A battle's slow frames, for the log: when the last frame began and how long the app's part of it took,
     /// when the one before was drawn, and how many have been logged (a few, then no more).
     slow: SlowFrames,
@@ -1020,6 +1025,7 @@ impl App {
             screens: screens::all().into_iter().map(Some).collect(),
             pending: Vec::new(),
             drawn_at: None,
+            tilted: None,
             slow: SlowFrames::default(),
             first_frame_after: None,
             clock_stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| (Instant::now(), 0, 0)),
@@ -1623,7 +1629,11 @@ impl App {
                 self.shell.open_menu();
             } else if self.shell.keys_kept() {
                 // (Kept from the battle by its owner: the moves scroll what it shows, the arrows or the keys bound
-                // to Up and Down.)
+                // to Up and Down, and so do Shift's scrolls.)
+                if let Some(by) = scroll_key(code, self.shell.shift) {
+                    self.scroll(by);
+                    return true;
+                }
                 let action = match self.shell.bindings.of_key(code) {
                     Some(keys::UP) => Some(Action::Up),
                     Some(keys::DOWN) => Some(Action::Down),
@@ -1675,6 +1685,12 @@ impl App {
         {
             self.shell.nav.used_keys(false);
             self.shell.nav.begin_edit(&self.shell.ui(), text);
+            return true;
+        }
+        // Shift with Page Up, Page Down, Home or End scrolls, the focus left where it is.
+        if let Some(by) = scroll_key(code, self.shell.shift) {
+            self.shell.nav.used_keys(false);
+            self.scroll(by);
             return true;
         }
         let Some(action) = menu_action(code, self.shell.shift, &self.shell.bindings) else { return false };
@@ -1754,6 +1770,7 @@ impl App {
             self.shell.refresh();
         }
         self.read_pad(now);
+        self.tilt(now);
         self.follow_games();
         // (A change of game's colors a step further.)
         self.shell.looks.frame(&self.shell.ui(), now);
@@ -1887,6 +1904,43 @@ impl App {
         for action in events.actions {
             self.act(action);
         }
+    }
+
+    /// A scroll that leaves the focus where it is (the pad's right stick; Shift with Page Up, Page Down, Home or
+    /// End): a view of the screen's own that the nav doesn't know of, if it has one (`Screen::scroll_view`), else
+    /// the nav's page or list ([`crate::nav::Nav::scroll`]). Nothing under a battle that has the keys, unless its
+    /// owner keeps them. A key's scroll that moves something sounds as a move does; the stick's is silent, as the
+    /// wheel is.
+    fn scroll(&mut self, by: Scroll) {
+        if self.shell.battle_has_keys() && !self.shell.keys_kept() {
+            return;
+        }
+        let over = self.shell.dialog.is_some() || self.shell.picking.is_some();
+        let hearer = self.hearer();
+        let mine = if over { None } else { self.call(hearer, |s, shell| s.scroll_view(shell, by)).flatten() };
+        let moved = mine.unwrap_or_else(|| {
+            let ui = self.shell.ui();
+            self.shell.nav.scroll(&ui, by)
+        });
+        if moved && !matches!(by, Scroll::By(_)) {
+            self.shell.sound.play(Cue::Cursor);
+        }
+        self.settle();
+    }
+
+    /// The pad's right stick, each frame: tilted, it scrolls by its tilt for the time since the frame before
+    /// (`App::scroll`).
+    fn tilt(&mut self, now: Instant) {
+        let Some(speed) = self.shell.pad.scroll_speed() else {
+            self.tilted = None;
+            return;
+        };
+        // (Its first frame, and one after a stall, as one frame's worth.)
+        let dt = self.tilted.map_or(FRAME, |at| now.saturating_duration_since(at)).min(3 * FRAME);
+        self.tilted = Some(now);
+        self.shell.last_input = Some(now);
+        self.shell.nav.used_keys(true);
+        self.scroll(Scroll::By(speed * dt.as_secs_f32()));
     }
 
     /// A move while the battle's owner keeps the keys from it: the owner's to scroll with.

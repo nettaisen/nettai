@@ -81,6 +81,62 @@ pub enum Action {
     End,
 }
 
+/// A scroll that leaves the focus where it is, as the wheel does (`App::scroll`): the pad's right stick, and Shift
+/// with Page Up, Page Down, Home or End ([`scroll_key`]).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Scroll {
+    /// So far at once, down positive, with no slide (the right stick, each frame it is tilted).
+    By(f32),
+    /// A page up (-1) or down (1): the view's height less a step, slid there.
+    Page(i32),
+    Top,
+    Bottom,
+}
+
+impl Scroll {
+    /// What a page leaves in view of the one before it, and the least a page moves.
+    pub const STEP: f32 = 56.0;
+
+    /// The menus' moves as a view's scrolls, where a view of the screen's own takes them (`Screen::scroll`): Up and
+    /// Down a step, Page Up and Down a page, Home and End to the ends.
+    pub fn of(action: Action) -> Option<Scroll> {
+        Some(match action {
+            Action::Up => Scroll::By(-Self::STEP),
+            Action::Down => Scroll::By(Self::STEP),
+            Action::PageUp => Scroll::Page(-1),
+            Action::PageDown => Scroll::Page(1),
+            Action::Home => Scroll::Top,
+            Action::End => Scroll::Bottom,
+            _ => return None,
+        })
+    }
+
+    /// Where a view `view` tall, scrolled `at` of the `span` it can be, is scrolled to.
+    pub fn to(self, at: f32, span: f32, view: f32) -> f32 {
+        let to = match self {
+            Scroll::By(by) => at + by,
+            Scroll::Page(dir) => at + dir as f32 * (view - Self::STEP).max(Self::STEP),
+            Scroll::Top => 0.0,
+            Scroll::Bottom => span,
+        };
+        to.clamp(0.0, span.max(0.0))
+    }
+}
+
+/// Shift with Page Up, Page Down, Home or End: a scroll ([`Scroll`]). (Without Shift they move the focus.)
+pub fn scroll_key(code: KeyCode, shift: bool) -> Option<Scroll> {
+    if !shift {
+        return None;
+    }
+    Some(match code {
+        KeyCode::PageUp => Scroll::Page(-1),
+        KeyCode::PageDown => Scroll::Page(1),
+        KeyCode::Home => Scroll::Top,
+        KeyCode::End => Scroll::Bottom,
+        _ => return None,
+    })
+}
+
 /// The keys that can be bound, each with its name in the settings' file and its cap in the UI.
 const KEYS: &[(KeyCode, &str, &str)] = &[
     (KeyCode::ArrowUp, "ArrowUp", "↑"),
@@ -451,6 +507,11 @@ impl Keys {
 const REPEAT_AFTER: Duration = Duration::from_millis(380);
 const REPEAT_EVERY: Duration = Duration::from_millis(90);
 
+/// How far the right stick is tilted before it scrolls, and how fast it scrolls tilted all the way (units a
+/// second). Between, the speed grows as the square of the tilt past the dead zone, for fine control near it.
+const TILT_DEAD: f32 = 0.2;
+const TILT_SPEED: f32 = 1600.0;
+
 /// What the pads did since the last poll.
 #[derive(Default)]
 pub struct PadEvents {
@@ -472,6 +533,8 @@ pub struct Pad {
     down: Vec<(Id, Button)>,
     /// Each pad's left stick: where it is, and the directions it holds as GBA buttons.
     sticks: Vec<(Id, (f32, f32), u16)>,
+    /// Each pad's right stick, up and down (up negative): it scrolls ([`Pad::scroll_speed`]).
+    tilts: Vec<(Id, f32)>,
     /// The pads, in the order they were first used (a pad is known by its first event).
     pads: Vec<Id>,
     /// The second pad is practice's dummy's (its Action "a second pad"): its buttons aren't the player's, and
@@ -502,6 +565,14 @@ impl Pad {
     /// The GBA buttons the player's pads hold, as `bindings` has them; the left stick moves whatever is bound.
     pub fn held(&self, bindings: &Bindings) -> u16 {
         self.held_by(bindings, |id| !self.dummys(id))
+    }
+
+    /// How fast the player's pads' right sticks scroll, in units a second (down positive; the one tilted
+    /// furthest), or None while none is past its dead zone.
+    pub fn scroll_speed(&self) -> Option<f32> {
+        let tilt = self.tilts.iter().filter(|(id, _)| !self.dummys(*id)).map(|(_, y)| *y).max_by(|a, b| a.abs().total_cmp(&b.abs()))?;
+        let past = ((tilt.abs() - TILT_DEAD) / (1.0 - TILT_DEAD)).min(1.0);
+        (past > 0.0).then(|| tilt.signum() * past * past * TILT_SPEED)
     }
 
     /// The GBA buttons practice's dummy's pad holds, while there is one (the second used, while it is apart).
@@ -542,6 +613,10 @@ impl Pad {
                         self.repeat = None;
                     }
                 }
+                EventKind::AxisMotion { axis: Axis::RightY, value } => match self.tilts.iter_mut().find(|(of, _)| *of == id) {
+                    Some((_, at)) => *at = value,
+                    None => self.tilts.push((id, value)),
+                },
                 EventKind::AxisMotion { axis, value } => {
                     let at = match self.sticks.iter().position(|(of, ..)| *of == id) {
                         Some(at) => at,
@@ -588,6 +663,7 @@ impl Pad {
                 EventKind::Disconnected => {
                     self.down.retain(|(of, _)| *of != id);
                     self.sticks.retain(|(of, ..)| *of != id);
+                    self.tilts.retain(|(of, _)| *of != id);
                     self.pads.retain(|of| *of != id);
                     if !dummys {
                         self.repeat = None;
@@ -874,5 +950,44 @@ mod tests {
         }
         let b = Bindings::default();
         assert!(b.keys.iter().all(|k| key_name(*k).is_some()) && b.pad.iter().all(|p| pad_name(*p).is_some()));
+    }
+
+    /// Shift with Page Up, Page Down, Home or End scrolls; without Shift they are the menus' moves. A page is the
+    /// view less a step (a step at least), and every scroll stops at the ends.
+    #[test]
+    fn scrolls_go_by_pages_and_stop_at_the_ends() {
+        assert_eq!(scroll_key(KeyCode::PageDown, true), Some(Scroll::Page(1)));
+        assert_eq!(scroll_key(KeyCode::Home, true), Some(Scroll::Top));
+        assert_eq!(scroll_key(KeyCode::PageDown, false), None);
+        assert_eq!(scroll_key(KeyCode::ArrowDown, true), None);
+        assert_eq!(Scroll::Page(1).to(0.0, 1000.0, 400.0), 400.0 - Scroll::STEP);
+        assert_eq!(Scroll::Page(-1).to(500.0, 1000.0, 400.0), 500.0 - (400.0 - Scroll::STEP));
+        assert_eq!(Scroll::Page(1).to(0.0, 1000.0, 40.0), Scroll::STEP, "a short view: a step");
+        assert_eq!(Scroll::Page(1).to(900.0, 1000.0, 400.0), 1000.0);
+        assert_eq!(Scroll::By(-30.0).to(10.0, 1000.0, 400.0), 0.0);
+        assert_eq!(Scroll::Bottom.to(10.0, 1000.0, 400.0), 1000.0);
+        assert_eq!(Scroll::Top.to(10.0, 1000.0, 400.0), 0.0);
+        assert_eq!(Scroll::Bottom.to(0.0, -5.0, 400.0), 0.0, "nothing to scroll");
+    }
+
+    /// The right stick scrolls past its dead zone, up negative, faster the further it is tilted; the dummy's pad's
+    /// doesn't.
+    #[test]
+    fn the_right_stick_scrolls_past_its_dead_zone() {
+        let mut pad = Pad::default();
+        assert_eq!(pad.scroll_speed(), None);
+        let (first, second) = (Id(1), Id(2));
+        pad.pads = vec![first, second];
+        pad.tilts = vec![(first, 0.1)];
+        assert_eq!(pad.scroll_speed(), None, "inside the dead zone");
+        pad.tilts = vec![(first, -1.0)];
+        assert_eq!(pad.scroll_speed(), Some(-TILT_SPEED));
+        pad.tilts = vec![(first, 0.6)];
+        let half = pad.scroll_speed().unwrap();
+        assert!(half > 0.0 && half < TILT_SPEED / 2.0, "{half}");
+        pad.tilts = vec![(first, 0.0), (second, 1.0)];
+        assert_eq!(pad.scroll_speed(), Some(TILT_SPEED));
+        pad.apart = true;
+        assert_eq!(pad.scroll_speed(), None, "the dummy's");
     }
 }

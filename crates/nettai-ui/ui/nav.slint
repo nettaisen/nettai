@@ -46,9 +46,12 @@ export global Nav {
     in property <int> edit-seq;
     in property <int> edit-heard;
     in property <string> edit-seed;
-    // A scrolling page or list is asked to move by `reveal-dy` to bring the focused control into view.
+    // A scrolling page or list is asked to move by `reveal-dy`: to bring the focused control into view, or as a
+    // scroll that leaves the focus where it is (the right stick, Shift with Page Up and Down, Home and End). It
+    // slides there, unless `reveal-slides` is false (the stick, each frame).
     in property <string> reveal-id;
     in property <length> reveal-dy;
+    in property <bool> reveal-slides: true;
     in property <int> reveal-seq;
 
     // A control with a `Focusable` exists (the model it gets back tells the app when it is gone).

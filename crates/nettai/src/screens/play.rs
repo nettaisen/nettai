@@ -66,7 +66,7 @@ use list::Naming;
 use crate::errors::UserError;
 use crate::games::Names;
 use slint::winit_030::winit::keyboard::KeyCode;
-use crate::input::{Action, KeyPress, button_index, key_cap, pad_cap, pad_face};
+use crate::input::{Action, KeyPress, Scroll, button_index, key_cap, pad_cap, pad_face};
 use crate::nav::Key;
 use crate::screens::{Screen, ScreenId, practice, settings};
 use crate::settings::MAX_INPUT_DELAY;
@@ -115,9 +115,6 @@ const WAIT_ROWS: &str = "play.wait";
 
 /// The tag of the question Esc in the lobby asks (`Screen::answered`: 1 is LEAVE).
 const LEAVE_LOBBY: &str = "play.leave";
-
-/// How far Up and Down scroll the builds shown over the match's menu: two of their chips' rows.
-const SHEET_STEP: f32 = 56.0;
 
 /// What the settings remember for Play: the match's settings as this player last set them hosting (the user: "the
 /// host should remember their last match settings"; the ruleset is the one their build is made for, §2.73), and
@@ -1218,6 +1215,24 @@ impl Play {
         shell.nav.focus(if page == MatchPage::Menu { "menu.resume" } else { "menu.back" }, 0);
     }
 
+    /// The builds show over the match (Tab or Select held), to be scrolled.
+    fn peeking(&self) -> bool {
+        self.peek && matches!(self.stage, Stage::Match { .. })
+    }
+
+    /// The builds shown over the match scrolled by `by`, both by the same: whether they moved.
+    fn scroll_peek(shell: &Shell, by: Scroll) -> bool {
+        let ui = shell.ui();
+        let view = ui.global::<PlayView>();
+        let at = -view.get_peek_y();
+        let to = by.to(at, view.get_peek_span(), view.get_peek_view());
+        if (to - at).abs() < 0.01 {
+            return false;
+        }
+        view.set_peek_y(-to);
+        true
+    }
+
     /// Show the builds or put them away; they show from their tops. While they show over the match, the match's keys
     /// are theirs to scroll with, and none reaches the battle (the user: "holding tab should allow you to scroll
     /// the build instead of passing input to the game").
@@ -2136,27 +2151,35 @@ impl Screen for Play {
     /// the menu's focus stays where it was under them, and over the match the battle hears none of them (the
     /// shell keeps its keys: [`Play::set_peek`]).
     fn scroll(&mut self, shell: &mut Shell, action: Action) -> bool {
-        if !self.peek || !matches!(self.stage, Stage::Match { .. }) {
-            return false;
-        }
-        let ui = shell.ui();
-        let view = ui.global::<PlayView>();
-        let (at, span, page) = (-view.get_peek_y(), view.get_peek_span(), (view.get_peek_view() - SHEET_STEP).max(SHEET_STEP));
-        let to = match action {
-            Action::Up => at - SHEET_STEP,
-            Action::Down => at + SHEET_STEP,
-            Action::PageUp => at - page,
-            Action::PageDown => at + page,
-            Action::Home => 0.0,
-            Action::End => span,
-            _ => return false,
-        }
-        .clamp(0.0, span.max(0.0));
-        if to != at {
-            view.set_peek_y(-to);
+        let Some(by) = Scroll::of(action).filter(|_| self.peeking()) else { return false };
+        if Self::scroll_peek(shell, by) {
             shell.sound.play(Cue::Cursor);
         }
         true
+    }
+
+    /// The right stick and Shift's scrolls: the builds shown over the match, while they show; else, on the
+    /// builds, the chosen build's overview where it is taller than its frame (its column; the list beside it
+    /// scrolls with the focus).
+    fn scroll_view(&mut self, shell: &mut Shell, by: Scroll) -> Option<bool> {
+        if self.peeking() {
+            return Some(Self::scroll_peek(shell, by));
+        }
+        let ui = shell.ui();
+        let view = ui.global::<PlayView>();
+        // (As the overview shows: a readable build chosen, on the builds with nothing open over them.)
+        let shown = self.part() == PlayPart::Builds && !shell.scale.phone && view.get_chosen() >= 0 && view.get_readable();
+        let over = self.naming.is_some() || self.direct.is_some() || self.boxes.is_some();
+        if !shown || over || view.get_sheet_span() <= 0.5 {
+            return None;
+        }
+        let at = (-view.get_sheet_y()).min(view.get_sheet_span());
+        let to = by.to(at, view.get_sheet_span(), view.get_sheet_view());
+        if (to - at).abs() < 0.01 {
+            return Some(false);
+        }
+        view.set_sheet_y(-to);
+        Some(true)
     }
 
     fn battle(&mut self, shell: &mut Shell, event: BattleEvent) {

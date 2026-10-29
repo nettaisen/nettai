@@ -781,10 +781,11 @@ export component BuildOverview inherits Rectangle {
     property <length> auto-height: root.build.auto-battle.length == 0 ? 0px : (root.narrow ? 19px + lists.height + 4px : 30px + lists.height);
     out property <length> column-height: root.auto-top + root.auto-height;
     // ---- The wide sheet's column scrolls where it is taller than the frame leaves it: `scroll` is how far (0 or
-    // less), a new build at its top.
-    property <length> view: root.height - root.column-top - root.pad;
-    property <length> span: root.narrow ? 0px : max(0px, root.column-height - root.view);
-    property <length> scroll;
+    // less), a new build at its top; `view` is how tall the column's frame is and `span` how far it can scroll.
+    // The wheel and a drag over it scroll it, and a screen may (Play's, by the right stick and Shift's scrolls).
+    out property <length> view: root.height - root.column-top - root.pad;
+    out property <length> span: root.narrow ? 0px : max(0px, root.column-height - root.view);
+    in-out property <length> scroll;
     property <length> held-at;
     // ---- The folder: two columns of fifteen; on the narrow sheet under the column, on the wide at the right.
     // (The stats' column is 240 and the gap 24, where the mockups have 200 and 32: a label 40% longer than

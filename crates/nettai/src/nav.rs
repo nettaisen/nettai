@@ -12,6 +12,7 @@
 //! Left and Right then change: [`Nav::grabbed`]) or starts an edit.
 //! The app is told what happened ([`Did`]) and passes it to the screen's Rust module.
 
+use crate::input::Scroll;
 use nettai_ui::{AppWindow, NavKind};
 use slint::{ComponentHandle, Model, ModelRc, ModelTracker};
 use std::cell::RefCell;
@@ -81,15 +82,20 @@ struct Item {
     alive: u32,
 }
 
-/// A scrolling page: where its view is. The controls whose names begin with its name are in it.
+/// A scrolling page: where its view is, how tall what it holds is, and how far it is scrolled. The controls whose
+/// names begin with its name are in it.
 struct Page {
     view: Rect,
+    content: f32,
+    scroll: f32,
     alive: u32,
 }
 
-/// A list of rows: its view, and its rows' count, pitch, height, width, and how far it is scrolled.
+/// A list of rows: its view and how tall its rows are together (never less than the view), and its rows' count,
+/// pitch, height, width, and how far it is scrolled.
 struct List {
     view: Rect,
+    content: f32,
     rows: i32,
     pitch: f32,
     row_height: f32,
@@ -160,9 +166,9 @@ impl Registry {
         {
             let mut r = registry.borrow_mut();
             match kind {
-                NavKind::Page => r.pages.entry(key.id.clone()).or_insert(Page { view: Rect::default(), alive: 0 }).alive += 1,
+                NavKind::Page => r.pages.entry(key.id.clone()).or_insert(Page { view: Rect::default(), content: 0.0, scroll: 0.0, alive: 0 }).alive += 1,
                 NavKind::List => {
-                    let fresh = List { view: Rect::default(), rows: 0, pitch: 0.0, row_height: 0.0, row_width: 0.0, scroll: 0.0, alive: 0 };
+                    let fresh = List { view: Rect::default(), content: 0.0, rows: 0, pitch: 0.0, row_height: 0.0, row_width: 0.0, scroll: 0.0, alive: 0 };
                     r.lists.entry(key.id.clone()).or_insert(fresh).alive += 1;
                 }
                 _ => {
@@ -188,14 +194,44 @@ impl Registry {
         }
     }
 
-    /// Where a page's (or a list's) view is.
-    pub fn page(&mut self, id: &str, view: Rect) {
+    /// Where a page's (or a list's) view is, how tall what it holds is, and how far it is scrolled.
+    pub fn page(&mut self, id: &str, view: Rect, content: f32, scroll: f32) {
         if let Some(p) = self.pages.get_mut(id) {
-            p.view = view;
+            (p.view, p.content, p.scroll) = (view, content, scroll);
         }
         if let Some(l) = self.lists.get_mut(id) {
-            l.view = view;
+            (l.view, l.content, l.scroll) = (view, content, scroll);
         }
+    }
+
+    /// A page's or a list's view, how far it is scrolled, and how far it can be, where it is laid out and can
+    /// scroll.
+    fn scrolling(&self, id: &str) -> Option<(Rect, f32, f32)> {
+        let (view, content, scroll) = match self.lists.get(id) {
+            Some(l) => (l.view, l.content, l.scroll),
+            None => self.pages.get(id).map(|p| (p.view, p.content, p.scroll))?,
+        };
+        let span = content - view.h;
+        (view.w > 0.0 && view.h > 0.0 && span > 0.5).then_some((view, scroll, span))
+    }
+
+    /// What a scroll that leaves the focus where it is moves ([`Nav::scroll`]): the page or the list `focus` is
+    /// in, where it can scroll, else the one under `scope` with the most to scroll. Its name, its view, how far it
+    /// is scrolled and how far it can be.
+    fn scroll_target(&self, focus: Option<&Key>, scope: &str) -> Option<(&str, Rect, f32, f32)> {
+        let focused = focus.and_then(|key| match self.lists.get_key_value(&key.id) {
+            Some((id, _)) => Some(id.as_str()),
+            None => self.page_of(&key.id).map(|(name, _)| name),
+        });
+        let most = || {
+            let ids = self.lists.keys().chain(self.pages.keys()).filter(|id| id.starts_with(scope));
+            // (Of two as far, the one first by name, so the choice doesn't change from one call to the next.)
+            let spans = ids.filter_map(|id| self.scrolling(id).map(|(_, _, span)| (id.as_str(), span)));
+            spans.max_by(|a, b| a.1.total_cmp(&b.1).then_with(|| b.0.cmp(a.0))).map(|(id, _)| id)
+        };
+        let id = focused.filter(|id| self.scrolling(id).is_some()).or_else(most)?;
+        let (view, at, span) = self.scrolling(id)?;
+        Some((id, view, at, span))
     }
 
     /// A list's rows.
@@ -784,11 +820,36 @@ impl Nav {
         } else {
             return;
         };
+        let name = name.to_string();
+        drop(registry);
+        self.ask_scroll(ui, &name, dy, true);
+    }
+
+    /// Ask the page or the list `id` to scroll by `dy`, slid there or at once (the UI clamps it to its ends).
+    fn ask_scroll(&mut self, ui: &AppWindow, id: &str, dy: f32, slides: bool) {
         let nav = ui.global::<nettai_ui::Nav>();
         self.reveal_seq += 1;
-        nav.set_reveal_id(name.into());
+        nav.set_reveal_id(id.into());
         nav.set_reveal_dy(dy);
+        nav.set_reveal_slides(slides);
         nav.set_reveal_seq(self.reveal_seq);
+    }
+
+    /// A scroll that leaves the focus where it is (the right stick; Shift with Page Up, Page Down, Home or End), of
+    /// the page or the list the focus is in where it can scroll, else of the one under the scope open that has the
+    /// most to scroll. True if it moved.
+    pub fn scroll(&mut self, ui: &AppWindow, by: Scroll) -> bool {
+        let (id, dy) = {
+            let registry = self.registry.borrow();
+            let Some((id, view, at, span)) = registry.scroll_target(self.focus.as_ref(), self.scope()) else { return false };
+            let to = by.to(at, span, view.h);
+            if (to - at).abs() < 0.01 {
+                return false;
+            }
+            (id.to_string(), to - at)
+        };
+        self.ask_scroll(ui, &id, dy, !matches!(by, Scroll::By(_)));
+        true
     }
 
     /// The list `id` back at its top, as its rows changed under it (a search typed): scrolled to its first row,
@@ -799,11 +860,7 @@ impl Nav {
         if scroll <= 0.0 {
             return;
         }
-        let nav = ui.global::<nettai_ui::Nav>();
-        self.reveal_seq += 1;
-        nav.set_reveal_id(id.into());
-        nav.set_reveal_dy(-scroll);
-        nav.set_reveal_seq(self.reveal_seq);
+        self.ask_scroll(ui, id, -scroll, true);
     }
 
     /// Scroll the list `id`'s row `index` into view, slid there as a reveal is, and enter the list at it next,
@@ -824,24 +881,19 @@ impl Nav {
                 return true;
             }
         };
-        let nav = ui.global::<nettai_ui::Nav>();
-        self.reveal_seq += 1;
-        nav.set_reveal_id(id.into());
-        nav.set_reveal_dy(dy);
-        nav.set_reveal_seq(self.reveal_seq);
+        self.ask_scroll(ui, id, dy, true);
         true
     }
 
     /// Scroll the page `id`'s control into view at its top (a settings group jumped to), without moving the
     /// focus.
     pub fn reveal_at_top(&mut self, ui: &AppWindow, id: &str, index: i32, room: f32) {
-        let registry = self.registry.borrow();
-        let (Some((name, view)), Some(rect)) = (registry.page_of(id), registry.rect(&Key::new(id, index))) else { return };
-        let nav = ui.global::<nettai_ui::Nav>();
-        self.reveal_seq += 1;
-        nav.set_reveal_id(name.into());
-        nav.set_reveal_dy(rect.y - room - view.y);
-        nav.set_reveal_seq(self.reveal_seq);
+        let (name, dy) = {
+            let registry = self.registry.borrow();
+            let (Some((name, view)), Some(rect)) = (registry.page_of(id), registry.rect(&Key::new(id, index))) else { return };
+            (name.to_string(), rect.y - room - view.y)
+        };
+        self.ask_scroll(ui, &name, dy, true);
     }
 
     /// An arrow: the focus goes to the neighbor in that direction, a list's row to the next one. On a setting
@@ -1158,7 +1210,7 @@ mod tests {
         {
             let mut r = registry.borrow_mut();
             r.place("new", 0, rect(32.0, 100.0, 120.0, 40.0), true);
-            r.page("builds", rect(32.0, 160.0, 400.0, 200.0));
+            r.page("builds", rect(32.0, 160.0, 400.0, 200.0), 538.0, 54.0);
             r.list("builds", 10, 54.0, 52.0, 54.0, 388.0);
         }
         let r = registry.borrow();
@@ -1181,7 +1233,7 @@ mod tests {
         ];
         {
             let mut r = registry.borrow_mut();
-            r.page("set.", rect(292.0, 88.0, 900.0, 600.0));
+            r.page("set.", rect(292.0, 88.0, 900.0, 600.0), 900.0, 0.0);
             r.place("set.name", 0, rect(516.0, 120.0, 320.0, 40.0), true);
             r.place("set.about", 0, rect(516.0, 900.0, 160.0, 40.0), true);
             r.place("group", 0, rect(32.0, 88.0, 220.0, 44.0), true);
@@ -1205,7 +1257,7 @@ mod tests {
         ];
         {
             let mut r = registry.borrow_mut();
-            r.page("menu.rows", rect(40.0, 100.0, 400.0, 200.0));
+            r.page("menu.rows", rect(40.0, 100.0, 400.0, 200.0), 290.0, 0.0);
             r.place("menu.rows.a", 0, rect(40.0, 250.0, 400.0, 44.0), true);
             r.place("menu.rows.b", 0, rect(40.0, 340.0, 400.0, 44.0), true);
             r.place("menu.resume", 0, rect(40.0, 310.0, 200.0, 40.0), true);
@@ -1215,5 +1267,39 @@ mod tests {
         assert_eq!(next("menu.rows.a").as_deref(), Some("menu.rows.b"));
         assert_eq!(next("menu.rows.b").as_deref(), None, "nothing under the page's last control here");
         assert_eq!(r.next(&Key::new("menu.rows.b", 0), Direction::Up, "", &|_| 0).map(|k| k.id).as_deref(), Some("menu.rows.a"));
+    }
+
+    /// A scroll that leaves the focus where it is moves the page or the list the focus is in, where that can
+    /// scroll; else the one under the scope open with the most to scroll; else nothing.
+    #[test]
+    fn a_scroll_moves_what_the_focus_is_in_else_the_longest() {
+        let registry = Rc::new(RefCell::new(Registry::default()));
+        let _tokens = [
+            Registry::register(&registry, "folder", 0, NavKind::List),
+            Registry::register(&registry, "library", 0, NavKind::List),
+            Registry::register(&registry, "short", 0, NavKind::List),
+            Registry::register(&registry, "set.", 0, NavKind::Page),
+            Registry::register(&registry, "set.name", 0, NavKind::Field),
+            Registry::register(&registry, "dialog.list", 0, NavKind::List),
+            Registry::register(&registry, "tab", 0, NavKind::Button),
+        ];
+        {
+            let mut r = registry.borrow_mut();
+            r.page("folder", rect(0.0, 0.0, 300.0, 400.0), 600.0, 20.0);
+            r.page("library", rect(320.0, 0.0, 300.0, 400.0), 1000.0, 0.0);
+            r.page("short", rect(640.0, 0.0, 300.0, 400.0), 400.0, 0.0);
+            r.page("set.", rect(0.0, 420.0, 900.0, 200.0), 500.0, 0.0);
+            r.place("set.name", 0, rect(20.0, 440.0, 320.0, 40.0), true);
+            r.page("dialog.list", rect(100.0, 100.0, 300.0, 200.0), 260.0, 0.0);
+            r.place("tab", 0, rect(0.0, 640.0, 100.0, 40.0), true);
+        }
+        let r = registry.borrow();
+        let target = |focus: &str, scope: &str| r.scroll_target(Some(&Key::new(focus, 0)), scope).map(|(id, _, at, span)| (id.to_string(), at, span));
+        assert_eq!(target("folder", ""), Some(("folder".into(), 20.0, 200.0)));
+        assert_eq!(target("set.name", ""), Some(("set.".into(), 0.0, 300.0)), "a page's control: its page");
+        assert_eq!(target("short", ""), Some(("library".into(), 0.0, 600.0)), "a list that fits: the longest");
+        assert_eq!(target("tab", ""), Some(("library".into(), 0.0, 600.0)));
+        assert_eq!(target("tab", "dialog."), Some(("dialog.list".into(), 0.0, 60.0)), "only under the scope open");
+        assert_eq!(target("tab", "menu."), None);
     }
 }

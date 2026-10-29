@@ -1760,17 +1760,18 @@ component Scroller inherits Rectangle {
             place();
         }
     }
+    changed content => {
+        place();
+    }
     changed scroll => {
-        if root.list {
-            place();
-        }
+        place();
         Nav.scrolled();
     }
     changed seq => {
         if Nav.reveal-id == root.nav {
             root.slid = root.content-y;
             root.content-y = clamp(root.content-y - Nav.reveal-dy, min(0px, self.height - root.content-height), 0px);
-            root.slid = clamp(root.slid - root.content-y, -self.height, self.height);
+            root.slid = Nav.reveal-slides ? clamp(root.slid - root.content-y, -self.height, self.height) : 0px;
             root.slides += 1;
         }
     }

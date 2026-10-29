@@ -7,7 +7,7 @@
 //! [`Shell`] for what is not its own: another screen, the selected game, a dialog, a battle.
 
 use crate::battle::BattleEvent;
-use crate::input::{Action, KeyPress};
+use crate::input::{Action, KeyPress, Scroll};
 use crate::shell::Shell;
 use nettai_platform::time::Instant;
 
@@ -166,6 +166,14 @@ pub trait Screen {
     /// sheet in the match's menu). True if the screen took it.
     fn scroll(&mut self, _shell: &mut Shell, _action: Action) -> bool {
         false
+    }
+
+    /// A scroll that leaves the focus where it is (the pad's right stick; Shift with Page Up, Page Down, Home or
+    /// End), before the nav's page or list takes it: for a view of the screen's own that the nav doesn't know of
+    /// (the builds Tab shows over the match, the chosen build's overview, a license). Some(whether it moved) if the
+    /// screen took it.
+    fn scroll_view(&mut self, _shell: &mut Shell, _by: Scroll) -> Option<bool> {
+        None
     }
 
     /// Esc or Back. True if the screen went back within itself (from a lobby to its first view); false, and

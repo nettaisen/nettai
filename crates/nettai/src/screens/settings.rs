@@ -8,7 +8,7 @@
 
 mod about;
 
-use crate::input::{Action, Bindings, KeyPress, key_cap, key_name, pad_cap, pad_name};
+use crate::input::{Action, Bindings, KeyPress, Scroll, key_cap, key_name, pad_cap, pad_name};
 use crate::screens::{Screen, ScreenId};
 use crate::settings::{MAX_INPUT_DELAY, clean_name};
 use crate::shell::Shell;
@@ -383,6 +383,10 @@ impl Screen for Settings {
 
     fn scroll(&mut self, shell: &mut Shell, action: Action) -> bool {
         self.about.is_open() && self.about.scroll(shell, action)
+    }
+
+    fn scroll_view(&mut self, shell: &mut Shell, by: Scroll) -> Option<bool> {
+        self.about.is_open().then(|| self.about.scroll_view(shell, by)).flatten()
     }
 
     /// Back in About: within it, else to the settings, the focus back on SHOW LICENSES.
