@@ -112,7 +112,8 @@ pub struct Config {
     pub reconnect_timeout: Duration,
     /// The signaling server not answering this long, before it first lets
     /// this player into the invite room, ends the link
-    /// ([`ErrorKind::ServerUnreachable`]).
+    /// ([`ErrorKind::ServerUnreachable`]); a socket that closes meanwhile is
+    /// made again.
     pub server_timeout: Duration,
     /// The other player there (in the room, or dialed directly) and no
     /// connection to them open this long, before the first one, ends the
@@ -136,7 +137,7 @@ impl Default for Config {
             silence: Duration::from_secs(3),
             dial_timeout: Duration::from_secs(10),
             reconnect_timeout: signal::RECONNECT_ROOM_KEPT,
-            server_timeout: Duration::from_secs(10),
+            server_timeout: Duration::from_secs(20),
             connect_timeout: Duration::from_secs(30),
             loopback: false,
             relay_only: false,

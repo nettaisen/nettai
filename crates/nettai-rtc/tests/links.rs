@@ -302,15 +302,18 @@ fn a_room_expires_with_its_code() {
 }
 
 /// A server that isn't there, and one that never answers, are told from
-/// everything else: the server can't be reached.
+/// everything else once the server's time is out: the server can't be
+/// reached (and, where a socket closed, why the last one did).
 #[test]
 fn a_server_that_cant_be_reached_says_so() {
     // (A port nothing listens on: bound, its number taken, and closed.)
     let port = std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
     let url = format!("ws://127.0.0.1:{port}");
-    let e = refused(Link::create_room(&url, config()));
+    let quick = Config { server_timeout: Duration::from_secs(1), ..config() };
+    let e = refused(Link::create_room(&url, quick.clone()));
     assert_eq!(e.kind, ErrorKind::ServerUnreachable, "{e}");
-    let e = refused(Link::join_room(&url, "ABC234", config()).unwrap());
+    assert!(e.detail.starts_with("no answer from the signaling server in 1 seconds (the last try: "), "{e}");
+    let e = refused(Link::join_room(&url, "ABC234", quick).unwrap());
     assert_eq!(e.kind, ErrorKind::ServerUnreachable, "{e}");
     // One that takes the connection and says nothing.
     let silent = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
@@ -319,6 +322,24 @@ fn a_server_that_cant_be_reached_says_so() {
     let e = refused(Link::create_room(&url, Config { server_timeout: Duration::from_secs(1), ..config() }));
     assert_eq!((e.kind, e.detail.as_str()), (ErrorKind::ServerUnreachable, "no answer from the signaling server in 1 seconds"));
     assert!(start.elapsed() >= Duration::from_secs(1));
+}
+
+/// A server that drops the first sockets unanswered (a connection lost
+/// mid-handshake, as long lossy routes lose them) and then answers lets
+/// the player in: a room's first socket is made again until the server's
+/// time is out.
+#[test]
+fn a_room_is_made_through_dropped_first_sockets() {
+    let server = Server::start();
+    server.set_reachable(false);
+    std::thread::scope(|s| {
+        s.spawn(|| {
+            std::thread::sleep(Duration::from_millis(1500));
+            server.set_reachable(true);
+        });
+        let (_host, code) = invite(&server.url(), config());
+        assert_eq!(server.codes(), vec![code]);
+    });
 }
 
 /// A server that speaks another version of the protocol refuses, saying

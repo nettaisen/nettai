@@ -5,12 +5,14 @@
 //! same peer id, so the same place in the room), what it says is queued
 //! while it is down, a keepalive, and what the server says, read.
 //!
-//! In an invite room, before the server has first let it in, nothing is
-//! tried twice: a socket that doesn't open, or a server that doesn't answer
-//! in [`Config::server_timeout`](crate::Config::server_timeout), ends it,
-//! saying the server can't be reached (the player asked for a room now, and
-//! is told now). Once it is in, a socket that drops is made again for as
-//! long as the room is kept. A reconnect room's socket is made again
+//! In an invite room, before the server has first let it in, a socket that
+//! doesn't open or closes is made again too (a connection that drops
+//! mid-handshake is common on long, lossy routes, and the next one usually
+//! works), until [`Config::server_timeout`](crate::Config::server_timeout)
+//! has passed since it began: that ends it, saying the server can't be
+//! reached and why the last socket closed (the player asked for a room now,
+//! and is told soon). Once it is in, a socket that drops is made again for
+//! as long as the room is kept. A reconnect room's socket is made again
 //! whatever happened, from the first: the link gives up on its own time
 //! ([`Config::reconnect_timeout`](crate::Config::reconnect_timeout)).
 
@@ -183,7 +185,11 @@ impl Room {
     pub(crate) fn poll(&mut self, now: Instant) -> Result<Option<RoomEvent>, Error> {
         if self.invite() && !self.welcomed && now.duration_since(self.began) >= self.server_timeout {
             self.leave();
-            return Err(Error::new(ErrorKind::ServerUnreachable, format!("no answer from the signaling server in {} seconds", self.server_timeout.as_secs())));
+            let mut why = format!("no answer from the signaling server in {} seconds", self.server_timeout.as_secs());
+            if let Some(last) = &self.last_error {
+                why = format!("{why} (the last try: {last})");
+            }
+            return Err(Error::new(ErrorKind::ServerUnreachable, why));
         }
         if self.socket.is_none() {
             match self.retry {
@@ -256,9 +262,6 @@ impl Room {
                     self.open = false;
                     self.there = false;
                     self.socket = None;
-                    if self.invite() && !self.welcomed {
-                        return Err(Error::new(ErrorKind::ServerUnreachable, why));
-                    }
                     self.last_error = Some(why);
                     self.retry = Some(now + self.backoff);
                     self.backoff = (self.backoff * 2).min(MAX_BACKOFF);
