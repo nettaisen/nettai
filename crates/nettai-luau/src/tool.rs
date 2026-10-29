@@ -1,6 +1,8 @@
 //! Tool Luau: Luau a tool runs that isn't battle content, in a VM of its
 //! own (docs/design/extraction-recipes.md §4.4): the games' extraction
-//! recipes, which nettai-extract runs.
+//! recipes, which nettai-extract runs. (A recipe's modules load with the
+//! content too, as its game's root gives it: there they only load, in an
+//! environment of their own, `define::Environments`.)
 //!
 //! The VM is content's ([`crate::sandbox`]: the deterministic standard
 //! library, the compiler, the bytecode check, modules frozen as they load),

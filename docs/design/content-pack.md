@@ -22,14 +22,15 @@ the reasons and the as-built notes, in [content-model-v2.md](content-model-v2.md
 ## 0. Summary
 
 - **Content and assets apart.** The content root defines the battle; a game's assets are extracted from its ROMs
-  (`nettai_extract::extract`) by the recipe in its content (`extract/`), every ROM required (a complete Legacy
-  Collection's). The engine, the frontend, the audio, netplay and the verification workspace all load the content
-  root, and extract the assets from the ROMs where they draw or play.
-- **Content is definitions.** A game's top module returns its root: what a match names, by id (chips, navis,
-  forms, stages, patch cards, NaviCust programs), and its rules. What the root reaches is what the game has; a
-  table only code reaches says what it is with a tag constructor (`new.kind { ... }`). The engine has no chip,
-  weapon, kind, action, effect, spark, region, collision type, status, lock-on mode or identity by number, and no
-  navi or form: it holds handles, and content passes definitions.
+  (`nettai_content::load::extract`) by the recipe in its content (`extract/`, which the game's root gives as its
+  `extract` and which loads with the content), every ROM required (a complete Legacy Collection's). The engine, the
+  frontend, the audio, netplay and the verification workspace all load the content root, and extract the assets from the
+  ROMs where they draw or play.
+- **Content is definitions.** A game's top module returns its root: what a match names, by id (chips, navis, forms,
+  stages, patch cards, NaviCust programs), its rules, and its recipe. What the root reaches is what the game has; a
+  table only code reaches says what it is with a tag constructor (`new.kind { ... }`). The engine has no chip, weapon,
+  kind, action, effect, spark, region, collision type, status, lock-on mode or identity by number, and no navi or form:
+  it holds handles, and content passes definitions.
 - **The original's numbers are compat's.** content/exe6/compat maps keys to the original's numbers for the tools
   that need them (the trace harness, save and link-data codecs, the extraction's asset names, `gen-content
   check`). The engine never reads it (a test guards the dependency), and content can't load it.
@@ -85,7 +86,8 @@ games' own language's strings; `read_all(dir, report)` every game of a content d
 ## 2. The assets
 
 A game's assets are no files of the content root's: they are extracted from the game's ROMs, in memory, by the
-recipe in its content's `extract/` (with exelib's), and checked against the content as the game loads
+recipe in its content's `extract/` (with exelib's), which its root gives and which loads with the content
+(`nettai_content::load::recipe`; extraction-recipes.md §4.2), and checked against the content as the game loads
 (`nettai_content::load::asset_numbers`, §3). The extraction's index lists every sprite, sound, banner, background and
 mugshot by name, with the game's number for it: every name compat/assets.toml gives, and the other assets under
 placeholders (`sprite-0c-2d`), which content may not use (`nettai-content-check` flags one: name the asset in
@@ -99,8 +101,9 @@ compat/assets.toml first). Nothing of them is written anywhere (asset-formats.md
 from the pack's asset index and `animations.json`). No asset is read: a frontend checks the assets it extracts
 against the content as it loads the game (`load::asset_numbers`).
 
-1. every module loads once, in a VM of its own, and what the modules define is read back as data: the
-   canonical tree, definitions sorted by registry and key, with references between definitions by key and
+1. every module loads once, in a VM of its own, and what the modules define is read back as data (the recipe's
+   modules load too, in an environment of their own, and define nothing: the walk names the recipe and leaves it
+   out): the canonical tree, definitions sorted by registry and key, with references between definitions by key and
    functions as slots;
 2. the engine builds its registries from it (`content::defs`): each registry's entries in key order, an
    entry's handle its place, the engine's own entries (its object kinds, keyed `engine/...`) among them; and

@@ -30,8 +30,9 @@ fn main() {
     if args.len() < 2 {
         usage();
     }
-    let extracted = nettai_extract::RomSource::from_env()
-        .and_then(|roms| nettai_extract::extract(&nettai_content::index::content(), &args[0], &roms))
+    let (_, extracted) = nettai_extract::RomSource::from_env()
+        .map_err(|e| e.to_string())
+        .and_then(|roms| nettai_content::load::extract(&nettai_content::index::content(), &args[0], &roms))
         .unwrap_or_else(|e| {
             eprintln!("{}: {e}", args[0]);
             std::process::exit(1);

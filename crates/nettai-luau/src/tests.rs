@@ -119,6 +119,52 @@ fn another_sides_rules_state_is_for_the_games_rules() {
     assert!(!e.contains("is a game's rules'") && e.contains("only reachable while content runs"), "{e}");
 }
 
+/// docs/design/extraction-recipes.md §4.2: a game's root gives its extraction recipe (`extract`), a module of its
+/// extract/ folder, which loads with the rest, in an environment of its own (none of `new` and the game's context),
+/// and defines nothing. Of content, only the game's top module requires a recipe's module, and a recipe's module
+/// requires only recipes'.
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
+fn a_games_root_gives_its_recipe() {
+    use nettai_content_api::{PackKind, PackManifest};
+    let manifest = |id: &str, kind: PackKind, depends: &[&str]| PackManifest {
+        id: id.into(),
+        kind,
+        depends: depends.iter().map(|u| u.to_string()).collect(),
+    };
+    let packs = [manifest("lib", PackKind::Support, &[]), manifest("g", PackKind::Game, &["lib"])];
+    let load = |modules: &[(&str, &str)]| {
+        let pack = Pack::new(modules.iter().map(|(n, s)| (n.to_string(), s.to_string())))
+            .with_entries(vec!["g:init".to_string()])
+            .with_packs(packs.clone());
+        define(&pack, Options::default()).map_err(|e| e.message)
+    };
+    let init = ("g:init", "return { chips = require('@self/chips'), extract = require('@self/extract') }");
+    let chips = ("g:chips", "return {}");
+    let recipe = ("g:extract/init", "local place = require('@lib/extract/place')\nreturn { roms = { 'AAAA' }, extract = function(set) return place.at(set) end }");
+    let place = ("lib:extract/place", "return { at = function(x) return x end }");
+    let p = load(&[init, chips, recipe, place]).unwrap();
+    assert_eq!(p.recipes, BTreeMap::from([("g".to_string(), "g:extract/init".to_string())]));
+    assert!(p.compiled.sources().any(|(name, _)| name == "lib:extract/place"), "the recipe's modules load with the rest");
+    assert!(p.definitions.defs.iter().all(|d| !d.key.contains("extract")), "a recipe defines nothing: {:?}", p.definitions.defs);
+    // None of `new` and the game's context in a recipe's module.
+    for global in ["new", "asset", "rules"] {
+        let e = load(&[init, chips, ("g:extract/init", &format!("local _ = {global}.x\nreturn {{}}"))]).unwrap_err();
+        assert!(e.contains("nil"), "{global}: {e}");
+    }
+    // Of content, only the top module requires a recipe's module.
+    let e = load(&[init, ("g:chips", "local _ = require('@g/extract')\nreturn {}"), recipe, place]).unwrap_err();
+    assert!(e.contains("g/extract/init.luau is a recipe's"), "{e}");
+    // A recipe's module requires only recipes'.
+    let e = load(&[init, chips, ("g:extract/init", "return require('@g/chips')")]).unwrap_err();
+    assert!(e.contains("g/chips.luau isn't under extract/"), "{e}");
+    // The root's `extract` is a recipe module's result.
+    let e = load(&[("g:init", "return { extract = { roms = {} } }")]).unwrap_err();
+    assert!(e.contains("`extract` is the game's extraction recipe"), "{e}");
+    // No recipe: none.
+    assert!(load(&[("g:init", "return { chips = require('@self/chips') }"), chips]).unwrap().recipes.is_empty());
+}
+
 fn pack(modules: &[(&str, &str)]) -> Pack {
     Pack::root("test", modules.iter().map(|(p, s)| (p.to_string(), s.to_string())))
 }
@@ -161,7 +207,7 @@ fn definition_integers_keep_their_values_on_32_bit_targets() {
 }
 
 fn define_pack(modules: &[(&str, &str)]) -> Result<Definitions, String> {
-    define(&pack(modules), Options::default()).map(|(d, _, _)| d).map_err(|e| e.message)
+    define(&pack(modules), Options::default()).map(|p| p.definitions).map_err(|e| e.message)
 }
 
 /// A family library, a kind, and chips composing them: MiniBomb's pattern
@@ -323,7 +369,7 @@ fn define_named(modules: &[(&str, &str)]) -> Result<Definitions, String> {
 }
 
 fn define_assets(modules: &[(&str, &str)]) -> Result<(Definitions, nettai_content_api::DefinedAssets), String> {
-    define(&pack(modules), Options::default()).map(|(d, _, a)| (d, a)).map_err(|e| e.message)
+    define(&pack(modules), Options::default()).map(|p| (p.definitions, p.assets)).map_err(|e| e.message)
 }
 
 /// docs/design/content-model-v2.md §6.3: content names its assets while it
@@ -470,7 +516,7 @@ fn coverage_records_the_modules_that_ran() {
 fn a_plan_binds_definition_slots() {
     let modules = BOMBS.to_vec();
     let p = pack(&modules);
-    let (definitions, compiled, assets) = define(&p, Options::default()).unwrap();
+    let DefinePhase { definitions, compiled, assets, .. } = define(&p, Options::default()).unwrap();
     assert_eq!(compiled.len(), modules.len(), "every module compiled");
     let p = p.with_compiled(compiled);
     let handles = (0..definitions.defs.len() as u16).collect();

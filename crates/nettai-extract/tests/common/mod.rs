@@ -10,9 +10,10 @@ pub fn content() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../../content")
 }
 
-/// Game `game`'s recipe, as the repository's content has it.
+/// Game `game`'s recipe, as the repository's content has it: the game's content loaded, its recipe with it.
 pub fn recipe(game: &str) -> Recipe {
-    Recipe::of_content(&content(), game).unwrap_or_else(|e| panic!("{e}"))
+    let (c, _) = nettai_content::load::load_battle(&content(), game).unwrap_or_else(|r| panic!("{game}: {r}"));
+    nettai_content::load::recipe(&c).unwrap_or_else(|e| panic!("{e}"))
 }
 
 /// The ROMs as the tools find them: `$NETTAI_ROMS` (a folder of them, any file names: ~/Documents/Tango/roms serves
@@ -27,16 +28,10 @@ pub fn full_set(recipe: &Recipe) -> RomSet {
 }
 
 /// The games asked for: `NETTAI_EXTRACT_GAMES` (`exe6`, `exe5,exe6`), else every game of the repository's content
-/// that has a recipe.
+/// (each has a recipe).
 pub fn games() -> Vec<String> {
-    use nettai_content_api::packs;
     match std::env::var("NETTAI_EXTRACT_GAMES") {
         Ok(list) => list.split([',', ' ']).filter(|s| !s.is_empty()).map(String::from).collect(),
-        Err(_) => packs::packs(&content())
-            .unwrap_or_else(|e| panic!("{e}"))
-            .into_iter()
-            .filter(|p| p.kind == packs::PackKind::Game && packs::has_recipe(&content(), &p.id))
-            .map(|p| p.id)
-            .collect(),
+        Err(_) => nettai_content::index::games(&content()).unwrap_or_else(|e| panic!("{e}")),
     }
 }

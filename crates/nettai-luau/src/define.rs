@@ -3,7 +3,10 @@
 //! names, keyed by id (the core's: `chips`, `navis`, `forms`, `stages`; and
 //! the game's own collections, any other key: EXE6's `patch_cards`,
 //! `navicust_programs`, whose entries are data, `Registry::Entry`, keyed
-//! `<collection>/<id>`), and its `rules`. Loading has no side effect: the
+//! `<collection>/<id>`), its `rules`, and its `extract`: its extraction
+//! recipe, a module of its pack's `extract/` folder, which the walk leaves
+//! alone (the host runs it on the game's ROMs: [`RECIPE_SECTION`]). Loading
+//! has no side effect: the
 //! loader walks from the root, through tables and through what functions
 //! capture, and what it reaches is what the game has. Everything else is a
 //! table only code reaches (a kind a chip's action spawns, an effect a
@@ -79,6 +82,11 @@ pub const SECTIONS: [(&str, Registry); 4] =
 /// The root's field the game's rules are.
 pub const RULES_SECTION: &str = nettai_content_api::packs::RULES;
 
+/// The root's field the game's extraction recipe is (docs/design/extraction-recipes.md §4.2): what a module of its
+/// pack's `extract/` folder returns (`require("@self/extract")`). It defines nothing a match has: the walk doesn't go
+/// into it, and the define phase gives its module's name ([`Defined::recipes`]) for the host to run on the ROMs.
+pub const RECIPE_SECTION: &str = nettai_content_api::packs::EXTRACT;
+
 /// The registries whose tables only code reaches, tagged by
 /// `new.<registry>`.
 pub const TAGGED: [Registry; 10] = [
@@ -99,6 +107,9 @@ pub(crate) struct Defined {
     pub definitions: Definitions,
     /// Each definition's table, in `definitions.defs`' order.
     pub tables: Vec<Table>,
+    /// Each game's extraction recipe, by the game: the module whose result its root's [`RECIPE_SECTION`] is
+    /// (`exe6:extract/init`).
+    pub recipes: BTreeMap<String, String>,
 }
 
 type Ptr = *const c_void;
@@ -345,16 +356,20 @@ pub(crate) fn install_assets(
 /// their running call is for.
 pub(crate) const GAME_CONTEXT: [&str; 2] = ["asset", "rules"];
 
-/// The environments modules run in: a game pack's modules', and a support
+/// The environments modules run in: a game pack's modules', a support
 /// pack's, which lacks [`GAME_CONTEXT`] (a module's closures keep its
-/// environment, so a support pack's function lacks it whoever calls it).
-/// Both are read-only copies of the globals, which hold neither `new` nor
+/// environment, so a support pack's function lacks it whoever calls it),
+/// and an extraction recipe's (any pack's `extract/` modules), which lacks
+/// `new` as well: a recipe defines nothing a match has, and its own
+/// libraries are installed only where it runs (nettai-extract's VM, `tool`).
+/// All are read-only copies of the globals, which hold neither `new` nor
 /// the game's context: Luau resolves a module's globals against the
 /// VM's globals when it loads, so what one environment lacks must be
 /// missing there too.
 pub(crate) struct Environments {
     pub game: Table,
     pub support: Table,
+    pub recipe: Table,
 }
 
 /// The module of the content function calling (stack level 1), for
@@ -388,6 +403,7 @@ pub(crate) fn environments(lua: &Lua) -> mlua::Result<Environments> {
     };
     let game = copy()?;
     let support = copy()?;
+    let recipe = copy()?;
     for (name, v) in own {
         game.raw_set(name, v.clone())?;
         if !GAME_CONTEXT.contains(&name) {
@@ -415,11 +431,11 @@ pub(crate) fn environments(lua: &Lua) -> mlua::Result<Environments> {
     )?;
     meta.set_readonly(true);
     support.set_metatable(Some(meta))?;
-    for env in [&game, &support] {
+    for env in [&game, &support, &recipe] {
         env.set_readonly(true);
         env.set_safeenv(true);
     }
-    Ok(Environments { game, support })
+    Ok(Environments { game, support, recipe })
 }
 
 /// Install `new`: a tag constructor per registry only code reaches
@@ -612,6 +628,20 @@ pub(crate) fn finish(
     let tags = std::mem::take(&mut t.by_table);
     drop(t);
 
+    // (A recipe's modules hold nothing a match has: the walk and the names leave them out. Their results are what a
+    // root's recipe may be.)
+    let recipe_modules: HashMap<Ptr, &String> = modules
+        .iter()
+        .filter(|(m, _)| nettai_content_api::packs::is_extract_module(m))
+        .filter_map(|(m, v)| match v {
+            LuaValue::Table(t) => Some((t.to_pointer(), m)),
+            _ => None,
+        })
+        .collect();
+    let content: BTreeMap<String, LuaValue> =
+        modules.iter().filter(|(m, _)| !nettai_content_api::packs::is_extract_module(m)).map(|(m, v)| (m.clone(), v.clone())).collect();
+    let modules = &content;
+    let mut recipes = BTreeMap::new();
     let mut found: Vec<Found> = Vec::new();
     let mut by_ptr: HashMap<Ptr, usize> = HashMap::new();
     let written = written_in(modules);
@@ -641,11 +671,12 @@ pub(crate) fn finish(
         }
         roots += 1;
         // The core's sections, then the game's own collections (the root's
-        // other keys, but its rules), each entry keyed `<collection>/<id>`.
+        // other keys, but its rules and its recipe), each entry keyed
+        // `<collection>/<id>`.
         let collections: Vec<String> = entries_
             .iter()
             .filter_map(|(k, _)| match k {
-                DataKey::Str(s) if !SECTIONS.iter().any(|(c, _)| c == s) && s != RULES_SECTION => Some(s.clone()),
+                DataKey::Str(s) if !SECTIONS.iter().any(|(c, _)| c == s) && s != RULES_SECTION && s != RECIPE_SECTION => Some(s.clone()),
                 _ => None,
             })
             .collect();
@@ -709,6 +740,24 @@ pub(crate) fn finish(
                 queue.push_back((LuaValue::Table(rules), RULES_SECTION.to_string(), false));
             }
             v => return Err(format!("{}.luau: `{RULES_SECTION}` is a table, not {}", keys::module_path(module), v.type_name())),
+        }
+        // The game's recipe: a module of its own pack's extract/ folder.
+        let recipe_is = || {
+            format!(
+                "{}.luau: `{RECIPE_SECTION}` is the game's extraction recipe: what a module of its {RECIPE_SECTION}/ folder returns (`require(\"@self/{RECIPE_SECTION}\")`)",
+                keys::module_path(module)
+            )
+        };
+        match root.raw_get::<LuaValue>(RECIPE_SECTION).map_err(|e| e.to_string())? {
+            LuaValue::Nil => {}
+            LuaValue::Table(recipe) => {
+                let game = keys::root_of(module).unwrap_or_default();
+                let Some(m) = recipe_modules.get(&recipe.to_pointer()).filter(|m| keys::root_of(m) == Some(game)) else {
+                    return Err(recipe_is());
+                };
+                recipes.insert(game.to_string(), (*m).clone());
+            }
+            v => return Err(format!("{}, a table, not {}", recipe_is(), v.type_name())),
         }
     }
     let reaches = |x: &LuaValue| matches!(x, LuaValue::Table(_) | LuaValue::Function(_));
@@ -925,7 +974,7 @@ pub(crate) fn finish(
     for t in &tables {
         crate::sandbox::deep_freeze(lua, &LuaValue::Table(t.clone())).map_err(|e| e.to_string())?;
     }
-    Ok(Defined { definitions: Definitions { defs }, tables })
+    Ok(Defined { definitions: Definitions { defs }, tables, recipes })
 }
 
 /// The key path a loose module's result starts at: its name

@@ -10,8 +10,9 @@
 //! each `require` finds and reads its module as it is reached
 //! (`packs::find`): from the modules held in memory, else from the packs'
 //! folders ([`Scripts::dirs`]); what the root reaches is what the game has. What the load
-//! read is the content's modules from then on: its hash covers them, and a
-//! runtime loads them again from memory, never from a folder. A module
+//! read is the content's modules from then on: its hash covers them (but its
+//! extraction recipe's, which draw nothing of the battle's), and a runtime
+//! loads them again from memory, never from a folder. A module
 //! requires only its own pack's modules and those of the support packs its
 //! pack depends on. Every id a module writes is local to its game
 //! (`minibomb`).
@@ -49,6 +50,11 @@ pub struct Scripts {
     /// one's result as it is, besides the game's root, so what such a game
     /// holds is its whatever reaches it.
     pub held: Vec<String>,
+    /// The game's extraction recipe, once the define phase has read it: the module its root's `extract` is
+    /// (`exe6:extract/init`; docs/design/extraction-recipes.md §4.2), which nettai-extract runs on the game's
+    /// ROMs. None: the game has none. Its modules are among [`Scripts::modules`], outside the content hash: they
+    /// make assets, which no battle reads (§5.5).
+    pub recipe: Option<String>,
 }
 
 impl Scripts {
@@ -280,7 +286,8 @@ end
 
 impl std::hash::Hash for Scripts {
     fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
-        let Scripts { modules, packs, dirs: _, compiled: _, held } = self;
+        let Scripts { modules, packs, dirs: _, compiled: _, held, recipe: _ } = self;
+        let modules: Vec<_> = modules.iter().filter(|(name, _)| !packs::is_extract_module(name)).collect();
         modules.len().hash(h);
         for (name, source) in modules {
             name.hash(h);

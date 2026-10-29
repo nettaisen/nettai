@@ -292,7 +292,9 @@ impl Content {
                 self.scripts.games().join(" and ")
             )));
         }
-        let (definitions, compiled, assets) = nettai_luau::define(&self.scripts.pack_to_define(), nettai_luau::Options::default())?;
+        let nettai_luau::DefinePhase { definitions, compiled, assets, mut recipes } =
+            nettai_luau::define(&self.scripts.pack_to_define(), nettai_luau::Options::default())?;
+        self.scripts.recipe = self.scripts.games().first().and_then(|g| recipes.remove(g));
         // The assets the modules name, and the sprites they define.
         self.assets = assets.names;
         self.animations = Animations { sprites: assets.sprites };

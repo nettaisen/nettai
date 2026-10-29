@@ -280,7 +280,10 @@ do (the peers diverge within a few hundred frames).
 
 A content root's modules are `Content::scripts` (source by module path). `Content::define` runs the define
 phase in a VM of its own, which is dropped: it loads every module (compile, `verify`, run once, freeze the
-result), reads the definitions back, builds the registries and keeps the modules' bytecode.
+result), reads the definitions back, builds the registries and keeps the modules' bytecode. The game's
+extraction recipe, which its root gives as its `extract`, loads with the rest, in an environment without the
+battle's libraries; it defines nothing, and the define phase names its module (`Scripts::recipe`) for
+nettai-extract to run (docs/design/extraction-recipes.md §4.2).
 `Battle::new(setup, content)` gets the runtime with `Behaviors::for_content(&content)`: it loads the modules
 again from the bytecode, checks they define exactly what the content was made from, and binds the functions the
 plan names.

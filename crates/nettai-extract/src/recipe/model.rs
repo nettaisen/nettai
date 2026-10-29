@@ -344,18 +344,18 @@ fn record<T: Default>(v: &Value, path: &str, fields: impl FnOnce(&mut Fields, &m
 
 // ---- What a recipe returns -------------------------------------------------------------------
 
-/// The table a recipe returns.
-/// What a recipe's `extract/init.luau` returns (§4.2): the game's ROMs by
-/// their header codes, every one required, in the order its places read an
-/// address by (a ROM's slot, from 1), and the function from the set of them
-/// to what it extracts ([`extracted`]).
+/// What a recipe's top module returns (§4.2: the table the game's root
+/// gives as its `extract`): the game's ROMs by their header codes, every
+/// one required, in the order its places read an address by (a ROM's slot,
+/// from 1), and the function from the set of them to what it extracts
+/// ([`extracted`]).
 pub(crate) struct Declaration {
     pub roms: Vec<String>,
     pub extract: Function,
 }
 
-/// The table a recipe's `extract/init.luau` returns, read: `roms` and
-/// `extract`, nothing else.
+/// The table a recipe's top module returns, read: `roms` and `extract`,
+/// nothing else.
 pub(crate) fn declaration(v: &Value) -> R<Declaration> {
     let path = "the recipe's table";
     let mut f = Fields::new(v, path)?;

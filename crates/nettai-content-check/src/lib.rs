@@ -16,9 +16,11 @@
 //! docs/design/extraction-recipes.md §4.5) checks against the recipes'
 //! declarations (nettai/extract.d.luau and the `.d.luau` files under its
 //! support packs' and its own `extract/`), the content against the rest:
-//! neither sees the other's API. A content module requires no recipe
-//! module, a recipe module nothing but recipe modules, and a recipe's
-//! `data` reads only files of its game's `compat/`.
+//! neither sees the other's API. Of content, only a game's top module
+//! requires a recipe module, its own pack's (the recipe its root gives as
+//! its `extract`, §4.2); a recipe module requires nothing but recipe
+//! modules, and a recipe's `data` reads only files of its game's
+//! `compat/`.
 
 #![forbid(unsafe_code)]
 
@@ -169,6 +171,8 @@ fn reach_of(dir: &Path, only: Option<&[&str]>) -> Result<Vec<Problem>, String> {
             let name = p.module(path.trim_end_matches(".luau"));
             let file = format!("{}/{path}", p.id);
             let recipe = packs::is_extract_module(&name);
+            // (A game's top module, which gives its recipe.)
+            let top = p.kind == nettai_content_api::PackKind::Game && keys::local(&name) == packs::INIT;
             for written in packs::requires(&source) {
                 match packs::find(&files, &all, &name, &written) {
                     Err(e) => problems.push(e),
@@ -178,11 +182,14 @@ fn reach_of(dir: &Path, only: Option<&[&str]>) -> Result<Vec<Problem>, String> {
                         packs::EXTRACT,
                         packs::EXTRACT
                     )),
-                    Ok(target) if !recipe && packs::is_extract_module(&target) => problems.push(format!(
-                        "{file}: require({written:?}): {}.luau is a recipe's: content requires no {}/ module (a recipe runs in a VM of its own)",
-                        keys::module_path(&target),
-                        packs::EXTRACT
-                    )),
+                    Ok(target) if !recipe && packs::is_extract_module(&target) && !(top && keys::root_of(&target) == Some(&p.id)) => {
+                        problems.push(format!(
+                            "{file}: require({written:?}): {}.luau is a recipe's: of content, only a game's {}.luau requires one, its own recipe (its root's `{}`)",
+                            keys::module_path(&target),
+                            packs::INIT,
+                            packs::EXTRACT
+                        ))
+                    }
                     Ok(_) => {}
                 }
             }

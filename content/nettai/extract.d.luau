@@ -2,16 +2,19 @@
 -- nettai-extract gives it (crates/nettai-extract/src/recipe/prims.rs) and the model it returns (its codec,
 -- recipe/model.rs). Only modules under a pack's extract/ check against it, and they against nothing of the battle's
 -- (core.d.luau): a recipe runs in a VM of its own, with these libraries and none of `asset`, `new`, `rules` or
--- `battle`, and requires only extract/ modules, its own pack's and its support packs'.
+-- `battle`, and requires only extract/ modules, its own pack's and its support packs'. It loads with the content (the
+-- game's root gives it as its `extract`), in an environment with none of these libraries: a module's top level
+-- defines functions and constants, and calls no primitive.
 --
 -- Recipes are the one place Luau holds the original's numbers (ROM addresses, chip numbers, sprite categories):
 -- the extractor is the boundary, as compat is. Numbers are GBA addresses (0x08000000 on) and plain integers; a
 -- recipe computes with `bit32` and `//`. Every primitive checks its bounds: a bad address is an error naming it.
 --
--- A recipe (`extract/init.luau`) returns a table (`Recipe`): the game's ROMs by their header codes, and a function
--- from them (`Set`) to the model (`Extracted`). The host reads the codes without ROMs, finds the ROMs by them, runs
--- the function, then makes the pack: the check that every named asset is there, the letters, the element icons'
--- frame, the hand-drawn frames (extract/shapes/), the sound bank, the files.
+-- A recipe (`extract/init.luau`, which the game's root gives as its `extract`) returns a table (`Recipe`): the
+-- game's ROMs by their header codes, and a function from them (`Set`) to the model (`Extracted`). The host reads the
+-- codes without ROMs, finds the ROMs by them, runs the function, then finishes the assets: the check that every
+-- named asset is there, the letters, the element icons' frame, the hand-drawn frames (extract/shapes/), the sound
+-- bank, the index of names.
 --
 -- The model's tables use its own field names (crates/nettai-assets); a field left out takes the model's default,
 -- and an unknown one is an error naming its path. Lists are arrays; a list with holes is keyed by the game's number
@@ -401,7 +404,7 @@ export type Extracted = {
     sound: Sound,
 }
 
--- What a recipe's extract/init.luau returns: nothing else.
+-- What a recipe's extract/init.luau returns (the game's root's `extract`): nothing else.
 export type Recipe = {
     -- The game's ROMs by their header codes (the four letters and digits at 0xAC), every one required (a complete
     -- Legacy Collection's), in the order the recipe's places read an address by (a ROM's slot, from 1): the base

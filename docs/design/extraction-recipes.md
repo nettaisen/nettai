@@ -66,12 +66,14 @@ Words:
   and checked against the ROMs; the recipe reads them (§4.3) and builds `AssetNames` itself. The compat crates leave
   the extractor.
 - **A recipe declares** its ROMs' header codes in the table its `extract/init.luau` returns, beside the function that
-  reads them (§4.2); the host reads them without ROMs. The app finds a Legacy Collection's ROMs by the declared
-  codes. The manifest says only what the pack is.
+  reads them (§4.2); the host reads them without ROMs. The game's root gives that module as its `extract`
+  (`require("@self/extract")`), so the recipe loads with the content (since 2026-10-29). The app finds a Legacy
+  Collection's ROMs by the declared codes. The manifest says only what the pack is.
 - **It runs in a VM of its own** (§4.4): nettai-luau's sandbox and bytecode check, with the extraction libraries in
   place of the battle's, one budget for the whole run, on the extraction thread, the same on the desktop and in the
-  browser. Recipes are the one place Luau holds the original's addresses and numbers: they are the extractor, the
-  boundary, and nothing in the battle content can require them nor they it (§2.4).
+  browser. The content's load reads its modules, in an environment without the battle's libraries, and runs none of
+  its functions. Recipes are the one place Luau holds the original's addresses and numbers: they are the extractor,
+  the boundary, and nothing in the battle content requires them but the game's root, nor they it (§2.4).
 - **No fingerprint now.** While there were packs, a pack was named by a digest of the pack formats, the engine's line
   and the bytes of every file the recipe can read (§5.2), computed from the bundle without ROMs. Since 2026-10-27 a
   game's assets are extracted at each load by the recipe of the content it plays, so nothing names them and nothing
@@ -336,9 +338,11 @@ extractor is the boundary. What keeps them there:
 - **Their own VM** (§4.4), with the extraction libraries and none of the battle's (`asset`, `new`, `rules`,
   `battle`...). A recipe can't define content or reach a battle.
 - **Their own tree.** A recipe module lives under `extract/` and requires only `extract/` modules (its own pack's and
-  its support packs'); the runner refuses any other path. nettai-content-check refuses a content module that requires
-  one under `extract/` (§4.5). The content's require walk never reaches them, so they are in no `Content` and no
-  content hash, and never in the battle's VM.
+  its support packs'); the runner refuses any other path. Of content, only a game's top module requires one, its own
+  recipe, which its root gives as its `extract` (§4.2); the define phase refuses any other require across the line,
+  and nettai-content-check says so of every module (§4.5). The content's load reads the recipe's modules, in an
+  environment of their own without the battle's libraries, and the walk leaves them out: they define nothing, and
+  the content hash passes them over (§5.5). (Until 2026-10-29 the require walk never reached them.)
 - **What crosses** is the asset model and the names, the same as the Rust extractor hands over now: content still names
   assets by name (`asset.sprite("bomb")`), resolved through the pack's index.
 
@@ -618,7 +622,21 @@ count passes it (EXE4's chatbox, one kind of box, which its recipe shows for bot
 
 ### 4.2 The declaration
 
-The table the recipe's `extract/init.luau` returns, `roms` beside the function (§3.10), and nothing else:
+The game's root, what its init.luau returns, gives the recipe as its `extract` (since 2026-10-29), beside its sections
+and its rules:
+
+```luau
+return {
+    chips = require("@self/chips"),
+    -- ...
+    rules = require("@self/rules"),
+    extract = require("@self/extract"),
+}
+```
+
+`extract` is what a module of the game's own `extract/` folder returns: the define phase refuses anything else, and
+names that module (`DefinePhase::recipes`, kept as `Scripts::recipe`). The table the recipe's `extract/init.luau`
+returns, `roms` beside the function (§3.10), and nothing else:
 
 ```luau
 local recipe: Recipe = {
@@ -642,17 +660,25 @@ return recipe
 - **The order** is the one `Game::codes` had, which exelib's places read an address by (a ROM's `slot`, §3.2).
   Regions and versions aren't declared: a recipe names its ROMs by code (`set.BR5E` is the Gregar US ROM) and holds
   its versions' names (`falzar`, `gregar`) as the constants the pack writes them under.
-- **Read without ROMs.** `Recipe::of_content` loads the recipe's modules in its VM (§4.4), with the primitives and
+- **Loaded with the content, read without ROMs.** The define phase loads the recipe's modules with the rest of the
+  game, in an environment of their own (none of `new`, `asset`, `rules`, and none of the primitives either): it runs
+  only their top level, which defines functions and constants, leaves the recipe out of the walk, and names its
+  module. A recipe is made of a defined content (`nettai_content::load::recipe`, which calls `Recipe::new` with the
+  recipe's modules as the load read them, its packs and their folders, from which it reads the drawings and the
+  game's `compat/` files then). `Recipe::new` loads those modules again in its VM (§4.4), with the primitives and
   `data` but no set, and reads the table (`model::declaration`): an unknown field, a code that isn't one, a code
   twice, `extract` that isn't a function are errors naming the field (`the recipe's table.roms[2]: BR6E twice`). So
-  everything that needs the codes before a ROM is read has them: the app's Legacy Collection lookup
-  (`bnlc::Install::roms`), `RomSet`'s checks, the CLI, the harness. Loading runs only the modules' top level, which
-  defines functions and constants; the extraction loads them again in a VM of its own and calls `extract`.
+  everything that needs the codes before a ROM is read has them once the game's content is loaded: the app's Legacy
+  Collection lookup (`bnlc::Install::roms`), `RomSet`'s checks, the tools, the harness. The full load is the one way
+  to a recipe: there is no read of a recipe alone. The extraction calls `extract` in that VM.
 - **What it reads**: with `data`, any file of the game's own `compat/`, by its path in the pack
   (`compat/assets.toml`). None needs naming (the fingerprint covered all of them while there were packs, §5.2); a
   path outside it is refused (and the content check refuses a literal one, §4.5).
 - `PackManifest` (`deny_unknown_fields`) is the pack's `id`, `kind` and `depends` alone: a manifest with `[extract]`
   is refused. exelib's `extract/` is reached through the games' recipes.
+- **The line both ways.** Of content, only a game's top module requires a recipe module, its own pack's (the root's
+  `extract`); a recipe module requires only recipe modules. The define phase's `require` refuses either otherwise, as
+  the recipe's VM refuses a require outside `extract/`, and the content check says so of every module (§4.5).
 
 ### 4.3 The names
 
@@ -684,7 +710,8 @@ The crates stay for save import, traces and gen-content.
   math), `sandbox::compiler`, `verify::check` (no global assignment, no writes to module-level locals), modules
   frozen as they load (`deep_freeze`), `require` resolved by `packs::find` and limited to `extract/` trees of the pack
   and its support packs (`@exelib/extract/place`), and the caller's libraries installed (`install`: nettai-extract's
-  primitives). None of `asset`, `new`, `rules`, `battle`.
+  primitives). None of `asset`, `new`, `rules`, `battle`. Its modules are the texts the content's load read, from the
+  module the root names (`Recipe::new`, §4.2), so what a recipe runs is what its content loaded.
 - **One budget for the run**, not a call's: the battle's million checks a call would stop a recipe that walks 411
   chips twice. A whole-run count large enough that only a runaway loop meets it ("the recipe ran past its budget"),
   so a broken recipe fails rather than hangs the extraction thread.
@@ -703,8 +730,8 @@ The crates stay for save import, traces and gen-content.
   against it and exelib's `extract/` declarations, and the content's modules against core.d.luau and the packs'
   `types.d.luau`, each set apart (`packs::declarations` today gives every module every declaration, which would show
   the battle's API to recipes and the recipes' to content).
-- **Lints**: a content module may not require under `extract/`, nor an `extract/` module outside it; a literal
-  `data` path is a file of the game's `compat/`.
+- **Lints**: a content module may not require under `extract/` (but a game's init.luau, its own recipe), nor an
+  `extract/` module outside it; a literal `data` path is a file of the game's `compat/`.
 - **Runs need the ROMs.** A recipe runs only on its full set: in the verification harness (§6.3), in the full-set
   content audit (§6.4), in `nettai-content check <game>` and in the app. CI has no ROMs: there, the recipes are
   type-checked and the primitives, the codec and the declaration are unit-tested on synthetic data. (Today's no-ROM
@@ -755,8 +782,8 @@ says what replaced each part.
 ### 5.1 What a bundle carries
 
 Nothing new in its form: a bundle holds every file its packs' repos track (bundle.rs `pack_files`), so `extract/` and
-`compat/` are in it already. What a game's bundle must have to be extracted is its recipe, `extract/init.luau`
-and what it requires, and the `compat/` files it reads.
+`compat/` are in it already. What a game's bundle must have to be extracted is its recipe (the module its root's
+`extract` is, `extract/init.luau`, and what it requires) and the `compat/` files it reads.
 
 ### 5.2 No fingerprint
 
@@ -778,10 +805,13 @@ until the content took them over (§5.5).
 ### 5.4 When the app extracts
 
 As each game loads (nettai-frontend's `game::Loading`, its `Assets` part, on the game's loading thread): its ROMs
-read out of the collection's archives into memory, its recipe run on them, and what it extracted checked against the
-content (`nettai_content::load::asset_numbers`), about two tenths of a second a game. Another game's backgrounds (the
-background pool's) are extracted, by that game's own recipe, the first time a round or a picture wants one, on a
-thread of their own, once a run (docs/frontend.md §1). An incomplete Legacy Collection extracts nothing: the player
+read out of the collection's archives into memory, its recipe (which loaded with its content, the `Content` part) run
+on them, and what it extracted checked against the content (`nettai_content::load::asset_numbers`), about two tenths
+of a second a game. The app reads every game's content as it starts, each on a thread of its own, to know each game's
+ROMs (`game::read_content`), and a game's first load goes on from what was read (`game::Loading::with_content`).
+Another game's backgrounds (the background pool's) are extracted, by that game's own recipe, its content loaded for
+it (`nettai_content::load::extract`), the first time a round or a picture wants one, on a thread of their own, once a
+run (docs/frontend.md §1). An incomplete Legacy Collection extracts nothing: the player
 sees why (§5.6). The packs folder an earlier app kept (`packs/` in the data folder) is deleted once, as the app
 starts (docs/app.md §17).
 
@@ -794,7 +824,9 @@ plays with, checked against the content as a game loads (`nettai_content::load::
 content names, each sprite with the content's animations and frames). The content's timing is held to the ROMs' by
 `nettai-content check <game>` (`Extraction::timing_differences`: each frame's duration, the loop on the last frame,
 the flags and the part offsets a sprite states; each difference an error), and a frontend notes a difference as it
-loads (`Game::timing_differences`). What follows is how it was before.
+loads (`Game::timing_differences`). The recipe loads with the content since 2026-10-29 (§4.2), and still outside
+the hash: its modules are among the content's (a runtime loads them, as the root requires them) but the hash passes
+them over, since they make assets, which no battle reads. What follows is how it was before.
 
 `Content::hash` covered the pack's asset index (`assets.toml`: names to numbers) and its sprites' animations (each
 frame's duration and flags, the parts' places and sizes: `timing::load` of `animations.json` and `sprite.json`), and
@@ -1248,3 +1280,27 @@ memory, and nothing of them is written:
 - *Checked* (2026-10-27, the twelve ROMs): each game loads with its assets extracted, the content times its 175,
   229 and 240 sprites as the ROMs do, and a battle of each draws its frames and plays its sound the same as before
   the packs went.
+
+**The recipe in the root** (2026-10-29). The user didn't want the recipe found beside the content by its folder's
+name: it loads with the content. A game's root gives it as its `extract` (`require("@self/extract")`, which
+tools/content/index.py writes into each game's init.luau), and the content's load is the one way to a recipe:
+
+- *The define phase* loads the recipe's modules with the rest, in an environment of their own (`Environments::recipe`:
+  none of `new`, `asset`, `rules`, nor the primitives, which only the recipe's VM installs), so their top level runs
+  and no function of theirs. The walk leaves the root's `extract` out (no collection, no definition), and the module
+  it is, which must be one of the game's own `extract/` folder, is named: `DefinePhase::recipes`, kept as
+  `Scripts::recipe`. The modules are among `Scripts::modules` (a runtime loads them again, as the root requires
+  them), and the content hash passes them over (§5.5).
+- *The line* is the define phase's `require` too, not the lints' alone: of content, only a game's top module requires
+  a recipe module, its own pack's; a recipe module requires only recipe modules.
+- *A recipe is made of a defined content*: `nettai_content::load::recipe(&Content)` calls `Recipe::new(game, packs,
+  modules, entry, dirs)` with the recipe's modules as the load read them, and reads the drawings and the game's
+  `compat/` files from the packs' folders then. `nettai_content::load::extract(dir, game, roms)` is the whole of it in
+  one call. `Recipe::of_content`, `nettai_extract::extract` and `packs::has_recipe` went; the tools and the tests that
+  wanted a recipe load the game.
+- *The app* reads every game's content as it starts, each on a thread of its own (`State::Reading`,
+  `game::read_content`), looks for the Legacy Collection once every game's is read (each recipe states its ROMs), and
+  keeps what it read for the game's first load (`game::Loading::with_content`); other content of a game (a replay's)
+  is read the same way before its ROMs are looked for. A game's background pool loads another game's content to
+  extract its backgrounds (`nettai_content::load::extract`). A game's define phase takes 0.35 to 0.5 s in a release
+  build, against a few milliseconds for the recipe alone; the user chose the full load as the only way.

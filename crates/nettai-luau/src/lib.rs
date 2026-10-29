@@ -491,13 +491,32 @@ impl LuauContent {
     }
 }
 
+/// What the define phase read ([`define`]).
+#[derive(Debug)]
+pub struct DefinePhase {
+    pub definitions: Definitions,
+    /// Every module the load read, its recipes' among them, with its bytecode.
+    pub compiled: Compiled,
+    /// The assets the modules name: their handles and the sprites' definitions.
+    pub assets: DefinedAssets,
+    /// Each game's extraction recipe, by the game: the module whose result its root's `extract` is
+    /// (`exe6:extract/init`; docs/design/extraction-recipes.md §4.2).
+    pub recipes: BTreeMap<String, String>,
+}
+
 /// Read a pack's definitions: the define phase, in a VM of its own (which
 /// is dropped). The engine makes its content from what this returns (the
 /// definitions, and the assets the modules name: their handles and the
 /// sprites' definitions), and keeps the modules' bytecode for its runtimes
-/// (`Pack::with_compiled`).
-pub fn define(pack: &Pack, options: Options) -> Result<(Definitions, Compiled, DefinedAssets), ContentError> {
-    open(pack, options).map(|(_, defined, _, compiled, assets)| (defined.definitions, compiled, assets.defined()))
+/// (`Pack::with_compiled`). A game's recipe loads with the rest, and runs
+/// elsewhere (nettai-extract).
+pub fn define(pack: &Pack, options: Options) -> Result<DefinePhase, ContentError> {
+    open(pack, options).map(|(_, defined, _, compiled, assets)| DefinePhase {
+        definitions: defined.definitions,
+        compiled,
+        assets: assets.defined(),
+        recipes: defined.recipes,
+    })
 }
 
 /// The first place two readings of the definitions differ, for messages.
@@ -553,11 +572,12 @@ fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Res
     };
     verify::check(path, &bytecode).map_err(|v| mlua::Error::runtime(v.to_string()))?;
     loader.borrow_mut().compiled.modules.insert(path.to_string(), (source.as_str().into(), bytecode.clone()));
-    // (Its pack's environment: a support pack's lacks the game's context.)
+    // (Its pack's environment: a support pack's lacks the game's context; a recipe's, `new` too.)
     let env = {
         let l = loader.borrow();
         let support = keys::root_of(path).is_some_and(|p| l.support.contains(p));
-        l.envs.as_ref().map(|e| if support { e.support.clone() } else { e.game.clone() })
+        let recipe = nettai_content_api::packs::is_extract_module(path);
+        l.envs.as_ref().map(|e| if recipe { e.recipe.clone() } else if support { e.support.clone() } else { e.game.clone() })
     };
     let mut chunk = lua.load(&bytecode[..]).set_name(format!("@{path}.luau")).set_mode(ChunkMode::Binary);
     if let Some(env) = env {
@@ -571,6 +591,34 @@ fn load_module(lua: &Lua, loader: &Rc<RefCell<Loader>>, path: &str) -> mlua::Res
     sandbox::deep_freeze(lua, &value)?;
     loader.borrow_mut().loaded.insert(path.to_string(), value.clone());
     Ok(value)
+}
+
+/// Whether module `from` may require `target` (`written` as it wrote it) across the line between content and the
+/// extraction recipes (docs/design/extraction-recipes.md §4.4): a recipe's module requires only recipes' modules; of
+/// content, only a game's top module requires one, its own pack's (the recipe its root gives,
+/// `require("@self/extract")`).
+fn recipe_boundary(packs: &BTreeMap<String, nettai_content_api::PackManifest>, from: &str, written: &str, target: &str) -> Result<(), String> {
+    use nettai_content_api::packs::{EXTRACT, INIT, is_extract_module};
+    let file = |m: &str| format!("{}.luau", keys::module_path(m));
+    match (is_extract_module(from), is_extract_module(target)) {
+        (true, false) => Err(format!(
+            "{}: require({written:?}): {} isn't under {EXTRACT}/ (a recipe's module requires only modules under {EXTRACT}/)",
+            file(from),
+            file(target)
+        )),
+        (false, true) => {
+            let game = keys::root_of(from).filter(|p| packs.get(*p).is_none_or(|m| m.kind == nettai_content_api::PackKind::Game));
+            if game.is_some() && keys::local(from) == INIT && keys::root_of(target) == game {
+                return Ok(());
+            }
+            Err(format!(
+                "{}: require({written:?}): {} is a recipe's: of content, only a game's {INIT}.luau requires one, its own recipe (its root's `{EXTRACT}`)",
+                file(from),
+                file(target)
+            ))
+        }
+        _ => Ok(()),
+    }
 }
 
 /// A VM with the content API, `define` and `require`, every module of the
@@ -619,6 +667,7 @@ fn open(pack: &Pack, options: Options) -> Result<Opened, ContentError> {
             let from = from.ok_or_else(|| mlua::Error::runtime("require is only available at the top of a module"))?;
             // (Found as it is reached, and read then: `packs::find`.)
             let target = nettai_content_api::packs::find(&*loader.borrow().pack.modules, &packs, &from, &path).map_err(mlua::Error::runtime)?;
+            recipe_boundary(&packs, &from, &path, &target).map_err(mlua::Error::runtime)?;
             load_module(lua, &loader, &target)
         })
         .map_err(err)?

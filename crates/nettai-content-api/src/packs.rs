@@ -68,10 +68,12 @@ pub const INIT: &str = "init";
 pub const ENGINE: &str = "nettai";
 
 /// A pack's extraction recipe's folder (docs/design/extraction-recipes.md
-/// §4.1): the Luau that says how the game's assets are extracted from its
-/// ROMs, with the drawings it reads. Its modules run in a VM of their own
-/// and require only modules under it (its own pack's and its support
-/// packs'); no other module requires one of them (§2.4).
+/// §4.1), and the field of a game's root that gives its recipe (§4.2): the
+/// Luau that says how the game's assets are extracted from its ROMs, with
+/// the drawings it reads. Its modules load with the content, in an
+/// environment of their own, and run in a VM of their own; they require
+/// only modules under it (its own pack's and its support packs'), and of
+/// content only a game's top module requires one (its root's `extract`).
 pub const EXTRACT: &str = "extract";
 
 /// The engine's declarations of the recipes' API, in [`ENGINE`]: what an
@@ -90,8 +92,9 @@ pub enum PackKind {
 }
 
 /// A pack's manifest: what the pack is, and nothing of what it holds (a
-/// game's init.luau requires that; its recipe, `extract/init.luau`, says
-/// what it extracts from, docs/design/extraction-recipes.md §4.2).
+/// game's init.luau requires that; its recipe, which the root gives as its
+/// `extract`, says what it extracts from, docs/design/extraction-recipes.md
+/// §4.2).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PackManifest {
@@ -518,13 +521,6 @@ fn declaration_files(dir: &Path) -> Vec<PathBuf> {
     out
 }
 
-/// Whether pack `id` of content `dir` has an extraction recipe: its
-/// [`EXTRACT`] folder's top module, `extract/init.luau`, which returns the
-/// recipe (docs/design/extraction-recipes.md §4.2).
-pub fn has_recipe(dir: &Path, id: &str) -> bool {
-    nettai_platform::fs::is_file(dir.join(id).join(EXTRACT).join(format!("{INIT}.luau")))
-}
-
 /// Whether module `name` (`exe6:extract/hud`) is a recipe's: under its
 /// pack's [`EXTRACT`] folder.
 pub fn is_extract_module(name: &str) -> bool {
@@ -649,7 +645,7 @@ mod tests {
     }
 
     /// A manifest says what the pack is and nothing more: what a game
-    /// extracts from is its recipe's to say (`extract/init.luau`), and its
+    /// extracts from is its recipe's to say (its root's `extract`), and its
     /// locales' text tables are theirs.
     #[test]
     fn a_manifest_declares_no_recipe_and_no_text() {

@@ -138,12 +138,14 @@ they're referred to by what a match names, right?", "sure, have tag constructors
 the chip/patch card/navicust program/etc definitions, they should be indicated by the top level table in init.luau".
 
 - **A game's root.** Its top module, `<game>/init.luau`, returns a table of what a match names, by id, in sections
-  (`chips`, `navis`, `forms`, `stages`, `patch_cards`, `navicust_programs`), and its `rules`
-  (`nettai_content_api::packs::SECTIONS`); nothing else. Each section is a module that returns it: the init of the
-  folder named for it (chips/init.luau; for the forms, the folder holding them, navis/megaman/forms/init.luau),
-  which merges its modules' tables (`merge { require("@self/airshot"), require("@self/cannon"), ... }`,
-  content/exelib/merge.luau: an id two modules give is an error naming it), or the one module that has them all
-  (stages.luau). tools/content/index.py writes the root and the section inits from the modules there.
+  (`chips`, `navis`, `forms`, `stages`, `patch_cards`, `navicust_programs`), its `rules`
+  (`nettai_content_api::packs::SECTIONS`), and its `extract`, the recipe its assets are extracted from its ROMs by
+  (`require("@self/extract")`, docs/design/extraction-recipes.md §4.2; since 2026-10-29); nothing else. Each section is
+  a module that returns it: the init of the folder named for it (chips/init.luau; for the forms, the folder holding
+  them, navis/megaman/forms/init.luau), which merges its modules' tables (`merge { require("@self/airshot"),
+  require("@self/cannon"), ... }`, content/exelib/merge.luau: an id two modules give is an error naming it), or the one
+  module that has them all (stages.luau). tools/content/index.py writes the root and the section inits from the modules
+  there.
 - **What a match names is a plain table, with no `id`.** A module makes its chips as typed locals (`local chip:
   Chip = { ... }`) and returns them by key (`return { minibomb = chip }`, a series `return { cannon = cannon,
   ["m-cannon"] = m_cannon }`); code that requires the module reads the chip by its key
@@ -788,7 +790,8 @@ a weapon set; the dimming and navi chip actions read the chip's usage. Content's
 ### 3.11 A game's own collections
 
 The user, 2026-10-06: "go generic". A game's root may hold collections the core doesn't know, any key besides its
-sections (chips, navis, forms, stages) and its rules: each a table of entries by id (EXE6's and EXE5's
+sections (chips, navis, forms, stages), its rules and its recipe (`extract`): each a table of entries by id
+(EXE6's and EXE5's
 `patch_cards`, a patch card each, docs/engine/patch-cards.md; `navicust_programs`, a NaviCust program each,
 docs/design/navicust.md). An entry is a definition of `Registry::Entry`, keyed `<collection>/<id>`, whose data the
 core keeps and reads none of: the game's rules read it (EXE6's rules/patch_cards and rules/navicust). A setup field
@@ -847,10 +850,10 @@ kind = "game"          # or "support"
 depends = ["exelib"]   # the support packs it requires from
 ```
 
-Nothing else: what a game extracts its assets from is its recipe's to state (`extract/init.luau` returns its ROMs,
-docs/design/extraction-recipes.md §4.2), and which top-level tables of its locales are text tables (key to text no
-definition owns, `patch_card_effects`) follows from its root: each that is no collection of the game is one
-(`nettai_content::locale::text_tables`).
+Nothing else: what a game extracts its assets from is its recipe's to state (`extract/init.luau` returns its ROMs, and
+the game's root gives it as its `extract`, docs/design/extraction-recipes.md §4.2), and which top-level tables of its
+locales are text tables (key to text no definition owns, `patch_card_effects`) follows from its root: each that is no
+collection of the game is one (`nettai_content::locale::text_tables`).
 
 A game's top module, `<game>/init.luau` (`exe6:init`; the pack as a module, as a folder's init.luau is the folder,
 §4.1), requires the game's rules and its folders, and each folder's init.luau requires the folder's modules that
@@ -2343,8 +2346,10 @@ write ids and names without their game.) The resolved value is a handle into the
   hold the original's numbers (ROM addresses, chip numbers, sprite categories) and read compat's TOML (`data`, the
   files of their game's `compat/`), for the reason compat holds them: the extractor is the boundary.
   They run in a VM of their own (`nettai_luau::tool`) with the extraction's libraries and none of the battle's, and
-  require only `extract/` modules; no content module requires one (nettai-content-check refuses both), so they are
-  in no `Content` and no content hash. What crosses is the asset model and the names, as from the Rust extractor.
+  require only `extract/` modules; of content, only a game's top module requires one, its own recipe, which its root
+  gives as its `extract` (the define phase and nettai-content-check refuse any other). They load with the content, in
+  an environment without the battle's libraries, define nothing, and are in no content hash. What crosses is the
+  asset model and the names, as from the Rust extractor.
 - **The engine can't.** `exe6-compat` depends on `nettai-battle`; a dependency the other way is a cycle. `Content`
   has no compat fields at any step: the validator maps the engine's handles to the original's numbers, and no
   bridge carries them into the engine (§7.3, the user's decision). A test in `exe6-compat` asserts `nettai-battle`'s

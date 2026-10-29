@@ -25,7 +25,7 @@ fn main() {
         unsafe { std::env::set_var("NETTAI_SHAPES_SOURCES", out) };
     }
     let roms = nettai_extract::RomSource::from_env().unwrap_or_else(|e| panic!("{e}"));
-    let extracted = nettai_extract::extract(&content, game, &roms).unwrap_or_else(|e| panic!("{e}"));
+    let (_, extracted) = nettai_content::load::extract(&content, game, &roms).unwrap_or_else(|e| panic!("{e}"));
     if recolor {
         let drawings = nettai_extract::shapes::Drawings::of_content(&content, game).unwrap_or_else(|e| panic!("{e}"));
         let root = content.join(game).join(nettai_extract::shapes::SHAPES);

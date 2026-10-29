@@ -1,20 +1,26 @@
 //! Extraction recipes (docs/design/extraction-recipes.md): each game says in
 //! Luau how its assets are extracted from its ROMs (its pack's `extract/`,
-//! with the shared part in its support packs' `extract/`). Its
-//! `extract/init.luau` returns a table: the ROMs it reads (`roms`, by their
-//! header codes) and the function that reads them (`extract`) through the
-//! primitives (`prims`) and returns the model (`model`): the graphics, the
-//! asset names and which ROMs the sound is read from. The host here runs it,
-//! in a VM of its own (`nettai_luau::tool`), then finishes the assets as
-//! every extraction does: the check that every named asset is there, the
-//! letters, the element icons' frame, the hand-drawn frames, the sound bank,
-//! the index of names.
+//! with the shared part in its support packs' `extract/`). Its root, what
+//! its `init.luau` returns, gives the recipe as its `extract`
+//! (`require("@self/extract")`), so the recipe loads with the content: the
+//! define phase reads its modules, and names the one the root gives
+//! (`nettai_battle::content::Scripts::recipe`). That module returns a
+//! table: the ROMs it reads (`roms`, by their header codes) and the
+//! function that reads them (`extract`) through the primitives (`prims`)
+//! and returns the model (`model`): the graphics, the asset names and which
+//! ROMs the sound is read from. The host here runs it, in a VM of its own
+//! (`nettai_luau::tool`), then finishes the assets as every extraction
+//! does: the check that every named asset is there, the letters, the
+//! element icons' frame, the hand-drawn frames, the sound bank, the index
+//! of names.
 //!
-//! A recipe is read from a content directory (a bundle's, or the
-//! repository's content/) whole: its inputs (every file under its game's
-//! `extract/` and `compat/` and under its support packs' `extract/`) are
-//! held in memory, so what it runs on is what it was read as. Its ROMs'
-//! codes come from its table when it is read, before any ROM is.
+//! A recipe is made from what its content's load read ([`Recipe::new`];
+//! `nettai_content::load::recipe` makes it of a content): its modules, as
+//! their text was then, and its other inputs (the drawings under its
+//! packs' `extract/`, its game's `compat/` files), read from the packs'
+//! folders as it is made and held in memory, so what it runs on is what it
+//! was read as. Its ROMs' codes come from its table as it is made, before
+//! any ROM is read.
 
 mod model;
 mod prims;
@@ -29,7 +35,6 @@ use nettai_content_api::keys;
 use nettai_luau::mlua::Value;
 use nettai_luau::tool::{self, ToolOptions};
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 /// The folder of a game's pack whose files its recipe reads with `data` (docs/design/extraction-recipes.md §3.9):
@@ -40,46 +45,73 @@ const COMPAT: &str = "compat";
 /// measured apart: the whole is about a tenth of a second for a game's four ROMs in a release build.)
 const GRAPHICS_SHARE: f32 = 0.6;
 
-/// A game's extraction recipe, read from a content directory.
+/// A game's extraction recipe, as its content's load read it.
 #[derive(Clone, Debug)]
 pub struct Recipe {
     game: String,
     /// Its ROMs' header codes, as its table states them ([`Recipe::roms`]).
     roms: Vec<String>,
+    /// Its top module, the one the game's root gives (`exe6:extract/init`).
+    entry: String,
     /// The game's pack and the support packs it depends on, in load order.
     packs: Vec<PackManifest>,
-    /// Every input by its path in the bundle (`exe6/extract/hud.luau`,
-    /// `exelib/extract/shapes/banners/bar-104.svg`, `exe6/compat/assets.toml`).
+    /// Its modules by name, each with the text the content's load read (`exe6:extract/hud`,
+    /// `exelib:extract/place`).
+    modules: Arc<BTreeMap<String, String>>,
+    /// Its other inputs by their path in the bundle: the drawings (`exelib/extract/shapes/banners/bar-104.svg`) and
+    /// the game's compat tables (`exe6/compat/assets.toml`).
     files: Arc<BTreeMap<String, Vec<u8>>>,
 }
 
 impl Recipe {
-    /// Game `game`'s recipe in the content directory `content`: its pack's
-    /// and its support packs' `extract/` folders and its pack's `compat/`,
-    /// and its ROMs, which its `extract/init.luau` returns (run here, without
-    /// ROMs).
-    pub fn of_content(content: &Path, game: &str) -> Result<Recipe, Error> {
-        let said = |e: String| Error(format!("{game}'s recipe in {}: {e}", content.display()));
-        let all: BTreeMap<String, PackManifest> = packs::packs(content).map_err(said)?.into_iter().map(|p| (p.id.clone(), p)).collect();
+    /// Game `game`'s recipe, as its content's load read it: `entry`, the module its root's `extract` is
+    /// (`exe6:extract/init`), and `modules` (by name, each with the text the load read: those under `extract/`
+    /// are the recipe's, and the rest is passed over), of the packs `packs` (the game's and the support packs it
+    /// depends on) in the folders `dirs`, where its other inputs are read now: the drawings under each pack's
+    /// `extract/`, and the game's `compat/` files. Its ROMs are its table's: its modules run here to give it,
+    /// without ROMs.
+    pub fn new(
+        game: &str,
+        packs: &[PackManifest],
+        modules: impl IntoIterator<Item = (String, String)>,
+        entry: &str,
+        dirs: &packs::Dirs,
+    ) -> Result<Recipe, Error> {
+        let said = |e: String| Error(format!("{game}'s recipe: {e}"));
+        let all: BTreeMap<String, PackManifest> = packs.iter().map(|p| (p.id.clone(), p.clone())).collect();
         let packs: Vec<PackManifest> = packs::with_depends(&all, game).map_err(said)?.into_iter().cloned().collect();
         let own = packs.last().expect("with_depends ends with the pack");
         if own.kind != PackKind::Game {
             return Err(said(format!("{game} is a support pack, not a game")));
         }
-        let mut trees: Vec<(String, PathBuf)> = packs.iter().map(|p| (format!("{}/{}", p.id, packs::EXTRACT), content.join(&p.id).join(packs::EXTRACT))).collect();
-        trees.push((format!("{game}/{COMPAT}"), content.join(game).join(COMPAT)));
+        if keys::root_of(entry) != Some(game) || !packs::is_extract_module(entry) {
+            return Err(said(format!("{}.luau is no module of {game}'s {}/ folder", keys::module_path(entry), packs::EXTRACT)));
+        }
+        let modules: BTreeMap<String, String> = modules.into_iter().filter(|(name, _)| packs::is_extract_module(name)).collect();
+        let mut trees: Vec<(String, std::path::PathBuf)> = Vec::new();
+        for p in &packs {
+            let Some(dir) = dirs.0.get(&p.id) else { continue };
+            trees.push((format!("{}/{}", p.id, packs::EXTRACT), dir.join(packs::EXTRACT)));
+            if p.id == game {
+                trees.push((format!("{game}/{COMPAT}"), dir.join(COMPAT)));
+            }
+        }
         let mut files = BTreeMap::new();
         for (under, root) in trees {
             let mut dirs = vec![root.clone()];
             while let Some(dir) = dirs.pop() {
                 let Ok(entries) = nettai_platform::fs::read_dir(&dir) else { continue };
                 for path in entries.flatten().map(|e| e.path()) {
-                    // (A hidden file, a system's folder note, is no input.)
-                    if path.file_name().is_some_and(|n| n.to_string_lossy().starts_with('.')) {
+                    // (A hidden file, a system's folder note, is no input; nor is a module, which the load read.)
+                    let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+                    if name.starts_with('.') {
                         continue;
                     }
                     if path.is_dir() {
                         dirs.push(path);
+                        continue;
+                    }
+                    if name.ends_with(".luau") {
                         continue;
                     }
                     let rel = path.strip_prefix(&root).expect("walked under the root");
@@ -89,10 +121,8 @@ impl Recipe {
                 }
             }
         }
-        if !files.keys().any(|p| p.starts_with(&format!("{game}/{}/", packs::EXTRACT))) {
-            return Err(said(format!("{game} has no {}/ folder", packs::EXTRACT)));
-        }
-        let mut recipe = Recipe { game: game.to_string(), roms: Vec::new(), packs, files: Arc::new(files) };
+        let mut recipe =
+            Recipe { game: game.to_string(), roms: Vec::new(), entry: entry.to_string(), packs, modules: Arc::new(modules), files: Arc::new(files) };
         let vm = recipe.vm().map_err(said)?;
         recipe.roms = model::declaration(vm.entry()).map_err(said)?.roms;
         Ok(recipe)
@@ -163,14 +193,13 @@ impl Recipe {
     }
 
     /// The recipe's VM: the primitives, `data` (its game's `compat/` files,
-    /// by path in the pack), and its `extract/init.luau` loaded.
+    /// by path in the pack), and its top module loaded.
     fn vm(&self) -> Result<tool::Tool, String> {
         let game = &self.game;
         let compat = format!("{game}/{COMPAT}/");
         let files = self.files.iter().filter(|(p, _)| p.starts_with(&compat));
         let data = prims::Data { game: game.clone(), files: files.map(|(p, b)| (p[game.len() + 1..].to_string(), b.clone().into())).collect() };
-        let entry = format!("{game}{}{}", keys::SEPARATOR, packs::EXTRACT);
-        tool::open(Inputs(self.files.clone()), self.packs.clone(), &entry, packs::EXTRACT, ToolOptions::default(), |lua| prims::install(lua, data))
+        tool::open(Inputs(self.modules.clone()), self.packs.clone(), &self.entry, packs::EXTRACT, ToolOptions::default(), |lua| prims::install(lua, data))
             .map_err(|e| e.to_string())
     }
 
@@ -225,22 +254,16 @@ impl Recipe {
     }
 }
 
-/// The modules of a recipe's inputs, by name (`exe6:extract/hud` is
-/// `exe6/extract/hud.luau`).
-struct Inputs(Arc<BTreeMap<String, Vec<u8>>>);
+/// A recipe's modules, by name (`exe6:extract/hud`), as its content's load read them.
+struct Inputs(Arc<BTreeMap<String, String>>);
 
 impl Modules for Inputs {
     fn read(&self, name: &str) -> Option<String> {
-        let path = keys::module_path(name);
-        if path.split('/').any(|s| s.is_empty() || s == "." || s == "..") {
-            return None;
-        }
-        let text = String::from_utf8(self.0.get(&format!("{path}.luau"))?.clone()).ok()?;
-        Some(if text.contains("\r\n") { text.replace("\r\n", "\n") } else { text })
+        self.0.get(name).cloned()
     }
 
     fn has(&self, name: &str) -> bool {
-        self.0.contains_key(&format!("{}.luau", keys::module_path(name)))
+        self.0.contains_key(name)
     }
 }
 

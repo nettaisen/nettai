@@ -7,9 +7,12 @@
 //! [`Game::sound`]; [`Loading`] is [`load`] a part at a time.
 //!
 //! A game's assets are extracted from its ROMs as it loads (`nettai_extract`:
-//! the game's recipe in its content, run on the ROMs a [`RomSource`] has),
-//! in memory; no asset is read from a file of its own. If the ROMs can't
-//! be read, the game can't load, and the error says why.
+//! the game's recipe, which its content's root gives and which loads with
+//! the content, run on the ROMs a [`RomSource`] has), in memory; no asset is
+//! read from a file of its own. If the ROMs can't be read, the game can't
+//! load, and the error says why. A host that must know a game's ROMs before
+//! it loads the rest reads its content first ([`read_content`]: the recipe
+//! states them) and goes on from it ([`Loading::with_content`]).
 //!
 //! Nothing here prints or exits. Every step gives a `Result`; what the
 //! loaders said on the way (their warnings, and the errors that say why a
@@ -102,20 +105,37 @@ pub struct Game {
     pub report: Report,
 }
 
-/// A game's battle content, defined, before its assets are extracted ([`Game::load`]'s first part).
-struct ContentLoaded {
+/// A game's battle content, defined, with its extraction recipe, before its assets are extracted ([`Loading`]'s
+/// first part, [`read_content`]).
+pub struct ContentLoaded {
     name: String,
     content: Content,
+    /// Its recipe, which loaded with it (`nettai_content::load::recipe`); why there is none.
+    recipe: Result<Arc<Recipe>, String>,
     dir: PathBuf,
-    /// The games of the background pool, each with the content directory its recipe is read from.
+    /// The games of the background pool, each with the content directory it is loaded from.
     pool: Vec<(String, PathBuf)>,
     report: Report,
 }
 
-/// Game `name`'s content, from the content directory `content` (none: the one the program comes with), defined. Its
-/// background pool is the backgrounds of the games of `pool`, each read from its own content directory (a host whose
-/// games each have content of their own: its store's bundles); none given, the content directory's own games'.
-fn load_content(content: Option<&Path>, name: &str, pool: &[(String, PathBuf)]) -> Result<ContentLoaded, LoadError> {
+impl ContentLoaded {
+    /// The game's recipe, which states its ROMs and extracts them; why it has none that reads.
+    pub fn recipe(&self) -> Result<&Arc<Recipe>, &str> {
+        self.recipe.as_ref().map_err(String::as_str)
+    }
+
+    /// The background pool it was read with: the games, each with its content directory.
+    pub fn pool(&self) -> &[(String, PathBuf)] {
+        &self.pool
+    }
+}
+
+/// Game `name`'s content, from the content directory `content` (none: the one the program comes with), defined, with
+/// its recipe ([`Loading`]'s first part, for a host that must know the game's ROMs before it loads the rest:
+/// [`Loading::with_content`]). Its background pool is the backgrounds of the games of `pool`, each read from its own
+/// content directory (a host whose games each have content of their own: its store's bundles); none given, the
+/// content directory's own games'.
+pub fn read_content(content: Option<&Path>, name: &str, pool: &[(String, PathBuf)]) -> Result<ContentLoaded, LoadError> {
     let dir = content.map(Path::to_path_buf).unwrap_or_else(nettai_content::index::content);
     let failed = |report: Report| LoadError { what: Failed::Content { game: name.to_string() }, report };
     let mut report = Report::default();
@@ -140,17 +160,18 @@ fn load_content(content: Option<&Path>, name: &str, pool: &[(String, PathBuf)]) 
         report.error(dir.display().to_string(), e.message);
         return Err(failed(report));
     }
-    Ok(ContentLoaded { name: name.to_string(), content: c, dir, pool, report })
+    let recipe = nettai_content::load::recipe(&c).map(Arc::new);
+    Ok(ContentLoaded { name: name.to_string(), content: c, recipe, dir, pool, report })
 }
 
-/// Other games' backgrounds as this run has them, by game, the content directory its recipe is read from and the
-/// ROMs (as they say themselves): each game's extracted once a run, the first time a game loaded wants one
-/// ([`others`]).
+/// Other games' backgrounds as this run has them, by game, the content directory it is loaded from and the ROMs (as
+/// they say themselves): each game's extracted once a run, the first time a game loaded wants one ([`others`]).
 type OtherGames = BTreeMap<(String, PathBuf, String), Arc<OtherGame>>;
 static OTHER_GAMES: std::sync::LazyLock<std::sync::Mutex<OtherGames>> = std::sync::LazyLock::new(Default::default);
 
-/// Game `game`'s backgrounds, its recipe read from content directory `dir`, its ROMs `roms`'s: this run's, else
-/// to be extracted when first wanted (and kept for the run).
+/// Game `game`'s backgrounds, by the recipe of its content in directory `dir` (the game loaded for it: its recipe
+/// loads with its content), its ROMs `roms`'s: this run's, else to be extracted when first wanted (and kept for the
+/// run).
 pub fn others(game: &str, dir: &Path, roms: &RomSource) -> Arc<OtherGame> {
     let key = (game.to_string(), dir.to_path_buf(), format!("{roms:?}"));
     let mut games = nettai_platform::thread::lock(&OTHER_GAMES).unwrap_or_else(|poisoned| poisoned.into_inner());
@@ -159,10 +180,10 @@ pub fn others(game: &str, dir: &Path, roms: &RomSource) -> Arc<OtherGame> {
         .entry(key)
         .or_insert_with(|| {
             OtherGame::new(Box::new(move || {
-                let extracted = Recipe::of_content(&dir, &game).and_then(|recipe| recipe.extract(&roms.read(&recipe)?));
-                extracted.map(|e| backgrounds_of(&e)).map_err(|e| {
+                let extracted = nettai_content::load::extract(&dir, &game, &roms);
+                extracted.map(|(_, e)| backgrounds_of(&e)).map_err(|e| {
                     log::warn!("the background pool's {game} backgrounds aren't drawn: {e}");
-                    e.to_string()
+                    e
                 })
             }))
         })
@@ -178,9 +199,9 @@ impl ContentLoaded {
     /// The game, its assets extracted from `roms` and checked against its content; the background pool's other
     /// games' to be extracted when first wanted ([`others`]).
     fn extract(self, roms: &RomSource) -> Result<Game, LoadError> {
-        let ContentLoaded { name, content, dir, pool, mut report } = self;
+        let ContentLoaded { name, content, recipe, dir, pool, mut report } = self;
         let failed = |report: Report| LoadError { what: Failed::Assets { game: name.clone() }, report };
-        let extracted = Recipe::of_content(&dir, &name).and_then(|recipe| recipe.extract(&roms.read(&recipe)?));
+        let extracted = recipe.and_then(|recipe| recipe.extract(&roms.read(&recipe).map_err(|e| e.to_string())?).map_err(|e| e.to_string()));
         let own = match extracted {
             Ok(own) => own,
             Err(e) => {
@@ -239,7 +260,7 @@ impl Game {
     /// a round or a picture first wants one ([`others`]); none given, the
     /// content directory's own games'.
     pub fn load(roms: &RomSource, content: Option<&Path>, name: &str, pool: &[(String, PathBuf)]) -> Result<Game, LoadError> {
-        load_content(content, name, pool)?.extract(roms)
+        read_content(content, name, pool)?.extract(roms)
     }
 
     /// The game's graphics in `lang`: their lettering in it (fonts, HUD
@@ -513,6 +534,13 @@ impl Loading {
         Loading { name: name.to_string(), options, done: 0, content: None, game: None, graphics: None, font: None, sound: None }
     }
 
+    /// The game whose content `content` is, read before ([`read_content`]: `options`' content directory and
+    /// background pool are the ones it was read with), to load the rest of as `options` say: its first part is done.
+    pub fn with_content(content: ContentLoaded, options: Options) -> Loading {
+        let name = content.name.clone();
+        Loading { done: 1, content: Some(content), ..Loading::new(&name, options) }
+    }
+
     /// The parts this loads, in order (the sound only if asked for).
     pub fn parts(&self) -> impl Iterator<Item = Part> + '_ {
         Part::ALL.into_iter().filter(|&p| p != Part::Sound || self.options.sound)
@@ -547,7 +575,7 @@ impl Loading {
         let reports = [self.game.as_ref().map(|g| &g.report), self.graphics.as_ref().map(|g| &g.report)];
         let loaded = |what: &str| -> ! { unreachable!("the {what} loads before this part") };
         match part {
-            Part::Content => self.content = Some(load_content(self.options.content.as_deref(), &self.name, &self.options.pool)?),
+            Part::Content => self.content = Some(read_content(self.options.content.as_deref(), &self.name, &self.options.pool)?),
             Part::Assets => {
                 let Some(content) = self.content.take() else { loaded("content") };
                 let roms = match &self.options.roms {

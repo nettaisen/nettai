@@ -17,12 +17,17 @@
 //! them there, on the game's loading thread, with the background pool's other games' for their backgrounds. Nothing
 //! is kept on disk. A game whose ROMs the collection hasn't every one of (or with no collection found) can't be
 //! played, and the player is told.
+//!
+//! The recipe loads with the game's content (its root gives it), so which ROMs a game needs is known once its content
+//! is read: as the app starts (and as a game's newer content arrives), each game's content is read on a thread of its
+//! own ([`State::Reading`]), and the Legacy Collection is looked in once every game's is. What was read is kept for
+//! the game's first load, which goes on from it.
 
 use nettai_extract::{Install, Recipe, RomSource};
 use nettai_battle::Content;
 use nettai_battle::content::strings::Strings;
 use nettai_content::locale;
-use nettai_frontend::game::{self, Graphics, Loaded};
+use nettai_frontend::game::{self, ContentLoaded, Graphics, Loaded};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -35,6 +40,8 @@ pub enum State {
     /// There is no content of it: its download failed (why is in the log), or none is published for the app's line
     /// yet (`unpublished`).
     NoContent { unpublished: bool },
+    /// Its content is being read (defined, on a thread of its own), with the recipe that states its ROMs.
+    Reading,
     /// Its ROMs aren't found: no Legacy Collection is, or the one found hasn't every ROM its recipe declares (or its
     /// content has no recipe that reads: why is in the log).
     NoRoms,
@@ -90,8 +97,11 @@ pub struct Entry {
     pub state: State,
     /// The content directory it is played from (`crate::contents::dir`).
     pub content: PathBuf,
-    /// Its content's recipe, which states its ROMs and extracts them; none where its content has none that reads.
+    /// Its content's recipe, which states its ROMs and extracts them; none where its content has none that reads (or
+    /// isn't read yet).
     recipe: Option<Arc<Recipe>>,
+    /// Its content as it was read to learn its recipe ([`State::Reading`]), kept for its first load to go on from.
+    read: Option<Box<ContentLoaded>>,
 }
 
 /// What the player is to be told of the games, once (each is given by [`Games::take_notice`]).
@@ -186,21 +196,42 @@ impl Games {
         for id in ids {
             // (A game the store has no content of yet: it is downloaded, `Games::download`.)
             let Some(content) = crate::contents::dir(&id) else {
-                games.list.push(Entry { id, state: State::Downloading(0.0), content: PathBuf::new(), recipe: None });
+                games.list.push(Entry { id, state: State::Downloading(0.0), content: PathBuf::new(), recipe: None, read: None });
                 continue;
             };
-            let recipe = games.recipe_of(&id, &content);
-            games.list.push(Entry { id, state: State::NoRoms, content, recipe });
+            spawn_read(&id, &content, false);
+            games.list.push(Entry { id, state: State::Reading, content, recipe: None, read: None });
         }
         games.seek_source();
         games
+    }
+
+    /// Game `id`'s content in directory `dir` was read ([`spawn_read`]): its recipe states its ROMs, which are looked
+    /// for once every game's content is read; what was read is kept for its first load. One that doesn't read can't
+    /// be played. (A read of content the game no longer plays from is let go.)
+    fn content_read(&mut self, id: &str, dir: &Path, read: Result<Box<ContentLoaded>, String>) {
+        let Some(at) = self.list.iter().position(|e| e.id == id && e.content == dir && matches!(e.state, State::Reading)) else { return };
+        match read {
+            Ok(read) => {
+                self.list[at].recipe = self.recipe_of(id, &read);
+                self.list[at].read = Some(read);
+                self.list[at].state = State::NoRoms;
+            }
+            Err(why) => {
+                crate::errors::log(&format!("loading {id}"), &why);
+                self.list[at].state = State::Failed;
+                self.notices.push(Notice::LoadFailed(id.to_string()));
+            }
+        }
+        self.seek_source();
     }
 
     /// Look for the games' ROMs where a game's aren't found yet: `$NETTAI_ROMS`'s (development), else the Legacy
     /// Collection in the folder chosen, else through Steam. Each game it has every ROM of can be played; none found is
     /// told the player.
     fn seek_source(&mut self) {
-        if self.wanted().is_empty() {
+        // (Once every game's content is read: each states its ROMs.)
+        if self.wanted().is_empty() || self.list.iter().any(|e| matches!(e.state, State::Reading)) {
             return;
         }
         if self.source.is_none() {
@@ -254,10 +285,10 @@ impl Games {
         }
     }
 
-    /// Game `id`'s recipe, from its content `content` (none where its content has none, it doesn't read, or it
+    /// Game `id`'s recipe, from its content as it was read (none where its content has none, it doesn't read, or it
     /// declares a ROM another game listed before it declares: why is in the log).
-    fn recipe_of(&self, id: &str, content: &Path) -> Option<Arc<Recipe>> {
-        match Recipe::of_content(content, id) {
+    fn recipe_of(&self, id: &str, read: &ContentLoaded) -> Option<Arc<Recipe>> {
+        match read.recipe() {
             Ok(recipe) => {
                 let shared = self.list.iter().filter(|e| e.id != id).find_map(|e| {
                     let theirs = e.recipe.as_ref()?;
@@ -267,7 +298,7 @@ impl Games {
                     crate::errors::log(&format!("reading {id}'s recipe"), &format_args!("it declares {code}, which {other}'s declares: two games can't have one ROM"));
                     return None;
                 }
-                Some(Arc::new(recipe))
+                Some(recipe.clone())
             }
             Err(why) => {
                 crate::errors::log(&format!("reading {id}'s recipe"), &why);
@@ -367,6 +398,7 @@ impl Games {
                 content: loaded.game.dir.clone(),
                 state: State::Ready(Rc::new(Ready { loaded, graphics: Default::default(), runtime: false.into() })),
                 recipe: None,
+                read: None,
             })
             .collect();
         Games {
@@ -409,15 +441,16 @@ impl Games {
     /// Start reading `id`'s parts on a thread, if it isn't loaded or loading, to be shown in `lang`. `told`
     /// gets each part's end and then the game, in order, on the window's thread.
     pub fn load(&mut self, id: &str, lang: &str, told: impl Fn(String, Step) + Send + Sync + 'static) {
+        let options = self.options(id, None);
         let Some(entry) = self.list.iter_mut().find(|e| e.id == id) else { return };
         if !matches!(entry.state, State::NotLoaded) {
             return;
         }
         entry.state = State::Loading(0.0);
-        let options = self.options(id, None);
+        let read = entry.read.take();
         let told = Arc::new(told);
         let named = id.to_string();
-        spawn_load(id, lang, options, move |step| {
+        spawn_load(id, lang, options, read, move |step| {
             let (id, told) = (named.clone(), told.clone());
             let _ = slint::invoke_from_event_loop(move || told(id, step));
         });
@@ -429,23 +462,16 @@ impl Games {
     /// this thread (a second, the window still). Asked each frame while it is wanted.
     pub fn want_other(&mut self, id: &str, dir: &Path, lang: &str) {
         if !self.others.iter().any(|e| e.content == dir) {
-            let recipe = self.recipe_of(id, dir);
-            // (Its ROMs looked for if they weren't found.)
-            if self.source.is_none()
-                && let Some(source) = self.look()
-            {
-                self.found(source);
-            }
-            let there = recipe.as_ref().zip(self.source.as_ref()).is_some_and(|(r, source)| source.find(r.roms()).is_ok());
-            let state = if there { State::NotLoaded } else { State::NoRoms };
             // (The oldest that isn't on its way goes, past the few kept.)
             while self.others.len() >= OTHERS {
-                match self.others.iter().position(|e| !matches!(e.state, State::Loading(_))) {
+                match self.others.iter().position(|e| !matches!(e.state, State::Loading(_) | State::Reading)) {
                     Some(at) => drop(self.others.remove(at)),
                     None => break,
                 }
             }
-            self.others.push(Entry { id: id.to_string(), state, content: dir.to_path_buf(), recipe });
+            // (Its content read first, for the ROMs its recipe states: `Games::other_read`.)
+            spawn_read(id, dir, true);
+            self.others.push(Entry { id: id.to_string(), state: State::Reading, content: dir.to_path_buf(), recipe: None, read: None });
         }
         let at = self.others.iter().position(|e| e.content == dir).expect("made above");
         match &self.others[at].state {
@@ -455,9 +481,10 @@ impl Games {
             }
             State::NotLoaded => {
                 self.others[at].state = State::Loading(0.0);
+                let read = self.others[at].read.take();
                 let options = self.options(id, Some(dir));
                 let dir = dir.to_path_buf();
-                spawn_load(id, lang, options, move |step| {
+                spawn_load(id, lang, options, read, move |step| {
                     let dir = dir.clone();
                     let _ = slint::invoke_from_event_loop(move || crate::with_app(|app| app.shell.games.step_other(&dir, step)));
                 });
@@ -473,6 +500,39 @@ impl Games {
             }
             _ => {}
         }
+    }
+
+    /// Other content `dir` was read ([`Games::want_other`]): its ROMs are looked for (and the Legacy Collection, if
+    /// none is found yet); what was read is kept for its load.
+    fn other_read(&mut self, dir: &Path, read: Result<Box<ContentLoaded>, String>) {
+        let Some(at) = self.others.iter().position(|e| e.content == dir && matches!(e.state, State::Reading)) else { return };
+        let id = self.others[at].id.clone();
+        let read = match read {
+            Ok(read) => read,
+            Err(why) => {
+                crate::errors::log(&format!("loading {id} from {}", dir.display()), &why);
+                self.others[at].state = State::Failed;
+                return;
+            }
+        };
+        let recipe = match read.recipe() {
+            Ok(r) => Some(r.clone()),
+            Err(why) => {
+                crate::errors::log(&format!("reading {id}'s recipe from {}", dir.display()), &why);
+                None
+            }
+        };
+        // (Its ROMs looked for if they weren't found.)
+        if self.source.is_none()
+            && let Some(source) = self.look()
+        {
+            self.found(source);
+        }
+        let there = recipe.as_ref().zip(self.source.as_ref()).is_some_and(|(r, source)| source.find(r.roms()).is_ok());
+        let entry = &mut self.others[at];
+        entry.state = if there { State::NotLoaded } else { State::NoRoms };
+        entry.recipe = recipe;
+        entry.read = Some(read);
     }
 
     /// Game content `dir`'s ([`Games::want_other`]), once it is ready to play.
@@ -538,15 +598,41 @@ fn waiting<'a>(list: &'a mut [Entry], id: &str) -> Option<&'a mut State> {
     list.iter_mut().find(|e| e.id == id && matches!(e.state, State::Downloading(_))).map(|e| &mut e.state)
 }
 
+/// Read game `id`'s content in directory `dir` on a thread of its own, with its recipe and the background pool as
+/// the store has it now (`game::read_content`), for the window's thread to hear: as one of the games
+/// ([`Games::content_read`]), or as `other` content of it ([`Games::other_read`]).
+fn spawn_read(id: &str, dir: &Path, other: bool) {
+    let (id, dir) = (id.to_string(), dir.to_path_buf());
+    let pool = crate::contents::pool();
+    let name = format!("reading {id}");
+    let started = nettai_platform::thread::spawn(&name, move || {
+        let read = game::read_content(Some(&dir), &id, &pool).map(Box::new).map_err(|e| format!("{e}\n{}", e.report));
+        let _ = slint::invoke_from_event_loop(move || {
+            crate::with_app(|app| match other {
+                false => app.shell.games.content_read(&id, &dir, read),
+                true => app.shell.games.other_read(&dir, read),
+            })
+        });
+    });
+    if let Err(why) = started {
+        crate::errors::log(&format!("starting {name}"), &why);
+    }
+}
+
 /// Read game `id`'s parts on a thread of their own, as `options` say, to be shown in `lang`, telling `tell` each
-/// part's end and then the game: what it plays checked against what it is published as.
-fn spawn_load(id: &str, lang: &str, options: game::Options, tell: impl Fn(Step) + Send + Sync + 'static) {
+/// part's end and then the game: what it plays checked against what it is published as. Its content as it was read
+/// before (`read`, with the background pool `options` have) is gone on from; else it is read first.
+fn spawn_load(id: &str, lang: &str, options: game::Options, read: Option<Box<ContentLoaded>>, tell: impl Fn(Step) + Send + Sync + 'static) {
     let (id, lang) = (id.to_string(), lang.to_string());
     let name = format!("loading {id}");
     let started = nettai_platform::thread::spawn(&name, move || {
         let loaded = (|| {
             let said = |e: game::LoadError| format!("{e}\n{}", e.report);
-            let mut loading = game::Loading::new(&id, options);
+            let read = read.filter(|r| r.pool() == options.pool);
+            let mut loading = match read {
+                Some(read) => game::Loading::with_content(*read, options),
+                None => game::Loading::new(&id, options),
+            };
             while loading.step().map_err(said)? {
                 tell(Step::Progress(loading.fraction() * READ * 0.9));
             }
@@ -622,8 +708,8 @@ impl Games {
         if self.get(id).is_some_and(|e| e.content == content) {
             return false;
         }
-        let recipe = self.recipe_of(id, &content);
-        let entry = Entry { id: id.to_string(), state: State::NoRoms, content, recipe };
+        spawn_read(id, &content, false);
+        let entry = Entry { id: id.to_string(), state: State::Reading, content, recipe: None, read: None };
         match self.list.iter_mut().find(|e| e.id == id) {
             Some(old) => *old = entry,
             None => {
@@ -782,7 +868,7 @@ impl Games {
                         continue;
                     }
                     if !self.retarget(&id) {
-                        self.list.push(Entry { id, state: State::Downloading(0.0), content: PathBuf::new(), recipe: None });
+                        self.list.push(Entry { id, state: State::Downloading(0.0), content: PathBuf::new(), recipe: None, read: None });
                         self.list.sort_by(|a, b| a.id.cmp(&b.id));
                     }
                 }
@@ -1012,7 +1098,7 @@ mod tests {
     impl Entry {
         /// Game `id` in `state`, with no content or recipe of its own.
         fn of(id: &str, state: State) -> Entry {
-            Entry { id: id.to_string(), state, content: PathBuf::new(), recipe: None }
+            Entry { id: id.to_string(), state, content: PathBuf::new(), recipe: None, read: None }
         }
     }
 
@@ -1091,30 +1177,50 @@ mod tests {
         assert_eq!(games.first_choice(None).as_deref(), Some("exe4"));
     }
 
-    /// Content folder of games `games`, each a recipe stating its ROMs (`"AAAA", "BBBB"`).
-    fn content_of(games: &[(&str, &str)]) -> tempfile::TempDir {
-        let content = tempfile::tempdir().unwrap();
-        for (id, roms) in games {
-            let dir = content.path().join(id);
-            std::fs::create_dir_all(dir.join("extract")).unwrap();
-            std::fs::write(dir.join("manifest.toml"), format!("id = \"{id}\"\nkind = \"game\"\n")).unwrap();
-            let recipe = format!("return {{ roms = {{ {roms} }}, extract = function(set) return {{}} end }}\n");
-            std::fs::write(dir.join("extract/init.luau"), recipe).unwrap();
-        }
-        content
+    /// Game `id` of the repository's content, read as the app reads it before it looks for the game's ROMs.
+    fn read(id: &str) -> Result<Box<ContentLoaded>, String> {
+        game::read_content(None, id, &[]).map(Box::new).map_err(|e| format!("{e}\n{}", e.report))
     }
 
     /// A game's recipe is its content's; a game whose recipe states a ROM a game listed before it states has none
     /// (two games can't have one ROM).
     #[test]
     fn two_games_cant_declare_one_rom() {
-        let content = content_of(&[("g", "\"AAAA\", \"BBBB\""), ("h", "\"CCCC\", \"BBBB\""), ("i", "\"DDDD\"")]);
+        let (five, six) = (read("exe5").unwrap(), read("exe6").unwrap());
         let mut games = Games::of(Vec::new());
-        let g = games.recipe_of("g", content.path()).expect("g's recipe");
-        assert_eq!(g.roms(), ["AAAA", "BBBB"]);
-        games.list = vec![Entry { recipe: Some(g), ..Entry::of("g", State::NoRoms) }];
-        assert!(games.recipe_of("h", content.path()).is_none(), "BBBB is g's");
-        assert!(games.recipe_of("i", content.path()).is_some());
+        let recipe = games.recipe_of("exe6", &six).expect("exe6's recipe");
+        assert_eq!(recipe.roms(), ["BR6E", "BR5E", "BR6J", "BR5J"]);
+        games.list = vec![Entry { recipe: Some(recipe), ..Entry::of("other", State::NoRoms) }];
+        assert!(games.recipe_of("exe6", &six).is_none(), "BR6E is other's");
+        assert!(games.recipe_of("exe5", &five).is_some());
+    }
+
+    /// Each game's content is read before its ROMs are looked for (its recipe states them), and they are looked for
+    /// once every game's content is read: what was read is kept for the game's load; content that doesn't read can't
+    /// be played; a read of content the game no longer plays from is let go.
+    #[test]
+    fn the_roms_are_looked_for_once_every_games_content_is_read() {
+        use nettai_extract::source::testing::{archive, fake_rom};
+        let install = tempfile::tempdir().unwrap();
+        let roms: Vec<(String, Vec<u8>)> = ["BR6E", "BR5E", "BR6J", "BR5J"].iter().map(|c| (format!("{c}.srl"), fake_rom(c, 0x100))).collect();
+        archive(&install.path().join("exe/data/exe6.dat"), &roms.iter().map(|(n, r)| (n.as_str(), r.as_slice())).collect::<Vec<_>>());
+        let content = nettai_content::index::content();
+        let mut games = Games::of(Vec::new());
+        games.source = Some(RomSource::at(install.path()).unwrap());
+        for id in ["exe5", "exe6"] {
+            games.list.push(Entry { content: content.clone(), ..Entry::of(id, State::Reading) });
+        }
+        assert_eq!(games.playable(), ["exe5", "exe6"], "content being read may yet play");
+        games.content_read("exe6", Path::new("elsewhere"), read("exe6"));
+        assert!(matches!(games.get("exe6").unwrap().state, State::Reading), "not the content it plays from");
+        games.content_read("exe6", &content, read("exe6"));
+        assert!(matches!(games.get("exe6").unwrap().state, State::NoRoms), "its ROMs wait for exe5's content");
+        games.content_read("exe5", &content, Err("exe5's content doesn't load".into()));
+        assert!(matches!(games.get("exe6").unwrap().state, State::NotLoaded));
+        assert!(games.get("exe6").unwrap().read.is_some(), "kept for its load");
+        assert!(matches!(games.get("exe5").unwrap().state, State::Failed));
+        assert_eq!(games.take_notice(), Some(Notice::LoadFailed("exe5".into())));
+        assert_eq!(games.playable(), ["exe6"]);
     }
 
     /// The Legacy Collection found makes each game it has every ROM of playable; one it lacks ROMs of is told once
@@ -1123,29 +1229,30 @@ mod tests {
     #[test]
     fn a_game_plays_once_its_roms_are_found() {
         use nettai_extract::source::testing::{archive, fake_rom};
-        let content = content_of(&[("g", "\"AAAA\", \"BBBB\""), ("h", "\"CCCC\", \"DDDD\"")]);
+        let content = nettai_content::index::content();
         let mut games = Games::of(Vec::new());
-        for id in ["g", "h"] {
-            let recipe = games.recipe_of(id, content.path());
-            games.list.push(Entry { recipe, content: content.path().to_path_buf(), ..Entry::of(id, State::NoRoms) });
+        for id in ["exe5", "exe6"] {
+            let recipe = games.recipe_of(id, &read(id).unwrap());
+            games.list.push(Entry { recipe, content: content.clone(), ..Entry::of(id, State::NoRoms) });
         }
         assert!(games.wants_source());
         assert_eq!(games.playable(), Vec::<String>::new());
-        // (A folder of h's ROMs alone, one of them missing: no game whole.)
+        // (A folder of one of EXE6's ROMs alone: no game whole.)
         let some = tempfile::tempdir().unwrap();
-        archive(&some.path().join("exe/data/exe6.dat"), &[("c.srl", &fake_rom("CCCC", 0x100))]);
+        archive(&some.path().join("exe/data/exe6.dat"), &[("a.srl", &fake_rom("BR6E", 0x100))]);
         assert_eq!(games.found(RomSource::at(some.path()).unwrap()), 0);
-        assert_eq!((games.playable(), games.incomplete()), (Vec::<String>::new(), Some("g")));
-        assert_eq!(games.take_notice(), Some(Notice::Incomplete("g".into())));
-        // (A folder of g's ROMs and half of h's.)
+        assert_eq!((games.playable(), games.incomplete()), (Vec::<String>::new(), Some("exe5")));
+        assert_eq!(games.take_notice(), Some(Notice::Incomplete("exe5".into())));
+        // (A folder of EXE5's ROMs and half of EXE6's.)
         let install = tempfile::tempdir().unwrap();
-        let roms = [("a.srl", fake_rom("AAAA", 0x100)), ("b.srl", fake_rom("BBBB", 0x100)), ("c.srl", fake_rom("CCCC", 0x100))];
-        archive(&install.path().join("exe/data/exe6.dat"), &roms.iter().map(|(n, r)| (*n, r.as_slice())).collect::<Vec<_>>());
+        let roms: Vec<(String, Vec<u8>)> =
+            ["BRBE", "BRKE", "BRBJ", "BRKJ", "BR6E", "BR5E"].iter().map(|c| (format!("{c}.srl"), fake_rom(c, 0x100))).collect();
+        archive(&install.path().join("exe/data/exe6.dat"), &roms.iter().map(|(n, r)| (n.as_str(), r.as_slice())).collect::<Vec<_>>());
         assert_eq!(games.found(RomSource::at(install.path()).unwrap()), 1);
-        assert_eq!((games.playable(), games.incomplete()), (vec!["g".to_string()], Some("h")));
-        assert!(matches!(games.get("g").unwrap().state, State::NotLoaded));
-        assert!(matches!(games.get("h").unwrap().state, State::NoRoms));
-        assert_eq!(games.options("g", None).roms, Some(RomSource::at(install.path()).unwrap()), "g loads from the folder found");
-        assert!(games.wants_source(), "h's ROMs are still wanted");
+        assert_eq!((games.playable(), games.incomplete()), (vec!["exe5".to_string()], Some("exe6")));
+        assert!(matches!(games.get("exe5").unwrap().state, State::NotLoaded));
+        assert!(matches!(games.get("exe6").unwrap().state, State::NoRoms));
+        assert_eq!(games.options("exe5", None).roms, Some(RomSource::at(install.path()).unwrap()), "exe5 loads from the folder found");
+        assert!(games.wants_source(), "exe6's ROMs are still wanted");
     }
 }

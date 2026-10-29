@@ -2,12 +2,14 @@
 //!
 //! The battle content is the content directory's games (`crate::index`, content/ in this repository), whose modules
 //! name the assets and define the sprites' timing: [`load_battle`] loads a game's content alone, and a battle reads
-//! nothing else. Its assets (graphics and sound) are extracted from the game's ROMs (`nettai_extract`); what they hold
-//! of the content's, for whoever draws and plays them, is [`asset_numbers`].
+//! nothing else. Its assets (graphics and sound) are extracted from the game's ROMs (`nettai_extract`) by its recipe,
+//! which the game's root gives and which loads with the content ([`recipe`]; [`extract`] is the whole of it in one
+//! call); what they hold of the content's, for whoever draws and plays them, is [`asset_numbers`].
 
 use crate::report::Report;
 use nettai_assets::Bundle;
-use nettai_content_api::{AssetIndex, AssetNumbers};
+use nettai_content_api::{AssetIndex, AssetNumbers, packs};
+use nettai_extract::{Extraction, Recipe, RomSource};
 use std::path::Path;
 
 thread_local! {
@@ -45,6 +47,30 @@ pub fn load_battle(content: &Path, game: &str) -> Result<(nettai_battle::Content
         return Err(report);
     }
     Ok((c, report))
+}
+
+/// The extraction recipe of `content`'s game, as the content's load read it (docs/design/extraction-recipes.md §4.2):
+/// the module the game's root gives as its `extract`, with the recipe's modules the define phase read and its other
+/// inputs, read from the packs' folders now ([`Recipe::new`]). The content is defined ([`load_battle`]): a game's
+/// recipe is had no other way. An error: its root gives none, or it doesn't read.
+pub fn recipe(content: &nettai_battle::Content) -> Result<Recipe, String> {
+    let game = content.game();
+    let s = &content.scripts;
+    let Some(entry) = s.recipe.as_deref() else {
+        return Err(format!("{game}'s content has no extraction recipe: its root (its {}.luau) gives no `{}`", packs::INIT, packs::EXTRACT));
+    };
+    let modules = s.modules.iter().filter(|(name, _)| packs::is_extract_module(name)).map(|(n, t)| (n.clone(), t.clone()));
+    Recipe::new(game, &s.packs, modules, entry, &s.dirs.0).map_err(|e| e.to_string())
+}
+
+/// Game `game` of the content directory `content`, loaded ([`load_battle`]), and its assets, extracted from `roms` by
+/// its recipe ([`recipe`]): the whole of it in one call, for a tool. An error says what failed: the content (its
+/// report's errors), its recipe, its ROMs or their extraction.
+pub fn extract(content: &Path, game: &str, roms: &RomSource) -> Result<(nettai_battle::Content, Extraction), String> {
+    let (c, _) = load_battle(content, game).map_err(|r| format!("{game}'s content doesn't load:\n{r}"))?;
+    let recipe = recipe(&c)?;
+    let extracted = recipe.extract(&roms.read(&recipe).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    Ok((c, extracted))
 }
 
 /// [`load_battle`]'s content before the define phase: the game's modules,

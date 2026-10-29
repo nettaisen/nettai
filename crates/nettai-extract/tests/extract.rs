@@ -1,7 +1,6 @@
 mod common;
 
 use common::{content, full_set, games, recipe, roms};
-use nettai_extract::Recipe;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -64,13 +63,11 @@ fn a_roms_code_is_read_from_its_header() {
     assert_eq!(nettai_extract::header_code(&[0; nettai_extract::HEADER_LEN]), None, "no game code");
 }
 
-/// A recipe is the content's, read from the folder given: a copy of the content's has the same ROMs, and one that
-/// doesn't load is an error that names the folder.
+/// A recipe is the content's, as its load read it: a copy of the content's has the same ROMs; and what the recipe
+/// runs is what the load read, though its file changes after.
 #[test]
 fn a_recipe_is_the_contents() {
     let copy = tempfile::tempdir().unwrap();
-    // (What the recipe reads of the content: the game's compat/ and extract/, and exelib's extract/; the manifests
-    // say which packs they are.)
     fn copy_dir(from: &Path, to: &Path) {
         std::fs::create_dir_all(to).unwrap();
         for entry in std::fs::read_dir(from).unwrap() {
@@ -82,19 +79,15 @@ fn a_recipe_is_the_contents() {
             }
         }
     }
-    for (pack, parts) in [("exe6", &["compat", "extract"][..]), ("exelib", &["extract"][..])] {
-        std::fs::create_dir_all(copy.path().join(pack)).unwrap();
-        std::fs::copy(content().join(pack).join("manifest.toml"), copy.path().join(pack).join("manifest.toml")).unwrap();
-        for part in parts {
-            if content().join(pack).join(part).is_dir() {
-                copy_dir(&content().join(pack).join(part), &copy.path().join(pack).join(part));
-            }
-        }
+    for pack in ["exe6", "exelib"] {
+        copy_dir(&content().join(pack), &copy.path().join(pack));
     }
-    let same = Recipe::of_content(copy.path(), "exe6").unwrap();
+    let (c, _) = nettai_content::load::load_battle(copy.path(), "exe6").unwrap_or_else(|r| panic!("{r}"));
+    let same = nettai_content::load::recipe(&c).unwrap();
     assert_eq!(same.roms(), recipe("exe6").roms());
     std::fs::write(copy.path().join("exe6/extract/names.luau"), "return {").unwrap();
-    let e = Recipe::of_content(copy.path(), "exe6").unwrap_err().to_string();
+    assert_eq!(nettai_content::load::recipe(&c).unwrap().roms(), same.roms(), "the recipe's modules are those the load read");
+    let e = nettai_content::load::load_battle(copy.path(), "exe6").err().unwrap().to_string();
     assert!(e.contains("syntax error") && e.contains(&copy.path().display().to_string()), "{e}");
 }
 

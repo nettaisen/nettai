@@ -59,8 +59,9 @@ packs: the game packs content/exe6, content/exe5 and content/exe4 and the
 support pack content/exelib, docs/design/content-model-v2.md §4.0; `--content
 <dir>` or `$NETTAI_CONTENT` for another content directory). What the
 frontend shows and plays is extracted from your own ROMs as the game loads,
-in memory, by the game's recipe in its content (`nettai_extract`;
-docs/design/extraction-recipes.md): the graphics and the sound, by the
+in memory, by the game's recipe in its content, which its root gives and
+which loads with it (`nettai_extract`; docs/design/extraction-recipes.md
+§4.2): the graphics and the sound, by the
 names the content gives them. Nothing of them is written anywhere, and
 nothing is checked in. A game's ROMs are every one of the collection's for
 it (EXE6's: the US Falzar and Gregar, `MEGAMAN6_FXXBR6E` and
@@ -205,19 +206,18 @@ tables.
 
 **The background pool.** The backgrounds of every game form one pool a battle of any game may be drawn on
 (docs/app.md §1, "The battle's background"): `Content::background_pool`, each game's own language's
-`[backgrounds]` keys (below), read with any game's content. A round's background (`BackgroundId`) is a handle
-over the game's own, at their handles, then the pool's others; the renderer draws another game's from that
-game's own backgrounds, extracted from its own ROMs by its own content's recipe
+`[backgrounds]` keys (below), read with any game's content. A round's background (`BackgroundId`) is a handle over
+the game's own, at their handles, then the pool's others; the renderer draws another game's from that game's own
+backgrounds, extracted from its own ROMs by its own content's recipe, that content loaded for it
 (`nettai_render::graphics::OtherBackgrounds`: an `OtherGame` a game). They are extracted the first time something
-draws one, on a thread of their own, and kept for the run, shared by every game loaded, so a game is extracted once
-(`nettai_frontend::game::others`; a game's own are given as it loads): a `Preload` asks for the other games' its
-set's rounds are drawn on as it is made and waits for them before the first picture (§9), a replay's `Viewer`
+draws one, on a thread of their own, and kept for the run, shared by every game loaded, so a game is extracted
+once (`nettai_frontend::game::others`; a game's own are given as it loads): a `Preload` asks for the other games'
+its set's rounds are drawn on as it is made and waits for them before the first picture (§9), a replay's `Viewer`
 before its first frame, and a still or a thumbnail on its own thread; a page's main thread never waits (it asks
 `backgrounds_ready` between its frames). A round on one that isn't there (a game whose ROMs aren't found, or not
-extracted yet) is drawn on its stage's own (`Graphics::round_background`). Lobbies and replays agree on the pool by
-its names alone: no pixels are needed to compare or record it. Every background of
-the three games draws from tile 1 below the field's tiles (163 on) in background palette 0 alone, so any draws
-in any game's battle.
+extracted yet) is drawn on its stage's own (`Graphics::round_background`). Lobbies and replays agree on the pool
+by its names alone: no pixels are needed to compare or record it. Every background of the three games draws from
+tile 1 below the field's tiles (163 on) in background palette 0 alone, so any draws in any game's battle.
 
 **The names a player sees** (the app's arenas: `Names::background`, the game's name before) are each game's locales' `[backgrounds]`,
 by asset name, in English and Japanese: the area's name as the game's menu shows it, from the US ROM and from the
@@ -3255,7 +3255,9 @@ background pool's, §1): those are extracted the first time one is wanted, and a
 
 **`game::Loading`** is `game::load` a part at a time, for a start-up bar: `Loading::new(name, options)`, then
 `step()` until it says there is no more, `fraction()` meanwhile, `next()` for what the coming step loads, and
-`finish()` for the `Loaded`. The parts and their shares of the whole (`game::Part::share`, estimated, not
+`finish()` for the `Loaded`. A host that must know a game's ROMs before it loads the rest reads its content first
+(`game::read_content`: the `Content` part alone, with its recipe, `ContentLoaded::recipe`) and goes on from it
+(`Loading::with_content`). The parts and their shares of the whole (`game::Part::share`, estimated, not
 measured: the content's times are 2026-10-12's, a release build on a busy machine; a game's extraction, its four
 ROMs read and its recipe run, about two tenths of a second, 2026-10-27):
 

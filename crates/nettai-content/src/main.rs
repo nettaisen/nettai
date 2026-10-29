@@ -98,8 +98,8 @@ fn main() {
                         ),
                     );
                     nettai_content::lint::definitions(&c, &mut r);
-                    // The game's assets, extracted from its ROMs.
-                    let assets = extract(&a, &mut r);
+                    // The game's assets, extracted from its ROMs by its recipe, which loaded with it.
+                    let assets = extract(&a, &c, &mut r);
                     // The strings tables, against the definitions (and the backgrounds against the assets').
                     nettai_content::locale::check_games(&a.content, &c, assets.as_ref().map(|e| &e.index), &mut r);
                     // The library order, against the definitions.
@@ -121,17 +121,21 @@ fn main() {
     }
 }
 
-/// The game's assets, extracted from its ROMs by its recipe in the content (the ROMs `--roms` names, else
-/// `RomSource::from_env`'s); what the extraction noticed as notes. None, and why as an error: the ROMs aren't there,
-/// or don't extract.
-fn extract(a: &Args, r: &mut Report) -> Option<nettai_extract::Extraction> {
+/// The game's assets, extracted from its ROMs (the ROMs `--roms` names, else `RomSource::from_env`'s) by the recipe
+/// of its content `c`, defined; what the extraction noticed as notes. None, and why as an error: the content gives no
+/// recipe that reads, or the ROMs aren't there, or don't extract.
+fn extract(a: &Args, c: &nettai_battle::Content, r: &mut Report) -> Option<nettai_extract::Extraction> {
     let t = std::time::Instant::now();
     let at = format!("{}'s assets", a.game);
     let roms = match &a.roms {
-        Some(dir) => nettai_extract::RomSource::at(dir),
-        None => nettai_extract::RomSource::from_env(),
+        Some(dir) => nettai_extract::RomSource::at(dir).map_err(|e| e.to_string()),
+        None => nettai_extract::RomSource::from_env().map_err(|e| e.to_string()),
     };
-    match roms.and_then(|roms| nettai_extract::extract(&a.content, &a.game, &roms)) {
+    let extracted = roms.and_then(|roms| {
+        let recipe = nettai_content::load::recipe(c)?;
+        recipe.extract(&roms.read(&recipe).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+    });
+    match extracted {
         Ok(e) => {
             for w in &e.warnings {
                 r.note(&at, w.clone());

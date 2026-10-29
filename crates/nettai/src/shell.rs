@@ -2115,7 +2115,7 @@ impl App {
                 }
             }
             Some(State::NotLoaded) => self.shell.load(&id),
-            Some(State::Loading(_)) => {
+            Some(State::Loading(_) | State::Reading) => {
                 shell.set_loading(true);
                 shell.set_loading_progress(self.shell.games.progress(&id));
             }

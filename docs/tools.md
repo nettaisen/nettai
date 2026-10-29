@@ -172,12 +172,15 @@ nettai-extract is a library, with no command of its own (crates/nettai-extract/R
 extract each game's assets from the player's Legacy Collection as the game loads (docs/app.md §17), nettai-tools
 through nettai-frontend, and nettai-content's check directly. It reads ROMs from wherever a program names them
 (`RomSource`: the Legacy Collection installed, a folder of ROM files, or the copies a browser keeps), into memory,
-and writes nothing. What a program needs besides `extract(content, game, &roms)`:
+and writes nothing. A game's recipe loads with its content (its root gives it as its `extract`): a program that wants
+one loads the game (`nettai_content::load::load_battle`) and makes it of the content (`nettai_content::load::recipe`);
+`nettai_content::load::extract(content, game, &roms)` is the whole of it in one call. What a program needs besides:
 
 - `header_code(header)`: the game code a ROM is of, from its first `HEADER_LEN` (176) bytes alone, so a program can
   match the ROMs it finds against the codes each game's recipe declares (`Recipe::roms`) before it reads one whole.
   `RomSource::find` does so.
-- `Recipe::of_content`, `RomSource::read` and `Recipe::extract`, the steps of `extract`; `Recipe::extract_reporting`,
+- `Recipe::new` (what `nettai_content::load::recipe` calls), `RomSource::read` and `Recipe::extract`, the steps of
+  `extract`; `Recipe::extract_reporting`,
   the same telling a callback how far it is (0 to 1), for a bar (`an_extraction_reports_how_far_it_is`); and
   `Recipe::extract_recording_reads`, every range of each ROM the extraction read (the verification's read map).
 - `Extraction::timing_differences`, the content's sprite timing against the ROMs' (the content check's).

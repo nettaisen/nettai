@@ -10,7 +10,7 @@ pub extern "C" fn smoke_test() -> u32 {
         "effect".into(),
         "return new.effect { anim = 0 }".into(),
     )]);
-    let (defs, compiled, _) = define(&pack, Options::default()).unwrap();
+    let nettai_luau::DefinePhase { definitions: defs, compiled, .. } = define(&pack, Options::default()).unwrap();
     assert_eq!(defs.of(Registry::Effect).len(), 1);
     assert_eq!(compiled.len(), 1);
     let lua = sandbox::new_vm(false).unwrap();

@@ -1,24 +1,18 @@
 //! A game's assets, extracted from its ROMs in memory: its graphics, its sound and the index of their names, for a
 //! frontend to draw and play them (docs/design/extraction-recipes.md).
 //!
-//! A game's content says how its assets are extracted: its recipe in Luau (`extract/`) states its ROMs, every one
-//! required (a complete Battle Network Legacy Collection's), reads them through the primitives here and returns the
-//! assets in typed form; the host here finishes them ([`Recipe`]). ROMs are told by the game code in their headers
-//! ([`header_code`]), in any order, and read from where they are ([`RomSource`]: the Legacy Collection installed, or
-//! ROM files); none is written anywhere. [`extract`] is the whole of it in one call:
+//! A game's content says how its assets are extracted: its recipe in Luau (`extract/`, which the game's root gives as
+//! its `extract`, so it loads with the content) states its ROMs, every one required (a complete Battle Network Legacy
+//! Collection's), reads them through the primitives here and returns the assets in typed form; the host here
+//! finishes them ([`Recipe`]). ROMs are told by the game code in their headers ([`header_code`]), in any order, and
+//! read from where they are ([`RomSource`]: the Legacy Collection installed, or ROM files); none is written anywhere.
 //!
-//! ```no_run
-//! use nettai_extract::{RomSource, extract};
-//! let roms = RomSource::from_env()?; // $NETTAI_ROMS, else the Legacy Collection where Steam installed it
-//! let assets = extract(std::path::Path::new("content"), "exe6", &roms)?;
-//! // assets.graphics (a nettai_assets::Bundle), assets.sound (an m4a::SoundBank), assets.index (names to numbers)
-//! # Ok::<(), Box<dyn std::error::Error>>(())
-//! ```
-//!
-//! Its steps are public too: [`Recipe::of_content`], [`RomSource::read`] (the recipe's ROMs into a [`RomSet`]),
-//! [`Recipe::extract`]. A frontend loads a game with it (nettai-frontend's `game::Game::load`), and checks the assets
-//! against the content (`nettai_content::load::asset_numbers`, [`Extraction::timing_differences`]: `nettai-tool
-//! --audit-content`). The crate is a library alone.
+//! A recipe is made from what the content's load read ([`Recipe::new`]; `nettai_content::load::recipe` makes it of a
+//! defined content, and `nettai_content::load::extract` is the whole of it in one call: the content loaded, its
+//! recipe run on the ROMs). Then [`RomSource::read`] reads the recipe's ROMs into a [`RomSet`] and
+//! [`Recipe::extract`] extracts them. A frontend loads a game with it (nettai-frontend's `game::Game::load`), and
+//! checks the assets against the content (`nettai_content::load::asset_numbers`, [`Extraction::timing_differences`]:
+//! `nettai-tool --audit-content`). The crate is a library alone.
 
 #![forbid(unsafe_code)]
 
@@ -40,7 +34,7 @@ pub use source::{Install, RomSource};
 use crate::names::AssetNames;
 use nettai_content_api::AssetIndex;
 use rom::Rom;
-use std::{collections::BTreeMap, fmt, path::Path, sync::Arc};
+use std::{collections::BTreeMap, fmt, sync::Arc};
 
 /// How much of a ROM [`header_code`] reads: its header, up to and with the game code at 0xAC.
 pub const HEADER_LEN: usize = 0xB0;
@@ -109,13 +103,6 @@ impl RomSet {
     fn rom(&self, code: &str) -> Option<Arc<Rom>> {
         self.roms.get(code).cloned()
     }
-}
-
-/// Game `game`'s assets, extracted from `roms` by its recipe in the content directory `content` (a bundle's, or the
-/// repository's content/): [`Recipe::of_content`], [`RomSource::read`] and [`Recipe::extract`] in one call.
-pub fn extract(content: &Path, game: &str, roms: &RomSource) -> Result<Extraction, Error> {
-    let recipe = Recipe::of_content(content, game)?;
-    recipe.extract(&roms.read(&recipe)?)
 }
 
 /// A game's assets, extracted from its ROMs ([`Recipe::extract`]), in memory: nothing is written anywhere.

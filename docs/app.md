@@ -3820,19 +3820,24 @@ Steam installs it with Proton in its own libraries, where it is found; macOS's d
 Steam in a compatibility layer (CrossOver, Whisky) is a folder to choose.
 
 The ROMs are the `.srl` entries of the per-game archives `exe/data/exe*.dat` (zip files; the shared `exe.dat`
-holds the collection's own art and is passed over), wherever in an archive they are. As the app starts, each is
-read only as far as its header, whose game code (`nettai_extract::header_code`) is matched against the codes each
-game's recipe declares (`Recipe::roms`: the app names no game); a second copy of one game code is passed over. A
-game whose recipe's ROMs are all there can be played; one with any missing can't.
+holds the collection's own art and is passed over), wherever in an archive they are. A game's recipe loads with
+its content (its root gives it, docs/design/extraction-recipes.md §4.2), so as the app starts it reads every game's
+content, each on a thread of its own (`Games::find`, `State::Reading`, `game::read_content`; the same as a game's
+newer content arrives), and looks for the collection once every game's is read. Each ROM is read only as far as its
+header, whose game code (`nettai_extract::header_code`) is matched against the codes each game's recipe declares
+(`Recipe::roms`: the app names no game); a second copy of one game code is passed over. A game whose recipe's ROMs
+are all there can be played; one with any missing can't; one whose content doesn't read can't either (a load
+failure). What was read is kept for the game's first load, which goes on from it (`game::Loading::with_content`).
 
 **How a game's assets are extracted.** On the game's loading thread, as its first part after its content
 (nettai-frontend's `game::Loading`, the part `Assets`): its ROMs are read out of their archives into memory (none is
 written to disk) and its content's recipe extracts them (`nettai_extract::Recipe`; docs/design/extraction-recipes.md):
-the recipe is read from the content the game plays, at run time, not compiled into the app, so content that names a
+the recipe loads with the content the game plays, at run time, not compiled into the app, so content that names a
 new asset, or extracts one otherwise, is played with it at once. The assets are then checked against the content
 (§20, "Assets that can't draw it"), and the content's sprite timing compared with the ROMs' (a difference is said in
 the log). The background pool's other games (a few backgrounds from each, §1) aren't extracted with it: each other
-game's backgrounds are extracted, by its own content's recipe, the first time a round or a picture wants one (a
+game's backgrounds are extracted, by its own content's recipe (that content loaded for it,
+`nettai_content::load::extract`), the first time a round or a picture wants one (a
 practice set's round on one, Practice's Background grid), on a thread of their own, and kept for the run, shared by
 every game loaded, so no game is extracted twice in a run (`nettai_render::graphics::OtherGame`;
 `nettai_frontend::game::others`; a game's own given as it loads). The battle's preload asks for those its rounds are
@@ -3844,7 +3849,8 @@ second, and reading its four ROMs out of the archives about as long (a release b
 took 0.3 to 0.4 s, before.
 
 **What the player sees.** The loading screen's bar is the load's, "LOADING BN6": extracting is a part of it. As the
-app starts, the collection is found, and each game it has the ROMs of can be stepped to; the game opened on (the
+app starts, every game's content is read and the collection is found, and each game it has the ROMs of can be
+stepped to (a game whose content is still being read shows the bar); the game opened on (the
 one last played, or the first time BN6: `Games::first_choice`) loads first, the others behind the menu.
 
 **When there is nothing to extract from.** No collection found is `UserError::NoLegacyCollection`: "nettai needs
@@ -4127,7 +4133,8 @@ the ROMs' (docs/tools.md, "The content check").
 **Replays** (§16). A replay plays on the content its head names: the game's own where the hashes match, else the
 store's bundle that plays its hash, or the one the game's index lists for it, downloaded while the replay is
 selected (the index read again, once a visit, where it lists no such hash). The game is loaded on it beside its own
-(`Games::want_other`: the last two kept; its parts read on a thread, its assets extracted by that content's recipe,
+(`Games::want_other`: the last two kept; its content read first, on a thread, for the ROMs its recipe states, then
+its parts on a thread, its assets extracted by that content's recipe,
 its runtime on the window's thread, about a second with the window still), and the replay's still, its
 play-out, the viewer, its thumbnails, its index threads and its export are that load's. WATCH is unavailable until
 it is ready; a replay of the queue waits for it.

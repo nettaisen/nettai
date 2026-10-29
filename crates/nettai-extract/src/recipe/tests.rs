@@ -184,16 +184,12 @@ fn bundle(files: &[(String, String)]) -> tempfile::TempDir {
     dir
 }
 
-const GAME: &str = "id = \"g\"\nkind = \"game\"\ndepends = [\"lib\"]\n";
-
 /// The synthetic game's recipe, stating two ROMs.
 const RECIPE: &str = "return { roms = { \"BR6E\", \"BR5E\" }, extract = function(set) return {} end }\n";
 
 /// A synthetic game `g` and its support pack `lib`, the game's recipe `recipe`'s (its `extract/init.luau`).
 fn synthetic(recipe: &str) -> Vec<(String, String)> {
     [
-        ("g/manifest.toml", GAME),
-        ("lib/manifest.toml", "id = \"lib\"\nkind = \"support\"\n"),
         ("g/extract/init.luau", recipe),
         ("g/extract/shapes/hud/hp-box.same", "lib/extract/shapes/hud/hp-box.svg\n"),
         ("lib/extract/place.luau", "return {}\n"),
@@ -206,34 +202,46 @@ fn synthetic(recipe: &str) -> Vec<(String, String)> {
     .collect()
 }
 
+/// The recipe of the synthetic game whose files are `files`, as a content's load gives it: the modules it read (here
+/// every one, by name; those outside `extract/` are passed over), the packs and their folders (`dir`, where the
+/// files are).
+fn recipe_in(dir: &std::path::Path, files: &[(String, String)]) -> Result<Recipe, Error> {
+    let packs = [manifest("lib", PackKind::Support, &[]), manifest("g", PackKind::Game, &["lib"])];
+    let modules = files.iter().filter_map(|(path, text)| {
+        let (pack, rest) = path.split_once('/')?;
+        Some((format!("{pack}{}{}", keys::SEPARATOR, rest.strip_suffix(".luau")?), text.clone()))
+    });
+    Recipe::new("g", &packs, modules, "g:extract/init", &packs::Dirs::of_content(dir, ["lib", "g"]))
+}
+
 #[test]
 fn a_recipe_is_its_inputs() {
     let files = synthetic(RECIPE);
     let dir = bundle(&files);
-    let recipe = Recipe::of_content(dir.path(), "g").unwrap();
+    let recipe = recipe_in(dir.path(), &files).unwrap();
     assert_eq!((recipe.game(), recipe.roms()), ("g", &["BR6E".to_string(), "BR5E".to_string()][..]));
+    let modules: Vec<&String> = recipe.modules.keys().collect();
+    assert_eq!(modules, ["g:extract/init", "lib:extract/place"], "its modules, as the load read them");
     let inputs: Vec<&String> = recipe.files.keys().collect();
-    assert_eq!(
-        inputs,
-        ["g/compat/assets.toml", "g/extract/init.luau", "g/extract/shapes/hud/hp-box.same", "lib/extract/place.luau", "lib/extract/shapes/hud/hp-box.svg"]
-    );
+    assert_eq!(inputs, ["g/compat/assets.toml", "g/extract/shapes/hud/hp-box.same", "lib/extract/shapes/hud/hp-box.svg"]);
     assert_eq!(recipe.drawings().game(), "g");
-    // The ROMs the recipe states are its table's.
-    let other = Recipe::of_content(bundle(&synthetic(&RECIPE.replace("\"BR5E\"", "\"BR5J\""))).path(), "g").unwrap();
-    assert_eq!(other.roms(), ["BR6E".to_string(), "BR5J".to_string()]);
+    // The ROMs the recipe states are its table's, as the load read it (not as the folder has it now).
+    let other = synthetic(&RECIPE.replace("\"BR5E\"", "\"BR5J\""));
+    assert_eq!(recipe_in(dir.path(), &other).unwrap().roms(), ["BR6E".to_string(), "BR5J".to_string()]);
 }
 
 #[test]
 fn a_recipe_refuses_what_it_cannot_run() {
-    let dir = bundle(&synthetic(RECIPE));
-    let recipe = Recipe::of_content(dir.path(), "g").unwrap();
+    let files = synthetic(RECIPE);
+    let dir = bundle(&files);
+    let recipe = recipe_in(dir.path(), &files).unwrap();
     // An incomplete set, before any Luau runs.
     let mut roms = recipe.rom_set();
     roms.insert(image("BR6E", &[])).unwrap();
     let e = recipe.extract(&roms).err().unwrap().to_string();
     assert!(e.contains("incomplete") && e.contains("BR5E missing"), "{e}");
     // A table that states its ROMs otherwise than as game codes, or holds more or less than `roms` and `extract`.
-    let refused = |init: &str| Recipe::of_content(bundle(&synthetic(init)).path(), "g").unwrap_err().to_string();
+    let refused = |init: &str| recipe_in(dir.path(), &synthetic(init)).unwrap_err().to_string();
     let e = refused("return { roms = {}, extract = function(set) return {} end }");
     assert!(e.contains("the recipe's table.roms: no ROM"), "{e}");
     let e = refused("return { roms = { \"BR6E\", \"BR6E\" }, extract = function(set) return {} end }");
@@ -247,11 +255,15 @@ fn a_recipe_refuses_what_it_cannot_run() {
     let e = refused("return function(set) return {} end");
     assert!(e.contains("the recipe's table: expected a table, got function"), "{e}");
     assert!(refused("return { extract = function(set) return {} end }").contains("no roms"));
-    // A recipe that doesn't load; a game with no recipe.
+    // A recipe that doesn't load; a recipe module the load didn't read; a top module that isn't the game's recipe's.
     let e = refused("return {");
-    assert!(e.contains("g's recipe in") && e.contains("syntax error"), "{e}");
-    let none: Vec<(String, String)> = synthetic(RECIPE).into_iter().filter(|(p, _)| !p.starts_with("g/extract/")).collect();
-    assert!(Recipe::of_content(bundle(&none).path(), "g").unwrap_err().to_string().contains("g has no extract/ folder"));
+    assert!(e.contains("g's recipe: ") && e.contains("syntax error"), "{e}");
+    let none: Vec<(String, String)> = files.iter().filter(|(p, _)| !p.starts_with("g/extract/")).cloned().collect();
+    let e = recipe_in(dir.path(), &none).unwrap_err().to_string();
+    assert!(e.contains("no module g/extract/init.luau"), "{e}");
+    let packs = [manifest("lib", PackKind::Support, &[]), manifest("g", PackKind::Game, &["lib"])];
+    let e = Recipe::new("g", &packs, Vec::new(), "lib:extract/place", &packs::Dirs::default()).unwrap_err().to_string();
+    assert!(e.contains("lib/extract/place.luau is no module of g's extract/ folder"), "{e}");
 }
 
 #[test]
