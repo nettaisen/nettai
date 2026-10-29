@@ -1,6 +1,6 @@
 -- The battle engine's content API, as Luau content sees it. A definitions
 -- file for editors and the type checker (for luau-lsp, generate the combined
--- declarations with `.zed/generate-luau-definitions.py`; see README.md).
+-- declarations with `.zed/generate-luau-definitions.py`; see docs/content.md).
 -- Every root checks against it
 -- (docs/design/rules-in-luau.md §7.2: content/nettai declares the engine's
 -- API and defines nothing; EXE6's own parts move to content/exe6 in slice

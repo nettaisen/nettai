@@ -1,271 +1,176 @@
-# nettai
+<p align="center"><img src="docs/logo/nettai-icon.svg" width="112" alt="nettai"></p>
 
-A Mega Man Battle Network battle engine in Rust. Its first game is Mega Man Battle Network 6 (US Falzar), whose
-battles are reimplemented frame for frame from the original, routine by routine from the disassembly. Other
-Battle Network games are meant to follow on the same core ([multi-game.md](docs/design/multi-game.md) surveys
-what that takes).
+<h1 align="center">nettai</h1>
 
-The engine is a content-independent core with EXE6's ruleset on it. The game's content (chips, navis and their
-forms, weapons, stages, the rule tables) is Luau in [`content/`](content), named by keys rather than the original's
-numbers, in packs: the game packs content/exe4, content/exe5 and content/exe6, each with a manifest listing its
-definitions, and the support pack content/exelib that they use. Each pack is its own repository
-([exe4](https://github.com/nettaisen/exe4), [exe5](https://github.com/nettaisen/exe5),
-[exe6](https://github.com/nettaisen/exe6), [exelib](https://github.com/nettaisen/exelib)), checked out here as a git
-submodule: clone with `git clone --recursive`, or run `git submodule update --init` in a clone or a new worktree
-(docs/design/content-deployment.md). The graphics and sound are not in this
-repository, nor written anywhere: each game's are extracted from the ROMs of your own copy of Battle Network
-Legacy Collection Vol. 2 as the game loads, in memory, by the game's recipe in its content.
+<p align="center">Rollback netplay for Mega Man Battle Network 4, 5 and 6.</p>
 
-A battle is deterministic and cloneable, and the players' inputs are its only input, which is what rollback
-netplay needs.
+<p align="center">
+  <a href="https://nettai.n1gp.net/#download"><b>Download</b></a> ·
+  <a href="https://nettai.n1gp.net/">Website</a> ·
+  <a href="https://github.com/nettaisen/nettai/releases">Releases</a>
+</p>
 
-## Crates
+nettai is a new program for playing Battle Network netbattles. Its battle engine is written in Rust, ported routine
+by routine from the original games' code and checked frame by frame against them, so battles play the way they
+did on the Game Boy Advance. Because the engine runs natively, it can rewind and replay frames cheaply, which
+keeps online play smooth even across long distances.
 
-- `nettai-battle`: the engine: the simulation core, EXE6's ruleset, and the content model it runs on.
-- `nettai-content-api`: the contract between the core and content: the API scripts call, definitions, handles.
-- `nettai-luau`: the Luau runtime for content (sandboxed scripts that keep no state of their own).
-- `nettai-content`: loads the content's game packs (by their manifests) into the engine, and checks a game's
-  assets, extracted from its ROMs, against them (`nettai-content check`); content bundles, and publishing them
-  (below).
-- `nettai-content-check`: type-checks each pack of the content against its declarations (the engine's API,
-  `content/nettai/core.d.luau`, then its support packs' and its own), lints it, and checks that its manifests and
-  requires name only modules that exist, that a pack requires only itself and the support packs it uses, and that
-  each game's `depends.lock` names its support packs' commits.
-- `nettai-assets`: the battle graphics in typed form, for drawing.
-- `nettai-audio`: plays the engine's sound cues through the M4A driver.
-- `m4a`: the GBA's M4A (Sappy) sound driver.
-- `nettai-netplay`: rollback netplay on [getgud](https://github.com/tangobattle/getgud), its inputs carried by
-  [rennet](https://github.com/tangobattle/rennet) over a WebRTC data channel (or any datagram channel), with a
-  simulated lossy network.
-- `nettai-rtc`: netplay's transport, WebRTC data channels ([str0m](https://github.com/algesten/str0m) natively,
-  the browser's on wasm32), met in a room of the signaling server or directly, made again when they drop.
-- `nettai-render`: draws a battle into frames: the stage, the objects, the HUD, the custom screen and the text, from
-  engine state and the game's graphics; no window, sound or network.
-- `nettai-frontend`: plays battles for a host app to show, as a library with no window, audio device or command
-  line in it: it loads a game (its content, graphics, strings and sound), and its player runs a set live or over the
-  network from the buttons, by the clock or a tick at a time, and gives the host the picture (`nettai-render`'s) and
-  the sound as samples ([docs/frontend.md](docs/frontend.md) §7, with the host loop). A replay has a viewer that
-  seeks to any tick (§8).
-- `nettai-video`: a replay as video: a NUT stream of raw frames and PCM sound on any writer, and `ffmpeg` run as a
-  child for an MP4 of one; no encoder is linked ([docs/frontend.md](docs/frontend.md) §8, "Video").
-- `nettai`: the app (Slint), being rebuilt to a new design ([docs/design/app-ui.md](docs/design/app-ui.md)): a main
-  menu (Play, Practice, Builds, Replays, Settings) around the battle, navigated by keys, a gamepad, the mouse or
-  touch, in each language its catalogs have. Its foundation is built: the design system, focus and navigation,
-  Settings, and the battle's host; the other four screens are their headers, to be filled in
-  ([docs/app.md](docs/app.md)).
-- `nettai-ui`: the app's Slint files, compiled: a crate of its own so the app's Rust builds without it
-  ([docs/app.md](docs/app.md) §14).
-- `nettai-tools`: `nettai-tool`, the command line with no window: headless frames (a trace's, a match file's, a
-  replay's), a replay written as video, the content and trace audits, the replay of recorded matches, match setups
-  and replays checked
-  ([docs/tools.md](docs/tools.md)).
-- `nettai-match`: match files and their sides (a build is one), everything a round needs by content key, checked;
-  live play's random pick.
-- `nettai-extract`: a game's assets extracted from its ROMs in memory, by the game's recipe in its content; the ROMs
-  found where they are (the Legacy Collection installed, a folder of ROM files). A library alone.
-- `exe6-compat`: EXE6's original numbers for the content (`content/exe6/compat`): the codecs of the game's setup
-  records, and the trace harness. The engine never depends on it.
+- **Online:** make a room and send the code to a friend. Matches use rollback, so the game never stalls waiting
+  on the network, and you choose your own input delay. A dropped connection reconnects and the battle picks up
+  where it left off.
+- **Builds:** pick a navi, put a folder together, and set up the NaviCust and patch cards, plus each game's own
+  extras, like Crosses and Beast Out in Battle Network 6. You can also import a build from a save file. Every
+  build plays at full power, with HP and memory maxed out.
+- **Practice:** fight a dummy that stands still or moves around, or plug in a second controller.
+- **Replays:** every match is saved. Watch it again from either side, or export it as a video (one side, both, or
+  side by side).
+- **Languages:** English, Japanese, Simplified Chinese and Traditional Chinese.
 
-## Getting started
+The supported games are Battle Network 4 (Red Sun and Blue Moon), 5 (Team ProtoMan and Team Colonel, including the
+DS version's party battles) and 6 (Cybeast Gregar and Cybeast Falzar).
 
-You need Rust with edition 2024, and your own copy of Battle Network Legacy Collection Vol. 2: each game is played
-from all four of its ROMs (both versions, US and Japanese: a complete Legacy Collection's), which its recipe (its
-content's `extract/`) extracts the graphics and sound from as the game loads, in memory, at every start. Nothing
-is written: there is no extraction step to run. The app finds the collection where Steam installed it, or in a
-folder you choose or drop on its window (docs/app.md §17). The command line, the tests and development read
-`$NETTAI_ROMS`: a folder that is the collection's install, or one that holds the twelve ROM files (any names: each
-file's header says which ROM it is). Unset, they look where Steam installed the collection:
+## Playing
 
-    export NETTAI_ROMS=~/Documents/Tango/roms    # or the Legacy Collection's folder
+1. Buy [Mega Man Battle Network Legacy Collection Vol. 2](https://store.steampowered.com/app/1798020/) on Steam.
+   nettai reads its graphics and sound from your copy every time it starts. Nothing from the games is included
+   with nettai or saved to disk.
+2. [Download nettai](https://nettai.n1gp.net/#download) for Windows, macOS or Linux. It updates itself.
+3. Start it. If it can't find the Legacy Collection (on macOS, for example), it asks you to choose the
+   collection's folder. You can also drop the folder onto the window.
 
-A ROM missing is an error, as is an asset the recipe can't find. `nettai-content check <game>` extracts a game's
-assets and checks them against its content (every asset it names, each sprite's frames, its sprites' timing
-against the ROMs'):
+### Controls
 
-    cargo run --release -p nettai-content -- check exe6
+| Button | Keyboard | Controller |
+| --- | --- | --- |
+| Move | Arrow keys | D-pad |
+| A | Z | East button |
+| B | X | South button |
+| L / R | A / S | Shoulders |
+| Start / Select | Enter / Backspace | Start / Back |
+| Switch navi (party battle) | C / V | West / North button |
 
-Applications embed the extractor as a library, reading nothing but the ROMs and writing nothing:
+Esc opens the menu during a battle. Everything can be rebound in Settings.
 
-```rust
-use nettai_extract::{RomSource, extract};
+## How it works
 
-let roms = RomSource::from_env()?; // $NETTAI_ROMS, else the Legacy Collection where Steam installed it
-let assets = extract(std::path::Path::new("content"), "exe6", &roms)?;
-// assets.graphics (a nettai_assets::Bundle), assets.sound (an m4a::SoundBank), assets.index (names to numbers)
+- **The engine** (`nettai-battle`) knows nothing about any particular game. A battle is deterministic: the
+  players' inputs are its only input, and it can be snapshotted and restored at any frame. That is what rollback
+  netplay needs.
+- **The games' content** (chips, navis, rules, and how to find each asset in the ROMs) is written in
+  [Luau](https://luau.org/) and lives in its own repositories: [exe4](https://github.com/nettaisen/exe4),
+  [exe5](https://github.com/nettaisen/exe5), [exe6](https://github.com/nettaisen/exe6) and the shared
+  [exelib](https://github.com/nettaisen/exelib). They are checked out here as git submodules under `content/`.
+  Content is published separately from the app, which downloads it, and a replay always finds the content it was
+  recorded with.
+- **Graphics and sound** are decoded from the Legacy Collection's ROMs in memory as each game loads. Sound plays
+  through a port of the GBA's M4A sound driver, so the music is the ROM's own song data.
+- **Netplay** runs on [getgud](https://github.com/tangobattle/getgud) (rollback) and
+  [rennet](https://github.com/tangobattle/rennet) (inputs) over WebRTC data channels
+  ([str0m](https://github.com/algesten/str0m) on desktop, the browser's own on the web). Players meet through a
+  small signaling server, a Cloudflare Worker in `signaling/`, or connect directly.
+- **Verification** happens in a separate workspace: golden traces of real matches and thousands of recorded chip
+  scenarios, compared frame by frame (and sound by sound) with the original games running in an emulator.
+
+## Building from source
+
+You need Rust (stable, edition 2024), CMake (for SDL), and the Legacy Collection.
+
+```sh
+git clone --recursive https://github.com/nettaisen/nettai.git
+cd nettai
+cargo run --release -p nettai
 ```
 
-The [extractor documentation](crates/nettai-extract/README.md) describes the recipes, diagnostics and the API.
+In an existing clone or a new worktree, run `git submodule update --init` to get the content. Run from the
+repository, the app plays the checkout's `content/` and downloads nothing.
 
-You play one game at a time, EXE6, EXE5 or EXE4: a build and a match file name their game and a trace states its
-own (there is no default game), and the battle is that game's content, drawn and heard from its own assets. Then
-run the app:
+On Linux, also install the development packages for ALSA, fontconfig, udev, Wayland and xkbcommon (on
+Debian/Ubuntu: `cmake pkg-config libasound2-dev libfontconfig1-dev libudev-dev libwayland-dev libxkbcommon-dev`).
 
-    cargo run --release -p nettai
+### The ROMs
 
-(Building it needs CMake, for SDL: [docs/app.md](docs/app.md) §19.)
+The app finds the Legacy Collection through Steam. The command line, the tests and development read
+`$NETTAI_ROMS` first: either the collection's install folder, or a folder holding its twelve ROM files (any
+names; each file's header says which ROM it is).
 
-nettai ([docs/app.md](docs/app.md)) is the player's program, navigated by the keyboard, a gamepad, the mouse or
-touch. It opens on a main menu, the selected game's battles playing beside it: PLAY, online against another
-player; PRACTICE, offline against a dummy; BUILDS; REPLAYS; and Settings, kept between runs. The app is being
-rebuilt to a new design: the menu, Settings and the battle's host are built, and the other four screens aren't yet
-(`NETTAI_PRACTICE=<game>` starts a practice battle meanwhile). In the battle the arrows move, Z is A, X is B, A is
-L, S is R, Enter is START and Backspace is SELECT (Settings binds others, and a pad's buttons), and Esc opens the
-app's menu; in a practice battle, R starts over. A match file sets the game, its rounds (one `[[round]]` each: a set first to n
-round wins takes 2n - 1 at most, one for a single battle, three for the original's triple battle), each side's navi, folder, version, forms, patch cards,
-NaviCust and what its save brings to the stats (the rules build the rest); its optional `seed` sets the battle's
-RNG, and without one the seed comes from the clock ([docs/frontend.md](docs/frontend.md) §6).
+```sh
+export NETTAI_ROMS=~/path/to/roms
+cargo run --release -p nettai-content -- check exe6   # extract a game's assets and check them against its content
+```
 
-The picture keeps whole pixels at any window size. Chip names, telops, the chatbox's descriptions and messages and
-the HUD's text lines are drawn with a vector font at the window's resolution, over the pixel art: Noto Sans CJK,
-one design for every language (its Japanese cut for English and Japanese, its Simplified and Traditional cuts for
-Chinese), bundled under the SIL Open Font License in `crates/nettai-render/fonts`. The battle's lettered pictures
-(the banners, with their bar, the HUD's labels, the chip window's help pictures) are drawn there too, in the same
-font, and its numbers and the custom window's labels in Bungee, bundled beside it. The game's words in English,
-Japanese and Chinese are Mega Man Battle Network Legacy Collection's ([text-rendering.md](docs/design/text-rendering.md) §14). Settings' battle text draws them in
-the game's own fonts and pictures instead, exactly as the original does
-([text-rendering.md](docs/design/text-rendering.md) §9, §12); where the game has no font for the language
-(Chinese), its words are drawn there in pixel fonts, Fusion Pixel and Fusion Pixel Bold (§15).
+### Tests
 
-To play another player (the app's Play screen, not built yet; the library and the link under it are), both choose
-the same game and meet in a room of the signaling server by its code (the first in hosts, the left navi), through
-NATs with a public STUN server; or one hosts and the other joins
-directly, over a LAN, or over the Internet with the host's UDP port 47474 forwarded to the host's machine (nothing
-is exchanged before the connection, so nothing is authenticated). The signaling server is `signaling/`, a
-Cloudflare Worker; `npx wrangler dev` there runs one locally, and `npx wrangler deploy` puts it on your own
-Cloudflare account:
+```sh
+cargo test --workspace                                 # the engine on its own test content; no ROMs needed
+cargo run -p nettai-content-check                      # type-check and lint every content pack
+cargo test -p nettai-netplay -p nettai-rtc -p nettai-frontend   # netplay over a simulated lossy network
+```
 
-    cd signaling && npx wrangler dev                            # http://127.0.0.1:8787
-    NETTAI_SIGNAL=ws://127.0.0.1:8787 cargo run --release -p nettai
+### Command line
 
-One player asks the signaling server for a room, the server picks its code, and the other joins by that code.
-Both need the same engine, game and content (the lobby checks, and each is told what differs). Each brings
-their build (or a random side), which stays their own until the match: the lobby says nothing of it. The match's
-settings (the round wins its set is first to, whether builds are closed) are both players', and the two agree them in the lobby; each
-commits to its half of the seed and its side before either reveals them, and the battle's RNG comes from both
-halves. Both play with rollback: inputs go out every frame, the other player's are predicted until they arrive,
-and the battle is simulated again when a prediction was wrong. Each player's input delay is their own (4 ticks
-unless they say). The battle shows the round trip, the input delay and the rollbacks
-([docs/frontend.md](docs/frontend.md) §2, [rollback.md](docs/design/rollback.md) §4). A connection that drops is
-made again, and the battle goes on where it was (it says it is reconnecting meanwhile); after 30 seconds the match
-ends. The netplay tests play netbattles between two rollback sessions over a simulated network at several
-latencies, with loss, duplication and reordering, and over WebRTC on loopback (through an outage), and check that
-both peers stay in step:
+`nettai-tool` runs battles with no window: it renders frames, checks and exports replays, and audits content.
+`--help` lists everything; [docs/tools.md](docs/tools.md) explains it.
 
-    cargo test -p nettai-netplay -p nettai-rtc -p nettai-frontend
+```sh
+cargo run --release -p nettai-tools -- --match match.toml --headless 1-120 --out frames/   # frames to PNG
+cargo run --release -p nettai-tools -- --replay set.nettaireplay                          # does it reproduce?
+cargo run --release -p nettai-tools -- --replay set.nettaireplay --mp4 set.mp4            # replay to video
+```
 
-Every set played, alone or over the network, is recorded to the app's replays folder, and Replays watches one again
-from either console; a replay plays only on the engine and content it was made with
-([frontend.md](docs/frontend.md) §8).
+### Local signaling server
 
-The command line, `nettai-tool` ([docs/tools.md](docs/tools.md)), has no window: it renders chosen frames to PNGs,
-audits the content and the traces, says a match's setup and checks a replay. It reads the ROMs `$NETTAI_ROMS`
-names, and `--help` lists the options:
+```sh
+cd signaling && npx wrangler dev                      # http://127.0.0.1:8787
+NETTAI_SIGNAL=ws://127.0.0.1:8787 cargo run --release -p nettai
+```
 
-    cargo run --release -p nettai-tools -- --match match.toml --headless 1-120 --out <dir>   # render frames to PNG
-    cargo run --release -p nettai-tools -- <trace.jsonl> --headless 150,300 --out <dir>      # a recorded match's
-    cargo run --release -p nettai-tools -- --replay set.nettaireplay                                 # does it reproduce?
+### In a browser
 
-A trace is the recorded inputs of a real match; the traces live with the verification workspace (below).
+The app also runs in Chromium. `bash crates/nettai-web/build.sh` builds it and
+`python3 crates/nettai-web/serve.py` serves it at http://localhost:8000/. It needs nightly Rust, wasm-bindgen-cli
+and the WASI SDK; see [docs/app.md](docs/app.md) §6.
 
-These checks need no ROM:
+## Repository layout
 
-    cargo test --workspace                             # the engine on its own test content
-    cargo run -p nettai-content-check                  # every content module type-checks; the lints
+| Path | What it is |
+| --- | --- |
+| `crates/nettai-battle` | The battle engine: simulation core and the content model it runs on |
+| `crates/nettai-content-api`, `nettai-luau` | The API content scripts call, and the sandboxed Luau runtime |
+| `crates/nettai-content`, `nettai-content-check` | Loading content into the engine; type-checking and publishing it |
+| `crates/nettai-match` | Match files and builds, checked against a game's content |
+| `crates/nettai-extract`, `nettai-assets` | Asset extraction from the ROMs, and the graphics in typed form |
+| `crates/nettai-render`, `nettai-audio`, `m4a` | Drawing a battle into frames; sound through the M4A driver |
+| `crates/nettai-frontend` | Plays battles for a host app: live, online or from a replay (no window) |
+| `crates/nettai-netplay`, `nettai-rtc` | Rollback netplay, and its WebRTC transport |
+| `crates/nettai-replay`, `nettai-video` | The replay format; replays exported as MP4 |
+| `crates/nettai`, `nettai-ui` | The app (Slint), and its UI files |
+| `crates/nettai-platform`, `nettai-web` | System access shared by desktop and browser; the browser build |
+| `crates/nettai-tools` | `nettai-tool`, the command line |
+| `crates/nettai-training`, `training/` | A learned AI opponent (work in progress): the Rust side and the Python trainer |
+| `crates/exe4-compat`, `exe5-compat`, `exe6-compat` | Each game's original IDs, save import and trace formats (the engine never depends on these) |
+| `content/` | The game content repositories (submodules) |
+| `signaling/` | The matchmaking server (Cloudflare Worker) |
+| `packaging/` | Installers and release packages |
+| `docs/` | Documentation |
 
-## Editing Luau in Zed
+## Documentation
 
-Install the [Luau extension](https://github.com/4teapo/zed-luau), open the repository root, and generate the
-editor's type definitions once:
-
-    python3 .zed/generate-luau-definitions.py
-
-The project settings load the generated `.zed/luau-globals.d.luau`, use the new type solver, and select the
-standard Luau platform. The engine and pack declarations must be loaded together because they reference each
-other; passing each `.d.luau` to the server separately leaves unresolved types. The generated file is gitignored.
-The sources use `declare extern type`, which current luau-lsp and the project's content checker both understand.
-The launch arguments load only the combined file; `types.definitionFiles` also lists the source declarations so
-the server recognizes them as definitions when opened, rather than reporting syntax errors for ordinary scripts.
-
-After editing a source `.d.luau`, run the Zed task **Luau: regenerate editor definitions** (or the command above),
-then **editor: restart language server** from the command palette with a Luau file open. This also applies the
-configuration if the server was already running. The existing `content/.luaurc` supplies the pack require aliases.
-`nettai-content-check` remains the check for each pack's permitted dependencies and types; the editor loads all
-packs' declarations into one shared environment. The editor also follows imports and can report cross-module
-type errors that the checker, which types `require` as `any`, does not catch. A module with a same-named folder
-belongs in that folder's `init.luau`; luau-lsp resolves the folder before a sibling `.luau` file.
-
-To check every module with import resolution, regenerate the definitions and run the language server's CLI
-(using `luau-lsp` on your PATH, or the full path to Zed's downloaded binary):
-
-    luau-lsp analyze --platform=standard --flag:LuauSolverV2=true \
-      --definitions=.zed/luau-globals.d.luau --ignore='**/*.d.luau' content
-
-## Publishing content
-
-The app downloads each game's content from the game's site (`https://nettai.n1gp.net/exe6/` and so on), not from
-this repository: the content is released apart from the app, and a replay finds the content it was made with
-([content-deployment.md](docs/design/content-deployment.md)). To publish a game's content for this engine's line,
-once the game's and exelib's repositories have the commits on main and this checkout's submodules are at them:
-
-    cargo run --release -p nettai-content -- publish exe6 --dry-run   # check, bundle and hash it; show the release
-    cargo run --release -p nettai-content -- publish exe6             # make the release
-
-It needs `gh` signed in with write access to nettaisen/exe6 (the content hash is the content's alone: no ROM is
-read). The release, `0.11-r1` and on, holds the bundle; the repository's Pages workflow then puts
-it on the site. Publishing refuses a dirty or unpushed submodule, content that doesn't type-check, and the line's
-newest bundle again.
-
-Each game's repository locks the exelib it goes with (`depends.lock`), and `nettai-content-check` refuses a game
-whose lock isn't `content/exelib`'s commit. To change exelib: push the change to exelib's main, move
-`content/exelib` here, check the games against it, then
-
-    cargo run -p nettai-content -- lock   # each game's depends.lock to content/exelib's commit
-
-commit each game's `depends.lock` in its repository and push it, and move the game submodules here with exelib's.
-
-## Builds
-
-A build is a player's side of one game, named and kept in the app's data folder ([docs/app.md](docs/app.md) §8):
-the navi, the folder, the patch cards and NaviCust, and what the game's rules take of a side besides (its facts:
-EXE6's version, Crosses and Beast Out, EXE5's light or dark MegaMan and souls), each by its name in the game, written as a match
-file writes a side ([docs/frontend.md](docs/frontend.md) §6). A side states no stats: the game's rules build them
-as the round is set up.
-
-The app's Builds screen, which makes and edits them, isn't built yet in the redesigned app. What it asks of a game
-is `nettai-match`'s `build` ([docs/frontend.md](docs/frontend.md) §6): the game's versions and a new build of
-each, from the game's own data; a build checked against the content, each thing wrong typed; its overview; the
-chips the rules allow. A side can also be read from a save of the build's game (a .sav, or a raw save image as
-Tango's netplay templates hold), through the game's compat crate; a save of another game is refused. Every build
-plays at the most its game allows: what a save brings to the stats, the navi code's level, the SP navi times,
-EXE5's auto battle records and its Chaos Unison stay at the rules' defaults.
-
-A whole match file (both sides and the rounds) is written by hand, or by `nettai-tool --match FILE --save-match OUT`
-(the match with its seed).
-
-## Docs
-
-- [`docs/design`](docs/design): how the engine and its content are built: the content model
-  ([content-model-v2.md](docs/design/content-model-v2.md)), how to write content
-  ([content-migration.md](docs/design/content-migration.md)), scripting, the content root, rollback, the NaviCust
-  ([navicust.md](docs/design/navicust.md)), what other games would need
-  ([multi-game.md](docs/design/multi-game.md)), and where Rust ends and a game's Luau begins
-  ([rust-and-luau.md](docs/design/rust-and-luau.md)).
-- [`docs/engine`](docs/engine): the original game's battle routines, specified from the disassembly.
-- [`docs/frontend.md`](docs/frontend.md): the frontend, and match files (§6).
-- [`docs/app.md`](docs/app.md): the app: how the battle is hosted in its window, the shell and its screens, the
-  design system, and what it costs to build. [`docs/design/app-ui.md`](docs/design/app-ui.md) is its design.
-- [`docs/tools.md`](docs/tools.md): the command line, its frames and audits.
-
-## Verification
-
-The engine is verified against the original game in a separate workspace, `bn6battle-verify`: golden traces of
-real matches and a chip lab of recorded scenarios, compared frame by frame with the engine. Nothing in this
-repository depends on it.
+- [docs/content.md](docs/content.md): editing content (in Zed), checking it, and publishing it.
+- [docs/design](docs/design): how the engine and content are built, starting with the content model
+  ([content-model-v2.md](docs/design/content-model-v2.md)), where Rust ends and Luau begins
+  ([rust-and-luau.md](docs/design/rust-and-luau.md)), and [rollback.md](docs/design/rollback.md).
+- [docs/engine](docs/engine): the original games' battle routines, specified from the disassembly.
+- [docs/frontend.md](docs/frontend.md): the frontend library, and the match file format (§6).
+- [docs/app.md](docs/app.md): the app, its screens and packaging; [design/app-ui.md](docs/design/app-ui.md) is its
+  design.
+- [docs/tools.md](docs/tools.md): the command line.
 
 ## License
 
-nettai is under the Mozilla Public License 2.0 ([LICENSE](LICENSE)), every crate of the workspace and the
-signaling server alike. What is in it from others keeps its own license: the fonts under the SIL Open Font License
-(each folder's `OFL.txt`), and `crates/nettai-luau/wasm/Unwind-wasm.c`, LLVM's, under the Apache License 2.0 with
-LLVM Exceptions (`LICENSE-LLVM` beside it). The app's About screen lists the packages it is built from, each with
-its license.
+nettai is licensed under the [Mozilla Public License 2.0](LICENSE). Bundled third-party files keep their own
+licenses: the fonts are under the SIL Open Font License (each folder's `OFL.txt`), and
+`crates/nettai-luau/wasm/Unwind-wasm.c` is LLVM's, under the Apache License 2.0 with LLVM Exceptions. The app's
+About screen lists every package it is built from.
+
+Mega Man Battle Network is a trademark of CAPCOM CO., LTD. nettai is a fan project and is not affiliated with,
+funded by, or in any way associated with Capcom.
