@@ -295,3 +295,34 @@ fn a_dark_megaman_switches() {
     assert_eq!((b.party[0].active, b.party[0].switches), (0, 2), "and back to him");
     assert_eq!(emotion_name(&b, 0), "evil", "his mood kept in his block");
 }
+
+/// A switch to a member whose support acts (EXE5 DS's busy flag, the
+/// party block's +0xC + member, 0x02004B80) is refused in battle with the
+/// refusal's sound on both consoles (0x0203C62E: the navi's input, which
+/// each console runs). Benched NapalmMan with P.Spport comes out to fire;
+/// asked for meanwhile, he isn't switched in.
+#[test]
+fn a_switch_to_a_supporting_member_is_refused() {
+    use nettai_battle::content::SoundRole;
+    let content = exe5_content();
+    let megaman = crate::double_attacks::side(&[]);
+    let left = megaman.replace("party = []\n", "party = [{ navi = \"napalmman\", programs = [\"p-spport\"] }]\n");
+    let mut b = fighting_sides(&content, &left, &megaman);
+    let support = b.content.defs.kind_by_key("napalmman/support").expect("NapalmMan's support");
+    let out = |b: &Battle| b.objects.in_order().any(|q| b.objects.get(q).kind == support);
+    for _ in 0..600 {
+        if out(&b) && !b.is_dimmed() {
+            break;
+        }
+        b.tick(&Default::default(), Default::default());
+    }
+    assert!(out(&b), "NapalmMan came out to support");
+    b.tick(&[PlayerTick { switch_to: Some(1), ..Default::default() }, Default::default()], Default::default());
+    let refused = nettai_battle::SoundCue::Effect(b.roles().sound(SoundRole::Refused));
+    assert!(out(&b), "still out as the request came");
+    assert!([0, 1].iter().all(|&s| b.sound_cues_for(s).contains(&refused)), "the refusal heard on both consoles");
+    for _ in 0..80 {
+        b.tick(&Default::default(), Default::default());
+    }
+    assert_eq!((b.party[0].active, b.party[0].switches), (0, 0), "no switch");
+}
