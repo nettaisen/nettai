@@ -16,7 +16,7 @@ use crate::shell::App;
 use nettai_battle::input::keys;
 use slint::ComponentHandle;
 use slint::platform::{Key, WindowEvent};
-use slint::winit_030::winit::keyboard::KeyCode;
+use i_slint_backend_winit::winit::keyboard::KeyCode;
 use std::cell::RefCell;
 use std::rc::Rc;
 

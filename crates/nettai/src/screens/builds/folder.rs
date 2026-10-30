@@ -44,7 +44,7 @@ use nettai_match::folders::{self, View};
 use nettai_match::ruleset::Item;
 use nettai_match::{Folder as Chips, Wrong};
 use nettai_ui::{ChipCell, ChipDetail, ChipMark, EditorTab, FolderCounts, FolderView, LibraryRow};
-use slint::winit_030::winit::keyboard::KeyCode;
+use i_slint_backend_winit::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::collections::HashMap;
 

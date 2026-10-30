@@ -1001,7 +1001,7 @@ const AWAY: u64 = 8000;
 fn away(what: &'static str, gone: bool) -> Step {
     Box::new(move |ui, _, _| {
         crate::errors::log("play apart", &if gone { format!("the window away ({what})") } else { "the window back".to_string() });
-        slint::winit_030::WinitWindowAccessor::with_winit_window(ui.window(), |w| match what {
+        i_slint_backend_winit::WinitWindowAccessor::with_winit_window(ui.window(), |w| match what {
             "minimize" => w.set_minimized(gone),
             _ => w.set_visible(!gone),
         });

@@ -1,0 +1,5 @@
+# The certificate verifier's Android component (rustls-platform-verifier's Kotlin, which reqwest's checks call
+# through JNI): the AAR org.rustls:rustls-platform-verifier of the version Cargo.lock's rustls-platform-verifier-android
+# is, from the Maven repository the project keeps on its GitHub branch maven-archive, checked by its SHA-256.
+# packaging/android/package.sh downloads it; when Cargo.lock moves to another version, pin that one's here.
+aa021794230fbc2f0be355999e2cf67398dd563de066a2e17001ffbd0b69101b  rustls-platform-verifier-0.2.0.aar

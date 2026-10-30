@@ -1,5 +1,5 @@
-//! Android's pickers, save dialog and clipboard: the system's own, started by `nettai.dialogs.NettaiFiles`
-//! (crates/nettai-dialogs/android, which the APK's build compiles in), whose answers come through the native methods
+//! Android's pickers, save dialog and clipboard: the system's own, started by `nettai.dialogs.NettaiFiles` (Kotlin:
+//! crates/nettai-dialogs/android, which the APK's build compiles in), whose answers come through the native methods
 //! registered here, on Java's threads.
 //!
 //! Files picked are copied into their lot through the activity's content resolver (`NettaiFiles.copy`); of a folder

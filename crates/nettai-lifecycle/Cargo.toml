@@ -24,7 +24,8 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["std
 objc2-ui-kit = { version = "0.3", default-features = false, features = ["std", "UIApplication", "UIResponder"] }
 objc2-avf-audio = { version = "0.3", default-features = false, features = ["std", "AVAudioSessionTypes"] }
 
-# Android: the window's screen kept on, through the activity nettai-android keeps.
+# Android: the window's screen kept on, by android/nettai/lifecycle/NettaiAwake.kt (Kotlin, which the APK's build
+# compiles in: packaging/android/package.sh) through JNI, on the activity nettai-android keeps.
 [target.'cfg(target_os = "android")'.dependencies]
 nettai-android = { path = "../nettai-android" }
-android-activity = { version = "0.6", features = ["native-activity"] }
+jni = "0.22"

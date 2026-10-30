@@ -1,6 +1,7 @@
 # The app's releases (packaging/; docs/app.md §19, "Packaging"): Velopack's, a Windows installer, the macOS app
 # zipped (Apple silicon's, Intel's, and the universal one the installs of 0.12.0 and before update through) and a Linux
-# AppImage, each with the update package and feed the installed app's updater reads (crates/nettai's updates.rs).
+# AppImage, each with the update package and feed the installed app's updater reads (crates/nettai's updates.rs); and
+# Android's APK, which goes up only when it is signed with the release key (the job says how).
 # Run by hand on main (Actions → Release → Run workflow, or `gh workflow run release.yml --ref main`):
 # it packages the version Cargo.toml says, tags that commit `v<version>` and publishes the release, which the installed
 # apps see at once (the user: "you should just publish the release instead of drafting it"); with `publish` off, the
@@ -258,10 +259,73 @@ jobs:
           path: target/package/linux/releases/*
           if-no-files-found: error
 
+  # The APK for Android phones on arm64 (packaging/android/package.sh; docs/app.md §7), with the runner's SDK and
+  # NDK. Signed with the release key when the secrets hold one (ANDROID_KEYSTORE, the keystore's base64;
+  # ANDROID_KEYSTORE_PASSWORD; ANDROID_KEY_ALIAS), and then it goes up with the release; else with a debug key made
+  # here, as the run's artifact alone (an APK signed with one key doesn't install over one signed with another).
+  android:
+    name: Android APK
+    needs: icons
+    runs-on: ubuntu-24.04
+    outputs:
+      signed: ${{ steps.keystore.outputs.signed }}
+    env:
+      ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+      # (kotlinc where the runner has none: Homebrew's pin of the same zip.)
+      KOTLIN_VERSION: 2.4.21
+      KOTLIN_SHA256: 7cc140e76daf416a0424a5557f99afd7ca89ebd463ea1101261e3e01c33e75cd
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: icons
+          path: ${{ runner.temp }}/icons
+      # ($ANDROID_HOME and $ANDROID_NDK_HOME are the runner's.)
+      - name: Android platform and build tools
+        run: |
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'platforms;android-36' 'build-tools;36.0.0' > /dev/null
+      - name: Kotlin
+        run: |
+          if ! command -v kotlinc > /dev/null; then
+            curl --fail --location --silent --show-error --output "$RUNNER_TEMP/kotlin.zip" \
+              "https://github.com/JetBrains/kotlin/releases/download/v$KOTLIN_VERSION/kotlin-compiler-$KOTLIN_VERSION.zip"
+            echo "$KOTLIN_SHA256  $RUNNER_TEMP/kotlin.zip" | sha256sum --check --quiet
+            unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
+            echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
+          fi
+      - name: Rust
+        run: |
+          rustup toolchain install stable --profile minimal --target aarch64-linux-android --no-self-update
+          rustup default stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # (crates/nettai/build.rs lists the packages offline: every one is fetched first.)
+      - name: Fetch the crates
+        run: cargo fetch --locked
+      - name: Signing key
+        id: keystore
+        if: env.ANDROID_KEYSTORE != ''
+        run: |
+          base64 --decode <<<"$ANDROID_KEYSTORE" > "$RUNNER_TEMP/nettai.keystore"
+          echo "NETTAI_ANDROID_KEYSTORE=$RUNNER_TEMP/nettai.keystore" >> "$GITHUB_ENV"
+          echo "signed=true" >> "$GITHUB_OUTPUT"
+      - name: Package
+        env:
+          NETTAI_ICONS: ${{ runner.temp }}/icons
+          NETTAI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          NETTAI_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          kotlinc -version
+          packaging/android/package.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-apk
+          path: target/package/android/nettai-*.apk
+          if-no-files-found: error
+
   release:
     name: Release
     if: inputs.publish && github.ref == 'refs/heads/main'
-    needs: [windows, macos, linux]
+    needs: [windows, macos, linux, android]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -318,6 +382,18 @@ jobs:
             vpk upload github --outputDir releases --channel "$channel" --repoUrl "https://github.com/$GITHUB_REPOSITORY" \
               --tag "$TAG" --releaseName "nettai $VERSION" --merge
           done
+      # The APK, when it is signed with the release key.
+      - uses: actions/download-artifact@v8
+        if: needs.android.outputs.signed == 'true'
+        with:
+          name: android-apk
+          path: android
+      - name: Upload the APK
+        if: needs.android.outputs.signed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.tag.outputs.tag }}
+        run: gh release upload "$TAG" android/nettai-*.apk --repo "$GITHUB_REPOSITORY" --clobber
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}

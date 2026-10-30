@@ -446,6 +446,12 @@ impl Output {
         let _ = self._stream.play();
     }
 
+    /// Stop the device till [`Output::resume`]: an Android app's sound while it is in the background, where Android
+    /// would play it on.
+    pub fn pause(&self) {
+        let _ = self._stream.pause();
+    }
+
     /// Queue samples for the device: what the battle's ticks since the last
     /// call rendered. (Past a second queued, which the callback never lets
     /// happen while it runs, the newest are dropped.)

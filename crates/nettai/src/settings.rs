@@ -163,7 +163,7 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use slint::winit_030::winit::keyboard::KeyCode;
+    use i_slint_backend_winit::winit::keyboard::KeyCode;
 
     /// Settings read back as written; a file of other keys, or none, is the defaults.
     #[test]

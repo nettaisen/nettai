@@ -15,7 +15,7 @@ use nettai_battle::content::ChipClass;
 use crate::screens::ScreenId;
 use crate::shell::App;
 use nettai_ui::{BuildsView, EditorTab, NavicustView};
-use slint::winit_030::winit::keyboard::KeyCode;
+use i_slint_backend_winit::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, Model};
 use std::cell::RefCell;
 use std::rc::Rc;

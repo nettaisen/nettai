@@ -42,11 +42,12 @@ export component AppWindow inherits Window {
     // the battle.
     property <bool> in-battle: Shell.battle != BattleKind.none && Shell.battle-full;
     property <bool> covered: Shell.loading || Shell.versus || root.in-battle;
-    // The safe area's insets, in the UI's units, for the app (`Shell::fit_window`).
-    out property <length> safe-left: self.safe-area-insets.left;
-    out property <length> safe-top: self.safe-area-insets.top;
-    out property <length> safe-right: self.safe-area-insets.right;
-    out property <length> safe-bottom: self.safe-area-insets.bottom;
+    // The safe area's insets, in the UI's units, for the app (`Shell::fit_window`): Slint's, or on Android the app's
+    // (Slint has none there: crates/nettai/src/activity.rs).
+    in-out property <length> safe-left: self.safe-area-insets.left;
+    in-out property <length> safe-top: self.safe-area-insets.top;
+    in-out property <length> safe-right: self.safe-area-insets.right;
+    in-out property <length> safe-bottom: self.safe-area-insets.bottom;
     title: "nettai";
     // (The taskbar's and the title bar's, where the system draws one: macOS takes the app bundle's.)
     icon: @image-url("../../../docs/logo/nettai-icon.svg");

@@ -11,6 +11,8 @@
 //! hides the window for a while; `NETTAI_TOUR=<folder>` walks every
 //! screen and writes each to a PNG (`tour`: a build with the `tour` feature's alone).
 
+#[cfg(target_os = "android")]
+mod activity;
 mod backgrounds;
 mod battle;
 mod builds;
@@ -44,7 +46,7 @@ mod tour;
 use nav::{Rect, Registry};
 use nettai_ui::AppWindow;
 use shell::{App, NavInput};
-use slint::winit_030::{EventResult, WinitWindowAccessor, winit};
+use i_slint_backend_winit::{EventResult, WinitWindowAccessor, winit};
 use slint::{ComponentHandle, RenderingState};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -68,6 +70,19 @@ pub(crate) fn with_app(f: impl FnOnce(&mut App)) {
     }
 }
 
+/// Slint on winit, everywhere: the app hears winit's events before Slint does (`wire`), the same on every system.
+/// The renderer is whichever the build has: the clock needs one that tells when it draws, as every GPU renderer
+/// does, femtovg's and Skia's; Slint's software renderer doesn't, and the window says so. (`tour`: the screenshot
+/// pass's window doesn't take the keyboard.)
+#[cfg(not(target_os = "android"))]
+fn select_backend(tour: bool) -> Result<(), slint::PlatformError> {
+    let mut backend = slint::BackendSelector::new().backend_name("winit".into());
+    if tour {
+        backend = backend.with_winit_window_attributes_hook(|a| a.with_active(false));
+    }
+    backend.select()
+}
+
 /// The app: its window opened and its loop run (on the desktop till it ends; in the browser the page's loop runs
 /// it, and this returns once it is started).
 pub fn run() -> Result<(), slint::PlatformError> {
@@ -81,14 +96,10 @@ pub fn run() -> Result<(), slint::PlatformError> {
         eprintln!("nettai: this build has no screenshot pass (NETTAI_TOUR): build it with `--features tour`");
         std::process::exit(2);
     }
-    // (The renderer is whichever the build has: the clock needs one that tells when it draws, as every GPU
-    // renderer does, femtovg's and Skia's; Slint's software renderer doesn't, and the window says so below.)
-    let mut backend = slint::BackendSelector::new().backend_name("winit".into());
-    if tour.is_some() {
-        // (The screenshot pass's window doesn't take the keyboard.)
-        backend = backend.with_winit_window_attributes_hook(|a| a.with_active(false));
-    }
-    backend.select()?;
+    #[cfg(not(target_os = "android"))]
+    select_backend(tour.is_some())?;
+    #[cfg(target_os = "android")]
+    activity::select_backend()?;
     lang::register_fonts();
     let ui = AppWindow::new()?;
     #[cfg(target_arch = "wasm32")]
@@ -205,7 +216,16 @@ pub fn run() -> Result<(), slint::PlatformError> {
             WindowEvent::Focused(false) => {
                 if let Ok(mut app) = state.try_borrow_mut() {
                     app.unfocused();
+                    // (An Android app's sound plays on in the background: it stops till the app is back.)
+                    #[cfg(target_os = "android")]
+                    app.shell.sound.pause();
                 }
+                EventResult::Propagate
+            }
+            // (Android's app back in front: its sound starts again, as the sound hears from `nettai_lifecycle`.)
+            #[cfg(target_os = "android")]
+            WindowEvent::Focused(true) => {
+                nettai_lifecycle::came_back();
                 EventResult::Propagate
             }
             // (`NETTAI_PLAY_STATS`: whether the system says the window is covered, for the clock's figures.)
@@ -249,7 +269,10 @@ pub fn run() -> Result<(), slint::PlatformError> {
     if let Some(dir) = tour {
         tour::start(&ui, &app, dir);
     }
+    #[cfg(not(target_os = "android"))]
     ui.run()?;
+    #[cfg(target_os = "android")]
+    activity::run(&ui)?;
     // (The screenshot pass found something cut or moved, or was ended before its walk was done.)
     #[cfg(feature = "tour")]
     tour::ended(quit::asked());
@@ -270,7 +293,7 @@ fn window_probe(ui: &AppWindow, probe: &str) {
     let (after, long) = (seconds(), seconds());
     let set = move |ui: &AppWindow, away: bool| {
         eprintln!("window probe: {}", if away { format!("{what} now") } else { "back".to_string() });
-        slint::winit_030::WinitWindowAccessor::with_winit_window(ui.window(), |w| match what.as_str() {
+        i_slint_backend_winit::WinitWindowAccessor::with_winit_window(ui.window(), |w| match what.as_str() {
             "minimize" => w.set_minimized(away),
             _ => w.set_visible(!away),
         });

@@ -35,7 +35,11 @@ nettai-content-api = { path = "../nettai-content-api" }
 # The audio device (`Output`: the `playback` feature, cpal).
 nettai-audio = { path = "../nettai-audio" }
 # The window's types (the features are nettai-ui's).
-slint = { version = "1.18", default-features = false, features = ["std", "backend-winit", "compat-1-2", "unstable-winit-030", "unstable-fontique-011"] }
+slint = { version = "1.18", default-features = false, features = ["std", "backend-winit", "compat-1-2", "unstable-fontique-011"] }
+# Slint's winit backend, whose window events the app hears before Slint does (`on_winit_window_event`, the
+# window's own: `WinitWindowAccessor`), on every system: what `slint::winit_030` re-exports, used directly, as that
+# module (Slint's `unstable-winit-030`) doesn't build for Android. The version slint is, exactly.
+i-slint-backend-winit = { version = "=1.18.1", default-features = false }
 # Gamepads, one pull-based API over each system's (SDL3 on the desktop, the browser's, GameController on iOS,
 # Android's events). It says what goes wrong through `log`: it goes to the app's log file.
 nettai-gamepad = { path = "../nettai-gamepad" }
@@ -75,6 +79,19 @@ nettai-extract = { path = "../nettai-extract" }
 # zip 8, all of whose versions are yanked).
 [target.'cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android")))'.dependencies]
 velopack = "=1.3.39-g8d2844f"
+# Android: Slint's winit backend set by the app (`select_backend`), as Slint's selector offers none there, with femtovg
+# on the activity's OpenGL ES (the version slint is, exactly); winit on the activity android-activity runs
+# (NativeActivity: nettai-android's), and the activity handed over first.
+# (The screenshot pass's window that doesn't take the keyboard: the selector's winit hook, which Android's selector
+# hasn't.)
+[target.'cfg(not(target_os = "android"))'.dependencies]
+slint = { version = "1.18", default-features = false, features = ["unstable-winit-030"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+i-slint-backend-winit = { version = "=1.18.1", default-features = false, features = ["renderer-femtovg"] }
+winit = { version = "0.30", default-features = false, features = ["rwh_06", "android-native-activity"] }
+nettai-android = { path = "../nettai-android" }
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # The program runs under tokio (main.rs: `#[tokio::main]`, Slint's loop in `block_in_place`), so the futures the
 # window's loop runs can use reqwest (`nettai_http`).

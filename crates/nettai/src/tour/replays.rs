@@ -29,7 +29,7 @@ use nettai_frontend::driver::{InFight, LivePlayer, OnCustomScreen, Opponent, bot
 use nettai_frontend::replay::{Info, MatchKind, Recorder, Replay};
 use nettai_frontend::session::Session;
 use nettai_ui::{AppWindow, ExportState, ReplaysView, Theme};
-use slint::winit_030::winit::keyboard::KeyCode;
+use i_slint_backend_winit::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, Model};
 use std::io::Write;
 use std::path::Path;

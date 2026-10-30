@@ -62,7 +62,7 @@ use nettai_match::Side;
 use nettai_match::build::{Checked, Overview, Stat};
 use nettai_match::ruleset::Item;
 use nettai_ui::{BuildWords, CellKind, Crossing, ColorSlot, EditorTab, EffectKind, EffectLine, GridCell, NavicustView, PieceCell, ProgramColor, ProgramDetail, ProgramRow, ProgramState};
-use slint::winit_030::winit::keyboard::KeyCode;
+use i_slint_backend_winit::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
 use std::collections::HashMap;
 use std::sync::Arc;

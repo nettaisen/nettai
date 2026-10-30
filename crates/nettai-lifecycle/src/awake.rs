@@ -7,7 +7,7 @@
 //! loaded the machine, it stopped mid-walk and never went on.) There an `Awake` is an activity that says so, and
 //! that keeps the display on (a player on a pad presses no key). A phone dims and locks its screen after a while
 //! without a touch, which a player watching a battle or holding a pad doesn't give: there it keeps the screen on
-//! (iOS's idle timer turned off; Android's window kept on, `FLAG_KEEP_SCREEN_ON`). Windows, Linux and a browser
+//! (iOS's idle timer turned off; Android's window kept on, `FLAG_KEEP_SCREEN_ON`: android/nettai/lifecycle/NettaiAwake.kt). Windows, Linux and a browser
 //! have nothing to hold.
 
 /// What is held, for as long as this is.
@@ -59,14 +59,21 @@ fn keep_screen_on(on: bool) {
         Some(main) => objc2_ui_kit::UIApplication::sharedApplication(main).setIdleTimerDisabled(on),
         None => log::warn!("keeping the screen on: not on the main thread"),
     }
+    // (Not android-activity's `set_window_flags`: it takes the activity's state to write, which android-activity
+    // holds to read while the app's loop runs, where this is called, and waits for itself.)
     #[cfg(target_os = "android")]
-    match nettai_android::app() {
-        Ok(app) => {
-            use android_activity::WindowManagerFlags as Flags;
-            let (add, remove) = if on { (Flags::KEEP_SCREEN_ON, Flags::empty()) } else { (Flags::empty(), Flags::KEEP_SCREEN_ON) };
-            app.set_window_flags(add, remove);
-        }
-        Err(why) => log::warn!("keeping the screen on: {why}"),
+    if let Err(why) = nettai_android::java(|env, activity| {
+        use jni::objects::{JClass, JValue};
+        use jni::{jni_sig, jni_str};
+        // (By the activity's class loader: a native thread's `FindClass` sees only the system's classes.)
+        let loader = env.call_method(activity, jni_str!("getClassLoader"), jni_sig!("()Ljava/lang/ClassLoader;"), &[])?.l()?;
+        let name = env.new_string("nettai.lifecycle.NettaiAwake")?;
+        let class = env.call_method(&loader, jni_str!("loadClass"), jni_sig!("(Ljava/lang/String;)Ljava/lang/Class;"), &[JValue::Object(&name)])?.l()?;
+        let class = env.cast_local::<JClass>(class)?;
+        env.call_static_method(&class, jni_str!("keepScreenOn"), jni_sig!("(Landroid/app/Activity;Z)V"), &[JValue::Object(activity), JValue::Bool(on)])?;
+        Ok(())
+    }) {
+        log::warn!("keeping the screen on: {why}");
     }
     #[cfg(not(any(target_os = "ios", target_os = "android")))]
     let _ = on;

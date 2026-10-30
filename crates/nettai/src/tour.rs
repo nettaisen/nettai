@@ -34,7 +34,7 @@ use crate::screens::ScreenId;
 use crate::shell::App;
 use nettai_battle::input::keys;
 use nettai_ui::{AppWindow, Audit, BattleKind, Theme};
-use slint::winit_030::winit::event::TouchPhase;
+use i_slint_backend_winit::winit::event::TouchPhase;
 use slint::{ComponentHandle, PhysicalSize, Rgba8Pixel, SharedPixelBuffer, Timer};
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeSet;
@@ -218,7 +218,7 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
             Box::new(move |ui, _, _| {
                 // (In the display's pixels: the window's own scale is the app's to set.)
                 let os =
-                    slint::winit_030::WinitWindowAccessor::with_winit_window(ui.window(), |w| {
+                    i_slint_backend_winit::WinitWindowAccessor::with_winit_window(ui.window(), |w| {
                         w.scale_factor()
                     })
                     .unwrap_or(1.0);

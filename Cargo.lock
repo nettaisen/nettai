@@ -3714,11 +3714,13 @@ dependencies = [
  "exe4-compat",
  "exe5-compat",
  "exe6-compat",
+ "i-slint-backend-winit",
  "icu_casemap",
  "icu_list",
  "icu_locale_core",
  "libc 0.2.190",
  "log",
+ "nettai-android",
  "nettai-audio",
  "nettai-battle",
  "nettai-content",
@@ -3750,6 +3752,7 @@ dependencies = [
  "toml 0.8.23",
  "velopack",
  "web-time",
+ "winit",
  "winresource",
 ]
 
@@ -3759,6 +3762,18 @@ version = "0.1.0"
 dependencies = [
  "android-activity",
  "jni",
+]
+
+[[package]]
+name = "nettai-android-app"
+version = "0.17.0"
+dependencies = [
+ "android-activity",
+ "cc",
+ "nettai",
+ "nettai-android",
+ "rustls-platform-verifier",
+ "tokio",
 ]
 
 [[package]]
@@ -3937,8 +3952,8 @@ dependencies = [
 name = "nettai-lifecycle"
 version = "0.1.0"
 dependencies = [
- "android-activity",
  "block2 0.6.2",
+ "jni",
  "log",
  "nettai-android",
  "objc2 0.6.4",

@@ -21,9 +21,9 @@ use nettai_frontend::game::GraphicsMode;
 use nettai_dialogs::Filter;
 use nettai_page::text_entry::Entry;
 use nettai_ui::{AppWindow, ButtonKind, DialogButton, Theme};
-use slint::winit_030::WinitWindowAccessor;
-use slint::winit_030::winit::event::{ElementState, KeyEvent, TouchPhase};
-use slint::winit_030::winit::keyboard::{KeyCode, PhysicalKey};
+use i_slint_backend_winit::WinitWindowAccessor;
+use i_slint_backend_winit::winit::event::{ElementState, KeyEvent, TouchPhase};
+use i_slint_backend_winit::winit::keyboard::{KeyCode, PhysicalKey};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -282,7 +282,7 @@ impl Shell {
     /// Something the player waited for has come (the other player at their lobby): the taskbar's button
     /// flashes, or the dock's icon bounces, until the window is brought forward (nothing while it is).
     pub fn call_attention(&self) {
-        use slint::winit_030::winit::window::UserAttentionType;
+        use i_slint_backend_winit::winit::window::UserAttentionType;
         self.ui().window().with_winit_window(|w| w.request_user_attention(Some(UserAttentionType::Critical)));
     }
 
@@ -904,6 +904,8 @@ impl Shell {
             return false;
         }
         let os = window.with_winit_window(|w| w.scale_factor() as f32).unwrap_or(1.0).max(0.1);
+        #[cfg(target_os = "android")]
+        crate::activity::safe_area(&ui);
         // The room the screens have: the window less a phone's safe area's insets (none elsewhere), which Slint
         // gives in the UI's units as they are now, in the system's points.
         let inset = |a: f32, b: f32| (a + b) * self.scale.unit;

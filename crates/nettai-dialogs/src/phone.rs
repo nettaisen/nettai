@@ -1,5 +1,5 @@
 //! A phone's pickers, its share sheet and its clipboard: iOS's UIKit ([`ios`]), Android's through its activity's
-//! Java side ([`android`], with `android/NettaiFiles.java`).
+//! Kotlin side ([`android`], with `android/nettai/dialogs/NettaiFiles.kt`).
 //!
 //! As in a browser, what the player picks is read in: copied into the app's temporary folder, a lot of its own
 //! (`picked/<n>`), and the app is given the copies' paths. Of a folder, only the files at `wanted` (paths in it, as

@@ -65,7 +65,7 @@ use crate::rulesets::{self, Pickable};
 use list::Naming;
 use crate::errors::UserError;
 use crate::games::Names;
-use slint::winit_030::winit::keyboard::KeyCode;
+use i_slint_backend_winit::winit::keyboard::KeyCode;
 use crate::input::{Action, KeyPress, Scroll, button_index, key_cap, pad_cap, pad_face};
 use crate::nav::Key;
 use crate::screens::{Screen, ScreenId, practice, settings};

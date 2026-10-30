@@ -49,7 +49,7 @@ use nettai_match::Wrong;
 use nettai_match::build::{Budget, Checked, EntryRefusal};
 use nettai_match::facts::Stated;
 use nettai_ui::{BuildWords, CardCounts, CardDetail, CardLine, CardRow, EditorTab, PatchCardsView};
-use slint::winit_030::winit::keyboard::KeyCode;
+use i_slint_backend_winit::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 
 /// The setup field of the cards installed.

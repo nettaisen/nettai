@@ -11,7 +11,7 @@ use crate::shell::App;
 use super::{Pair, SETTLE, Step};
 use nettai_ui::{BuildsView, EditorTab};
 use slint::{ComponentHandle, Model};
-use slint::winit_030::winit::keyboard::KeyCode;
+use i_slint_backend_winit::winit::keyboard::KeyCode;
 
 /// The walk is where its last picture's name says: on tab `tab` of the editor. If it isn't, the report says so
 /// (as a text the pass counts against the picture, so the pass fails): a picture of another tab under this name

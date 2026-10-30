@@ -44,7 +44,7 @@ use nettai_battle::content::{ActorEntry, Emotion, EmotionWhen, StageData};
 use nettai_content_api::StageHandle;
 use nettai_match::{Match, RoundSettings, Set, Side};
 use nettai_ui::{BattleKind, GettingReady, PracticeOption, PracticeRow, PracticeView, VersusCard};
-use slint::winit_030::winit::keyboard::KeyCode;
+use i_slint_backend_winit::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::rc::Rc;
 use web_time::Instant;

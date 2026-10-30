@@ -365,7 +365,7 @@ pub fn ask_clear(shell: &mut Shell, question: slint::SharedString, empty: bool) 
 /// Whether `key` is CLEAR's (X, as the tabs' hints say; not a letter typed on a text field, nor a key the menus
 /// take: the one bound to L or R, which change the tab).
 pub fn clear_key(shell: &Shell, key: &KeyPress) -> bool {
-    key.code == slint::winit_030::winit::keyboard::KeyCode::KeyX && !key.repeat && !shell.nav.on_field() && crate::input::menu_action(key.code, key.shift, &shell.bindings).is_none()
+    key.code == i_slint_backend_winit::winit::keyboard::KeyCode::KeyX && !key.repeat && !shell.nav.on_field() && crate::input::menu_action(key.code, key.shift, &shell.bindings).is_none()
 }
 
 /// Whether the dialog answered (`tag`, `choice`) said CLEAR.

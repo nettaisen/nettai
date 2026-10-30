@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- nettai's APK (packaging/android/package.sh fills in the version). The activity is a NativeActivity
+     (crates/nettai-android-app/android/nettai/app/NettaiActivity.kt), which loads libnettai_app.so and runs its
+     android_main; the app reads its input and draws through winit (docs/app.md §7). It isn't made again as the
+     phone turns or a keyboard comes and goes (configChanges): winit hears the new size, and a dialog's fragment
+     answers the activity that asked. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="io.github.bigfarts.nettai"
+    android:versionCode="@VERSION_CODE@"
+    android:versionName="@VERSION@">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-feature android:glEsVersion="0x00030000" android:required="true" />
+    <!-- (A touch screen isn't required: a TV or a box with a pad plays too.) -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.hardware.gamepad" android:required="false" />
+
+    <!-- The certificate verifier's (rustls-platform-verifier's Android component) network security config: plain HTTP
+         to the certificate authorities' revocation lists alone. -->
+    <application
+        android:label="nettai"
+        android:icon="@mipmap/ic_launcher"
+        android:hasCode="true"
+        android:extractNativeLibs="false"
+        android:isGame="true"
+        android:appCategory="game"
+        android:networkSecurityConfig="@xml/network_security_config">
+        <activity
+            android:name="nettai.app.NettaiActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.DeviceDefault.NoActionBar"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|density">
+            <meta-data android:name="android.app.lib_name" android:value="nettai_app" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

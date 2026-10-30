@@ -52,7 +52,7 @@ use nettai_frontend::replay::{ENGINE, Info, MatchKind, Outcome};
 use nettai_render::Frame;
 use nettai_render::vfont::TextRenderer;
 use nettai_ui::{BattleKind, ButtonKind, DialogButton, ReplayRow, ReplaysView, VersusCard};
-use slint::winit_030::winit::keyboard::KeyCode;
+use i_slint_backend_winit::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use crate::games::{Games, Ready};
 use nettai_battle::ContentHash;

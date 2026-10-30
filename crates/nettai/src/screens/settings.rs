@@ -15,7 +15,7 @@ use crate::shell::Shell;
 use crate::sound::Cue;
 use nettai_gamepad::Button;
 use nettai_ui::{PadBinding, PadButton, SettingsView};
-use slint::winit_030::winit::keyboard::KeyCode;
+use i_slint_backend_winit::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, ModelRc, VecModel};
 
 /// Where a font's or a package's row is in About's list (the screenshot pass reads Slint's license).

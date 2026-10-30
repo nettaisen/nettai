@@ -16,8 +16,8 @@ use crate::nav::Rect;
 use nettai_gamepad::{Axis, Button, EventKind, Id};
 use nettai_battle::input::{Joypad, keys};
 use nettai_frontend::player::time_of;
-use slint::winit_030::winit::event::{ElementState, KeyEvent};
-use slint::winit_030::winit::keyboard::{KeyCode, PhysicalKey};
+use i_slint_backend_winit::winit::event::{ElementState, KeyEvent};
+use i_slint_backend_winit::winit::keyboard::{KeyCode, PhysicalKey};
 use web_time::Instant;
 
 /// A party battle's switch to the member the left of the party panel's two buttons names (EXE5 DS's Y, docs/design/

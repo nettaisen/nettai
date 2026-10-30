@@ -32,8 +32,8 @@ objc2-core-foundation = { version = "0.3", default-features = false, features = 
 objc2-ui-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "objc2-uniform-type-identifiers", "UIActivity", "UIActivityViewController", "UIApplication", "UIDocumentPickerViewController", "UIPasteboard", "UIPopoverPresentationController", "UIPresentationController", "UIResponder", "UIScene", "UISceneDefinitions", "UIView", "UIViewController", "UIWindow", "UIWindowScene"] }
 objc2-uniform-type-identifiers = { version = "0.3", default-features = false, features = ["std", "UTType", "UTCoreTypes"] }
 
-# Android: the system's pickers and save dialog, started by android/nettai/dialogs/NettaiFiles.java (the APK's build
-# compiles it in) through JNI, on the activity nettai-android keeps.
+# Android: the system's pickers and save dialog, started by android/nettai/dialogs/NettaiFiles.kt (Kotlin, which the
+# APK's build compiles in: packaging/android/package.sh) through JNI, on the activity nettai-android keeps.
 [target.'cfg(target_os = "android")'.dependencies]
 nettai-android = { path = "../nettai-android" }
 jni = "0.22"
