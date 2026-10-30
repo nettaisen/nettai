@@ -829,7 +829,8 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
 - **The link panel** (`LinkPanel` in battle.slint; its figures `battle/link.rs`): a click on the connection's
   corner opens it over the corner (`Shell.connection-open`, which the corner alone toggles: "telemetry window should not
   dismiss on click outside, it should only be dismissed if the ping indicator is clicked again"; the app clears it
-  as a battle starts and ends). The figures are the player's `net_status`; the
+  as a battle starts and ends). On a phone upright the picture is too short for it over the corner, so it covers the
+  corner, and a tap on the panel closes it there. The figures are the player's `net_status`; the
   app samples its round trip ten times a second for the whole match and, while the panel is open, sets
   `Shell.link` at each sample: the figures, and the last ten seconds as two paths (the graph's line and the area
   under it).

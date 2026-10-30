@@ -165,8 +165,9 @@ component LinkRow inherits Rectangle {
 // quality panel thing"), over the connection's corner while it is open, live: the round trip's last ten seconds
 // as a graph; then the link (the round trip and its jitter, the loss, the reconnects, clock sync's skew and the
 // lead) beside the rollback (the input delay, the rollbacks, the last one's depth and the deepest, the frames
-// waited); and what went each way. It fades and rises in. The match goes on under it: it takes the clicks on it
-// (none does anything) and no keys.
+// waited); and what went each way. It fades and rises in. The match goes on under it: it takes no keys, and the clicks
+// on it, which do nothing, but on a phone upright, where it covers the corner that opened it: there a tap on it closes
+// it.
 component LinkPanel inherits Rectangle {
     property <LinkFigures> f: Shell.link;
     property <length> column: (self.width - 24px - 16px) / 2;
@@ -187,7 +188,13 @@ component LinkPanel inherits Rectangle {
             background: Theme.panel;
         }
 
-        TouchArea { }
+        TouchArea {
+            clicked => {
+                if Theme.phone {
+                    Shell.connection-open = false;
+                }
+            }
+        }
 
         Label {
             x: 12px;
