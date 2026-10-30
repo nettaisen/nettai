@@ -253,11 +253,11 @@ pub struct Shell {
     pub probe_motion: bool,
     /// A screen has something running that must keep its time whatever covers the window (a link to another
     /// player, before and between their battles): the app isn't napped while this is set, as it isn't while a
-    /// battle runs (`awake.rs`).
+    /// battle runs (`nettai_platform::awake`).
     pub stay_awake: bool,
     /// The app's update: checked for and downloaded at the loading screen as the app starts (`updates.rs`).
     pub updates: crate::updates::Updates,
-    awake: Option<crate::awake::Awake>,
+    awake: Option<nettai_platform::awake::Awake>,
     /// This frame is being drawn (the window's rendering runs it). When the window isn't drawn (minimized,
     /// hidden, covered), a timer runs the frames instead, and no picture is presented in them: there is no
     /// frame to show it in, and the window's OpenGL isn't the thread's.
@@ -772,6 +772,15 @@ impl Shell {
         self.nav.registry().borrow().rect(key).unwrap_or_default()
     }
 
+    /// The room the screens and what opens over them have, in the window: the window less a phone's safe area's
+    /// insets (app.slint), the whole window elsewhere. What opens by a control is placed in it ([`Rect::within`]).
+    pub fn room(&self) -> Rect {
+        let ui = self.ui();
+        let window = ui.window().size().to_logical(ui.window().scale_factor());
+        let (left, top) = (ui.get_safe_left(), ui.get_safe_top());
+        Rect { x: left, y: top, w: (window.width - left - ui.get_safe_right()).max(0.0), h: (window.height - top - ui.get_safe_bottom()).max(0.0) }
+    }
+
     /// Open a select's choices as a grid of their pictures by it (Practice's Arena and Background; on a phone, a
     /// sheet from the bottom), as [`Shell::pick`] opens a list: each choice its picture (`pictures`, which may
     /// fill in as they are drawn) over its name, five to a row (a phone's three), as many rows shown as there
@@ -786,7 +795,9 @@ impl Shell {
     fn open_picker(&mut self, key: Key, by: Rect, options: Vec<String>, look: Look, chosen: i32) {
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
-        let window = ui.window().size().to_logical(ui.window().scale_factor());
+        // (In the room the screens have: the list is laid out in it, as they are.)
+        let room = self.room();
+        let (by, window) = (by.within(&room), slint::LogicalSize::new(room.w, room.h));
         let grid = matches!(look, Look::Grid(_)).then(|| Grid::of(self.scale.phone, window.width));
         // (A phone's sheet is at the window's foot, three fifths of it at the most.)
         let (under, over) = if self.scale.phone { (window.height * 0.6, 0.0) } else { (window.height - by.bottom() - 8.0, by.y - 8.0) };
@@ -824,7 +835,7 @@ impl Shell {
         });
         shell.set_picker_marks(ModelRc::default());
         shell.set_picker_chosen(chosen);
-        // (Inside the window, a list wider than what it opens from.)
+        // (Inside the room, a list wider than what it opens from.)
         shell.set_picker_x(x.min(window.width - width - 8.0).max(0.0));
         shell.set_picker_y(y);
         shell.set_picker_width(width);
@@ -893,7 +904,11 @@ impl Shell {
             return false;
         }
         let os = window.with_winit_window(|w| w.scale_factor() as f32).unwrap_or(1.0).max(0.1);
-        let (width, height) = (size.width as f32 / os, size.height as f32 / os);
+        // The room the screens have: the window less a phone's safe area's insets (none elsewhere), which Slint
+        // gives in the UI's units as they are now, in the system's points.
+        let inset = |a: f32, b: f32| (a + b) * self.scale.unit;
+        let (across, down) = (inset(ui.get_safe_left(), ui.get_safe_right()), inset(ui.get_safe_top(), ui.get_safe_bottom()));
+        let (width, height) = ((size.width as f32 / os - across).max(1.0), (size.height as f32 / os - down).max(1.0));
         let phone = width < 0.8 * height;
         let unit = if phone { width / 390.0 } else { (width / 1280.0).min(height / 800.0) }.max(0.2);
         let factor = os * unit;
@@ -906,6 +921,9 @@ impl Shell {
             window.dispatch_event(slint::platform::WindowEvent::Resized { size: size.to_logical(factor) });
         }
         ui.global::<Theme>().set_phone(phone);
+        let shell = ui.global::<nettai_ui::Shell>();
+        shell.set_safe_left(ui.get_safe_left());
+        shell.set_safe_top(ui.get_safe_top());
         // The ground's patterns, for the window in units.
         let units = ((size.width as f32 / factor).ceil() as i32, (size.height as f32 / factor).ceil() as i32);
         if units != self.scale.ground {
@@ -1812,7 +1830,7 @@ impl App {
         // What must keep its time whatever covers the window: a battle, a screen's link, the screenshot pass.
         let awake = self.shell.battle.is_some() || self.shell.loading_battle() || self.shell.stay_awake || self.shell.still;
         if awake != self.shell.awake.is_some() {
-            self.shell.awake = awake.then(crate::awake::Awake::new);
+            self.shell.awake = awake.then(nettai_platform::awake::Awake::new);
         }
         // The battle: loading behind the cards, or running.
         if let Some((owner, event)) = self.shell.load_battle(now) {

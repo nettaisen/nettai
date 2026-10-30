@@ -11,7 +11,6 @@
 //! hides the window for a while; `NETTAI_TOUR=<folder>` walks every
 //! screen and writes each to a PNG (`tour`: a build with the `tour` feature's alone).
 
-mod awake;
 mod backgrounds;
 mod battle;
 mod builds;

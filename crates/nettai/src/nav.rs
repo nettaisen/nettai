@@ -37,6 +37,11 @@ impl Rect {
         self.y + self.h
     }
 
+    /// This rectangle (in the window) as `room` sees it: from its corner.
+    pub fn within(&self, room: &Rect) -> Rect {
+        Rect { x: self.x - room.x, y: self.y - room.y, ..*self }
+    }
+
     fn center(&self) -> (f32, f32) {
         (self.x + self.w / 2.0, self.y + self.h / 2.0)
     }

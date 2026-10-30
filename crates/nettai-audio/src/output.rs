@@ -440,7 +440,8 @@ impl Output {
     }
 
     /// Start the device again if it was held: a browser starts a page's sound only after a click or a key, so its
-    /// host calls this on each.
+    /// host calls this on each; a phone stops it while the app is away or a call has the sound, so its host calls
+    /// this as the app comes back.
     pub fn resume(&self) {
         let _ = self._stream.play();
     }

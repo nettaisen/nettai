@@ -85,11 +85,6 @@ console_log = "1"
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 
-# Keeping the app's time while a battle runs in a covered window (`awake.rs`): Foundation's process activity.
-# (Both are in the tree already, for the window.)
-[target.'cfg(target_os = "macos")'.dependencies]
-objc2 = "0.6"
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSProcessInfo", "NSString"] }
 
 [features]
 # The screenshot pass and the motion probe (docs/app.md §13: `NETTAI_TOUR`), with what they need: the pictures'

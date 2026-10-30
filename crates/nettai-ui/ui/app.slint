@@ -42,6 +42,11 @@ export component AppWindow inherits Window {
     // the battle.
     property <bool> in-battle: Shell.battle != BattleKind.none && Shell.battle-full;
     property <bool> covered: Shell.loading || Shell.versus || root.in-battle;
+    // The safe area's insets, in the UI's units, for the app (`Shell::fit_window`).
+    out property <length> safe-left: self.safe-area-insets.left;
+    out property <length> safe-top: self.safe-area-insets.top;
+    out property <length> safe-right: self.safe-area-insets.right;
+    out property <length> safe-bottom: self.safe-area-insets.bottom;
     title: "nettai";
     // (The taskbar's and the title bar's, where the system draws one: macOS takes the app bundle's.)
     icon: @image-url("../../../docs/logo/nettai-icon.svg");
@@ -57,94 +62,106 @@ export component AppWindow inherits Window {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
-    // Each screen, and what it opens over itself (Practice has no page: its battle fills the window): one
-    // conditional each, as each conditional is a component of its own in what Slint generates. (A screen's
-    // overlay is over it; only one screen is shown at a time, so it is over every screen.)
-    if !root.covered && Shell.screen == Screen.menu: MenuScreen {
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-    // (A ruleset's page opened over the lobby or the build editor takes the screen's place as another screen would:
-    // the screen's component is gone while the page is open, its Rust half going on, and is made again as the page
-    // closes, so it arrives as a screen gone to does, its header still: docs/design/app-ui.md §2.74.)
-    if !root.covered && Shell.screen == Screen.play && !RulesetView.open: Rectangle {
-        PlayScreen {
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-        PlayOverlay {
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-    }
-    if !root.covered && Shell.screen == Screen.builds && !RulesetView.open: Rectangle {
-        BuildsScreen {
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-        BuildsOverlay {
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-    }
-    if !root.covered && Shell.screen == Screen.replays: Rectangle {
-        ReplaysScreen {
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-        ReplaysOverlay {
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-    }
-    if !root.covered && Shell.screen == Screen.settings: Rectangle {
-        SettingsScreen {
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-        SettingsOverlay {
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-    }
-    if !root.covered && RulesetView.open: RulesetPage {
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-    if Shell.loading && !Shell.versus && !root.in-battle: LoadingScreen {
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-    if Shell.versus: VersusScreen {
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-    if root.in-battle: BattleScreen {
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-    // (Practice's input display: over its battle's picture, wherever that is shown. It is there throughout and
-    // shown when it is on: an `if` would be a component for it.)
-    PracticeInputs {
-        visible: Shell.battle == BattleKind.practice && PracticeView.inputs;
+    // (A phone keeps some of its screen for itself: a notch or an island, the home bar, rounded corners. The screens
+    // and what opens over them are laid out in the rest, the safe area, which the app fits its units to
+    // (`Shell::fit_window`); the backdrop, the cursor and what flies go across the whole window. Elsewhere the safe
+    // area is the window.)
+    Rectangle {
+        x: root.safe-left;
+        y: root.safe-top;
+        width: root.width - root.safe-left - root.safe-right;
+        height: root.height - root.safe-top - root.safe-bottom;
 
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-    // (The dummy that fights getting ready, in the corner netplay's connection takes: over the battle's picture,
-    // while it is.)
-    PracticeGettingReady {
-        visible: root.in-battle && Shell.battle == BattleKind.practice && PracticeView.getting-ready.shown;
+        // Each screen, and what it opens over itself (Practice has no page: its battle fills the window): one
+        // conditional each, as each conditional is a component of its own in what Slint generates. (A screen's
+        // overlay is over it; only one screen is shown at a time, so it is over every screen.)
+        if !root.covered && Shell.screen == Screen.menu: MenuScreen {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        // (A ruleset's page opened over the lobby or the build editor takes the screen's place as another screen would:
+        // the screen's component is gone while the page is open, its Rust half going on, and is made again as the page
+        // closes, so it arrives as a screen gone to does, its header still: docs/design/app-ui.md §2.74.)
+        if !root.covered && Shell.screen == Screen.play && !RulesetView.open: Rectangle {
+            PlayScreen {
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+            PlayOverlay {
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+        }
+        if !root.covered && Shell.screen == Screen.builds && !RulesetView.open: Rectangle {
+            BuildsScreen {
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+            BuildsOverlay {
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+        }
+        if !root.covered && Shell.screen == Screen.replays: Rectangle {
+            ReplaysScreen {
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+            ReplaysOverlay {
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+        }
+        if !root.covered && Shell.screen == Screen.settings: Rectangle {
+            SettingsScreen {
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+            SettingsOverlay {
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+        }
+        if !root.covered && RulesetView.open: RulesetPage {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        if Shell.loading && !Shell.versus && !root.in-battle: LoadingScreen {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        if Shell.versus: VersusScreen {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        if root.in-battle: BattleScreen {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        // (Practice's input display: over its battle's picture, wherever that is shown. It is there throughout and
+        // shown when it is on: an `if` would be a component for it.)
+        PracticeInputs {
+            visible: Shell.battle == BattleKind.practice && PracticeView.inputs;
 
-        Rectangle { }  // (Copied in: docs/app.md §14.)
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        // (The dummy that fights getting ready, in the corner netplay's connection takes: over the battle's picture,
+        // while it is.)
+        PracticeGettingReady {
+            visible: root.in-battle && Shell.battle == BattleKind.practice && PracticeView.getting-ready.shown;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+
+        if Shell.battle == BattleKind.practice && Shell.battle-menu: PracticeMenu {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        if Shell.battle == BattleKind.online && Shell.battle-menu: MatchMenu {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        // (Both builds, while Tab is held in a match, the match menu open or not.)
+        if root.in-battle && Shell.battle == BattleKind.online: MatchPeek {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        // (How the match went, once its set is over.)
+        if Shell.battle == BattleKind.online && PlayView.result-shown: MatchResult {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        if Shell.picker: PickerLayer {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        if Shell.dialog: DialogLayer {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
     }
 
-    if Shell.battle == BattleKind.practice && Shell.battle-menu: PracticeMenu {
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-    if Shell.battle == BattleKind.online && Shell.battle-menu: MatchMenu {
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-    // (Both builds, while Tab is held in a match, the match menu open or not.)
-    if root.in-battle && Shell.battle == BattleKind.online: MatchPeek {
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-    // (How the match went, once its set is over.)
-    if Shell.battle == BattleKind.online && PlayView.result-shown: MatchResult {
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-    if Shell.picker: PickerLayer {
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-    if Shell.dialog: DialogLayer {
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
     // The cursor: one object that glides from control to control. (The app moves it, a share of the way each
     // frame: an animation here would start over each time the control it is going to moved.) It goes with a
     // replay's controls when they hide.

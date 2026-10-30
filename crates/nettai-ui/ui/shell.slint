@@ -223,7 +223,12 @@ export global Shell {
     // picture drawn across them would not show each of the game's pixels as one square).
     in property <length> picture-x;
     in property <length> picture-y;
-    // The room the screen's `Picture` gives it: where it is in the window, and its size.
+    // The safe area's corner in the window (app.slint: the window less a phone's insets), which the app keeps here
+    // (`Shell::fit_window`): what is laid out in the safe area is placed from it.
+    in property <length> safe-left;
+    in property <length> safe-top;
+    // The room the screen's `Picture` gives it: where it is in the safe area (as what is laid out over it is), and
+    // its size.
     in-out property <length> picture-room-x;
     in-out property <length> picture-room-y;
     in-out property <length> picture-room-width;
@@ -1409,8 +1414,8 @@ export component Picture inherits Rectangle {
         image-rendering: pixelated;
     }
 
-    property <length> ax: self.absolute-position.x;
-    property <length> ay: self.absolute-position.y;
+    property <length> ax: self.absolute-position.x - Shell.safe-left;
+    property <length> ay: self.absolute-position.y - Shell.safe-top;
     function place() {
         Shell.picture-room-x = root.ax;
         Shell.picture-room-y = root.ay;

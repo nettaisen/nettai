@@ -924,8 +924,9 @@ impl Replays {
         let view = ui.global::<ReplaysView>();
         let count = view.get_up_next().row_count();
         // (Above the button where there is room, else under it; at its right edge on a desktop, across a phone.)
-        let by = shell.rect_of(&Key::new("up-next", 0));
-        let window = ui.window().size().to_logical(ui.window().scale_factor());
+        // (In the room the screens have, as the list is laid out in it.)
+        let room = shell.room();
+        let (by, window) = (shell.rect_of(&Key::new("up-next", 0)).within(&room), slint::LogicalSize::new(room.w, room.h));
         let width = if shell.scale.phone { window.width - 32.0 } else { UP_NEXT_WIDTH };
         let rows = count.clamp(1, UP_NEXT_ROWS);
         let height = UP_NEXT_ROOM + rows as f32 * 44.0 + 8.0;

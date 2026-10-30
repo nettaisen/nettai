@@ -188,6 +188,13 @@ impl Sound {
     /// added to the battle's where they fall; with no battle running, on their own clock at the same rate.
     /// What there is goes to the device.
     pub fn frame(&mut self, now: Instant, ticks: Option<u32>, battle: &mut Vec<[f32; 2]>) {
+        // (A phone's app back from the background, or its sound given back after a call: the device stopped then,
+        // and is started again.)
+        if nettai_platform::lifecycle::resumed()
+            && let Some(out) = &self.out
+        {
+            out.resume();
+        }
         let elapsed = self.last.map_or(Duration::ZERO, |l| now.saturating_duration_since(l)).min(Duration::from_millis(250));
         self.last = Some(now);
         let due = match ticks {
