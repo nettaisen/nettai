@@ -433,14 +433,13 @@ impl Mood {
     }
 }
 
-/// The navi the emotion window shows: the one a switch on the custom
-/// screen is to bring in until the switch is made (`Battle::screen_member`;
-/// EXE5 DS's 0x0206391C: `sub_801E724` puts its face in the window, or
-/// takes it back for the navi on the field), else the navi on the field.
-/// When it changes, by a switch on the screen or in battle, the window
-/// blinks back to the navi before (EXE5 DS's 0x0206FA00: a timer of 10 at
-/// the HUD's +0x14, the face before on its counts 7, 6, 3 and 2, and the
-/// HP box shows the new navi's HP at once (`sub_801E0C8`, `sub_801E0D0`).
+/// The navi the emotion window shows: the side's window navi
+/// (`Battle::window_navis`: one a switch on the custom screen picked), else
+/// the side's navi. When it changes, by a switch on the screen or in
+/// battle, the window blinks back to the navi before (EXE5 DS's
+/// 0x0206FA00: a timer of 10 at the HUD's +0x14, the face before on its
+/// counts 7, 6, 3 and 2), and the HP box shows the new navi's HP at once
+/// (`sub_801E0C8`, `sub_801E0D0`).
 #[derive(Clone, Copy, Debug, Default)]
 struct NaviFace {
     navi: Option<NaviHandle>,
@@ -453,6 +452,16 @@ struct NaviFace {
 
 /// The ticks of the blink as the emotion window's navi changes.
 const NAVI_BLINK: u8 = 10;
+
+/// The stats the emotion window and the HP box show for `navi` of side
+/// `side`: the side's navi's, live, else its party member's block.
+fn window_stats(b: &Battle, side: usize, navi: NaviHandle) -> &nettai_battle::setup::NaviStats {
+    let field = &b.stats[side];
+    if navi == field.navi {
+        return field;
+    }
+    b.party[side].member_of(navi).and_then(|m| b.party[side].member(m)).unwrap_or(field)
+}
 
 #[derive(Clone, Copy, Debug)]
 struct RollingHp {
@@ -497,8 +506,9 @@ impl HudState {
         }
         // The navi the emotion window shows: a change blinks back to the
         // navi before, and the HP box takes the new navi's HP at once.
-        let member = b.screen_member(local);
-        let shown = b.player(local).map(|_| b.screen_stats(local).navi);
+        let i = local as usize & 1;
+        let window = b.window_navis[i];
+        let shown = b.player(local).map(|_| window.unwrap_or(b.stats[i].navi));
         let f = &mut self.navi_face;
         if shown != f.navi {
             let before = f.navi;
@@ -543,11 +553,10 @@ impl HudState {
             }
         }
         (self.is_over, self.gauge_is_on) = (decided(b), b.gauge.enabled);
-        // The local navi's HP box (the member's a switch on the custom
-        // screen is to bring in).
+        // The local navi's HP box (the window navi's, if the side has one).
         if let Some(r) = b.player(local) {
             let o = b.objects.get(r);
-            let (h, m) = match member.and_then(|m| b.party[local as usize & 1].member(m)) {
+            let (h, m) = match window.map(|n| window_stats(b, i, n)) {
                 Some(s) => (s.hp, s.max_hp),
                 None => (o.hp, o.max_hp),
             };
@@ -1758,17 +1767,15 @@ fn mugshot_parts<'a>(
 ) -> Vec<TextItem> {
     let mut items = Vec::new();
     let side = b.objects.get(r).alliance as usize;
-    // (The navi the window shows, `NaviFace`: a switch on the custom
-    // screen's, else the one on the field, whose stats are live; the one
-    // before on the ticks of the blink as it changes.)
-    let field = &b.stats[side];
-    let current = b.screen_stats(side as u8);
-    let stats = match state.navi_face.flash.then_some(state.navi_face.before).flatten() {
-        Some(navi) if navi == field.navi => field,
-        Some(navi) => b.party[side].member_of(navi).and_then(|m| b.party[side].member(m)).unwrap_or(current),
-        None => current,
+    // (The navi the window shows, `NaviFace`: the side's window navi, else
+    // its navi, whose stats are live; the one before on the ticks of the
+    // blink as it changes.)
+    let navi = match state.navi_face.flash.then_some(state.navi_face.before).flatten() {
+        Some(before) => before,
+        None => b.window_navis[side].unwrap_or(b.stats[side].navi),
     };
-    let live = std::ptr::eq(stats, field);
+    let stats = window_stats(b, side, navi);
+    let live = std::ptr::eq(stats, &b.stats[side]);
     let flip = seat.mirrored();
     // (The face's place and the box's.)
     let at = (seat.x(x, 32), seat.x(x + 32, 16));

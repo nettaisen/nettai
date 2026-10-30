@@ -492,6 +492,9 @@ fn party_change(b: &mut Battle, r: ObjectRef, member: u8, in_battle: bool) {
     let o = b.objects.get_mut(r);
     o.hp = s.hp;
     o.max_hp = s.max_hp;
+    // 0x0202C11A, 0x0202C8E2: the emotion window shows the incoming navi
+    // (`sub_801E724`), the side's navi from here.
+    b.window_navis[side] = None;
     finish_party_change(b, r);
     // 0x02098804
     coll_mut(b, r).status_timers[timer::FLASH] = 0;
@@ -564,6 +567,9 @@ pub(crate) fn take_back(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     o.hp = s.hp;
     o.max_hp = s.max_hp;
+    // 0x0202C372, 0x0202C5FE: the emotion window shows the navi that comes
+    // back (`sub_801E724`), the side's navi from here.
+    b.window_navis[side] = None;
     let content = b.content.clone();
     b.hands[side].drop_link_navi_chips(&content);
     finish_party_change(b, r);

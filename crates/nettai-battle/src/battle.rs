@@ -458,6 +458,11 @@ pub struct Battle {
     /// The HP numbers each console's HUD shows under objects, by place
     /// (presentation only; left out of the digest).
     pub hp_numbers: [[Option<crate::hud::HpNumber>; crate::hud::HpNumber::PLACES]; 2],
+    /// The navi each side's emotion window and HP box show in place of the
+    /// side's navi (the original's HUD +0x17, `sub_801E724`): one a switch
+    /// on the custom screen picked, until the switch is made; none for the
+    /// side's navi (presentation only; left out of the digest).
+    pub window_navis: [Option<nettai_content_api::NaviHandle>; 2],
     pub paused: bool,
     pub inputs: [InputRecord; 2],
     /// Each side's input record's switch request (the DS's +8, the panel's
@@ -789,6 +794,7 @@ impl Battle {
             message: None,
             warnings: Default::default(),
             hp_numbers: [[None; crate::hud::HpNumber::PLACES]; 2],
+            window_navis: [None; 2],
             paused: false,
             inputs: [InputRecord::default(); 2],
             switch_inputs: [None; 2],
@@ -1871,6 +1877,9 @@ impl Battle {
             }
         }
         if self.banner_status() == BannerStatus::Done {
+            // The emotion windows and HP boxes show the sides' navis again
+            // (`sub_801E724` with 0xFF, `sub_801E0C8` with 0xFFFF).
+            self.window_navis = [None; 2];
             for side in 0..2u8 {
                 self.notify_side(side, RulesHook::FightStarted);
             }

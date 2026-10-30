@@ -421,8 +421,15 @@ fn offered_icon<'a>(v: &View<'a>) -> Option<(&'a Tiles, usize)> {
         return None;
     }
     let b = view_look(v, ButtonView::FormOffer)?;
-    let n = offer_icon(v.b, v.b.screen_stats(v.side).navi, v.b.offer(v.side)?);
+    let n = offer_icon(v.b, screen_navi(v.b, v.side, v.screen), v.b.offer(v.side)?);
     (b.icons.len() >= 4 * (n + 1)).then_some((&b.icons, 4 * n))
+}
+
+/// The navi side `side`'s screen is for (its +0x10): the party member a
+/// switch on it took (EXE5 DS's state 0x40), else the side's navi.
+pub(crate) fn screen_navi(b: &Battle, side: u8, screen: &Screen) -> NaviHandle {
+    let i = side as usize & 1;
+    screen.member.and_then(|m| b.party[i].member(m)).map_or(b.stats[i].navi, |s| s.navi)
 }
 
 /// An offer's icon among its button's: the offered form's place in

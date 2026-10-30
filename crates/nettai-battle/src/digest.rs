@@ -184,6 +184,7 @@ impl Hash for Battle {
             message: _,
             warnings: _,
             hp_numbers: _,
+            window_navis: _,
             paused,
             inputs,
             switch_inputs,

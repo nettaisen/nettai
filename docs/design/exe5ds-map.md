@@ -304,8 +304,10 @@ Two places read it, so a switch is taken in battle or on the custom screen.
   - sets the screen's navi and shows the member's HP: the emotion window shows the navi's face (`sub_801E724`, or
     0xFF for the field navi again) and the HP box the member's HP and max HP at once (`sub_801E0C8`; `sub_801E0BC`
     for the field navi), until the turn's start takes the switch; the screen's emblem is the navi's too
-    (`sub_802812C`). nettai: `Battle::screen_member` and `screen_stats`, which the HUD, the emblem and the rules
-    (`custom.player(side).member`) read;
+    (`sub_802812C`). The window's navi is the HUD's +0x17: `sub_801E724` sets it here, the swap's change and the
+    knockout's take-back set it to the incoming navi (0x0202C11A, 0x0202C8E2, 0x0202C372, 0x0202C5FE), and the
+    turn's start banner resets it with the HP box (`sub_8008064`). nettai: `Battle::window_navis` (none for the side's
+    navi), which the HUD reads; the emblem and the rules (`custom.player(side).member`) read the screen's `member`;
   - **clears the chips already picked**;
   - rebuilds the screen for the navi (`sub_802812C`);
   - swaps the panel's button and member, and counts the switch;
