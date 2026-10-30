@@ -49,7 +49,7 @@ use slint::{ComponentHandle, RenderingState};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Duration;
-use nettai_platform::time::Instant;
+use web_time::Instant;
 
 thread_local! {
     /// The app's state, on the window's thread (work done on other threads comes back to it through the event
@@ -99,14 +99,14 @@ pub fn run() -> Result<(), slint::PlatformError> {
     wire(&ui, &app);
     // (In a browser the window is the page's whole, and follows it: the desktop's player sizes theirs.)
     let window = ui.as_weak();
-    nettai_platform::page::follow(move |width, height| {
+    nettai_page::follow(move |width, height| {
         if let Some(ui) = window.upgrade() {
             ui.window().set_size(slint::LogicalSize::new(width, height));
         }
     });
     // (The browser's page hears files and folders dropped on it, the Legacy Collection's archives read out of a
     // folder; the desktop's window has its own events for them.)
-    nettai_platform::dialog::take_drops(&nettai_extract::source::ARCHIVES, |paths| {
+    nettai_dialogs::take_drops(&nettai_extract::source::ARCHIVES, |paths| {
         for path in paths {
             with_app(|app| app.dropped(&path));
         }
@@ -340,7 +340,7 @@ fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
     nav.on_hover(move |id, index, on| tell(&a, NavInput::Hover(id.into(), index, on)));
     let a = app.clone();
     nav.on_edit_began(move |_, _, text| tell(&a, NavInput::EditBegan(text.into())));
-    nav.on_edit_kept(|text| nettai_platform::text_entry::keep(&text));
+    nav.on_edit_kept(|text| nettai_page::text_entry::keep(&text));
     let a = app.clone();
     nav.on_edited(move |_, _, text| tell(&a, NavInput::Edited(text.into())));
     let a = app.clone();

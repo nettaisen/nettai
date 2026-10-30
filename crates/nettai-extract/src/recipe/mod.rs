@@ -100,7 +100,7 @@ impl Recipe {
         for (under, root) in trees {
             let mut dirs = vec![root.clone()];
             while let Some(dir) = dirs.pop() {
-                let Ok(entries) = nettai_platform::fs::read_dir(&dir) else { continue };
+                let Ok(entries) = nettai_files::read_dir(&dir) else { continue };
                 for path in entries.flatten().map(|e| e.path()) {
                     // (A hidden file, a system's folder note, is no input; nor is a module, which the load read.)
                     let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
@@ -116,7 +116,7 @@ impl Recipe {
                     }
                     let rel = path.strip_prefix(&root).expect("walked under the root");
                     let rel = rel.components().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/");
-                    let bytes = nettai_platform::fs::read(&path).map_err(|e| said(format!("{}: {e}", path.display())))?;
+                    let bytes = nettai_files::read(&path).map_err(|e| said(format!("{}: {e}", path.display())))?;
                     files.insert(format!("{under}/{rel}"), bytes);
                 }
             }

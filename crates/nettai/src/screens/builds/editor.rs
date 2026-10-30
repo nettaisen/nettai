@@ -682,7 +682,7 @@ impl Editor {
             match store::write(&to, self.draft.content(), &game, &renamed) {
                 Ok(()) => {
                     if to != self.draft.path {
-                        let _ = nettai_platform::fs::remove_file(&self.draft.path);
+                        let _ = nettai_files::remove_file(&self.draft.path);
                     }
                     crate::screens::play::follow_rename(shell, &game, &from, &renamed.name);
                     self.draft.path = to;

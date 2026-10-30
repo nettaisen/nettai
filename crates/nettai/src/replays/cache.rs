@@ -113,7 +113,7 @@ impl Cache {
     /// The cache kept at `path`: empty where there is none, or none that reads (which the log is told).
     pub fn load(path: PathBuf) -> Cache {
         let mut cache = Cache { path, kept: HashMap::new(), changed: false };
-        let text = match nettai_platform::fs::read_to_string(&cache.path) {
+        let text = match nettai_files::read_to_string(&cache.path) {
             Ok(text) => text,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => return cache,
             Err(e) => {
@@ -165,7 +165,7 @@ impl Cache {
         };
         // (Written beside it, then put in its place: a cache is whole or not there.)
         let part = self.path.with_extension("toml.part");
-        let written = self.path.parent().map_or(Ok(()), nettai_platform::fs::create_dir_all).and_then(|()| nettai_platform::fs::write(&part, text)).and_then(|()| nettai_platform::fs::rename(&part, &self.path));
+        let written = self.path.parent().map_or(Ok(()), nettai_files::create_dir_all).and_then(|()| nettai_files::write(&part, text)).and_then(|()| nettai_files::rename(&part, &self.path));
         match written {
             Ok(()) => self.changed = false,
             Err(e) => crate::errors::log(&format!("writing {}", self.path.display()), &e),
@@ -186,7 +186,7 @@ mod tests {
     #[test]
     fn outcomes_are_kept_by_the_files_hash_and_read_back() {
         let dir = std::env::temp_dir().join(format!("nettai-replays-cache-{}", std::process::id()));
-        let _ = nettai_platform::fs::remove_dir_all(&dir);
+        let _ = nettai_files::remove_dir_all(&dir);
         let path = dir.join("replays-played.toml");
         let (a, b, gone) = (Id { file: 1, content: 7 }, Id { file: 2, content: 7 }, Id { file: 3, content: 7 });
         let mut cache = Cache::load(path.clone());
@@ -198,22 +198,22 @@ mod tests {
         let back = Cache::load(path.clone());
         assert_eq!((back.len(), back.get(&a), back.get(&b).map(|o| (o.end, o.diverged.as_deref()))), (2, Some(&outcome(100)), Some((End::Cut, Some("tick 9")))));
         assert!(back.get(&gone).is_none() && back.get(&Id { file: 1, content: 8 }).is_none());
-        assert!(!nettai_platform::fs::exists(dir.join("replays-played.toml.part")));
+        assert!(!nettai_files::exists(dir.join("replays-played.toml.part")));
 
-        let text = nettai_platform::fs::read_to_string(&path).unwrap();
-        nettai_platform::fs::write(&path, text.replace("ticks = 100", "ticks = \"many\"")).unwrap();
+        let text = nettai_files::read_to_string(&path).unwrap();
+        nettai_files::write(&path, text.replace("ticks = 100", "ticks = \"many\"")).unwrap();
         assert_eq!(Cache::load(path.clone()).len(), 0);
-        nettai_platform::fs::write(&path, text.replace("rounds = [0, 2, 1]", "rounds = [0, 5, 1]")).unwrap();
+        nettai_files::write(&path, text.replace("rounds = [0, 2, 1]", "rounds = [0, 5, 1]")).unwrap();
         assert_eq!(Cache::load(path.clone()).len(), 1);
-        nettai_platform::fs::write(&path, text.replace(&format!("engine = \"{ENGINE}\""), "engine = \"another\"")).unwrap();
+        nettai_files::write(&path, text.replace(&format!("engine = \"{ENGINE}\""), "engine = \"another\"")).unwrap();
         assert_eq!(Cache::load(path.clone()).len(), 0);
-        nettai_platform::fs::write(&path, "not a cache").unwrap();
+        nettai_files::write(&path, "not a cache").unwrap();
         let mut again = Cache::load(path.clone());
         assert_eq!(again.len(), 0);
         again.put(a, outcome(100));
         again.save(|_| true);
         assert_eq!(Cache::load(path).len(), 1);
-        let _ = nettai_platform::fs::remove_dir_all(&dir);
+        let _ = nettai_files::remove_dir_all(&dir);
     }
 
     /// A file's hash changes with any byte of it.

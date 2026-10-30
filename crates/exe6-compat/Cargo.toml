@@ -6,8 +6,8 @@ license.workspace = true
 description = "The original game's numbers for EXE6's content (content/exe6/compat), and what reads them: the codecs of the game's setup records, its saves' import (a save into a side, by the game's facts) and the golden-trace harness. The engine never depends on it."
 
 [dependencies]
-# Files, threads, time and dialogs: the desktop's, or the browser's.
-nettai-platform = { path = "../nettai-platform" }
+# Files: the desktop's and a phone's, or the browser's tree.
+nettai-files = { path = "../nettai-files" }
 nettai-battle.workspace = true
 nettai-content-api = { path = "../nettai-content-api" }
 serde = { version = "1", features = ["derive"] }

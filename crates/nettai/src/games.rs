@@ -170,7 +170,7 @@ pub struct Games {
 /// Where a browser or a phone keeps its copies of the Legacy Collection's ROMs ([`Games::keep_copies`]): stowed in the
 /// data folder, not read as the page starts.
 fn copies() -> PathBuf {
-    crate::paths::data().join(nettai_platform::fs::STOWED).join("roms")
+    crate::paths::data().join(nettai_files::STOWED).join("roms")
 }
 
 /// How many other contents are kept loaded: a replay's and the next one's.
@@ -239,7 +239,7 @@ impl Games {
                 Some(source) => {
                     self.found(source);
                 }
-                None if !nettai_platform::dialog::FOLDERS_READ_AGAIN => crate::errors::log("finding the Legacy Collection", &"no folder chosen, and no ROMs kept of one"),
+                None if !nettai_dialogs::FOLDERS_READ_AGAIN => crate::errors::log("finding the Legacy Collection", &"no folder chosen, and no ROMs kept of one"),
                 None => crate::errors::log("finding the Legacy Collection", &"not found through Steam, nor in the folder chosen"),
             }
         } else {
@@ -258,8 +258,8 @@ impl Games {
         if std::env::var_os(nettai_extract::source::ROMS).is_some() {
             return RomSource::from_env().map_err(|why| crate::errors::log("finding the ROMs", &why)).ok();
         }
-        if !nettai_platform::dialog::FOLDERS_READ_AGAIN {
-            return (!nettai_platform::fs::stowed(&copies()).is_empty()).then(|| RomSource::Copies(copies()));
+        if !nettai_dialogs::FOLDERS_READ_AGAIN {
+            return (!nettai_files::stowed(&copies()).is_empty()).then(|| RomSource::Copies(copies()));
         }
         Install::find(self.chosen.as_deref()).map(RomSource::Collection)
     }
@@ -278,7 +278,7 @@ impl Games {
             Ok(kept) => {
                 crate::errors::log("keeping the Legacy Collection's ROMs", &format_args!("{kept} kept"));
                 self.source = Some(RomSource::Copies(copies()));
-                if let Err(why) = nettai_platform::fs::remove_dir_all(folder) {
+                if let Err(why) = nettai_files::remove_dir_all(folder) {
                     crate::errors::log("letting the Legacy Collection's archives go", &why);
                 }
             }
@@ -572,22 +572,22 @@ impl Games {
 /// give the disk space back. In the browser that frees the page's storage of them too. What fails is logged.
 fn remove_packs() {
     let dir = crate::paths::data().join("packs");
-    let Ok(read) = nettai_platform::fs::read_dir(&dir) else { return };
+    let Ok(read) = nettai_files::read_dir(&dir) else { return };
     let mut removed = 0;
     for entry in read.flatten() {
         let path = entry.path();
         let name = entry.file_name().to_string_lossy().into_owned();
-        let pack = ["content.toml", "stamp.toml"].iter().any(|f| nettai_platform::fs::is_file(path.join(f)));
-        if !(nettai_platform::fs::is_dir(&path) && (pack || name == ".new" || name == ".old")) {
+        let pack = ["content.toml", "stamp.toml"].iter().any(|f| nettai_files::is_file(path.join(f)));
+        if !(nettai_files::is_dir(&path) && (pack || name == ".new" || name == ".old")) {
             continue;
         }
-        match nettai_platform::fs::remove_dir_all(&path) {
+        match nettai_files::remove_dir_all(&path) {
             Ok(()) => removed += 1,
             Err(why) => crate::errors::log(&format!("removing the old pack {}", path.display()), &why),
         }
     }
-    if nettai_platform::fs::read_dir(&dir).is_ok_and(|mut r| r.next().is_none()) {
-        let _ = nettai_platform::fs::remove_dir(&dir);
+    if nettai_files::read_dir(&dir).is_ok_and(|mut r| r.next().is_none()) {
+        let _ = nettai_files::remove_dir(&dir);
     }
     if removed > 0 {
         crate::errors::log("removing the old packs", &format_args!("{removed} removed from {} (the games' ROMs are extracted as they load)", dir.display()));
@@ -606,7 +606,7 @@ fn spawn_read(id: &str, dir: &Path, other: bool) {
     let (id, dir) = (id.to_string(), dir.to_path_buf());
     let pool = crate::contents::pool();
     let name = format!("reading {id}");
-    let started = nettai_platform::thread::spawn(&name, move || {
+    let started = nettai_threads::spawn(&name, move || {
         let read = game::read_content(Some(&dir), &id, &pool).map(Box::new).map_err(|e| format!("{e}\n{}", e.report));
         let _ = slint::invoke_from_event_loop(move || {
             crate::with_app(|app| match other {
@@ -626,7 +626,7 @@ fn spawn_read(id: &str, dir: &Path, other: bool) {
 fn spawn_load(id: &str, lang: &str, options: game::Options, read: Option<Box<ContentLoaded>>, tell: impl Fn(Step) + Send + Sync + 'static) {
     let (id, lang) = (id.to_string(), lang.to_string());
     let name = format!("loading {id}");
-    let started = nettai_platform::thread::spawn(&name, move || {
+    let started = nettai_threads::spawn(&name, move || {
         let loaded = (|| {
             let said = |e: game::LoadError| format!("{e}\n{}", e.report);
             let read = read.filter(|r| r.pool() == options.pool);
@@ -944,7 +944,7 @@ impl Games {
             }
             let (id, lang, game, told) = (entry.id.clone(), lang.to_string(), ready.loaded.game.clone(), told.clone());
             let name = format!("loading {id} in {lang}");
-            let started = nettai_platform::thread::spawn(&name.clone(), move || match game.graphics(&lang) {
+            let started = nettai_threads::spawn(&name.clone(), move || match game.graphics(&lang) {
                 Ok(graphics) => {
                     let _ = slint::invoke_from_event_loop(move || told(id, lang, graphics));
                 }

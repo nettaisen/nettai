@@ -1,0 +1,30 @@
+[package]
+name = "nettai-lifecycle"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "The app's life on its system: its time and the display kept on while a battle runs, and a phone's app coming back"
+
+# What goes wrong on a phone, said as a warning: the app keeps them in its log.
+[target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
+log = "0.4"
+
+# macOS: the activity that keeps the app's time while a battle runs in a covered window (`Awake`). (In the tree
+# already, for the window.)
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSProcessInfo", "NSString"] }
+
+# iOS: the idle timer (`Awake`); the app made active and its sound given back (`resumed`). (In the tree already, for
+# the window.)
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2 = "0.6"
+block2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "block2", "NSNotification", "NSObject", "NSOperation", "NSString"] }
+objc2-ui-kit = { version = "0.3", default-features = false, features = ["std", "UIApplication", "UIResponder"] }
+objc2-avf-audio = { version = "0.3", default-features = false, features = ["std", "AVAudioSessionTypes"] }
+
+# Android: the window's screen kept on, through the activity nettai-android keeps.
+[target.'cfg(target_os = "android")'.dependencies]
+nettai-android = { path = "../nettai-android" }
+android-activity = { version = "0.6", features = ["native-activity"] }

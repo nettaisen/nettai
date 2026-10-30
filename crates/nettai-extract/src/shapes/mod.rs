@@ -54,14 +54,14 @@ impl Drawings {
             let root = content.join(&pack.id).join(SHAPES);
             let mut dirs = vec![root.clone()];
             while let Some(dir) = dirs.pop() {
-                let Ok(entries) = nettai_platform::fs::read_dir(&dir) else { continue };
+                let Ok(entries) = nettai_files::read_dir(&dir) else { continue };
                 for path in entries.flatten().map(|e| e.path()) {
                     if path.is_dir() {
                         dirs.push(path);
                     } else if path.extension().is_some_and(|x| x == "svg" || x == "same") {
                         let rel = path.strip_prefix(&root).expect("walked under the root");
                         let rel = rel.components().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/");
-                        let text = nettai_platform::fs::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+                        let text = nettai_files::read_to_string(&path).map_err(|e| format!("{}: {e}", path.display()))?;
                         files.insert(format!("{}/{SHAPES}/{rel}", pack.id), text);
                     }
                 }
@@ -233,10 +233,10 @@ impl Shaper {
     /// asked, each in `view`'s colors by its name.
     pub fn finish(mut self, view: &dyn Fn(&str, u8, u8) -> u16) -> Vec<String> {
         if let Some(dir) = &self.sources {
-            let _ = nettai_platform::fs::create_dir_all(dir);
+            let _ = nettai_files::create_dir_all(dir);
             for (name, g, d) in self.kept.drain(..) {
                 let file = name.replace('/', "-");
-                let _ = nettai_platform::fs::write(dir.join(format!("{file}.svg")), beside(&name, &g, d.as_ref(), view));
+                let _ = nettai_files::write(dir.join(format!("{file}.svg")), beside(&name, &g, d.as_ref(), view));
                 // (Its pixels as text, a character each: its palette index
                 // in hex, '.' clear, '#' a hole; a row a line.)
                 let text: String = g
@@ -253,7 +253,7 @@ impl Shaper {
                             + "\n"
                     })
                     .collect();
-                let _ = nettai_platform::fs::write(dir.join(format!("{file}.txt")), text);
+                let _ = nettai_files::write(dir.join(format!("{file}.txt")), text);
             }
         }
         self.notes

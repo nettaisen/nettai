@@ -174,7 +174,7 @@ static OTHER_GAMES: std::sync::LazyLock<std::sync::Mutex<OtherGames>> = std::syn
 /// run).
 pub fn others(game: &str, dir: &Path, roms: &RomSource) -> Arc<OtherGame> {
     let key = (game.to_string(), dir.to_path_buf(), format!("{roms:?}"));
-    let mut games = nettai_platform::thread::lock(&OTHER_GAMES).unwrap_or_else(|poisoned| poisoned.into_inner());
+    let mut games = nettai_threads::lock(&OTHER_GAMES).unwrap_or_else(|poisoned| poisoned.into_inner());
     let (game, dir, roms) = (game.to_string(), dir.to_path_buf(), roms.clone());
     games
         .entry(key)

@@ -32,11 +32,11 @@ pub fn coverage(d: &Drawing) -> std::sync::Arc<Vec<bool>> {
     use std::sync::{Arc, Mutex, OnceLock};
     static MADE: OnceLock<Mutex<std::collections::HashMap<u64, Arc<Vec<bool>>>>> = OnceLock::new();
     let made = MADE.get_or_init(Default::default);
-    if let Some(c) = nettai_platform::thread::lock(made).ok().and_then(|m| m.get(&d.hash).cloned()) {
+    if let Some(c) = nettai_threads::lock(made).ok().and_then(|m| m.get(&d.hash).cloned()) {
         return c;
     }
     let c = Arc::new(nettai_assets::shapes::coverage(d));
-    if let Ok(mut m) = nettai_platform::thread::lock(made) {
+    if let Ok(mut m) = nettai_threads::lock(made) {
         m.insert(d.hash, c.clone());
     }
     c

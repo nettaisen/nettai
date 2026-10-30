@@ -22,7 +22,7 @@
 
 use nettai_frontend::game::Loaded;
 use nettai_frontend::viewer::{BattlePart, ConsoleSound, IndexPart, KEYFRAME_EVERY, Viewer};
-use nettai_platform::time::Instant;
+use web_time::Instant;
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, TryRecvError};
 
@@ -69,11 +69,11 @@ impl Indexing {
                     let (to, gets) = mpsc::sync_channel(AHEAD);
                     let on = std::mem::replace(&mut next, Box::new(move |part| to.send(part).is_ok()));
                     let doing = doing.clone();
-                    started = started.and_then(|()| nettai_platform::thread::spawn(&format!("index sound {}", k + 1), move || sound(console, gets, &doing, on)));
+                    started = started.and_then(|()| nettai_threads::spawn(&format!("index sound {}", k + 1), move || sound(console, gets, &doing, on)));
                 }
-                started.and_then(|()| nettai_platform::thread::spawn("index", move || battle(game, path, next)))
+                started.and_then(|()| nettai_threads::spawn("index", move || battle(game, path, next)))
             }
-            None => nettai_platform::thread::spawn("index", move || battle(game, path, |part| send.send(part.into_part()).is_ok())),
+            None => nettai_threads::spawn("index", move || battle(game, path, |part| send.send(part.into_part()).is_ok())),
         };
         match started {
             Ok(()) => Some(Indexing { parts, began: Instant::now() }),

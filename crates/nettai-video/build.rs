@@ -1,5 +1,5 @@
 // The kinds of system this crate is built for, by name: `#[cfg(desktop)]` (Windows, macOS, Linux), `#[cfg(web)]` (a
-// browser) and `#[cfg(phone)]` (iOS, Android), as nettai-platform names them.
+// browser) and `#[cfg(phone)]` (iOS, Android), as nettai-dialogs names them.
 fn main() {
     cfg_aliases::cfg_aliases! {
         web: { target_arch = "wasm32" },

@@ -38,7 +38,7 @@ use std::path::{Path, PathBuf};
 pub const ROMS: &str = "NETTAI_ROMS";
 
 /// The per-game archives of a folder chosen as the install, at the three places [`Install::at`] looks: the
-/// browser reads them, and no more, from the folder chosen (`nettai_platform::dialog::open_folder`). (`exe?*`: not
+/// browser reads them, and no more, from the folder chosen (`nettai_dialogs::open_folder`). (`exe?*`: not
 /// the shared `exe.dat`, which holds no ROM and is large.)
 pub const ARCHIVES: [&str; 3] = ["exe/data/exe?*.dat", "data/exe?*.dat", "exe?*.dat"];
 
@@ -81,7 +81,7 @@ pub enum RomSource {
     Files(Vec<PathBuf>),
     /// Copies of the collection's ROMs, as a browser keeps them (nettai's `games`): in the folder given, each its
     /// archive entry as it was, compressed, in a zip of its own named by its game code (`BR6E.zip`: [`copy_of`]),
-    /// stowed (`nettai_platform::fs::stow`) and read into memory as a game wants them ([`Rom::read`]).
+    /// stowed (`nettai_files::stow`) and read into memory as a game wants them ([`Rom::read`]).
     Copies(PathBuf),
 }
 
@@ -137,11 +137,11 @@ impl RomSource {
         if let Some(install) = Install::at(folder) {
             return Ok(RomSource::Collection(install));
         }
-        let read = nettai_platform::fs::read_dir(folder).map_err(|e| Error(format!("{}: {e}", folder.display())))?;
+        let read = nettai_files::read_dir(folder).map_err(|e| Error(format!("{}: {e}", folder.display())))?;
         let mut files: Vec<PathBuf> = read
             .flatten()
             .map(|e| e.path())
-            .filter(|p| nettai_platform::fs::is_file(p) && file_code(p).is_ok_and(|c| c.is_some()))
+            .filter(|p| nettai_files::is_file(p) && file_code(p).is_ok_and(|c| c.is_some()))
             .collect();
         if files.is_empty() {
             return Err(Error(format!(
@@ -196,7 +196,7 @@ impl RomSource {
             }
             // (Each copy by its name: its game code, as its copy was made. None is read till a game wants it.)
             RomSource::Copies(dir) => {
-                for copy in nettai_platform::fs::stowed(dir) {
+                for copy in nettai_files::stowed(dir) {
                     let code = copy.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
                     if copy.extension().is_some_and(|e| e == "zip") && codes.contains(&code) {
                         keep(Rom { at: RomAt::Entry { archive: copy, entry: 0, name: format!("{code}.srl") }, code });
@@ -210,13 +210,13 @@ impl RomSource {
     }
 
     /// Copies of the ROMs of the game codes `codes` this source has (those it hasn't are passed over), as
-    /// [`RomSource::Copies`] keeps them, stowed in folder `dir` (`nettai_platform::fs::stow`): what a browser keeps
+    /// [`RomSource::Copies`] keeps them, stowed in folder `dir` (`nettai_files::stow`): what a browser keeps
     /// of the collection chosen, so that the next start needs no folder chosen. How many there are.
     pub fn keep_copies(&self, codes: &[String], dir: &Path) -> Result<usize, Error> {
         let roms = self.find(codes).unwrap_or_else(|(_, found)| found);
         for rom in &roms {
             let copy = copy_of(rom)?;
-            nettai_platform::fs::stow(&dir.join(format!("{}.zip", rom.code)), copy).map_err(|e| Error(format!("keeping {}: {e}", rom.at)))?;
+            nettai_files::stow(&dir.join(format!("{}.zip", rom.code)), copy).map_err(|e| Error(format!("keeping {}: {e}", rom.at)))?;
         }
         Ok(roms.len())
     }
@@ -242,19 +242,19 @@ impl RomSource {
 
 impl Rom {
     /// The ROM's bytes, read into memory (out of its archive, for one of the collection's; a copy kept is read in
-    /// first: `nettai_platform::fs::fetch`, which waits, off a page's main thread).
+    /// first: `nettai_files::fetch`, which waits, off a page's main thread).
     pub fn read(&self) -> Result<Vec<u8>, Error> {
         let said = |e: &dyn fmt::Display| Error(format!("{}: {e}", self.at));
         match &self.at {
             RomAt::Entry { archive, entry, .. } => {
-                nettai_platform::fs::fetch(std::slice::from_ref(archive)).map_err(|e| said(&e))?;
+                nettai_files::fetch(std::slice::from_ref(archive)).map_err(|e| said(&e))?;
                 let mut zip = open(archive).map_err(|e| said(&e))?;
                 let mut file = zip.by_index(*entry).map_err(|e| said(&e))?;
                 let mut bytes = Vec::with_capacity(file.size() as usize);
                 file.read_to_end(&mut bytes).map_err(|e| said(&e))?;
                 Ok(bytes)
             }
-            RomAt::File(path) => nettai_platform::fs::read(path).map_err(|e| said(&e)),
+            RomAt::File(path) => nettai_files::read(path).map_err(|e| said(&e)),
         }
     }
 }
@@ -267,14 +267,14 @@ pub fn copy_of(rom: &Rom) -> Result<Vec<u8>, Error> {
     let mut out = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
     match &rom.at {
         RomAt::Entry { archive, entry, .. } => {
-            nettai_platform::fs::fetch(std::slice::from_ref(archive)).map_err(|e| said(&e))?;
+            nettai_files::fetch(std::slice::from_ref(archive)).map_err(|e| said(&e))?;
             let mut zip = open(archive).map_err(|e| said(&e))?;
             let file = zip.by_index_raw(*entry).map_err(|e| said(&e))?;
             out.raw_copy_file_rename(file, name).map_err(|e| said(&e))?;
         }
         RomAt::File(path) => {
             use std::io::Write;
-            let bytes = nettai_platform::fs::read(path).map_err(|e| said(&e))?;
+            let bytes = nettai_files::read(path).map_err(|e| said(&e))?;
             out.start_file(name, zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored)).map_err(|e| said(&e))?;
             out.write_all(&bytes).map_err(|e| said(&e))?;
         }
@@ -297,13 +297,13 @@ fn steam() -> Option<PathBuf> {
 
 /// The per-game archives in an install's data folder: each `exe*.dat` but the shared `exe.dat`.
 fn archives(data: &Path) -> Vec<PathBuf> {
-    let Ok(read) = nettai_platform::fs::read_dir(data) else { return Vec::new() };
+    let Ok(read) = nettai_files::read_dir(data) else { return Vec::new() };
     let mut out: Vec<PathBuf> = read
         .flatten()
         .map(|entry| entry.path())
         .filter(|p| {
             let name = p.file_name().map(|n| n.to_string_lossy().to_ascii_lowercase()).unwrap_or_default();
-            name != "exe.dat" && name.starts_with("exe") && p.extension().is_some_and(|e| e.eq_ignore_ascii_case("dat")) && nettai_platform::fs::is_file(p)
+            name != "exe.dat" && name.starts_with("exe") && p.extension().is_some_and(|e| e.eq_ignore_ascii_case("dat")) && nettai_files::is_file(p)
         })
         .collect();
     out.sort();
@@ -334,14 +334,14 @@ fn scan(archive: &Path, codes: &[String]) -> Result<Vec<Rom>, String> {
 /// The game code a file's header says, reading no more than the header: none for a file too short to have one,
 /// or with no game code there.
 fn file_code(path: &Path) -> Result<Option<String>, String> {
-    let file = nettai_platform::fs::File::open(path).map_err(|e| e.to_string())?;
+    let file = nettai_files::File::open(path).map_err(|e| e.to_string())?;
     let mut header = Vec::with_capacity(crate::HEADER_LEN);
     file.take(crate::HEADER_LEN as u64).read_to_end(&mut header).map_err(|e| e.to_string())?;
     Ok(crate::header_code(&header).map(str::to_string))
 }
 
-fn open(archive: &Path) -> Result<zip::ZipArchive<nettai_platform::fs::File>, String> {
-    let file = nettai_platform::fs::File::open(archive).map_err(|e| e.to_string())?;
+fn open(archive: &Path) -> Result<zip::ZipArchive<nettai_files::File>, String> {
+    let file = nettai_files::File::open(archive).map_err(|e| e.to_string())?;
     zip::ZipArchive::new(file).map_err(|e| e.to_string())
 }
 
@@ -361,8 +361,8 @@ pub mod testing {
 
     /// A zip archive at `path` of `entries` (a name and its bytes), compressed as the collection's may be.
     pub fn archive(path: &Path, entries: &[(&str, &[u8])]) {
-        nettai_platform::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        let mut zip = zip::ZipWriter::new(nettai_platform::fs::File::create(path).unwrap());
+        nettai_files::create_dir_all(path.parent().unwrap()).unwrap();
+        let mut zip = zip::ZipWriter::new(nettai_files::File::create(path).unwrap());
         for (name, bytes) in entries {
             zip.start_file(*name, zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated)).unwrap();
             zip.write_all(bytes).unwrap();
@@ -389,7 +389,7 @@ mod tests {
         archive(&data.join("exe.dat"), &[("bg/a.tga", b"art")]);
         archive(&data.join("exe6.dat"), &[]);
         archive(&data.join("exe4.dat"), &[]);
-        nettai_platform::fs::write(data.join("notes.txt"), b"").unwrap();
+        nettai_files::write(data.join("notes.txt"), b"").unwrap();
         let install = Install { data: data.clone(), archives: vec![data.join("exe4.dat"), data.join("exe6.dat")] };
         assert_eq!(Install::at(dir.path()).as_ref(), Some(&install));
         assert_eq!(Install::at(&dir.path().join("exe")).as_ref(), Some(&install));
@@ -413,7 +413,7 @@ mod tests {
         let (us, jp, other) = (fake_rom("BR6E", 0x1000), fake_rom("BR5J", 0x2000), fake_rom("AREE", 0x1000));
         archive(&data.join("exe6.dat"), &[("exe6_rom_e.srl", &us), ("readme.txt", b"BR6E"), ("roms/exe6f_rom_f.srl", &jp), ("exe1_rom_e.srl", &other)]);
         archive(&data.join("exe7.dat"), &[("again/exe6_rom_e.srl", &us)]);
-        nettai_platform::fs::write(data.join("exe5.dat"), b"not a zip").unwrap();
+        nettai_files::write(data.join("exe5.dat"), b"not a zip").unwrap();
         let RomSource::Collection(install) = RomSource::at(dir.path()).unwrap() else { panic!("an install") };
         assert_eq!(install.archives.len(), 3);
         let source = RomSource::Collection(install);
@@ -426,7 +426,7 @@ mod tests {
         assert_eq!(roms[1].read().unwrap(), us);
         assert_eq!(roms[0].read().unwrap(), jp);
         // An archive gone since: a failure to read, said in words for the log.
-        nettai_platform::fs::remove_file(data.join("exe6.dat")).unwrap();
+        nettai_files::remove_file(data.join("exe6.dat")).unwrap();
         assert!(roms[1].read().unwrap_err().to_string().contains("exe6_rom_e.srl"));
     }
 
@@ -453,7 +453,7 @@ mod tests {
         assert_eq!(size(&kept.join("BR6E.zip"), "BR6E.srl"), size(&data.join("exe6.dat"), "exe6_rom_e.srl"));
         // A ROM file's copy, stored.
         let files = tempfile::tempdir().unwrap();
-        nettai_platform::fs::write(files.path().join("b.gba"), &us).unwrap();
+        nettai_files::write(files.path().join("b.gba"), &us).unwrap();
         let from_files = files.path().join("kept");
         assert_eq!(RomSource::at(files.path()).unwrap().keep_copies(&codes(&["BR6E"]), &from_files).unwrap(), 1);
         assert_eq!(RomSource::Copies(from_files).find(&codes(&["BR6E"])).unwrap()[0].read().unwrap(), us);
@@ -465,12 +465,12 @@ mod tests {
     fn a_folder_of_rom_files() {
         let dir = tempfile::tempdir().unwrap();
         let (us, jp) = (fake_rom("BR6E", 0x1000), fake_rom("BR5J", 0x1000));
-        nettai_platform::fs::write(dir.path().join("b.gba"), &us).unwrap();
-        nettai_platform::fs::write(dir.path().join("c.srl"), &us).unwrap();
-        nettai_platform::fs::write(dir.path().join("a.srl"), &jp).unwrap();
-        nettai_platform::fs::write(dir.path().join("game.sav"), [0u8; 0x40]).unwrap();
-        nettai_platform::fs::write(dir.path().join("other.gba"), fake_rom("AREE", 0x1000)).unwrap();
-        nettai_platform::fs::create_dir_all(dir.path().join("sub")).unwrap();
+        nettai_files::write(dir.path().join("b.gba"), &us).unwrap();
+        nettai_files::write(dir.path().join("c.srl"), &us).unwrap();
+        nettai_files::write(dir.path().join("a.srl"), &jp).unwrap();
+        nettai_files::write(dir.path().join("game.sav"), [0u8; 0x40]).unwrap();
+        nettai_files::write(dir.path().join("other.gba"), fake_rom("AREE", 0x1000)).unwrap();
+        nettai_files::create_dir_all(dir.path().join("sub")).unwrap();
         let source = RomSource::at(dir.path()).unwrap();
         assert!(matches!(&source, RomSource::Files(f) if f.len() == 4), "the save isn't one: {source:?}");
         assert_eq!(source.to_string(), format!("the ROM files in {}", dir.path().display()));

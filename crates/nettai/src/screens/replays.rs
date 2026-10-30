@@ -62,7 +62,7 @@ use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::Duration;
-use nettai_platform::time::Instant;
+use web_time::Instant;
 use viewer::{MENU, MenuItem, Overlays, Watching};
 
 /// The viewer's view: its focus is remembered apart from the list's.
@@ -1244,7 +1244,7 @@ impl Replays {
                 self.watch(shell, &path, None, true);
             }
             "export" => shell.sound.play(Cue::Refused),
-            "file" => nettai_platform::dialog::show_file(&path),
+            "file" => nettai_dialogs::show_file(&path),
             "delete" => self.ask_delete(shell),
             "watch-more" => self.open_watch_menu(shell, self.sheet),
             _ => {}
@@ -1762,7 +1762,7 @@ impl Screen for Replays {
         }
         let Some(path) = self.selected.clone() else { return };
         self.close_sheet(shell);
-        match nettai_platform::fs::remove_file(&path) {
+        match nettai_files::remove_file(&path) {
             Ok(()) => {
                 // The row after it takes its place.
                 let at = self.rows.iter().position(|&i| self.library.entries[i].path == path);

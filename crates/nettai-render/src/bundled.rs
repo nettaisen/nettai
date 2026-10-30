@@ -43,7 +43,7 @@ pub fn m_plus_1_code() -> &'static [u8] {
 struct Packed {
     woff2: &'static [u8],
     unpacked: OnceLock<Box<[u8]>>,
-    /// Held while one thread unpacks, taken as the browser's page may take it (`nettai_platform::thread::lock`:
+    /// Held while one thread unpacks, taken as the browser's page may take it (`nettai_threads::lock`:
     /// its main thread may not wait).
     unpacking: Mutex<()>,
 }
@@ -58,7 +58,7 @@ impl Packed {
         if let Some(font) = self.unpacked.get() {
             return font;
         }
-        let _alone = nettai_platform::thread::lock(&self.unpacking).unwrap_or_else(PoisonError::into_inner);
+        let _alone = nettai_threads::lock(&self.unpacking).unwrap_or_else(PoisonError::into_inner);
         // (Another thread may have unpacked it while this one waited.)
         self.unpacked.get_or_init(|| wuff::decompress_woff2(self.woff2).expect("the bundled fonts unpack").into_boxed_slice())
     }

@@ -24,7 +24,7 @@ use std::path::{Path, PathBuf};
 use std::fmt::Write as _;
 use std::rc::Rc;
 use std::time::Duration;
-use nettai_platform::time::Instant;
+use web_time::Instant;
 
 /// The most grounds there are at once: a change over a change over a change; one more drops the oldest.
 const MOST_GROUNDS: usize = 4;

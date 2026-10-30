@@ -124,7 +124,7 @@ pub enum Status {
 /// The fingerprints of a content's chips for live play, made as they are
 /// asked for ([`Fingerprinter::want`]: the two folders' chips as a session
 /// starts, and any other the AI comes to see), on threads of their own
-/// (`nettai_platform::thread::spawn`: the browser's workers too), and kept in
+/// (`nettai_threads::spawn`: the browser's workers too), and kept in
 /// a cache folder by content hash (`fingerprints-<game>-<hash>.json`, as the
 /// trainer's pool keeps a whole game's), so a chip is made once. A chip's
 /// fingerprint is its own alone, so made apart it is what the pool makes.
@@ -171,7 +171,7 @@ impl Fingerprinter {
         static STARTED: OnceLock<Mutex<HashMap<u64, Fingerprinter>>> = OnceLock::new();
         let hash = content.hash().0;
         let started = STARTED.get_or_init(Default::default);
-        let mut started = nettai_platform::thread::lock(started).unwrap_or_else(|p| p.into_inner());
+        let mut started = nettai_threads::lock(started).unwrap_or_else(|p| p.into_inner());
         if let Some(f) = started.get(&hash) {
             return f.clone();
         }
@@ -196,11 +196,11 @@ impl Fingerprinter {
         }));
         if threads == 0 {
             // (No thread: none is read either.)
-            nettai_platform::thread::lock(&f.0.state).unwrap_or_else(|p| p.into_inner()).read = true;
+            nettai_threads::lock(&f.0.state).unwrap_or_else(|p| p.into_inner()).read = true;
         }
         for k in 0..threads {
             let shared = f.0.clone();
-            if let Err(e) = nettai_platform::thread::spawn(&format!("fingerprints {k}"), move || work(&shared, k == 0)) {
+            if let Err(e) = nettai_threads::spawn(&format!("fingerprints {k}"), move || work(&shared, k == 0)) {
                 f.0.fail(format!("a thread to make the chips' fingerprints on: {e}"));
                 break;
             }
@@ -234,7 +234,7 @@ impl Fingerprinter {
     /// asked for already), the threads told.
     pub fn want(&self, chips: impl IntoIterator<Item = nettai_content_api::ChipHandle>) {
         let s = &self.0;
-        let mut m = nettai_platform::thread::lock(&s.state).unwrap_or_else(|p| p.into_inner());
+        let mut m = nettai_threads::lock(&s.state).unwrap_or_else(|p| p.into_inner());
         let mut more = false;
         for c in chips {
             if s.printable.contains(&c) && m.wanted.insert(c) {
@@ -258,7 +258,7 @@ impl Fingerprinter {
     /// (another count: more of them).
     pub fn given(&self) -> (u64, Arc<Fingerprints>) {
         let generation = self.0.generation.load(std::sync::atomic::Ordering::Acquire);
-        (generation, nettai_platform::thread::lock(&self.0.given).unwrap_or_else(|p| p.into_inner()).clone())
+        (generation, nettai_threads::lock(&self.0.given).unwrap_or_else(|p| p.into_inner()).clone())
     }
 
     /// How many times they were given out (cheap: no lock).
@@ -272,7 +272,7 @@ impl Fingerprinter {
     }
 
     pub fn status(&self) -> Status {
-        let m = nettai_platform::thread::lock(&self.0.state).unwrap_or_else(|p| p.into_inner());
+        let m = nettai_threads::lock(&self.0.state).unwrap_or_else(|p| p.into_inner());
         match (&m.error, m.read) {
             (Some(e), _) => Status::Failed(e.clone()),
             (None, false) => Status::Reading,
@@ -286,20 +286,20 @@ impl Fingerprinter {
 
     /// Why it failed, if it did.
     pub fn error(&self) -> Option<String> {
-        nettai_platform::thread::lock(&self.0.state).unwrap_or_else(|p| p.into_inner()).error.clone()
+        nettai_threads::lock(&self.0.state).unwrap_or_else(|p| p.into_inner()).error.clone()
     }
 
     /// Why the fingerprints made couldn't be written to the cache folder
     /// (they are made again next time), if they couldn't.
     pub fn unkept(&self) -> Option<String> {
-        nettai_platform::thread::lock(&self.0.state).unwrap_or_else(|p| p.into_inner()).unkept.clone()
+        nettai_threads::lock(&self.0.state).unwrap_or_else(|p| p.into_inner()).unkept.clone()
     }
 }
 
 impl Shared {
     fn fail(&self, why: String) {
         // (The host's thread too, a thread that couldn't start: a page's main thread may not wait.)
-        let mut m = nettai_platform::thread::lock(&self.state).unwrap_or_else(|p| p.into_inner());
+        let mut m = nettai_threads::lock(&self.state).unwrap_or_else(|p| p.into_inner());
         m.error.get_or_insert(why);
         drop(m);
         self.asked.notify_all();
@@ -318,9 +318,9 @@ impl Shared {
         let f = Fingerprints { version: fingerprint::VERSION, hash: self.hash, chips: m.made.clone(), ..Fingerprints::default() };
         let kept = serde_json::to_vec(&f).map_err(|e| e.to_string()).and_then(|bytes| {
             if let Some(dir) = file.parent() {
-                nettai_platform::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+                nettai_files::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
             }
-            nettai_platform::fs::write(file, bytes).map_err(|e| format!("{}: {e}", file.display()))
+            nettai_files::write(file, bytes).map_err(|e| format!("{}: {e}", file.display()))
         });
         m.unkept = kept.err();
     }
@@ -332,7 +332,7 @@ impl Shared {
 fn work(s: &Shared, first: bool) {
     let Some(content) = s.content.clone() else { return };
     if first {
-        let read = s.file.as_ref().and_then(|f| nettai_platform::fs::read(f).ok()).and_then(|bytes| serde_json::from_slice::<Fingerprints>(&bytes).ok());
+        let read = s.file.as_ref().and_then(|f| nettai_files::read(f).ok()).and_then(|bytes| serde_json::from_slice::<Fingerprints>(&bytes).ok());
         let mut m = s.state.lock().unwrap_or_else(|p| p.into_inner());
         if let Some(f) = read.filter(|f| f.version == fingerprint::VERSION && f.hash == s.hash) {
             m.made = f.chips;
@@ -435,7 +435,7 @@ pub struct Stopped {
 
 impl Stopped {
     pub fn why(&self) -> Option<String> {
-        let why = nettai_platform::thread::lock(&self.why).unwrap_or_else(|p| p.into_inner()).clone();
+        let why = nettai_threads::lock(&self.why).unwrap_or_else(|p| p.into_inner()).clone();
         why.or_else(|| self.fingerprints.error())
     }
 }
@@ -551,7 +551,7 @@ impl NetAi {
 
     /// It stops playing, for `why`.
     fn stop(&mut self, why: String) {
-        *nettai_platform::thread::lock(&self.told).unwrap_or_else(|p| p.into_inner()) = Some(why.clone());
+        *nettai_threads::lock(&self.told).unwrap_or_else(|p| p.into_inner()) = Some(why.clone());
         self.error = Some(why);
     }
 
@@ -824,7 +824,7 @@ impl Ai for NetAi {
         self.rng = SplitMix64::new(self.seed);
         self.mem.reset();
         self.error = None;
-        *nettai_platform::thread::lock(&self.told).unwrap_or_else(|p| p.into_inner()) = None;
+        *nettai_threads::lock(&self.told).unwrap_or_else(|p| p.into_inner()) = None;
     }
 }
 
@@ -875,7 +875,7 @@ impl WaitingAi {
                     self.ai = Some(ai);
                 }
                 Err(why) => {
-                    *nettai_platform::thread::lock(&self.told).unwrap_or_else(|p| p.into_inner()) = Some(why.clone());
+                    *nettai_threads::lock(&self.told).unwrap_or_else(|p| p.into_inner()) = Some(why.clone());
                     self.error = Some(why);
                 }
             }

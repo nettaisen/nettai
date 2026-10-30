@@ -80,7 +80,7 @@ impl Encoder {
         let spec = Spec { width: video.width, height: video.height, frame, timescale, tracks: audio.map_or(0, |a| a.tracks), bitrate: codecs::bitrate(&video) };
         let (frames, taken) = mpsc::sync_channel(QUEUE);
         let (tell, said) = mpsc::channel();
-        nettai_platform::thread::spawn_async("video", move || {
+        nettai_threads::spawn_async("video", move || {
             Box::pin(async move {
                 let ended = encode(spec, &taken, &tell).await;
                 let _ = tell.send(match ended {
@@ -114,7 +114,7 @@ impl Codecs for Encoder {
     fn frame(&mut self, nv12: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error> {
         let samples = sound.iter().map(|s| s.as_flattened().to_vec()).collect();
         let mut msg = Msg::Frame(nv12, samples);
-        let waited = nettai_platform::time::Instant::now();
+        let waited = web_time::Instant::now();
         loop {
             match self.frames.try_send(msg) {
                 Ok(()) => return Ok(Vec::new()),

@@ -6,8 +6,8 @@ license.workspace = true
 description = "The battle content: a game's Luau, strings, library order and look, loaded into the engine's data; its bundles and their store"
 
 [dependencies]
-# Files, threads, time and dialogs: the desktop's, or the browser's.
-nettai-platform = { path = "../nettai-platform" }
+# Files: the desktop's and a phone's, or the browser's tree.
+nettai-files = { path = "../nettai-files" }
 nettai-assets = { path = "../nettai-assets" }
 # The battle data model the content loads into.
 nettai-battle.workspace = true

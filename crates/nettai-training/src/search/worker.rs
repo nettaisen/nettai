@@ -60,12 +60,12 @@ impl Worker {
     pub fn start() -> Result<Worker, String> {
         let shared = Arc::new(Shared::default());
         let s = shared.clone();
-        nettai_platform::thread::spawn("lookahead", move || work(&s)).map_err(|e| format!("the lookahead's thread couldn't start: {e}"))?;
+        nettai_threads::spawn("lookahead", move || work(&s)).map_err(|e| format!("the lookahead's thread couldn't start: {e}"))?;
         Ok(Worker { shared, asked: 0 })
     }
 
     fn push(&self, job: Job) {
-        nettai_platform::thread::lock(&self.shared.queue).unwrap_or_else(|p| p.into_inner()).jobs.push_back(job);
+        nettai_threads::lock(&self.shared.queue).unwrap_or_else(|p| p.into_inner()).jobs.push_back(job);
         self.shared.wake.notify_one();
     }
 
@@ -90,7 +90,7 @@ impl Worker {
         let mut late = false;
         loop {
             {
-                let answer = nettai_platform::thread::lock(&self.shared.answer).unwrap_or_else(|p| p.into_inner());
+                let answer = nettai_threads::lock(&self.shared.answer).unwrap_or_else(|p| p.into_inner());
                 match &*answer {
                     Some((got, a)) if *got == n => return a.clone(),
                     Some((_, Err(why))) => return Err(why.clone()),
@@ -108,7 +108,7 @@ impl Worker {
 
 impl Drop for Worker {
     fn drop(&mut self) {
-        let mut q = nettai_platform::thread::lock(&self.shared.queue).unwrap_or_else(|p| p.into_inner());
+        let mut q = nettai_threads::lock(&self.shared.queue).unwrap_or_else(|p| p.into_inner());
         q.closed = true;
         q.jobs.clear();
         drop(q);

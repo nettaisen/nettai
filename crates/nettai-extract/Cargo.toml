@@ -7,8 +7,8 @@ license.workspace = true
 description = "A game's assets extracted from its ROMs in memory by the game's recipe, the ROMs found where they are (the Legacy Collection installed, or ROM files)"
 
 [dependencies]
-# Files, threads, time and dialogs: the desktop's, or the browser's.
-nettai-platform = { path = "../nettai-platform" }
+# Files: the desktop's and a phone's, or the browser's tree.
+nettai-files = { path = "../nettai-files" }
 m4a.workspace = true
 nettai-assets = { path = "../nettai-assets" }
 nettai-content-api = { path = "../nettai-content-api" }

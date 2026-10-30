@@ -67,7 +67,7 @@ pub(super) fn fresh() -> Step {
     Box::new(|_, app, _| {
         let mut app = app.borrow_mut();
         if let Some(game) = app.shell.game().map(str::to_string) {
-            let _ = nettai_platform::fs::remove_dir_all(crate::builds::store::folder(&game));
+            let _ = nettai_files::remove_dir_all(crate::builds::store::folder(&game));
         }
         leave(&mut app);
         app.go_now(ScreenId::Play);
@@ -166,8 +166,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
         Box::new(|_, app, _| {
             let folder = crate::paths::builds();
             let path = folder.join("not-a-save.sav");
-            let _ = nettai_platform::fs::create_dir_all(&folder);
-            let _ = nettai_platform::fs::write(&path, b"no save of any game");
+            let _ = nettai_files::create_dir_all(&folder);
+            let _ = nettai_files::write(&path, b"no save of any game");
             app.borrow_mut().dropped(&path);
         }),
     );

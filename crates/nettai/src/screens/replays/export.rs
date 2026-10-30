@@ -21,7 +21,7 @@ use crate::shell::Shell;
 use nettai_frontend::game::{GraphicsMode, Loaded, Sound};
 use nettai_frontend::player::time_of;
 use nettai_ui::{ExportState, ReplaysView};
-use nettai_platform::dialog::{Filter, Stream};
+use nettai_dialogs::{Filter, Stream};
 use nettai_video::{Options, Part, Progress, Sides, Titles};
 use slint::ComponentHandle;
 use std::ops::{ControlFlow, Range};
@@ -70,7 +70,7 @@ struct Running {
 
 /// What the export's thread and the export mode share, taken as the page's main thread may take a lock.
 fn share(shared: &Mutex<Shared>) -> std::sync::MutexGuard<'_, Shared> {
-    nettai_platform::thread::lock(shared).unwrap_or_else(|e| e.into_inner())
+    nettai_threads::lock(shared).unwrap_or_else(|e| e.into_inner())
 }
 
 impl Drop for Running {
@@ -134,7 +134,7 @@ fn videos() -> PathBuf {
         return PathBuf::from("/videos");
     }
     if cfg!(any(target_os = "ios", target_os = "android")) {
-        return nettai_platform::folders::temporary().unwrap_or_default().join("outgoing");
+        return nettai_files::folders::temporary().unwrap_or_default().join("outgoing");
     }
     let var = |name: &str| std::env::var_os(name).filter(|v| !v.is_empty()).map(PathBuf::from);
     let home = if cfg!(target_os = "windows") { var("USERPROFILE") } else { var("HOME") };
@@ -347,7 +347,7 @@ impl Export {
             Sides::Both => stem.push_str(" both"),
             Sides::SideBySide => stem.push_str(" side by side"),
         }
-        self.to = (1..).map(|n| folder.join(if n == 1 { format!("{stem}.mp4") } else { format!("{stem} ({n}).mp4") })).find(|p| !nettai_platform::fs::exists(p)).expect("some number is free");
+        self.to = (1..).map(|n| folder.join(if n == 1 { format!("{stem}.mp4") } else { format!("{stem} ({n}).mp4") })).find(|p| !nettai_files::exists(p)).expect("some number is free");
     }
 
     /// Set the view from the export mode's state.
@@ -475,7 +475,7 @@ impl Export {
         // (A file of that name made since the export mode began isn't written over, unless the player chose it.)
         self.name(shell);
         let kind = shell.ui().global::<ReplaysView>().get_video_kind().to_string();
-        nettai_platform::dialog::save_stream_to(Filter { kind: &kind, extensions: &["mp4"] }, &self.to, |chosen| {
+        nettai_dialogs::save_stream_to(Filter { kind: &kind, extensions: &["mp4"] }, &self.to, |chosen| {
             CHOSEN.with(|kept| *kept.borrow_mut() = Some(chosen));
             let _ = slint::invoke_from_event_loop(|| crate::with_app(|app| app.chosen(VIDEO_FILE, &[])));
         });
@@ -530,7 +530,7 @@ impl Export {
                 .and_then(|made| made.body.finish(made.head).map_err(nettai_video::Error::Disk));
             share(&told).done = Some(result);
         };
-        match nettai_platform::thread::spawn("export", work) {
+        match nettai_threads::spawn("export", work) {
             Ok(()) => {
                 self.running = Some(Running { stop, shared });
                 self.state = ExportState::Running;
@@ -600,7 +600,7 @@ impl Export {
 /// Ask the player where to save the video, in the system's dialog, starting from where it is to go.
 fn choose(kind: &str, to: &Path) -> Option<PathBuf> {
     let name = to.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-    nettai_platform::dialog::save_path(Filter { kind, extensions: &["mp4"] }, &name, Some(to))
+    nettai_dialogs::save_path(Filter { kind, extensions: &["mp4"] }, &name, Some(to))
 }
 
 #[cfg(test)]

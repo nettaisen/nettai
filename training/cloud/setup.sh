@@ -15,8 +15,9 @@ training="$(dirname "$here")"
 
 echo "== system packages"
 sudo apt-get update -q
-sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq build-essential pkg-config git tmux rsync curl ca-certificates \
-    libwayland-dev  # nettai-platform's file dialogs (rfd) need it on Linux, even in the headless bridge
+# (No libwayland-dev since nettai-platform's split, 2026-10-30: the file dialogs that needed it are nettai-dialogs',
+# which the bridge doesn't build.)
+sudo DEBIAN_FRONTEND=noninteractive apt-get install -yq build-essential pkg-config git tmux rsync curl ca-certificates
 
 echo "== Rust"
 if ! command -v cargo >/dev/null 2>&1 && [ ! -x "$HOME/.cargo/bin/cargo" ]; then

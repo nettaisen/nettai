@@ -45,7 +45,7 @@ use nettai_ui::{PickMark, ReplaysView};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
-use nettai_platform::time::Instant;
+use web_time::Instant;
 
 /// How long the window goes without drawing before the time isn't the replay's (`Watching::frame`): the most
 /// time one frame catches up (the player's own cap).

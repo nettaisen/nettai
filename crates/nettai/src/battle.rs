@@ -31,7 +31,7 @@ use nettai_render::vfont::TextRenderer;
 use nettai_ui::{BattleKind, VersusCard};
 use slint::ComponentHandle;
 use std::time::Duration;
-use nettai_platform::time::Instant;
+use web_time::Instant;
 
 mod hold;
 pub(crate) mod link;
@@ -591,11 +591,11 @@ impl Shell {
         use nettai_frontend::replay::Info;
         let dir = crate::paths::replays();
         let made = (|| -> Result<Recorder, String> {
-            nettai_platform::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-            let when = nettai_platform::time::SystemTime::now().duration_since(nettai_platform::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
+            nettai_files::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+            let when = web_time::SystemTime::now().duration_since(web_time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
             let stamp = chrono::DateTime::from_timestamp(when as i64, 0).map(|t| t.with_timezone(&chrono::Local).format("%Y%m%d-%H%M%S").to_string()).unwrap_or_default();
             let path = dir.join(format!("{stamp}-{game}.{}", nettai_frontend::replay::EXTENSION));
-            let file = nettai_platform::fs::File::create(&path).map_err(|e| format!("{}: {e}", path.display()))?;
+            let file = nettai_files::File::create(&path).map_err(|e| format!("{}: {e}", path.display()))?;
             let info = Info { when, names, ..Info::of(nettai_frontend::replay::MatchKind::Offline, side) };
             let m = nettai_match::Match { seed: Some(seed), ..m.clone() };
             Recorder::new(Box::new(std::io::BufWriter::new(file)), content, &m, &info)

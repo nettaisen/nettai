@@ -12,8 +12,10 @@ nettai-frontend = { path = "../nettai-frontend" }
 nettai-render = { path = "../nettai-render" }
 # The sound's sample rate (no audio device).
 nettai-audio = { path = "../nettai-audio", default-features = false }
-# The threads the frames are presented on (`presenters`), and the browser's codecs' (`platform::web`): the platform's.
-nettai-platform = { path = "../nettai-platform" }
+# The threads the frames are presented on (`presenters`), and the browser's codecs' (`platform::web`).
+nettai-threads = { path = "../nettai-threads" }
+# Time: std's natively, the browser's `performance.now()` there (std's panics).
+web-time = "1"
 
 # The MP4's boxes (`mp4`, `assemble`).
 mp4-atom = "0.16"

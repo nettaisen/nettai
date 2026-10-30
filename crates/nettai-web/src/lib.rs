@@ -8,7 +8,7 @@
 //! page ships none). After:
 //! it takes what changed in the data folder ([`changes`]) now and then, and writes it to its storage (the origin
 //! private file system). Built with Wasm's atomics, so the app's threads are Web Workers on its memory
-//! (nettai-platform's `thread`); build.sh builds it and the page, and serve.py serves them as a page with threads must be.
+//! (nettai-threads); build.sh builds it and the page, and serve.py serves them as a page with threads must be.
 
 #![forbid(unsafe_code)]
 
@@ -22,15 +22,15 @@ mod page {
     /// A file the page keeps, put in the data folder (`path` within it) before the app starts.
     #[wasm_bindgen]
     pub fn preload(path: &str, data: Vec<u8>) {
-        nettai_platform::fs::preload(std::path::Path::new(super::DATA).join(path.trim_start_matches('/')), data);
+        nettai_files::preload(std::path::Path::new(super::DATA).join(path.trim_start_matches('/')), data);
     }
 
     /// A file the page keeps and doesn't put in the app's files as it starts (`path` within the data folder, in its
-    /// stowed folder: `nettai_platform::fs::STOWED`): listed, to be read in when the app wants it
-    /// (`nettai_platform::fs::fetch`).
+    /// stowed folder: `nettai_files::STOWED`): listed, to be read in when the app wants it
+    /// (`nettai_files::fetch`).
     #[wasm_bindgen]
     pub fn stowed(path: &str) {
-        nettai_platform::fs::listed(std::path::Path::new(super::DATA).join(path.trim_start_matches('/')));
+        nettai_files::listed(std::path::Path::new(super::DATA).join(path.trim_start_matches('/')));
     }
 
     /// The app started. A panic is said on the console. It returns once the window's loop is running on the
@@ -38,7 +38,7 @@ mod page {
     #[wasm_bindgen]
     pub fn start() -> Result<(), JsError> {
         console_error_panic_hook::set_once();
-        nettai_platform::fs::watch(super::DATA);
+        nettai_files::watch(super::DATA);
         nettai::run().map_err(|e| JsError::new(&e.to_string()))
     }
 
@@ -48,10 +48,10 @@ mod page {
     #[wasm_bindgen]
     pub fn changes() -> js_sys::Array {
         let out = js_sys::Array::new();
-        for change in nettai_platform::fs::changes() {
+        for change in nettai_files::changes() {
             let (kind, path, data) = match change {
-                nettai_platform::fs::Change::Write(path, data) => ("write", path, Some(data)),
-                nettai_platform::fs::Change::Remove(path) => ("remove", path, None),
+                nettai_files::Change::Write(path, data) => ("write", path, Some(data)),
+                nettai_files::Change::Remove(path) => ("remove", path, None),
             };
             let Ok(path) = path.strip_prefix(super::DATA) else { continue };
             // (A folder whose name starts with a dot is the app's scratch: what is kept is what lands in place.)

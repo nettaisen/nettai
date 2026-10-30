@@ -3,7 +3,7 @@
 //! unless an environment variable names another.
 //!
 //! The data folder is `$NETTAI_DATA`, else the system's place for an app's
-//! data (`nettai_platform::folders::app_data`): `~/Library/Application
+//! data (`nettai_files::folders::app_data`): `~/Library/Application
 //! Support/nettai` on macOS, `$XDG_DATA_HOME/nettai` (`~/.local/share/nettai`)
 //! on Linux and the other Unixes, `%APPDATA%\nettai` on Windows; on iOS the
 //! app's own `Library/Application Support/nettai` (hidden from the player: what
@@ -22,7 +22,7 @@ pub fn data() -> PathBuf {
     if let Some(dir) = std::env::var_os("NETTAI_DATA") {
         return PathBuf::from(dir);
     }
-    nettai_platform::folders::app_data().map(|d| d.join("nettai")).unwrap_or_default()
+    nettai_files::folders::app_data().map(|d| d.join("nettai")).unwrap_or_default()
 }
 
 /// A folder of the data folder, unless `var` names another.

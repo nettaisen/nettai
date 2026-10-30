@@ -8,8 +8,10 @@ description = "Draws nettai battles into frames: the stage, the objects, the HUD
 # Drawing only: no window, sound, network or command line (nettai-frontend
 # plays the battles it draws; nettai and nettai-tools are the programs around both).
 [dependencies]
-# Files, threads, time and dialogs: the desktop's, or the browser's.
-nettai-platform = { path = "../nettai-platform" }
+# Files: the desktop's and a phone's, or the browser's tree.
+nettai-files = { path = "../nettai-files" }
+# Threads (a Web Worker in a browser) and the locks they share.
+nettai-threads = { path = "../nettai-threads" }
 nettai-battle = { path = "../nettai-battle" }
 nettai-assets = { path = "../nettai-assets" }
 # The player's language's strings table.
@@ -26,6 +28,8 @@ swash = "0.2"
 wuff = { version = "0.2.9", default-features = false, features = ["brotli"] }
 
 [dev-dependencies]
+# The tests' deadlines (the browser's clock where std's panics).
+web-time = "1"
 nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
 # A HUD's letters read off its font as extraction reads them (hud.rs's tests).
 nettai-extract = { path = "../nettai-extract" }

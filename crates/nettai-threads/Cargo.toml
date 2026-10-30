@@ -1,0 +1,20 @@
+[package]
+name = "nettai-threads"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Threads, the same calls on the desktop, in a browser (Web Workers on its shared memory) and on a phone: a thread to work on, the locks it shares, work awaited off the window's thread"
+
+[dependencies]
+# Work done off the window's thread, awaited (`off_thread`).
+futures-channel = "0.3"
+
+# The browser's: its workers, started by the page.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+
+[dev-dependencies]
+# A plain executor, to poll a future as the window's loop would (`off_thread`'s test).
+futures-executor = "0.3"

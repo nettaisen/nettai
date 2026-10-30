@@ -568,7 +568,7 @@ mod tests {
         let mut s = Session::new(Box::new(LivePlayer::new(Set::of(&content, &m, 11))));
         s.record(Recorder::new(Box::new(sink.clone()), &content, &m, &Info::of(MatchKind::Offline, 0)).unwrap()).unwrap();
         let mut masher = nettai_netplay::standin::Masher::new(11);
-        let started = nettai_platform::time::Instant::now();
+        let started = web_time::Instant::now();
         while s.ticks < 60_000 {
             let mashed = masher.buttons();
             let keys = if s.battle.round.mode == mode::CUSTOM { short_set::shooter(&s.battle, 0, s.ticks as u32) } else { mashed };
@@ -578,7 +578,7 @@ mod tests {
         }
         let played = started.elapsed();
         let replay = Replay::read(&sink.bytes()).unwrap();
-        let started = nettai_platform::time::Instant::now();
+        let started = web_time::Instant::now();
         let out = play_out(&content, &replay).unwrap();
         let took = started.elapsed();
         assert_eq!((out.diverged, out.stopped, out.ticks), (None, None, s.ticks));

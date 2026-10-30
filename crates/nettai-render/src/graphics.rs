@@ -49,7 +49,7 @@ impl OtherGame {
     /// a host has as it loads the game): taken in place of extracting them,
     /// unless they are being extracted now.
     pub fn provide(&self, backgrounds: BTreeMap<String, Background>) {
-        let Ok(mut extract) = nettai_platform::thread::lock(&self.extract) else { return };
+        let Ok(mut extract) = nettai_threads::lock(&self.extract) else { return };
         if extract.take().is_some() {
             self.set(Ok(backgrounds));
         }
@@ -58,16 +58,16 @@ impl OtherGame {
     /// Start extracting its backgrounds, on a thread of their own, unless
     /// they are extracted or being extracted.
     pub fn want(self: &Arc<Self>) {
-        let Some(extract) = nettai_platform::thread::lock(&self.extract).ok().and_then(|mut e| e.take()) else { return };
+        let Some(extract) = nettai_threads::lock(&self.extract).ok().and_then(|mut e| e.take()) else { return };
         let other = self.clone();
-        if let Err(e) = nettai_platform::thread::spawn("other backgrounds", move || other.set(extract())) {
+        if let Err(e) = nettai_threads::spawn("other backgrounds", move || other.set(extract())) {
             self.set(Err(format!("can't start a thread to extract them: {e}")));
         }
     }
 
     fn set(&self, got: Result<BTreeMap<String, Background>, String>) {
         let _ = self.got.set(got);
-        let _lock = nettai_platform::thread::lock(&self.done.0);
+        let _lock = nettai_threads::lock(&self.done.0);
         self.done.1.notify_all();
     }
 

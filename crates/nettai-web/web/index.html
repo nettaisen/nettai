@@ -68,7 +68,7 @@ if (exact?.get) {
 }
 
 const shim = new URL("./nettai_web.js", import.meta.url).href;
-// (The app's threads load the same module: nettai-platform's `thread` asks this.)
+// (The app's threads load the same module: nettai-threads asks this.)
 globalThis.nettaiShim = shim;
 
 // The preload screen: what is being done, how far (0 to 1, and in words), or why nettai can't start.
@@ -109,10 +109,10 @@ async function download(files, sizes, told) {
   }));
 }
 
-// Where a file the app hands over as a download is made (a video, as it is encoded: nettai-platform's dialog.rs,
+// Where a file the app hands over as a download is made (a video, as it is encoded: nettai-dialogs,
 // nettai_make_file): none of the kept files. Emptied as the page starts, nothing being made then.
 const MAKING = ".making";
-// The stowed files (nettai-platform's fs::STOWED): kept, listed and not read as the page starts. The app reads one
+// The stowed files (nettai-files' STOWED): kept, listed and not read as the page starts. The app reads one
 // when it wants it (fs::fetch), and writes them itself (fs::stow).
 const STOWED = ".stowed";
 

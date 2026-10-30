@@ -69,7 +69,7 @@ fn contents() -> &'static Contents {
 /// Run `store` alone: bundles are stored one at a time, whichever thread or task stores them.
 fn storing<T>(store: impl FnOnce() -> Result<T, String>) -> Result<T, String> {
     static STORING: Mutex<()> = Mutex::new(());
-    let _held = nettai_platform::thread::lock(&STORING).map_err(|_| "the store's lock was poisoned".to_string())?;
+    let _held = nettai_threads::lock(&STORING).map_err(|_| "the store's lock was poisoned".to_string())?;
     store()
 }
 
@@ -167,7 +167,7 @@ struct Read {
 /// Keep `body` (what was read of a site) in the store's folder as `path`. (A failure is the log's: what was read is
 /// used all the same.)
 fn keep(path: PathBuf, body: &[u8]) {
-    let written = path.parent().map_or(Ok(()), nettai_platform::fs::create_dir_all).and_then(|()| nettai_platform::fs::write(&path, body));
+    let written = path.parent().map_or(Ok(()), nettai_files::create_dir_all).and_then(|()| nettai_files::write(&path, body));
     if let Err(why) = written {
         crate::errors::log(&format!("keeping {}", path.display()), &why);
     }
@@ -240,7 +240,7 @@ impl Contents {
     /// The content kept in `store`, read from the catalog at `catalog` (development's content directory, where
     /// there is one, played instead), with what was last read of the sites as the store's folder keeps it.
     fn new(development: Option<PathBuf>, store: Store, catalog: String) -> Contents {
-        let file = |path: PathBuf| nettai_platform::fs::read(path).ok();
+        let file = |path: PathBuf| nettai_files::read(path).ok();
         let kept: Option<Catalog> = file(store.dir.join(CATALOG_FILE)).and_then(|body| serde_json::from_slice(&body).ok());
         let indexes = kept
             .iter()
@@ -253,7 +253,7 @@ impl Contents {
     /// The games of the catalog as last read, by id. (The app knows no game: a bundle of its line holds the
     /// recipe the game's assets are extracted from its ROMs by.)
     fn catalog_games(&self) -> Vec<String> {
-        let Ok(read) = nettai_platform::thread::lock(&self.read) else { return Vec::new() };
+        let Ok(read) = nettai_threads::lock(&self.read) else { return Vec::new() };
         read.catalog.iter().flat_map(|c| c.games.keys()).cloned().collect()
     }
 
@@ -266,32 +266,32 @@ impl Contents {
     /// Read the catalog of games ([`Contents::catalog`]), and keep it: its games.
     async fn fetch_catalog(&self) -> Result<Vec<String>, String> {
         let url = &self.catalog;
-        let body = nettai_platform::http::get(url, MAX_INDEX).await?;
+        let body = nettai_http::get(url, MAX_INDEX).await?;
         let catalog: Catalog = serde_json::from_slice(&body).map_err(|e| format!("{url}: a catalog that doesn't read: {e}"))?;
         keep(self.store.dir.join(CATALOG_FILE), &body);
-        if let Ok(mut read) = nettai_platform::thread::lock(&self.read) {
+        if let Ok(mut read) = nettai_threads::lock(&self.read) {
             read.catalog = Some(catalog);
         }
         Ok(self.catalog_games())
     }
 
     fn published(&self, game: &str, hash: ContentHash) -> Option<Published> {
-        nettai_platform::thread::lock(&self.read).ok()?.indexes.get(game)?.playing(line(), hash).cloned()
+        nettai_threads::lock(&self.read).ok()?.indexes.get(game)?.playing(line(), hash).cloned()
     }
 
     async fn fetch_index(&self, game: &str) -> Result<Index, String> {
         let url = {
-            let read = nettai_platform::thread::lock(&self.read).map_err(|_| "the sites' lock was poisoned".to_string())?;
+            let read = nettai_threads::lock(&self.read).map_err(|_| "the sites' lock was poisoned".to_string())?;
             let catalog = read.catalog.as_ref().ok_or_else(|| "no catalog of games has been read".to_string())?;
             catalog.games.get(game).cloned().ok_or_else(|| format!("the catalog of games has no {game}"))?
         };
-        let body = nettai_platform::http::get(&url, MAX_INDEX).await?;
+        let body = nettai_http::get(&url, MAX_INDEX).await?;
         let index: Index = serde_json::from_slice(&body).map_err(|e| format!("{url}: an index that doesn't read: {e}"))?;
         if index.game != game {
             return Err(format!("{url}: the index of {}, not {game}", index.game));
         }
         keep(index_file(&self.store, game), &body);
-        if let Ok(mut read) = nettai_platform::thread::lock(&self.read) {
+        if let Ok(mut read) = nettai_threads::lock(&self.read) {
             read.indexes.insert(game.to_string(), index.clone());
         }
         Ok(index)
@@ -307,9 +307,9 @@ impl Contents {
         }
         let url = published.url()?.to_string();
         let size = published.size.max(1) as f32;
-        let gz = nettai_platform::http::get_reporting(&url, MAX_BUNDLE, |got| progress((got as f32 / size).min(1.0))).await?;
+        let gz = nettai_http::get_reporting(&url, MAX_BUNDLE, |got| progress((got as f32 / size).min(1.0))).await?;
         let (id, hash) = (published.id, published.content_hash);
-        nettai_platform::task::off_thread("storing content", move || storing(|| store.add(&gz, id, Some(hash))))
+        nettai_threads::off_thread("storing content", move || storing(|| store.add(&gz, id, Some(hash))))
             .await?
             .map_err(|why| format!("{url}: {why}"))
     }
@@ -375,9 +375,9 @@ pub(crate) mod testing {
     /// A bundle of game `game` (one pack, holding `text`), stored as one that plays `hash`.
     pub(crate) fn store(game: &str, text: &str, hash: ContentHash) -> Stored {
         let src = contents().store.dir.with_file_name(format!("src-{game}-{}", hash.0));
-        nettai_platform::fs::create_dir_all(&src).unwrap();
-        nettai_platform::fs::write(src.join("manifest.toml"), format!("id = \"{game}\"\nkind = \"game\"\n")).unwrap();
-        nettai_platform::fs::write(src.join("init.luau"), text).unwrap();
+        nettai_files::create_dir_all(&src).unwrap();
+        nettai_files::write(src.join("manifest.toml"), format!("id = \"{game}\"\nkind = \"game\"\n")).unwrap();
+        nettai_files::write(src.join("init.luau"), text).unwrap();
         let manifest = nettai_content::bundle::Manifest { game: game.into(), line: line().into(), revision: 1, packs: [(game.to_string(), "c0ffee".to_string())].into() };
         let bundle = nettai_content::bundle::build(manifest, &[(game, &src)]).unwrap();
         storing(|| contents().store.add(&nettai_content::bundle::gzip(&bundle.tar), bundle.id, Some(hash))).unwrap()
@@ -387,7 +387,7 @@ pub(crate) mod testing {
     pub(crate) fn list(game: &str, hash: ContentHash) {
         let published = Published { id: nettai_content::bundle::BundleId([hash.0 as u8; 32]), content_hash: hash, revision: 2, packs: Default::default(), date: "2026-10-26".into(), size: 1, url: None };
         let index = Index { game: game.into(), lines: [(line().to_string(), vec![published])].into() };
-        nettai_platform::thread::lock(&contents().read).unwrap().indexes.insert(game.to_string(), index);
+        nettai_threads::lock(&contents().read).unwrap().indexes.insert(game.to_string(), index);
     }
 }
 
@@ -401,9 +401,9 @@ mod tests {
     fn store_with(name: &str, published: Option<ContentHash>) -> (tempfile::TempDir, Store, Stored) {
         let dir = tempfile::tempdir().unwrap();
         let pack = dir.path().join("src").join(name);
-        nettai_platform::fs::create_dir_all(&pack).unwrap();
-        nettai_platform::fs::write(pack.join("manifest.toml"), "id = \"exe6\"\nkind = \"game\"\n").unwrap();
-        nettai_platform::fs::write(pack.join("init.luau"), name).unwrap();
+        nettai_files::create_dir_all(&pack).unwrap();
+        nettai_files::write(pack.join("manifest.toml"), "id = \"exe6\"\nkind = \"game\"\n").unwrap();
+        nettai_files::write(pack.join("init.luau"), name).unwrap();
         let manifest = Manifest { game: "exe6".into(), line: line().into(), revision: 1, packs: [("exe6".to_string(), "c0ffee".to_string())].into() };
         let bundle = build(manifest, &[("exe6", &pack)]).unwrap();
         let store = Store::at(dir.path().join("content"));
@@ -471,14 +471,14 @@ mod tests {
         let contents = Contents::new(None, Store::at(store.path().join("content")), format!("{url}/catalog.json"));
         let put = |path: &str, bytes: &[u8]| {
             let file = site.path().join(path);
-            nettai_platform::fs::create_dir_all(file.parent().unwrap()).unwrap();
-            nettai_platform::fs::write(file, bytes).unwrap();
+            nettai_files::create_dir_all(file.parent().unwrap()).unwrap();
+            nettai_files::write(file, bytes).unwrap();
         };
         let bundle = |text: &str, revision: u32| {
             let src = site.path().join("src").join(text);
-            nettai_platform::fs::create_dir_all(&src).unwrap();
-            nettai_platform::fs::write(src.join("manifest.toml"), "id = \"exe6\"\nkind = \"game\"\n").unwrap();
-            nettai_platform::fs::write(src.join("init.luau"), text).unwrap();
+            nettai_files::create_dir_all(&src).unwrap();
+            nettai_files::write(src.join("manifest.toml"), "id = \"exe6\"\nkind = \"game\"\n").unwrap();
+            nettai_files::write(src.join("init.luau"), text).unwrap();
             let manifest = Manifest { game: "exe6".into(), line: line().into(), revision, packs: [("exe6".to_string(), "c0ffee".to_string())].into() };
             build(manifest, &[("exe6", &src)]).unwrap()
         };
@@ -512,7 +512,7 @@ mod tests {
             assert!(said.windows(2).all(|w| w[0] <= w[1]) && said.last() == Some(&1.0), "{said:?}");
             let stored = contents.store.get(one.id).expect("stored");
             assert_eq!((stored.record.revision, stored.record.published, stored.record.hash), (1, Some(ContentHash(0x6A)), None));
-            assert_eq!(nettai_platform::fs::read_to_string(stored.dir.join("exe6/init.luau")).unwrap(), "return 1");
+            assert_eq!(nettai_files::read_to_string(stored.dir.join("exe6/init.luau")).unwrap(), "return 1");
             assert_eq!(contents.fetch_newest("exe6", |_| {}).await.unwrap(), Newest::Had);
             assert_eq!(contents.fetch_playing("exe6", ContentHash(0x6A)).await.unwrap().map(|s| s.id), Some(one.id));
             assert_eq!(contents.fetch_playing("exe6", ContentHash(0x77)).await.unwrap(), None, "no bundle plays it");
@@ -550,8 +550,8 @@ mod tests {
         let gz = gzip(&bundle.tar);
         let put = |path: &str, bytes: &[u8]| {
             let file = site.path().join(path);
-            nettai_platform::fs::create_dir_all(file.parent().unwrap()).unwrap();
-            nettai_platform::fs::write(file, bytes).unwrap();
+            nettai_files::create_dir_all(file.parent().unwrap()).unwrap();
+            nettai_files::write(file, bytes).unwrap();
         };
         put(&format!("exe6/{}.tar.gz", bundle.id), &gz);
         let entry = Published { id: bundle.id, content_hash: hash, revision: 1, packs: bundle.manifest.packs.clone(), date: "2026-10-26".into(), size: gz.len() as u64, url: Some(format!("{url}/exe6/{}.tar.gz", bundle.id)) };
@@ -591,7 +591,7 @@ mod tests {
                 assert_eq!(fetch_playing(game, hash).await.unwrap().map(|s| s.id), Some(stored.id), "{game}: found by its hash");
                 // (The bundle plays its index's hash, as a game's first load from it checks.)
                 let (dir, id) = (stored.dir.clone(), game.clone());
-                let computed = nettai_platform::task::off_thread("hashing", move || nettai_content::store::content_hash(&dir, &id).map_err(|r| r.to_string())).await.unwrap();
+                let computed = nettai_threads::off_thread("hashing", move || nettai_content::store::content_hash(&dir, &id).map_err(|r| r.to_string())).await.unwrap();
                 let computed = computed.unwrap_or_else(|why| panic!("{why}"));
                 assert_eq!(verify(&stored.dir, computed), Ok(()), "{game}");
                 assert_eq!(contents().store.get(stored.id).unwrap().record.hash, Some(computed));
@@ -624,19 +624,19 @@ mod tests {
 
         fn put(&self, path: &str, bytes: &[u8]) {
             let file = self.dir.path().join(path);
-            nettai_platform::fs::create_dir_all(file.parent().unwrap()).unwrap();
-            nettai_platform::fs::write(file, bytes).unwrap();
+            nettai_files::create_dir_all(file.parent().unwrap()).unwrap();
+            nettai_files::write(file, bytes).unwrap();
         }
 
         /// Game `game`'s bundle at `revision`, its content naming `backgrounds` (its own language's
         /// `[backgrounds]`, what the pool is read from), put on the site: its index entry, and the file served.
         fn bundle(&self, game: &str, revision: u32, backgrounds: &[&str]) -> (Published, String) {
             let pack = self.dir.path().join("src").join(format!("{game}-r{revision}")).join(game);
-            nettai_platform::fs::create_dir_all(pack.join("locales")).unwrap();
-            nettai_platform::fs::write(pack.join("manifest.toml"), format!("id = \"{game}\"\nkind = \"game\"\n")).unwrap();
-            nettai_platform::fs::write(pack.join("init.luau"), format!("return {revision}")).unwrap();
+            nettai_files::create_dir_all(pack.join("locales")).unwrap();
+            nettai_files::write(pack.join("manifest.toml"), format!("id = \"{game}\"\nkind = \"game\"\n")).unwrap();
+            nettai_files::write(pack.join("init.luau"), format!("return {revision}")).unwrap();
             let table: String = backgrounds.iter().map(|b| format!("\"{b}\" = {{ name = \"{b}\" }}\n")).collect();
-            nettai_platform::fs::write(pack.join("locales").join("en.toml"), format!("language = \"en\"\n\n[backgrounds]\n{table}")).unwrap();
+            nettai_files::write(pack.join("locales").join("en.toml"), format!("language = \"en\"\n\n[backgrounds]\n{table}")).unwrap();
             let manifest = Manifest { game: game.into(), line: line().into(), revision, packs: [(game.to_string(), "c0ffee".to_string())].into() };
             let bundle = build(manifest, &[(game, &pack)]).unwrap();
             let gz = gzip(&bundle.tar);
@@ -712,7 +712,7 @@ mod tests {
     /// every game's newest content came to.
     fn meet(peers: &mut [Peer; 2], runtime: &tokio::runtime::Runtime, rounds: usize) -> [Vec<Updated>; 2] {
         use nettai_frontend::lobby::Status;
-        let mut now = nettai_platform::time::Instant::now();
+        let mut now = web_time::Instant::now();
         let mut took = [Vec::new(), Vec::new()];
         for _ in 0..rounds {
             now += nettai_frontend::lobby::RESEND;
@@ -765,7 +765,7 @@ mod tests {
         assert_eq!(joiner_took.iter().map(|u| (u.arrived.clone(), u.failed.clone(), u.pool)).collect::<Vec<_>>(), [(vec![], None, pools[1])], "the joiner waits");
         assert!(peers[0].content.background_pool.keys().any(|k| k == "exe5:airport"), "the host's game plays r11's backgrounds");
         for p in &mut peers {
-            assert!(matches!(p.lobby.poll(nettai_platform::time::Instant::now()), Status::Loading(_)), "agreed");
+            assert!(matches!(p.lobby.poll(web_time::Instant::now()), Status::Loading(_)), "agreed");
         }
     }
 
@@ -792,7 +792,7 @@ mod tests {
         let failed = host_took[0].failed.clone().expect("the host couldn't have BN5's r12");
         assert!(failed.starts_with("exe5's newest content couldn't be downloaded") && failed.contains("404"), "{failed}");
         assert!(host_took[0].arrived.is_empty() && joiner_took.iter().all(|u| u.failed.is_none()), "{joiner_took:?}");
-        let now = nettai_platform::time::Instant::now();
+        let now = web_time::Instant::now();
         let failure = |peer: &mut Peer| match peer.lobby.poll(now) {
             Status::Failed(f) => f.clone(),
             _ => panic!("not refused"),

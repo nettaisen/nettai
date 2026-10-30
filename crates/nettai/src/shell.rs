@@ -18,8 +18,8 @@ use crate::settings::Settings;
 use crate::sound::{Cue, Sound};
 use nettai_battle::input::keys;
 use nettai_frontend::game::GraphicsMode;
-use nettai_platform::dialog::Filter;
-use nettai_platform::text_entry::Entry;
+use nettai_dialogs::Filter;
+use nettai_page::text_entry::Entry;
 use nettai_ui::{AppWindow, ButtonKind, DialogButton, Theme};
 use slint::winit_030::WinitWindowAccessor;
 use slint::winit_030::winit::event::{ElementState, KeyEvent, TouchPhase};
@@ -29,7 +29,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::Duration;
-use nettai_platform::time::Instant;
+use web_time::Instant;
 
 thread_local! {
     /// Each game's name in the language shown, by the game's id (`Shell::game_name`; `Shell::name_games` reads
@@ -253,11 +253,11 @@ pub struct Shell {
     pub probe_motion: bool,
     /// A screen has something running that must keep its time whatever covers the window (a link to another
     /// player, before and between their battles): the app isn't napped while this is set, as it isn't while a
-    /// battle runs (`nettai_platform::awake`).
+    /// battle runs (`nettai_lifecycle::Awake`).
     pub stay_awake: bool,
     /// The app's update: checked for and downloaded at the loading screen as the app starts (`updates.rs`).
     pub updates: crate::updates::Updates,
-    awake: Option<nettai_platform::awake::Awake>,
+    awake: Option<nettai_lifecycle::Awake>,
     /// This frame is being drawn (the window's rendering runs it). When the window isn't drawn (minimized,
     /// hidden, covered), a timer runs the frames instead, and no picture is presented in them: there is no
     /// frame to show it in, and the window's OpenGL isn't the thread's.
@@ -864,7 +864,7 @@ impl Shell {
 
     /// Copy `text` to the system's clipboard (an invite's code, an address).
     pub fn copy(&self, text: &str) {
-        nettai_platform::clipboard::copy(text);
+        nettai_dialogs::clipboard::copy(text);
     }
 
     /// Ask the player for files to open, one or more, in the system's dialog: `kind` names what is asked for (in
@@ -872,7 +872,7 @@ impl Shell {
     /// hears those chosen with `purpose` (`Screen::chosen`), once this call is done: the browser's dialog answers
     /// later, and the desktop's is heard the same way.
     pub fn choose_files(&self, kind: &str, extensions: &[&str], purpose: &'static str) {
-        nettai_platform::dialog::open_files(Filter { kind, extensions }, move |paths| {
+        nettai_dialogs::open_files(Filter { kind, extensions }, move |paths| {
             if !paths.is_empty() {
                 let _ = slint::invoke_from_event_loop(move || crate::with_app(|app| app.chosen(purpose, &paths)));
             }
@@ -882,12 +882,12 @@ impl Shell {
     /// Ask the player where to save a file named `name`; once it is written there, [`Shell::saved`]. (In the
     /// browser it is a path in the app's files, and `saved` downloads it.)
     pub fn choose_save(&self, kind: &str, extensions: &[&str], name: &str) -> Option<std::path::PathBuf> {
-        nettai_platform::dialog::save_path(Filter { kind, extensions }, name, None)
+        nettai_dialogs::save_path(Filter { kind, extensions }, name, None)
     }
 
     /// The file [`Shell::choose_save`] said is written.
     pub fn saved(&self, path: &std::path::Path) {
-        nettai_platform::dialog::saved(path);
+        nettai_dialogs::saved(path);
     }
 
     // ---- The window's scale ------------------------------------------------------------------------------
@@ -1244,7 +1244,7 @@ impl App {
     fn choose_source(&mut self) {
         // (Heard once this call is done: the browser's dialog answers later, its archives read into the app's
         // files first.)
-        nettai_platform::dialog::open_folder(&nettai_extract::source::ARCHIVES, |folder| {
+        nettai_dialogs::open_folder(&nettai_extract::source::ARCHIVES, |folder| {
             if let Some(folder) = folder {
                 let _ = slint::invoke_from_event_loop(move || crate::with_app(|app| app.source_chosen(folder)));
             }
@@ -1267,7 +1267,7 @@ impl App {
         }
         // (A browser and a phone keep copies of its ROMs, as its folder can't be read again without asking; the
         // desktop keeps the folder.)
-        if !nettai_platform::dialog::FOLDERS_READ_AGAIN {
+        if !nettai_dialogs::FOLDERS_READ_AGAIN {
             self.shell.games.keep_copies(&folder);
             return;
         }
@@ -1489,7 +1489,7 @@ impl App {
     }
 
     /// What the field being edited says (its keys that leave it, on the desktop; the browser's input laid over it,
-    /// all it says: `nettai_platform::text_entry`).
+    /// all it says: `nettai_page::text_entry`).
     pub fn entry(&mut self, entry: Entry) {
         if !self.shell.nav.editing() {
             return;
@@ -1529,7 +1529,7 @@ impl App {
     #[cfg(target_arch = "wasm32")]
     fn lay_entry(&mut self) {
         let Some((place, text, all)) = self.entry_place() else { return };
-        nettai_platform::text_entry::open(place, &text, all, |entry| {
+        nettai_page::text_entry::open(place, &text, all, |entry| {
             crate::with_app(|app| {
                 app.entry(entry);
                 app.settle();
@@ -1539,12 +1539,12 @@ impl App {
 
     /// Where the field being edited is, in the window's units, with its text and whether all of it is selected.
     #[cfg(target_arch = "wasm32")]
-    fn entry_place(&self) -> Option<(nettai_platform::text_entry::Place, String, bool)> {
+    fn entry_place(&self) -> Option<(nettai_page::text_entry::Place, String, bool)> {
         let (rect, text, all) = self.shell.nav.edited_field()?;
         let ui = self.shell.ui();
         let window = ui.window();
         let width = window.size().to_logical(window.scale_factor()).width;
-        Some((nettai_platform::text_entry::Place { x: rect.x, y: rect.y, width: rect.w, height: rect.h, window_width: width }, text, all))
+        Some((nettai_page::text_entry::Place { x: rect.x, y: rect.y, width: rect.w, height: rect.h, window_width: width }, text, all))
     }
 
     /// The input method started or stopped composing.
@@ -1560,11 +1560,11 @@ impl App {
         }
         // (In the browser, an edit's input goes where its field is laid out now: after the layout has placed it.)
         #[cfg(target_arch = "wasm32")]
-        if nettai_platform::text_entry::is_open() {
+        if nettai_page::text_entry::is_open() {
             slint::Timer::single_shot(std::time::Duration::from_millis(100), || {
                 crate::with_app(|app| {
                     if let Some((place, _, _)) = app.entry_place() {
-                        nettai_platform::text_entry::place(place);
+                        nettai_page::text_entry::place(place);
                     }
                 })
             });
@@ -1757,11 +1757,11 @@ impl App {
     /// A frame the window is about to draw: the app's clock (docs/app.md §1).
     pub fn frame(&mut self, now: Instant) {
         // (A phone's dialogs answer on the system's threads: what came is heard here, on the app's.)
-        nettai_platform::dialog::poll();
+        nettai_dialogs::poll();
         // (The browser's input over a field goes once its edit has ended, however it ended.)
         #[cfg(target_arch = "wasm32")]
-        if !self.shell.nav.editing() && nettai_platform::text_entry::is_open() {
-            nettai_platform::text_entry::close();
+        if !self.shell.nav.editing() && nettai_page::text_entry::is_open() {
+            nettai_page::text_entry::close();
         }
         let began = Instant::now();
         self.drawn_at = Some(now);
@@ -1832,7 +1832,7 @@ impl App {
         // What must keep its time whatever covers the window: a battle, a screen's link, the screenshot pass.
         let awake = self.shell.battle.is_some() || self.shell.loading_battle() || self.shell.stay_awake || self.shell.still;
         if awake != self.shell.awake.is_some() {
-            self.shell.awake = awake.then(nettai_platform::awake::Awake::new);
+            self.shell.awake = awake.then(nettai_lifecycle::Awake::new);
         }
         // The battle: loading behind the cards, or running.
         if let Some((owner, event)) = self.shell.load_battle(now) {
@@ -2175,7 +2175,7 @@ impl App {
             return;
         }
         let asking = self.shell.dialog.as_ref().is_some_and(|d| d.tag == SOURCE);
-        if (asking || self.shell.dialog.is_none()) && self.shell.games.wants_source() && nettai_platform::fs::is_dir(path) {
+        if (asking || self.shell.dialog.is_none()) && self.shell.games.wants_source() && nettai_files::is_dir(path) {
             if asking {
                 self.shell.close_dialog();
             }

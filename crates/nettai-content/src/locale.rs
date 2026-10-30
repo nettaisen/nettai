@@ -95,10 +95,10 @@ pub fn parse(text: &str, file: &str) -> Result<Strings, String> {
 /// Pack folder `pack`'s table of `lang`; `None` when it has none.
 pub fn load(pack: &Path, lang: &str) -> Result<Option<Strings>, String> {
     let path = path(pack, lang);
-    if !nettai_platform::fs::is_file(&path) {
+    if !nettai_files::is_file(&path) {
         return Ok(None);
     }
-    let text = nettai_platform::fs::read_to_string(&path).map_err(|e| format!("reading {}: {e}", path.display()))?;
+    let text = nettai_files::read_to_string(&path).map_err(|e| format!("reading {}: {e}", path.display()))?;
     let s = parse(&text, &path.display().to_string())?;
     if s.language != lang {
         return Err(format!("{} says it is {:?}", path.display(), s.language));
@@ -132,7 +132,7 @@ pub fn game_name(dir: &Path, game: &str, lang: &str) -> Option<String> {
         own: std::collections::BTreeMap<String, String>,
     }
     let read = |lang: &str| -> Option<String> {
-        let text = nettai_platform::fs::read_to_string(path(&dir.join(game), lang)).ok()?;
+        let text = nettai_files::read_to_string(path(&dir.join(game), lang)).ok()?;
         let words: Words = toml::from_str(&text).ok()?;
         words.own.get(GAME_NAME).cloned()
     };
@@ -149,7 +149,7 @@ fn backgrounds_in(dir: &Path, game: &str, lang: &str) -> Option<std::collections
         #[serde(default)]
         backgrounds: std::collections::BTreeMap<String, BackgroundStrings>,
     }
-    let text = nettai_platform::fs::read_to_string(path(&dir.join(game), lang)).ok()?;
+    let text = nettai_files::read_to_string(path(&dir.join(game), lang)).ok()?;
     toml::from_str::<Backgrounds>(&text).ok().map(|b| b.backgrounds)
 }
 
@@ -194,7 +194,7 @@ pub fn background_names(dir: &Path, game: &str, lang: &str) -> std::collections:
 /// else in the content's own language. Empty where neither has the table.
 pub fn text_table(dir: &Path, game: &str, lang: &str, table: &str) -> std::collections::BTreeMap<String, String> {
     let read = |lang: &str| -> std::collections::BTreeMap<String, String> {
-        let Ok(text) = nettai_platform::fs::read_to_string(path(&dir.join(game), lang)) else { return Default::default() };
+        let Ok(text) = nettai_files::read_to_string(path(&dir.join(game), lang)) else { return Default::default() };
         let Ok(toml::Value::Table(mut tables)) = toml::from_str::<toml::Value>(&text) else { return Default::default() };
         match tables.remove(table) {
             Some(toml::Value::Table(t)) => t.into_iter().filter_map(|(k, v)| Some((k, v.as_str()?.to_string()))).collect(),
@@ -210,7 +210,7 @@ pub fn text_table(dir: &Path, game: &str, lang: &str, table: &str) -> std::colle
 
 /// The languages pack folder `pack` has tables of.
 pub fn languages_of(pack: &Path) -> Vec<String> {
-    let Ok(entries) = nettai_platform::fs::read_dir(pack.join(DIR)) else { return Vec::new() };
+    let Ok(entries) = nettai_files::read_dir(pack.join(DIR)) else { return Vec::new() };
     let mut out: Vec<String> =
         entries.flatten().filter_map(|e| e.path().file_name()?.to_str()?.strip_suffix(".toml").map(String::from)).collect();
     out.sort();
@@ -437,7 +437,7 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, assets: Option<&netta
         // (A chip folder whose main module didn't load.)
         let unported = |key: &str| {
             let module = format!("chips/{key}/init");
-            nettai_platform::fs::is_file(pack.join(format!("{module}.luau"))) && !c.scripts.modules.contains_key(&nettai_battle::content::Scripts::name(&game, &module))
+            nettai_files::is_file(pack.join(format!("{module}.luau"))) && !c.scripts.modules.contains_key(&nettai_battle::content::Scripts::name(&game, &module))
         };
         let langs = languages_of(&pack);
         if !langs.iter().any(|l| l == OWN) {

@@ -1,0 +1,43 @@
+[package]
+name = "nettai-dialogs"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Files and folders the player chooses, where to save one, files dropped, and text copied: the desktop's dialogs, the browser's file input, folder dialog and downloads, a phone's pickers and share sheet"
+
+[dependencies]
+# What goes wrong, said as a warning: the app keeps them in its log.
+log = "0.4"
+# The app's files: what is chosen is read into them in a browser and on a phone, and a file saved is made in them.
+nettai-files = { path = "../nettai-files" }
+# The locks a file being written shares with the page's main thread.
+nettai-threads = { path = "../nettai-threads" }
+
+# The desktop's file dialogs and clipboard (neither has a phone's).
+[target.'cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android")))'.dependencies]
+rfd = "0.15"
+arboard = { version = "3", default-features = false }
+
+# The browser's: its file input, folder dialog, downloads, drops and clipboard.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+
+# iOS: UIKit's document picker, share sheet and pasteboard. (In the tree already, for the window.)
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray", "NSEnumerator", "NSError", "NSObject", "NSSet", "NSString", "NSURL"] }
+objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "CFCGTypes"] }
+objc2-ui-kit = { version = "0.3", default-features = false, features = ["std", "objc2-core-foundation", "objc2-uniform-type-identifiers", "UIActivity", "UIActivityViewController", "UIApplication", "UIDocumentPickerViewController", "UIPasteboard", "UIPopoverPresentationController", "UIPresentationController", "UIResponder", "UIScene", "UISceneDefinitions", "UIView", "UIViewController", "UIWindow", "UIWindowScene"] }
+objc2-uniform-type-identifiers = { version = "0.3", default-features = false, features = ["std", "UTType", "UTCoreTypes"] }
+
+# Android: the system's pickers and save dialog, started by android/nettai/dialogs/NettaiFiles.java (the APK's build
+# compiles it in) through JNI, on the activity nettai-android keeps.
+[target.'cfg(target_os = "android")'.dependencies]
+nettai-android = { path = "../nettai-android" }
+jni = "0.22"
+
+[build-dependencies]
+# The targets by name (build.rs: `desktop`, `web`, `phone`).
+cfg_aliases = "0.2"

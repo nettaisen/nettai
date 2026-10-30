@@ -14,7 +14,7 @@ use std::fmt;
 use std::io::{Read, Write};
 use std::path::{Component, Path};
 
-use nettai_platform::fs;
+use nettai_files as fs;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 

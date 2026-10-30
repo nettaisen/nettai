@@ -979,13 +979,13 @@ the whole game's). Version 2's weren't: a status was put on the target by the fi
 inflicts it, so a folder's chips made alone differed from the whole game's in their status ratios, every one of them
 in most rounds, and live play had to make the whole game first (12 to 64 s for EXE5 on this Mac, once a content).
 
-- `Fingerprinter::start(content, threads, cache)` starts its threads (`nettai_platform::thread::spawn`: the browser's
+- `Fingerprinter::start(content, threads, cache)` starts its threads (`nettai_threads::spawn`: the browser's
   workers too; a thread that can't start fails it, with the reason): the first reads the cache folder (the pool's
   file, `fingerprints-<game>-<hash>.json`, the same format, the chips it holds), each loads the content's runtime and a
   sandbox, and they wait for chips. `want(chips)` asks for chips (those of the game's own not made or asked for); the
   threads make them a chip at a time and give the fingerprints made out whole (an `Arc`, with a count the battle's
   thread reads without a lock), and once none is left to make, write them all to the cache file
-  (`nettai_platform::fs`: in the browser, the app's kept folder). One a content in a process. `status()` says reading,
+  (`nettai_files`: in the browser, the app's kept folder). One a content in a process. `status()` says reading,
   making (chips done of those asked for) or ready, or failed (a run the engine stopped fails it too); `unkept()` why
   the cache couldn't be written. `Fingerprinter::made` takes fingerprints a host has already.
 - `NetAi` asks, as each round starts, for both sides' folders' chips (the round's setup) and the Program Advances
@@ -1052,11 +1052,11 @@ version and a network trained for it, published under its own line, the older li
 
 - **The app** (the `ai` feature; `screens/practice/weights.rs`) asks for it when Fights is first picked in a run
   (the user's choice: not at start), then shares it: the data folder's copy (`ai/<line>/`) where its SHA-256 is the
-  index's, else the line's downloaded (`nettai_platform::http::get`: reqwest, async, in a future on the window's
+  index's, else the line's downloaded (`nettai_http::get`: reqwest, async, in a future on the window's
   loop, `slint::spawn_local`, aborted if the app quits first; on the desktop the program runs under
   `#[tokio::main]` with Slint's loop in `block_in_place`, as Slint's docs ask, so reqwest's futures have tokio's
   context; `fetch` in the browser; the files read, hashed and written off the window's thread,
-  `nettai_platform::task::off_thread`; every build has tokio and reqwest),
+  `nettai_threads::off_thread`; every build has tokio and reqwest),
   from the site, which a page may fetch: the domain itself, since its github.io address redirects there without
   the cross-origin header), checked and kept; with no index, the copy kept. The AI
   plugged in meanwhile is `ai::WaitingAi` on an `ai::Arriving`: till the network arrives it waits as a decision
@@ -1202,7 +1202,7 @@ both ways 32, lost both ways 2).
 **In the app** (2026-10-28, the user said yes to it at Hard). Hard looks ahead (`Level::search`); Easy and Normal
 play the network's choice. A decision's tries are never stepped on the battle's thread: each fight decision is
 asked for `lead` ticks (4) before it takes effect, from a thread of the AI's own (`search::Worker`, started with
-`nettai_platform::thread`, a browser's worker too).
+`nettai_threads`, a browser's worker too).
 
 - On the battle's thread, then: the network's pass on the view of the level's delay before the decision (its
   memory after it kept apart till the decision takes effect: a decision the fight's end calls off leaves the

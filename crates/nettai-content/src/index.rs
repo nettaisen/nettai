@@ -182,8 +182,8 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("nettai-index-{}", std::process::id()));
         let write = |path: &str, text: &str| {
             let p = dir.join(path);
-            nettai_platform::fs::create_dir_all(p.parent().unwrap()).unwrap();
-            nettai_platform::fs::write(p, text).unwrap();
+            nettai_files::create_dir_all(p.parent().unwrap()).unwrap();
+            nettai_files::write(p, text).unwrap();
         };
         write("lib/manifest.toml", "id = \"lib\"\nkind = \"support\"\n");
         write("lib/x.luau", "return {}\n");
@@ -212,6 +212,6 @@ mod tests {
         let mut r = Report::default();
         assert!(read(&dir, &["j".into()], &mut r).is_none());
         assert!(r.to_string().contains("no pack j"), "{r}");
-        nettai_platform::fs::remove_dir_all(&dir).ok();
+        nettai_files::remove_dir_all(&dir).ok();
     }
 }

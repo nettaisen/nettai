@@ -573,7 +573,7 @@ impl Page {
         taken.extend(self.rulesets.presets.iter().map(|p| shown_name(&names, &p.name)));
         let (mut made, mut refused) = (None, None);
         for path in paths {
-            let read = nettai_platform::fs::read_to_string(path).map_err(|e| e.to_string()).and_then(|text| store::read(&self.rulesets, kit.content(), &text));
+            let read = nettai_files::read_to_string(path).map_err(|e| e.to_string()).and_then(|text| store::read(&self.rulesets, kit.content(), &text));
             let mut ruleset = match read {
                 Ok(ruleset) => ruleset,
                 Err(why) => {
@@ -826,7 +826,7 @@ impl Page {
             return Err(self);
         }
         let Some(path) = &self.shown.path else { return Err(self) };
-        if let Err(why) = nettai_platform::fs::remove_file(path) {
+        if let Err(why) = nettai_files::remove_file(path) {
             crate::errors::log(&format!("deleting the ruleset {}", path.display()), &why);
             shell.fail(crate::errors::UserError::Other);
             return Err(self);

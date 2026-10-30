@@ -18,7 +18,7 @@ use nettai_render::vfont::TextRenderer;
 use nettai_ui::MenuView;
 use slint::ComponentHandle;
 use std::rc::Rc;
-use nettai_platform::time::Instant;
+use web_time::Instant;
 
 /// The tick the screenshot pass holds the reel at: in the first turn's fight.
 const STILL_AT: u32 = 700;
@@ -201,7 +201,7 @@ fn player(shell: &Shell, ready: &Ready, driver: Box<dyn Driver>) -> Player {
 
 /// A seed from the clock.
 pub fn clock_seed() -> u32 {
-    nettai_platform::time::SystemTime::now().duration_since(nettai_platform::time::UNIX_EPOCH).map(|d| d.subsec_nanos() ^ d.as_secs() as u32).unwrap_or(1)
+    web_time::SystemTime::now().duration_since(web_time::UNIX_EPOCH).map(|d| d.subsec_nanos() ^ d.as_secs() as u32).unwrap_or(1)
 }
 
 /// What the reel presses for its left side: the custom screen as the library's own opponent presses it; in the

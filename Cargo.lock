@@ -1666,8 +1666,8 @@ dependencies = [
  "exe4-compat",
  "nettai-battle",
  "nettai-content-api",
+ "nettai-files",
  "nettai-match",
- "nettai-platform",
  "serde",
  "serde_json",
  "toml 0.8.23",
@@ -1680,8 +1680,8 @@ dependencies = [
  "exe5-compat",
  "nettai-battle",
  "nettai-content-api",
+ "nettai-files",
  "nettai-match",
- "nettai-platform",
  "serde",
  "serde_json",
  "toml 0.8.23",
@@ -1694,8 +1694,8 @@ dependencies = [
  "exe6-compat",
  "nettai-battle",
  "nettai-content-api",
+ "nettai-files",
  "nettai-match",
- "nettai-platform",
  "serde",
  "serde_json",
  "toml 0.8.23",
@@ -3723,14 +3723,19 @@ dependencies = [
  "nettai-battle",
  "nettai-content",
  "nettai-content-api",
+ "nettai-dialogs",
  "nettai-extract",
+ "nettai-files",
  "nettai-frontend",
  "nettai-gamepad",
+ "nettai-http",
+ "nettai-lifecycle",
  "nettai-match",
- "nettai-platform",
+ "nettai-page",
  "nettai-render",
  "nettai-replay",
  "nettai-rtc",
+ "nettai-threads",
  "nettai-training",
  "nettai-ui",
  "nettai-video",
@@ -3744,7 +3749,16 @@ dependencies = [
  "tokio",
  "toml 0.8.23",
  "velopack",
+ "web-time",
  "winresource",
+]
+
+[[package]]
+name = "nettai-android"
+version = "0.1.0"
+dependencies = [
+ "android-activity",
+ "jni",
 ]
 
 [[package]]
@@ -3786,7 +3800,7 @@ dependencies = [
  "nettai-battle",
  "nettai-content-api",
  "nettai-extract",
- "nettai-platform",
+ "nettai-files",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -3799,7 +3813,7 @@ dependencies = [
 name = "nettai-content-api"
 version = "0.1.0"
 dependencies = [
- "nettai-platform",
+ "nettai-files",
  "serde",
  "toml 0.8.23",
 ]
@@ -3813,6 +3827,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "nettai-dialogs"
+version = "0.1.0"
+dependencies = [
+ "arboard",
+ "cfg_aliases",
+ "jni",
+ "js-sys",
+ "log",
+ "nettai-android",
+ "nettai-files",
+ "nettai-threads",
+ "objc2 0.6.4",
+ "objc2-core-foundation",
+ "objc2-foundation 0.3.2",
+ "objc2-ui-kit 0.3.2",
+ "objc2-uniform-type-identifiers 0.3.2",
+ "rfd",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+]
+
+[[package]]
 name = "nettai-extract"
 version = "0.17.0"
 dependencies = [
@@ -3821,14 +3857,28 @@ dependencies = [
  "nettai-assets",
  "nettai-content",
  "nettai-content-api",
+ "nettai-files",
  "nettai-frontend",
  "nettai-luau",
- "nettai-platform",
  "nettai-tools",
  "steamlocate",
  "tempfile",
  "toml 0.8.23",
  "zip 2.4.2",
+]
+
+[[package]]
+name = "nettai-files"
+version = "0.1.0"
+dependencies = [
+ "cfg_aliases",
+ "js-sys",
+ "log",
+ "nettai-android",
+ "nettai-threads",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-time",
 ]
 
 [[package]]
@@ -3845,12 +3895,13 @@ dependencies = [
  "nettai-extract",
  "nettai-match",
  "nettai-netplay",
- "nettai-platform",
  "nettai-render",
  "nettai-replay",
  "nettai-rtc",
+ "nettai-threads",
  "sha2 0.10.9",
  "tempfile",
+ "web-time",
 ]
 
 [[package]]
@@ -3871,6 +3922,29 @@ dependencies = [
  "send_wrapper",
  "wasm-bindgen",
  "web-sys",
+]
+
+[[package]]
+name = "nettai-http"
+version = "0.1.0"
+dependencies = [
+ "futures-util",
+ "reqwest",
+ "rustls",
+]
+
+[[package]]
+name = "nettai-lifecycle"
+version = "0.1.0"
+dependencies = [
+ "android-activity",
+ "block2 0.6.2",
+ "log",
+ "nettai-android",
+ "objc2 0.6.4",
+ "objc2-avf-audio",
+ "objc2-foundation 0.3.2",
+ "objc2-ui-kit 0.3.2",
 ]
 
 [[package]]
@@ -3907,31 +3981,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "nettai-platform"
+name = "nettai-page"
 version = "0.1.0"
 dependencies = [
- "android-activity",
- "arboard",
- "block2 0.6.2",
- "cfg_aliases",
- "futures-channel",
- "futures-executor",
- "futures-util",
- "jni",
  "js-sys",
- "log",
- "objc2 0.6.4",
- "objc2-avf-audio",
- "objc2-core-foundation",
- "objc2-foundation 0.3.2",
- "objc2-ui-kit 0.3.2",
- "objc2-uniform-type-identifiers 0.3.2",
- "reqwest",
- "rfd",
- "rustls",
  "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-time",
 ]
 
 [[package]]
@@ -3943,9 +3997,11 @@ dependencies = [
  "nettai-content",
  "nettai-content-api",
  "nettai-extract",
- "nettai-platform",
+ "nettai-files",
+ "nettai-threads",
  "png 0.17.16",
  "swash",
+ "web-time",
  "wuff",
 ]
 
@@ -3983,6 +4039,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "nettai-threads"
+version = "0.1.0"
+dependencies = [
+ "futures-channel",
+ "futures-executor",
+ "js-sys",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+]
+
+[[package]]
 name = "nettai-tools"
 version = "0.1.0"
 dependencies = [
@@ -4011,11 +4078,12 @@ dependencies = [
  "nettai-battle",
  "nettai-content",
  "nettai-content-api",
+ "nettai-files",
  "nettai-frontend",
  "nettai-match",
  "nettai-netplay",
- "nettai-platform",
  "nettai-replay",
+ "nettai-threads",
  "serde",
  "serde_json",
 ]
@@ -4040,8 +4108,8 @@ dependencies = [
  "nettai-battle",
  "nettai-frontend",
  "nettai-match",
- "nettai-platform",
  "nettai-render",
+ "nettai-threads",
  "objc2-audio-toolbox",
  "objc2-core-audio-types",
  "objc2-core-foundation",
@@ -4050,6 +4118,7 @@ dependencies = [
  "objc2-video-toolbox",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-time",
 ]
 
 [[package]]
@@ -4059,7 +4128,7 @@ dependencies = [
  "console_error_panic_hook",
  "js-sys",
  "nettai",
- "nettai-platform",
+ "nettai-files",
  "wasm-bindgen",
 ]
 

@@ -130,7 +130,7 @@
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::Duration;
-use nettai_platform::time::Instant;
+use web_time::Instant;
 
 use nettai_battle::content::{Content, ContentHash};
 use nettai_match::build::Checked;

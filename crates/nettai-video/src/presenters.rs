@@ -5,7 +5,7 @@
 //! given (`yuv`), are made on one of a few threads, each with a text renderer of its own, a whole frame each; and
 //! they come back in the order they were played.
 //!
-//! - **The threads** are the platform's (`nettai_platform::thread`: a Web Worker in a browser), as many as the
+//! - **The threads** are the platform's (nettai-threads': a Web Worker in a browser), as many as the
 //!   cores but one, at most [`MOST`] (two where the system doesn't say: a browser), one at least. Each says it has
 //!   started; a video whose threads don't all start within [`STARTING`] seconds isn't made ([`Error::Threads`], as
 //!   one whose ffmpeg doesn't start isn't). They take the frames from one queue, the oldest first, and end once it is
@@ -129,12 +129,12 @@ impl Presenters {
         for n in 0..threads {
             let (queue, tell) = (queue.clone(), tell.clone());
             let presenter = Presenter { text: text.as_ref().map(TextRenderer::like), pictures: vec![vec![0u32; width * height]; sides], width, height };
-            nettai_platform::thread::spawn(&format!("video-frames-{n}"), move || presenter.work(queue, tell))
+            nettai_threads::spawn(&format!("video-frames-{n}"), move || presenter.work(queue, tell))
                 .map_err(|e| Error::Threads(format!("a thread didn't start: {e}")))?;
         }
         drop(tell);
         // (Each says it started: a browser's start a moment later, or not at all.)
-        let waited = nettai_platform::time::Instant::now();
+        let waited = web_time::Instant::now();
         let mut started = 0;
         while started < threads {
             match said.try_recv() {

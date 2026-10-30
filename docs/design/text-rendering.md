@@ -2118,7 +2118,7 @@ are WOFF2:
   (Unpacked by wuff, release build, on the development machine, an Apple Silicon Mac.)
 - **Unpacked once** (`bundled`): the first time a font is wanted, its file is unpacked into memory and kept for the
   program's life, and what draws with the font borrows its bytes from there (a `OnceLock`, filled under a lock taken
-  through `nettai_platform::thread::lock`, as the browser's page may take it). wuff unpacks (a WOFF2 decoder in
+  through `nettai_threads::lock`, as the browser's page may take it). wuff unpacks (a WOFF2 decoder in
   Rust, brotli only, which the browser's build runs too).
 - **The same glyphs.** WOFF2's glyf transform rebuilds the glyf and loca tables, so the unpacked files are not the
   originals byte for byte. When the files were converted, fontTools compared each unpacked by wuff with its original:

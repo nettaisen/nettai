@@ -19,7 +19,7 @@
 use std::path::{Path, PathBuf};
 
 use nettai_battle::ContentHash;
-use nettai_platform::fs;
+use nettai_files as fs;
 use serde::{Deserialize, Serialize};
 
 use crate::bundle::{self, BundleId, MANIFEST, Manifest};

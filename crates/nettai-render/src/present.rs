@@ -208,7 +208,7 @@ pub fn write_png(path: &Path, frame: &Frame, scale: usize, text: Option<&mut Tex
 /// Write 0RGB pixels, `w` by `h`, as an RGB PNG.
 pub fn write_rgb_png(path: &Path, out: &[u32], w: usize, h: usize) -> std::io::Result<()> {
     let rgb: Vec<u8> = out.iter().flat_map(|&c| [(c >> 16) as u8, (c >> 8) as u8, c as u8]).collect();
-    let file = std::io::BufWriter::new(nettai_platform::fs::File::create(path)?);
+    let file = std::io::BufWriter::new(nettai_files::File::create(path)?);
     let mut enc = png::Encoder::new(file, w as u32, h as u32);
     enc.set_color(png::ColorType::Rgb);
     enc.set_depth(png::BitDepth::Eight);

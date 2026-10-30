@@ -23,10 +23,11 @@ serde_json = "1"
 nettai-frontend = { path = "../nettai-frontend", optional = true }
 # Live play's threads and files, the same on the desktop and in a browser
 # (the chips' fingerprints made on workers and kept by content hash).
-nettai-platform = { path = "../nettai-platform", optional = true }
+nettai-threads = { path = "../nettai-threads", optional = true }
+nettai-files = { path = "../nettai-files", optional = true }
 
 [features]
-live = ["dep:nettai-frontend", "dep:nettai-platform"]
+live = ["dep:nettai-frontend", "dep:nettai-threads", "dep:nettai-files"]
 # The test content of all three games (`nettai_match::testing`), for the
 # bridge's and other crates' tests.
 testing = ["nettai-match/testing"]

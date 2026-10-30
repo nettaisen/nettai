@@ -73,7 +73,7 @@ variables are for development:
 `AfterRendering` notes that the frame was drawn and asks for the next one, so the app runs at the display's rate:
 120 frames a second on this Mac's display. A frame shows the picture presented for it, not the previous frame's.
 
-**The app keeps its time while something runs** (`nettai_platform::awake`). macOS gives an app that isn't in front, or whose
+**The app keeps its time while something runs** (`nettai_lifecycle::Awake`). macOS gives an app that isn't in front, or whose
 window is covered, the lowest priority and delays its timers (App Nap); on a busy machine it then gets no time at
 all. The screenshot pass found it: covered by another window while builds loaded the machine (load average 170),
 it stopped mid-walk, in the middle of a frame, and never went on. So while a battle is loading or running, while
@@ -1245,27 +1245,29 @@ target/web/site (Rust nightly with rust-src, wasm-bindgen-cli at Cargo.lock's wa
 .cargo/config.toml), and the script makes the page of it. And `python3 crates/nettai-web/serve.py` serves it at http://localhost:8000/ cross-origin
 isolated (COOP and COEP), which a page with threads must be.
 
-- **nettai-platform** is what the app asks of the system, the same calls on both: `fs`, `thread`, `time`,
-  `dialog` (files to open, a folder, where to save, a file written as it is made, files dropped), `clipboard`,
-  `text_entry` and `page` (the window is the page's whole, following its size). A dialog answers through a
-  callback, after the call on both (the browser's later), and the screen shown hears the files
+- **What the app asks of the system** is the same calls everywhere, a crate a concern (nettai-platform's modules
+  until 2026-10-30): nettai-files (files, the app's folders), nettai-threads (threads, their locks, work off the
+  window's thread), nettai-dialogs (files to open, a folder, where to save, a file written as it is made, files
+  dropped, the clipboard), nettai-http, nettai-page (the window is the page's whole, following its size, and the
+  input over a field: `text_entry`), nettai-lifecycle and nettai-android; time is web-time's. A dialog answers
+  through a callback, after the call on both (the browser's later), and the screen shown hears the files
   (`Screen::chosen`). In the browser a file chosen or dropped is read into the app's files; a folder chosen is
   read as far as the app names its files (the collection's archives: `nettai_extract::source::ARCHIVES`); a file
-  saved is downloaded. Large files the page keeps but doesn't load as it starts are stowed (`fs::stow`,
-  `fs::stowed`, `fs::fetch`: below).
+  saved is downloaded. Large files the page keeps but doesn't load as it starts are stowed (`nettai_files::stow`,
+  `stowed`, `fetch`: below).
 - **Luau on longjmp.** Slint's and winit's web backends rule out `-C panic=unwind` (wasm-bindgen then asks every
   closure to be `UnwindSafe`, and winit has no `run_app` with Rust's `exception-handling` feature), so Luau is built
   with `LUA_USE_LONGJMP` (Wasm exception handling's setjmp/longjmp, in C alone), and the module is `panic=abort`:
   a panic in the browser ends the page's module (said on the console: console_error_panic_hook).
 - **Threads** are Web Workers on one shared memory (the build's atomics; Luau takes the SDK's threads build):
-  `nettai_platform::thread::spawn` starts a module Worker that loads the page's own module, runs the work and frees its
+  `nettai_threads::spawn` starts a module Worker that loads the page's own module, runs the work and frees its
   stack (`spawn_async`: a future on the worker's event loop, for WebCodecs). A worker's own threads are started by
   the page, which it asks: a worker's workers start only while its event loop runs, and it may be busy. A page's main thread may not wait (`Atomics.wait` ends the module), so every lock it shares with a thread
-  is taken through `nettai_platform::thread::lock`, which spins in the browser: the file tree's, the log's, the
+  is taken through `nettai_threads::lock`, which spins in the browser: the file tree's, the log's, the
   stowed files' list, the other games' backgrounds' and the shapes' cache's, each held for moments. What a thread
   of its own makes and the window's thread wants (another game's backgrounds) is asked for there between frames,
   never waited for (docs/frontend.md §1, §9).
-- **Files** are `nettai_platform::fs`'s: `std::fs` on the desktop; in the browser a tree in memory every thread shares. The
+- **Files** are `nettai_files`'s: `std::fs` on the desktop; in the browser a tree in memory every thread shares. The
   page puts the data folder (`/data`: settings, builds, replays, the games' content) in it from the origin
   private file system before the app starts, and writes back what changes, a few times a second, side by side, and
   nothing in a dot folder. The **stowed** files, the data folder's `.stowed/` (`fs::STOWED`), are kept there too but
@@ -1303,7 +1305,7 @@ isolated (COOP and COEP), which a page with threads must be.
   and plays a download from its start. In a browser the codecs are WebCodecs (nettai-video's `platform::web`: its
   H.264, given an NV12 `VideoFrame` tagged BT.709 in the video range, as Annex B; its AAC, else Opus, an encoder a
   sound track); on the desktop ffmpeg's, whose raw H.264 and ADTS are read off its pipes.
-  EXPORT writes it to `nettai_platform::dialog::save_stream_to`'s file: on the desktop the samples beside the
+  EXPORT writes it to `nettai_dialogs::save_stream_to`'s file: on the desktop the samples beside the
   path as `NAME.body.part`, then the head and they as `NAME.part`, named once whole; in a browser the samples in
   the page's own storage (its `.making` folder, out of the kept files and emptied as the page starts), then a
   download of the head and the file (a Blob of the two, read as it downloads). No save dialog in a browser:
@@ -1313,7 +1315,7 @@ isolated (COOP and COEP), which a page with threads must be.
   wordmark and bar, in its places) shows the download (against build.sh's sizes.json) and the kept files' loading,
   and fades as the app draws.
 - **Text typed.** winit gives the canvas no input method, so a field being edited has an HTML `<input>` laid over
-  it (`nettai_platform::text_entry`), in its place, in the system's face: it takes the keys, the input method's
+  it (`nettai_page::text_entry`), in its place, in the system's face: it takes the keys, the input method's
   composing and candidates, the caret and the selection; its changes go to the app as the field's own would, and
   the field says back what the app kept of each (a code in capitals, a name at its length: `Nav.edit-kept`, each
   time `Nav.edit-heard` counts a change), which the input shows. Enter, Esc, Up, Down, Tab and a click elsewhere
@@ -1328,7 +1330,8 @@ isolated (COOP and COEP), which a page with threads must be.
 ## 7. Android and iOS
 
 Not packaged yet (no Xcode project, no APK), and nothing has run on a phone or a simulator. What builds: the whole
-app type-checks for iOS, and for Android the crates below the app (nettai-platform, nettai-audio, nettai-video):
+app type-checks for iOS, and for Android the crates below the app (the system's: nettai-files, nettai-dialogs and the
+rest; nettai-audio, nettai-video, nettai-gamepad):
 
     cargo check --target aarch64-apple-ios -p nettai
     # The NDK's compilers for the C dependencies (Luau, ring): NDK 30 and the SDK as Homebrew installs them.
@@ -1336,7 +1339,8 @@ app type-checks for iOS, and for Android the crates below the app (nettai-platfo
     T=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64/bin
     export CC_aarch64_linux_android=$T/aarch64-linux-android26-clang AR_aarch64_linux_android=$T/llvm-ar
     export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$T/aarch64-linux-android26-clang
-    cargo check --target aarch64-linux-android -p nettai-platform -p nettai-audio -p nettai-video
+    cargo check --target aarch64-linux-android -p nettai-files -p nettai-threads -p nettai-dialogs -p nettai-http \
+        -p nettai-lifecycle -p nettai-page -p nettai-android -p nettai-audio -p nettai-video -p nettai-gamepad
 
 - **Slint:**
   - iOS: winit, drawn by femtovg on wgpu (Metal), since Slint has no OpenGL there (nettai-ui's features by
@@ -1349,16 +1353,16 @@ app type-checks for iOS, and for Android the crates below the app (nettai-platfo
 - **The layout:** a window taller than wide is the phone's (§9), and every screen is laid out in the safe area
   (§9, "The safe area").
 - **The engine:** Luau's C++ builds with the platforms' clang (`cc`); nothing in the engine is platform-specific.
-- **The data folder** (`nettai_platform::folders::app_data`): on iOS the app's own `Library/Application Support`
+- **The data folder** (`nettai_files::folders::app_data`): on iOS the app's own `Library/Application Support`
   in its container, hidden from the player (the user's choice over Documents: what goes in and out goes through the
   pickers and the share sheet); on Android its files folder (`Context.getFilesDir`, through JNI). Files kept a
   while go in `folders::temporary`: iOS's temporary folder, Android's cache folder (`getCacheDir`).
 - **The Legacy Collection** (§17): as in a browser, a folder chosen can't be read again at another start
-  (`nettai_platform::dialog::FOLDERS_READ_AGAIN`), so the app keeps copies of its ROMs (about 51 MB) and lets the
+  (`nettai_dialogs::FOLDERS_READ_AGAIN`), so the app keeps copies of its ROMs (about 51 MB) and lets the
   archives go. The player copies the install's `exe` folder to the phone from a computer (a cable, a cloud drive,
   AirDrop), and CHOOSE FOLDER opens the system's folder picker: iOS's document picker, Android's
   `ACTION_OPEN_DOCUMENT_TREE`. The missing collection's message says so on a phone (`Theme.phone-app`).
-- **Files picked and saved** (nettai-platform's `dialog/phone`):
+- **Files picked and saved** (nettai-dialogs' `phone`):
   - Files to open, and a folder's wanted files (its paths matched as the browser matches them: `dialog/wanted.rs`),
     are copied into the temporary folder's `picked/<n>`, a folder of their own on a thread of its own, and the app
     is given their paths there. iOS picks files as copies and holds a folder's security-scoped access while it is
@@ -1368,18 +1372,18 @@ app type-checks for iOS, and for Android the crates below the app (nettai-platfo
     file is copied there and removed). A replay's SAVE REPLAY (Show file on the desktop) hands over a copy. The
     video's Save as field is the desktop's alone.
   - The answers come on the system's threads (iOS's main thread, Java's), so each waits until the app's next
-    frame takes it (`nettai_platform::dialog::poll`) and calls the dialog's `done` on the app's thread.
-  - Android's side is Java (`crates/nettai-platform/android/nettai/platform/NettaiFiles.java`: a fragment that
+    frame takes it (`nettai_dialogs::poll`) and calls the dialog's `done` on the app's thread.
+  - Android's side is Java (`crates/nettai-dialogs/android/nettai/dialogs/NettaiFiles.java`: a fragment that
     starts the system's dialog and hears its result, the clipboard, a document's bytes copied out), found through
     the activity's class loader, its answers through native methods registered from Rust. It compiles with
     javac against android-36 and d8 (`--min-api 26`); `android.app.Fragment` is deprecated, and present.
 - **The clipboard:** iOS's general pasteboard; Android's clipboard manager, on Java's main thread.
-- **Kept awake** (`nettai_platform::awake`): while a battle or a link runs, iOS's idle timer is off and Android's
+- **Kept awake** (`nettai_lifecycle::Awake`): while a battle or a link runs, iOS's idle timer is off and Android's
   window keeps the screen on (`FLAG_KEEP_SCREEN_ON`).
 - **Sound:** cpal plays through CoreAudio on iOS and AAudio on Android. On iOS the audio session is the system's
   default: the silent switch mutes the game, as it does most games (the user's choice), and other apps' sound
   stops while it plays. A phone stops the sound's device while the app is away or a call has the sound:
-  `nettai_platform::lifecycle::resumed` says when the app came back (iOS: made active again, or its audio session
+  `nettai_lifecycle::resumed` says when the app came back (iOS: made active again, or its audio session
   interrupted or given back), and the sound starts its device again (`Output::resume`, as the web does after a
   click).
 - **Video export:** each phone's own codecs (§16; nettai-video's `platform::ios` and `platform::android`):
@@ -1403,7 +1407,7 @@ app type-checks for iOS, and for Android the crates below the app (nettai-platfo
 - **What the packaging is to do** (not written):
   - iOS: an Xcode project around the static library, which runs the app on the main thread.
   - Android: an APK of the library with an `android_main` that hands the activity to
-    `nettai_platform::android::init` before anything else and calls `nettai_platform::lifecycle::came_back` on
+    `nettai_android::init` before anything else and calls `nettai_lifecycle::came_back` on
     `MainEvent::Resume` (Slint's `AndroidPlatform::new_with_event_listener`); `NettaiFiles.java` among its
     classes; a NativeActivity that isn't made again as the phone turns (`android:configChanges`), so the
     fragment's system dialog answers the activity that asked.
@@ -3379,7 +3383,7 @@ without a release, and a version
 that changes what the network sees waits for one trained for it (docs/design/training-ai.md §10.5). It is asked for
 when Fights is first picked in a run (`screens/practice/weights.rs`, `Weights::wanted`), then shared by every
 dummy that fights: the data folder's copy (`ai/<line>/nettai-ai.safetensors`) where that is the index's, else the
-index's downloaded (`nettai_platform::http`), checked by its SHA-256 and kept; with no index (no connection, or no
+index's downloaded (`nettai_http`), checked by its SHA-256 and kept; with no index (no connection, or no
 weights for the line yet) the copy kept plays, if there is one. Till it has arrived the dummy waits as it waits for
 its fingerprints (`WaitingAi`: its custom screen held), and the corner's count below counts it as one more thing
 to make ready; one that can't be had, or weights this encoder can't play, is said in the log and the dummy stands
@@ -4200,7 +4204,7 @@ instead, and downloads nothing for it.
 `https://nettai.n1gp.net/catalog.json` (`$NETTAI_CATALOG` names another): each game's index by its full address.
 Every other address is what those say: an index entry gives its bundle's. The games are the catalog's that the
 extractor reads. At start, on the window's loop (`slint::spawn_local`; the files written off it,
-`nettai_platform::task::off_thread`): the catalog is read, then each game's index, and the newest bundle of the line
+`nettai_threads::off_thread`): the catalog is read, then each game's index, and the newest bundle of the line
 downloaded where the store hasn't it, the game shown first, checked against its id as it is unpacked. A game the
 store has no content of is downloaded whatever Settings say, the first start included; Settings → General → Check
 for updates off stops only the look for newer revisions of the games that have some (the app's own updates, §19,

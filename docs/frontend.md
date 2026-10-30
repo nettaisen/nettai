@@ -3069,7 +3069,7 @@ ffmpeg took it. Now:
   size, scaled with the enhanced mode's text over it, and its RGB bytes: a
   whole frame each, on as many threads as the cores but one, at most four
   (two where the system doesn't say: a browser, whose threads are Web
-  Workers, `nettai_platform::thread`), each with a text
+  Workers, `nettai_threads`), each with a text
   renderer like the viewer's (`Viewer::text_renderer`). The frames come
   back in order, a frame a thread and two more under way at most, their
   buffers going round. It is the one way a video's frames are presented,

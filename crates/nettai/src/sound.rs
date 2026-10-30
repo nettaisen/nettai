@@ -16,7 +16,7 @@ use nettai_battle::content::SoundRole;
 use nettai_frontend::game::Loaded;
 use nettai_frontend::player::FRAME_RATE;
 use std::time::Duration;
-use nettai_platform::time::Instant;
+use web_time::Instant;
 
 /// The name a game's assets' index gives its title screen's music.
 const TITLE_MUSIC: &str = "title-screen";
@@ -190,7 +190,7 @@ impl Sound {
     pub fn frame(&mut self, now: Instant, ticks: Option<u32>, battle: &mut Vec<[f32; 2]>) {
         // (A phone's app back from the background, or its sound given back after a call: the device stopped then,
         // and is started again.)
-        if nettai_platform::lifecycle::resumed()
+        if nettai_lifecycle::resumed()
             && let Some(out) = &self.out
         {
             out.resume();

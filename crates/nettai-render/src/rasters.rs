@@ -158,7 +158,7 @@ impl Rasters {
         let parsed: Vec<(u64, Arc<Parsed>)> = self.parsed.iter().map(|(&h, p)| (h, p.clone())).collect();
         let (tx, rx) = std::sync::mpsc::channel();
         // (None started: the old scale's rasters stay, resampled.)
-        let _ = nettai_platform::thread::spawn("rasters", move || {
+        let _ = nettai_threads::spawn("rasters", move || {
             let made = parsed.into_iter().map(|(h, p)| (h, Arc::new(p.raster(scale, 1.0)))).collect();
             let _ = tx.send(made);
         });
@@ -328,8 +328,8 @@ mod tests {
         assert_eq!(r.late, 0);
         let t = r.tinted(&mut i, &d, &[0xFF0000, 0x00FF00], (false, false), 4.0, 1.0).unwrap();
         assert_eq!((t.w, t.h), (32, 32), "resampled meanwhile");
-        let deadline = nettai_platform::time::Instant::now() + std::time::Duration::from_secs(10);
-        while r.scale != 4.0 && nettai_platform::time::Instant::now() < deadline {
+        let deadline = web_time::Instant::now() + std::time::Duration::from_secs(10);
+        while r.scale != 4.0 && web_time::Instant::now() < deadline {
             std::thread::sleep(std::time::Duration::from_millis(5));
             r.tinted(&mut i, &d, &[0xFF0000, 0x00FF00], (false, false), 4.0, 1.0);
         }

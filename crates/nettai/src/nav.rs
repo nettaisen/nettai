@@ -476,7 +476,7 @@ pub struct Nav {
     /// What the UI was last told: the focus and its place.
     told: Option<(Key, Rect)>,
     /// Where the cursor is drawn: on its way to the focus's place, and when it was last moved.
-    drawn: Option<(Rect, nettai_platform::time::Instant)>,
+    drawn: Option<(Rect, web_time::Instant)>,
     /// The focus was put somewhere by the app: it is scrolled into view once it is there.
     reveal_due: bool,
     /// A dialog opened on its text field ([`Nav::open_editing`]): the field's edit begins once the focus is on it.
@@ -699,7 +699,7 @@ impl Nav {
     /// focus, and where the cursor is at `now`: with `glide` it goes a share of the way to the focused control
     /// each frame (most of it in a tenth of a second), so a control that is itself moving is followed; without,
     /// it is there at once. The focus, when it moved to another control.
-    pub fn settle(&mut self, ui: &AppWindow, now: nettai_platform::time::Instant, glide: bool) -> Option<Key> {
+    pub fn settle(&mut self, ui: &AppWindow, now: web_time::Instant, glide: bool) -> Option<Key> {
         let before = self.told.as_ref().map(|(k, _)| k.clone());
         // What the focus should be on: what is wanted, if it exists now; else where it is, if that still
         // exists; else somewhere that does.

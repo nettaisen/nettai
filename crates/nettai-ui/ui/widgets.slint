@@ -1058,7 +1058,7 @@ export component Field inherits Rectangle {
         width: parent.width - 24px;
         clip: true;
         // (In a browser the edit is an HTML input laid over the field, for the input method: this one is hidden, and
-        // so is the text while it is edited. nettai_platform::text_entry.)
+        // so is the text while it is edited. nettai_page::text_entry.)
         input := TextInput {
             x: min(0px, max(parent.width - self.width, root.scroll));
             width: max(parent.width, self.preferred-width + 2px);

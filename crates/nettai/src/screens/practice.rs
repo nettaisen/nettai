@@ -47,7 +47,7 @@ use nettai_ui::{BattleKind, GettingReady, PracticeOption, PracticeRow, PracticeV
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::rc::Rc;
-use nettai_platform::time::Instant;
+use web_time::Instant;
 
 #[cfg(feature = "ai")]
 pub(crate) mod ai;
