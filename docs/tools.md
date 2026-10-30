@@ -81,10 +81,10 @@ tick compared with what the original recorded; the first difference is printed.
 
 `--replay FILE --mp4 OUT` writes the replay as an MP4, as the app's export makes one (nettai-video,
 docs/frontend.md §8, "Video"): one frame a tick, the picture a viewer playing the replay straight is shown (the
-text included) and the sound the tick made, made 48 kHz; H.264 at CRF 16 in 4:2:0 and AAC, encoded by `ffmpeg`
-(`$NETTAI_FFMPEG`, else one beside nettai-tool, else one on the path: nettai-video's `ffmpeg::find_ffmpeg`), which
-is given the frames and samples the browser's encoder would be; the pixels aren't scaled by ffmpeg, nor the sound
-resampled. Each round is a chapter ("Round N") and each sound track is titled with its player's name. `OUT` is
+text included) and the sound the tick made, made 48 kHz; H.264 at CRF 16 in 4:2:0 (no B-frames) and AAC, encoded
+by `ffmpeg` (`$NETTAI_FFMPEG`, else one beside nettai-tool, else one on the path: nettai-video's
+`platform::desktop::find_ffmpeg`), which is given the NV12 and samples every platform's codecs are; ffmpeg neither
+scales nor converts the pixels, nor resamples the sound. Each round is a chapter ("Round N") and each sound track is titled with its player's name. `OUT` is
 there only once it is whole; a failure says whether ffmpeg wasn't found, ffmpeg failed (with what it said) or the
 file couldn't be written. Everything the tool says goes to standard error (a line every tenth of the way, then
 what it wrote). (`--nut`, the raw stream ffmpeg is given, is gone: the user, "can you remove nut support then?")

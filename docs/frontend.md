@@ -2955,21 +2955,28 @@ saying where; the match's checks then judge what it read, as for a match file.
 
 ### Video
 
-nettai-video writes a replay as an MP4, the same way on the desktop and in a
-browser. It is a crate of its own over the viewer, with no encoder and no
-ffmpeg library in it:
+nettai-video writes a replay as an MP4, the same way on the desktop, in a
+browser and on a phone. It is a crate of its own over the viewer, with no
+encoder and no ffmpeg library in it; the platform's part is its codecs and
+nothing more:
 
-- **The playing** (`export(&game, &replay, &options, &encoding, to,
-  progress)`, `write_mp4(&mut viewer, ...)`): the replay through a viewer, a
-  frame and its sound a tick, the picture made at the video's size on
-  threads of their own (`presenters`), the sound made 48 kHz (`resample`).
-- **The encoder** (`encode`), the platform's: `ffmpeg` run as a child on the
-  desktop (`ffmpeg`), the browser's own in a browser (WebCodecs,
-  `webcodecs`). Each is given the same frames and the same samples, and says
-  back its tracks and their encoded samples.
-- **The MP4** (`mp4::Muxer`): the encoder's samples written to any
-  `std::io::Write` a chunk at a time as they come, and the head that indexes
-  them made last (`Made`), for the host to put first.
+- **The playing** (`export(&game, &replay, &options, to, progress)`,
+  `write_mp4(&mut viewer, ...)`): the replay through a viewer, a frame and
+  its sound a tick, the picture made at the video's size and made NV12 on
+  threads of their own (`presenters`, `yuv`), the sound made 48 kHz
+  (`resample`).
+- **The codecs** (`codecs`), the platform's, a module each (`platform`):
+  `desktop` (ffmpeg run as children), `web` (WebCodecs), `ios`
+  (VideoToolbox and AudioToolbox), `android` (MediaCodec). Each is given the
+  same NV12 and the same samples, and says back what its codecs made: the
+  picture's H.264 a frame at a time in the order shown, with its parameter
+  sets, and each sound track's coded frames, with its config and priming.
+- **The MP4's tracks and samples** (`assemble`, with `h264` and `aac`): the
+  frames as an MP4 holds them, the tracks' descriptions, every sample's time
+  and what of each sound track is shown, the same for every platform.
+- **The MP4** (`mp4::Muxer`): the samples written to any `std::io::Write` a
+  chunk at a time as they come, and the head that indexes them made last
+  (`Made`), for the host to put first.
 
 **What a video holds:** one frame of the picture a tick and the sound the tick
 made, as a viewer playing the part straight presents and plays them
@@ -3110,92 +3117,105 @@ then took as long as ffmpeg alone took to encode the same frames from a file
 (1,200 of them: 3.2 s against ffmpeg's 3.0; libx264 at `-preset medium`, CRF
 16, unchanged), and was byte for byte what it had been.
 
-**On the desktop: ffmpeg** (`ffmpeg`), a child a track (the user: "can we
-avoid emitting nut entirely?"). The picture's child is written the frames'
-raw RGB on its standard input (`-f rawvideo -pixel_format rgb24`, the
-video's size, `-framerate 262144/4389`: a tick's rate, so its times are the
-frames' count, exact), and each sound track's child that track's samples
-(`-f f32le -sample_rate 48000 -ch_layout stereo`); each says its track back
-as a fragmented MP4 on its standard output, read as it comes (its track from
-its `moov`, each fragment's samples from its `moof` and `mdat`) and not kept:
-the MP4 is the muxer's, which puts the tracks together. Each child reads its
-own pipe and nothing else, and its output and what it says are read on
-threads of their own, so no child waits on another and a full pipe only
-means that child is busy (the user: "well if i feed them separately will it
-cause pipe problems?": with one ffmpeg reading every track on pipes of their
-own it could, its output interleaving the tracks while the writer waits on
-another's full pipe; and those pipes would be more descriptors on Unix and
-named pipes on Windows). It was a NUT stream into one ffmpeg until then; that
-was no faster (the frames' bytes go to the pipe as they are either way, and
-x264 sets the pace) but a container of our own to write, read and test. The
-command lines are the module's (`ffmpeg::picture_arguments`,
-`ffmpeg::sound_arguments`): H.264 by libx264 (`-preset medium -tune
-animation -crf 16 -g 120`), 4:2:0, the colors converted and tagged as BT.709
-(the primaries and the transfer by `setparams` on the frames: ffmpeg 9.0's
-encoder takes them from the frames, and with `-color_primaries` and
-`-color_trc` alone the MP4 said "unknown" for both); AAC at 192 kb/s of the
-samples as they come, resampled by nothing. Each child's `moov` waits for its
-first fragment (`delay_moov`), so it has the track's edit list: the
-picture's past its reordering, and the sound's past AAC's encoder delay, its
-first 1024 samples, which a player skips by it. (Before, ffmpeg wrote its
-`moov` ahead of any sample, with no edit list, and from 7ad595dff the
-desktop's sound played those 1024 samples, 21 ms, late; nettai-video's test
-`ffmpeg_makes_the_mp4` holds the decoded sound to the samples given, at no
-lag.) The picture isn't scaled by
-ffmpeg. What 4:2:0 costs depends on
-the size: at an even multiple of the frame every game pixel covers whole
-color samples and edges stay clean, at an odd one every edge gets a fringe
-of mixed color. Measured on 120 frames of an EXE6 fight (the decoded MP4
-against the frames, RGB PSNR): 40 dB at twice the frame and 44 dB at four
-times, about 2 Mb/s each; 25 dB at three times, at 4 Mb/s; 38 dB at three
-times in 4:4:4 (`Chroma::Full`, which fewer players take). So a host offers
-even sizes first.
+**On the desktop: ffmpeg** (`platform::desktop`), a child a track (the user:
+"can we avoid emitting nut entirely?"). The picture's child is written the
+frames' NV12 on its standard input (`-f rawvideo -pixel_format nv12`, the
+video's size, `-framerate 262144/4389`: a tick's rate), and each sound
+track's child that track's samples (`-f f32le -sample_rate 48000
+-ch_layout stereo`); each writes its codec's raw output on its standard
+output, read as it comes and not kept: the picture's H.264 as Annex B (`-f
+h264`, x264's `aud` putting a delimiter before each frame, where it is cut:
+`h264::Stream`), a sound track's AAC as ADTS (`-f adts`, read into frames
+and the config its headers say: `aac::Adts`). No container is read. Each
+child reads its own pipe and nothing else, and its output and what it says
+are read on threads of their own, so no child waits on another and a full
+pipe only means that child is busy (the user: "well if i feed them
+separately will it cause pipe problems?": with one ffmpeg reading every
+track on pipes of their own it could, its output interleaving the tracks
+while the writer waits on another's full pipe; and those pipes would be
+more descriptors on Unix and named pipes on Windows). The command lines are
+the module's (`picture_arguments`, `sound_arguments`): H.264 by libx264
+(`-preset medium -tune animation -crf 16 -g 120 -bf 0`), with no B-frames,
+so its frames come out in the order shown as every platform's do (it costs
+size: the picture 22% larger on a two-minute set, docs/app.md §16), its
+colors tagged BT.709 in the video range in its SPS (`-x264-params
+colorprim=bt709:transfer=bt709:colormatrix=bt709:range=tv`, which x264
+takes over what ffmpeg says of the frames); AAC at 192 kb/s of the samples
+as they come, resampled by nothing. ADTS says no priming: ffmpeg's AAC
+encoder puts 1024 samples before the sound (`initial_padding`, which
+libavcodec's `aacenc.c` sets as it starts), which the track is shown from
+past (nettai-video's test `ffmpeg_makes_the_mp4` holds the decoded sound to
+the samples given, at no lag and as long). ffmpeg neither scales nor
+converts the picture: it comes as NV12 at its final size. What 4:2:0 costs
+depends on the size: at an even multiple of the frame every game pixel
+covers whole color samples and edges stay clean, at an odd one every edge
+gets a fringe of mixed color. Measured on 120 frames of an EXE6 fight (the
+decoded MP4 against the frames, RGB PSNR): 40 dB at twice the frame and
+44 dB at four times, about 2 Mb/s each; 25 dB at three times, at 4 Mb/s.
+So a host offers even sizes first. (4:4:4 was the desktop's alone, and went
+for one picture format everywhere.)
 
-**Which ffmpeg** is `ffmpeg::find_ffmpeg()`, the one the app, the tour and
-`nettai-tool --mp4` run: `$NETTAI_FFMPEG`, else `ffmpeg` beside the running
-program (the one every package bundles: docs/app.md §19), else one in an
-absolute folder of the path or where a package manager puts it
+**Which ffmpeg** is `platform::desktop::find_ffmpeg()`, the one the app, the
+tour and `nettai-tool --mp4` run: `$NETTAI_FFMPEG`, else `ffmpeg` beside the
+running program (the one every package bundles: docs/app.md §19), else one
+in an absolute folder of the path or where a package manager puts it
 (`/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin`). A relative folder
 of the path (`.`, or an empty entry) is never looked in, so an `ffmpeg` in
 the working directory isn't run; found nowhere, it is the bundled one's
 place, which fails to start (`NoFfmpeg`). The bundled ffmpeg is a minimal
-static build of these commands and nothing more (nettaisen/ffmpeg-build,
-from ffmpeg-9.0.2-2: the raw video and float PCM demuxers in place of NUT's,
-and pipes alone).
+static build of these commands and nothing more (nettaisen/ffmpeg-build:
+the raw video and float PCM demuxers, libx264 and aac, pipes alone). Its
+muxers are to be the h264 and adts ones (`--enable-muxer=h264,adts`): the
+build at ffmpeg-9.0.2-2 has mp4's alone, from when ffmpeg wrote MP4s.
 
-**In a browser: WebCodecs** (`webcodecs`). H.264 at level 4.2 (High, else
-Main, else the constrained baseline every encoder has), at a bit rate made
-of the rate factor (a fifth of a bit a pixel a frame at CRF 16, at most
-40 Mb/s), a key frame every 120 frames; AAC where the browser has it, else
-Opus, a track a console shown, of the same 48 kHz samples ffmpeg is given.
-An AAC encoder puts samples before the sound (its priming: AAC's blocks
-overlap, and an encoder looks ahead), which no AAC packet says and WebCodecs
-doesn't tell: Chromium stamps its encoders' packets from 0 (macOS's
-AudioToolbox puts 2112 first, Windows' Media Foundation its own). So an
-export measures it as it starts, a click through an encoder of the same
-settings and a decoder, and each AAC track is shown from past it by its edit
-list, as the desktop's tracks are by ffmpeg's (the user: "is aac in the
-browser broken then?", then "ok fix it then": before, its sound played that
-much late, 44 ms on macOS). Measured in Chrome on macOS: 2112, the same each
-time, and a sound encoded and decoded, those 2112 skipped, lines up with
-what was encoded at no lag. Opus says its own delay, its pre-skip (312:
-Chromium's libopus lookahead, which it leaves in).
-The picture's times are a frame's count on a tick's time base, exact; the
-sound's are its samples.
+**In a browser: WebCodecs** (`platform::web`). H.264 at level 4.2 (High,
+else Main, else the constrained baseline every encoder has), at a bit rate
+(`codecs::bitrate`: a fifth of a bit a pixel a frame, at most 40 Mb/s), a
+key frame every 120 frames, given each frame as an NV12 `VideoFrame` tagged
+BT.709 in the video range and made as Annex B (`avc: { format: "annexb" }`:
+its key frames carry its parameter sets); AAC where the browser has it,
+else Opus (20 ms frames), a track a console shown, of the same 48 kHz
+samples every platform's codecs are given. An AAC encoder puts samples
+before the sound (its priming: AAC's blocks overlap, and an encoder looks
+ahead), which no AAC packet says and WebCodecs doesn't tell: Chromium stamps
+its encoders' packets from 0 (macOS's AudioToolbox puts 2112 first,
+Windows' Media Foundation its own). So an export measures it as it starts,
+a click through an encoder of the same settings and a decoder, and each AAC
+track is shown from past it, as every platform's are (the user: "is aac in
+the browser broken then?", then "ok fix it then": before, its sound played
+that much late, 44 ms on macOS). Measured in Chrome on macOS: 2112, the same
+each time, and a sound encoded and decoded, those 2112 skipped, lines up
+with what was encoded at no lag. Opus says its own delay, its pre-skip (312:
+Chromium's libopus lookahead, which it leaves in). (Not run in a browser
+since its frames went in as NV12 and its H.264 came out as Annex B: the
+module type-checks.)
 
-**The MP4** (`mp4::Muxer`) is the same from either encoder: the samples go
-to the host's writer in chunks of about two seconds from a key frame of the
-picture, every track's since the last chunk, and of each only its size,
-duration, offset and key flag are kept. Once every sample is written, the
-head is made (`Made`): the `ftyp`, a `moov` indexing every sample (its
-tracks, their durations, the picture's edit list past its B-frames, a track
-starting after 0 delayed by an empty edit) and a 64-bit `mdat` header. The
-host puts the head first, so the file tells its length and seeks at once,
-and plays a download from its start: no fragmented MP4. On the desktop the
-samples go beside the file as `NAME.body.part`, then the head and they as
-`NAME.part`, named once whole; in a browser to a file in the page's own
-storage, then a download of the head and the file (docs/app.md §6).
-Canceled or failed, nothing is left under either name.
+**On a phone** (`platform::ios`, `platform::android`): the phone's own
+codecs, given the same NV12 and samples (docs/app.md §7 and §16).
+
+**The MP4's tracks and samples** (`assemble`) are made the same way of every
+platform's codecs: each frame's H.264 as an MP4 holds it (each unit after
+its length, the parameter sets and delimiters left out: `h264`), a key frame
+one with an IDR slice; the picture's description H.264's of its codec's
+first SPS and PPS, tagged BT.709 in the video range; each sound track's of
+its AAC config (`aac`) or Opus's pre-skip. Every sample's time is its count:
+a frame's on a tick's time base, exact (no codec reorders its frames); a
+sound frame's 1024 samples (Opus's 960). Each AAC track is shown from past
+its priming (an edit list), and every sound track exactly as long as the
+samples it was given (its last frame's padding left out).
+
+**The MP4** (`mp4::Muxer`): the samples go to the host's writer in chunks of
+about two seconds from a key frame of the picture, every track's since the
+last chunk, and of each only its size, duration and key flag are kept. Once
+every sample is written, the head is made (`Made`): the `ftyp`, a `moov`
+indexing every sample (its tracks, their durations, each sound track's edit
+list, a track starting after 0 delayed by an empty edit) and a 64-bit `mdat`
+header. The host puts the head first, so the file tells its length and seeks
+at once, and plays a download from its start: no fragmented MP4. On the
+desktop the samples go beside the file as `NAME.body.part`, then the head
+and they as `NAME.part`, named once whole; in a browser to a file in the
+page's own storage, then a download of the head and the file (docs/app.md
+§6). Canceled or failed, nothing is left under either name.
 
 **Progress, canceling, errors.** `progress` is called before the first frame
 and after each with a `Progress` (the frames written and to write, so a
@@ -3211,7 +3231,7 @@ says what went wrong as a type, with the detail as its `Display`:
 |---|---|
 | `NoFfmpeg(e)` | ffmpeg couldn't be started: none bundled or installed, or not where `$NETTAI_FFMPEG` says |
 | `FfmpegFailed { code, log }` | ffmpeg ran and failed: its exit code and the last of what it wrote to its standard error |
-| `Encoder(said)` | the browser's encoder refused or failed |
+| `Encoder(said)` | the platform's codecs refused or failed (the browser's, a phone's), or what they made can't be an MP4's |
 | `Disk(e)` | the file couldn't be made there, or the disk is full |
 | `Canceled` | the caller stopped it; nothing is left |
 | `Replay(refused)`, `NoSuchPart(what)`, `Scale(n)` | the replay isn't played here; a round or range the replay hasn't; a size not 1 to 16 times |
@@ -3219,25 +3239,32 @@ says what went wrong as a type, with the detail as its `Display`:
 | `Threads(why)` | the threads the frames are presented on didn't start, or one stopped |
 | `Write(e)` | the writer's own error |
 
-**Checked.** nettai-video's tests check what the encoder is given (the
-frames and samples the playing hands either encoder, kept by the tests in
-the encoder's place): a picture a tick, each the one a player playing the
-replay straight presents, and the sound what it plays, made 48 kHz as one
-run, every frame's sound in its place (the picture's length to within a
-sample); a part's the whole's for its ticks; each side, side by side, its
-own video; both on one screen the viewer's both; the titles and chapters;
-the progress and canceling; what can't be made refused before the encoder
-starts. With stand-ins for ffmpeg (shell scripts), each child is written its
-own track and nothing else (the frames' pixels, a track's samples as
-little-endian floats), and a child that fails, fills the disk, closes its
-input or never ends is said or stopped. With ffmpeg itself (9.0.2;
-`ffmpeg_makes_the_mp4`, not run by default: it needs `ffmpeg` and
+**Checked.** nettai-video's tests check what the codecs are given (the NV12
+and samples the playing hands every platform's codecs, kept by the tests in
+the codecs' place): a picture a tick, each the NV12 of the one a player
+playing the replay straight presents, and the sound what it plays, made
+48 kHz as one run, every frame's sound in its place (the picture's length to
+within a sample); a part's the whole's for its ticks; each side, side by
+side, its own video in each plane's rows; both on one screen the viewer's
+both; the titles and chapters; the progress and canceling; what can't be
+made refused before the codecs start. The NV12 is within one of ffmpeg's
+scaler's (`the_nv12_is_ffmpegs`); the raw H.264 is cut into frames at its
+delimiters however its bytes come, ADTS into frames and its config, and the
+codecs' output made the MP4's tracks and samples (`assemble`'s,
+`h264`'s and `aac`'s tests). With stand-ins for ffmpeg (shell scripts),
+each child is written its own track and nothing else (the frames' NV12, a
+track's samples as little-endian floats), and a child that fails, fills the
+disk, closes its input or never ends is said or stopped. With ffmpeg itself
+(9.0.2; `ffmpeg_makes_the_mp4`, not run by default: it needs `ffmpeg` and
 `ffprobe`), the MP4 is `ftyp`, `moov` and `mdat` and no fragments, holds
-every frame as H.264, close to the frames, and the sound as AAC at 48 kHz,
-decoding to the samples given (to within the millisecond the muxer's edit
-lists are in) at no lag; and a two-sided MP4 has a track a side in order,
-named, the first the default, the two decoding differently, and the rounds
-as chapters from the frame the second's picture begins on.
+every frame as H.264 High with no B-frames, tagged BT.709 in the video
+range, decoding to the NV12 given, and the sound as AAC-LC at 48 kHz,
+decoding to the samples given, as many (to within the millisecond the
+muxer's edit lists are in) and at no lag; and a two-sided MP4 has a track a
+side in order, named, the first the default, the two decoding differently,
+and the rounds as chapters from the frame the second's picture begins on.
+On macOS the same is checked of iOS's codecs (`videotoolbox_makes_the_mp4`,
+`videotoolbox_mp4_plays_as_given`).
 
 ## 9. Loading, and what a match waits for
 

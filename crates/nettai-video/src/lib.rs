@@ -1,21 +1,27 @@
-//! A replay as video: played through a [`Viewer`] frame by frame, and made an MP4 the same way on every platform.
-//! The pieces:
+//! A replay as video: played through a [`Viewer`] frame by frame, coded by the platform's own codecs, and made an MP4
+//! the same way on every platform. The platform's part is the codecs and nothing more; everything before them and
+//! after them is this crate's, one way for all:
 //!
 //! - The playing: a replay through a [`Viewer`], the whole of it or a part (a round, a range of ticks), from either
 //!   console, both on one screen, or both side by side ([`Sides`]), the picture at a whole multiple of the frame's
 //!   240x160, a frame and its sound at a time.
-//! - [`encode`]: the encoder, the platform's: `ffmpeg` on the desktop (a child a track, written its raw frames or
-//!   samples, which it encodes and says the packets of back), the browser's own in a browser
-//!   (WebCodecs), the phone's own on a phone (iOS's VideoToolbox and AudioToolbox, Android's MediaCodec, each
-//!   given the frames as NV12 made here: `yuv`). Each is given the same frames and the same samples, and makes
-//!   the picture's H.264 and a sound track's AAC (or the browser's Opus) a console shown.
-//! - `resample`: the sound made 48 kHz, the rate every encoder's codecs take, before any is given it.
-//! - [`mp4`]: the MP4 of what the encoder makes, its samples written to any `std::io::Write` a chunk at a time as
-//!   they are made (a file; in a browser, the file being made in the page's storage) and its head, the index of
-//!   them, made last, for the host to put before them: its tracks, its sound tracks' titles and its rounds as
-//!   chapters. No fragmented MP4: one every player and editor takes, that tells its length and seeks at once.
-//! - [`export`] and [`write_mp4`]: the three together, frames to the encoder to the MP4.
-//! - `presenters`: the frames' pictures made at the video's size on threads of their own, beside the playing.
+//! - `presenters`: each frame's picture made at the video's size on threads of their own, beside the playing, and
+//!   made NV12 there (`yuv`: BT.709 in the video range), the one picture every platform's codecs are given.
+//! - `resample`: the sound made 48 kHz, the rate every codec takes, before any is given it.
+//! - `codecs`: what the codecs are to the rest. In: each frame's NV12 and each sound track's 48 kHz samples. Out: the
+//!   picture's H.264, a frame at a time in the order shown (no codec reorders its frames), with its parameter sets;
+//!   each sound track's coded frames (AAC, or a browser's Opus), with its config and its encoder's priming.
+//! - `platform`: the codecs, a module a platform, chosen in one place: `desktop` (ffmpeg, a child a track: x264 and
+//!   ffmpeg's AAC), `web` (WebCodecs), `ios` (VideoToolbox and AudioToolbox), `android` (MediaCodec).
+//! - `assemble`, with `h264` and `aac`: what the codecs made, made the MP4's tracks and samples: each frame's H.264
+//!   as the MP4 holds it, the tracks' descriptions (H.264's of its parameter sets, AAC's of its config), every
+//!   sample's time (a frame's count on the tick's time base; the samples before a sound frame), and what of each
+//!   sound track is shown (past its priming, as long as the samples it was given).
+//! - `mp4`: the MP4, its samples written to any `std::io::Write` a chunk at a time as they are made (a file; in a
+//!   browser, the file being made in the page's storage) and its head, the index of them, made last, for the host
+//!   to put before them: its tracks, its sound tracks' titles and its rounds as chapters. No fragmented MP4: one
+//!   every player and editor takes, that tells its length and seeks at once.
+//! - [`export`] and [`write_mp4`]: all of it together.
 //!
 //! **What a video holds.** One frame of the picture a tick, and the sound
 //! the tick made, exactly as a viewer playing the part straight shows and
@@ -37,88 +43,61 @@
 //! one screen are one track, both consoles' sound as the viewer shown so
 //! plays it ([`Viewer::take_samples`]), titled with both names. Each round is a
 //! chapter, titled in the host's words, from the frame its picture begins
-//! on ([`chapters`]). They are said in the stream's info packets
-//! ([`Info`]), and the MP4's ([`mp4`]).
+//! on ([`chapters`]). They are said in the stream's info ([`Info`]), and the
+//! MP4's (`mp4`).
 //!
 //! **The picture is scaled here**, by whole multiples and the nearest
-//! pixel, not left at 240x160 for ffmpeg: in the enhanced mode the
-//! battle's words are drawn at the output's resolution over the scaled
-//! frame, so only a frame presented at its final size has them sharp. (In
-//! the original mode the scaling is plain pixel repetition either
-//! way.)
+//! pixel, and made 4:2:0 here: in the enhanced mode the battle's words are
+//! drawn at the output's resolution over the scaled frame, so only a frame
+//! presented at its final size has them sharp. 4:2:0 is every player's: at
+//! an even multiple of the frame every game pixel covers whole color
+//! samples, and its edges stay clean; at an odd one a color sample straddles
+//! two game pixels and every edge gets a fringe of mixed color.
 //!
-//! **The same replay gives the encoder the same frames and samples.** The
-//! simulation, the drawing, the sound and its resampling are functions of
-//! the replay.
+//! **The same replay gives the codecs the same frames and samples**, on every
+//! platform. The simulation, the drawing, the conversion, the sound and its
+//! resampling are functions of the replay.
 //!
 //! **Three things at once** (the user: "is replay export slower than it
 //! should be?"). The thread a video is made on plays the battle, a tick at
 //! a time in order, and draws each tick's frame at 240x160
 //! (`Viewer::frame_view`); the picture at the video's size, scaled with the
-//! enhanced mode's text over it, is made on a few threads beside it, a
-//! whole frame each, each with a text renderer of its own, and comes back
-//! in order (`presenters`); and on the desktop ffmpeg is written from a
-//! thread of its own through a queue of a few frames, so the drawing never
-//! waits on ffmpeg's pipe and ffmpeg never waits on the drawing (`ffmpeg`).
-//! Measured on a 19:42 EXE5 replay's first two minutes (7,200 frames at four
-//! times the frame, release builds, `nettai-tool --mp4`): the MP4 in 20 s
-//! (it took 34 s when one thread did all three in turns), as fast as ffmpeg
-//! alone encodes the same frames; a frame drawn in 0.66 ms, from 3.5 (the
-//! frames alone, then written as a NUT stream by `nettai-tool --nut`, since
-//! gone). The MP4 was byte for byte what it had been. The frames are presented
-//! one way: the window's `present`, on these threads, the same on the
-//! desktop and in a browser (whose threads are Web Workers); where they
-//! don't start, no video is made ([`Error::Threads`]).
+//! enhanced mode's text over it and made NV12, is made on a few threads
+//! beside it, a whole frame each, each with a text renderer of its own, and
+//! comes back in order (`presenters`); and the codecs code on their own (on
+//! the desktop ffmpeg is written from a thread of its own through a queue of
+//! a few frames, so the drawing never waits on ffmpeg's pipe and ffmpeg never
+//! waits on the drawing). The frames are presented one way: the window's
+//! `present`, on these threads, the same on the desktop, in a browser (whose
+//! threads are Web Workers) and on a phone; where they don't start, no video
+//! is made ([`Error::Threads`]).
 //!
 //! ```ignore
 //! // On a thread of its own: the progress goes to the UI, which may cancel. `to` is the file (a dialog's).
 //! let titles = Titles { rounds: vec!["Round 1".into(), "Round 2".into()], sides: Default::default() };
 //! let options = Options { scale: 3, view: None, sides: Sides::One, part: Part::Round(2), titles };
-//! let result = nettai_video::export(&game, &replay, &options, &Encoding::default(), to, &mut |p| {
+//! let result = nettai_video::export(&game, &replay, &options, to, &mut |p| {
 //!     tx.send(p).ok();
 //!     if canceled.load(Ordering::Relaxed) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
 //! });
 //! // Err(Error::NoFfmpeg(_)) | Err(Error::FfmpegFailed { .. }) | Err(Error::Encoder(_)) | Err(Error::Canceled) ...
 //! ```
 
-// (Unsafe only where iOS's frameworks are called: `videotoolbox`.)
+// (Unsafe only where iOS's frameworks are called: `platform::ios`.)
 #![deny(unsafe_code)]
 
-pub mod encode;
-pub mod mp4;
-pub use mp4::Made;
+mod aac;
+mod assemble;
+mod codecs;
+mod h264;
+mod mp4;
+mod platform;
 mod presenters;
-
-// The platform's encoder, each with its `start`: ffmpeg on the desktop (a child a track), the
-// browser's own in a browser, the phone's own on a phone (iOS's VideoToolbox and AudioToolbox,
-// Android's MediaCodec), each given the same frames and samples. (macOS has iOS's frameworks:
-// the tests run `videotoolbox` there.)
-#[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android")))]
-pub mod ffmpeg;
-#[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android")))]
-use ffmpeg as platform;
-#[cfg(target_arch = "wasm32")]
-mod webcodecs;
-#[cfg(target_arch = "wasm32")]
-use webcodecs as platform;
-#[cfg(any(target_os = "ios", all(test, target_os = "macos")))]
-#[allow(unsafe_code)]
-mod videotoolbox;
-#[cfg(target_os = "ios")]
-use videotoolbox as platform;
-#[cfg(target_os = "android")]
-mod mediacodec;
-#[cfg(target_os = "android")]
-use mediacodec as platform;
-// (A phone's encoder takes YUV, made here: the same bytes on both.)
-#[cfg(any(target_os = "ios", target_os = "android", test))]
-mod yuv;
-// (Android's encoder makes H.264 as Annex B, made the MP4's here.)
-#[cfg(any(target_os = "android", test))]
-mod annex_b;
 mod resample;
+mod yuv;
 
-pub use encode::{Audio, Chapter, Chroma, Encoding, Info, Video};
+pub use codecs::{Audio, Video};
+pub use mp4::Made;
 
 use nettai_frontend::game::Loaded;
 use nettai_frontend::player::TICK_SECONDS;
@@ -260,6 +239,25 @@ impl Titles {
     }
 }
 
+/// What a video says of itself besides its frames: its sound tracks' titles and its chapters. The first sound
+/// track is the default one.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Info {
+    /// The sound tracks' titles, by track (an empty one, or one past these: the track has none).
+    pub titles: Vec<String>,
+    /// The chapters, in the order they start.
+    pub chapters: Vec<Chapter>,
+}
+
+/// A chapter: from a frame of the picture, for some frames, under a title.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Chapter {
+    /// Its first frame (the frames counted from 0), and how many it has.
+    pub start: u64,
+    pub frames: u64,
+    pub title: String,
+}
+
 /// The chapters of a video of `ticks` of a replay whose rounds start at
 /// `rounds` (each one's first tick, the first round's 0): a round each,
 /// titled by `titles`, from the frame its picture begins on to the next
@@ -336,8 +334,8 @@ pub enum Error {
     /// `ffmpeg` ran and failed: its exit code (none: a signal ended it)
     /// and the last of what it wrote to its standard error.
     FfmpegFailed { code: Option<i32>, log: String },
-    /// The platform's encoder refused or failed (the browser's WebCodecs, iOS's VideoToolbox or AudioToolbox,
-    /// Android's MediaCodec), or what it made isn't an MP4's: what was said.
+    /// The platform's codecs refused or failed (the browser's WebCodecs, iOS's VideoToolbox or AudioToolbox,
+    /// Android's MediaCodec), or what they made can't be an MP4's (ffmpeg's included): what was said.
     Encoder(String),
     /// The threads the frames' pictures are made on didn't start, or one
     /// stopped: what was said.
@@ -379,11 +377,12 @@ impl std::error::Error for Error {
 /// stop (the video is canceled).
 pub type OnProgress<'a> = &'a mut dyn FnMut(Progress) -> ControlFlow<()>;
 
-/// Where a video's frames go (an MP4 being encoded; in the tests, what is kept of them), each its picture's RGB bytes
-/// and each console shown's sound, at 48 kHz. Each gives back a buffer a next frame's picture may be made in: the
-/// frame's own once written, or one the encoder is done with (an empty one where it has none yet).
+/// Where a video's frames go (an MP4 being made; in the tests, what is kept of them), each its picture as NV12 (`yuv`)
+/// and each console shown's sound, at 48 kHz: what every platform's codecs are given. Each gives back a buffer a next
+/// frame's picture may be made in: the frame's own once written, or one the codecs are done with (an empty one where
+/// they have none yet).
 pub(crate) trait Frames {
-    fn frame(&mut self, rgb: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error>;
+    fn frame(&mut self, nv12: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error>;
 }
 
 /// [`write_mp4`]'s playing: the part played and each frame given to what `open` makes of the video's picture,
@@ -436,9 +435,9 @@ pub(crate) fn play<F: Frames>(viewer: &mut Viewer, options: &Options, progress: 
     // (The round of each frame under way, for the progress told once it is written.)
     let mut rounds = std::collections::VecDeque::new();
     let mut write = |presenters: &mut Presenters, rounds: &mut std::collections::VecDeque<u32>, stream: &mut F, at: &mut Progress| -> Result<(), Error> {
-        let Presented { rgb, sound, .. } = presenters.next()?;
+        let Presented { nv12, sound, .. } = presenters.next()?;
         let tracks: Vec<&[[f32; 2]]> = sound.iter().map(Vec::as_slice).collect();
-        presenters.give_back(stream.frame(rgb, &tracks)?);
+        presenters.give_back(stream.frame(nv12, &tracks)?);
         at.round = rounds.pop_front().unwrap_or(at.round);
         at.written += 1;
         tell(*at)
@@ -494,67 +493,79 @@ pub(crate) fn play<F: Frames>(viewer: &mut Viewer, options: &Options, progress: 
 /// Write a replay as an MP4 to `to`, as it is made, on a loaded game (its graphics, its text as it was loaded, its
 /// sound if it was): [`write_mp4`], through a viewer of its own, on the thread it is called on (a host calls it on
 /// one that isn't its window's). The same on the desktop, in a browser and on a phone.
-pub fn export<W: Write>(game: &Loaded, replay: &Replay, options: &Options, encoding: &Encoding, to: W, progress: OnProgress) -> Result<Made<W>, Error> {
+pub fn export<W: Write>(game: &Loaded, replay: &Replay, options: &Options, to: W, progress: OnProgress) -> Result<Made<W>, Error> {
     let mut viewer = Viewer::open(game, replay, options.view).map_err(Error::Replay)?;
-    write_mp4(&mut viewer, options, encoding, to, progress)
+    write_mp4(&mut viewer, options, to, progress)
 }
 
-/// Write the replay `viewer` plays as an MP4 to `to`, as it is made: its frames and sound encoded by the
-/// platform's encoder ([`encode`]: ffmpeg on the desktop, WebCodecs in a browser, the phone's own on a phone) and
-/// their samples written a
-/// chunk at a time ([`mp4`]), its sound tracks titled and its rounds chapters. `to` is given back with every
-/// sample in it, and the head the file starts with, which goes before them ([`Made`]); canceled or failed, what
-/// was written is the caller's to let go.
-pub fn write_mp4<W: Write>(viewer: &mut Viewer, options: &Options, encoding: &Encoding, to: W, progress: OnProgress) -> Result<Made<W>, Error> {
-    play(viewer, options, progress, |video, audio, info| Mp4::start(video, audio, info, encoding, to))?.finish()
+/// Write the replay `viewer` plays as an MP4 to `to`, as it is made: its frames and sound coded by the platform's
+/// codecs ([`platform`]) and what they make written a chunk at a time ([`mp4`]), its sound tracks titled and its
+/// rounds chapters. `to` is given back with every sample in it, and the head the file starts with, which goes before
+/// them ([`Made`]); canceled or failed, what was written is the caller's to let go.
+pub fn write_mp4<W: Write>(viewer: &mut Viewer, options: &Options, to: W, progress: OnProgress) -> Result<Made<W>, Error> {
+    play(viewer, options, progress, |video, audio, info| Mp4::start(video, audio, info, to))?.finish()
 }
 
-/// An MP4 being made: the encoder's frames in, what it makes muxed into the file as it comes.
+/// An MP4 being made: the frames to the platform's codecs, what they make made the MP4's ([`assemble`]) and muxed
+/// into the file as it comes.
 struct Mp4<W: Write> {
-    encoder: Option<Box<dyn encode::Backend>>,
+    codecs: Option<Box<dyn codecs::Codecs>>,
+    assembler: assemble::Assembler,
     muxer: Option<mp4::Muxer<W>>,
+    /// The samples each sound track was given, which it is shown as long as.
+    given: Vec<u64>,
 }
 
 impl<W: Write> Mp4<W> {
-    fn start(video: Video, audio: Option<Audio>, info: &Info, encoding: &Encoding, to: W) -> Result<Mp4<W>, Error> {
-        Ok(Mp4::with(platform::start(video, audio, encoding)?, video, info, to))
+    fn start(video: Video, audio: Option<Audio>, info: &Info, to: W) -> Result<Mp4<W>, Error> {
+        Ok(Mp4::with(platform::start(video, audio)?, video, audio, info, to))
     }
 
-    /// An MP4 made by `encoder` (the platform's; in the tests, another platform's of this one's).
-    fn with(encoder: Box<dyn encode::Backend>, video: Video, info: &Info, to: W) -> Mp4<W> {
+    /// An MP4 made by `codecs` (the platform's; in the tests, another's this one has too).
+    fn with(codecs: Box<dyn codecs::Codecs>, video: Video, audio: Option<Audio>, info: &Info, to: W) -> Mp4<W> {
         let frame = video.frame_time.0 as f64 / video.frame_time.1 as f64;
         let chapters = info.chapters.iter().map(|c| mp4::Chapter { title: c.title.clone(), start: c.start as f64 * frame }).collect();
-        Mp4 { encoder: Some(encoder), muxer: Some(mp4::Muxer::new(to, info.titles.clone(), chapters)) }
+        let given = vec![0; audio.map_or(0, |a| a.tracks)];
+        Mp4 { codecs: Some(codecs), assembler: assemble::Assembler::new(video, audio), muxer: Some(mp4::Muxer::new(to, info.titles.clone(), chapters)), given }
     }
 
-    fn muxed(&mut self, events: Vec<encode::Event>) -> Result<(), Error> {
+    fn muxed(&mut self, coded: Vec<codecs::Coded>) -> Result<(), Error> {
         let muxer = self.muxer.as_mut().expect("muxing till finished");
-        events.into_iter().try_for_each(|e| muxer.event(e))
+        self.assembler.take(coded)?.into_iter().try_for_each(|e| muxer.event(e))
     }
 
     fn finish(mut self) -> Result<Made<W>, Error> {
-        let encoder = self.encoder.take().expect("finished once");
-        let rest = encoder.finish()?;
+        let codecs = self.codecs.take().expect("finished once");
+        let rest = codecs.finish()?;
         self.muxed(rest)?;
-        self.muxer.take().expect("finished once").finish()
+        self.assembler.finish()?;
+        let mut muxer = self.muxer.take().expect("finished once");
+        // (Each sound track as long as it was given: its last frame's padding left out.)
+        for (t, &samples) in self.given.iter().enumerate() {
+            muxer.shown(1 + t, samples);
+        }
+        muxer.finish()
     }
 }
 
 impl<W: Write> Frames for Mp4<W> {
-    fn frame(&mut self, rgb: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error> {
-        let encoder = self.encoder.as_mut().expect("encoding till finished");
-        let spare = encoder.frame(rgb, sound)?;
-        let made = encoder.events()?;
+    fn frame(&mut self, nv12: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error> {
+        for (given, sound) in self.given.iter_mut().zip(sound) {
+            *given += sound.len() as u64;
+        }
+        let codecs = self.codecs.as_mut().expect("coding till finished");
+        let spare = codecs.frame(nv12, sound)?;
+        let made = codecs.coded()?;
         self.muxed(made)?;
         Ok(spare)
     }
 }
 
 impl<W: Write> Drop for Mp4<W> {
-    /// Canceled or failed: the encoder is stopped.
+    /// Canceled or failed: the codecs are stopped.
     fn drop(&mut self) {
-        if let Some(encoder) = self.encoder.take() {
-            encoder.cancel();
+        if let Some(codecs) = self.codecs.take() {
+            codecs.cancel();
         }
     }
 }

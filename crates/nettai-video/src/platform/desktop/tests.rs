@@ -7,23 +7,18 @@ fn the_command_lines_are_as_stated() {
     let said = |arguments: Vec<OsString>| arguments.iter().map(|a| a.to_string_lossy().into_owned()).collect::<Vec<_>>().join(" ");
     let (video, audio) = (Video { width: 480, height: 320, frame_time: (4389, 262_144) }, Audio { sample_rate: 48_000, tracks: 2 });
     assert_eq!(
-        said(picture_arguments(&video, &Encoding::default())),
+        said(picture_arguments(&video)),
         "-hide_banner -nostdin -loglevel error \
-         -f rawvideo -pixel_format rgb24 -video_size 480x320 -framerate 262144/4389 -i pipe:0 \
-         -vf scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format=yuv420p,setparams=color_primaries=bt709:color_trc=bt709 \
-         -c:v libx264 -preset medium -tune animation -crf 16 -g 120 \
-         -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv \
-         -f mp4 -movflags +frag_keyframe+empty_moov+delay_moov+default_base_moof -frag_duration 2000000 pipe:1"
+         -f rawvideo -pixel_format nv12 -video_size 480x320 -framerate 262144/4389 -i pipe:0 \
+         -c:v libx264 -preset medium -tune animation -crf 16 -g 120 -bf 0 \
+         -x264-params aud=1:colorprim=bt709:transfer=bt709:colormatrix=bt709:range=tv \
+         -f h264 pipe:1"
     );
     assert_eq!(
-        said(sound_arguments(&audio, &Encoding::default())),
-        "-hide_banner -nostdin -loglevel error -f f32le -sample_rate 48000 -ch_layout stereo -i pipe:0 -c:a aac -b:a 192k \
-         -f mp4 -movflags +empty_moov+delay_moov+default_base_moof -frag_duration 2000000 pipe:1"
+        said(sound_arguments(&audio)),
+        "-hide_banner -nostdin -loglevel error -f f32le -sample_rate 48000 -ch_layout stereo -i pipe:0 -c:a aac -b:a 192000 \
+         -f adts pipe:1"
     );
-    let full = Encoding { crf: 0, chroma: Chroma::Full, audio_kbps: 320 };
-    let picture = said(picture_arguments(&video, &full));
-    assert!(picture.contains("format=yuv444p,") && picture.contains("-crf 0 "), "{picture}");
-    assert!(said(sound_arguments(&audio, &full)).contains("-b:a 320k "));
 }
 
 /// The ffmpeg found: `$NETTAI_FFMPEG` as it is, else the one beside the
@@ -73,7 +68,7 @@ fn one_at_a_time() -> std::sync::MutexGuard<'static, ()> {
     TURN.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
-/// A video as the tests' stand-ins take it: a picture of 2 by 2, one sound track.
+/// A video as the tests' stand-ins take it: a picture of 2 by 2 (6 bytes of NV12), one sound track.
 fn small() -> (Video, Option<Audio>) {
     (Video { width: 2, height: 2, frame_time: (4389, 262_144) }, Some(Audio { sample_rate: 48_000, tracks: 1 }))
 }
@@ -84,7 +79,7 @@ fn no_ffmpeg_is_said() {
     let _turn = one_at_a_time();
     let dir = scratch("none");
     let (video, audio) = small();
-    assert!(matches!(Ffmpeg::start(&dir.join("no-such-ffmpeg"), video, audio, &Encoding::default()), Err(Error::NoFfmpeg(_))));
+    assert!(matches!(Ffmpeg::start(&dir.join("no-such-ffmpeg"), video, audio), Err(Error::NoFfmpeg(_))));
     let _ = std::fs::remove_dir_all(dir);
 }
 
@@ -113,15 +108,15 @@ mod with_a_stand_in {
     }
 
     /// The stand-in started, and written `frames` frames of the small stream (what writing them said).
-    fn fed(program: &Path, frames: usize) -> (Box<dyn Backend>, Result<(), Error>) {
+    fn fed(program: &Path, frames: usize) -> (Box<dyn Codecs>, Result<(), Error>) {
         let (video, audio) = small();
-        let mut ffmpeg: Box<dyn Backend> = Box::new(Ffmpeg::start(program, video, audio, &Encoding::default()).unwrap());
+        let mut ffmpeg: Box<dyn Codecs> = Box::new(Ffmpeg::start(program, video, audio).unwrap());
         let sound = [[0.25f32, -0.25]; 804];
-        let written = (0..frames).try_for_each(|_| ffmpeg.frame(vec![7u8; 12], &[&sound[..]]).map(drop));
+        let written = (0..frames).try_for_each(|_| ffmpeg.frame(vec![7u8; 6], &[&sound[..]]).map(drop));
         (ffmpeg, written)
     }
 
-    /// Each child is written its own track and nothing else: the picture's child the frames' pixels one after
+    /// Each child is written its own track and nothing else: the picture's child the frames' NV12 one after
     /// another, each sound track's child that track's samples, 32-bit little-endian floats, left then right.
     #[test]
     fn each_child_is_written_its_own_track() {
@@ -131,16 +126,16 @@ mod with_a_stand_in {
         let keeper = stand_in(&dir, &format!("case \"$6\" in rawvideo) cat > '{0}/picture';; *) cat > \"{0}/sound.$$\";; esac", dir.display()));
         let (video, _) = small();
         let audio = Some(Audio { sample_rate: 48_000, tracks: 2 });
-        let mut ffmpeg: Box<dyn Backend> = Box::new(Ffmpeg::start(&keeper, video, audio, &Encoding::default()).unwrap());
+        let mut ffmpeg: Box<dyn Codecs> = Box::new(Ffmpeg::start(&keeper, video, audio).unwrap());
         let (left, right) = ([[0.25f32, -0.5]; 3], [[1.0f32, 0.125]; 2]);
         for n in 0..4u8 {
-            ffmpeg.frame(vec![n; 12], &[&left[..], &right[..]]).unwrap();
+            ffmpeg.frame(vec![n; 6], &[&left[..], &right[..]]).unwrap();
         }
-        // (No MP4 came back: the stand-in says none.)
+        // (Nothing came back: the stand-in says nothing.)
         let finished = ffmpeg.finish();
-        assert!(matches!(&finished, Ok(events) if events.is_empty()), "{finished:?}");
+        assert!(matches!(&finished, Ok(coded) if coded.is_empty()), "{finished:?}");
         let picture = std::fs::read(dir.join("picture")).unwrap();
-        assert_eq!(picture, (0..4u8).flat_map(|n| [n; 12]).collect::<Vec<_>>());
+        assert_eq!(picture, (0..4u8).flat_map(|n| [n; 6]).collect::<Vec<_>>());
         let bytes = |sound: &[[f32; 2]]| -> Vec<u8> { (0..4).flat_map(|_| sound.iter().flatten().flat_map(|s| s.to_le_bytes())).collect() };
         let mut sounds: Vec<Vec<u8>> = std::fs::read_dir(&dir).unwrap().flatten().filter(|e| e.file_name().to_string_lossy().starts_with("sound.")).map(|e| std::fs::read(e.path()).unwrap()).collect();
         sounds.sort_by_key(Vec::len);
@@ -193,10 +188,11 @@ mod with_a_stand_in {
 
 /// With ffmpeg itself (not run by default: it needs `ffmpeg` and `ffprobe`
 /// installed; `cargo test -p nettai-video -- --ignored`): a short set's
-/// MP4 is H.264 of every frame, close to them, and AAC of its sound, as
-/// many samples as it was given, its index before its samples and no
-/// fragments; and a two-sided one's has a track each side, named and the
-/// first the default, and the rounds as chapters.
+/// MP4 is H.264 of every frame (High, no B-frames, tagged BT.709 in the
+/// video range), close to the NV12 it was given, and AAC of its sound, as
+/// many samples as it was given and at no lag from them, its index before
+/// its samples and no fragments; and a two-sided one's has a track each
+/// side, named and the first the default, and the rounds as chapters.
 #[test]
 #[ignore]
 fn ffmpeg_makes_the_mp4() {
@@ -211,7 +207,7 @@ fn ffmpeg_makes_the_mp4() {
     let part = Part::Ticks(200..320);
     // What the encoder is given of it: the frames, and the sound at 48 kHz.
     let given = given(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &part), &mut |_| ControlFlow::Continue(())).unwrap();
-    let pictures: Vec<u8> = given.frames.iter().flat_map(|(rgb, _)| rgb.iter().copied()).collect();
+    let pictures: Vec<u8> = given.frames.iter().flat_map(|(nv12, _)| nv12.iter().copied()).collect();
     let run = |program: &str, args: &[&str]| -> Vec<u8> {
         let out = Command::new(program).current_dir(&dir).args(args).output().unwrap_or_else(|e| panic!("{program}: {e}"));
         // (Every run is at `-v error`: nothing said is nothing wrong.)
@@ -221,7 +217,7 @@ fn ffmpeg_makes_the_mp4() {
     let quiet = ["-v", "error", "-nostdin"];
     // The MP4: every frame, H.264 and AAC, the picture close to the frames; its head first, then its samples.
     let mp4 = |viewer: &mut nettai_frontend::viewer::Viewer, options: &Options| -> Vec<u8> {
-        let made = write_mp4(viewer, options, &Encoding::default(), Vec::new(), &mut |_| ControlFlow::Continue(())).unwrap();
+        let made = write_mp4(viewer, options, Vec::new(), &mut |_| ControlFlow::Continue(())).unwrap();
         [made.head, made.body].concat()
     };
     let file = mp4(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &part));
@@ -239,13 +235,23 @@ fn ffmpeg_makes_the_mp4() {
     std::fs::write(dir.join("part.mp4"), &file).unwrap();
     let probed = String::from_utf8(run(
         "ffprobe",
-        &["-v", "error", "-count_frames", "-show_entries", "stream=codec_name,pix_fmt,width,height,r_frame_rate,nb_read_frames,sample_rate", "-of", "csv=p=0", "part.mp4"],
+        &[
+            "-v",
+            "error",
+            "-count_frames",
+            "-show_entries",
+            "stream=codec_name,profile,width,height,pix_fmt,color_range,color_space,color_primaries,color_transfer,r_frame_rate,has_b_frames,nb_read_frames,sample_rate",
+            "-of",
+            "csv=p=0",
+            "part.mp4",
+        ],
     ))
     .unwrap();
+    eprintln!("ffprobe: {probed}");
     let lines: Vec<&str> = probed.lines().collect();
-    assert_eq!(lines[0], "h264,480,320,yuv420p,262144/4389,120", "{probed}");
-    assert!(lines[1].starts_with("aac,48000"), "{probed}");
-    let decoded = run("ffmpeg", &[&quiet[..], &["-i", "part.mp4", "-map", "0:v", "-f", "rawvideo", "-pix_fmt", "rgb24", "-fps_mode", "passthrough", "-"]].concat());
+    assert_eq!(lines[0], "h264,High,480,320,0,yuv420p,tv,bt709,bt709,bt709,262144/4389,120", "{probed}");
+    assert!(lines[1].starts_with("aac,LC,48000"), "{probed}");
+    let decoded = run("ffmpeg", &[&quiet[..], &["-i", "part.mp4", "-map", "0:v", "-f", "rawvideo", "-pix_fmt", "nv12", "-fps_mode", "passthrough", "-"]].concat());
     assert_eq!(decoded.len(), pictures.len());
     // Its sound: as many samples as it was given, its encoder's delay and padding left out by its edit list (where
     // there is none, the encoder's first 1024 samples play before it, late by them).
@@ -260,8 +266,9 @@ fn ffmpeg_makes_the_mp4() {
     let along = |lag: i64| -> f64 { (2000..sound.len() as i64 - 2000).map(|n| heard.get((n + lag) as usize).map_or(0.0, |&h| h as f64 * sound[n as usize] as f64)).sum() };
     let best = (-1100..=1100).max_by(|&a, &b| along(a).total_cmp(&along(b))).unwrap();
     assert_eq!(best, 0, "the decoded sound is {best} samples off the sound given");
-    let off: u64 = decoded.iter().zip(&pictures).map(|(a, b)| a.abs_diff(*b) as u64).sum();
-    assert!((off as f64 / pictures.len() as f64) < 2.0, "the MP4's pictures are {} off a byte", off as f64 / pictures.len() as f64);
+    let off = decoded.iter().zip(&pictures).map(|(a, b)| a.abs_diff(*b) as u64).sum::<u64>() as f64 / pictures.len() as f64;
+    eprintln!("the pictures are {off:.3} off a byte; {} samples decoded of {}", heard.len(), sound.len());
+    assert!(off < 2.0, "the MP4's pictures are {off} off a byte");
     // Both sides across the second round's start: a track each, the left
     // console's first and the default, each named for its player; the
     // rounds as chapters (Nero's chpl), the second from the frame its picture begins on
@@ -285,7 +292,7 @@ fn ffmpeg_makes_the_mp4() {
     let length = format!("{:.6}", length.trim().parse::<f64>().unwrap());
     assert!(length.parse::<f64>().unwrap() - 120.0 * 4389.0 / 262_144.0 < 0.05, "the file is {length} s long");
     assert_eq!(probed.lines().collect::<Vec<_>>(), [format!("0.000000,{},Round 1", at(59.0)), format!("{},{length},Round 2", at(59.0))], "{probed}");
-    // The picture is shown from its start (its edit list past x264's reordering).
+    // The picture is shown from its start (no reordering: no edit list).
     let starts = String::from_utf8(run("ffprobe", &["-v", "error", "-select_streams", "v", "-show_entries", "stream=start_time", "-of", "csv=p=0", "both.mp4"])).unwrap();
     assert_eq!(starts.trim(), "0.000000", "the picture starts at {starts}");
     // Each track decodes to its side's sound: they differ.

@@ -1294,13 +1294,14 @@ isolated (COOP and COEP), which a page with threads must be.
 - **The collection's folder isn't remembered** past the page (a folder handle kept in IndexedDB could be read
   again only after a click and the browser's permission prompt); its ROMs are, as the copies above, so no visit
   after the first asks for it.
-- **A replay's video** is nettai-video's on both platforms: the playing's frames to the platform's encoder to one
-  MP4 (`mp4`: its samples written to any `std::io::Write` a chunk at a time as they come, and its head, the
-  `moov` indexing them, made last and put first), its sound tracks titled and its rounds chapters. No fragmented
-  MP4 (the user: "is it possible to avoid fragmented mp4 in output for both web and local?"): the index first is
-  the file every player and editor takes, tells its length and seeks at once, and plays a download from its
-  start. The encoder is ffmpeg on the desktop and WebCodecs in a browser (H.264, and AAC or Opus, an encoder a
-  sound track); ffmpeg says its packets back as a fragmented MP4 on its pipe, which is read and not kept.
+- **A replay's video** is nettai-video's on every platform: the playing's frames, made NV12, to the platform's
+  codecs, and what they make to one MP4 (`mp4`: its samples written to any `std::io::Write` a chunk at a time as
+  they come, and its head, the `moov` indexing them, made last and put first), its sound tracks titled and its
+  rounds chapters (§16). No fragmented MP4 (the user: "is it possible to avoid fragmented mp4 in output for both
+  web and local?"): the index first is the file every player and editor takes, tells its length and seeks at once,
+  and plays a download from its start. In a browser the codecs are WebCodecs (nettai-video's `platform::web`: its
+  H.264, given an NV12 `VideoFrame` tagged BT.709 in the video range, as Annex B; its AAC, else Opus, an encoder a
+  sound track); on the desktop ffmpeg's, whose raw H.264 and ADTS are read off its pipes.
   EXPORT writes it to `nettai_platform::dialog::save_stream_to`'s file: on the desktop the samples beside the
   path as `NAME.body.part`, then the head and they as `NAME.part`, named once whole; in a browser the samples in
   the page's own storage (its `.making` folder, out of the kept files and emptied as the page starts), then a
@@ -1380,9 +1381,10 @@ app type-checks for iOS, and for Android the crates below the app (nettai-platfo
   `nettai_platform::lifecycle::resumed` says when the app came back (iOS: made active again, or its audio session
   interrupted or given back), and the sound starts its device again (`Output::resume`, as the web does after a
   click).
-- **Video export:** each phone's own encoders (§16): VideoToolbox's H.264 and AudioToolbox's AAC on iOS, MediaCodec's
-  on Android, given the frames as NV12 made in Rust (the same bytes on both) and the same 48 kHz samples as ffmpeg.
-  The MP4 is made in the temporary folder's `outgoing` and handed over once whole (above).
+- **Video export:** each phone's own codecs (§16; nettai-video's `platform::ios` and `platform::android`):
+  VideoToolbox's H.264 and AudioToolbox's AAC on iOS, MediaCodec's on Android, given the NV12 and the 48 kHz
+  samples every platform's codecs are, made the MP4 the same way. The MP4 is made in the temporary folder's
+  `outgoing` and handed over once whole (above).
 - **Input:** touch is the on-screen pad (`TouchPad`, battle.slint; §11, "The on-screen pad"), which takes the
   window's touches itself, every finger its own; no touch screen has run it. No gamepads on a phone yet:
   gamepad-facade is built without SDL there (SDL's iOS joystick code needs its UIKit video, its Android one its
@@ -3780,40 +3782,55 @@ export under way and leaves the mode on; with none under way it ends it. The lin
 the percentage, then "Saved.", or what went wrong in the player's words (`UserError::of_export`: ffmpeg not
 found, the file not written, anything else with the log named). The app keeps awake while one runs (§1).
 
-- *The file* is an MP4 and nothing else: the frames and samples go to ffmpeg's children raw, on their pipes. It is
-  named for the day, the opponent and the part, in the folder last exported to (at first the system's videos
-  folder's `nettai`), with a number after it where that name is taken; Save as asks for another place in the
-  system's dialog. It takes its name only once it is whole: stopped or failed, nothing is left
-  (docs/frontend.md §8, "Video").
+- *The file* is an MP4 and nothing else, made the same way on every platform: the platform's codecs are given
+  each frame's picture as NV12 and each sound track's 48 kHz samples, and nettai-video makes the MP4 of what they
+  make (nettai-video's `codecs`, `assemble` and `mp4`, docs/frontend.md §8). It is named for the day, the opponent
+  and the part, in the folder last exported to (at first the system's videos folder's `nettai`), with a number
+  after it where that name is taken; Save as asks for another place in the system's dialog. It takes its name only
+  once it is whole: stopped or failed, nothing is left (docs/frontend.md §8, "Video").
+- *What every platform's MP4 holds*: H.264 with no B-frames (each frame decoded when it is shown, so its time is
+  its count on the tick's time base, exact), a key frame at least every 120 frames, 4:2:0 tagged BT.709 in the
+  video range, of the NV12 made once in Rust (nettai-video's `yuv`: BT.709, each chroma sample the mean of the two
+  by two pixels it covers, within one of ffmpeg's scaler); and AAC-LC at 192 kb/s (a browser with none: Opus) a
+  track, shown from past its encoder's priming and exactly as long as the samples it was given (its last frame's
+  padding left out). No 4:4:4: one picture format everywhere.
+- *On the desktop* the codecs are ffmpeg's children, a track each (nettai-video's `platform::desktop`): x264 at
+  CRF 16, given the NV12 raw, writing raw H.264 (`-f h264`, each frame after an access unit delimiter); ffmpeg's
+  AAC writing ADTS. nettai-video reads both as they come, without parsing any container. ffmpeg's AAC priming is
+  its encoder's 1024 samples (libavcodec's `aacenc.c`, `initial_padding`). The bundled ffmpeg needs the h264 and
+  adts muxers for this (nettaisen/ffmpeg-build: `--enable-muxer=h264,adts`).
+  - *B-frames dropped* (2026-10-29, so that no platform's codec reorders its frames): an EXE5 set of 7,199 ticks
+    (two minutes, recorded headless from verify's `exe5-dark` match with scripted keys against `--opponent attacks`)
+    at four times the frame, through `nettai-tool --mp4`: 17,903,532 bytes with B-frames (H.264 at 987 kb/s),
+    21,142,353 without (1,205 kb/s): the file 18% larger, the picture 22%. All of it is the B-frames: the new
+    pipeline with them on again made 17,858,229 bytes (987.5 kb/s). Encoding took 15.0 s and 15.9 s, within the
+    machine's load's noise.
 - *ffmpeg* is `$NETTAI_FFMPEG`, else the one beside the program, which every package bundles (§19), else one on
   the path or where a package manager puts it (`/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin`: an app
   started from the desktop has a short path). The path's relative folders (`.`, an empty entry) are passed by, so
-  an `ffmpeg` in the working directory is never run (nettai-video's `ffmpeg::find_ffmpeg`, docs/frontend.md §8).
-- *On a phone* there is no ffmpeg: the encoders are the phone's own, behind the same `encode::Backend`, given the
-  same frames and the same 48 kHz samples, into the same MP4 (nettai-video's `videotoolbox` and `mediacodec`).
-  - The frames go in as NV12 in the video range, made of their RGB in Rust (nettai-video's `yuv`: BT.709, each
-    chroma sample the mean of the two by two pixels it covers), the same bytes on both phones and within one of
-    what the desktop's ffmpeg makes of the same frames. H.264 at a bit rate made of the rate factor as the
-    browser's is, a key frame at least every 120 frames, no B-frames, tagged BT.709 in the video range. 4:4:4
-    isn't coded on a phone: it is 4:2:0, as in a browser.
-  - iOS: VideoToolbox's H.264 (High) and AudioToolbox's AAC-LC, each track shown from past the 2112 samples of
-    priming AudioToolbox says it puts first (`kAudioConverterPrimeInfo`). macOS has the same frameworks, and
-    nettai-video's tests run them there (2026-10-29): a set's 120 frames at twice the frame, read back by ffprobe
-    as H.264 High 480x320 yuv420p, tagged tv/bt709/bt709/bt709, 262144/4389, starting at 0, 120 frames, and AAC
-    LC at 48 kHz; decoded by ffmpeg, the pictures 0.150 off a byte on average, and the sound at no lag from what
-    was given (97,200 samples for 96,438: the last AAC frame's rest). Not run on an iPhone.
-  - Android: MediaCodec's `video/avc` and `audio/mp4a-latm` through the NDK; its parameter sets (`csd-0`,
-    `csd-1`) make the avcC and its Annex B packets are given lengths (nettai-video's `annex_b`); the sound goes in
-    as 16-bit PCM, and the AAC encoder's priming, which Android doesn't say and which differs by device, is
-    measured as an export starts, a click through it and the system's decoder, as the browser's is. Only
-    type-checked: no device has run it.
+  an `ffmpeg` in the working directory is never run (nettai-video's `platform::desktop::find_ffmpeg`,
+  docs/frontend.md §8).
+- *On a phone* there is no ffmpeg: the codecs are the phone's own (nettai-video's `platform::ios` and
+  `platform::android`), given the same NV12 and samples, into the same MP4.
+  - iOS: VideoToolbox's H.264 (High; its parameter sets from its format description) and AudioToolbox's AAC-LC,
+    whose priming is the 2112 samples AudioToolbox says it puts first (`kAudioConverterPrimeInfo`). macOS has the
+    same frameworks, and nettai-video's tests run them there (2026-10-29): a set's 120 frames at twice the frame,
+    read back by ffprobe as H.264 High 480x320 yuv420p, tagged tv/bt709/bt709/bt709, 262144/4389, starting at 0,
+    120 frames, and AAC LC at 48 kHz; decoded by ffmpeg, the pictures 0.000 off a byte of the NV12 given on the
+    tests' flat graphics, and the sound at no lag from what was given and as long (96,432 samples for 96,438: the
+    edit's length is in milliseconds). Not run on an iPhone.
+  - Android: MediaCodec's `video/avc` and `audio/mp4a-latm` through the NDK; its parameter sets are its codec
+    configuration; the sound goes in as 16-bit PCM, and the AAC encoder's priming, which Android doesn't say and
+    which differs by device, is measured as an export starts, a click through it and the system's decoder, as the
+    browser's is. Only type-checked: no device has run it.
 - *How fast* (the user: "is replay export slower than it should be?"): the export's thread plays the replay and
   draws each tick's frame at 240x160; the picture at the video's size, text and all, is made on a few threads
-  beside it (nettai-video's `presenters`, with the window's own `present`: there is one way a frame is presented),
-  and ffmpeg is written from a thread of its own through a queue of three frames, so the drawing and the encoding
-  go on at once instead of in turns (docs/frontend.md §8, "Three things at once"). An export now goes as fast as
-  ffmpeg encodes: the first two minutes of a 19:42 EXE5 replay at four times the frame in 20 s, from 34 s; the MP4
-  is byte for byte what it was. The progress is told as each frame is written, its round the frame's; CANCEL still
+  beside it and made NV12 there (nettai-video's `presenters`, with the window's own `present`: there is one way a
+  frame is presented), and ffmpeg is written from a thread of its own through a queue of three frames, so the
+  drawing and the encoding go on at once instead of in turns (docs/frontend.md §8, "Three things at once"). An
+  export goes as fast as ffmpeg encodes: the first two minutes of a 19:42 EXE5 replay at four times the frame in
+  20 s, from 34 s (measured before the NV12 moved into Rust and the B-frames went: a two-minute set at four times
+  the frame took 15.9 s since, above). The progress is told as each frame is written, its round the frame's; CANCEL still
   stops it at the next frame (the threads end after the frame they are on, ffmpeg is stopped and the thread
   writing to it with it). Where the threads don't start the export fails as where ffmpeg fails ("The video
   couldn't be made", the detail in the log: `UserError::of_export`).
@@ -4076,7 +4093,11 @@ decoders, the pipe protocol, swscale's `scale` and `format`, `setparams`, swresa
 `aformat`, `null` and `anull`, libx264 and the native AAC encoder, the MP4 muxer: its README traces each to the
 commands), smoke-tests it with those commands on the raw bytes nettai writes, decodes the MP4s with a full
 ffmpeg, and publishes a release `ffmpeg-<version>-<revision>` (ffmpeg-9.0.2-2 since the export stopped writing
-NUT: the user, "can we avoid emitting nut entirely?"). `packaging/ffmpeg.sha256` pins the release a
+NUT: the user, "can we avoid emitting nut entirely?"). Since 2026-10-29 the export's commands write raw H.264 and
+ADTS instead of MP4s (nettai-video reads its codecs' own output on every platform: §16), which want the `h264` and
+`adts` muxers in place of the MP4 one (and no longer `scale`, `format` or `setparams`: the frames come as NV12):
+the release at ffmpeg-9.0.2-2 has the MP4 muxer alone, so a release of nettai with this needs a new one of
+nettaisen/ffmpeg-build first (`--enable-muxer=h264,adts`) and its pin here. `packaging/ffmpeg.sha256` pins the release a
 package takes by its tag and each file by its SHA-256; the scripts download them once into
 `target/package/ffmpeg/<tag>/` and check them (or bundle the ffmpeg `NETTAI_BUNDLE_FFMPEG`, `-Ffmpeg` on Windows,
 names). Where it goes: `ffmpeg.exe` beside `nettai.exe` (the installer and the .zip), `Contents/MacOS/ffmpeg` in

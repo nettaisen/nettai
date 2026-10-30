@@ -1,9 +1,9 @@
 //! A video's frames presented on threads of their own (the user: "is replay export slower than it should be?"):
 //! the battle plays in order on the thread that makes the video, which draws each tick's frame at 240x160
 //! (`Viewer::frame_view`) and takes its sound; the frame's picture at the video's size (the scaling, the enhanced
-//! mode's text over it: `nettai_render::present::present`, the window's own) and its RGB bytes are made on one of a
-//! few threads, each with a text renderer of its own, a whole frame each; and they come back in the order they were
-//! played.
+//! mode's text over it: `nettai_render::present::present`, the window's own) and its NV12, what the codecs are
+//! given (`yuv`), are made on one of a few threads, each with a text renderer of its own, a whole frame each; and
+//! they come back in the order they were played.
 //!
 //! - **The threads** are the platform's (`nettai_platform::thread`: a Web Worker in a browser), as many as the
 //!   cores but one, at most [`MOST`] (two where the system doesn't say: a browser), one at least. Each says it has
@@ -32,18 +32,18 @@ pub(crate) const MOST: usize = 4;
 pub(crate) const STARTING: u64 = 20;
 
 /// A frame to present: its place in the video, the frame of each console shown (from the left), the sound that
-/// goes with it (each track's), and the buffer its picture's RGB bytes go in.
+/// goes with it (each track's), and the buffer its picture's NV12 goes in.
 struct Job {
     index: u64,
     frames: Vec<Frame>,
     sound: Vec<Vec<[f32; 2]>>,
-    rgb: Vec<u8>,
+    nv12: Vec<u8>,
 }
 
-/// A frame presented: its picture's RGB bytes (the consoles' rows side by side) and its sound.
+/// A frame presented: its picture's NV12 (the consoles side by side) and its sound.
 pub(crate) struct Presented {
     index: u64,
-    pub rgb: Vec<u8>,
+    pub nv12: Vec<u8>,
     pub sound: Vec<Vec<[f32; 2]>>,
 }
 
@@ -63,28 +63,17 @@ struct Presenter {
 }
 
 impl Presenter {
-    /// The job's frames presented, each console's picture at the video's size, and their rows side by side as
-    /// RGB bytes in the job's buffer.
+    /// The job's frames presented, each console's picture at the video's size, and their NV12 side by side in the
+    /// job's buffer.
     fn present(&mut self, job: Job) -> Presented {
-        let Job { index, frames, sound, mut rgb } = job;
+        let Job { index, frames, sound, mut nv12 } = job;
         let (w, h) = (self.width, self.height);
         for (frame, picture) in frames.iter().zip(&mut self.pictures) {
             nettai_render::present::present(frame, self.text.as_mut(), picture, w, h);
         }
-        let pictures = &self.pictures[..frames.len()];
-        let row = 3 * w * pictures.len();
-        if rgb.len() != row * h {
-            rgb.clear();
-            rgb.resize(row * h, 0);
-        }
-        for (y, line) in rgb.chunks_exact_mut(row).enumerate() {
-            for (part, picture) in line.chunks_exact_mut(3 * w).zip(pictures) {
-                for (o, &c) in part.chunks_exact_mut(3).zip(&picture[y * w..(y + 1) * w]) {
-                    o.copy_from_slice(&[(c >> 16) as u8, (c >> 8) as u8, c as u8]);
-                }
-            }
-        }
-        Presented { index, rgb, sound }
+        let pictures: Vec<&[u32]> = self.pictures[..frames.len()].iter().map(Vec::as_slice).collect();
+        crate::yuv::nv12(&pictures, w, h, &mut nv12);
+        Presented { index, nv12, sound }
     }
 
     /// A thread's work: frames from `queue` presented and told on `said`, till the queue is let go (or what it was
@@ -173,7 +162,7 @@ impl Presenters {
 
     /// A frame to present: the frame of each console shown (from the left), and the sound that goes with it.
     pub(crate) fn send(&mut self, frames: Vec<Frame>, sound: Vec<Vec<[f32; 2]>>) {
-        let job = Job { index: self.sent, frames, sound, rgb: self.spare.pop().unwrap_or_default() };
+        let job = Job { index: self.sent, frames, sound, nv12: self.spare.pop().unwrap_or_default() };
         self.sent += 1;
         // (The threads gone, the frame is missed by `next`, which says why.)
         let _ = self.jobs.send(job);
@@ -198,10 +187,10 @@ impl Presenters {
         }
     }
 
-    /// A buffer of a picture written (or any the stream gave back), for a next frame's.
-    pub(crate) fn give_back(&mut self, rgb: Vec<u8>) {
-        if rgb.capacity() > 0 && self.spare.len() < self.ahead() {
-            self.spare.push(rgb);
+    /// A buffer of a picture written (or any the codecs gave back), for a next frame's.
+    pub(crate) fn give_back(&mut self, nv12: Vec<u8>) {
+        if nv12.capacity() > 0 && self.spare.len() < self.ahead() {
+            self.spare.push(nv12);
         }
     }
 }

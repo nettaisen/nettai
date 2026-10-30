@@ -22,7 +22,7 @@ use nettai_frontend::game::{GraphicsMode, Loaded, Sound};
 use nettai_frontend::player::time_of;
 use nettai_ui::{ExportState, ReplaysView};
 use nettai_platform::dialog::{Filter, Stream};
-use nettai_video::{Encoding, Options, Part, Progress, Sides, Titles};
+use nettai_video::{Options, Part, Progress, Sides, Titles};
 use slint::ComponentHandle;
 use std::ops::{ControlFlow, Range};
 use std::path::{Path, PathBuf};
@@ -518,8 +518,6 @@ impl Export {
             None => Part::Ticks(self.range.clone()),
         };
         let options = Options { scale: SIZES[self.size], view: Some(self.side), sides, part, titles };
-        // (The platform's encoder: on the desktop the ffmpeg found here.)
-        let encoding = Encoding::default();
         let (stop, shared) = (Arc::new(AtomicBool::new(false)), Arc::new(Mutex::new(Shared::default())));
         let (stopped, told) = (stop.clone(), shared.clone());
         let work = move || {
@@ -528,7 +526,7 @@ impl Export {
                 if stopped.load(Ordering::Relaxed) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
             };
             // (Whole: the file kept, its head first. Canceled or failed: let go, nothing of it left.)
-            let result = nettai_video::export(&game, &replay, &options, &encoding, to, &mut progress)
+            let result = nettai_video::export(&game, &replay, &options, to, &mut progress)
                 .and_then(|made| made.body.finish(made.head).map_err(nettai_video::Error::Disk));
             share(&told).done = Some(result);
         };

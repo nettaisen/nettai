@@ -591,7 +591,7 @@ fn write_video(args: &Args, mut viewer: nettai_frontend::viewer::Viewer) -> ! {
     // nothing is left.)
     let body = to.with_file_name(format!("{}.body.part", to.file_name().unwrap_or_default().to_string_lossy()));
     let made = std::fs::File::create(&body).map_err(nettai_video::Error::Disk).and_then(|file| {
-        nettai_video::write_mp4(&mut viewer, &options, &nettai_video::Encoding::default(), std::io::BufWriter::with_capacity(1 << 20, file), &mut progress)
+        nettai_video::write_mp4(&mut viewer, &options, std::io::BufWriter::with_capacity(1 << 20, file), &mut progress)
     });
     let made = made.and_then(|made| {
         drop(made.body);

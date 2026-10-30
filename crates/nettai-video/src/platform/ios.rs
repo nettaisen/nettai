@@ -1,23 +1,21 @@
-//! iOS's encoder ([`crate::encode`]): VideoToolbox's H.264 for the picture and AudioToolbox's AAC for each sound
-//! track, a console shown: the system's own encoders (the picture's in hardware on every iPhone). The MP4 is the
-//! same as the desktop's ([`crate::mp4`]). macOS has the same frameworks, and the tests run this there.
+//! iOS's codecs ([`crate::codecs`]): VideoToolbox's H.264 for the picture and AudioToolbox's AAC for each sound
+//! track, a console shown: the system's own encoders (the picture's in hardware on every iPhone). macOS has the same
+//! frameworks, and the tests run this there.
 //!
-//! - **The picture** is given as NV12 in the video range, made of the frames' RGB here ([`crate::yuv`]: BT.709, as
-//!   the desktop's ffmpeg makes it of the same frames, and as Android's encoder is given it), each frame written
-//!   into a pixel buffer of the session's pool. H.264 High at the level its size needs, at a bit rate made of the
-//!   rate factor as the browser's is ([`bitrate`]), a key frame at least every 120 frames, and no frame reordering
-//!   (no B-frames): each frame is decoded when it is shown, so a packet's time is its frame's count on the tick's
-//!   time base, exact. Tagged BT.709 throughout. The encoder answers on a thread of its own ([`encoded`]); what it
-//!   made is taken from there as the frames go in ([`Backend::events`]), and a feeder far ahead waits for it.
-//! - **The sound** is AAC-LC at the bit rate asked, of the 48 kHz samples as they come (the same samples ffmpeg
-//!   and the browser are given), a converter a track. Its first packets hold its priming, the samples it puts
-//!   before the sound (AudioToolbox's 2112, as it says them: `kAudioConverterPrimeInfo`), which each track's edit
-//!   list leaves out, as the desktop's and the browser's do. A packet is 1024 samples; the last runs past the
-//!   sound's end by the rest of its frame.
-//! - **4:4:4** isn't coded here: the picture is 4:2:0 whatever [`Encoding::chroma`] says, as in a browser.
+//! - **The picture** is the NV12 every platform is given, each frame written into a pixel buffer of the session's
+//!   pool and given at its time on the tick's time base. H.264 High at the level its size needs, at the bit rate
+//!   asked ([`codecs::bitrate`]), a key frame at least every [`codecs::KEY_FRAMES`] frames, no frame reordering (no
+//!   B-frames), tagged BT.709 throughout. The session answers on a thread of its own ([`encoded`]) with each frame's
+//!   access unit, its NAL units after their lengths, and its format description, whose parameter sets are said
+//!   once, before the first frame. What it made is taken from there as the frames go in ([`Codecs::coded`]), and a
+//!   feeder far ahead waits for it.
+//! - **The sound** is AAC-LC at the bit rate asked, of the 48 kHz samples as they come, a converter a track. Its
+//!   config is AAC-LC's at 48 kHz in stereo, what the converter was asked for; its priming, the samples it puts
+//!   before the sound, is what AudioToolbox says (`kAudioConverterPrimeInfo`: 2112).
 
 use crate::Error;
-use crate::encode::{Audio, Backend, Encoding, Event, Kind, Packet, Track, Video};
+use crate::aac;
+use crate::codecs::{self, Audio, Codecs, Coded, H264, Sound, Video};
 use crate::resample::RATE;
 use objc2_audio_toolbox::{
     AudioConverterDispose, AudioConverterFillComplexBuffer, AudioConverterGetProperty, AudioConverterNew, AudioConverterPrimeInfo, AudioConverterRef,
@@ -27,8 +25,8 @@ use objc2_core_audio_types::{
     AudioBuffer, AudioBufferList, AudioStreamBasicDescription, AudioStreamPacketDescription, kAudioFormatFlagIsFloat, kAudioFormatFlagIsPacked,
     kAudioFormatLinearPCM, kAudioFormatMPEG4AAC,
 };
-use objc2_core_foundation::{CFData, CFDictionary, CFNumber, CFRetained, CFString, CFType};
-use objc2_core_media::{CMSampleBuffer, CMTime, kCMFormatDescriptionExtension_SampleDescriptionExtensionAtoms, kCMSampleAttachmentKey_NotSync, kCMTimeInvalid};
+use objc2_core_foundation::{CFDictionary, CFNumber, CFRetained, CFString, CFType};
+use objc2_core_media::{CMFormatDescription, CMSampleBuffer, CMTime, CMVideoFormatDescriptionGetH264ParameterSetAtIndex, kCMTimeInvalid};
 use objc2_core_video::{
     CVAttachmentMode, CVPixelBuffer, CVPixelBufferGetBaseAddressOfPlane, CVPixelBufferGetBytesPerRowOfPlane, CVPixelBufferLockBaseAddress,
     CVPixelBufferLockFlags, CVPixelBufferPool, CVPixelBufferUnlockBaseAddress, kCVImageBufferColorPrimariesKey, kCVImageBufferColorPrimaries_ITU_R_709_2,
@@ -45,7 +43,7 @@ use std::ptr::{self, NonNull};
 use std::sync::{Arc, Mutex};
 
 /// H.264's code in a format description (`'avc1'`).
-const H264: u32 = u32::from_be_bytes(*b"avc1");
+const H264_CODE: u32 = u32::from_be_bytes(*b"avc1");
 
 /// The most frames given to the picture's encoder before what it made of them is waited for.
 const AHEAD: u64 = 6;
@@ -60,120 +58,56 @@ const AAC_FRAME: u32 = 1024;
 /// converter stops and says it back).
 const WAIT_FOR_MORE: i32 = i32::from_be_bytes(*b"more");
 
-/// iOS's encoder for a video of `video` and `audio`, as `encoding` says (its titles and chapters are the MP4's to
-/// write).
-pub(crate) fn start(video: Video, audio: Option<Audio>, encoding: &Encoding) -> Result<Box<dyn Backend>, Error> {
-    let picture = Picture::start(video, bitrate(&video, encoding))?;
-    let sound = (0..audio.map_or(0, |a| a.tracks)).map(|t| Aac::start(1 + t, encoding.audio_kbps * 1000)).collect::<Result<Vec<_>, _>>()?;
-    Ok(Box::new(Encoder { picture, sound, said: false, early: Vec::new(), nv12: Vec::new() }))
+/// iOS's codecs for a video of `video` and `audio`.
+pub(crate) fn start(video: Video, audio: Option<Audio>) -> Result<Box<dyn Codecs>, Error> {
+    let picture = Picture::start(video, codecs::bitrate(&video))?;
+    let sound = (0..audio.map_or(0, |a| a.tracks)).map(|t| Aac::start(t, codecs::SOUND_BITRATE)).collect::<Result<Vec<_>, _>>()?;
+    let config = aac::Config::lc(RATE, 2).bytes();
+    let codings = sound.iter().map(|a| Coded::Coding(a.track, Sound::Aac { config: config.clone(), priming: a.leading })).collect();
+    Ok(Box::new(Encoder { picture, sound, codings }))
 }
 
-/// The picture's bit rate: a generous one for the pixels' edges, less as the rate factor is higher (at 16, a fifth
-/// of a bit a pixel a frame), as the browser's encoder is given (`webcodecs`), at most 40 Mb/s.
-pub(crate) fn bitrate(video: &Video, encoding: &Encoding) -> u32 {
-    let (frame, timescale) = video.frame_time;
-    let per_pixel = 0.2 * 2f64.powf((16.0 - encoding.crf as f64) / 6.0);
-    (video.width as f64 * video.height as f64 * timescale as f64 / frame as f64 * per_pixel).min(40e6) as u32
-}
-
-/// iOS encoding a video.
+/// iOS coding a video.
 struct Encoder {
     picture: Picture,
     sound: Vec<Aac>,
-    /// The tracks are said: the picture's first sample said its parameter sets.
-    said: bool,
-    /// What was made before.
-    early: Vec<Packet>,
-    nv12: Vec<u8>,
+    /// The sound tracks' codings, said with what is first taken.
+    codings: Vec<Coded>,
 }
 
 impl Encoder {
-    /// What was made since: the tracks once they are known, then every packet; `wait`: everything given is made
-    /// first.
-    fn take(&mut self, wait: bool) -> Result<Vec<Event>, Error> {
+    /// What was made since; `wait`: everything given is made first.
+    fn take(&mut self, wait: bool) -> Result<Vec<Coded>, Error> {
         if wait {
             self.picture.complete()?;
         }
-        let (packets, avcc) = self.picture.made()?;
-        self.early.extend(packets);
+        let mut made = std::mem::take(&mut self.codings);
+        made.extend(self.picture.made()?);
         for aac in &mut self.sound {
-            self.early.append(&mut aac.packets);
+            made.extend(aac.frames.drain(..).map(|f| Coded::Sound(aac.track, f)));
         }
-        let mut events = Vec::new();
-        if !self.said {
-            let Some(avcc) = avcc else { return Ok(events) };
-            events.push(Event::Tracks(self.tracks(&avcc)?));
-            self.said = true;
-        }
-        events.extend(self.early.drain(..).map(Event::Packet));
-        Ok(events)
-    }
-
-    /// The tracks: the picture's from the avcC VideoToolbox made, each sound track's AAC-LC, shown from past its
-    /// priming.
-    fn tracks(&self, avcc: &[u8]) -> Result<Vec<Track>, Error> {
-        use mp4_atom::esds::{DecoderConfig, DecoderSpecific, EsDescriptor};
-        use mp4_atom::{Atom, Avc1, Avcc, Codec, Colr, Edts, Elst, ElstEntry, Esds, FixedPoint, Mp4a, Visual};
-        let p = &self.picture;
-        let avcc = Avcc::decode_body(&mut &avcc[..]).map_err(|e| Error::Encoder(format!("VideoToolbox's avcC: {e}")))?;
-        let visual = Visual { data_reference_index: 1, width: p.width as u16, height: p.height as u16, ..Default::default() };
-        // (BT.709 in the video range, as its SPS says it, and as ffmpeg's MP4 says it.)
-        let colr = Colr::Nclx { colour_primaries: 1, transfer_characteristics: 1, matrix_coefficients: 1, full_range_flag: false };
-        let codec = Codec::Avc1(Avc1 { visual, avcc, colr: Some(colr), ..Default::default() });
-        let mut tracks = vec![Track { kind: Kind::Video { width: p.width, height: p.height }, timescale: p.timescale, codec, edits: None }];
-        for aac in &self.sound {
-            let esds = Esds {
-                es_desc: EsDescriptor {
-                    es_id: aac.track as u16 + 1,
-                    dec_config: DecoderConfig {
-                        object_type_indication: 0x40,
-                        stream_type: 5,
-                        max_bitrate: aac.bitrate,
-                        avg_bitrate: aac.bitrate,
-                        // (AAC-LC, 48 kHz, stereo: its AudioSpecificConfig, 0x1190.)
-                        dec_specific: Some(DecoderSpecific { profile: 2, freq_index: 3, chan_conf: 2, raw: vec![0x11, 0x90] }),
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-            };
-            let audio = mp4_atom::Audio { data_reference_index: 1, channel_count: 2, sample_size: 16, sample_rate: FixedPoint::new(RATE as u16, 0) };
-            // (Shown from past the priming, to the end: an edit list as ffmpeg's.)
-            let entry = ElstEntry { segment_duration: 0, media_time: Some(aac.leading as u64), media_rate: FixedPoint::new(1, 0) };
-            tracks.push(Track {
-                kind: Kind::Audio,
-                timescale: RATE,
-                codec: Codec::Mp4a(Mp4a { audio, esds, btrt: None, taic: None }),
-                edits: (aac.leading > 0).then(|| Edts { elst: Some(Elst { entries: vec![entry] }) }),
-            });
-        }
-        Ok(tracks)
+        Ok(made)
     }
 }
 
-impl Backend for Encoder {
-    fn frame(&mut self, rgb: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error> {
-        crate::yuv::nv12(&rgb, self.picture.width as usize, self.picture.height as usize, &mut self.nv12);
-        self.picture.frame(&self.nv12)?;
+impl Codecs for Encoder {
+    fn frame(&mut self, nv12: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error> {
+        self.picture.frame(&nv12)?;
         for (aac, samples) in self.sound.iter_mut().zip(sound) {
             aac.push(samples)?;
         }
-        Ok(rgb)
+        Ok(nv12)
     }
 
-    fn events(&mut self) -> Result<Vec<Event>, Error> {
+    fn coded(&mut self) -> Result<Vec<Coded>, Error> {
         self.take(false)
     }
 
-    fn finish(mut self: Box<Self>) -> Result<Vec<Event>, Error> {
+    fn finish(mut self: Box<Self>) -> Result<Vec<Coded>, Error> {
         for aac in &mut self.sound {
             aac.finish()?;
         }
-        let made = self.take(true)?;
-        if !self.said {
-            return Err(Error::Encoder("VideoToolbox made no picture".into()));
-        }
-        Ok(made)
+        self.take(true)
     }
 
     fn cancel(self: Box<Self>) {
@@ -184,14 +118,12 @@ impl Backend for Encoder {
 /// What the picture's encoder made, told from its thread ([`encoded`]).
 #[derive(Default)]
 struct Made {
-    packets: Vec<Packet>,
-    /// Its avcC, from the first sample's format description.
-    avcc: Option<Vec<u8>>,
-    /// How many frames it answered for (made, or dropped).
+    coded: Vec<Coded>,
+    /// Its parameter sets are said.
+    sets: bool,
+    /// How many frames it answered for.
     answered: u64,
     failed: Option<String>,
-    /// A frame's time, in the picture's time scale.
-    frame: u32,
 }
 
 /// VideoToolbox's H.264 session for the picture.
@@ -234,16 +166,21 @@ unsafe extern "C-unwind" fn encoded(refcon: *mut c_void, _frame: *mut c_void, st
         made.failed.get_or_insert_with(|| format!("VideoToolbox failed a frame (status {status})"));
         return;
     }
-    // (A frame dropped: none to tell. This session drops none, at no real-time limit.)
+    // (A frame dropped: the frames' times are their count, so none may be. This session drops none, at no
+    // real-time limit.)
     // SAFETY: a sample the session made is valid for this call.
-    let Some(sample) = (unsafe { sample.as_ref() }) else { return };
+    let Some(sample) = (unsafe { sample.as_ref() }) else {
+        made.failed.get_or_insert_with(|| "VideoToolbox dropped a frame".into());
+        return;
+    };
     // SAFETY: the sample is valid for this call.
-    match unsafe { packet(sample, made.frame) } {
-        Ok((packet, avcc)) => {
-            if made.avcc.is_none() {
-                made.avcc = avcc;
+    match unsafe { access_unit(sample, !made.sets) } {
+        Ok((unit, sets)) => {
+            if let Some(sets) = sets {
+                made.sets = true;
+                made.coded.push(Coded::Sets(H264::Lengths(sets)));
             }
-            made.packets.push(packet);
+            made.coded.push(Coded::Frame(H264::Lengths(unit)));
         }
         Err(why) => {
             made.failed.get_or_insert(why);
@@ -251,13 +188,14 @@ unsafe extern "C-unwind" fn encoded(refcon: *mut c_void, _frame: *mut c_void, st
     }
 }
 
-/// The packet of a sample VideoToolbox made, and its avcC (from its format description).
+/// The access unit of a sample VideoToolbox made (its NAL units after their lengths), and with `sets`, the
+/// parameter sets of its format description, the same way.
 ///
 /// # Safety
 /// `sample` is valid.
-unsafe fn packet(sample: &CMSampleBuffer, frame: u32) -> Result<(Packet, Option<Vec<u8>>), String> {
+unsafe fn access_unit(sample: &CMSampleBuffer, sets: bool) -> Result<(Vec<u8>, Option<Vec<u8>>), String> {
     // SAFETY: the sample is valid; what it gives is retained.
-    let (data, shown, attachments, description) = unsafe { (sample.data_buffer(), sample.presentation_time_stamp(), sample.sample_attachments_array(false), sample.format_description()) };
+    let (data, description) = unsafe { (sample.data_buffer(), sample.format_description()) };
     let data = data.ok_or("a sample with no data")?;
     // SAFETY: the block buffer is valid; `bytes` is as long as it says it is.
     let bytes = unsafe {
@@ -267,25 +205,40 @@ unsafe fn packet(sample: &CMSampleBuffer, frame: u32) -> Result<(Packet, Option<
         }
         bytes
     };
-    // (A sample that isn't a sync sample says so; one that says nothing is a key frame.)
-    // SAFETY: the array, if any, holds a dictionary a sample, and the key is a CFString.
-    let key = !attachments.is_some_and(|array| unsafe {
-        array.count() > 0 && {
-            let first = array.value_at_index(0) as *const CFDictionary;
-            first.as_ref().is_some_and(|d| d.contains_ptr_key((kCMSampleAttachmentKey_NotSync as *const CFString).cast()))
-        }
-    });
-    let avcc = description.and_then(|d| {
-        // SAFETY: the description is valid; its extension is a dictionary of atoms by name, `avcC` a CFData.
-        unsafe {
-            let atoms = d.extension(kCMFormatDescriptionExtension_SampleDescriptionExtensionAtoms)?.downcast::<CFDictionary>().ok()?;
-            let name = CFString::from_static_str("avcC");
-            let value = (atoms.value((&*name as *const CFString).cast()) as *const CFType).as_ref()?;
-            Some(value.downcast_ref::<CFData>()?.to_vec())
-        }
-    });
-    // (Its time is its frame's, in the time scale the frames were given in: no reordering, so decoded as shown.)
-    Ok((Packet { track: 0, data: bytes, time: shown.value.max(0) as u64, offset: 0, duration: frame, key }, avcc))
+    if !sets {
+        return Ok((bytes, None));
+    }
+    let description = description.ok_or("its first sample has no format description")?;
+    // SAFETY: the description is valid and retained while its sets are read.
+    Ok((bytes, Some(unsafe { parameter_sets(&description) }?)))
+}
+
+/// The parameter sets of an H.264 format description, each after its length in four bytes.
+///
+/// # Safety
+/// `description` is valid.
+unsafe fn parameter_sets(description: &CMFormatDescription) -> Result<Vec<u8>, String> {
+    let (mut count, mut length) = (0usize, 0i32);
+    // SAFETY: the description is valid; the counts are written to locals.
+    let status = unsafe { CMVideoFormatDescriptionGetH264ParameterSetAtIndex(description, 0, ptr::null_mut(), ptr::null_mut(), &mut count, &mut length) };
+    if status != 0 || length != 4 {
+        return Err(format!("its parameter sets couldn't be read (status {status}, lengths of {length} bytes)"));
+    }
+    let mut out = Vec::new();
+    for index in 0..count {
+        let (mut at, mut size) = (ptr::null::<u8>(), 0usize);
+        // SAFETY: as above; the set's bytes are the description's, read while it is held.
+        let set = unsafe {
+            let status = CMVideoFormatDescriptionGetH264ParameterSetAtIndex(description, index, &mut at, &mut size, ptr::null_mut(), ptr::null_mut());
+            if status != 0 || at.is_null() {
+                return Err(format!("its parameter set {index} couldn't be read (status {status})"));
+            }
+            std::slice::from_raw_parts(at, size)
+        };
+        out.extend_from_slice(&(set.len() as u32).to_be_bytes());
+        out.extend_from_slice(set);
+    }
+    Ok(out)
 }
 
 /// A `CFNumber` of `value`.
@@ -301,13 +254,13 @@ impl Picture {
         let values: [&CFType; 3] = [&format, &width, &height];
         // SAFETY: the keys are CoreVideo's own statics.
         let attributes = unsafe { CFDictionary::<CFString, CFType>::from_slices(&[kCVPixelBufferPixelFormatTypeKey, kCVPixelBufferWidthKey, kCVPixelBufferHeightKey], &values) };
-        let made = Arc::new(Mutex::new(Made { frame, ..Made::default() }));
+        let made = Arc::new(Mutex::new(Made::default()));
         let held = Arc::into_raw(made.clone());
         let mut session: *mut VTCompressionSession = ptr::null_mut();
         // SAFETY: every pointer is valid for the call; the callback's reference is `held`, which the session keeps till
         // it is invalidated.
         let status = unsafe {
-            VTCompressionSession::create(None, video.width as i32, video.height as i32, H264, None, Some(attributes.as_opaque()), None, Some(encoded), held as *mut c_void, NonNull::from(&mut session))
+            VTCompressionSession::create(None, video.width as i32, video.height as i32, H264_CODE, None, Some(attributes.as_opaque()), None, Some(encoded), held as *mut c_void, NonNull::from(&mut session))
         };
         let Some(session) = NonNull::new(session).filter(|_| status == 0) else {
             // SAFETY: no session was made: the reference is this function's to let go.
@@ -316,7 +269,7 @@ impl Picture {
         };
         // SAFETY: the session was made for us (+1), and holds `held` from here.
         let session = Session { session: unsafe { CFRetained::from_raw(session) }, made, held };
-        let (rate, keys) = (number(bitrate as i32), number(120));
+        let (rate, keys) = (number(bitrate as i32), number(codecs::KEY_FRAMES as i32));
         // SAFETY: the keys are VideoToolbox's statics, each given a value of the kind it takes.
         unsafe {
             let no: &CFType = objc2_core_foundation::CFBoolean::new(false);
@@ -411,22 +364,21 @@ impl Picture {
         }
     }
 
-    /// What was made since, and its avcC once known; or why it failed.
-    fn made(&mut self) -> Result<(Vec<Packet>, Option<Vec<u8>>), Error> {
+    /// What was made since; or why it failed.
+    fn made(&mut self) -> Result<Vec<Coded>, Error> {
         let mut made = self.session.made.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(why) = made.failed.take() {
             return Err(Error::Encoder(why));
         }
-        Ok((std::mem::take(&mut made.packets), made.avcc.clone()))
+        Ok(std::mem::take(&mut made.coded))
     }
 }
 
 /// AudioToolbox's AAC encoder for a sound track.
 struct Aac {
     converter: AudioConverterRef,
-    /// The track's index in the video.
+    /// The sound track it codes (from 0).
     track: usize,
-    bitrate: u32,
     /// The samples it puts before the sound.
     leading: u32,
     /// The largest packet it makes.
@@ -437,9 +389,8 @@ struct Aac {
     lent: Vec<f32>,
     /// No more samples come: what is left is flushed.
     ending: bool,
-    /// The packets made, and the time of the next (in samples).
-    packets: Vec<Packet>,
-    time: u64,
+    /// The frames made.
+    frames: Vec<Vec<u8>>,
 }
 
 impl Aac {
@@ -473,7 +424,7 @@ impl Aac {
         if status != 0 || converter.is_null() {
             return Err(failed("no encoder", status));
         }
-        let mut aac = Aac { converter, track, bitrate, leading: 0, most: 0, waiting: Vec::new(), lent: Vec::new(), ending: false, packets: Vec::new(), time: 0 };
+        let mut aac = Aac { converter, track, leading: 0, most: 0, waiting: Vec::new(), lent: Vec::new(), ending: false, frames: Vec::new() };
         // SAFETY: each property is read or written with a value of its own size.
         unsafe {
             let mut rate = bitrate;
@@ -536,8 +487,7 @@ impl Aac {
         }
         let size = described.mDataByteSize as usize;
         out.truncate(size.min(list.mBuffers[0].mDataByteSize as usize));
-        self.packets.push(Packet { track: self.track, data: out, time: self.time, offset: 0, duration: AAC_FRAME, key: true });
-        self.time += AAC_FRAME as u64;
+        self.frames.push(out);
         Ok(true)
     }
 }
@@ -571,14 +521,14 @@ impl Drop for Aac {
 mod tests {
     use super::start;
     use crate::tests::{given, options, viewer};
-    use crate::{Encoding, Error, Mp4, Options, Part, Sides, play};
+    use crate::{Error, Mp4, Options, Part, Sides, play};
     use mp4_atom::{Codec, Decode, Ftyp, Moov, StszSamples};
     use nettai_frontend::viewer::Viewer;
     use std::ops::ControlFlow;
 
     /// `options`' MP4 of the replay `viewer` plays, made by iOS's encoders (here macOS's, the same frameworks).
-    fn mp4(viewer: &mut Viewer, options: &Options, encoding: &Encoding) -> Result<Vec<u8>, Error> {
-        let made = play(viewer, options, &mut |_| ControlFlow::Continue(()), |video, audio, info| Ok(Mp4::with(start(video, audio, encoding)?, video, info, Vec::new())))?.finish()?;
+    fn mp4(viewer: &mut Viewer, options: &Options) -> Result<Vec<u8>, Error> {
+        let made = play(viewer, options, &mut |_| ControlFlow::Continue(()), |video, audio, info| Ok(Mp4::with(start(video, audio)?, video, audio, info, Vec::new())))?.finish()?;
         Ok([made.head, made.body].concat())
     }
 
@@ -591,7 +541,7 @@ mod tests {
     fn videotoolbox_makes_the_mp4() {
         let content = nettai_match::testing::exe6_content();
         let (replay, _) = nettai_frontend::testing::recorded(&content, "exe6", 7);
-        let file = mp4(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &PART), &Encoding::default()).unwrap();
+        let file = mp4(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &PART)).unwrap();
         let mut at = &file[..];
         Ftyp::decode(&mut at).unwrap();
         let moov = Moov::decode(&mut at).unwrap();
@@ -616,8 +566,8 @@ mod tests {
     }
 
     /// The MP4 plays as it was given (ffmpeg installed; `cargo test -p nettai-video -- --ignored`), as the desktop's
-    /// does (`ffmpeg::tests::ffmpeg_makes_the_mp4`): every frame, close to the frames; the sound as long as it was
-    /// given and at no lag from it (the priming left out); the colors tagged; the picture shown from 0.
+    /// does (`desktop::tests::ffmpeg_makes_the_mp4`): every frame, close to the NV12 given; the sound as long as it
+    /// was given and at no lag from it (the priming left out); the colors tagged; the picture shown from 0.
     #[test]
     #[ignore]
     fn videotoolbox_mp4_plays_as_given() {
@@ -625,10 +575,10 @@ mod tests {
         let content = nettai_match::testing::exe6_content();
         let (replay, _) = nettai_frontend::testing::recorded(&content, "exe6", 7);
         let given = given(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &PART), &mut |_| ControlFlow::Continue(())).unwrap();
-        let pictures: Vec<u8> = given.frames.iter().flat_map(|(rgb, _)| rgb.iter().copied()).collect();
+        let pictures: Vec<u8> = given.frames.iter().flat_map(|(nv12, _)| nv12.iter().copied()).collect();
         let dir = std::env::temp_dir().join(format!("nettai-video-videotoolbox-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("part.mp4"), mp4(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &PART), &Encoding::default()).unwrap()).unwrap();
+        std::fs::write(dir.join("part.mp4"), mp4(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &PART)).unwrap()).unwrap();
         let run = |program: &str, args: &[&str]| -> Vec<u8> {
             let out = Command::new(program).current_dir(&dir).args(args).output().unwrap_or_else(|e| panic!("{program}: {e}"));
             assert!(out.status.success() && out.stderr.is_empty(), "{program} {args:?}: {}", String::from_utf8_lossy(&out.stderr));
@@ -641,19 +591,20 @@ mod tests {
         assert!(lines[0].starts_with("h264,High,480,320,yuv420p,tv,bt709,bt709,bt709,262144/4389,0.000000,120"), "{probed}");
         assert!(lines[1].starts_with("aac,LC,48000"), "{probed}");
         let quiet = ["-v", "error", "-nostdin"];
-        let decoded = run("ffmpeg", &[&quiet[..], &["-i", "part.mp4", "-map", "0:v", "-f", "rawvideo", "-pix_fmt", "rgb24", "-fps_mode", "passthrough", "-"]].concat());
+        let decoded = run("ffmpeg", &[&quiet[..], &["-i", "part.mp4", "-map", "0:v", "-f", "rawvideo", "-pix_fmt", "nv12", "-fps_mode", "passthrough", "-"]].concat());
         assert_eq!(decoded.len(), pictures.len());
         let off = decoded.iter().zip(&pictures).map(|(a, b)| a.abs_diff(*b) as u64).sum::<u64>() as f64 / pictures.len() as f64;
         eprintln!("the pictures are {off:.3} off a byte");
         assert!(off < 3.0, "the MP4's pictures are {off} off a byte");
-        // The sound: as long as was given (to within its last AAC frame), and at no lag from it.
+        // The sound: as long as was given (its edit's length is the movie's milliseconds: to within one), and at no
+        // lag from it.
         let heard: Vec<f32> = run("ffmpeg", &[&quiet[..], &["-i", "part.mp4", "-map", "0:a", "-f", "f32le", "-"]].concat())
             .chunks_exact(8)
             .map(|s| f32::from_le_bytes(s[..4].try_into().unwrap()))
             .collect();
         let sound: Vec<f32> = given.track(0).iter().map(|s| s[0]).collect();
         eprintln!("{} samples decoded of {}", heard.len(), sound.len());
-        assert!(heard.len() >= sound.len() && heard.len() - sound.len() <= 1024 + 48, "{} samples decoded of {}", heard.len(), sound.len());
+        assert!(heard.len().abs_diff(sound.len()) <= 48, "{} samples decoded of {}", heard.len(), sound.len());
         let along = |lag: i64| -> f64 { (2000..sound.len() as i64 - 2000).map(|n| heard.get((n + lag) as usize).map_or(0.0, |&h| h as f64 * sound[n as usize] as f64)).sum() };
         let best = (-2200..=2200).max_by(|&a, &b| along(a).total_cmp(&along(b))).unwrap();
         assert_eq!(best, 0, "the decoded sound is {best} samples off the sound given");

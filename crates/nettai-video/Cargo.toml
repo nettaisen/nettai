@@ -3,7 +3,7 @@ name = "nettai-video"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "A replay as video: played frame by frame, its sound made 48 kHz, encoded by the platform's encoder (ffmpeg run as a child a track on the desktop, WebCodecs in a browser, VideoToolbox and AudioToolbox on iOS, MediaCodec on Android) and written as an MP4 as it is made, its index put first once whole"
+description = "A replay as video: played frame by frame, its pictures made NV12 and its sound 48 kHz, coded by the platform's codecs (ffmpeg run as a child a track on the desktop, WebCodecs in a browser, VideoToolbox and AudioToolbox on iOS, MediaCodec on Android) and written as an MP4 as it is made, the same way for all, its index put first once whole"
 
 [dependencies]
 # The replay's viewer: the picture and the sound of each tick.
@@ -12,19 +12,19 @@ nettai-frontend = { path = "../nettai-frontend" }
 nettai-render = { path = "../nettai-render" }
 # The sound's sample rate (no audio device).
 nettai-audio = { path = "../nettai-audio", default-features = false }
-# The threads the frames are presented on (`presenters`), and the browser's encoder's (`webcodecs`): the platform's.
+# The threads the frames are presented on (`presenters`), and the browser's codecs' (`platform::web`): the platform's.
 nettai-platform = { path = "../nettai-platform" }
 
-# The MP4's boxes (`mp4`), and ffmpeg's read back (`ffmpeg`).
+# The MP4's boxes (`mp4`, `assemble`).
 mp4-atom = "0.16"
 
-# The browser's encoder (`webcodecs`): WebCodecs through wasm-bindgen, on a worker of its own (the platform's).
+# The browser's codecs (`platform::web`): WebCodecs through wasm-bindgen, on a worker of its own (the platform's).
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 
-# iOS's encoders (`videotoolbox`): VideoToolbox's H.264 and AudioToolbox's AAC, through objc2's bindings. (macOS
+# iOS's codecs (`platform::ios`): VideoToolbox's H.264 and AudioToolbox's AAC, through objc2's bindings. (macOS
 # has the same frameworks: there the tests run the module, below.)
 [target.'cfg(target_os = "ios")'.dependencies]
 objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "CFBase", "CFArray", "CFData", "CFDictionary", "CFNumber", "CFString"] }
@@ -34,9 +34,13 @@ objc2-video-toolbox = { version = "0.3", default-features = false, features = ["
 objc2-audio-toolbox = { version = "0.3", default-features = false, features = ["std", "bitflags", "AudioConverter", "objc2-core-audio-types"] }
 objc2-core-audio-types = { version = "0.3", default-features = false, features = ["std", "CoreAudioBaseTypes"] }
 
-# Android's encoders (`mediacodec`): MediaCodec's H.264 and AAC, through the NDK.
+# Android's codecs (`platform::android`): MediaCodec's H.264 and AAC, through the NDK.
 [target.'cfg(target_os = "android")'.dependencies]
 ndk = { version = "0.9", default-features = false, features = ["media"] }
+
+[build-dependencies]
+# The targets by name (build.rs: `desktop`, `web`, `phone`).
+cfg_aliases = "0.2"
 
 [dev-dependencies]
 # A short recorded set, graphics without a pack and a sound of every cue.

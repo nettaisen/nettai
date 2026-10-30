@@ -23,9 +23,9 @@ pub(crate) fn options(scale: u32, sides: Sides, part: &Part) -> Options {
     Options { scale, view: None, sides, part: part.clone(), titles: Titles::default() }
 }
 
-/// What an encoder is given of a video, either platform's (what [`Mp4`]
-/// hands it as it comes): the picture, the sound and the info it is
-/// started with, then each frame's pixels and each sound track's samples
+/// What the codecs are given of a video, every platform's (what [`Mp4`]
+/// hands them as it comes): the picture, the sound and the info they are
+/// started with, then each frame's NV12 and each sound track's samples
 /// with it.
 pub(crate) struct Given {
     pub video: Video,
@@ -35,9 +35,9 @@ pub(crate) struct Given {
 }
 
 impl Given {
-    /// The pictures in order.
+    /// The pictures in order, as NV12.
     pub fn pictures(&self) -> Vec<&[u8]> {
-        self.frames.iter().map(|(rgb, _)| &rgb[..]).collect()
+        self.frames.iter().map(|(nv12, _)| &nv12[..]).collect()
     }
 
     /// Sound track `track`'s samples, as one run.
@@ -47,18 +47,18 @@ impl Given {
 }
 
 impl Frames for Given {
-    fn frame(&mut self, rgb: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error> {
-        self.frames.push((rgb, sound.iter().map(|s| s.to_vec()).collect()));
+    fn frame(&mut self, nv12: Vec<u8>, sound: &[&[[f32; 2]]]) -> Result<Vec<u8>, Error> {
+        self.frames.push((nv12, sound.iter().map(|s| s.to_vec()).collect()));
         Ok(Vec::new())
     }
 }
 
-/// What the replay `viewer` plays gives an encoder, as `options` say.
+/// What the replay `viewer` plays gives the codecs, as `options` say.
 pub(crate) fn given(viewer: &mut Viewer, options: &Options, progress: OnProgress) -> Result<Given, Error> {
     play(viewer, options, progress, |video, audio, info| Ok(Given { video, audio, info: info.clone(), frames: Vec::new() }))
 }
 
-/// `part` of `replay` from `view`'s side, as an encoder is given it, the
+/// `part` of `replay` from `view`'s side, as the codecs are given it, the
 /// picture `scale` times the frame.
 fn given_of(content: &Arc<Content>, replay: &Replay, view: u8, scale: u32, part: &Part) -> Given {
     given(&mut viewer(content, replay, view), &options(scale, Sides::One, part), &mut go_on).unwrap()
@@ -73,8 +73,8 @@ fn at_48_khz(sound: &[[f32; 2]]) -> Vec<[f32; 2]> {
 }
 
 /// What a player playing `replay` straight presents and plays, a tick at
-/// a time: each tick's picture at `scale` times the frame as RGB bytes,
-/// and its samples. (A [`Player`]: nothing of the viewer or its seeking.)
+/// a time: each tick's picture at `scale` times the frame as NV12, and its
+/// samples. (A [`Player`]: nothing of the viewer or its seeking.)
 fn played(content: &Arc<Content>, replay: &Replay, view: u8, scale: usize) -> Vec<(Vec<u8>, Vec<[f32; 2]>)> {
     let driver = ReplayPlayer::new(content, replay, Some(view)).unwrap();
     let renderer = graphics(content, 0x7C1F).renderer(GraphicsMode::Original, None);
@@ -84,10 +84,11 @@ fn played(content: &Arc<Content>, replay: &Replay, view: u8, scale: usize) -> Ve
     let mut out = Vec::new();
     while p.tick(0) {
         p.present(&mut buffer, w, h);
-        let rgb = buffer.iter().flat_map(|&c| [(c >> 16) as u8, (c >> 8) as u8, c as u8]).collect();
+        let mut nv12 = Vec::new();
+        crate::yuv::nv12(&[&buffer], w, h, &mut nv12);
         let mut sound = Vec::new();
         p.take_samples(&mut sound);
-        out.push((rgb, sound));
+        out.push((nv12, sound));
     }
     out
 }
@@ -131,9 +132,9 @@ fn a_replay_is_written_as_it_is_shown_and_heard() {
     assert!(sides[0] != sides[1]);
 }
 
-/// Both sides side by side: a picture twice as wide, each row the left
-/// console's row then the right one's, each half that console's own video
-/// frame for frame; and two sound tracks, the first the left console's
+/// Both sides side by side: a picture twice as wide, each row of each of
+/// its planes the left console's row then the right one's, each half that
+/// console's own video frame for frame; and two sound tracks, the first the left console's
 /// sound sample for sample and the second the right one's, which differ.
 /// (The test's graphics are flat: the two halves differ on a game's packs.)
 #[test]
@@ -148,7 +149,8 @@ fn both_sides_are_each_sides_video_side_by_side() {
         let (own, other) = (given_of(&content, &replay, left, scale as u32, &part), given_of(&content, &replay, left ^ 1, scale as u32, &part));
         let (pictures, own_pictures, other_pictures) = (both.pictures(), own.pictures(), other.pictures());
         assert_eq!(pictures.len(), 150);
-        let row = 240 * scale * 3;
+        // (A row of either plane of NV12 is a byte a pixel across: luma's a pixel each, chroma's two a pair.)
+        let row = 240 * scale;
         for (tick, ((picture, l), r)) in pictures.iter().zip(&own_pictures).zip(&other_pictures).enumerate() {
             for (y, (l, r)) in l.chunks_exact(row).zip(r.chunks_exact(row)).enumerate() {
                 let at = y * row * 2;
@@ -187,8 +189,9 @@ fn both_on_one_screen_is_the_viewers_both() {
     for picture in one.pictures() {
         assert!(v.step_forward());
         v.present(&mut buffer, w, h);
-        let rgb: Vec<u8> = buffer.iter().flat_map(|&c| [(c >> 16) as u8, (c >> 8) as u8, c as u8]).collect();
-        assert!(rgb == picture, "the picture of tick {}", v.position());
+        let mut nv12 = Vec::new();
+        crate::yuv::nv12(&[&buffer], w, h, &mut nv12);
+        assert!(nv12 == picture, "the picture of tick {}", v.position());
         v.take_samples(&mut heard);
     }
     assert!(one.track(0) == at_48_khz(&heard), "the track isn't both consoles' sound");

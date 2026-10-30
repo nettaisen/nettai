@@ -4027,6 +4027,7 @@ dependencies = [
 name = "nettai-video"
 version = "0.1.0"
 dependencies = [
+ "cfg_aliases",
  "js-sys",
  "mp4-atom",
  "ndk",

@@ -5,18 +5,56 @@
 //! the samples: it knows the video's length and seeks at once, and plays a download from its start. It is no
 //! fragmented MP4: every player and editor takes it.
 //!
-//! Its tracks are the encoder's ([`crate::encode`]): the picture, and a sound track a console shown, titled with its
-//! player's name, the first the one played (the others its alternates); its chapters are the rounds (Nero's
+//! Its tracks are what the codecs made ([`crate::assemble`]): the picture, and a sound track a console shown, titled
+//! with its player's name, the first the one played (the others its alternates); its chapters are the rounds (Nero's
 //! `chpl`, which ffmpeg, VLC and mpv read).
 //!
 //! The samples are written in chunks of about two seconds from a key frame of the picture: every track's samples
-//! since the last chunk, one track's after another's. Each sample lasts what the encoder says, from its track's
-//! first. A picture whose first frame is shown later than it is decoded (B-frames) has an edit list that shows it
-//! from its start.
+//! since the last chunk, one track's after another's. Each sample lasts what it says, from its track's first, and is
+//! shown as it is decoded (no codec reorders its frames).
 
 use crate::Error;
-use crate::encode::{Event, Kind as TrackKind, Packet, Track};
 use std::io::Write;
+
+/// What a track is.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Kind {
+    Video { width: u32, height: u32 },
+    Audio,
+}
+
+use Kind as TrackKind;
+
+/// A track of the video: its kind, its time scale (its times' units a second), how its samples are coded (its
+/// sample description, as an MP4 says it), and what of them is shown (an edit list, in the movie's time scale,
+/// [`MOVIE_TIMESCALE`]: AAC's encoder delay and padding left out; none: all of it).
+#[derive(Clone, Debug)]
+pub(crate) struct Track {
+    pub kind: Kind,
+    pub timescale: u32,
+    pub codec: mp4_atom::Codec,
+    pub edits: Option<mp4_atom::Edts>,
+}
+
+/// A sample of a track (its index in the tracks), in order: its bytes as an MP4 holds them, its time and how long it
+/// lasts (in the track's time scale), and whether it starts on its own (a key frame; sound's always do).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) struct Packet {
+    pub track: usize,
+    pub data: Vec<u8>,
+    pub time: u64,
+    pub duration: u32,
+    pub key: bool,
+}
+
+/// What the muxer is given.
+#[derive(Clone, Debug)]
+pub(crate) enum Event {
+    /// The tracks, in their order: the picture's, then each sound track. Said once; the samples that come before
+    /// them wait.
+    Tracks(Vec<Track>),
+    Packet(Packet),
+}
 
 /// How long a chunk is, at least, in seconds (it ends at a key frame of the picture past that).
 const CHUNK_SECONDS: f64 = 2.0;
@@ -47,6 +85,8 @@ pub struct Muxer<W: Write> {
     titles: Vec<String>,
     chapters: Vec<Chapter>,
     tracks: Option<Vec<Track>>,
+    /// How long each track is shown, where that is said ([`Muxer::shown`]), in its time scale.
+    shown: Vec<Option<u64>>,
     /// Whether the picture's first packet has come.
     began: bool,
     /// Packets that came before the tracks were said.
@@ -65,15 +105,11 @@ struct Index {
     /// The first one's decoding time, in the track's time scale.
     start: Option<u64>,
     /// How long the ones so far last, together.
-    decoded: u64,
-    /// Where the last of them to be shown ends, from the first's decoding.
-    end: u64,
+    length: u64,
     /// Each one's size in bytes.
     sizes: Vec<u32>,
     /// Their durations, in runs of one: how many, and the duration.
     durations: Vec<(u32, u32)>,
-    /// How much later than it is decoded each is shown, in runs of one: how many, and by how much.
-    offsets: Vec<(u32, i32)>,
     /// The ones that start on their own (key frames), counted from 1.
     keys: Vec<u32>,
     /// Each chunk: its first byte, from the samples' start, and how many samples it has.
@@ -86,11 +122,9 @@ impl Index {
         self.chunks.push((at, packets.len() as u32));
         for p in packets {
             self.start.get_or_insert(p.time);
-            self.end = self.end.max((self.decoded as i64 + p.offset as i64 + p.duration as i64).max(0) as u64);
-            self.decoded += p.duration as u64;
+            self.length += p.duration as u64;
             self.sizes.push(p.data.len() as u32);
             run(&mut self.durations, p.duration);
-            run(&mut self.offsets, p.offset);
             if p.key {
                 self.keys.push(self.sizes.len() as u32);
             }
@@ -109,7 +143,7 @@ fn run<T: PartialEq + Copy>(runs: &mut Vec<(u32, T)>, value: T) {
 impl<W: Write> Muxer<W> {
     /// An MP4 written to `to`, its sound tracks titled `titles`, its chapters `chapters`.
     pub fn new(to: W, titles: Vec<String>, chapters: Vec<Chapter>) -> Muxer<W> {
-        Muxer { to, titles, chapters, tracks: None, began: false, early: Vec::new(), pending: Vec::new(), index: Vec::new(), written: 0 }
+        Muxer { to, titles, chapters, tracks: None, shown: Vec::new(), began: false, early: Vec::new(), pending: Vec::new(), index: Vec::new(), written: 0 }
     }
 
     /// What the encoder made.
@@ -135,6 +169,16 @@ impl<W: Write> Muxer<W> {
         }
     }
 
+    /// Track `track` is shown for `length` (in its time scale) from where its edit list starts it: a sound track as
+    /// long as the samples its codec was given, its last frame's padding left out. (Unsaid, a track is shown to its
+    /// end.)
+    pub fn shown(&mut self, track: usize, length: u64) {
+        if self.shown.len() <= track {
+            self.shown.resize(track + 1, None);
+        }
+        self.shown[track] = Some(length);
+    }
+
     /// Every sample is made: the last chunk written, and the head to go before them made.
     pub fn finish(mut self) -> Result<Made<W>, Error> {
         if self.tracks.is_none() || !self.began {
@@ -155,15 +199,7 @@ impl<W: Write> Muxer<W> {
             return Err(Error::Encoder(format!("a packet of track {} of {}", packet.track, tracks.len())));
         };
         let (video, timescale) = (matches!(track.kind, TrackKind::Video { .. }), track.timescale);
-        if !self.began && video {
-            // (The picture shown from its first frame: past what it is decoded ahead of it, if anything.)
-            let shown = packet.time as i64 + packet.offset as i64;
-            if shown > 0 && track.edits.is_none() {
-                let entry = mp4_atom::ElstEntry { segment_duration: 0, media_time: Some(shown as u64), media_rate: mp4_atom::FixedPoint::new(1, 0) };
-                track.edits = Some(mp4_atom::Edts { elst: Some(mp4_atom::Elst { entries: vec![entry] }) });
-            }
-            self.began = true;
-        }
+        self.began |= video;
         // (A chunk ends where the picture has a key frame past its length.)
         if video && packet.key {
             let pending = &self.pending[packet.track];
@@ -221,10 +257,10 @@ impl<W: Write> Muxer<W> {
                 sounds += 1;
                 self.titles.get(sounds - 1).cloned().unwrap_or_default()
             };
-            let edits = edits(track, index);
+            let edits = edits(track, index, self.shown.get(i).copied().flatten());
             let shown = match &edits {
                 Some(edts) => edts.elst.iter().flat_map(|l| &l.entries).map(|e| e.segment_duration).sum(),
-                None => in_movie(index.end, track.timescale),
+                None => in_movie(index.length, track.timescale),
             };
             longest = longest.max(shown);
             let mut chunks: Vec<StscEntry> = Vec::new();
@@ -236,10 +272,6 @@ impl<W: Write> Muxer<W> {
             let stbl = Stbl {
                 stsd: Stsd { codecs: vec![track.codec.clone()] },
                 stts: Stts { entries: index.durations.iter().map(|&(sample_count, sample_delta)| SttsEntry { sample_count, sample_delta }).collect() },
-                // (Shown as decoded: no offsets.)
-                ctts: index.offsets.iter().any(|&(_, offset)| offset != 0).then(|| Ctts {
-                    entries: index.offsets.iter().map(|&(sample_count, offset)| CttsEntry { sample_count, sample_offset: offset as i64 }).collect(),
-                }),
                 // (Every sample a key one: none listed.)
                 stss: (index.keys.len() < index.sizes.len()).then(|| Stss { entries: index.keys.clone() }),
                 stsc: Stsc { entries: chunks },
@@ -262,7 +294,7 @@ impl<W: Write> Muxer<W> {
                 },
                 edts: edits,
                 mdia: Mdia {
-                    mdhd: Mdhd { timescale: track.timescale, duration: index.decoded, language: "und".into(), ..Default::default() },
+                    mdhd: Mdhd { timescale: track.timescale, duration: index.length, language: "und".into(), ..Default::default() },
                     hdlr: Hdlr { handler: if video { b"vide".into() } else { b"soun".into() }, name },
                     minf: Minf {
                         vmhd: video.then(Vmhd::default),
@@ -297,30 +329,29 @@ impl<W: Write> Muxer<W> {
     }
 }
 
-/// What of a track is shown, as its index says it: the encoder's edit list (or the muxer's, past the picture's
-/// reordering), its times from the track's first sample (which the index decodes at 0) and each edit that runs to
-/// the end (the encoder not knowing where that is) given its length. A track whose first sample comes after 0 and
+/// What of a track is shown, as its index says it: the track's edit list (AAC's priming left out), its times from the
+/// track's first sample (which the index puts at 0) and each edit that runs on (the codecs not knowing how far) given
+/// its length: `shown`, where that is said, else to the track's end. A track whose first sample comes after 0 and
 /// that says nothing of what is shown starts that much in, by an empty edit.
-fn edits(track: &Track, index: &Index) -> Option<mp4_atom::Edts> {
+fn edits(track: &Track, index: &Index, shown: Option<u64>) -> Option<mp4_atom::Edts> {
     use mp4_atom::{Edts, Elst, ElstEntry, FixedPoint};
     let start = index.start.unwrap_or(0);
     let said = track.edits.as_ref().and_then(|e| e.elst.as_ref()).map(|l| l.entries.clone()).unwrap_or_default();
     let entries = if said.is_empty() {
-        if start == 0 {
+        if start == 0 && shown.is_none() {
             return None;
         }
         let rate = FixedPoint::new(1, 0);
-        vec![
-            ElstEntry { segment_duration: in_movie(start, track.timescale), media_time: None, media_rate: rate },
-            ElstEntry { segment_duration: in_movie(index.end, track.timescale), media_time: Some(0), media_rate: rate },
-        ]
+        let empty = (start > 0).then(|| ElstEntry { segment_duration: in_movie(start, track.timescale), media_time: None, media_rate: rate });
+        let all = ElstEntry { segment_duration: in_movie(shown.unwrap_or(index.length), track.timescale), media_time: Some(0), media_rate: rate };
+        empty.into_iter().chain([all]).collect()
     } else {
         said.into_iter()
             .map(|mut e| {
                 if let Some(from) = &mut e.media_time {
                     *from = from.saturating_sub(start);
                     if e.segment_duration == 0 {
-                        e.segment_duration = in_movie(index.end.saturating_sub(*from), track.timescale);
+                        e.segment_duration = in_movie(shown.unwrap_or(index.length.saturating_sub(*from)), track.timescale);
                     }
                 }
                 e
@@ -342,7 +373,6 @@ fn atom_error(e: mp4_atom::Error) -> Error {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::encode::Kind;
     use mp4_atom::{Decode, Moov};
 
     /// A track of `kind` in time scale `timescale`, its codec Opus's (the muxer takes any description as it is).
@@ -359,8 +389,8 @@ mod tests {
         Moov::decode(&mut &head[ftyp..]).unwrap()
     }
 
-    fn packet(track: usize, time: u64, offset: i32, duration: u32, key: bool, byte: u8) -> Event {
-        Event::Packet(Packet { track, data: vec![byte; 3 + track], time, offset, duration, key })
+    fn packet(track: usize, time: u64, duration: u32, key: bool, byte: u8) -> Event {
+        Event::Packet(Packet { track, data: vec![byte; 3 + track], time, duration, key })
     }
 
     /// The file a muxer makes: its head, then its samples.
@@ -385,20 +415,19 @@ mod tests {
     }
 
     /// The head is the index of every sample, before them: no fragments; each sample's bytes are where its chunk's
-    /// offset and the sizes before it in its chunk say; the durations are the encoder's; the picture's reordering
-    /// is past by its edit list, given the track's length.
+    /// offset and the sizes before it in its chunk say; the durations are the samples'; each is shown as decoded.
     #[test]
     fn the_index_comes_first_and_finds_every_sample() {
         let mut muxer = Muxer::new(Vec::new(), vec!["Lan".into()], vec![Chapter { title: "Round 1".into(), start: 0.0 }]);
-        // (Picture at 60 a second in a scale of 60, its first shown 2 frames late; sound at 48 kHz, 1024 a packet.)
+        // (Picture at 60 a second in a scale of 60; sound at 48 kHz, 1024 a packet.)
         muxer.event(Event::Tracks(vec![track(Kind::Video { width: 480, height: 320 }, 60), track(Kind::Audio, 48000)])).unwrap();
         let mut sent = Vec::new();
         for frame in 0..300u64 {
-            let event = packet(0, frame, 2, 1, frame % 120 == 0, frame as u8);
+            let event = packet(0, frame, 1, frame % 120 == 0, frame as u8);
             sent.push(event.clone());
             muxer.event(event).unwrap();
             if frame % 3 == 0 {
-                let event = packet(1, frame / 3 * 1024, 0, 1024, true, 0xA0 ^ frame as u8);
+                let event = packet(1, frame / 3 * 1024, 1024, true, 0xA0 ^ frame as u8);
                 sent.push(event.clone());
                 muxer.event(event).unwrap();
             }
@@ -408,7 +437,7 @@ mod tests {
         assert_eq!(kinds, [*b"ftyp", *b"moov", *b"mdat"]);
         let moov = Moov::decode(&mut &atoms(&file)[1].1[..]).unwrap();
         assert!(moov.mvex.is_none());
-        // (300 frames from 2 in: 5 s. Sound: 100 packets of 1024, 2.133 s.)
+        // (300 frames: 5 s. Sound: 100 packets of 1024, 2.133 s.)
         assert_eq!(moov.mvhd.duration, 5000);
         assert_eq!(moov.udta.unwrap().chpl.unwrap().entries.len(), 1);
         for (t, trak) in moov.trak.iter().enumerate() {
@@ -435,14 +464,12 @@ mod tests {
             let durations: u64 = stbl.stts.entries.iter().map(|e| e.sample_count as u64 * e.sample_delta as u64).sum();
             assert_eq!(durations, want.iter().map(|p| p.duration as u64).sum::<u64>());
             assert_eq!(trak.mdia.mdhd.duration, durations);
+            assert!(stbl.ctts.is_none() && trak.edts.is_none(), "track {t}: shown as decoded, from its start");
             if t == 0 {
                 assert_eq!(stbl.stss.as_ref().unwrap().entries, [1, 121, 241]);
-                assert_eq!(stbl.ctts.as_ref().unwrap().entries.len(), 1);
-                let edit = &trak.edts.as_ref().unwrap().elst.as_ref().unwrap().entries;
-                assert_eq!((edit.len(), edit[0].media_time, edit[0].segment_duration), (1, Some(2), 5000));
                 assert_eq!(trak.tkhd.duration, 5000);
             } else {
-                assert!(stbl.stss.is_none() && stbl.ctts.is_none() && trak.edts.is_none());
+                assert!(stbl.stss.is_none());
                 assert_eq!(trak.tkhd.duration, 2133);
             }
         }
@@ -453,8 +480,8 @@ mod tests {
     fn a_late_track_starts_late() {
         let mut muxer = Muxer::new(Vec::new(), vec![], vec![]);
         muxer.event(Event::Tracks(vec![track(Kind::Video { width: 2, height: 2 }, 60), track(Kind::Audio, 48000)])).unwrap();
-        muxer.event(packet(0, 0, 0, 1, true, 1)).unwrap();
-        muxer.event(packet(1, 4800, 0, 1024, true, 2)).unwrap();
+        muxer.event(packet(0, 0, 1, true, 1)).unwrap();
+        muxer.event(packet(1, 4800, 1024, true, 2)).unwrap();
         let made = muxer.finish().unwrap();
         let moov = moov_of(&made.head);
         assert!(moov.trak[0].edts.is_none());
@@ -467,7 +494,27 @@ mod tests {
     fn no_picture_is_refused() {
         let mut muxer = Muxer::new(Vec::new(), vec![], vec![]);
         muxer.event(Event::Tracks(vec![track(Kind::Video { width: 2, height: 2 }, 60), track(Kind::Audio, 48000)])).unwrap();
-        muxer.event(packet(1, 0, 0, 1024, true, 2)).unwrap();
+        muxer.event(packet(1, 0, 1024, true, 2)).unwrap();
         assert!(muxer.finish().is_err());
+    }
+
+    /// A track said to be shown for a length is that long from its edit's start: a sound track past its priming, as
+    /// long as what was given, its last frame's padding left out.
+    #[test]
+    fn a_track_is_shown_as_long_as_said() {
+        let mut muxer = Muxer::new(Vec::new(), vec![], vec![]);
+        let mut sound = track(Kind::Audio, 48000);
+        let entry = mp4_atom::ElstEntry { segment_duration: 0, media_time: Some(2112), media_rate: mp4_atom::FixedPoint::new(1, 0) };
+        sound.edits = Some(mp4_atom::Edts { elst: Some(mp4_atom::Elst { entries: vec![entry] }) });
+        muxer.event(Event::Tracks(vec![track(Kind::Video { width: 2, height: 2 }, 60), sound])).unwrap();
+        muxer.event(packet(0, 0, 1, true, 1)).unwrap();
+        for n in 0..100 {
+            muxer.event(packet(1, n * 1024, 1024, true, 2)).unwrap();
+        }
+        // (100 frames of 1024 hold 102,400 samples: 2112 of priming, 96,000 given, the rest padding.)
+        muxer.shown(1, 96_000);
+        let moov = moov_of(&muxer.finish().unwrap().head);
+        let edit = &moov.trak[1].edts.as_ref().unwrap().elst.as_ref().unwrap().entries;
+        assert_eq!(edit.iter().map(|e| (e.media_time, e.segment_duration)).collect::<Vec<_>>(), [(Some(2112), 2000)]);
     }
 }
