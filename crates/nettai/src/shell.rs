@@ -1929,7 +1929,7 @@ impl App {
             }
             // (The guide button is nettai's menu, as Esc is; a button bound to nothing may be the owner's.)
             for button in events.buttons {
-                if button == gamepad_facade::Button::Guide {
+                if button == nettai_gamepad::Button::Guide {
                     self.shell.open_menu();
                 } else if !self.shell.bindings.pad.contains(&button) {
                     let hearer = self.hearer();

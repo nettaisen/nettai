@@ -1447,8 +1447,8 @@ impl Screen for Practice {
         action == Action::Alternate && restart(shell)
     }
 
-    fn button(&mut self, shell: &mut Shell, button: gamepad_facade::Button) -> bool {
-        button == gamepad_facade::Button::North && restart(shell)
+    fn button(&mut self, shell: &mut Shell, button: nettai_gamepad::Button) -> bool {
+        button == nettai_gamepad::Button::North && restart(shell)
     }
 
     /// A dialog asked while a session another screen started was on is that screen's: it hears the answer.

@@ -13,7 +13,7 @@ use crate::screens::{Screen, ScreenId};
 use crate::settings::{MAX_INPUT_DELAY, clean_name};
 use crate::shell::Shell;
 use crate::sound::Cue;
-use gamepad_facade::Button;
+use nettai_gamepad::Button;
 use nettai_ui::{PadBinding, PadButton, SettingsView};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, ModelRc, VecModel};

@@ -1088,14 +1088,14 @@ impl Tab for Navicust {
     }
 
     /// The piece in hand: the pad's shoulders turn it, its north button compresses it.
-    fn button(&mut self, shell: &mut Shell, draft: &mut Draft, button: gamepad_facade::Button) -> bool {
+    fn button(&mut self, shell: &mut Shell, draft: &mut Draft, button: nettai_gamepad::Button) -> bool {
         if self.held.is_none() {
             return false;
         }
         match button {
-            gamepad_facade::Button::LeftShoulder => self.turn(shell, draft, false),
-            gamepad_facade::Button::RightShoulder => self.turn(shell, draft, true),
-            gamepad_facade::Button::North => self.compress(shell, draft),
+            nettai_gamepad::Button::LeftShoulder => self.turn(shell, draft, false),
+            nettai_gamepad::Button::RightShoulder => self.turn(shell, draft, true),
+            nettai_gamepad::Button::North => self.compress(shell, draft),
             _ => return false,
         }
         true

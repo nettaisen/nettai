@@ -10,7 +10,7 @@
 use super::{Pair, SETTLE, Step, Tour};
 use crate::errors::UserError;
 use crate::input::{Bindings, button_index};
-use gamepad_facade::Button;
+use nettai_gamepad::Button;
 use crate::screens::ScreenId;
 use crate::shell::App;
 use nettai_battle::input::keys;

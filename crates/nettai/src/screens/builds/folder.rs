@@ -784,9 +784,9 @@ impl Tab for Folder {
     }
 
     /// The pad's Select tags.
-    fn button(&mut self, shell: &mut Shell, draft: &mut Draft, button: gamepad_facade::Button) -> bool {
+    fn button(&mut self, shell: &mut Shell, draft: &mut Draft, button: nettai_gamepad::Button) -> bool {
         match (button, Folder::focused_slot(shell)) {
-            (gamepad_facade::Button::Back, Some(slot)) => self.tag(shell, draft, slot),
+            (nettai_gamepad::Button::Back, Some(slot)) => self.tag(shell, draft, slot),
             _ => return false,
         }
         true

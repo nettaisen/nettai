@@ -1939,7 +1939,7 @@ These answer the user's first paragraph (§1), and a screenshot pass checks them
 8. **Text never touches a border.** A field clips its text at its inner padding (12) and scrolls to keep the caret
    in view.
 9. **Lists.** Rows have one height; the focused row is scrolled into view; the scrollbar's space is reserved.
-10. **Pads work the same way**, through gamepad-facade, by the pad's own bindings (A confirms, B goes back), with
+10. **Pads work the same way**, through nettai-gamepad, by the pad's own bindings (A confirms, B goes back), with
     the hints switching to the pad's buttons as bound.
 11. **One frame for what the build holds.** The folder, the patch cards, the NaviCust board and the build overview
     sit in a blue-bordered panel; the list to pick from beside it has no frame; the side the cursor is in has its
@@ -2452,7 +2452,8 @@ A replay that fails as it is opened, or whose engine stops as it plays, is its l
 
 ## 8. Behind the screens
 
-1. **Gamepads** through `https://github.com/tangobattle/gamepad-facade` (a git dependency); gilrs goes.
+1. **Gamepads** through `https://github.com/tangobattle/gamepad-facade` (a git dependency); gilrs goes. (Since
+   2026-10-30 the workspace's own nettai-gamepad, which started as it.)
 2. **Invite codes** are issued by the signaling server (`signaling/`), which the client asks for one; the client
    never makes one up. Six characters of an alphabet without look-alikes, shown grouped in threes.
 3. **In battle**, Start opens nettai's menu and the game's own pause never runs; L never runs away.

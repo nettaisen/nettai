@@ -193,7 +193,7 @@ mod tests {
         let mut b = s.bindings();
         assert_eq!(b, Bindings::default());
         b.bind_key(4, KeyCode::KeyJ);
-        b.bind_pad(5, gamepad_facade::Button::LeftStick);
+        b.bind_pad(5, nettai_gamepad::Button::LeftStick);
         s.set_bindings(&b);
         assert_eq!((s.keys.len(), s.pad.len()), (1, 1));
         assert_eq!(s.bindings(), b);

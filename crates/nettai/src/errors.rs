@@ -259,7 +259,7 @@ pub fn log(doing: &str, said: &dyn std::fmt::Display) {
     }
 }
 
-/// What the libraries say through the `log` crate (gamepad-facade's warnings), into the same file.
+/// What the libraries say through the `log` crate (nettai-gamepad's warnings), into the same file.
 #[cfg(not(target_arch = "wasm32"))]
 struct Sink;
 

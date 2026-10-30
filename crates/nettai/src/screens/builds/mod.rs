@@ -177,7 +177,7 @@ impl Screen for Builds {
         self.editor.as_mut().is_some_and(|editor| editor.key(shell, key))
     }
 
-    fn button(&mut self, shell: &mut Shell, button: gamepad_facade::Button) -> bool {
+    fn button(&mut self, shell: &mut Shell, button: nettai_gamepad::Button) -> bool {
         self.editor.as_mut().is_some_and(|editor| editor.button(shell, button))
     }
 

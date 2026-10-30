@@ -1,0 +1,83 @@
+[package]
+name = "nettai-gamepad"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "Gamepads, one pull-based API over the system's: SDL3 on the desktop, the browser's Gamepad API, iOS's GameController framework, Android's gamepad events"
+
+# (Started as tangobattle/gamepad-facade, MPL-2.0, at 3b2e345: its SDL3 and browser backends.)
+
+# What goes wrong is said through `log`, which the app keeps in its log file. (iOS's backend has nothing to say.)
+[target.'cfg(not(target_os = "ios"))'.dependencies]
+log = "0.4"
+
+# The desktop's: SDL3, built from source and trimmed to the joystick subsystem (which the gamepad API sits on)
+# plus HIDAPI: no audio, video, render or GPU. Dropping video removes the X11/Wayland build dependency on Linux and
+# the Metal/Cocoa link on macOS. (Not a phone's: SDL's iOS joystick code needs its UIKit video, its Android code its
+# Java classes; each has its own backend here.)
+[target.'cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android")))'.dependencies]
+sdl3 = { version = "0.18", default-features = false, features = ["build-from-source-static"], optional = true }
+sdl3-sys = { version = "0.6", default-features = false, optional = true, features = [
+    "no-default-subsystems",
+    "sdl-joystick",
+    "sdl-hidapi",
+    # Turning the video subsystem off is not enough on its own: SDL's cmake still fails a unix build outright when
+    # neither X11 nor Wayland development libraries are present, on the assumption that a machine without them
+    # can't have wanted a windowless SDL. This is the documented way to say we did mean it: without it, a Linux CI
+    # image needs the whole X11/Wayland dev stack installed to build a gamepad library that never opens a window.
+    "sdl-unix-console-build",
+] }
+send_wrapper = { version = "0.6", optional = true }
+
+# The browser's Gamepad API.
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys = "0.3"
+wasm-bindgen = "0.2"
+web-sys = { version = "0.3", features = ["Gamepad", "GamepadButton", "GamepadMappingType", "Navigator", "Window"] }
+
+# iOS's GameController framework.
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray"] }
+objc2-game-controller = { version = "0.3", default-features = false, features = [
+    "std",
+    "GCController",
+    "GCControllerAxisInput",
+    "GCControllerButtonInput",
+    "GCControllerDirectionPad",
+    "GCControllerElement",
+    "GCExtendedGamepad",
+    "GCPhysicalInputProfile",
+] }
+
+# Android: the activity's input events, which the host hands over (`android::input`), and the system's list of
+# input devices, through JNI (ndk-context's VM, which android-activity sets).
+[target.'cfg(target_os = "android")'.dependencies]
+android-activity = "0.6"
+jni = "0.22"
+ndk-context = "0.1"
+
+# The same on macOS, whose framework is iOS's: this crate's tests run the iOS backend there.
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray"] }
+objc2-game-controller = { version = "0.3", default-features = false, features = [
+    "std",
+    "GCController",
+    "GCControllerAxisInput",
+    "GCControllerButtonInput",
+    "GCControllerDirectionPad",
+    "GCControllerElement",
+    "GCExtendedGamepad",
+    "GCPhysicalInputProfile",
+] }
+
+[build-dependencies]
+# The targets by name (build.rs).
+cfg_aliases = "0.2"
+
+[features]
+default = ["sdl3"]
+# The desktop's backend. Without it a desktop build reports no gamepads and links no SDL. (No other target's
+# backend is a feature: each has one way to read a gamepad.)
+sdl3 = ["dep:sdl3", "dep:sdl3-sys", "dep:send_wrapper"]

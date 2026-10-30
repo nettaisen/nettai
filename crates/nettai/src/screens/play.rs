@@ -72,7 +72,7 @@ use crate::screens::{Screen, ScreenId, practice, settings};
 use crate::settings::MAX_INPUT_DELAY;
 use crate::shell::{Dialog, Shell};
 use crate::sound::Cue;
-use gamepad_facade::Button;
+use nettai_gamepad::Button;
 use nettai_battle::{BattleResult, ContentHash};
 use nettai_battle::input::keys;
 use nettai_frontend::driver::{Driver, StopReason};

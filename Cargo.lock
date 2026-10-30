@@ -2023,20 +2023,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gamepad-facade"
-version = "0.1.0"
-source = "git+https://github.com/tangobattle/gamepad-facade#3b2e3455e92521ca4d13f31cf706719b45d06948"
-dependencies = [
- "js-sys",
- "log",
- "sdl3",
- "sdl3-sys",
- "send_wrapper",
- "wasm-bindgen",
- "web-sys",
-]
-
-[[package]]
 name = "gbm"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3728,7 +3714,6 @@ dependencies = [
  "exe4-compat",
  "exe5-compat",
  "exe6-compat",
- "gamepad-facade",
  "icu_casemap",
  "icu_list",
  "icu_locale_core",
@@ -3740,6 +3725,7 @@ dependencies = [
  "nettai-content-api",
  "nettai-extract",
  "nettai-frontend",
+ "nettai-gamepad",
  "nettai-match",
  "nettai-platform",
  "nettai-render",
@@ -3865,6 +3851,26 @@ dependencies = [
  "nettai-rtc",
  "sha2 0.10.9",
  "tempfile",
+]
+
+[[package]]
+name = "nettai-gamepad"
+version = "0.1.0"
+dependencies = [
+ "android-activity",
+ "cfg_aliases",
+ "jni",
+ "js-sys",
+ "log",
+ "ndk-context",
+ "objc2 0.6.4",
+ "objc2-foundation 0.3.2",
+ "objc2-game-controller",
+ "sdl3",
+ "sdl3-sys",
+ "send_wrapper",
+ "wasm-bindgen",
+ "web-sys",
 ]
 
 [[package]]
@@ -4471,6 +4477,16 @@ dependencies = [
  "libc 0.2.190",
  "objc2 0.6.4",
  "objc2-core-foundation",
+]
+
+[[package]]
+name = "objc2-game-controller"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1962c1882c5abcedb18e5f01acffeaad7b3cbd0a9d4cd8f5ca259ba8a64cb9a3"
+dependencies = [
+ "objc2 0.6.4",
+ "objc2-foundation 0.3.2",
 ]
 
 [[package]]

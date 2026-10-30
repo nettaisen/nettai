@@ -136,7 +136,7 @@ pub trait Screen {
     }
 
     /// A pad's button pressed, as [`Screen::key`].
-    fn button(&mut self, _shell: &mut Shell, _button: gamepad_facade::Button) -> bool {
+    fn button(&mut self, _shell: &mut Shell, _button: nettai_gamepad::Button) -> bool {
         false
     }
 

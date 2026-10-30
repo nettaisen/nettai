@@ -196,8 +196,9 @@ arrive. While the battle has the keys, they don't reach the menus. The battle's 
 - in a practice battle, R (or F5) starts the set over, unless the player bound it to a button;
 - in an online match, Tab held shows both builds (§4): no button can be bound to it.
 
-**The gamepads** are read through [gamepad-facade](https://github.com/tangobattle/gamepad-facade) (SDL3's
-gamepads behind a small API; the user's choice) and polled each frame (`input::Pad`). Every pad plays the one
+**The gamepads** are read through nettai-gamepad (the workspace's crate: SDL3 on the desktop, the browser's Gamepad
+API, GameController on iOS and Android's gamepad events, behind one small API; it started as
+tangobattle/gamepad-facade, the user's choice) and polled each frame (`input::Pad`). Every pad plays the one
 player:
 
 - the buttons are bound as the keys are; the defaults lie as a Nintendo pad's face buttons do (the user: "A should be gamepad east,
@@ -1386,9 +1387,12 @@ app type-checks for iOS, and for Android the crates below the app (nettai-platfo
   samples every platform's codecs are, made the MP4 the same way. The MP4 is made in the temporary folder's
   `outgoing` and handed over once whole (above).
 - **Input:** touch is the on-screen pad (`TouchPad`, battle.slint; §11, "The on-screen pad"), which takes the
-  window's touches itself, every finger its own; no touch screen has run it. No gamepads on a phone yet:
-  gamepad-facade is built without SDL there (SDL's iOS joystick code needs its UIKit video, its Android one its
-  Java classes), and reports none until a phone's own (GameController, Android's input events) is written.
+  window's touches itself, every finger its own; no touch screen has run it. Gamepads are nettai-gamepad's phone
+  backends (no SDL there: its iOS joystick code needs its UIKit video, its Android one its Java classes): iOS's
+  GameController framework (every pad with the extended gamepad profile, read each poll), and Android's gamepad
+  key and motion events, which the app's Android loop is to hand over (`nettai_gamepad::android::input`) once it
+  reads the activity's input itself. Neither has run with a pad: the iOS backend's calls ran on macOS (the same
+  framework) with none attached, and Android's key and axis mapping is unit-tested.
 - **Text:** the system's input method works through winit on iOS.
 - **Updates** are the store's: a phone's app has the no-updater stand-in (`updates_none.rs`, the web's).
 - **Netplay:** nettai-rtc natively is str0m (pure Rust, its sockets on tokio), which builds for both; not tried.
@@ -2511,7 +2515,7 @@ dialog's title and message):
   can't be done is at the end of its row, in the error red.
 
 What the code said goes to the log alone (`errors::log`: `nettai.log` in the data folder, a line a failure with
-its time and what was being done). gamepad-facade's warnings go there too.
+its time and what was being done). nettai-gamepad's warnings go there too.
 
 The libraries' errors are typed the same way, a kind for the player and a detail in English for the log
 (docs/design/rollback.md §4.9): `UserError::of_link` (nettai-rtc's `ErrorKind`), `of_lobby` (the lobby's
@@ -2855,7 +2859,7 @@ CPU).
 
 The generated module is 3.3 MB (28,204 lines, 102 components) from 4,316 lines of Slint with 18 `if`s and 6
 `for`s. The first app's whole clean build wasn't run again for the new one: the engine's crates, most of it, are
-the same. One dependency is new and slow: gamepad-facade's SDL3 is built from its source with cmake, about three
+the same. One dependency is new and slow: nettai-gamepad's SDL3 is built from its source with cmake, about three
 and a half minutes of a clean build on the loaded machine (gilrs, which it replaces, took 23 seconds), once.
 
 **With Play** (2026-10-12; one script before the screen was written and after, on the branch it was written
@@ -4021,8 +4025,8 @@ had given way to libdatachannel), about 0.8 MB in the binary. It is written agai
 manifest or a font's license changes. The same list is written as a text file beside it (`licenses.txt`),
 which a package ships as THIRD-PARTY-NOTICES.txt (§19).
 
-24 of the packages ship no license file in what they publish (the objc2 family, the lyon ones, libc, taffy,
-gamepad-facade and some others): their row and panel name their license, and the panel says the package comes
+23 of the packages ship no license file in what they publish (the objc2 family, the lyon ones, libc, taffy and some
+others): their row and panel name their license, and the panel says the package comes
 with none.
 
 **The keys.** Up and Down go through the list, and the license beside it follows the focus; Enter (A) goes to the

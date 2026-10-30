@@ -1640,10 +1640,10 @@ impl Screen for Replays {
         true
     }
 
-    fn button(&mut self, shell: &mut Shell, button: gamepad_facade::Button) -> bool {
+    fn button(&mut self, shell: &mut Shell, button: nettai_gamepad::Button) -> bool {
         // Select shows both builds, or puts them away.
         match &mut self.watching {
-            Some(w) if !self.up_next && button == gamepad_facade::Button::Back => {
+            Some(w) if !self.up_next && button == nettai_gamepad::Button::Back => {
                 w.toggle_builds(shell);
                 true
             }

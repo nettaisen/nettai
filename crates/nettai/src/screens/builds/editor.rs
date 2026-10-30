@@ -323,7 +323,7 @@ pub trait Tab {
         false
     }
 
-    fn button(&mut self, _shell: &mut Shell, _draft: &mut Draft, _button: gamepad_facade::Button) -> bool {
+    fn button(&mut self, _shell: &mut Shell, _draft: &mut Draft, _button: nettai_gamepad::Button) -> bool {
         false
     }
 
@@ -938,7 +938,7 @@ impl Editor {
         taken
     }
 
-    pub fn button(&mut self, shell: &mut Shell, button: gamepad_facade::Button) -> bool {
+    pub fn button(&mut self, shell: &mut Shell, button: nettai_gamepad::Button) -> bool {
         if self.rules.is_some() {
             return false;
         }

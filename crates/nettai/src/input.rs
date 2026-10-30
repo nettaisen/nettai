@@ -6,14 +6,14 @@
 //! bindings ([`Bindings`], kept in the settings). The menus' keys are fixed (the arrows, Enter, Esc, Tab: the
 //! user tried the keys bound to A and B and went back, "actually z and x for navigation is not very good,
 //! enter + esc was fine"), with the keys bound to L and R as their previous and next ([`menu_action`]). A
-//! gamepad is read through gamepad-facade and polled each frame ([`Pad::poll`]): its bound buttons for the
+//! gamepad is read through nettai-gamepad and polled each frame ([`Pad::poll`]): its bound buttons for the
 //! battle, and its presses as the menus' actions by the same bindings, the buttons bound to A and B confirming
 //! and going back ([`Bindings::pad_action`]). On a phone
 //! the battle's buttons are drawn under the picture, and the window's touches are theirs ([`TouchPad`]): each
 //! finger by itself, so a direction and a button are held together.
 
 use crate::nav::Rect;
-use gamepad_facade::{Axis, Button, EventKind, Id};
+use nettai_gamepad::{Axis, Button, EventKind, Id};
 use nettai_battle::input::{Joypad, keys};
 use nettai_frontend::player::time_of;
 use slint::winit_030::winit::event::{ElementState, KeyEvent};
@@ -578,7 +578,7 @@ pub struct PadEvents {
     pub at: Option<Instant>,
 }
 
-/// The gamepads, through gamepad-facade. Every pad plays the one player, unless practice's dummy has the second
+/// The gamepads, through nettai-gamepad. Every pad plays the one player, unless practice's dummy has the second
 /// ([`Pad::apart`]).
 #[derive(Default)]
 pub struct Pad {
@@ -600,7 +600,7 @@ pub struct Pad {
 impl Pad {
     /// Start reading gamepads: on the thread that polls them (the UI's).
     pub fn start() -> Pad {
-        gamepad_facade::init("nettai");
+        nettai_gamepad::init("nettai");
         Pad::default()
     }
 
@@ -637,7 +637,7 @@ impl Pad {
     /// Take what the pads did since the last poll (the dummy's pad's presses aren't the menus').
     pub fn poll(&mut self, bindings: &Bindings, now: Instant) -> PadEvents {
         let mut out = PadEvents::default();
-        while let Some(event) = gamepad_facade::next_event() {
+        while let Some(event) = nettai_gamepad::next_event() {
             let id = event.id;
             if !matches!(event.kind, EventKind::Disconnected) && !self.pads.contains(&id) {
                 self.pads.push(id);
