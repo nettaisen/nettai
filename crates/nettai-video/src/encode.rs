@@ -1,7 +1,7 @@
 //! What a video is to its encoder ([`Video`], [`Audio`], [`Info`]), and what an encoder is to the rest: frames and
 //! sound in, and out its tracks (once it knows them) and their packets, which [`crate::mp4`] makes an MP4 of. The
-//! encoder is the platform's (ffmpeg on the desktop, the browser's own in a browser), each module's `start`; the
-//! playing before and the MP4 after are the same for both.
+//! encoder is the platform's (ffmpeg on the desktop, the browser's own in a browser, the phone's own on a phone),
+//! each module's `start`; the playing before and the MP4 after are the same for all.
 
 use crate::Error;
 
@@ -89,7 +89,8 @@ pub enum Chroma {
     #[default]
     Half,
     /// 4:4:4: color at the picture's resolution, every pixel edge sharp at any size. Browsers' and phones'
-    /// hardware decoders mostly don't take it, and a browser's encoder makes none (it is 4:2:0 there).
+    /// hardware decoders mostly don't take it, and a browser's encoder and a phone's make none (it is 4:2:0
+    /// there).
     Full,
 }
 
@@ -97,7 +98,7 @@ pub enum Chroma {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Encoding {
     /// The picture's constant rate factor: lower is closer to the frames and larger (0 lossless, 16 the default
-    /// here). (A browser's encoder takes a bit rate instead: one is made of it.)
+    /// here). (A browser's encoder and a phone's take a bit rate instead: one is made of it.)
     pub crf: u8,
     pub chroma: Chroma,
     /// The sound's bit rate, in kb/s.
