@@ -19,7 +19,7 @@ use crate::sound::{Cue, Sound};
 use nettai_battle::input::keys;
 use nettai_frontend::game::GraphicsMode;
 use nettai_dialogs::Filter;
-use nettai_page::text_entry::Entry;
+use crate::page::text_entry::Entry;
 use nettai_ui::{AppWindow, ButtonKind, DialogButton, Theme};
 use i_slint_backend_winit::WinitWindowAccessor;
 use i_slint_backend_winit::winit::event::{ElementState, KeyEvent, TouchPhase};
@@ -253,11 +253,11 @@ pub struct Shell {
     pub probe_motion: bool,
     /// A screen has something running that must keep its time whatever covers the window (a link to another
     /// player, before and between their battles): the app isn't napped while this is set, as it isn't while a
-    /// battle runs (`nettai_lifecycle::Awake`).
+    /// battle runs (`crate::lifecycle::Awake`).
     pub stay_awake: bool,
     /// The app's update: checked for and downloaded at the loading screen as the app starts (`updates.rs`).
     pub updates: crate::updates::Updates,
-    awake: Option<nettai_lifecycle::Awake>,
+    awake: Option<crate::lifecycle::Awake>,
     /// This frame is being drawn (the window's rendering runs it). When the window isn't drawn (minimized,
     /// hidden, covered), a timer runs the frames instead, and no picture is presented in them: there is no
     /// frame to show it in, and the window's OpenGL isn't the thread's.
@@ -1515,7 +1515,7 @@ impl App {
     }
 
     /// What the field being edited says (its keys that leave it, on the desktop; the browser's input laid over it,
-    /// all it says: `nettai_page::text_entry`).
+    /// all it says: `crate::page::text_entry`).
     pub fn entry(&mut self, entry: Entry) {
         if !self.shell.nav.editing() {
             return;
@@ -1555,7 +1555,7 @@ impl App {
     #[cfg(target_arch = "wasm32")]
     fn lay_entry(&mut self) {
         let Some((place, text, all)) = self.entry_place() else { return };
-        nettai_page::text_entry::open(place, &text, all, |entry| {
+        crate::page::text_entry::open(place, &text, all, |entry| {
             crate::with_app(|app| {
                 app.entry(entry);
                 app.settle();
@@ -1565,12 +1565,12 @@ impl App {
 
     /// Where the field being edited is, in the window's units, with its text and whether all of it is selected.
     #[cfg(target_arch = "wasm32")]
-    fn entry_place(&self) -> Option<(nettai_page::text_entry::Place, String, bool)> {
+    fn entry_place(&self) -> Option<(crate::page::text_entry::Place, String, bool)> {
         let (rect, text, all) = self.shell.nav.edited_field()?;
         let ui = self.shell.ui();
         let window = ui.window();
         let width = window.size().to_logical(window.scale_factor()).width;
-        Some((nettai_page::text_entry::Place { x: rect.x, y: rect.y, width: rect.w, height: rect.h, window_width: width }, text, all))
+        Some((crate::page::text_entry::Place { x: rect.x, y: rect.y, width: rect.w, height: rect.h, window_width: width }, text, all))
     }
 
     /// The input method started or stopped composing.
@@ -1586,11 +1586,11 @@ impl App {
         }
         // (In the browser, an edit's input goes where its field is laid out now: after the layout has placed it.)
         #[cfg(target_arch = "wasm32")]
-        if nettai_page::text_entry::is_open() {
+        if crate::page::text_entry::is_open() {
             slint::Timer::single_shot(std::time::Duration::from_millis(100), || {
                 crate::with_app(|app| {
                     if let Some((place, _, _)) = app.entry_place() {
-                        nettai_page::text_entry::place(place);
+                        crate::page::text_entry::place(place);
                     }
                 })
             });
@@ -1786,8 +1786,8 @@ impl App {
         nettai_dialogs::poll();
         // (The browser's input over a field goes once its edit has ended, however it ended.)
         #[cfg(target_arch = "wasm32")]
-        if !self.shell.nav.editing() && nettai_page::text_entry::is_open() {
-            nettai_page::text_entry::close();
+        if !self.shell.nav.editing() && crate::page::text_entry::is_open() {
+            crate::page::text_entry::close();
         }
         let began = Instant::now();
         self.drawn_at = Some(now);
@@ -1866,7 +1866,7 @@ impl App {
         // What must keep its time whatever covers the window: a battle, a screen's link, the screenshot pass.
         let awake = self.shell.battle.is_some() || self.shell.loading_battle() || self.shell.stay_awake || self.shell.still;
         if awake != self.shell.awake.is_some() {
-            self.shell.awake = awake.then(nettai_lifecycle::Awake::new);
+            self.shell.awake = awake.then(crate::lifecycle::Awake::new);
         }
         // The battle: loading behind the cards, or running.
         if let Some((owner, event)) = self.shell.load_battle(now) {

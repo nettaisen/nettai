@@ -18,11 +18,8 @@
 
 use std::collections::VecDeque;
 
-#[cfg(not(target_arch = "wasm32"))]
-use crate::native::ws::{Socket, WsEvent};
+use crate::platform::system::ws::{Socket, WsEvent};
 use crate::signal::{self, FromServer, Refusal, Signal, ToServer};
-#[cfg(target_arch = "wasm32")]
-use crate::web::ws::{Socket, WsEvent};
 use crate::{Duration, Error, ErrorKind, IceServer, Instant, Role};
 
 /// What the room says, for the link.

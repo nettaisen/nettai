@@ -77,7 +77,7 @@ export global Nav {
     callback edited(string, int, string);
     callback edit-done(string, int, string);
     // In a browser, the field being edited holds this now (what the app kept of what was typed: a code in capitals,
-    // a name at its length): the input laid over it is told (nettai_page::text_entry). The field says it each
+    // a name at its length): the input laid over it is told (the app's page::text_entry). The field says it each
     // time `edit-heard` counts a change the app heard.
     callback edit-kept(string);
     // The wheel or a drag scrolled something: the cursor's place is out of date until the controls say theirs.

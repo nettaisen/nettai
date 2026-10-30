@@ -51,24 +51,8 @@
 //! * **Non-standard browser mappings** are read by raw index anyway, with a one-time warning: it is all the browser
 //!   gives.
 
-#[cfg(sdl)]
-mod sdl3;
-
-#[cfg(web)]
-mod web;
-
-// (On macOS too, for its tests: the framework is the same.)
-#[cfg(any(ios, all(test, target_os = "macos")))]
-mod ios;
-
-#[cfg(android)]
-mod android;
-
-#[cfg(any(ios, android, test))]
-mod pads;
-
-#[cfg(any(android, test))]
-mod android_map;
+mod platform;
+use platform::system;
 
 /// A gamepad button.
 ///
@@ -182,7 +166,7 @@ pub enum EventKind {
 /// into no-ops — the app keeps running without gamepad support rather
 /// than taking the process down.
 pub fn init(app_name: &str) {
-    backend::init(app_name);
+    system::init(app_name);
 }
 
 /// Pop the next gamepad event, or `None` once there is nothing left for
@@ -194,31 +178,5 @@ pub fn init(app_name: &str) {
 ///
 /// Must run on the thread that called [`init`].
 pub fn next_event() -> Option<Event> {
-    backend::next_event()
-}
-
-#[cfg(sdl)]
-use sdl3 as backend;
-
-#[cfg(web)]
-use web as backend;
-
-#[cfg(ios)]
-use ios as backend;
-
-#[cfg(android)]
-use android as backend;
-
-/// No gamepads, ever. What a desktop build without the `sdl3` feature
-/// gets: the API stays callable so a host can drop SDL from its link
-/// without touching any call sites.
-#[cfg(all(desktop, not(sdl)))]
-mod backend {
-    pub fn init(_app_name: &str) {
-        log::info!("gamepad support is not compiled in (no `sdl3` feature)");
-    }
-
-    pub fn next_event() -> Option<super::Event> {
-        None
-    }
+    system::next_event()
 }

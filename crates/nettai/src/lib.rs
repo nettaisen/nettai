@@ -22,9 +22,13 @@ mod games;
 mod http;
 mod input;
 mod lang;
+mod lifecycle;
 mod look;
 mod music;
 mod nav;
+// (Only a browser opens, places and closes the input over a field (shell.rs): elsewhere those no-ops go unused.)
+#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
+mod page;
 mod paths;
 mod quit;
 mod replays;
@@ -117,7 +121,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
     wire(&ui, &app);
     // (In a browser the window is the page's whole, and follows it: the desktop's player sizes theirs.)
     let window = ui.as_weak();
-    nettai_page::follow(move |width, height| {
+    page::follow(move |width, height| {
         if let Some(ui) = window.upgrade() {
             ui.window().set_size(slint::LogicalSize::new(width, height));
         }
@@ -229,10 +233,10 @@ pub fn run() -> Result<(), slint::PlatformError> {
                 }
                 EventResult::Propagate
             }
-            // (Android's app back in front: its sound starts again, as the sound hears from `nettai_lifecycle`.)
+            // (Android's app back in front: its sound starts again, as the sound hears from `lifecycle`.)
             #[cfg(target_os = "android")]
             WindowEvent::Focused(true) => {
-                nettai_lifecycle::came_back();
+                lifecycle::came_back();
                 EventResult::Propagate
             }
             // (`NETTAI_PLAY_STATS`: whether the system says the window is covered, for the clock's figures.)
@@ -370,7 +374,7 @@ fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
     nav.on_hover(move |id, index, on| tell(&a, NavInput::Hover(id.into(), index, on)));
     let a = app.clone();
     nav.on_edit_began(move |_, _, text| tell(&a, NavInput::EditBegan(text.into())));
-    nav.on_edit_kept(|text| nettai_page::text_entry::keep(&text));
+    nav.on_edit_kept(|text| page::text_entry::keep(&text));
     let a = app.clone();
     nav.on_edited(move |_, _, text| tell(&a, NavInput::Edited(text.into())));
     let a = app.clone();

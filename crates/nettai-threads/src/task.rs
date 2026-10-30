@@ -14,7 +14,7 @@ pub async fn off_thread<T: Send + 'static>(name: &str, work: impl FnOnce() -> T 
     answered.await.map_err(|_| format!("{name}: its thread ended without an answer"))
 }
 
-#[cfg(all(test, not(target_arch = "wasm32")))]
+#[cfg(all(test, not(web)))]
 mod tests {
     use super::*;
 

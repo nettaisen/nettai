@@ -2,9 +2,9 @@
 //! rest, named as `std::fs` names them; and the system's folders for the app ([`folders`]).
 //!
 //! On the desktop and a phone they are `std::fs`'s. In the browser there is no file system a program can call
-//! without waiting, so there they are a tree in memory ([`memory`]), one that every thread shares: the page puts the files it keeps in
-//! it before the app starts ([`preload`]), and takes what changed under the folder it keeps ([`watch`],
-//! [`changes`]) to write it to its own storage (crates/nettai-web: the origin private file system).
+//! without waiting, so there they are a tree in memory (`memory`), one that every thread shares: the page puts the files it keeps in
+//! it before the app starts (`preload`), and takes what changed under the folder it keeps (`watch`,
+//! `changes`) to write it to its own storage (packaging/web's page: the origin private file system).
 //!
 //! Large files the page keeps but doesn't put in the app's files as it starts are stowed ([`stow`], [`stowed`]) and
 //! read in when wanted ([`fetch`]).
@@ -15,20 +15,15 @@
 use std::path::Path;
 
 pub mod folders;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use std::fs::*;
-
-#[cfg(any(target_arch = "wasm32", test))]
-#[cfg_attr(not(target_arch = "wasm32"), allow(dead_code))]
-pub(crate) mod memory;
-#[cfg(target_arch = "wasm32")]
-pub use memory::*;
-
+mod platform;
 mod stowed;
+
+// The system's files: `std::fs` natively, the browser's tree in memory (`platform`).
+pub use platform::files::fs::*;
 pub use stowed::{STOWED, fetch, stow, stowed};
-#[cfg(target_arch = "wasm32")]
-pub use stowed::listed;
+// (What only one system has, public as the crate's own: the browser's `listed`.)
+#[allow(unused_imports)]
+pub use platform::*;
 
 /// Whether anything is at `path`.
 pub fn exists(path: impl AsRef<Path>) -> bool {
@@ -47,7 +42,7 @@ pub fn is_dir(path: impl AsRef<Path>) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::memory as m;
+    use crate::platform::memory as m;
     use std::io::{Read, Seek, SeekFrom, Write};
 
     /// The browser's tree, as `std::fs` behaves: folders made and listed, files written, read, appended to and

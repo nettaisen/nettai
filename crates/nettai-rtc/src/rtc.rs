@@ -1,15 +1,12 @@
 //! The WebRTC connection under [`crate::peer`], one API on both targets:
-//! natively nettai-rtc's own (`native::rtc`, on str0m), on the web the
-//! browser's (`web::rtc`, its `RTCPeerConnection`). A connection is told
+//! natively nettai-rtc's own (`platform::native::rtc`, on str0m), on the web
+//! the browser's (`platform::web::rtc`, its `RTCPeerConnection`). A connection is told
 //! things by calls and says what happened through [`PeerConnection::poll`]'s
 //! [`Event`]s, which its caller takes in turn: no callbacks.
 
 use std::fmt;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub(crate) use crate::native::rtc::PeerConnection;
-#[cfg(target_arch = "wasm32")]
-pub(crate) use crate::web::rtc::PeerConnection;
+pub(crate) use crate::platform::system::rtc::{Options, PeerConnection, reaches};
 
 use crate::IceServer;
 
@@ -60,24 +57,10 @@ pub(crate) struct Configuration {
     pub(crate) ice_servers: Vec<IceServer>,
     /// Offer the relayed candidates alone.
     pub(crate) relay_only: bool,
-    /// Bind this address and port (port 0: one the system picks) instead of
-    /// every interface's, both families, on ports the system picks.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) bind: Option<std::net::SocketAddr>,
-    /// This side's ICE username fragment and password, instead of random
-    /// ones.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) ice_credentials: Option<(String, String)>,
-    /// Don't check the other side's DTLS certificate against its
-    /// description's fingerprint.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) skip_fingerprint_check: bool,
-    /// How long ICE keeps checking a pair that doesn't answer: as long as a
-    /// dial is given ([`crate::Config::dial_timeout`]), so that a dial made
-    /// while the path is out (or while a direct host's port is another
-    /// connection's) connects as soon as it is back.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) checks_for: std::time::Duration,
+    /// What only the system's connection takes ([`Options`]: natively the
+    /// address bound, the ICE credentials, the fingerprint check and how
+    /// long ICE checks; nothing in a browser).
+    pub(crate) system: Options,
 }
 
 /// A data channel, negotiated out of band as stream `stream` on both sides.

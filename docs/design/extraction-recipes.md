@@ -1207,7 +1207,7 @@ baseline's byte for byte (the harness, now the recipes against the baseline only
   drops bit 15 (§3.4). Every game's depends.lock follows exelib.
 - *Checked:* the harness on the three games (EXE4 3,076 files, EXE5 3,040, EXE6 3,413: the baseline's, and its
   reads); the full-set content audit's asset lookups; the workspace's type check with no warning; the touched
-  crates' tests; the content check; a wasm32 type check of nettai-web.
+  crates' tests; the content check; a wasm32 type check of nettai.
 
 **Step 6.** The verification workspace reads the recipes (§6.6):
 

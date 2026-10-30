@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>nettai</title>
+<link rel="icon" href="nettai-icon.svg" type="image/svg+xml">
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #050916; }
+  /* (touch-action: the app's own: the browser takes no touch on it for its scrolling or zoom, which would cancel the
+     finger's pointer partway through a drag, so a list followed it a little way and stopped.) */
+  canvas { display: block; width: 100vw; height: 100vh; outline: none; touch-action: none; }
+  /* The preload screen: the app's own loading screen (loading.slint), laid out as it is, so the app's takes its place
+     without a move: the mark 160 high, the name's line 90 high under it, the bar 122 below that line's top, the line
+     of words 20 below the bar; the whole centered as the app centers it. */
+  #preload {
+    --top: calc((100vh - 334px) / 2 + 176px);
+    position: fixed; inset: 0;
+    background: radial-gradient(120% 90% at 85% 0%, #286eff2e, transparent 60%), linear-gradient(#0a1330, #050916);
+    font: 600 11px/16px system-ui, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; color: #8ea8d4;
+    transition: opacity 300ms ease;
+  }
+  #preload.gone { opacity: 0; pointer-events: none; }
+  #preload > * { position: absolute; left: 50%; transform: translateX(-50%); }
+  #preload .mark { top: calc(var(--top) - 176px); width: 160px; height: 160px; }
+  #preload .word { top: calc(var(--top) + 45px - 28px); width: 340px; height: 56px; }
+  #preload .bar { top: calc(var(--top) + 122px); width: min(480px, calc(100vw - 32px)); height: 4px; background: #0c1836; overflow: hidden; }
+  #preload .fill { height: 100%; width: 0; background: #ffb62e; transition: width 120ms linear; }
+  #preload .line { top: calc(var(--top) + 142px); width: min(480px, calc(100vw - 32px)); display: flex; justify-content: space-between; }
+  #preload.failed .line { text-transform: none; letter-spacing: 0; font: 14px/1.5 system-ui, sans-serif; color: #eaf3ff; justify-content: center; text-align: center; }
+  #preload.failed .bar { display: none; }
+</style>
+</head>
+<body>
+<canvas id="canvas"></canvas>
+<div id="preload">
+  <img class="mark" src="nettai-icon.svg" alt="">
+  <img class="word" src="nettai-logotype.svg" alt="nettai">
+  <div class="bar"><div class="fill"></div></div>
+  <div class="line"><span class="what">Loading</span><span class="much"></span></div>
+</div>
+<script type="module">
+// The nettai app in a browser (packaging/web; the module is the app's crate's library). Before it starts, under
+// the preload screen: the module is downloaded, and the files the page keeps (the app's data folder, in the origin
+// private file system: the games' content among them, which the app downloads from the games' sites) are put in the
+// app's files, but for the stowed ones (the Legacy Collection's ROMs as kept, large), which are listed for the app to
+// read as it wants them. After: what changed in the data folder is written back, in order, a few times a second.
+import init, * as nettai from "./nettai.js";
+
+// The canvas's size in device pixels, as winit reads it (`devicePixelContentBoxSize`), agrees with the pointer's
+// place, which winit takes as the CSS place times `devicePixelRatio`: where the browser's size doesn't (its device
+// emulation, DevTools' device toolbar among it, gives the CSS size there), the CSS size times the ratio in its place,
+// so a tap lands where it is drawn. (Elsewhere the browser's own, exact where the ratio isn't whole.)
+const exact = Object.getOwnPropertyDescriptor(ResizeObserverEntry.prototype, "devicePixelContentBoxSize");
+if (exact?.get) {
+  Object.defineProperty(ResizeObserverEntry.prototype, "devicePixelContentBoxSize", {
+    configurable: true,
+    get() {
+      const sizes = exact.get.call(this);
+      const device = sizes?.[0], css = this.contentBoxSize?.[0], ratio = window.devicePixelRatio || 1;
+      if (!device || !css) return sizes;
+      const [inlineSize, blockSize] = [css.inlineSize * ratio, css.blockSize * ratio];
+      if (Math.abs(device.inlineSize - inlineSize) <= 1.5 && Math.abs(device.blockSize - blockSize) <= 1.5) return sizes;
+      return [{ inlineSize: Math.round(inlineSize), blockSize: Math.round(blockSize) }];
+    },
+  });
+}
+
+const shim = new URL("./nettai.js", import.meta.url).href;
+// (The app's threads load the same module: nettai-threads asks this.)
+globalThis.nettaiShim = shim;
+
+// The preload screen: what is being done, how far (0 to 1, and in words), or why nettai can't start.
+const preload = document.getElementById("preload");
+function show(what, fraction, much = "") {
+  preload.querySelector(".what").textContent = what;
+  preload.querySelector(".much").textContent = much;
+  preload.querySelector(".fill").style.width = `${Math.round(Math.min(1, fraction) * 100)}%`;
+}
+function say(text) {
+  preload.classList.add("failed");
+  preload.querySelector(".what").textContent = text;
+  preload.querySelector(".much").textContent = "";
+}
+const megabytes = (n) => (n / 1048576).toFixed(1);
+
+// Each of `files` fetched whole, what came of all of them told as it comes (`sizes`: their sizes as decoded, which
+// a compressed response's own length isn't).
+async function download(files, sizes, told) {
+  const total = files.reduce((n, f) => n + (sizes[f] ?? 0), 0);
+  let got = 0;
+  return Promise.all(files.map(async (file) => {
+    const response = await fetch(`./${file}`);
+    if (!response.ok) throw new Error(`${file}: ${response.status}`);
+    const reader = response.body.getReader();
+    const parts = [];
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      parts.push(value);
+      got += value.length;
+      told(got, total);
+    }
+    const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+    let at = 0;
+    for (const p of parts) { out.set(p, at); at += p.length; }
+    return out;
+  }));
+}
+
+// Where a file the app hands over as a download is made (a video, as it is encoded: nettai-dialogs,
+// nettai_make_file): none of the kept files. Emptied as the page starts, nothing being made then.
+const MAKING = ".making";
+// The stowed files (nettai-files' STOWED): kept, listed and not read as the page starts. The app reads one
+// when it wants it (fs::fetch), and writes them itself (fs::stow).
+const STOWED = ".stowed";
+
+// The files kept: how many, to tell how far loading them is.
+async function count(dir, top) {
+  let n = 0;
+  for await (const [name, handle] of dir.entries()) {
+    if (top && (name === MAKING || name === STOWED)) continue;
+    n += handle.kind === "directory" ? await count(handle, false) : 1;
+  }
+  return n;
+}
+
+// The files kept, each put in the data folder at its path there (`loaded` told of each); the stowed ones listed.
+async function load(dir, prefix, loaded) {
+  for await (const [name, handle] of dir.entries()) {
+    if (prefix === "" && name === MAKING) continue;
+    const path = prefix + name;
+    if (prefix === "" && name === STOWED) {
+      await list(handle, path + "/");
+    } else if (handle.kind === "directory") {
+      await load(handle, path + "/", loaded);
+    } else {
+      nettai.preload(path, new Uint8Array(await (await handle.getFile()).arrayBuffer()));
+      loaded();
+    }
+  }
+}
+
+// The stowed files under `dir`, each listed for the app by its path in the data folder, none read.
+async function list(dir, prefix) {
+  for await (const [name, handle] of dir.entries()) {
+    if (handle.kind === "directory") await list(handle, prefix + name + "/");
+    else nettai.stowed(prefix + name);
+  }
+}
+
+// The folder at `parts` in the kept files (made, if `make`); null if it isn't there.
+async function folder(root, parts, make) {
+  let dir = root;
+  for (const part of parts) {
+    try {
+      dir = await dir.getDirectoryHandle(part, { create: make });
+    } catch (e) {
+      if (e.name === "NotFoundError" || e.name === "TypeMismatchError") return null;
+      throw e;
+    }
+  }
+  return dir;
+}
+
+async function write(root, path, bytes) {
+  const parts = path.split("/").filter(Boolean);
+  const name = parts.pop();
+  const dir = await folder(root, parts, true);
+  const writable = await (await dir.getFileHandle(name, { create: true })).createWritable();
+  await writable.write(bytes);
+  await writable.close();
+}
+
+async function remove(root, path) {
+  const parts = path.split("/").filter(Boolean);
+  const name = parts.pop();
+  const dir = await folder(root, parts, false);
+  if (!dir) return;
+  try {
+    await dir.removeEntry(name, { recursive: true });
+  } catch (e) {
+    if (e.name !== "NotFoundError") throw e;
+  }
+}
+
+// What changed, written to the kept files as the app made it: the writes side by side (a bundle of a game's content
+// is many files), and a removal or a second write of one file after what came before it.
+async function keep(root, changes) {
+  let running = [];
+  const paths = new Set();
+  const settle = async () => {
+    await Promise.all(running);
+    running = [];
+    paths.clear();
+  };
+  for (const [kind, path, bytes] of changes) {
+    if (kind === "write" && !paths.has(path)) {
+      paths.add(path);
+      running.push(write(root, path, bytes));
+      if (running.length >= 32) await settle();
+    } else {
+      await settle();
+      if (kind === "write") await write(root, path, bytes);
+      else await remove(root, path);
+    }
+  }
+  await settle();
+}
+
+async function main() {
+  if (!crossOriginIsolated) {
+    return say("This page must be served cross-origin isolated (COOP and COEP headers) for its threads: packaging/web/serve.py does.");
+  }
+  if (!navigator.storage?.getDirectory) {
+    return say("This browser has no origin private file system, where nettai keeps its files.");
+  }
+  // The module, downloaded: most of the wait (the bar's first 80%).
+  const sizes = await fetch("./sizes.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+  show("Downloading", 0);
+  const [module] = await download(["nettai_bg.wasm"], sizes, (got, total) => {
+    show("Downloading", total ? 0.8 * got / total : 0, total ? `${megabytes(got)} / ${megabytes(total)} MB` : `${megabytes(got)} MB`);
+  });
+  show("Starting", 0.8);
+  await init({ module_or_path: module });
+  // The files kept (the games' content, the builds, the replays, the settings): the rest of the bar.
+  const root = await navigator.storage.getDirectory();
+  // (Kept, not cleared when the browser is short of room, where it allows.)
+  navigator.storage.persist?.();
+  await root.removeEntry(MAKING, { recursive: true }).catch((e) => e.name === "NotFoundError" || console.warn("nettai: emptying", MAKING, e));
+  const kept = await count(root, true);
+  let loaded = 0;
+  await load(root, "", () => {
+    loaded++;
+    if (loaded % 50 === 0 || loaded === kept) show("Loading saved files", 0.8 + 0.2 * loaded / Math.max(1, kept), `${loaded} / ${kept}`);
+  });
+  show("Starting", 1);
+
+  let writing = Promise.resolve();
+  setInterval(() => {
+    const changes = nettai.changes();
+    if (changes.length) {
+      writing = writing.then(() => keep(root, changes)).catch((e) => console.error("nettai: keeping its files:", e));
+    }
+  }, 250);
+
+  try {
+    nettai.start();
+  } catch (e) {
+    // (winit leaves its start by an exception, its loop then the page's.)
+    if (!String(e?.message ?? e).includes("Using exceptions for control flow")) throw e;
+  }
+  // (Gone once the app has drawn: two frames on.)
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    preload.classList.add("gone");
+    setTimeout(() => preload.remove(), 400);
+  }));
+}
+
+main().catch((e) => {
+  console.error(e);
+  say(`nettai couldn't start: ${e?.message ?? e}`);
+});
+</script>
+</body>
+</html>

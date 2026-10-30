@@ -6,8 +6,8 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 
 /**
- * Gamepads' input, handed to nettai-gamepad (src/android.rs) before the rest of the app hears it: the activity gives
- * every key and generic motion event to [take] first.
+ * Gamepads' input, handed to nettai-gamepad (src/platform/android.rs) before the rest of the app hears it: the
+ * activity gives every key and generic motion event to [take] first.
  */
 object NettaiGamepads {
     /** Whether [event] was a gamepad's, which nettai-gamepad took (the activity then passes it on to nothing else). */

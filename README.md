@@ -126,8 +126,8 @@ NETTAI_SIGNAL=ws://127.0.0.1:8787 cargo run --release -p nettai
 
 ### In a browser
 
-The app also runs in Chromium. `bash crates/nettai-web/build.sh` builds it and
-`python3 crates/nettai-web/serve.py` serves it at http://localhost:8000/. It needs nightly Rust, wasm-bindgen-cli
+The app also runs in Chromium. `bash packaging/web/build.sh` builds it and
+`python3 packaging/web/serve.py` serves it at http://localhost:8000/. It needs nightly Rust, wasm-bindgen-cli
 and the WASI SDK; see [docs/app.md](docs/app.md) §6.
 
 ## Repository layout
@@ -144,8 +144,7 @@ and the WASI SDK; see [docs/app.md](docs/app.md) §6.
 | `crates/nettai-netplay`, `nettai-rtc` | Rollback netplay, and its WebRTC transport |
 | `crates/nettai-replay`, `nettai-video` | The replay format; replays exported as MP4 |
 | `crates/nettai`, `nettai-ui` | The app (Slint), and its UI files |
-| `crates/nettai-files`, `nettai-threads`, `nettai-dialogs`, `nettai-page`, `nettai-lifecycle`, `nettai-android`, `nettai-gamepad` | What the app asks of the system, the same on the desktop, in a browser and on a phone, a crate a concern |
-| `crates/nettai-web` | The browser build |
+| `crates/nettai-files`, `nettai-threads`, `nettai-dialogs`, `nettai-gamepad` | What the app asks of the system, the same on the desktop, in a browser and on a phone, a crate a concern |
 | `crates/nettai-tools` | `nettai-tool`, the command line |
 | `crates/nettai-training`, `training/` | A learned AI opponent (work in progress): the Rust side and the Python trainer |
 | `crates/exe4-compat`, `exe5-compat`, `exe6-compat` | Each game's original IDs, save import and trace formats (the engine never depends on these) |

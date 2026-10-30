@@ -3,8 +3,8 @@
 #
 #   packaging/android/package.sh
 #
-# The native library (crates/nettai-android-app, whose android_main the GameActivity runs) built by cargo for
-# aarch64-linux-android with the NDK's compilers, stripped, with the NDK's libc++_shared.so; the build's notices and
+# The native library (the app's crate's library, built as a cdylib for Android alone: its android_main is what the
+# GameActivity runs) built by cargo for aarch64-linux-android with the NDK's compilers, stripped, with the NDK's libc++_shared.so; the build's notices and
 # the license as assets; the launcher icon; the certificate verifier's component (rustls-platform-verifier's AAR,
 # pinned in verifier.sha256); then Gradle (the wrapper here: Gradle 9.8.1, its zip checked by its SHA-256; AGP 9.5.0,
 # build.gradle.kts) compiles the crates' Kotlin, adds GameActivity and AppCompat, shrinks the code (R8), packages it
@@ -45,16 +45,16 @@ export CC_aarch64_linux_android=$llvm/aarch64-linux-android$min_sdk-clang
 export CXX_aarch64_linux_android=$llvm/aarch64-linux-android$min_sdk-clang++
 export AR_aarch64_linux_android=$llvm/llvm-ar
 export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$llvm/aarch64-linux-android$min_sdk-clang
-messages=$(NETTAI_PACKAGED=1 cargo build --release --locked -p nettai-android-app --target aarch64-linux-android \
-    --message-format=json-render-diagnostics --manifest-path "$root/Cargo.toml")
-library=$(grep -o '"filenames":\["[^"]*libnettai_app\.so"' <<<"$messages" | sed 's/.*\["//; s/"$//' | tail -n 1)
-[ -f "$library" ] || { echo "the build named no libnettai_app.so" >&2; exit 1; }
+messages=$(NETTAI_PACKAGED=1 cargo rustc --release --locked -p nettai --lib --crate-type cdylib \
+    --target aarch64-linux-android --message-format=json-render-diagnostics --manifest-path "$root/Cargo.toml")
+library=$(grep -o '"filenames":\["[^"]*libnettai\.so"' <<<"$messages" | sed 's/.*\["//; s/"$//' | tail -n 1)
+[ -f "$library" ] || { echo "the build named no libnettai.so" >&2; exit 1; }
 notices=
 while IFS= read -r dir; do
     [ -f "$dir/licenses.txt" ] && notices=$dir/licenses.txt
 done < <(sed -n 's/.*"reason":"build-script-executed".*"out_dir":"\([^"]*\)".*/\1/p' <<<"$messages")
 [ -n "$notices" ] || { echo "the build named no licenses.txt (crates/nettai/build.rs)" >&2; exit 1; }
-"$llvm/llvm-strip" --strip-debug -o "$out/jniLibs/arm64-v8a/libnettai_app.so" "$library"
+"$llvm/llvm-strip" --strip-debug -o "$out/jniLibs/arm64-v8a/libnettai.so" "$library"
 # (The C++ the library compiles (Luau's) links the NDK's libc++ as a library of its own, which the APK carries beside
 # it: Android's are the system's alone.)
 if "$llvm/llvm-readelf" -d "$library" | grep -q 'NEEDED.*\[libc++_shared\.so\]'; then

@@ -218,6 +218,6 @@ None of this changes the replay format or the lobby's messages: an app with the 
 3. The bundle format and id (`nettai_content::bundle`), `nettai-content publish`, and Pages on each game's repo.
 4. The app: the catalog, the store and its downloads, replays and the lobby finding bundles by content hash, packs by
    fingerprint, the extractor's names from the content, the browser's store.
-5. The packages (`release.yml`, packaging/) and the browser's page (crates/nettai-web/build.sh) ship no content: the
+5. The packages (`release.yml`, packaging/) and the browser's page (packaging/web/build.sh) ship no content: the
    app downloads each game's, the first start included, and the release's build jobs check out no submodules. Each
    game's content is published for the line.

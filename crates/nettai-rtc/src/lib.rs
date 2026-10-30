@@ -2,8 +2,8 @@
 //! (docs/design/rollback.md §4.7, §4.8), one API on both targets: natively
 //! str0m (pure Rust, sans I/O: ICE, DTLS and SCTP), its sockets, timers,
 //! candidates and TURN relays this crate's, on a thread of its own
-//! (`native::rtc`); on wasm32 the browser's `RTCPeerConnection` and data
-//! channels (`web::rtc`, which began as datachannel-facade's web backend). It
+//! (`platform::native::rtc`); on wasm32 the browser's `RTCPeerConnection` and
+//! data channels (`platform::web::rtc`, which began as datachannel-facade's web backend). It
 //! took libdatachannel's place natively (C++, through datachannel-facade),
 //! which had taken the `rtc` crate's.
 //!
@@ -69,13 +69,9 @@ pub mod signal;
 
 mod link;
 mod peer;
+mod platform;
 mod room;
 mod rtc;
-
-#[cfg(not(target_arch = "wasm32"))]
-mod native;
-#[cfg(target_arch = "wasm32")]
-mod web;
 
 #[cfg(all(feature = "testing", not(target_arch = "wasm32")))]
 pub mod testing;
@@ -277,17 +273,7 @@ pub(crate) enum Message {
 /// `crypto.getRandomValues` on the web).
 pub(crate) fn secure_random<const N: usize>() -> Result<[u8; N], Error> {
     let mut bytes = [0; N];
-    #[cfg(not(target_arch = "wasm32"))]
-    getrandom::fill(&mut bytes).map_err(|e| Error::internal(format!("no randomness from the system: {e}")))?;
-    #[cfg(target_arch = "wasm32")]
-    {
-        use wasm_bindgen::JsCast;
-        let crypto = js_sys::Reflect::get(&js_sys::global(), &"crypto".into())
-            .ok()
-            .and_then(|c| c.dyn_into::<web_sys::Crypto>().ok())
-            .ok_or_else(|| Error::internal("the browser has no crypto"))?;
-        crypto.get_random_values_with_u8_array(&mut bytes).map_err(|e| Error::internal(format!("no randomness from the browser: {e:?}")))?;
-    }
+    platform::system::secure_random(&mut bytes)?;
     Ok(bytes)
 }
 
@@ -300,23 +286,6 @@ pub(crate) fn secure_random<const N: usize>() -> Result<[u8; N], Error> {
 pub fn random_u64() -> u64 {
     match secure_random::<8>() {
         Ok(bytes) => u64::from_le_bytes(bytes),
-        Err(_) => clock_random_u64(),
-    }
-}
-
-fn clock_random_u64() -> u64 {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        use std::hash::{BuildHasher, Hasher};
-        // (The standard library's hasher keys come from the system's
-        // randomness, once a process, then counted on.)
-        let mut h = std::collections::hash_map::RandomState::new().build_hasher();
-        h.write_u128(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos()));
-        h.finish()
-    }
-    #[cfg(target_arch = "wasm32")]
-    {
-        let half = || (js_sys::Math::random() * 4294967296.0) as u64;
-        half() << 32 | half()
+        Err(_) => platform::system::clock_random_u64(),
     }
 }

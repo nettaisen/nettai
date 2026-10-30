@@ -153,7 +153,7 @@ export global Theme {
     out property <length> menu-word: phone ? 32px : 48px;
     out property <length> menu-tracking: cjk ? 1px : phone ? 2.4px : 3.6px;
 
-    // The app runs in a browser (nettai-web): no Steam, no direct links, the browser's own dialogs.
+    // The app runs in a browser (the web build): no Steam, no direct links, the browser's own dialogs.
     in property <bool> web;
     // The app is a phone's (iOS, Android), whatever its window's shape: no Steam, nothing dragged onto it, the
     // system's own pickers and share sheet. (`phone`, below, is the upright layout.)

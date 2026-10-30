@@ -18,9 +18,11 @@ wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 web-time = "1"
 
-# Android's folders, the activity's (`getFilesDir`, `getCacheDir`), through JNI.
+# Android's folders, the activity's (`getFilesDir`, `getCacheDir`), through JNI (ndk-context's VM and activity, which
+# android-activity sets).
 [target.'cfg(target_os = "android")'.dependencies]
-nettai-android = { path = "../nettai-android" }
+jni = "0.22"
+ndk-context = "0.1"
 
 [dev-dependencies]
 # The browser's tree's locks and times, in its tests on the desktop.

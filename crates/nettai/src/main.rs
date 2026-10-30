@@ -14,7 +14,7 @@ async fn main() -> Result<(), slint::PlatformError> {
     tokio::task::block_in_place(nettai::run)
 }
 
-/// (A browser's page runs the app through crates/nettai-web, without tokio: its fetch is the page's.)
+/// (A browser's page runs the app through the library's own calls, `page`'s, without tokio: its fetch is the page's.)
 #[cfg(target_arch = "wasm32")]
 fn main() -> Result<(), slint::PlatformError> {
     nettai::run()
