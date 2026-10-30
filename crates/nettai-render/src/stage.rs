@@ -9,7 +9,7 @@
 //! tinted, never a hole; so is a highlight it lacks ([`FieldArt`]).
 
 use crate::audit::Problems;
-use crate::compose::{Layer, HEIGHT, WIDTH};
+use crate::compose::{Layer, HEIGHT};
 use crate::lookups;
 use crate::graphics::Graphics;
 use nettai_assets::{AnimTarget, Background, Bundle, Field, GfxAnim, MapEntry, Palette, PaletteAnim};
@@ -273,19 +273,24 @@ impl<'a> Stage<'a> {
         }
     }
 
-    /// The background layer.
+    /// The background layer, across its whole width (it wraps): a layer
+    /// wider than the original's screen shows it on past both of that
+    /// screen's edges.
     pub fn draw_background(&self, layer: &mut Layer) {
         let Some(bg) = self.background else { return };
         let (w, h) = (bg.map_width as i32 * 8, bg.map_height as i32 * 8);
         if w == 0 || h == 0 {
             return;
         }
-        // Draw the tiles overlapping the screen, then let the layer clip.
+        // Draw the tiles overlapping the layer, from its first column (on
+        // the original's screen), then let the layer clip.
         let (sx, sy) = (self.scroll.0.rem_euclid(w), self.scroll.1.rem_euclid(h));
+        let left = -layer.origin;
+        let first = left - (left + sx).rem_euclid(8);
         for ty in 0..=(HEIGHT as i32 / 8 + 1) {
-            for tx in 0..=(WIDTH as i32 / 8 + 1) {
-                let (px, py) = (tx * 8 - sx % 8, ty * 8 - sy % 8);
-                let mx = ((sx / 8 + tx) % bg.map_width as i32) as usize;
+            for tx in 0..=(layer.width as i32 / 8 + 1) {
+                let (px, py) = (first + tx * 8, ty * 8 - sy % 8);
+                let mx = ((px + sx) / 8).rem_euclid(bg.map_width as i32) as usize;
                 let my = ((sy / 8 + ty) % bg.map_height as i32) as usize;
                 let e = bg.map[my * bg.map_width as usize + mx];
                 self.put(layer, e, px, py);
@@ -300,10 +305,10 @@ impl<'a> Stage<'a> {
     }
 
     /// The background as [`Stage::draw_background`] draws it, `w` by `h`
-    /// pixels from the screen's top left (wider and taller than the screen:
-    /// the pixels a glide shows past its edges), its colors through
-    /// `color`, `backdrop` where it is clear.
-    pub fn draw_background_wide(&self, w: usize, h: usize, backdrop: u16, color: impl Fn(u16) -> u16) -> Vec<u16> {
+    /// pixels from the top of the original screen's column `left` (wider
+    /// and taller than the frame: the pixels a glide shows past its edges),
+    /// its colors through `color`, `backdrop` where it is clear.
+    pub fn draw_background_wide(&self, left: i32, w: usize, h: usize, backdrop: u16, color: impl Fn(u16) -> u16) -> Vec<u16> {
         let mut out = vec![color(backdrop); w * h];
         let Some(bg) = self.background else { return out };
         let (mw, mh) = (bg.map_width as i32 * 8, bg.map_height as i32 * 8);
@@ -311,10 +316,13 @@ impl<'a> Stage<'a> {
             return out;
         }
         let (sx, sy) = (self.scroll.0.rem_euclid(mw), self.scroll.1.rem_euclid(mh));
+        // (Its columns from `out`'s first; the tiles from the one that
+        // holds it.)
+        let first = -(left + sx).rem_euclid(8);
         for ty in 0..=(h as i32 / 8 + 1) {
             for tx in 0..=(w as i32 / 8 + 1) {
-                let (px, py) = (tx * 8 - sx % 8, ty * 8 - sy % 8);
-                let mx = ((sx / 8 + tx) % bg.map_width as i32) as usize;
+                let (px, py) = (first + tx * 8, ty * 8 - sy % 8);
+                let mx = ((left + px + sx) / 8).rem_euclid(bg.map_width as i32) as usize;
                 let my = ((sy / 8 + ty) % bg.map_height as i32) as usize;
                 let e = bg.map[my * bg.map_width as usize + mx];
                 let Some(tile) = self.tile(e.tile) else { continue };
@@ -363,9 +371,7 @@ impl<'a> Stage<'a> {
         let blank = |layer: &mut Layer, col: i32, row: i32, w: i32, h: i32| {
             for y in row * 8 - cy..(row + h) * 8 - cy {
                 for x in col * 8 - cx..(col + w) * 8 - cx {
-                    if (0..WIDTH as i32).contains(&x) && (0..HEIGHT as i32).contains(&y) {
-                        layer.pixels[y as usize * WIDTH + x as usize] = crate::compose::CLEAR;
-                    }
+                    layer.clear_pixel(x, y);
                 }
             }
         };
@@ -536,6 +542,7 @@ fn anim_frame(anim: &GfxAnim, calls: u32) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::compose::WIDTH;
     use nettai_assets::{GfxAnimFrame, Tiles};
     use nettai_battle::content::testing;
 
@@ -712,7 +719,7 @@ mod tests {
         let stage = at(3);
         let mut layer = Layer::new(3, 1);
         stage.draw_background(&mut layer);
-        let wide = stage.draw_background_wide(WIDTH + 1, HEIGHT + 1, 0x7C00, |c| c);
+        let wide = stage.draw_background_wide(0, WIDTH + 1, HEIGHT + 1, 0x7C00, |c| c);
         for y in 0..HEIGHT {
             assert_eq!(&wide[y * (WIDTH + 1)..y * (WIDTH + 1) + WIDTH], &layer.pixels[y * WIDTH..(y + 1) * WIDTH], "row {y}");
         }

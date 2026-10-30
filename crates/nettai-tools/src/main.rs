@@ -11,6 +11,7 @@ use nettai_frontend::driver::{Driver, InFight, LivePlayer, Opponent};
 use nettai_frontend::game::{Failed, Game, LoadError, RomSource, Sound};
 use nettai_frontend::player::Player;
 use nettai_frontend::session;
+use nettai_render::compose::{OldEdges, Wide};
 use nettai_render::{Consoles, GraphicsMode};
 use nettai_render::vfont::TextRenderer;
 use nettai_tools::headless;
@@ -51,6 +52,11 @@ struct Args {
     marks: Vec<String>,
     out: PathBuf,
     png_scale: usize,
+    /// With --headless: the enhanced mode's frames this many columns wide
+    /// (none: the original's 240), and what they show of the sprites past
+    /// the original's edges.
+    width: Option<usize>,
+    old_edges: Option<OldEdges>,
     mode: GraphicsMode,
     font: Option<PathBuf>,
     lang: String,
@@ -136,6 +142,13 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    in --out (default .)
   --out DIR        where --headless writes
   --png-scale N    with --headless: each frame N times its size
+  --width N        with --headless, in the enhanced mode: each frame N
+                   columns wide (240 or more; default 240), as a window that
+                   wide at the frame's height shows it: the field in the
+                   middle, the background on to both edges
+  --old-edges E    with --width: what a frame wider than 240 shows of the
+                   sprites the battle draws past the original's edges: show
+                   (default: each where it falls) or cut (cut at those edges)
   --time           with --headless: draw each of FRAMES at --png-scale and
                    write none, and say how long making and presenting a
                    frame took, and the drawings read and rasterized
@@ -216,6 +229,8 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         marks: Vec::new(),
         out: PathBuf::from("."),
         png_scale: 1,
+        width: None,
+        old_edges: None,
         mode: GraphicsMode::Enhanced,
         font: None,
         lang: nettai_assets::BASE_LANGUAGE.into(),
@@ -262,6 +277,11 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
             "--mark" => a.marks.extend(value("--mark")?.split(',').filter(|m| !m.is_empty()).map(str::to_string)),
             "--out" => a.out = value("--out")?.into(),
             "--png-scale" => a.png_scale = number(value("--png-scale")?, "--png-scale")? as usize,
+            "--width" => {
+                let v = value("--width")?;
+                a.width = Some(number(v.clone(), "--width")?.try_into().ok().filter(|&n: &usize| n >= 240).ok_or_else(|| format!("bad --width {v:?} (240 or more)"))?);
+            }
+            "--old-edges" => a.old_edges = Some(value("--old-edges")?.parse()?),
             "--text" => a.mode = value("--text")?.parse()?,
             "--font" => a.font = Some(value("--font")?.into()),
             "--lang" => a.lang = value("--lang")?,
@@ -338,9 +358,15 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
     if !a.traces.is_empty() && a.headless.is_none() && !a.audit {
         return Err("a trace is rendered (--headless F) or audited (--audit); no window watches one".into());
     }
-    let headless_only = a.objects || a.time || !a.marks.is_empty() || a.png_scale != 1;
+    let headless_only = a.objects || a.time || !a.marks.is_empty() || a.png_scale != 1 || a.width.is_some();
     if headless_only && a.headless.is_none() {
-        return Err("--objects, --time, --mark and --png-scale go with --headless".into());
+        return Err("--objects, --time, --mark, --png-scale and --width go with --headless".into());
+    }
+    if a.width.is_some() && a.mode == GraphicsMode::Original {
+        return Err("--width draws the enhanced mode's frames wider; the original mode's are the original's 240x160".into());
+    }
+    if a.old_edges.is_some() && a.width.is_none() {
+        return Err("--old-edges goes with --width".into());
     }
     Ok(a)
 }
@@ -692,6 +718,9 @@ fn main() {
     let mut renderer = graphics.renderer(args.mode, font.clone());
     renderer.problems.marking = args.marks.iter().cloned().collect();
     renderer.consoles = args.consoles;
+    if let Some(width) = args.width {
+        renderer.wide = Wide::new(width, args.old_edges.unwrap_or_default());
+    }
     if args.audit {
         let setup = headless::AuditSetup {
             graphics: renderer.graphics().clone(),
@@ -835,7 +864,12 @@ mod tests {
             (vec!["--replay", "r.nettaireplay", "--headless", "1", "--opponent", "still"], "--opponent plays the other side of a match file's set played headless (--match FILE --headless F)"),
             (vec!["--match", "m.toml", "--headless", "1", "--opponent", "ai"], "bad --opponent \"ai\" (still, moves or attacks)"),
             (vec!["a.jsonl", "b.jsonl", "--headless", "1"], "one trace at a time (several with --audit)"),
-            (vec!["--match", "m.toml", "--objects"], "--objects, --time, --mark and --png-scale go with --headless"),
+            (vec!["--match", "m.toml", "--objects"], "--objects, --time, --mark, --png-scale and --width go with --headless"),
+            (vec!["--match", "m.toml", "--width", "284"], "--objects, --time, --mark, --png-scale and --width go with --headless"),
+            (vec!["--match", "m.toml", "--headless", "1", "--width", "284", "--text", "original"], "--width draws the enhanced mode's frames wider; the original mode's are the original's 240x160"),
+            (vec!["--match", "m.toml", "--headless", "1", "--width", "200"], "bad --width \"200\" (240 or more)"),
+            (vec!["--match", "m.toml", "--headless", "1", "--old-edges", "cut"], "--old-edges goes with --width"),
+            (vec!["--match", "m.toml", "--headless", "1", "--width", "284", "--old-edges", "hide"], "no old edges \"hide\" (show or cut)"),
             (vec!["--match", "m.toml", "--mp4", "o.mp4"], "--mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
             (vec!["--replay", "r.nettaireplay", "--mp4", "o.mp4", "--headless", "1"], "--mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
             (vec!["--replay", "r.nettaireplay", "--nut", "-"], "unknown option --nut (a window's options are nettai's)"),

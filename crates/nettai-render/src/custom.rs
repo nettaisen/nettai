@@ -558,6 +558,7 @@ fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, form: Op
         affine: None,
         fade: None,
         clip: None,
+        anchor: crate::compose::Anchor::Center,
     })
 }
 
@@ -2328,6 +2329,7 @@ fn form_list_cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<S
             affine: None,
             fade: None,
             clip: None,
+            anchor: crate::compose::Anchor::Center,
         })
         .collect()
 }
@@ -2377,6 +2379,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
             affine: None,
             fade: None,
             clip: None,
+            anchor: crate::compose::Anchor::Center,
         })
         .collect()
 }
@@ -2459,6 +2462,7 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
         affine: Some(Affine { pa: m(cos), pb: m(sin), pc: m(-sin), pd: m(cos), double: false }),
         fade: None,
         clip: None,
+        anchor: crate::compose::Anchor::Center,
     }
 }
 
@@ -2520,6 +2524,7 @@ fn element_part<'a>(v: &View, a: &'a CustomScreen, place: Placement) -> Option<S
         affine: None,
         fade: None,
         clip: None,
+        anchor: crate::compose::Anchor::Center,
     })
 }
 
@@ -2581,6 +2586,7 @@ fn held_part<'a>(v: &View, graphics: &crate::graphics::Graphics<'a>, problems: &
         affine: None,
         fade: None,
         clip: None,
+        anchor: crate::compose::Anchor::Center,
     })
 }
 
@@ -2602,6 +2608,7 @@ fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
         affine: None,
         fade: None,
         clip: None,
+        anchor: crate::compose::Anchor::Center,
     }
 }
 

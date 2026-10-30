@@ -276,12 +276,14 @@ impl Mirror {
         }
     }
 
-    /// `from`'s pixels put into `to`, each moved with its block or
-    /// mirrored.
+    /// `from`'s pixels put into `to` (a layer as wide), each moved with its
+    /// block or mirrored, on the original's screen.
     pub fn layer(&self, from: &Layer, to: &mut Layer) {
         if !to.drawn {
             return;
         }
+        debug_assert_eq!(from.width, to.width);
+        let w = from.width as i32;
         // (In three passes: a block's pixels mirrored where no block moves
         // to, which fills what a block laid in a larger frame leaves
         // (that frame's part about it, the chip window's box's edge); the
@@ -289,12 +291,12 @@ impl Mirror {
         // a block's frame took of it.)
         for pass in 0..3 {
             for y in 0..HEIGHT {
-                for x in 0..WIDTH {
-                    let i = y * WIDTH + x;
+                for x in 0..w {
+                    let i = y * w as usize + x as usize;
                     if from.pixels[i] == CLEAR {
                         continue;
                     }
-                    let (px, py) = (x as i32, y as i32);
+                    let (px, py) = (x - from.origin, y as i32);
                     let mirrored = WIDTH as i32 - 1 - px;
                     let at = self.slide
                         + match (pass, self.block(px, py)) {
@@ -303,8 +305,9 @@ impl Mirror {
                             (2, None) => mirrored,
                             _ => continue,
                         };
-                    if (0..WIDTH as i32).contains(&at) {
-                        let j = y * WIDTH + at as usize;
+                    let at = at + to.origin;
+                    if (0..w).contains(&at) {
+                        let j = y * w as usize + at as usize;
                         to.pixels[j] = from.pixels[i];
                         to.past_ranged[j] = from.past_ranged[i];
                     }
@@ -572,6 +575,7 @@ mod tests {
             affine: None,
             fade: None,
             clip: None,
+            anchor: crate::compose::Anchor::Center,
         };
         let m = Mirror::new(Vec::new());
         let mut parts = [part.clone()];

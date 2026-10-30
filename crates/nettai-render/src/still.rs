@@ -23,7 +23,7 @@ pub fn background(graphics: &GameGraphics, c: &Content, id: BackgroundId, w: usi
     let background = graphics.background(c, id)?;
     let stage = Stage::new(&graphics, c, Some(background), StageClock::default(), false);
     let backdrop = stage.palettes[0][0];
-    Some(stage.draw_background_wide(w, h, backdrop, |c| c).into_iter().map(to_rgb).collect())
+    Some(stage.draw_background_wide(0, w, h, backdrop, |c| c).into_iter().map(to_rgb).collect())
 }
 
 /// Battle `b`'s field as it is, its panels and the objects `keep` on them

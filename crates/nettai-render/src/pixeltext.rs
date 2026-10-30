@@ -22,7 +22,7 @@
 //! Private Use Area, §10.5), never the fonts' own glyphs there, which are
 //! other things.
 
-use crate::compose::{WIDTH, apply_fade};
+use crate::compose::apply_fade;
 use crate::render::Frame;
 use crate::textlayer::{Align, Rect, TextItem};
 use crate::vfont::{Cut, Role};
@@ -312,14 +312,15 @@ impl PixelText {
                 }
             }
         }
-        let clip = item.clip.intersect(Rect::SCREEN);
+        let width = frame.width();
+        let clip = item.clip.intersect(Rect::new(0, 0, width as i32, crate::compose::HEIGHT as i32));
         let fade = |c: u16| apply_fade(apply_fade(c, item.fades[0]), item.fades[1]);
         let colors = [0, fade(item.face), item.shadow.map_or(0, fade)];
         let mut put = |x: i32, y: i32, v: u8| {
             if v == 0 || (v == 2 && item.shadow.is_none()) || x < clip.x || x >= clip.x + clip.w || y < clip.y || y >= clip.y + clip.h {
                 return;
             }
-            let i = y as usize * WIDTH + x as usize;
+            let i = y as usize * width + x as usize;
             if frame.depth.get(i).is_some_and(|&d| d < item.depth) {
                 return;
             }
@@ -353,7 +354,7 @@ impl PixelText {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compose::HEIGHT;
+    use crate::compose::{HEIGHT, WIDTH};
 
     fn frame(items: Vec<TextItem>) -> Frame {
         Frame { pixels: vec![0x1234; WIDTH * HEIGHT], depth: vec![u32::MAX; WIDTH * HEIGHT], text: items, ..Frame::default() }

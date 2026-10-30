@@ -1461,6 +1461,46 @@ loads with the frontend's `Options::default()`. Off: `Renderer::new` and
 trace replays and the identity checks use; and every frame in the original
 mode, byte for byte as before the mode had motion.
 
+### Wider than the original
+
+In the enhanced mode a frame may be wider than the original's 240 columns
+(`Renderer::wide`, `compose::Wide`; the widescreen mockups the user chose,
+layout B, are nettai-verify's docs/nettai-ui/widescreen): 160 rows of `W`
+columns (`Frame::width`), shown at a whole multiple as any frame is
+(`present::Placement::fit`). The original mode's frames are the original's
+240x160 whatever it says (`Renderer::frame_wide`), so the frame comparisons
+and every trace replay see what they always have.
+
+- Every piece is laid out on the original's screen as before and put in
+  the frame by where it keeps to (`compose::Anchor`): the original's
+  columns sit in the middle, `m = (W - 240) / 2` columns from the left edge
+  (an odd column left over on their right). The layers are as wide as the
+  frame (`Layer::width`); a piece is drawn into one at its `origin`, the
+  column the original's column 0 is at. A sprite part carries its anchor:
+  the battle's objects `Field`, the HUD's and the custom screen's `Center`
+  for now (they move with the field until each keeps to its edge).
+- The background is drawn across the whole width, on from the original's
+  columns as the same scroll has it (it wraps: `Stage::draw_background`;
+  the glide's picture too, `Stage::draw_background_wide`). The fades,
+  flashes and dimmings reach all of it, as they reach the background
+  layer and the backdrop in the original's columns.
+- A sprite part's 9-bit X reads as the hardware reads it on the
+  original's screen, and where a wider frame shows columns left of that
+  screen, a part that reaches past 512 less those columns as left of it
+  (`compose::sprite_x`): the original's screen shows the same either way.
+  The original's culling stays as it is (an object's anchor 64 left of
+  the screen to 305), so what it culls shows in no frame.
+- What the frame shows of the battle's sprites past the old edges (a shot
+  flying off the field, an effect half off the screen, a navi's back at
+  the field's edge) is a choice the user has not made yet
+  (`compose::OldEdges`, nettai-tool's `--old-edges`): `Show` draws each
+  where it falls, `Cut` keeps the objects' sprites to the original's
+  columns (the background and the HUD are not cut). One of them goes once
+  the user picks.
+
+nettai-tool draws them with `--headless F --width N [--old-edges show|cut]`
+(the enhanced mode only).
+
 ### Both on one screen
 
 A frame shows the local side's console's screen (`Renderer::consoles`,

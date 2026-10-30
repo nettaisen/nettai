@@ -156,6 +156,18 @@ impl TextItem {
         let face = number.fill.first().copied().unwrap_or(0);
         TextItem { fitted: Some(number), ..TextItem::new(text, Role::Cell, rect, face, None) }
     }
+
+    /// The item laid out on the original's screen put in a frame `width`
+    /// columns wide, that screen's column 0 at its column `origin`
+    /// (`compose::Wide::origin`): its box and its clip moved there, the
+    /// whole screen's clip the whole frame's.
+    pub fn placed(self, origin: i32, width: usize) -> TextItem {
+        let clip = match self.clip == Rect::SCREEN {
+            true => Rect::new(0, 0, width as i32, HEIGHT as i32),
+            false => self.clip.offset(origin, 0),
+        };
+        TextItem { rect: self.rect.offset(origin, 0), clip, ..self }
+    }
 }
 
 /// How the game-style lettering is painted, from the picture it stands in
@@ -420,15 +432,16 @@ impl<'f> TextSink<'f> {
 /// depth key and how many of the box's frame pixels (within its clip)
 /// something in front covers.
 pub fn describe(frame: &crate::render::Frame) -> Vec<String> {
+    let width = frame.width();
     frame
         .text
         .iter()
         .map(|t| {
-            let area = t.rect.intersect(t.clip).intersect(Rect::SCREEN);
+            let area = t.rect.intersect(t.clip).intersect(Rect::new(0, 0, width as i32, HEIGHT as i32));
             let mut covered = 0;
             for y in area.y..area.y + area.h {
                 for x in area.x..area.x + area.w {
-                    if frame.depth.get(y as usize * WIDTH + x as usize).is_some_and(|&d| d < t.depth) {
+                    if frame.depth.get(y as usize * width + x as usize).is_some_and(|&d| d < t.depth) {
                         covered += 1;
                     }
                 }

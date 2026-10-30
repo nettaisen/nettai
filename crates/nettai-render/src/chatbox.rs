@@ -461,6 +461,7 @@ fn part(tiles: &Tiles, first_tile: usize, (x, y): (i32, i32), (width, height): (
         affine: None,
         fade: None,
         clip: None,
+        anchor: crate::compose::Anchor::Center,
     }
 }
 

@@ -3,8 +3,10 @@
 //! Everything on screen is drawn from engine state (panels, objects with
 //! their sprite, animation frame and look, HP, the custom gauge) and the
 //! game's graphics, extracted from its ROMs (nettai-extract); nothing emulates the
-//! original's hardware. The frame is the original's 240x160, composed with
-//! its layer and sprite ordering rules ([`Renderer::render`]), with the
+//! original's hardware. The frame is the original's 240x160 (in the enhanced
+//! mode as wide as its window, the original's in the middle:
+//! [`compose::Wide`]), composed with its layer and sprite ordering rules
+//! ([`Renderer::render`]), with the
 //! enhanced mode's text items to draw over it at the output's resolution
 //! ([`present`], which also writes a frame as a PNG). A chip's pictures
 //! on their own are [`pictures`]. A frame shows one console's screen, or

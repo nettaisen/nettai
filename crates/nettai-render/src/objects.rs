@@ -599,6 +599,7 @@ pub fn queue_objects<'a>(
                     affine: None,
                     fade: None,
                     clip: None,
+                    anchor: crate::compose::Anchor::Field,
                 };
                 // Ground shadows go one layer back, in the first bucket.
                 // Where the rules count the sprite's priority into the
@@ -719,6 +720,7 @@ mod tests {
             affine: None,
             fade: None,
             clip: None,
+            anchor: crate::compose::Anchor::Field,
         };
         let mut list = SpriteList::default();
         list.insert_group(vec![(2, 100, part(1)), (2, 100, part(2))]);

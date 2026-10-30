@@ -31,11 +31,11 @@
 //! counter, a banner's step and timer, the emblem's matrix, the camera's and the
 //! objects' 16.16 places. Nothing reads a clock and nothing is kept in the
 //! simulation, its snapshot or its digest; a rollback that draws a frame
-//! again, a replay and a video draw it the same. The frame's own 240x160
-//! pixels (`Frame::pixels`) are a whole-pixel picture of the same, as the
+//! again, a replay and a video draw it the same. The frame's own pixels
+//! (`Frame::pixels`) are a whole-pixel picture of the same, as the
 //! original's are.
 
-use crate::compose::{Affine, Fade, HEIGHT, SpritePart, WIDTH, apply_fade, to_rgb};
+use crate::compose::{Affine, Fade, HEIGHT, SpritePart, apply_fade, to_rgb};
 use crate::present::Placement;
 
 /// The enhanced mode's motion in a drawing of the frame: on or off (the
@@ -63,7 +63,7 @@ pub struct Nudge {
 /// Whether the output column `dx` (from the frame's left edge, of
 /// `place.width`) shows the nudged frame.
 pub(crate) fn nudged_column(nudge: &Nudge, dx: i32, place: &Placement) -> bool {
-    ((dx as i64 * 16 * WIDTH as i64 / place.width as i64) % 16) < nudge.sub as i64
+    ((dx as i64 * 16 * place.columns as i64 / place.width as i64) % 16) < nudge.sub as i64
 }
 
 /// The frame drawn again with the field layer a pixel up, and the part of
@@ -128,15 +128,19 @@ pub struct Overlay {
     /// Its true place less `x` and `y`, 16.16 pixels right and down
     /// (`objects::Fine`).
     pub fine: (i32, i32),
+    /// The frame's columns it is drawn in (the first, one past the last:
+    /// `compose::Wide::columns`).
+    pub columns: [i32; 2],
 }
 
 impl Overlay {
     /// The overlay of `part`, the frame's sprite of depth key `depth`
     /// whose true place is `fine` off its own, its colors through the
-    /// sprites' fade then the screen's (`fades`); none for a part the frame
-    /// draws as it is (neither squashed nor turned and at its true place,
-    /// or blended or in mosaic, which the frame's composition mixes).
-    pub fn of(part: &SpritePart, depth: u32, fades: [Fade; 2], fine: (i32, i32)) -> Option<Overlay> {
+    /// sprites' fade then the screen's (`fades`), where `wide` puts it;
+    /// none for a part the frame draws as it is (neither squashed nor
+    /// turned and at its true place, or blended or in mosaic, which the
+    /// frame's composition mixes).
+    pub fn of(part: &SpritePart, wide: crate::compose::Wide, depth: u32, fades: [Fade; 2], fine: (i32, i32)) -> Option<Overlay> {
         // (A part kept to some columns, the frame draws: `SpritePart::clip`.)
         if part.alpha.is_some() || part.mosaic.is_some() || part.clip.is_some() {
             return None;
@@ -163,10 +167,11 @@ impl Overlay {
             Reading::Turned(m) if m.double => (2 * w, 2 * h),
             _ => (w, h),
         };
-        // (Its place wrapped as the hardware's.)
-        let x = if part.x as i32 + bw > 0x200 { part.x as i32 - 0x200 } else { part.x as i32 };
+        // (Its place wrapped as the hardware's, where `wide` puts it.)
+        let (columns, origin) = part.placed(wide);
+        let x = crate::compose::sprite_x(part.x, bw, origin) + origin;
         let y = if part.y as i32 + bh > 0x100 { part.y as i32 - 0x100 } else { part.y as i32 };
-        Some(Overlay { x, y, width: bw, height: bh, texture_width: w, texels, reading, depth, fine })
+        Some(Overlay { x, y, width: bw, height: bh, texture_width: w, texels, reading, depth, fine, columns })
     }
 
     /// The texel an output pixel shows, by its top left corner and its
@@ -217,6 +222,7 @@ pub(crate) fn draw_overlays(overlays: &[Overlay], depth: &[u32], nudge: Option<&
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn draw_overlays_covering(overlays: &[Overlay], depth: &[u32], nudge: Option<&Nudge>, lift: Option<&Lift>, place: &Placement, out: &mut [u32], w: usize, mut cover: Option<&mut [u32]>) {
     let s = place.scale as f64;
+    let columns = place.columns;
     for o in overlays.iter().rev() {
         let left = o.x as f64 + o.fine.0 as f64 / 65536.0;
         let top = o.y as f64 + o.fine.1 as f64 / 65536.0;
@@ -230,12 +236,16 @@ pub(crate) fn draw_overlays_covering(overlays: &[Overlay], depth: &[u32], nudge:
             let (cy, my) = (dy as f64 / s - top, (dy as f64 + 0.5) / s - top);
             let lifted = lift.filter(|l| lifted_row(l, dy, place));
             for dx in x0..x1 {
+                let fx = dx * columns / place.width;
+                if !(o.columns[0]..o.columns[1]).contains(&fx) {
+                    continue;
+                }
                 let Some(color) = o.texel((dx as f64 / s - left, cy), ((dx as f64 + 0.5) / s - left, my)) else { continue };
-                let fx = (dx * WIDTH as i32 / place.width) as usize;
+                let at = fy * columns as usize + fx as usize;
                 let front = match (lifted, nudge) {
-                    (Some(l), _) => l.depth[fy * WIDTH + fx],
-                    (None, Some(n)) if nudged_column(n, dx, place) => n.depth[fy * WIDTH + fx],
-                    _ => depth[fy * WIDTH + fx],
+                    (Some(l), _) => l.depth[at],
+                    (None, Some(n)) if nudged_column(n, dx, place) => n.depth[at],
+                    _ => depth[at],
                 };
                 if front < o.depth {
                     continue;
@@ -253,7 +263,7 @@ pub(crate) fn draw_overlays_covering(overlays: &[Overlay], depth: &[u32], nudge:
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compose::{BACKDROP_DEPTH, Fades, Layer, Palettes, compose_with_depth, sprite_depth};
+    use crate::compose::{BACKDROP_DEPTH, Fades, Layer, Palettes, WIDTH, compose_with_depth, sprite_depth};
     use nettai_assets::Tiles;
 
     /// A 16x16 glyph's part whose texel rows are colored by their row.
@@ -275,6 +285,7 @@ mod tests {
             affine: None,
             fade: None,
             clip: None,
+            anchor: crate::compose::Anchor::Center,
         }
     }
 
@@ -295,12 +306,12 @@ mod tests {
     fn a_part_between_pixels_is_drawn_where_it_truly_is() {
         let tiles = row_tiles();
         let part = rows_part(&tiles, None);
-        assert!(Overlay::of(&part, sprite_depth(0, 0), [Fade::None; 2], (0, 0)).is_none());
+        assert!(Overlay::of(&part, crate::compose::Wide::ORIGINAL, sprite_depth(0, 0), [Fade::None; 2], (0, 0)).is_none());
         let empty = Layer { palettes: Palettes::Hud, ..Layer::new(3, 0) };
         let (_, depth) = compose_with_depth(0, &[&empty], &[], Fades::default());
         let drawn = |fine: (i32, i32), scale: usize| {
-            let overlay = Overlay::of(&part, sprite_depth(0, 0), [Fade::None; 2], fine).unwrap();
-            let place = Placement::fit(scale * WIDTH, scale * HEIGHT);
+            let overlay = Overlay::of(&part, crate::compose::Wide::ORIGINAL, sprite_depth(0, 0), [Fade::None; 2], fine).unwrap();
+            let place = Placement::fit(WIDTH, scale * WIDTH, scale * HEIGHT);
             let mut out = vec![to_rgb(0); scale * scale * WIDTH * HEIGHT];
             draw_overlays(&[overlay], &depth, None, None, &place, &mut out, scale * WIDTH);
             out
@@ -332,8 +343,8 @@ mod tests {
             let empty = Layer { palettes: Palettes::Hud, ..Layer::new(3, 0) };
             let (framed, _) = compose_with_depth(0, &[&empty], std::slice::from_ref(&part), Fades::default());
             let (bare, depth) = compose_with_depth(0, &[&empty], &[], Fades::default());
-            let overlay = Overlay::of(&part, sprite_depth(0, 0), [Fade::None; 2], (0, 0)).unwrap();
-            let place = Placement::fit(WIDTH, HEIGHT);
+            let overlay = Overlay::of(&part, crate::compose::Wide::ORIGINAL, sprite_depth(0, 0), [Fade::None; 2], (0, 0)).unwrap();
+            let place = Placement::fit(WIDTH, WIDTH, HEIGHT);
             let mut out: Vec<u32> = bare.iter().map(|&c| to_rgb(c)).collect();
             draw_overlays(&[overlay], &depth, None, None, &place, &mut out, WIDTH);
             let want: Vec<u32> = framed.iter().map(|&c| to_rgb(c)).collect();
@@ -347,8 +358,8 @@ mod tests {
     fn at_three_times_a_squash_reads_the_outputs_rows() {
         let tiles = row_tiles();
         let part = rows_part(&tiles, Some(0x200));
-        let overlay = Overlay::of(&part, sprite_depth(0, 0), [Fade::None; 2], (0, 0)).unwrap();
-        let place = Placement::fit(3 * WIDTH, 3 * HEIGHT);
+        let overlay = Overlay::of(&part, crate::compose::Wide::ORIGINAL, sprite_depth(0, 0), [Fade::None; 2], (0, 0)).unwrap();
+        let place = Placement::fit(WIDTH, 3 * WIDTH, 3 * HEIGHT);
         let rows = |out: &[u32], w: usize| -> Vec<u32> {
             let mut seen: Vec<u32> = (0..3 * HEIGHT).map(|y| out[y * w + 3 * 42]).filter(|&c| c != 0).collect();
             seen.dedup();
@@ -357,7 +368,7 @@ mod tests {
         let mut out = vec![0u32; 9 * WIDTH * HEIGHT];
         draw_overlays(std::slice::from_ref(&overlay), &vec![BACKDROP_DEPTH; WIDTH * HEIGHT], None, None, &place, &mut out, 3 * WIDTH);
         let mut one = vec![0u32; WIDTH * HEIGHT];
-        draw_overlays(&[overlay], &vec![BACKDROP_DEPTH; WIDTH * HEIGHT], None, None, &Placement::fit(WIDTH, HEIGHT), &mut one, WIDTH);
+        draw_overlays(&[overlay], &vec![BACKDROP_DEPTH; WIDTH * HEIGHT], None, None, &Placement::fit(WIDTH, WIDTH, HEIGHT), &mut one, WIDTH);
         let frame_rows = {
             let mut seen: Vec<u32> = (0..HEIGHT).map(|y| one[y * WIDTH + 42]).filter(|&c| c != 0).collect();
             seen.dedup();
@@ -372,11 +383,11 @@ mod tests {
     fn what_is_in_front_keeps_its_pixels() {
         let tiles = row_tiles();
         let part = rows_part(&tiles, Some(0x100));
-        let overlay = Overlay { depth: sprite_depth(0, 3), ..Overlay::of(&part, 0, [Fade::None; 2], (0, 0)).unwrap() };
+        let overlay = Overlay { depth: sprite_depth(0, 3), ..Overlay::of(&part, crate::compose::Wide::ORIGINAL, 0, [Fade::None; 2], (0, 0)).unwrap() };
         let mut depth = vec![BACKDROP_DEPTH; WIDTH * HEIGHT];
         depth[35 * WIDTH + 42] = sprite_depth(0, 1);
         let mut out = vec![7u32; WIDTH * HEIGHT];
-        draw_overlays(&[overlay], &depth, None, None, &Placement::fit(WIDTH, HEIGHT), &mut out, WIDTH);
+        draw_overlays(&[overlay], &depth, None, None, &Placement::fit(WIDTH, WIDTH, HEIGHT), &mut out, WIDTH);
         assert_eq!(out[35 * WIDTH + 42], 7);
         assert_ne!(out[35 * WIDTH + 43], 7);
     }

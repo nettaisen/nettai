@@ -25,7 +25,7 @@
 //! its shapes one over another.
 //! docs/design/text-rendering.md §12.
 
-use crate::compose::{Fade, HEIGHT, WIDTH, apply_fade, to_rgb};
+use crate::compose::{Fade, HEIGHT, apply_fade, to_rgb};
 use crate::present::Placement;
 use crate::sdf::{Paint, RES, Sdf};
 use crate::textlayer::{Align, Rect, TextItem};
@@ -1070,7 +1070,7 @@ impl TextRenderer {
         // The frame pixel each output column and row of the picture shows.
         let columns: Vec<i32> = (0..place.width).map(|dx| place.frame_pixel(place.x + dx, place.y).map_or(0, |p| p.0)).collect();
         let rows: Vec<i32> = (0..place.height).map(|dy| place.frame_pixel(place.x, place.y + dy).map_or(0, |p| p.1)).collect();
-        let frame = FrameMap { x: place.x, y: place.y, columns: &columns, rows: &rows, cover };
+        let frame = FrameMap { x: place.x, y: place.y, width: place.columns, columns: &columns, rows: &rows, cover };
         // Back to front by depth, so one item in front of another covers it as the frame's own pixels do (the custom
         // screen's window drawn as shapes over an HP number under it); items of one depth in the order given.
         let mut order: Vec<&TextItem> = items.iter().collect();
@@ -1090,7 +1090,7 @@ impl TextRenderer {
             return;
         }
         let s = place.scale;
-        let clip = item.clip.intersect(Rect::SCREEN);
+        let clip = item.clip.intersect(frame.rect());
         if clip.is_empty() {
             return;
         }
@@ -1116,7 +1116,7 @@ impl TextRenderer {
             Some(i) => i,
             None => {
                 let local = TextItem { rect: Rect::new(0, 0, item.rect.w, item.rect.h), fine: (0, 0), clip: Rect::new(0, 0, item.rect.w, item.rect.h), ..item.clone() };
-                let lp = Placement { x: 0, y: 0, width: place.width, height: place.height, scale: s };
+                let lp = Placement { x: 0, y: 0, width: place.width, height: place.height, scale: s, columns: place.columns };
                 let i = std::sync::Arc::new(self.paint_text(&local, &layout, &lp).map(crate::rasters::Image::from).unwrap_or_default());
                 self.images.put(key, i.clone());
                 i
@@ -1199,7 +1199,7 @@ impl TextRenderer {
     #[allow(clippy::too_many_arguments)]
     fn draw_drawn(&mut self, item: &TextItem, d: &crate::textlayer::Drawn, depth: &[u32], place: &Placement, frame: &FrameMap, out: &mut [u32], out_w: usize) {
         let s = place.scale;
-        let clip = item.clip.intersect(Rect::SCREEN);
+        let clip = item.clip.intersect(frame.rect());
         if clip.is_empty() {
             return;
         }
@@ -1867,10 +1867,19 @@ fn letter_glyphs(shaper: &mut ShapeContext, font: FontRef, letter: char, size: f
 struct FrameMap<'f> {
     x: i32,
     y: i32,
+    /// The frame's columns.
+    width: i32,
     columns: &'f [i32],
     rows: &'f [i32],
     /// The overlays' depth keys on the output's pixels (none: no overlays).
     cover: Option<&'f [u32]>,
+}
+
+impl FrameMap<'_> {
+    /// The whole frame, in frame pixels.
+    fn rect(&self) -> Rect {
+        Rect::new(0, 0, self.width, HEIGHT as i32)
+    }
 }
 
 /// Where an item's pixels go: the output, through its clip and the frame's
@@ -1927,7 +1936,7 @@ impl Target<'_> {
     /// shows the frame pixel `(fx, fy)` in the clip ([`Target::row`],
     /// [`Target::column`]), where nothing in front of the item won it.
     fn blend_at(&mut self, x: i32, y: i32, (fx, fy): (i32, i32), rgb: u32, a: u8) {
-        if self.depth.get(fy as usize * WIDTH + fx as usize).is_some_and(|&d| d < self.key) {
+        if self.depth.get(fy as usize * self.frame.width as usize + fx as usize).is_some_and(|&d| d < self.key) {
             return;
         }
         debug_assert!((fy as usize) < HEIGHT);
@@ -1954,6 +1963,7 @@ impl Target<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::compose::WIDTH;
 
     fn renderer() -> TextRenderer {
         TextRenderer::new(std::sync::Arc::new(VectorFont::bundled()))

@@ -47,9 +47,10 @@ impl std::str::FromStr for GraphicsMode {
     }
 }
 
-/// A drawn frame: the 240x160 picture (BGR555), per pixel the depth key
-/// of what won it (`compose::depth_key`), and the text items to draw over
-/// it at the output's resolution (none in the original mode).
+/// A drawn frame: the picture (BGR555), 160 rows of the original's 240
+/// columns or more ([`Frame::width`], `Renderer::wide`), per pixel the
+/// depth key of what won it (`compose::depth_key`), and the text items to
+/// draw over it at the output's resolution (none in the original mode).
 #[derive(Clone, Debug, Default)]
 pub struct Frame {
     pub pixels: Vec<u16>,
@@ -74,8 +75,15 @@ pub struct Frame {
     pub drawings: Option<Arc<Vec<nettai_assets::shapes::Drawing>>>,
 }
 
+impl Frame {
+    /// Its columns.
+    pub fn width(&self) -> usize {
+        self.pixels.len() / compose::HEIGHT
+    }
+}
+
 /// A background between two of the frame's pixels: `present` draws the
-/// frame's background pixels from `pixels` (`Glide::WIDTH` by
+/// frame's background pixels from `pixels` ([`Glide::width`] by
 /// `Glide::HEIGHT`, from the frame's top left, faded as the frame's are)
 /// moved on by `sub` sixteenths of a pixel, at the output's resolution.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -89,8 +97,12 @@ pub struct Glide {
 
 impl Glide {
     /// A pixel more than the frame each way, for the part of one past it.
-    pub const WIDTH: usize = compose::WIDTH + 1;
     pub const HEIGHT: usize = compose::HEIGHT + 1;
+
+    /// Its columns: the frame's and one.
+    pub fn width(&self) -> usize {
+        self.pixels.len() / Self::HEIGHT
+    }
 }
 
 /// Picks battles; keeps its layer buffers between frames. It owns what it
@@ -177,6 +189,10 @@ pub struct Renderer {
     pub reduce_motion: bool,
     /// The drawings, gathered as they are set.
     drawings: Arc<Vec<nettai_assets::shapes::Drawing>>,
+    /// How wide the enhanced mode's frames are (the original's 240 columns,
+    /// the default, or as wide as a window shows them): the original mode's
+    /// are the original's, whatever this says.
+    pub wide: compose::Wide,
 }
 
 impl Renderer {
@@ -217,6 +233,7 @@ impl Renderer {
             scenery: StageClock::default(),
             custom_gauge: true,
             reduce_motion: false,
+            wide: compose::Wide::ORIGINAL,
         }
     }
 
@@ -265,6 +282,15 @@ impl Renderer {
     /// (`reduce_motion`).
     pub fn motion(&self) -> bool {
         self.mode == GraphicsMode::Enhanced && !self.reduce_motion
+    }
+
+    /// How wide the frames are: the enhanced mode's as `wide` says, the
+    /// original mode's the original's.
+    pub fn frame_wide(&self) -> compose::Wide {
+        match self.mode {
+            GraphicsMode::Enhanced => self.wide,
+            GraphicsMode::Original => compose::Wide::ORIGINAL,
+        }
     }
 
     /// The strings the frames drawn so far had to lay out to place what
@@ -352,7 +378,7 @@ impl Renderer {
         Self::view_for(b, self.consoles).camera.1 & 0xFFFF
     }
 
-    /// Draw a battle as a 240x160 frame with its text items.
+    /// Draw a battle as a frame (`Renderer::frame_wide`) with its text items.
     pub fn render(&mut self, b: &Battle) -> Frame {
         // (The enhanced mode's motion: the frame, and where the camera is
         // between whole pixels, the frame again with the field a pixel up;
@@ -382,11 +408,29 @@ impl Renderer {
         frame
     }
 
-    /// Draw a battle as a 240x160 frame with its text items, its motion as
-    /// `smooth` says.
+    /// Draw a battle as a frame with its text items, its motion as `smooth`
+    /// says.
     fn draw(&mut self, b: &Battle, smooth: Smooth) -> Frame {
         self.problems.known.clear();
         self.problems.marks.clear();
+        // (Every layer as wide as the frame; what is drawn on the original's
+        // screen in the middle of it, the background on to both edges.)
+        let wide = self.frame_wide();
+        let layers = [
+            &mut self.background,
+            &mut self.field,
+            &mut self.hud,
+            &mut self.names,
+            &mut self.hud_right,
+            &mut self.names_right,
+            &mut self.dialogue,
+            &mut self.scratch,
+            &mut self.scratch_names,
+        ];
+        for layer in layers {
+            layer.set_width(wide.width);
+            layer.origin = wide.origin(compose::Anchor::Center);
+        }
         // (The graphics for this frame: the layers and the problems are the
         // renderer's own fields, written while these are read.)
         let mut graphics = self.graphics.view();
@@ -626,49 +670,57 @@ impl Renderer {
             true => parts
                 .iter()
                 .enumerate()
-                .filter_map(|(i, p)| Some((i, Overlay::of(p, compose::sprite_depth(p.priority, i), [p.fade.unwrap_or(fades.sprites), fades.screen], fines[i])?)))
+                .filter_map(|(i, p)| Some((i, Overlay::of(p, wide, compose::sprite_depth(p.priority, i), [p.fade.unwrap_or(fades.sprites), fades.screen], fines[i])?)))
                 .collect(),
             false => Vec::new(),
         };
         let (pixels, depth) = if overlays.is_empty() {
-            compose::compose_with_depth(backdrop, &layers, &parts, fades)
+            compose::compose_wide(wide, backdrop, &layers, &parts, fades)
         } else {
             let mut kept = parts.clone();
             for &(i, _) in &overlays {
                 kept[i] = SpritePart { height: 0, ..kept[i].clone() };
             }
-            compose::compose_with_depth(backdrop, &layers, &kept, fades)
+            compose::compose_wide(wide, backdrop, &layers, &kept, fades)
         };
         let overlays = overlays.into_iter().map(|(_, o)| o).collect();
         // Each item's depth and fades: its layer's (the HUD layer's moved
         // with its shake), or its sprite parts' (an item whose parts the
-        // sprite limit dropped isn't drawn).
+        // sprite limit dropped isn't drawn); and its place in the frame, where
+        // its layer or its parts are put.
         note_missing_strings(&mut text, &mut self.problems);
         let text = text
             .into_items()
             .into_iter()
             .filter_map(|(plane, mut item)| {
-                let (depth, fade) = match plane {
+                let (depth, fade, origin) = match plane {
                     Plane::Hud => {
                         item.rect = item.rect.offset(-jx, -jy);
                         item.clip = item.clip.offset(-jx, -jy);
-                        (compose::layer_depth(&self.hud), if item.past_ranged { fades.hud_past_ranged } else { fades.hud })
+                        (compose::layer_depth(&self.hud), if item.past_ranged { fades.hud_past_ranged } else { fades.hud }, self.hud.origin)
                     }
                     Plane::OtherHud => {
                         item.rect = item.rect.offset(rx, -ry);
                         item.clip = item.clip.offset(rx, -ry);
-                        (compose::layer_depth(&self.hud_right), if item.past_ranged { fades.other_hud_past_ranged } else { fades.other_hud })
+                        (compose::layer_depth(&self.hud_right), if item.past_ranged { fades.other_hud_past_ranged } else { fades.other_hud }, self.hud_right.origin)
                     }
-                    Plane::Bg0 => (compose::layer_depth(&self.names), fades.hud),
-                    Plane::OtherBg0 => (compose::layer_depth(&self.names_right), fades.other_hud),
+                    Plane::Bg0 => (compose::layer_depth(&self.names), fades.hud, self.names.origin),
+                    Plane::OtherBg0 => (compose::layer_depth(&self.names_right), fades.other_hud, self.names_right.origin),
                     Plane::Sprite(tag) => {
                         let i = tags.iter().position(|&t| t == Some(tag))?;
-                        (compose::sprite_depth(parts[i].priority, i), parts[i].fade.unwrap_or(fades.sprites))
+                        let (origin, [c0, c1]) = (wide.origin(parts[i].anchor), wide.columns(parts[i].anchor));
+                        // (Kept to the columns its parts are drawn in, where
+                        // not the frame's: the field's under the old edges'
+                        // cut.)
+                        if [c0, c1] != [0, wide.width as i32] {
+                            item.clip = item.clip.intersect(Rect::new(c0 - origin, 0, c1 - c0, compose::HEIGHT as i32));
+                        }
+                        (compose::sprite_depth(parts[i].priority, i), parts[i].fade.unwrap_or(fades.sprites), origin)
                     }
                 };
                 item.depth = depth;
                 item.fades = [fade, fades.screen];
-                Some(item)
+                Some(item.placed(origin, wide.width))
             })
             .collect();
         // (The background between the whole pixels the frame shows, for the
@@ -676,7 +728,7 @@ impl Renderer {
         // a step every few frames otherwise.)
         let glide = (self.motion() && scene.background_sub() != (0, 0)).then(|| {
             let color = |c: u16| compose::apply_fade(compose::apply_fade(c, fades.stage), fades.screen);
-            let pixels = scene.draw_background_wide(Glide::WIDTH, Glide::HEIGHT, backdrop, color);
+            let pixels = scene.draw_background_wide(-self.background.origin, wide.width + 1, Glide::HEIGHT, backdrop, color);
             Glide { pixels, sub: scene.background_sub(), depth: compose::layer_depth(&self.background) }
         });
         let drawings = (!Vec::is_empty(&text)).then(|| self.drawings.clone());

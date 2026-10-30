@@ -1741,6 +1741,7 @@ fn glyph(tiles: &Tiles, k: usize, palette: Palette, x: i32, y: i32, priority: u8
         affine: None,
         fade: None,
         clip: None,
+        anchor: crate::compose::Anchor::Center,
     }
 }
 
@@ -2975,11 +2976,11 @@ mod tests {
             let whole = banner_scale(&b.banner) == 0x100;
             for part in &parts {
                 let (framed, _) = compose_with_depth(0, &[], std::slice::from_ref(part), Fades::default());
-                let overlay = Overlay::of(part, sprite_depth(0, 0), [Fade::None; 2], (0, 0)).expect("a squashed part is an overlay");
+                let overlay = Overlay::of(part, crate::compose::Wide::ORIGINAL, sprite_depth(0, 0), [Fade::None; 2], (0, 0)).expect("a squashed part is an overlay");
                 for scale in [3, 5] {
                     let (w, h) = (scale * WIDTH, scale * HEIGHT);
                     let mut out = vec![UNDRAWN; w * h];
-                    draw_overlays(std::slice::from_ref(&overlay), &vec![BACKDROP_DEPTH; WIDTH * HEIGHT], None, None, &Placement::fit(w, h), &mut out, w);
+                    draw_overlays(std::slice::from_ref(&overlay), &vec![BACKDROP_DEPTH; WIDTH * HEIGHT], None, None, &Placement::fit(WIDTH, w, h), &mut out, w);
                     for fy in 0..HEIGHT {
                         for fx in 0..WIDTH {
                             let color = framed[fy * WIDTH + fx];
