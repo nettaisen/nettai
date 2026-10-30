@@ -21,7 +21,7 @@
 //! half by a [`Mirror`]: its frame mirrored, its parts that read moved
 //! whole.
 
-use crate::compose::{CLEAR, HEIGHT, Layer, SpritePart, WIDTH};
+use crate::compose::{Anchor, CLEAR, HEIGHT, Layer, SpritePart, WIDTH, Wide};
 use crate::textlayer::{Rect, TextItem};
 use nettai_battle::Battle;
 
@@ -140,20 +140,22 @@ impl Seat {
         matches!(self.shows, Shows::Screen | Shows::Half)
     }
 
-    /// The screen's columns its pieces are kept to (the first, one past the
+    /// The frame's columns its pieces are kept to (the first, one past the
     /// last), on a screen of both where not all: its own half (`Half`), or
     /// all but where the other console's window is as it leaves over it
-    /// (`Screen` beside a `Window`).
-    pub fn clip(self, b: &Battle, seats: &[Seat]) -> Option<[i16; 2]> {
-        let half = WIDTH as i16 / 2;
+    /// (`Screen` beside a `Window`). A frame wider than the original's
+    /// (`wide`) is halved at the original's middle, and a window keeps to
+    /// its edge.
+    pub fn clip(self, b: &Battle, seats: &[Seat], wide: Wide) -> Option<[i16; 2]> {
+        let (middle, width) = (wide.middle() as i16, wide.width as i16);
         match self.shows {
-            Shows::Half => Some(if self.mirrored() { [half, WIDTH as i16] } else { [0, half] }),
+            Shows::Half => Some(if self.mirrored() { [middle, width] } else { [0, middle] }),
             Shows::Screen => {
                 let other = seats.iter().find(|s| s.side != self.side && s.shows == Shows::Window)?;
                 let (_, screen) = crate::custom::screen_of(b, other.side)?;
                 // (Its window's columns: 120 less the scroll in from its edge.)
-                let edge = (half as i32 - crate::custom::placement(screen).scroll as i32).max(0) as i16;
-                Some(if other.mirrored() { [0, WIDTH as i16 - edge] } else { [edge, WIDTH as i16] })
+                let edge = (WIDTH as i32 / 2 - crate::custom::placement(screen).scroll as i32).max(0) as i16;
+                Some(if other.mirrored() { [0, width - edge] } else { [edge, width] })
             }
             _ => None,
         }
@@ -162,6 +164,12 @@ impl Seat {
     /// Where a box `w` wide that its console draws at `x` goes.
     pub fn x(self, x: i32, w: i32) -> i32 {
         if self.mirrored() { WIDTH as i32 - x - w } else { x }
+    }
+
+    /// Where a piece its console keeps to `anchor` keeps to: the other
+    /// edge where the seat mirrors.
+    pub fn edge(self, anchor: Anchor) -> Anchor {
+        if self.mirrored() { anchor.mirrored() } else { anchor }
     }
 
     /// A frame's flip at its place: flipped once more where mirrored.
@@ -277,7 +285,8 @@ impl Mirror {
     }
 
     /// `from`'s pixels put into `to` (a layer as wide), each moved with its
-    /// block or mirrored, on the original's screen.
+    /// block or mirrored on the original's screen, and put in the frame as
+    /// its piece's anchor says (`Layer::anchors`: the seat's already, kept).
     pub fn layer(&self, from: &Layer, to: &mut Layer) {
         if !to.drawn {
             return;
@@ -296,7 +305,9 @@ impl Mirror {
                     if from.pixels[i] == CLEAR {
                         continue;
                     }
-                    let (px, py) = (x - from.origin, y as i32);
+                    // (On the original's screen, where its piece is laid.)
+                    let anchor = from.anchors[i];
+                    let (px, py) = (x - anchor.origin(from.width), y as i32);
                     let mirrored = WIDTH as i32 - 1 - px;
                     let at = self.slide
                         + match (pass, self.block(px, py)) {
@@ -305,11 +316,9 @@ impl Mirror {
                             (2, None) => mirrored,
                             _ => continue,
                         };
-                    let at = at + to.origin;
+                    let at = at + anchor.origin(to.width);
                     if (0..w).contains(&at) {
-                        let j = y * w as usize + at as usize;
-                        to.pixels[j] = from.pixels[i];
-                        to.past_ranged[j] = from.past_ranged[i];
+                        to.put_pixel(at as usize, y, (from.pixels[i], from.past_ranged[i], anchor));
                     }
                 }
             }

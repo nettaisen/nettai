@@ -23,37 +23,12 @@ pub const CLEAR: u16 = 0x8000;
 /// 240, which sit in its middle (`margin` columns from its left edge, an
 /// odd column left over on their right). Every piece is laid out on the
 /// original's screen and put in the frame by where it keeps to
-/// ([`Anchor`]); the background is drawn across the whole width.
+/// ([`Anchor`]); the background is drawn across the whole width, and the
+/// battle's sprites wherever they fall in it (the original draws them past
+/// its screen's edges too, where its screen leaves them out).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Wide {
     pub width: usize,
-    /// What the frame shows of the sprites the battle's objects draw past
-    /// the original's 240 columns.
-    pub old_edges: OldEdges,
-}
-
-/// What a frame wider than the original's shows of the battle's sprites past
-/// its old edges (a shot flying off the field, an effect half off the
-/// screen), which the original draws but its screen leaves out.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum OldEdges {
-    /// Each where it falls in the frame.
-    #[default]
-    Show,
-    /// Cut at the old edges, as the original's screen cuts them.
-    Cut,
-}
-
-impl std::str::FromStr for OldEdges {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<OldEdges, String> {
-        match s {
-            "show" => Ok(OldEdges::Show),
-            "cut" => Ok(OldEdges::Cut),
-            _ => Err(format!("no old edges {s:?} (show or cut)")),
-        }
-    }
 }
 
 /// Where a piece of the frame keeps to in a frame wider than the original's
@@ -61,25 +36,45 @@ impl std::str::FromStr for OldEdges {
 /// original draws it against that edge of its screen.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Anchor {
-    /// The battle's objects: with the field, and theirs what the frame
-    /// shows past the old edges ([`OldEdges`]).
-    Field,
     /// Against the left edge.
     Left,
-    /// In the middle, with the field (a piece the original centers).
+    /// In the middle, with the field: the field and the battle's objects,
+    /// and a piece the original centers.
     #[default]
     Center,
     /// Against the right edge, as far from it as on the original's screen.
     Right,
 }
 
+impl Anchor {
+    /// The column of a frame `width` columns wide the original's column 0
+    /// is at for a piece kept to it.
+    pub fn origin(self, width: usize) -> i32 {
+        let more = width.saturating_sub(WIDTH) as i32;
+        match self {
+            Anchor::Left => 0,
+            Anchor::Center => more / 2,
+            Anchor::Right => more,
+        }
+    }
+
+    /// Where a piece mirrored across the screen keeps to: the other edge.
+    pub fn mirrored(self) -> Anchor {
+        match self {
+            Anchor::Left => Anchor::Right,
+            Anchor::Right => Anchor::Left,
+            a => a,
+        }
+    }
+}
+
 impl Wide {
     /// The original's 240 columns.
-    pub const ORIGINAL: Wide = Wide { width: WIDTH, old_edges: OldEdges::Show };
+    pub const ORIGINAL: Wide = Wide { width: WIDTH };
 
     /// A frame `width` columns wide (240 at least).
-    pub fn new(width: usize, old_edges: OldEdges) -> Wide {
-        Wide { width: width.max(WIDTH), old_edges }
+    pub fn new(width: usize) -> Wide {
+        Wide { width: width.max(WIDTH) }
     }
 
     /// The columns left of the original's 240.
@@ -90,21 +85,12 @@ impl Wide {
     /// The frame column the original's column 0 is at for a piece kept to
     /// `anchor`.
     pub fn origin(self, anchor: Anchor) -> i32 {
-        match anchor {
-            Anchor::Left => 0,
-            Anchor::Field | Anchor::Center => self.margin(),
-            Anchor::Right => (self.width - WIDTH) as i32,
-        }
+        anchor.origin(self.width)
     }
 
-    /// The frame's columns a sprite part kept to `anchor` is drawn in (the
-    /// first, one past the last): the original's for the battle's objects'
-    /// where the old edges cut them, else all.
-    pub fn columns(self, anchor: Anchor) -> [i32; 2] {
-        match (anchor, self.old_edges) {
-            (Anchor::Field, OldEdges::Cut) => [self.margin(), self.margin() + WIDTH as i32],
-            _ => [0, self.width as i32],
-        }
+    /// The column between the frame's halves: the original's middle's.
+    pub fn middle(self) -> i32 {
+        self.margin() + WIDTH as i32 / 2
     }
 
     pub fn pixels(self) -> usize {
@@ -124,8 +110,8 @@ pub fn sprite_x(x: u16, span: i32, left: i32) -> i32 {
 }
 
 /// A layer of tiles as wide as the frame (the field, the background, the
-/// HUD). Pieces are drawn into it on the original's screen, put `origin`
-/// columns right.
+/// HUD). Pieces are drawn into it on the original's screen, each put where
+/// what keeps to its anchor goes ([`Layer::keep_to`]).
 #[derive(Clone)]
 pub struct Layer {
     /// 0 is frontmost, 3 backmost.
@@ -136,10 +122,14 @@ pub struct Layer {
     pub palettes: Palettes,
     /// Its columns: the frame's.
     pub width: usize,
-    /// The column the original's column 0 is drawn at: where the piece drawn
-    /// next keeps to (`Wide::origin`).
-    pub origin: i32,
+    /// Where the piece drawn next keeps to, and the column the original's
+    /// column 0 is drawn at for it.
+    pub(crate) anchor: Anchor,
+    pub(crate) origin: i32,
     pub pixels: Vec<u16>,
+    /// What each pixel's piece keeps to (a drawn pixel's), for what moves
+    /// pieces about on the original's screen (`seat::Mirror::layer`).
+    pub anchors: Vec<Anchor>,
     /// Which pixels were drawn with background palettes 14 and 15, past the
     /// custom screen's ranged fades (Beast Out's and a dark chip's of
     /// palettes 0-13, the hover's 9-13): only a fade of every palette
@@ -154,7 +144,18 @@ pub struct Layer {
 impl Layer {
     /// A layer of the original's 240 columns.
     pub fn new(priority: u8, order: u8) -> Layer {
-        Layer { priority, order, palettes: Palettes::Stage, width: WIDTH, origin: 0, pixels: vec![CLEAR; PIXELS], past_ranged: vec![false; PIXELS], drawn: true }
+        Layer {
+            priority,
+            order,
+            palettes: Palettes::Stage,
+            width: WIDTH,
+            anchor: Anchor::Center,
+            origin: 0,
+            pixels: vec![CLEAR; PIXELS],
+            anchors: vec![Anchor::Center; PIXELS],
+            past_ranged: vec![false; PIXELS],
+            drawn: true,
+        }
     }
 
     /// Make it `width` columns wide, cleared if that is a change.
@@ -162,8 +163,22 @@ impl Layer {
         if width != self.width {
             self.width = width;
             self.pixels = vec![CLEAR; width * HEIGHT];
+            self.anchors = vec![Anchor::Center; width * HEIGHT];
             self.past_ranged = vec![false; width * HEIGHT];
+            self.origin = self.anchor.origin(width);
         }
+    }
+
+    /// Draw what follows kept to `anchor`.
+    pub fn keep_to(&mut self, anchor: Anchor) {
+        self.anchor = anchor;
+        self.origin = anchor.origin(self.width);
+    }
+
+    /// The column of the layer the original's column 0 is at for what is
+    /// drawn now.
+    pub fn origin(&self) -> i32 {
+        self.origin
     }
 
     pub fn clear(&mut self) {
@@ -188,13 +203,19 @@ impl Layer {
         }
     }
 
-    /// Clear every pixel outside the columns `kept` of the original's
-    /// screen.
+    /// Put a pixel at column `x` of the layer, its piece kept to `anchor`.
+    pub fn put_pixel(&mut self, x: usize, y: usize, (color, past_ranged, anchor): (u16, bool, Anchor)) {
+        let i = y * self.width + x;
+        self.pixels[i] = color;
+        self.past_ranged[i] = past_ranged;
+        self.anchors[i] = anchor;
+    }
+
+    /// Clear every pixel outside the layer's columns `kept`.
     pub fn keep_columns(&mut self, kept: std::ops::Range<i32>) {
         if !self.drawn {
             return;
         }
-        let kept = kept.start + self.origin..kept.end + self.origin;
         for y in 0..HEIGHT {
             for x in (0..self.width).filter(|&x| !kept.contains(&(x as i32))) {
                 self.pixels[y * self.width + x] = CLEAR;
@@ -212,6 +233,7 @@ impl Layer {
         let w = self.width;
         let old = std::mem::replace(&mut self.pixels, vec![CLEAR; w * HEIGHT]);
         let old_past = std::mem::replace(&mut self.past_ranged, vec![false; w * HEIGHT]);
+        let old_anchors = self.anchors.clone();
         for y in 0..HEIGHT as i32 {
             let sy = y - dy;
             if !(0..HEIGHT as i32).contains(&sy) {
@@ -220,8 +242,10 @@ impl Layer {
             for x in 0..w as i32 {
                 let sx = x - dx;
                 if (0..w as i32).contains(&sx) {
-                    self.pixels[y as usize * w + x as usize] = old[sy as usize * w + sx as usize];
-                    self.past_ranged[y as usize * w + x as usize] = old_past[sy as usize * w + sx as usize];
+                    let (i, j) = (y as usize * w + x as usize, sy as usize * w + sx as usize);
+                    self.pixels[i] = old[j];
+                    self.past_ranged[i] = old_past[j];
+                    self.anchors[i] = old_anchors[j];
                 }
             }
         }
@@ -246,6 +270,7 @@ impl Layer {
                 let j = y * w + to as usize;
                 self.pixels[j] = from.pixels[i];
                 self.past_ranged[j] = from.past_ranged[i];
+                self.anchors[j] = from.anchors[i];
             }
         }
     }
@@ -278,8 +303,10 @@ impl Layer {
                 let col = if hflip { 7 - tx } else { tx } as usize;
                 let i = tile[row * 8 + col];
                 if i != 0 {
-                    self.pixels[sy as usize * w + sx as usize] = palette[i as usize] & 0x7FFF;
-                    self.past_ranged[sy as usize * w + sx as usize] = past_ranged;
+                    let at = sy as usize * w + sx as usize;
+                    self.pixels[at] = palette[i as usize] & 0x7FFF;
+                    self.past_ranged[at] = past_ranged;
+                    self.anchors[at] = self.anchor;
                 }
             }
         }
@@ -315,7 +342,7 @@ pub struct SpritePart<'a> {
     /// sprites' (`Fades::sprites`): on a screen of both, the right
     /// console's custom screen's sprites, faded as that console fades them.
     pub fade: Option<Fade>,
-    /// The screen's columns it is drawn in (the first, one past the last),
+    /// The frame's columns it is drawn in (the first, one past the last),
     /// where not all: on a screen of both, a console's pieces kept to its
     /// part of the screen.
     pub clip: Option<[i16; 2]>,
@@ -328,10 +355,9 @@ impl SpritePart<'_> {
     /// last), and the frame column of the original's column 0 for it.
     pub(crate) fn placed(&self, wide: Wide) -> ([i32; 2], i32) {
         let origin = wide.origin(self.anchor);
-        let [c0, c1] = wide.columns(self.anchor);
         let [c0, c1] = match self.clip {
-            Some([a, b]) => [c0.max(a as i32 + origin), c1.min(b as i32 + origin)],
-            None => [c0, c1],
+            Some([a, b]) => [(a as i32).max(0), (b as i32).min(wide.width as i32)],
+            None => [0, wide.width as i32],
         };
         ([c0, c1], origin)
     }
@@ -714,17 +740,28 @@ mod tests {
 
     /// The original's 240 columns sit in the middle of a wider frame, an
     /// odd column left over on their right; a piece kept to an edge stays
-    /// as far from it as on the original's screen.
+    /// as far from it as on the original's screen, and one mirrored keeps to
+    /// the other edge.
     #[test]
     fn a_wide_frame_puts_each_piece_by_its_anchor() {
-        let wide = Wide::new(285, OldEdges::Show);
-        assert_eq!((wide.margin(), wide.origin(Anchor::Field), wide.origin(Anchor::Center)), (22, 22, 22));
+        let wide = Wide::new(285);
+        assert_eq!((wide.margin(), wide.origin(Anchor::Center), wide.middle()), (22, 22, 142));
         assert_eq!((wide.origin(Anchor::Left), wide.origin(Anchor::Right)), (0, 45));
-        assert_eq!(wide.columns(Anchor::Field), [0, 285]);
-        let cut = Wide { old_edges: OldEdges::Cut, ..wide };
-        assert_eq!((cut.columns(Anchor::Field), cut.columns(Anchor::Center)), ([22, 262], [0, 285]));
-        assert_eq!(Wide::new(200, OldEdges::Cut).width, WIDTH);
-        assert_eq!(Wide::ORIGINAL.columns(Anchor::Field), [0, 240]);
+        assert_eq!(Wide::new(200).width, WIDTH);
+        assert_eq!([Anchor::Left, Anchor::Center, Anchor::Right].map(|a| a.origin(WIDTH)), [0; 3]);
+        assert_eq!([Anchor::Left, Anchor::Center, Anchor::Right].map(Anchor::mirrored), [Anchor::Right, Anchor::Center, Anchor::Left]);
+        // (A layer draws each piece where its anchor puts it, and keeps what
+        // each pixel's piece keeps to.)
+        let mut layer = Layer::new(1, 3);
+        layer.set_width(285);
+        let tile = [1u8; 64];
+        let white = [0x7FFF; 16];
+        layer.keep_to(Anchor::Left);
+        layer.draw_tile(&tile, &white, 0, 0, false, false);
+        layer.keep_to(Anchor::Right);
+        layer.draw_tile(&tile, &white, 232, 0, false, false);
+        assert_eq!((layer.pixels[0], layer.pixels[284], layer.pixels[283 - 8]), (0x7FFF, 0x7FFF, CLEAR));
+        assert_eq!((layer.anchors[0], layer.anchors[284]), (Anchor::Left, Anchor::Right));
     }
 
     /// On the original's screen a part's coordinate reads as the hardware
@@ -744,34 +781,32 @@ mod tests {
         assert_eq!((sprite_x(496, 16, 0), sprite_x(496, 16, 22), sprite_x(300, 16, 22)), (496, -16, 300));
     }
 
-    /// The battle's sprites past the old edges show in a wider frame, or are
-    /// cut at them; a centered piece's never are; the background layer
-    /// covers the frame and the fades reach all of it.
+    /// The battle's sprites past the old edges show in a wider frame, each
+    /// where it falls; the background layer covers the frame and the fades
+    /// reach all of it.
     #[test]
-    fn sprites_past_the_old_edges_show_or_are_cut() {
+    fn sprites_past_the_old_edges_show() {
         let t = solid_tiles(1, 1);
         // (A shot 4 columns past the right edge, one 6 left of the left
-        // edge (its coordinate wrapped), and a HUD piece past the right.)
+        // edge (its coordinate wrapped), and a piece kept to the right edge
+        // past the original's right edge.)
         let parts = [
-            SpritePart { anchor: Anchor::Field, ..part(&t, 244, 0, 2, 0x001F) },
-            SpritePart { anchor: Anchor::Field, ..part(&t, 0x200 - 6, 10, 2, 0x03E0) },
-            SpritePart { anchor: Anchor::Center, ..part(&t, 244, 20, 2, 0x7C00) },
+            part(&t, 244, 0, 2, 0x001F),
+            part(&t, 0x200 - 6, 10, 2, 0x03E0),
+            SpritePart { anchor: Anchor::Right, ..part(&t, 236, 20, 2, 0x7C00) },
         ];
         let mut background = Layer::new(3, 1);
         background.set_width(284);
         background.pixels.fill(0x0421);
-        for (edges, shown) in [(OldEdges::Show, true), (OldEdges::Cut, false)] {
-            let wide = Wide::new(284, edges);
-            let fades = Fades { stage: Fade::Black(16), ..Fades::default() };
-            let (out, _) = compose_wide(wide, 0, &[&background], &parts, fades);
-            let at = |x: i32, y: usize| out[y * 284 + x as usize];
-            assert_eq!(at(22 + 244, 0) == 0x001F, shown, "{edges:?}");
-            assert_eq!(at(22 - 6, 10) == 0x03E0, shown, "{edges:?}");
-            assert_eq!(at(22 + 244, 20), 0x7C00, "{edges:?}");
-            // (The background, faded, in both margins.)
-            assert_eq!((at(0, 100), at(283, 100)), (0, 0));
-            assert_eq!(at(22 + 239, 0), 0, "the original's last column");
-        }
+        let wide = Wide::new(284);
+        let fades = Fades { stage: Fade::Black(16), ..Fades::default() };
+        let (out, _) = compose_wide(wide, 0, &[&background], &parts, fades);
+        let at = |x: i32, y: usize| out[y * 284 + x as usize];
+        assert_eq!((at(22 + 244, 0), at(22 - 6, 10)), (0x001F, 0x03E0));
+        assert_eq!((at(44 + 236, 20), at(283, 20), at(44 + 235, 20)), (0x7C00, 0x7C00, 0));
+        // (The background, faded, in both margins.)
+        assert_eq!((at(0, 100), at(283, 100)), (0, 0));
+        assert_eq!(at(22 + 239, 0), 0, "the original's last column");
     }
 
     /// A part kept to some columns draws in those alone.

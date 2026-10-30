@@ -35,8 +35,7 @@ retired nettai-demo's for the same, so the verification's scripts took it as the
 - `--png-scale N` scales headless output (the text layer is drawn at that scale too).
 - `--width N` draws headless frames N columns wide (240 or more; the enhanced mode only), as a window that wide
   at the frame's height shows the battle: the field in the middle, the background on to both edges
-  (docs/frontend.md §3, "Wider than the original"). `--old-edges show|cut` says what such a frame shows of the
-  battle's sprites past the original's edges (default `show`).
+  (docs/frontend.md §3, "Wider than the original").
 - `--text enhanced|original` chooses how the battle is drawn (default `enhanced`, also spelled `font`: the
   names, the telop, the chatbox and the HUD's lines in a vector font over the scaled frame, the background's
   glide, the gauge's smooth fill, the banners' squash and the custom screen's slide of the field at the output's resolution, docs/frontend.md §3, "Enhanced and original"; `original` as the original does, the

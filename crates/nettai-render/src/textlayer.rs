@@ -23,7 +23,7 @@
 //! the numbers in the numbers' font (`numbers`); and the frames drawn as
 //! shapes in their pictures' place (`shapes`).
 
-use crate::compose::{Fade, HEIGHT, WIDTH};
+use crate::compose::{Anchor, Fade, HEIGHT, WIDTH};
 pub use crate::render::GraphicsMode;
 use crate::vfont::{Role, VectorFont};
 
@@ -124,6 +124,9 @@ pub struct TextItem {
     /// A lettering's slant, its rows leaning right going up: hundredths of
     /// a pixel across for each pixel up from its box's bottom (0: upright).
     pub slant: i16,
+    /// Where it keeps to in a frame wider than the original's (the
+    /// sink's, as it is pushed: `TextSink::anchor`).
+    pub anchor: Anchor,
 }
 
 impl TextItem {
@@ -146,6 +149,7 @@ impl TextItem {
             fine: (0, 0),
             fitted: None,
             slant: 0,
+            anchor: Anchor::Center,
         }
     }
 
@@ -158,10 +162,10 @@ impl TextItem {
     }
 
     /// The item laid out on the original's screen put in a frame `width`
-    /// columns wide, that screen's column 0 at its column `origin`
-    /// (`compose::Wide::origin`): its box and its clip moved there, the
-    /// whole screen's clip the whole frame's.
-    pub fn placed(self, origin: i32, width: usize) -> TextItem {
+    /// columns wide where what keeps to its anchor goes: its box and its
+    /// clip moved there, the whole screen's clip the whole frame's.
+    pub fn placed(self, width: usize) -> TextItem {
+        let origin = self.anchor.origin(width);
         let clip = match self.clip == Rect::SCREEN {
             true => Rect::new(0, 0, width as i32, HEIGHT as i32),
             false => self.clip.offset(origin, 0),
@@ -254,12 +258,15 @@ pub struct TextSink<'f> {
     /// The game-style lettering goes to the text layer too (the enhanced
     /// mode's: [`TextSink::takes_lettering`]).
     lettering: bool,
+    /// Where the items pushed keep to in a frame wider than the original's
+    /// (`TextItem::anchor`).
+    pub anchor: Anchor,
 }
 
 impl<'f> TextSink<'f> {
     pub fn new(mode: GraphicsMode, font: Option<&'f VectorFont>) -> TextSink<'f> {
         let lettering = mode == GraphicsMode::Enhanced && font.is_some();
-        TextSink { mode, font, measure: None, pixels: None, items: Vec::new(), next_tag: 0, strings: Default::default(), lettering }
+        TextSink { mode, font, measure: None, pixels: None, items: Vec::new(), next_tag: 0, strings: Default::default(), lettering, anchor: Anchor::Center }
     }
 
     /// With the game-style lettering left to the pictures however the
@@ -391,8 +398,9 @@ impl<'f> TextSink<'f> {
         self.next_tag
     }
 
+    /// Add an item, kept to where the sink's items keep to now.
     pub fn push(&mut self, plane: Plane, item: TextItem) {
-        self.items.push((plane, item));
+        self.items.push((plane, TextItem { anchor: self.anchor, ..item }));
     }
 
     /// Where the items pushed from now on start ([`TextSink::move_since`]).

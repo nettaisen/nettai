@@ -54,6 +54,10 @@ pub struct SpriteList<'a> {
     /// The columns the parts queued are kept to, while set
     /// (`SpritePart::clip`: a console's part of a screen of both).
     pub clip: Option<[i16; 2]>,
+    /// Where the parts queued keep to in a frame wider than the original's
+    /// (`SpritePart::anchor`): the battle's objects' with the field (the
+    /// default), each of the HUD's pieces' where the original draws it.
+    pub anchor: crate::compose::Anchor,
 }
 
 /// A depth bucket's parts, each with its tag and its fine offset.
@@ -67,7 +71,7 @@ pub type Fine = (i32, i32);
 
 impl Default for SpriteList<'_> {
     fn default() -> Self {
-        SpriteList { layers: BUCKETS.map(|n| vec![Vec::new(); n]), count: 0, clip: None }
+        SpriteList { layers: BUCKETS.map(|n| vec![Vec::new(); n]), count: 0, clip: None, anchor: crate::compose::Anchor::Center }
     }
 }
 
@@ -122,8 +126,10 @@ impl<'a> SpriteList<'a> {
         }
     }
 
-    /// A part kept to the columns the list keeps its parts to, and its own.
+    /// A part kept to the columns the list keeps its parts to, and its own,
+    /// and to where the list's parts keep to.
     fn clipped(&self, part: SpritePart<'a>) -> SpritePart<'a> {
+        let part = SpritePart { anchor: self.anchor, ..part };
         let Some([a, b]) = self.clip else { return part };
         let clip = match part.clip {
             Some([c, d]) => [a.max(c), b.min(d)],
@@ -599,7 +605,7 @@ pub fn queue_objects<'a>(
                     affine: None,
                     fade: None,
                     clip: None,
-                    anchor: crate::compose::Anchor::Field,
+                    anchor: crate::compose::Anchor::Center,
                 };
                 // Ground shadows go one layer back, in the first bucket.
                 // Where the rules count the sprite's priority into the
@@ -720,7 +726,7 @@ mod tests {
             affine: None,
             fade: None,
             clip: None,
-            anchor: crate::compose::Anchor::Field,
+            anchor: crate::compose::Anchor::Center,
         };
         let mut list = SpriteList::default();
         list.insert_group(vec![(2, 100, part(1)), (2, 100, part(2))]);

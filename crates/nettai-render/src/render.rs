@@ -414,7 +414,8 @@ impl Renderer {
         self.problems.known.clear();
         self.problems.marks.clear();
         // (Every layer as wide as the frame; what is drawn on the original's
-        // screen in the middle of it, the background on to both edges.)
+        // screen in the middle of it, the background on to both edges, the
+        // HUD's pieces each where it keeps to: `hud::draw`, `custom::draw`.)
         let wide = self.frame_wide();
         let layers = [
             &mut self.background,
@@ -429,7 +430,7 @@ impl Renderer {
         ];
         for layer in layers {
             layer.set_width(wide.width);
-            layer.origin = wide.origin(compose::Anchor::Center);
+            layer.keep_to(compose::Anchor::Center);
         }
         // (The graphics for this frame: the layers and the problems are the
         // renderer's own fields, written while these are read.)
@@ -557,7 +558,7 @@ impl Renderer {
             let sprite_fade = if flash == Some(1) { Fade::White(16) } else { crate::custom::sprite_fade(b, seat.side).unwrap_or_default() };
             // (Kept to its part of a screen of both, where not all of it:
             // `Seat::clip`.)
-            let clip = seat.clip(b, &seats);
+            let clip = seat.clip(b, &seats, wide);
             list.clip = clip;
             crate::custom::draw(b, own_game, &graphics, emblem, *emblem_palette, (seat, sprite_fade), (&mut *hud, &mut *names), scratch, &mut list, &mut text, &mut self.problems);
             crate::hud::draw(b, own_game, &graphics, hud_of(seat), &shared[k], (seat, &view), self.custom_gauge, smooth, (&mut *hud, &mut self.scratch), &mut list, &mut text, &mut self.problems);
@@ -565,9 +566,11 @@ impl Renderer {
             if let Some([x0, x1]) = clip {
                 hud.keep_columns(x0 as i32..x1 as i32);
                 names.keep_columns(x0 as i32..x1 as i32);
+                // (The frame's columns, on the original's screen where each
+                // item is laid out.)
                 let kept = Rect::new(x0 as i32, 0, (x1 - x0) as i32, compose::HEIGHT as i32);
                 for (_, item) in text.since(mark) {
-                    item.clip = item.clip.intersect(kept);
+                    item.clip = item.clip.intersect(kept.offset(-wide.origin(item.anchor), 0));
                 }
             }
             // (The right one's own HUD layer and BG0.)
@@ -686,41 +689,35 @@ impl Renderer {
         let overlays = overlays.into_iter().map(|(_, o)| o).collect();
         // Each item's depth and fades: its layer's (the HUD layer's moved
         // with its shake), or its sprite parts' (an item whose parts the
-        // sprite limit dropped isn't drawn); and its place in the frame, where
-        // its layer or its parts are put.
+        // sprite limit dropped isn't drawn); and its place in the frame,
+        // where what keeps to its anchor goes (a sprite's item, its parts').
         note_missing_strings(&mut text, &mut self.problems);
         let text = text
             .into_items()
             .into_iter()
             .filter_map(|(plane, mut item)| {
-                let (depth, fade, origin) = match plane {
+                let (depth, fade) = match plane {
                     Plane::Hud => {
                         item.rect = item.rect.offset(-jx, -jy);
                         item.clip = item.clip.offset(-jx, -jy);
-                        (compose::layer_depth(&self.hud), if item.past_ranged { fades.hud_past_ranged } else { fades.hud }, self.hud.origin)
+                        (compose::layer_depth(&self.hud), if item.past_ranged { fades.hud_past_ranged } else { fades.hud })
                     }
                     Plane::OtherHud => {
                         item.rect = item.rect.offset(rx, -ry);
                         item.clip = item.clip.offset(rx, -ry);
-                        (compose::layer_depth(&self.hud_right), if item.past_ranged { fades.other_hud_past_ranged } else { fades.other_hud }, self.hud_right.origin)
+                        (compose::layer_depth(&self.hud_right), if item.past_ranged { fades.other_hud_past_ranged } else { fades.other_hud })
                     }
-                    Plane::Bg0 => (compose::layer_depth(&self.names), fades.hud, self.names.origin),
-                    Plane::OtherBg0 => (compose::layer_depth(&self.names_right), fades.other_hud, self.names_right.origin),
+                    Plane::Bg0 => (compose::layer_depth(&self.names), fades.hud),
+                    Plane::OtherBg0 => (compose::layer_depth(&self.names_right), fades.other_hud),
                     Plane::Sprite(tag) => {
                         let i = tags.iter().position(|&t| t == Some(tag))?;
-                        let (origin, [c0, c1]) = (wide.origin(parts[i].anchor), wide.columns(parts[i].anchor));
-                        // (Kept to the columns its parts are drawn in, where
-                        // not the frame's: the field's under the old edges'
-                        // cut.)
-                        if [c0, c1] != [0, wide.width as i32] {
-                            item.clip = item.clip.intersect(Rect::new(c0 - origin, 0, c1 - c0, compose::HEIGHT as i32));
-                        }
-                        (compose::sprite_depth(parts[i].priority, i), parts[i].fade.unwrap_or(fades.sprites), origin)
+                        item.anchor = parts[i].anchor;
+                        (compose::sprite_depth(parts[i].priority, i), parts[i].fade.unwrap_or(fades.sprites))
                     }
                 };
                 item.depth = depth;
                 item.fades = [fade, fades.screen];
-                Some(item.placed(origin, wide.width))
+                Some(item.placed(wide.width))
             })
             .collect();
         // (The background between the whole pixels the frame shows, for the
@@ -728,7 +725,7 @@ impl Renderer {
         // a step every few frames otherwise.)
         let glide = (self.motion() && scene.background_sub() != (0, 0)).then(|| {
             let color = |c: u16| compose::apply_fade(compose::apply_fade(c, fades.stage), fades.screen);
-            let pixels = scene.draw_background_wide(-self.background.origin, wide.width + 1, Glide::HEIGHT, backdrop, color);
+            let pixels = scene.draw_background_wide(-self.background.origin(), wide.width + 1, Glide::HEIGHT, backdrop, color);
             Glide { pixels, sub: scene.background_sub(), depth: compose::layer_depth(&self.background) }
         });
         let drawings = (!Vec::is_empty(&text)).then(|| self.drawings.clone());

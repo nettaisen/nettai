@@ -12,7 +12,7 @@
 //! and the ones the screen copies in as it runs. docs/frontend.md §3.
 
 use crate::audit::Problems;
-use crate::compose::{Affine, Fade, Layer, SpritePart};
+use crate::compose::{Affine, Anchor, Fade, Layer, SpritePart};
 use crate::fonts;
 use crate::objects::SpriteList;
 use crate::textlayer::{Align, Plane, Rect, TextItem, TextSink};
@@ -2649,6 +2649,11 @@ pub fn draw<'a>(
         scratch_hud.clear();
         scratch_names.clear();
     }
+    // (The window, and what goes beside it, keep to the left edge, as the
+    // original docks it; its names to the right edge. On the right of a
+    // screen of both, the other edges: `Seat::edge`.)
+    crate::hud::keep_to(seat, Anchor::Left, (&mut *out_hud, &mut *out_names), list, text);
+    crate::hud::keep_to(seat, Anchor::Left, (&mut *scratch_hud, &mut *scratch_names), list, text);
     let mark = text.mark();
     let (hud_layer, names_layer): (&mut Layer, &mut Layer) = if mirrored { (&mut *scratch_hud, &mut *scratch_names) } else { (&mut *out_hud, &mut *out_names) };
     // (The parts that read beside the window's own, for the mirror.)
@@ -2754,7 +2759,9 @@ pub fn draw<'a>(
     // window leaving over the other console's screen; in its half, beside
     // the other player's window, they don't show.)
     if names_shown(b, screen) && !a.name_bar.is_empty() && matches!(seat.shows, crate::seat::Shows::Screen | crate::seat::Shows::Half) {
+        crate::hud::keep_to(seat, Anchor::Right, (&mut *hud_layer, &mut *names_layer), list, text);
         upright.push(crate::seat::Block::whole(draw_names(&v, &w, hud_layer, names_layer, text, problems)));
+        crate::hud::keep_to(seat, Anchor::Left, (&mut *hud_layer, &mut *names_layer), list, text);
     }
     // The sprites, as their routines queue them (each in front of the
     // one before).
@@ -2861,6 +2868,8 @@ pub fn draw<'a>(
         list.insert_tagged(SPRITE_LAYER, 0, vec![part], tags.get(k).copied().flatten());
     }
     let _ = OK_SLOT;
+    crate::hud::keep_to(seat, Anchor::Center, (&mut *out_hud, &mut *out_names), list, text);
+    crate::hud::keep_to(seat, Anchor::Center, (&mut *scratch_hud, &mut *scratch_names), list, text);
 }
 
 #[cfg(test)]

@@ -285,7 +285,7 @@ impl<'a> Stage<'a> {
         // Draw the tiles overlapping the layer, from its first column (on
         // the original's screen), then let the layer clip.
         let (sx, sy) = (self.scroll.0.rem_euclid(w), self.scroll.1.rem_euclid(h));
-        let left = -layer.origin;
+        let left = -layer.origin();
         let first = left - (left + sx).rem_euclid(8);
         for ty in 0..=(HEIGHT as i32 / 8 + 1) {
             for tx in 0..=(layer.width as i32 / 8 + 1) {

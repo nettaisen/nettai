@@ -128,9 +128,6 @@ pub struct Overlay {
     /// Its true place less `x` and `y`, 16.16 pixels right and down
     /// (`objects::Fine`).
     pub fine: (i32, i32),
-    /// The frame's columns it is drawn in (the first, one past the last:
-    /// `compose::Wide::columns`).
-    pub columns: [i32; 2],
 }
 
 impl Overlay {
@@ -168,10 +165,10 @@ impl Overlay {
             _ => (w, h),
         };
         // (Its place wrapped as the hardware's, where `wide` puts it.)
-        let (columns, origin) = part.placed(wide);
+        let origin = wide.origin(part.anchor);
         let x = crate::compose::sprite_x(part.x, bw, origin) + origin;
         let y = if part.y as i32 + bh > 0x100 { part.y as i32 - 0x100 } else { part.y as i32 };
-        Some(Overlay { x, y, width: bw, height: bh, texture_width: w, texels, reading, depth, fine, columns })
+        Some(Overlay { x, y, width: bw, height: bh, texture_width: w, texels, reading, depth, fine })
     }
 
     /// The texel an output pixel shows, by its top left corner and its
@@ -237,9 +234,6 @@ pub(crate) fn draw_overlays_covering(overlays: &[Overlay], depth: &[u32], nudge:
             let lifted = lift.filter(|l| lifted_row(l, dy, place));
             for dx in x0..x1 {
                 let fx = dx * columns / place.width;
-                if !(o.columns[0]..o.columns[1]).contains(&fx) {
-                    continue;
-                }
                 let Some(color) = o.texel((dx as f64 / s - left, cy), ((dx as f64 + 0.5) / s - left, my)) else { continue };
                 let at = fy * columns as usize + fx as usize;
                 let front = match (lifted, nudge) {
