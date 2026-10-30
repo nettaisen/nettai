@@ -6,30 +6,63 @@
 //! runs the ticks due and, if one ran (or the space changed), presents a
 //! new picture, which that same frame draws. The picture is the size of the
 //! frame's largest whole multiple that fits the space, in the display's
-//! pixels ([`fit`]): presented at the window's density (or the display's,
+//! pixels, and in the enhanced mode the frame as wide as the space at that
+//! multiple ([`fit`]): presented at the window's density (or the display's,
 //! sharper), drawn with the nearest pixel up to the display's. Nothing else
 //! of the window is presented.
 
 use nettai_frontend::player::Player;
-use nettai_render::compose::{HEIGHT, WIDTH};
+use nettai_render::compose::{HEIGHT, WIDTH, Wide};
 use slint::{Image, Rgba8Pixel, SharedPixelBuffer};
 use std::time::Duration;
 use web_time::Instant;
 
 /// How the picture fits a space: the display's pixels a frame pixel takes
-/// (`scale`), and the pixels a frame pixel takes in the picture presented
-/// (`density`, which divides `scale`).
+/// (`scale`), the pixels a frame pixel takes in the picture presented
+/// (`density`, which divides `scale`), and the frame's columns (`columns`:
+/// the original's 240, or in the enhanced mode as many as the space has at
+/// the scale, `nettai_render::compose::Wide`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Fit {
     pub scale: u32,
     pub density: u32,
+    pub columns: u32,
+}
+
+impl Fit {
+    /// The same fit of a frame of the original's 240 columns (a picture that
+    /// stays the original's size: a replay's still, the viewer's inset).
+    pub fn original(self) -> Fit {
+        Fit { columns: WIDTH as u32, ..self }
+    }
+
+    /// The frame it is a picture of.
+    pub fn wide(self) -> Wide {
+        Wide::new(self.columns as usize)
+    }
+
+    /// The picture presented, in its pixels: the frame `density` times.
+    pub fn presented(self) -> (usize, usize) {
+        (self.columns as usize * self.density as usize, HEIGHT * self.density as usize)
+    }
+}
+
+/// The frame's columns in a space `width` display pixels wide at `scale`:
+/// in the enhanced mode as many whole ones as it has (240 at least), in the
+/// original mode the original's.
+pub fn columns(width: f32, scale: u32, enhanced: bool) -> u32 {
+    match enhanced {
+        true => ((width / scale.max(1) as f32).floor() as u32).max(WIDTH as u32),
+        false => WIDTH as u32,
+    }
 }
 
 /// The picture in a space of `width` by `height` display pixels on a
 /// display of `factor` pixels a logical one: the largest whole multiple of
-/// the frame that fits, at least the frame; presented at the window's
-/// density (the scale over the factor, rounded up), or the display's when
-/// `sharp`.
+/// the frame that fits, at least the frame, and in the enhanced mode the
+/// frame as wide as the space at that multiple ([`columns`]); presented at
+/// the window's density (the scale over the factor, rounded up), or the
+/// display's when `sharp`.
 ///
 /// What is presented is drawn on the CPU and scaled the rest of the way by
 /// the window, with the nearest pixel. So the `enhanced` mode's density is
@@ -46,14 +79,15 @@ pub struct Fit {
 /// the density, is scaled by a fraction.
 pub fn fit(width: f32, height: f32, factor: f32, sharp: bool, enhanced: bool) -> Fit {
     let scale = ((width / WIDTH as f32).min(height / HEIGHT as f32).floor() as u32).max(1);
+    let columns = columns(width, scale, enhanced);
     if !enhanced {
-        return Fit { scale, density: 1 };
+        return Fit { scale, density: 1, columns };
     }
     if sharp {
-        return Fit { scale, density: scale };
+        return Fit { scale, density: scale, columns };
     }
     let density = ((scale as f32 / factor.max(1.0)).ceil() as u32).clamp(1, scale).min(MOST_DENSITY);
-    Fit { scale, density }
+    Fit { scale, density, columns }
 }
 
 /// The densest the enhanced mode's picture is presented (but `sharp`): six
@@ -154,10 +188,10 @@ impl Surface {
         self.fit = None;
     }
 
-    /// The picture for `fit`, if it changed since the last: `present` draws it into a buffer of the width and
-    /// height it is given, which becomes a new image (an image is what every renderer draws: docs/app.md §1),
-    /// its pixels the next of the two kept. None when the picture didn't change.
-    pub fn picture(&mut self, fit: Fit, present: impl FnOnce(&mut [u32], usize, usize)) -> Option<Image> {
+    /// The picture for `fit`, if it changed since the last: `present` draws a frame as wide as it is given
+    /// into a buffer of the width and height it is given, which becomes a new image (an image is what every
+    /// renderer draws: docs/app.md §1), its pixels the next of the two kept. None when the picture didn't change.
+    pub fn picture(&mut self, fit: Fit, present: impl FnOnce(Wide, &mut [u32], usize, usize)) -> Option<Image> {
         if self.fit != Some(fit) {
             self.fit = Some(fit);
             self.stale = true;
@@ -166,9 +200,9 @@ impl Surface {
             return None;
         }
         self.stale = false;
-        let (w, h) = (WIDTH * fit.density as usize, HEIGHT * fit.density as usize);
+        let (w, h) = fit.presented();
         self.buffer.resize(w * h, 0);
-        present(&mut self.buffer, w, h);
+        present(fit.wide(), &mut self.buffer, w, h);
         let pixels = &mut self.pixels[self.turn];
         self.turn ^= 1;
         if (pixels.width(), pixels.height()) != (w as u32, h as u32) {
@@ -310,7 +344,10 @@ impl Stage {
     pub fn picture(&mut self, fit: Fit) -> Option<Image> {
         let started = Instant::now();
         let player = &mut self.player;
-        let shown = self.surface.picture(fit, |buffer, w, h| player.present(buffer, w, h));
+        let shown = self.surface.picture(fit, |wide, buffer, w, h| {
+            player.renderer().wide = wide;
+            player.present(buffer, w, h)
+        });
         if shown.is_none() {
             return shown;
         }
@@ -344,7 +381,7 @@ impl Stage {
         if now.duration_since(since) < Duration::from_secs(2) {
             return;
         }
-        let fit = self.surface.fit().unwrap_or(Fit { scale: 0, density: 0 });
+        let fit = self.surface.fit().unwrap_or(Fit { scale: 0, density: 0, columns: 0 });
         let seconds = now.duration_since(since).as_secs_f64();
         s.gaps.sort();
         let at = |q: f64| s.gaps.get(((s.gaps.len() as f64 - 1.0) * q).round() as usize).copied().unwrap_or_default();
@@ -362,7 +399,7 @@ impl Stage {
             s.ticks as f64 / seconds,
             s.ticking.mean(),
             s.presented,
-            WIDTH as u32 * fit.density,
+            fit.columns * fit.density,
             HEIGHT as u32 * fit.density,
             fit.scale,
             fit.density,
@@ -391,21 +428,38 @@ mod tests {
     #[test]
     fn the_picture_fits_by_whole_pixels() {
         let enhanced = |w, h, factor, sharp| fit(w, h, factor, sharp, true);
-        assert_eq!(enhanced(1920.0, 1280.0, 2.0, false), Fit { scale: 8, density: 4 });
-        assert_eq!(enhanced(2200.0, 1500.0, 2.0, false), Fit { scale: 9, density: 5 }, "an odd scale: half of it, rounded up");
-        assert_eq!(enhanced(1920.0, 1280.0, 2.0, true), Fit { scale: 8, density: 8 });
-        assert_eq!(enhanced(960.0, 640.0, 1.0, false), Fit { scale: 4, density: 4 });
-        assert_eq!(enhanced(1440.0, 960.0, 1.5, false), Fit { scale: 6, density: 4 });
-        assert_eq!(enhanced(2880.0, 1920.0, 3.0, false), Fit { scale: 12, density: 4 });
+        let at = |scale, density| Fit { scale, density, columns: WIDTH as u32 };
+        assert_eq!(enhanced(1920.0, 1280.0, 2.0, false), at(8, 4));
+        assert_eq!(enhanced(2200.0, 1500.0, 2.0, false), Fit { columns: 244, ..at(9, 5) }, "an odd scale: half of it, rounded up");
+        assert_eq!(enhanced(1920.0, 1280.0, 2.0, true), at(8, 8));
+        assert_eq!(enhanced(960.0, 640.0, 1.0, false), at(4, 4));
+        assert_eq!(enhanced(1440.0, 960.0, 1.5, false), at(6, 4));
+        assert_eq!(enhanced(2880.0, 1920.0, 3.0, false), at(12, 4));
         // Smaller than the frame: the frame, cropped by the window.
-        assert_eq!(enhanced(100.0, 100.0, 1.0, false), Fit { scale: 1, density: 1 });
-        // A 4K display, at 150% and at 100%: held to six times the frame (but sharp).
-        assert_eq!(enhanced(3840.0, 2160.0, 1.5, false), Fit { scale: 13, density: MOST_DENSITY });
-        assert_eq!(enhanced(3840.0, 2160.0, 1.0, false), Fit { scale: 13, density: MOST_DENSITY });
-        assert_eq!(enhanced(3840.0, 2160.0, 1.0, true), Fit { scale: 13, density: 13 });
-        // The original mode: the frame's own pixels, the window scaling them.
-        assert_eq!(fit(3840.0, 2160.0, 1.5, false, false), Fit { scale: 13, density: 1 });
-        assert_eq!(fit(1920.0, 1280.0, 2.0, true, false), Fit { scale: 8, density: 1 });
+        assert_eq!(enhanced(100.0, 100.0, 1.0, false), at(1, 1));
+        // A 4K display, at 150% and at 100%: held to six times the frame (but sharp); the frame as wide as the
+        // display at 13 times, 295 columns.
+        assert_eq!(enhanced(3840.0, 2160.0, 1.5, false), Fit { columns: 295, ..at(13, MOST_DENSITY) });
+        assert_eq!(enhanced(3840.0, 2160.0, 1.0, false), Fit { columns: 295, ..at(13, MOST_DENSITY) });
+        assert_eq!(enhanced(3840.0, 2160.0, 1.0, true), Fit { columns: 295, ..at(13, 13) });
+        // The original mode: the frame's own pixels, the window scaling them, its 240 columns.
+        assert_eq!(fit(3840.0, 2160.0, 1.5, false, false), at(13, 1));
+        assert_eq!(fit(1920.0, 1280.0, 2.0, true, false), at(8, 1));
+    }
+
+    /// The enhanced mode's frame is as wide as the space at the largest whole multiple that fits: a 16:9 window,
+    /// a phone held sideways (19.5:9), an ultrawide one; a space narrower than 3:2 (a phone held upright) has the
+    /// original's 240 columns, the picture's bars above and below.
+    #[test]
+    fn the_enhanced_frame_is_as_wide_as_the_space() {
+        let enhanced = |w, h| fit(w, h, 1.0, true, true);
+        assert_eq!(enhanced(1920.0, 1080.0), Fit { scale: 6, density: 6, columns: 320 });
+        assert_eq!(enhanced(2532.0, 1170.0), Fit { scale: 7, density: 7, columns: 361 });
+        assert_eq!(enhanced(3440.0, 1440.0), Fit { scale: 9, density: 9, columns: 382 });
+        assert_eq!(enhanced(1170.0, 2532.0), Fit { scale: 4, density: 4, columns: 292 });
+        assert_eq!(enhanced(720.0, 1600.0), Fit { scale: 3, density: 3, columns: 240 });
+        assert_eq!(enhanced(1920.0, 1080.0).presented(), (1920, 960));
+        assert_eq!(enhanced(1920.0, 1080.0).original().presented(), (1440, 960));
     }
 
     /// A surface's pictures are written into two buffers in turn: once the window let go of a picture's image,
@@ -414,10 +468,10 @@ mod tests {
     #[test]
     fn a_surfaces_pictures_are_written_into_two_buffers_in_turn() {
         let mut surface = Surface::new();
-        let fit = Fit { scale: 1, density: 1 };
+        let fit = Fit { scale: 1, density: 1, columns: WIDTH as u32 };
         let next = |surface: &mut Surface, n: u32| {
             surface.stale = true;
-            surface.picture(fit, |buffer, _, _| buffer.fill(n)).expect("a stale picture is presented")
+            surface.picture(fit, |_, buffer, _, _| buffer.fill(n)).expect("a stale picture is presented")
         };
         let pixels = |image: &Image| image.to_rgba8_premultiplied().expect("an image of pixels");
         let (first, second) = (next(&mut surface, 1), next(&mut surface, 2));

@@ -1845,7 +1845,7 @@ impl Screen for Replays {
             && shown_path.as_ref() == Some(&*path)
             && (!shell.scale.phone || self.sheet)
         {
-            shell.show_surface(surface, |buffer, width, height| {
+            shell.show_surface(surface, false, |_, buffer, width, height| {
                 nettai_render::present::present(frame, text.as_mut(), buffer, width, height);
             });
         }

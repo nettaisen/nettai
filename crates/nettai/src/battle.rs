@@ -212,7 +212,7 @@ impl Shell {
                 // The picture's size as the battle will show it: the text is laid out at it.
                 let size = ui.window().size();
                 let fit = self.fit(size.width as f32, size.height as f32);
-                let size = (nettai_render::compose::WIDTH * fit.density as usize, nettai_render::compose::HEIGHT * fit.density as usize);
+                let size = fit.presented();
                 let mode = self.settings.graphics();
                 let graphics = ready.graphics(self.i18n.code);
                 let font = ready.loaded.font_in(self.i18n.code).filter(|_| mode == GraphicsMode::Enhanced);
@@ -493,12 +493,13 @@ impl Shell {
     }
 
     /// How the picture fits a room of `width` by `height` display pixels: `stage::fit`, held to the settings'
-    /// picture size.
+    /// picture size (the enhanced mode's frame as wide as the room at the multiple held to).
     pub fn fit(&self, width: f32, height: f32) -> stage::Fit {
         let mut fit = stage::fit(width, height, self.scale.os, self.sharp, self.settings.enhanced);
         if self.settings.picture_size > 0 && fit.scale > self.settings.picture_size {
             fit.scale = self.settings.picture_size;
             fit.density = fit.density.min(fit.scale);
+            fit.columns = stage::columns(width, fit.scale, self.settings.enhanced);
         }
         fit
     }
@@ -516,13 +517,15 @@ impl Shell {
     }
 
     /// Show a picture of a screen's own in the room its `Picture` has (a replay's viewer): `present` draws it
-    /// into the buffer it is given, when `surface` is out of date (the screen sets `surface.stale` as its
-    /// picture changes) or the room changed.
-    pub fn show_surface(&mut self, surface: &mut Surface, present: impl FnOnce(&mut [u32], usize, usize)) {
+    /// into the buffer it is given, a frame as wide as it is given (the original's 240 columns but where
+    /// `wide`, a battle's picture: the enhanced mode's as wide as the room), when `surface` is out of date (the
+    /// screen sets `surface.stale` as its picture changes) or the room changed.
+    pub fn show_surface(&mut self, surface: &mut Surface, wide: bool, present: impl FnOnce(nettai_render::compose::Wide, &mut [u32], usize, usize)) {
         if !self.drawing {
             return;
         }
         let Some(fit) = self.room_fit(surface) else { return };
+        let fit = if wide { fit } else { fit.original() };
         let shown = surface.picture(fit, present);
         self.place_picture(fit, shown);
     }
@@ -531,13 +534,13 @@ impl Shell {
     /// frame in the display's pixels, presented at the window's density as the picture is (`stage::fit`), as an
     /// image of its own, when `surface` is out of date or its size changed. Its image when there is a new one to
     /// show, and its size in the window's logical pixels; none in a frame the window doesn't draw.
-    pub fn show_inset(&mut self, surface: &mut Surface, multiple: u32, present: impl FnOnce(&mut [u32], usize, usize)) -> Option<(Option<slint::Image>, f32, f32)> {
+    pub fn show_inset(&mut self, surface: &mut Surface, multiple: u32, present: impl FnOnce(nettai_render::compose::Wide, &mut [u32], usize, usize)) -> Option<(Option<slint::Image>, f32, f32)> {
         if !self.drawing {
             return None;
         }
         let factor = self.ui().window().scale_factor();
         let (width, height) = ((nettai_render::compose::WIDTH as u32 * multiple) as f32, (nettai_render::compose::HEIGHT as u32 * multiple) as f32);
-        let fit = stage::fit(width, height, self.scale.os, self.sharp, self.settings.enhanced);
+        let fit = stage::fit(width, height, self.scale.os, self.sharp, self.settings.enhanced).original();
         let image = surface.picture(fit, present);
         Some((image, width / factor, height / factor))
     }
@@ -573,7 +576,7 @@ impl Shell {
         if let Some(image) = shown {
             shell.set_picture(image);
         }
-        let size = (nettai_render::compose::WIDTH as f32 * fit.scale as f32, nettai_render::compose::HEIGHT as f32 * fit.scale as f32);
+        let size = (fit.columns as f32 * fit.scale as f32, nettai_render::compose::HEIGHT as f32 * fit.scale as f32);
         shell.set_picture_width(size.0 / factor);
         shell.set_picture_height(size.1 / factor);
         // In the room's middle, on the display's pixels: each of the game's pixels is one square of them. (The room

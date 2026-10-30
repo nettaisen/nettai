@@ -167,8 +167,16 @@ a picture drawn across them wouldn't show each of the game's pixels as one squar
 whatever the multiple, so nothing beside it moves. In a battle the box is the window; on the main menu it is the
 reel's 720 by 480.
 
+In the enhanced mode a battle's picture is as wide as its box at that multiple: the frame has as many whole
+columns as the box has at the scale, 240 at least (`stage::columns`, `Fit::columns`; the renderer's
+`Renderer::wide`, docs/frontend.md §3, "Wider than the original"), so the bars are only above and below it: the
+field in the middle, the background on to both edges, the HUD against the edges the original draws it against.
+A battle, the menu's reel and a replay's viewer draw so (`Shell::show`, `Shell::show_surface` with `wide`); a
+replay's still, the viewer's inset of the other console, Practice's thumbnails and a video keep the original's
+240 columns. The original mode's picture is always the original's 240 by 160.
+
 It is presented at the window's density (the scale over the display's factor, rounded up), or at the display's
-density with `NETTAI_PHYSICAL_PIXELS`, and drawn with `image-rendering: pixelated` at exactly `240 × scale`
+density with `NETTAI_PHYSICAL_PIXELS`, and drawn with `image-rendering: pixelated` at exactly `columns × scale`
 display pixels. The density need not divide the scale. Each display pixel samples the presented pixel its center
 falls in, and that pixel always belongs to the right frame pixel, so every frame pixel is the same square
 (`stage::tests::every_frame_pixel_is_a_square_at_any_density`). Only the text layer, drawn at the density, is

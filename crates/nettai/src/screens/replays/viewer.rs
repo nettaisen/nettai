@@ -777,7 +777,10 @@ impl Watching {
         let (stale, began) = (surface.stale, Instant::now());
         // (The other console's picture is of the same tick: out of date when this one is.)
         inset.stale |= stale;
-        shell.show_surface(surface, |buffer, width, height| viewer.present(buffer, width, height));
+        shell.show_surface(surface, true, |wide, buffer, width, height| {
+            viewer.renderer().wide = wide;
+            viewer.present(buffer, width, height)
+        });
         if self.overlays.inset {
             self.show_inset(shell);
         }
@@ -803,7 +806,14 @@ impl Watching {
         let multiple = ((fit.scale as f32 / INSET_PART).round() as u32).max(1);
         let other = self.viewer.view() ^ 1;
         let viewer = &mut self.viewer;
-        let Some((image, width, height)) = shell.show_inset(&mut self.inset, multiple, |buffer, w, h| viewer.present_view(other, buffer, w, h)) else { return };
+        // (The original's 240 columns: the shown console's frame is drawn as wide again after it.)
+        let Some((image, width, height)) = shell.show_inset(&mut self.inset, multiple, |wide, buffer, w, h| {
+            let shown = std::mem::replace(&mut viewer.renderer().wide, wide);
+            viewer.present_view(other, buffer, w, h);
+            viewer.renderer().wide = shown;
+        }) else {
+            return;
+        };
         let ui = shell.ui();
         let (view, picture) = (ui.global::<ReplaysView>(), ui.global::<nettai_ui::Shell>());
         if let Some(image) = image {
@@ -918,7 +928,7 @@ impl Watching {
         // (A frame that took half again the usual: a refresh missed.)
         let long = s.gaps.iter().filter(|g| g.as_secs_f64() > at(0.5).as_secs_f64() * 1.5).count();
         let mean = |of: &(Duration, u32, Duration)| of.0 / of.1.max(1);
-        let size = self.surface.fit().map_or((0, 0), |fit| (240 * fit.density, 160 * fit.density));
+        let size = self.surface.fit().map_or((0, 0), |fit| fit.presented());
         eprintln!(
             "viewer stats: {:.1} frames/s (frame time p50 {:.2?} p95 {:.2?} p99 {:.2?} max {:.2?}, {long} long), {:.2} ticks/s at {}x ({:.2?} a frame that ran them, worst {:.2?}); \
              {} pictures ({}x{}): {:.2?} each (worst {:.2?}); index: {} of {} ticks",
