@@ -81,9 +81,15 @@ pub fn run() -> Result<(), slint::PlatformError> {
         eprintln!("nettai: this build has no screenshot pass (NETTAI_TOUR): build it with `--features tour`");
         std::process::exit(2);
     }
-    // (The renderer is whichever the build has: the clock needs one that tells when it draws, as every GPU
-    // renderer does, femtovg's and Skia's; Slint's software renderer doesn't, and the window says so below.)
+    // (The renderer is the build's femtovg: the clock needs one that tells when it draws, as femtovg does (on wgpu
+    // with `unstable-wgpu-30`); Slint's software renderer doesn't, and the window says so below.)
     let mut backend = slint::BackendSelector::new().backend_name("winit".into());
+    // (On iOS Slint's winit backend builds Skia too and picks it first; Skia panics when the UI drops a component in
+    // its rendering notifier, where the app's frame runs, so femtovg on wgpu is named there: nettai-ui's Cargo.toml.)
+    #[cfg(target_os = "ios")]
+    {
+        backend = backend.renderer_name("femtovg-wgpu".into());
+    }
     if tour.is_some() {
         // (The screenshot pass's window doesn't take the keyboard.)
         backend = backend.with_winit_window_attributes_hook(|a| a.with_active(false));

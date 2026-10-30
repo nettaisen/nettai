@@ -258,6 +258,44 @@ jobs:
           path: target/package/linux/releases/*
           if-no-files-found: error
 
+  # iOS's app (packaging/ios/package.sh): the Simulator's and a device's, as the run's artifacts alone. Neither goes
+  # into the release: the device build is unsigned (no Apple Developer account signs it yet), and nobody can install
+  # it as it is; the Simulator's runs on a Mac with Xcode. Named apart from the packages, which the release job
+  # takes by `nettai-*`.
+  ios:
+    name: iOS app (${{ matrix.kind }})
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        include:
+          - kind: simulator
+            target: aarch64-apple-ios-sim
+          - kind: device
+            target: aarch64-apple-ios
+    steps:
+      - uses: actions/checkout@v7
+      - name: Rust
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          rustup target add ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: ios-${{ matrix.kind }}
+      - name: Fetch the crates
+        run: cargo fetch --locked
+      - name: librsvg (the icons)
+        run: brew install librsvg
+      - name: Package
+        env:
+          NETTAI_IOS: ${{ matrix.kind }}
+        run: packaging/ios/package.sh
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ios-${{ matrix.kind }}
+          path: target/package/ios/${{ matrix.kind }}/nettai-ios-${{ matrix.kind }}.zip
+          if-no-files-found: error
+
   release:
     name: Release
     if: inputs.publish && github.ref == 'refs/heads/main'
