@@ -4073,8 +4073,10 @@ and appimagetool.
   own channel, `osx-arm64`, `osx-x64` and `osx` (Velopack's default, a Mac's only one up to 0.12.0; below,
   "Updates"): channels named as Velopack names the runtime (`--runtime`, which the universal app has none of), whose
   files (`nettai-<version>-<channel>-full.nupkg`, `releases.<channel>.json`) sit side by side in one release.
-  `NETTAI_MACOS_ARCH` picks one (`aarch64`, `x86_64`, `universal`; else the Mac's own); each slice is built for its
-  target, so the universal app's build reuses the two the others built. The player unzips it where they like
+  `NETTAI_MACOS_ARCH` picks one (`aarch64`, `x86_64`, `universal`; else the Mac's own). The program is built a slice
+  at a time first (`packaging/macos/slice.sh`, into `target/package/macos/slices/<arch>/`, with its build's
+  third-party notices), and package.sh compiles nothing: it packages the slice, or for the universal app joins both
+  (their notices as one where they are the same, else both). The player unzips it where they like
   (/Applications, or anywhere) and it updates itself there. No installer package (`--noInst`; the user: "i don't
   want to ship a pkg file for mac"). Signed ad hoc unless `MACOS_SIGN_IDENTITY` names a
   Developer ID Application identity, which vpk signs the bundle with (the hardened runtime, everything in it), and
@@ -4126,8 +4128,9 @@ too while it was libdatachannel's.)
 
 The workflow (`.github/workflows/release.yml`) is run by hand on main (`gh workflow run release.yml --ref main`), after
 the version in Cargo.toml is bumped and pushed. The icons are made once, on Linux; then Windows (`windows-latest`),
-macOS (`macos-latest`: Apple silicon's, Intel's and the universal app, in that order, so that the two slices are
-compiled once; each package signed and notarized) and Linux (`ubuntu-22.04`) each package and upload theirs as the run's
+macOS (`macos-latest`: the two slices built at once, a job and a Rust cache each, then one job that packages Apple
+silicon's, Intel's and the universal app of them, each signed and notarized) and Linux (`ubuntu-22.04`) each package and
+upload theirs as the run's
 artifacts (the Mac's an artifact a package, so that the release job's download puts all the files in one folder), the
 version Cargo.toml's. Each installs .NET 8 and vpk (`VPK_VERSION`). With `publish` on (the default), the workflow tags
 the commit `v<version>` (a tag of that name on another commit stops it), `vpk upload github --merge` puts each package's

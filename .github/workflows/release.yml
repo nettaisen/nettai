@@ -97,9 +97,40 @@ jobs:
           path: target/package/windows/releases/*
           if-no-files-found: error
 
+  # Each Mac architecture's program, built at once in a job of its own (packaging/macos/slice.sh); the next job
+  # packages the apps of them. Each has its own Rust cache.
+  macos-slices:
+    name: macOS program (${{ matrix.arch }})
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        arch: [aarch64, x86_64]
+    steps:
+      - uses: actions/checkout@v7
+      - name: Rust
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          rustup target add ${{ matrix.arch }}-apple-darwin
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: ${{ matrix.arch }}
+      - name: Fetch the crates
+        run: cargo fetch --locked
+      - name: Build
+        env:
+          NETTAI_MACOS_ARCH: ${{ matrix.arch }}
+        run: packaging/macos/slice.sh
+      # (Named apart from the packages, which the release job takes by `nettai-*`.)
+      - uses: actions/upload-artifact@v7
+        with:
+          name: slice-macos-${{ matrix.arch }}
+          path: target/package/macos/slices/${{ matrix.arch }}
+          if-no-files-found: error
+
   macos:
     name: macOS apps
-    needs: icons
+    needs: [icons, macos-slices]
     runs-on: macos-latest
     env:
       MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
@@ -109,14 +140,15 @@ jobs:
         with:
           name: icons
           path: ${{ runner.temp }}/icons
-      - name: Rust
-        run: |
-          rustup toolchain install stable --profile minimal --no-self-update
-          rustup default stable
-          rustup target add aarch64-apple-darwin x86_64-apple-darwin
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-      - name: Fetch the crates
-        run: cargo fetch --locked
+      # (Where packaging/macos/slice.sh puts them: package.sh packages them from there.)
+      - uses: actions/download-artifact@v8
+        with:
+          name: slice-macos-aarch64
+          path: target/package/macos/slices/aarch64
+      - uses: actions/download-artifact@v8
+        with:
+          name: slice-macos-x86_64
+          path: target/package/macos/slices/x86_64
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
@@ -158,8 +190,8 @@ jobs:
             echo "MACOS_NOTARY_PROFILE=nettai" >> "$GITHUB_ENV"
           fi
       # Each architecture's package on its channel (osx-arm64, osx-x64), then the universal one (osx), whose program
-      # and ffmpeg are the two architectures' joined: the slices are compiled once, and the universal app's build finds
-      # them built. Each package is signed and notarized, with the secrets above.
+      # and ffmpeg are the two architectures' joined: all of the slices built above, nothing compiled here. Each
+      # package is signed and notarized, with the secrets above.
       - name: Package
         env:
           NETTAI_ICONS: ${{ runner.temp }}/icons

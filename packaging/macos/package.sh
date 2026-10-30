@@ -5,6 +5,7 @@
 # update package and its feed the app's updater reads from the GitHub release: nettai-<version>-<channel>-full.nupkg,
 # releases.<channel>.json, assets.<channel>.json, RELEASES-<channel>).
 #
+#   NETTAI_MACOS_ARCH=aarch64 packaging/macos/slice.sh       # the program, built (each slice the app is made of)
 #   NETTAI_MACOS_ARCH=aarch64 packaging/macos/package.sh
 #
 # Each architecture is its own package on its own Velopack channel, named as Velopack names the runtime (`vpk pack
@@ -15,6 +16,9 @@
 #   x86_64      Intel                                      osx-x64
 #   universal   both, the two programs joined by lipo      osx (a Mac's only package up to 0.12.0: the installs
 #                                                               from it update through it; docs/app.md §19)
+#
+# This compiles nothing: it packages the slices packaging/macos/slice.sh built (target/package/macos/slices/), the
+# universal app both of them.
 #
 # The bundle: Contents/MacOS/{nettai, ffmpeg}, Contents/Resources/{nettai.icns, LICENSE, THIRD-PARTY-NOTICES.txt,
 # ffmpeg-NOTICE.txt}. No content, no ROM and no extracted asset is in it: the app downloads each game's content
@@ -56,14 +60,25 @@ out=$root/target/package/macos/$arch
 rm -rf "$out"
 mkdir -p "$out"
 
-# Each slice built for its target, whichever package it is for: one packaged already, as the release workflow
-# packages each architecture before the universal app, is cargo's to reuse, and nothing is compiled twice.
+# The program: its slices', as slice.sh built them. The third-party notices are the slices' builds' (each build's
+# are its target's crates): one slice's, or for the universal app both, as one where they are the same.
 programs=()
+notes=()
 for slice in "${slices[@]}"; do
-    build_app "$slice-apple-darwin"
-    programs+=("$program")
+    built=$root/target/package/macos/slices/$slice
+    [ -f "$built/nettai" ] || { echo "no $slice slice: run NETTAI_MACOS_ARCH=$slice packaging/macos/slice.sh first" >&2; exit 1; }
+    programs+=("$built/nettai")
+    notes+=("$built/licenses.txt")
 done
 join_slices "$out/nettai" "${programs[@]}"
+# (A slice carried from another job as a workflow's artifact has lost its mode.)
+chmod 755 "$out/nettai"
+notices=$out/THIRD-PARTY-NOTICES.txt
+if [ ${#notes[@]} = 1 ] || cmp -s "${notes[0]}" "${notes[1]}"; then
+    cp "${notes[0]}" "$notices"
+else
+    { cat "${notes[0]}"; printf '\n'; cat "${notes[1]}"; } > "$notices"
+fi
 
 icons=${NETTAI_ICONS:-}
 if [ -z "$icons" ]; then
