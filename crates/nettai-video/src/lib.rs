@@ -6,9 +6,10 @@
 //!   240x160, a frame and its sound at a time.
 //! - [`encode`]: the encoder, the platform's: `ffmpeg` on the desktop (a child a track, written its raw frames or
 //!   samples, which it encodes and says the packets of back), the browser's own in a browser
-//!   (WebCodecs). Either is given the same frames and the same samples, and makes the picture's H.264 and a sound
-//!   track's AAC (or the browser's Opus) a console shown.
-//! - `resample`: the sound made 48 kHz, the rate both encoders' codecs take, before either is given it.
+//!   (WebCodecs), the phone's own on a phone (iOS's VideoToolbox and AudioToolbox, Android's MediaCodec, each
+//!   given the frames as NV12 made here: `yuv`). Each is given the same frames and the same samples, and makes
+//!   the picture's H.264 and a sound track's AAC (or the browser's Opus) a console shown.
+//! - `resample`: the sound made 48 kHz, the rate every encoder's codecs take, before any is given it.
 //! - [`mp4`]: the MP4 of what the encoder makes, its samples written to any `std::io::Write` a chunk at a time as
 //!   they are made (a file; in a browser, the file being made in the page's storage) and its head, the index of
 //!   them, made last, for the host to put before them: its tracks, its sound tracks' titles and its rounds as
@@ -80,7 +81,8 @@
 //! // Err(Error::NoFfmpeg(_)) | Err(Error::FfmpegFailed { .. }) | Err(Error::Encoder(_)) | Err(Error::Canceled) ...
 //! ```
 
-#![forbid(unsafe_code)]
+// (Unsafe only where iOS's frameworks are called: `videotoolbox`.)
+#![deny(unsafe_code)]
 
 pub mod encode;
 pub mod mp4;
@@ -88,15 +90,32 @@ pub use mp4::Made;
 mod presenters;
 
 // The platform's encoder, each with its `start`: ffmpeg on the desktop (a child a track), the
-// browser's own in a browser.
-#[cfg(not(target_arch = "wasm32"))]
+// browser's own in a browser, the phone's own on a phone (iOS's VideoToolbox and AudioToolbox,
+// Android's MediaCodec), each given the same frames and samples. (macOS has iOS's frameworks:
+// the tests run `videotoolbox` there.)
+#[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android")))]
 pub mod ffmpeg;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android")))]
 use ffmpeg as platform;
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 #[cfg(target_arch = "wasm32")]
 use webcodecs as platform;
+#[cfg(any(target_os = "ios", all(test, target_os = "macos")))]
+#[allow(unsafe_code)]
+mod videotoolbox;
+#[cfg(target_os = "ios")]
+use videotoolbox as platform;
+#[cfg(target_os = "android")]
+mod mediacodec;
+#[cfg(target_os = "android")]
+use mediacodec as platform;
+// (A phone's encoder takes YUV, made here: the same bytes on both.)
+#[cfg(any(target_os = "ios", target_os = "android", test))]
+mod yuv;
+// (Android's encoder makes H.264 as Annex B, made the MP4's here.)
+#[cfg(any(target_os = "android", test))]
+mod annex_b;
 mod resample;
 
 pub use encode::{Audio, Chapter, Chroma, Encoding, Info, Video};
@@ -317,7 +336,8 @@ pub enum Error {
     /// `ffmpeg` ran and failed: its exit code (none: a signal ended it)
     /// and the last of what it wrote to its standard error.
     FfmpegFailed { code: Option<i32>, log: String },
-    /// The browser's encoder (WebCodecs) refused or failed: what it said.
+    /// The platform's encoder refused or failed (the browser's WebCodecs, iOS's VideoToolbox or AudioToolbox,
+    /// Android's MediaCodec), or what it made isn't an MP4's: what was said.
     Encoder(String),
     /// The threads the frames' pictures are made on didn't start, or one
     /// stopped: what was said.
@@ -338,7 +358,7 @@ impl fmt::Display for Error {
             Error::NoFfmpeg(e) => write!(f, "ffmpeg couldn't be started: {e}"),
             Error::FfmpegFailed { code: Some(code), log } => write!(f, "ffmpeg failed (exit code {code}): {}", log.trim()),
             Error::FfmpegFailed { code: None, log } => write!(f, "ffmpeg was stopped: {}", log.trim()),
-            Error::Encoder(said) => write!(f, "the browser's encoder: {said}"),
+            Error::Encoder(said) => write!(f, "the encoder: {said}"),
             Error::Threads(said) => write!(f, "the threads presenting the frames: {said}"),
             Error::Canceled => write!(f, "canceled"),
         }
@@ -473,14 +493,15 @@ pub(crate) fn play<F: Frames>(viewer: &mut Viewer, options: &Options, progress: 
 
 /// Write a replay as an MP4 to `to`, as it is made, on a loaded game (its graphics, its text as it was loaded, its
 /// sound if it was): [`write_mp4`], through a viewer of its own, on the thread it is called on (a host calls it on
-/// one that isn't its window's). The same on the desktop and in a browser.
+/// one that isn't its window's). The same on the desktop, in a browser and on a phone.
 pub fn export<W: Write>(game: &Loaded, replay: &Replay, options: &Options, encoding: &Encoding, to: W, progress: OnProgress) -> Result<Made<W>, Error> {
     let mut viewer = Viewer::open(game, replay, options.view).map_err(Error::Replay)?;
     write_mp4(&mut viewer, options, encoding, to, progress)
 }
 
 /// Write the replay `viewer` plays as an MP4 to `to`, as it is made: its frames and sound encoded by the
-/// platform's encoder ([`encode`]: ffmpeg on the desktop, WebCodecs in a browser) and their samples written a
+/// platform's encoder ([`encode`]: ffmpeg on the desktop, WebCodecs in a browser, the phone's own on a phone) and
+/// their samples written a
 /// chunk at a time ([`mp4`]), its sound tracks titled and its rounds chapters. `to` is given back with every
 /// sample in it, and the head the file starts with, which goes before them ([`Made`]); canceled or failed, what
 /// was written is the caller's to let go.
@@ -496,10 +517,14 @@ struct Mp4<W: Write> {
 
 impl<W: Write> Mp4<W> {
     fn start(video: Video, audio: Option<Audio>, info: &Info, encoding: &Encoding, to: W) -> Result<Mp4<W>, Error> {
-        let encoder = platform::start(video, audio, encoding)?;
+        Ok(Mp4::with(platform::start(video, audio, encoding)?, video, info, to))
+    }
+
+    /// An MP4 made by `encoder` (the platform's; in the tests, another platform's of this one's).
+    fn with(encoder: Box<dyn encode::Backend>, video: Video, info: &Info, to: W) -> Mp4<W> {
         let frame = video.frame_time.0 as f64 / video.frame_time.1 as f64;
         let chapters = info.chapters.iter().map(|c| mp4::Chapter { title: c.title.clone(), start: c.start as f64 * frame }).collect();
-        Ok(Mp4 { encoder: Some(encoder), muxer: Some(mp4::Muxer::new(to, info.titles.clone(), chapters)) })
+        Mp4 { encoder: Some(encoder), muxer: Some(mp4::Muxer::new(to, info.titles.clone(), chapters)) }
     }
 
     fn muxed(&mut self, events: Vec<encode::Event>) -> Result<(), Error> {

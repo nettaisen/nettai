@@ -1346,6 +1346,8 @@ Not built. What it would take:
     storage, as the web keeps copies of them (§6), and each game's assets extracted from them as it loads.
   - Replays in the app's storage, shared with the system's share sheet.
 - **Sound:** cpal plays through AAudio/Oboe on Android and CoreAudio on iOS.
+- **Video export:** each phone's own encoders (§16): VideoToolbox's H.264 and AudioToolbox's AAC on iOS, MediaCodec's
+  on Android, given the frames as NV12 made in Rust (the same bytes on both) and the same 48 kHz samples as ffmpeg.
 - **Input:**
   - Touch is the on-screen pad (`TouchPad`, battle.slint; §11, "The on-screen pad"): it takes the window's
     touches itself, every finger its own. No touch screen has run it.
@@ -3734,6 +3736,24 @@ found, the file not written, anything else with the log named). The app keeps aw
   the path or where a package manager puts it (`/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin`: an app
   started from the desktop has a short path). The path's relative folders (`.`, an empty entry) are passed by, so
   an `ffmpeg` in the working directory is never run (nettai-video's `ffmpeg::find_ffmpeg`, docs/frontend.md §8).
+- *On a phone* there is no ffmpeg: the encoders are the phone's own, behind the same `encode::Backend`, given the
+  same frames and the same 48 kHz samples, into the same MP4 (nettai-video's `videotoolbox` and `mediacodec`).
+  - The frames go in as NV12 in the video range, made of their RGB in Rust (nettai-video's `yuv`: BT.709, each
+    chroma sample the mean of the two by two pixels it covers), the same bytes on both phones and within one of
+    what the desktop's ffmpeg makes of the same frames. H.264 at a bit rate made of the rate factor as the
+    browser's is, a key frame at least every 120 frames, no B-frames, tagged BT.709 in the video range. 4:4:4
+    isn't coded on a phone: it is 4:2:0, as in a browser.
+  - iOS: VideoToolbox's H.264 (High) and AudioToolbox's AAC-LC, each track shown from past the 2112 samples of
+    priming AudioToolbox says it puts first (`kAudioConverterPrimeInfo`). macOS has the same frameworks, and
+    nettai-video's tests run them there (2026-10-29): a set's 120 frames at twice the frame, read back by ffprobe
+    as H.264 High 480x320 yuv420p, tagged tv/bt709/bt709/bt709, 262144/4389, starting at 0, 120 frames, and AAC
+    LC at 48 kHz; decoded by ffmpeg, the pictures 0.150 off a byte on average, and the sound at no lag from what
+    was given (97,200 samples for 96,438: the last AAC frame's rest). Not run on an iPhone.
+  - Android: MediaCodec's `video/avc` and `audio/mp4a-latm` through the NDK; its parameter sets (`csd-0`,
+    `csd-1`) make the avcC and its Annex B packets are given lengths (nettai-video's `annex_b`); the sound goes in
+    as 16-bit PCM, and the AAC encoder's priming, which Android doesn't say and which differs by device, is
+    measured as an export starts, a click through it and the system's decoder, as the browser's is. Only
+    type-checked: no device has run it.
 - *How fast* (the user: "is replay export slower than it should be?"): the export's thread plays the replay and
   draws each tick's frame at 240x160; the picture at the video's size, text and all, is made on a few threads
   beside it (nettai-video's `presenters`, with the window's own `present`: there is one way a frame is presented),
