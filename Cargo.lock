@@ -1830,6 +1830,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98de4bbd547a563b716d8dfa9aad1cb19bfab00f4fa09a6a4ed21dbcf44ce9c4"
 
 [[package]]
+name = "flume"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e139bc46ca777eb5efaf62df0ab8cc5fd400866427e56c68b22e414e53bd3be"
+dependencies = [
+ "futures-core",
+ "futures-sink",
+ "spin",
+]
+
+[[package]]
 name = "fnv"
 version = "1.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3518,6 +3529,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "mdns-sd"
+version = "0.21.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8562654710f72a9cbce4b0d5b7c366a2f94330ba1ce3740f15e932ea2d37b161"
+dependencies = [
+ "fastrand",
+ "flume",
+ "if-addrs",
+ "log",
+ "mio",
+ "socket-pktinfo",
+ "socket2",
+]
+
+[[package]]
 name = "memchr"
 version = "2.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3584,6 +3610,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1788edb87fdc09c7e26304471e2f5be8cdefb1b6930d6e3985fc02ff53bf86ee"
 dependencies = [
  "libc 0.2.190",
+ "log",
  "wasi",
  "windows-sys 0.61.2",
 ]
@@ -3760,6 +3787,7 @@ dependencies = [
  "nettai-http",
  "nettai-lifecycle",
  "nettai-match",
+ "nettai-nearby",
  "nettai-page",
  "nettai-render",
  "nettai-replay",
@@ -4009,6 +4037,21 @@ dependencies = [
  "serde",
  "toml 0.8.23",
  "toml_edit 0.22.27",
+]
+
+[[package]]
+name = "nettai-nearby"
+version = "0.1.0"
+dependencies = [
+ "cfg_aliases",
+ "jni",
+ "libc 0.2.190",
+ "log",
+ "mdns-sd",
+ "nettai-android",
+ "objc2 0.6.4",
+ "objc2-foundation 0.3.2",
+ "objc2-ui-kit 0.3.2",
 ]
 
 [[package]]
@@ -6364,6 +6407,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "socket-pktinfo"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "612942246d0cc239cfd83af1dfd39be47f649208a3524e5e9da651910128e0ac"
+dependencies = [
+ "libc 0.2.190",
+ "socket2",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
 name = "socket2"
 version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6403,6 +6457,15 @@ dependencies = [
  "web-sys",
  "windows-sys 0.61.2",
  "x11rb",
+]
+
+[[package]]
+name = "spin"
+version = "0.9.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3763264f6b73151db08c50ff20d7d8a0b8796e021cdea7ceedad07b80155fa0e"
+dependencies = [
+ "lock_api",
 ]
 
 [[package]]

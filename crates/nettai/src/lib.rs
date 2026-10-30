@@ -24,6 +24,7 @@ mod lang;
 mod look;
 mod music;
 mod nav;
+mod nearby;
 mod paths;
 mod quit;
 mod replays;

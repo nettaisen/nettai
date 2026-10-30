@@ -269,6 +269,8 @@ pub struct Shell {
     composing: bool,
     /// The settings aren't written (the screenshot pass changes them as it goes).
     pub keep_nothing: bool,
+    /// The Legacy Collection offered to devices nearby, or looked for on a computer nearby (`crate::nearby`).
+    pub nearby: crate::nearby::Nearby,
     /// When the player last did anything: a key or a pad's button pressed, the pointer moved, clicked or
     /// scrolled, a finger on the window. (A replay's viewer shows its controls for a while after it.)
     pub last_input: Option<Instant>,
@@ -1055,6 +1057,7 @@ impl App {
             shift: false,
             composing: false,
             keep_nothing: still,
+            nearby: Default::default(),
             last_input: None,
         };
         App {
@@ -1260,6 +1263,7 @@ impl App {
                 self.call(owner, |s, shell| s.answered(shell, asked.tag, choice));
             }
             None if asked.tag == SOURCE && choice == 0 => self.choose_source(),
+            None if asked.tag == crate::nearby::DIALOG => crate::nearby::answered(&mut self.shell, choice == 0),
             None => {}
         }
     }
@@ -1856,6 +1860,7 @@ impl App {
         self.repeat_key(now);
         self.tilt(now);
         self.follow_games();
+        crate::nearby::frame(&mut self.shell, now);
         // (A change of game's colors a step further.)
         self.shell.looks.frame(&self.shell.ui(), now);
         let shown = self.shell.screen;

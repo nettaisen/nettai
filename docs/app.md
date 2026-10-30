@@ -1361,11 +1361,16 @@ run in the emulator (below, "Android"). What builds: the whole app, for iOS (typ
   in its container, hidden from the player (the user's choice over Documents: what goes in and out goes through the
   pickers and the share sheet); on Android its files folder (`Context.getFilesDir`, through JNI). Files kept a
   while go in `folders::temporary`: iOS's temporary folder, Android's cache folder (`getCacheDir`).
-- **The Legacy Collection** (§17): as in a browser, a folder chosen can't be read again at another start
-  (`nettai_dialogs::FOLDERS_READ_AGAIN`), so the app keeps copies of its ROMs (about 51 MB) and lets the
-  archives go. The player copies the install's `exe` folder to the phone from a computer (a cable, a cloud drive,
-  AirDrop), and CHOOSE FOLDER opens the system's folder picker: iOS's document picker, Android's
-  `ACTION_OPEN_DOCUMENT_TREE`. The missing collection's message says so on a phone (`Theme.phone-app`).
+- **The Legacy Collection** (§17): the phone looks for a computer on its Wi-Fi with nettai open and the
+  collection found, asks it, and that computer's player chooses Send (§17, "From a computer nearby": nettai-nearby,
+  found by DNS-SD, iOS's own and Android's NsdManager, and sent over TCP). The copies come as the app keeps them
+  (about 51 MB) and the games play. The other way: as in a browser, a folder chosen can't be read again at another
+  start (`nettai_dialogs::FOLDERS_READ_AGAIN`), so the app keeps copies of its ROMs and lets the archives go. The
+  player copies the install's `exe` folder to the phone from a computer (a cable, a cloud drive, AirDrop), and
+  CHOOSE FOLDER opens the system's folder picker: iOS's document picker, Android's `ACTION_OPEN_DOCUMENT_TREE`. iOS
+  asks the player once whether nettai may use the local network (Info.plist's `NSLocalNetworkUsageDescription`, in
+  each language: `packaging/ios/*.lproj`; the service is declared in `NSBonjourServices`); Android asks nothing
+  (NsdManager needs only the internet's permission at the app's target SDK).
 - **Files picked and saved** (nettai-dialogs' `phone`):
   - Files to open, and a folder's wanted files (its paths matched as the browser matches them: `dialog/wanted.rs`),
     are copied into the temporary folder's `picked/<n>`, a folder of their own on a thread of its own, and the app
@@ -2808,7 +2813,9 @@ down; a click over another piece, then off the board; a right click; a click off
 
 `NETTAI_TOUR_ONLY=<part,...>` walks those parts alone: `shell` (loading, the menu, the screens as they open,
 Settings, a dialog, a battle; in the probe, a change of game too), `collection` (the Legacy Collection not found:
-the loading screen's line and button, and its dialog), `practice`, `builds`, `build-tabs`,
+the loading screen's line and button, and its dialog), `nearby` (a computer nearby that sends the collection: the
+loading screen's note in each of its states, the bar while the copies come, and the computer's dialog when a device
+asks; §17), `practice`, `builds`, `build-tabs`,
 `party` (the Party tab, with `NETTAI_TOUR_GAME=exe5`: the ruleset page's party pages, the slots and the library that
 follows them, every drag it takes, each let go and checked, the held states shot, and Patch cards' library and the
 NaviCust's list beside it for comparing; on a phone, the slots and the navis' sheet), `play` and `replays`; `play` or `replays` named alone walks Play's or Replays' steps alone. (The pass reads the ROMs `$NETTAI_ROMS`
@@ -4095,6 +4102,66 @@ missing. Have Steam verify the collection's files, then choose its folder again.
 the log names the ROMs missing). A failure while reading the archives or extracting is a load failure,
 `UserError::LoadFailed` ("BN6's data couldn't be loaded. Details are in the log file."); what went wrong is in the
 log alone.
+
+**From a computer nearby** (nettai-nearby; the app's `nearby.rs`). The user, of getting the collection onto a phone:
+the ways before (a file exported, a code typed) were "not very frictionless"; then "bonjour sounds nice, but what
+about android? what about windows <-> ios", and DNS-SD for all of them. Open nettai on the computer and on the
+phone, on the same Wi-Fi: the phone finds the computer and asks, the computer asks its player "Send the Legacy
+Collection to iPhone?", and Send is all.
+
+- *Who offers, who looks.* A desktop whose games' ROMs are found (`Games::rom_source`) offers: it listens for TCP on
+  a port of the system's (IPv4, every interface) and advertises the DNS-SD service `_nettai._tcp` on it, its TXT
+  record the transfer's version (`v`) and the computer's name (`n`, its host name's first label). A device whose ROMs aren't
+  found, with the games' content read (`Games::wants_source`: a phone, or a desktop without the collection), looks
+  for that service. A browser does neither (a page can't). The screenshot pass does neither.
+- *Discovery, by system* (nettai-nearby's `src/platform/`, a module each): the desktop's is the `mdns-sd` crate,
+  which answers and asks multicast DNS itself; iOS's is the system's DNS-SD (`dns_sd.h`, mDNSResponder's: browse,
+  resolve, then the host's IPv4 addresses), which needs no multicast entitlement, only the service declared in
+  Info.plist and the player's yes to the local network (§7); Android's is NsdManager, from Kotlin
+  (`crates/nettai-nearby/android/nettai/nearby/NettaiNearby.kt`), its finds heard through native methods. The
+  Network framework's browser would do on iOS too; `dns_sd.h` was taken as it is a C API Rust calls without
+  Objective-C, macOS has it (so this Mac's tests run it against the desktop's advertisement), and it is what
+  NsdManager and `mdns-sd` speak.
+- *The transfer* (nettai-nearby's `protocol.rs`, version 1): the phone connects to an address the service resolved
+  to and says hello (magic `NETTAINB`, the version, its name); the computer's app asks its player in the shell's
+  dialog (Send, Not now; Esc is Not now; not over another dialog or a battle: the ask waits, up to ten minutes); the
+  reply is declined, busy (a transfer or an ask is under way), another version (with the computer's), or accepted
+  with the files: each ROM's copy as the app keeps it (`RomSource::copies`: `<code>.zip`, the archive entry's
+  compressed bytes, as `copy_of` makes them), their count and total said first. One transfer at a time on each
+  side; nothing is encrypted (the local network, the player's own ROMs, each checked).
+- *What the phone keeps.* Each copy is checked (`source::check_copy`): named for a game code a recipe declares, a zip
+  of the one entry `<code>.srl`, whose header says that code, read whole so its CRC-32 is checked. Those that pass
+  are stowed where the copies of a folder chosen are (`games::copies`), and the games play from them
+  (`Games::found`) at once and at each start. A desktop sent them reads them too, where no collection is installed.
+- *What the loading screen says* (`NearbyState`, its note in place of the missing collection's line): looking, the
+  first eight seconds; then what to check: "No computer found. Open nettai on a computer that has the Legacy
+  Collection, on the same Wi-Fi. Still nothing? Check that its firewall allows nettai and that no VPN is on. Or copy
+  its exe folder here and choose it."; the computer asked ("Found MacBookPro. Choose Send there…"); the bar while
+  the copies come ("RECEIVING FROM MACBOOKPRO"); and why one didn't send: Not now (not asked again till it is found
+  again), another version, unreachable or busy (asked again five seconds on; one unreachable goes after any other
+  found, which is asked at once, as a computer gone may be found till the system's cache lets it go), what it sent
+  can't be played, or (iOS)
+  the local network not allowed. CHOOSE FOLDER stays under it all, the other way.
+- *Firewalls.* On Windows the first offer brings up Windows Defender Firewall's prompt for nettai: allowed on private
+  networks, phones find the computer and connect; denied, or on a network Windows calls public, they don't, and the
+  phone's note says to check the firewall. macOS asks whether nettai may accept incoming connections where its
+  firewall is on. A VPN on either device usually keeps them apart.
+- *What has run* (2026-10-29). Tests: the protocol's hello, acceptance and refusals read back, and what isn't
+  nettai's, a file named as a path and more bytes than said refused (`protocol.rs`); over the loopback, an ask
+  answered with the files and a second declined, a second asker told busy, another version refused without asking
+  the player, an ask of nothing failing (`tests.rs`); on this Mac, the system's DNS-SD finding the desktop's
+  `mdns-sd` advertisement with its name and addresses (`platform::ios`'s test, ignored by default: it needs an
+  interface that carries multicast); the copies sent made as kept ones and checked, a copy of a ROM no game wants,
+  one named for another code, one of two entries, one whose header is another's and one changed in the middle
+  refused (`copies_sent_are_checked`). End to end: the desktop app (a debug build, `$NETTAI_ROMS` a folder of the
+  twelve ROM files) offering, and the iOS app (the script's Simulator build, installed fresh, no ROMs) on an iPhone
+  18 Pro Simulator on the same Mac, twice: the phone found the computer, said "Found MacBookPro. Choose Send there…",
+  received the twelve copies (about 100 MB: ROM files' copies are stored, where the collection's are its archives'
+  compressed entries, about 51 MB), checked and kept them, and loaded BN6 to the main menu, 11 seconds after it
+  began looking, three of them passing over a stale advertisement. The app quit by SIGTERM said goodbye (the
+  system's browser saw it removed). Not run: Android (its Kotlin and JNI build; NsdManager untried, as the
+  emulator's network carries no multicast from the host), Windows and Linux (`mdns-sd` there, and the firewall's
+  prompt), two physical devices on Wi-Fi, a real install's compressed copies.
 
 **What has run.** In tests (nettai-extract's `source.rs`, the app's `games.rs`, each with archives and content of
 their own in temporary folders, the ROMs fake bytes where the code only moves them): an install found from any of

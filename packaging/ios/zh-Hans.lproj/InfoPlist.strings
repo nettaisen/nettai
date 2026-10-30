@@ -1,0 +1,2 @@
+/* Why the local network is asked for (Info.plist's NSLocalNetworkUsageDescription), in this language. */
+"NSLocalNetworkUsageDescription" = "nettai 会在你的网络中查找打开了 nettai 并装有《洛克人EXE 合集》的电脑，以便从那里接收它。";

@@ -221,6 +221,14 @@ impl RomSource {
         Ok(roms.len())
     }
 
+    /// Copies of the ROMs of the game codes `codes` this source has (those it hasn't are passed over), as
+    /// [`RomSource::Copies`] keeps them: each its file's name there (`BR6E.zip`) and its bytes ([`copy_of`]). What a
+    /// device that has the collection sends one that hasn't (nettai-nearby), which checks each ([`check_copy`]).
+    pub fn copies(&self, codes: &[String]) -> Result<Vec<(String, Vec<u8>)>, Error> {
+        let roms = self.find(codes).unwrap_or_else(|(_, found)| found);
+        roms.iter().map(|rom| Ok((format!("{}.zip", rom.code), copy_of(rom)?))).collect()
+    }
+
     /// Every ROM `recipe` declares, read whole into a set for it ([`Recipe::extract`]). An error names the ROMs
     /// missing (the source hasn't the whole collection's), or the one that doesn't read.
     pub fn read(&self, recipe: &Recipe) -> Result<RomSet, Error> {
@@ -280,6 +288,30 @@ pub fn copy_of(rom: &Rom) -> Result<Vec<u8>, Error> {
         }
     }
     Ok(out.finish().map_err(|e| said(&e))?.into_inner())
+}
+
+/// A copy another device sent ([`RomSource::copies`]), checked before it is kept as [`RomSource::Copies`] keeps one:
+/// named `<code>.zip` for one of the game codes `codes`, a zip of the one entry `<code>.srl`, whose header says that
+/// code, and which reads whole (its CRC-32 checked as it is). The code.
+pub fn check_copy(name: &str, bytes: &[u8], codes: &[String]) -> Result<String, Error> {
+    let said = |why: &dyn fmt::Display| Error(format!("the copy {name}: {why}"));
+    let code = name.strip_suffix(".zip").filter(|c| codes.iter().any(|d| d == c)).ok_or_else(|| said(&"not a copy of a ROM a game wants"))?;
+    let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| said(&e))?;
+    if zip.len() != 1 {
+        return Err(said(&format_args!("{} entries, where a copy has one", zip.len())));
+    }
+    let mut entry = zip.by_index(0).map_err(|e| said(&e))?;
+    if entry.name() != format!("{code}.srl") {
+        return Err(said(&format_args!("its entry is {}", entry.name())));
+    }
+    let mut header = Vec::with_capacity(crate::HEADER_LEN);
+    (&mut entry).take(crate::HEADER_LEN as u64).read_to_end(&mut header).map_err(|e| said(&e))?;
+    match crate::header_code(&header) {
+        Some(c) if c == code => {}
+        other => return Err(said(&format_args!("its ROM's header says {}", other.unwrap_or("no game code")))),
+    }
+    std::io::copy(&mut entry, &mut std::io::sink()).map_err(|e| said(&e))?;
+    Ok(code.to_string())
 }
 
 /// The collection's folder as Steam has it installed, if it is: in the first Steam found that has it. (No Steam
@@ -457,6 +489,35 @@ mod tests {
         let from_files = files.path().join("kept");
         assert_eq!(RomSource::at(files.path()).unwrap().keep_copies(&codes(&["BR6E"]), &from_files).unwrap(), 1);
         assert_eq!(RomSource::Copies(from_files).find(&codes(&["BR6E"])).unwrap()[0].read().unwrap(), us);
+    }
+
+    /// The copies a device sends are each named and made as a kept one; the receiver's check takes them, and refuses
+    /// a copy of a ROM no game wants, one named for another code than its header's, one that isn't a copy's shape, and
+    /// one whose bytes were changed.
+    #[test]
+    fn copies_sent_are_checked() {
+        let dir = tempfile::tempdir().unwrap();
+        let (us, jp) = (fake_rom("BR6E", 0x4000), fake_rom("BR5J", 0x2000));
+        archive(&dir.path().join("exe").join("data").join("exe6.dat"), &[("exe6_rom_e.srl", &us), ("roms/exe6f_rom_f.srl", &jp)]);
+        let wanted = codes(&["BR6E", "BR5J"]);
+        let sent = RomSource::at(dir.path()).unwrap().copies(&wanted).unwrap();
+        assert_eq!(sent.iter().map(|(name, _)| name.as_str()).collect::<Vec<_>>(), ["BR6E.zip", "BR5J.zip"]);
+        for (name, bytes) in &sent {
+            assert_eq!(check_copy(name, bytes, &wanted).unwrap(), name.trim_end_matches(".zip"));
+        }
+        let (name, bytes) = &sent[0];
+        assert!(check_copy(name, bytes, &codes(&["BR5J"])).is_err(), "no game wants it");
+        assert!(check_copy("BR5J.zip", bytes, &wanted).is_err(), "named for another code");
+        let two = dir.path().join("two.zip");
+        archive(&two, &[("BR6E.srl", &us), ("BR5J.srl", &jp)]);
+        assert!(check_copy(name, &std::fs::read(&two).unwrap(), &wanted).is_err(), "two entries");
+        let misnamed = dir.path().join("misnamed.zip");
+        archive(&misnamed, &[("BR6E.srl", &jp)]);
+        assert!(check_copy(name, &std::fs::read(&misnamed).unwrap(), &wanted).is_err(), "another ROM's header");
+        let mut changed = bytes.clone();
+        let middle = changed.len() / 2;
+        changed[middle] ^= 0xff;
+        assert!(check_copy(name, &changed, &wanted).is_err(), "changed");
     }
 
     /// A folder of ROM files: each file whose header is of a code asked for, whatever its name; a file that is

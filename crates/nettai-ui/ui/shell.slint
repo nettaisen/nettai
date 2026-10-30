@@ -144,6 +144,33 @@ export struct PatternPaths {
     bright-stars: string,
 }
 
+// A device without the Legacy Collection looks for a computer nearby that has it, which sends it (src/nearby.rs;
+// docs/app.md §17, "From a computer nearby"): what the loading screen's note says of it.
+export enum NearbyState {
+    // Not looking (the collection is found, or the system can't look: a browser).
+    none,
+    // Looking, its first seconds.
+    looking,
+    // Nothing found for a while: what to check.
+    not-found,
+    // A computer found is asked: its player is to choose Send.
+    asking,
+    // The copies coming in: the bar.
+    receiving,
+    // The computer's player chose Not now.
+    declined,
+    // The computer has another version of nettai.
+    other-version,
+    // The computer couldn't be reached, or the transfer broke off: it is asked again.
+    unreachable,
+    // The computer is sending to another device: it is asked again.
+    busy,
+    // What the computer sent can't be played from.
+    unusable,
+    // The system doesn't let nettai look on the local network (iOS: the player said no).
+    not-allowed,
+}
+
 export global Shell {
     // What an update of the app says in the footer, in place of the screen's status (src/updates.rs): that it
     // failed. Empty: nothing.
@@ -179,6 +206,11 @@ export global Shell {
     // The Legacy Collection found lacks some of a game's ROMs: the game, as shown (empty: it has them, or none was
     // found). The note says so in place of asking for the collection.
     in property <string> incomplete;
+    // No Legacy Collection found: a computer nearby is looked for, to send it (src/nearby.rs): what is going on, the
+    // other device's name, and the transfer's progress (the bar, while receiving).
+    in property <NearbyState> nearby;
+    in property <string> nearby-name;
+    in property <float> nearby-progress;
 
     // The two cards before a battle.
     in property <bool> versus;
@@ -336,6 +368,54 @@ export enum ErrorKind {
     // No game's content is published for this version of nettai yet (the loading screen's note).
     content-unpublished,
     other,
+}
+
+// The words of a computer nearby that sends the Legacy Collection (NearbyState).
+export global NearbyWords {
+    // The loading screen's note: `name` is the computer's, as it calls itself.
+    public pure function line(state: NearbyState, name: string) -> string {
+        if state == NearbyState.looking {
+            return @tr("nettai needs Battle Network Legacy Collection Vol. 2. Open nettai on a computer that has it, on the same Wi-Fi, to send it here. Looking…");
+        }
+        if state == NearbyState.not-found {
+            return @tr("No computer found. Open nettai on a computer that has the Legacy Collection, on the same Wi-Fi. Still nothing? Check that its firewall allows nettai and that no VPN is on. Or copy its exe folder here and choose it.");
+        }
+        if state == NearbyState.asking {
+            return @tr("Found {}. Choose Send there to send the Legacy Collection here.", name);
+        }
+        if state == NearbyState.declined {
+            return @tr("{} didn't send the Legacy Collection. Open nettai on another computer that has it, or copy its exe folder here and choose it.", name);
+        }
+        if state == NearbyState.other-version {
+            return @tr("{} has a different version of nettai. You both need the latest.", name);
+        }
+        if state == NearbyState.unreachable {
+            return @tr("Couldn't get the Legacy Collection from {}. Check that its firewall allows nettai. Trying again…", name);
+        }
+        if state == NearbyState.busy {
+            return @tr("{} is sending to another device. Trying again soon…", name);
+        }
+        if state == NearbyState.unusable {
+            return @tr("What {} sent can't be played. Details are in the log file.", name);
+        }
+        if state == NearbyState.not-allowed {
+            return @tr("nettai isn't allowed to look for computers on this network. Allow it in Settings > Privacy & Security > Local Network, or copy the exe folder here and choose it.");
+        }
+        return "";
+    }
+    // The bar's line while the copies come in.
+    public pure function receiving(name: string) -> string {
+        return @tr("Receiving from {}", name);
+    }
+    // The computer's dialog when a device asks for the collection: `name` is the device's.
+    public pure function ask-title(name: string) -> string {
+        return @tr("Send the Legacy Collection to {}?", name);
+    }
+    public pure function ask-message(name: string) -> string {
+        return @tr("{} is asking for the Legacy Collection's ROMs, to play nettai there. They're sent over this network.", name);
+    }
+    out property <string> send: @tr("Send");
+    out property <string> not-now: @tr("Not now");
 }
 
 // An update of the app (src/updates.rs; docs/app.md §19, "Updates"): the loading screen's lines as the app starts,

@@ -167,9 +167,9 @@ pub struct Games {
     others: Vec<Entry>,
 }
 
-/// Where a browser or a phone keeps its copies of the Legacy Collection's ROMs ([`Games::keep_copies`]): stowed in the
-/// data folder, not read as the page starts.
-fn copies() -> PathBuf {
+/// Where a browser or a phone keeps its copies of the Legacy Collection's ROMs ([`Games::keep_copies`]), and any device
+/// those another sent it (`crate::nearby`): stowed in the data folder, not read as the page starts.
+pub(crate) fn copies() -> PathBuf {
     crate::paths::data().join(nettai_files::STOWED).join("roms")
 }
 
@@ -252,16 +252,36 @@ impl Games {
     }
 
     /// Where the ROMs are: `$NETTAI_ROMS`'s (development); in a browser and on a phone, the copies kept of the
-    /// collection chosen before ([`Games::keep_copies`]); else the Legacy Collection in the folder chosen, else
-    /// through Steam.
+    /// collection chosen before ([`Games::keep_copies`]) or sent by another device (`crate::nearby`); else the Legacy
+    /// Collection in the folder chosen, else through Steam, else the copies another device sent.
     fn look(&self) -> Option<RomSource> {
         if std::env::var_os(nettai_extract::source::ROMS).is_some() {
             return RomSource::from_env().map_err(|why| crate::errors::log("finding the ROMs", &why)).ok();
         }
+        let kept = || (!nettai_files::stowed(&copies()).is_empty()).then(|| RomSource::Copies(copies()));
         if !nettai_dialogs::FOLDERS_READ_AGAIN {
-            return (!nettai_files::stowed(&copies()).is_empty()).then(|| RomSource::Copies(copies()));
+            return kept();
         }
-        Install::find(self.chosen.as_deref()).map(RomSource::Collection)
+        Install::find(self.chosen.as_deref()).map(RomSource::Collection).or_else(kept)
+    }
+
+    /// Whether every game's content is read and no ROMs were found for any: where a computer nearby is looked for
+    /// (`crate::nearby`). (While some game's content is still read, the ROMs aren't looked for yet.)
+    pub fn without_roms(&self) -> bool {
+        self.source.is_none() && !self.wanted().is_empty() && !self.list.iter().any(|e| matches!(e.state, State::Reading))
+    }
+
+    /// Where the games' ROMs are read from, once found: what a desktop offers to another device (`crate::nearby`).
+    pub fn rom_source(&self) -> Option<&RomSource> {
+        self.source.as_ref()
+    }
+
+    /// The game codes of every ROM the games' recipes declare, sorted: what is kept of a collection, and sent of one.
+    pub fn rom_codes(&self) -> Vec<String> {
+        let mut codes: Vec<String> = self.list.iter().chain(&self.others).filter_map(|e| e.recipe.as_ref()).flat_map(|r| r.roms().iter().cloned()).collect();
+        codes.sort();
+        codes.dedup();
+        codes
     }
 
     /// In a browser or on a phone, the collection just found in `folder` (the player's, its archives read into the
@@ -271,10 +291,7 @@ impl Games {
     /// go.
     pub fn keep_copies(&mut self, folder: &Path) {
         let Some(source) = self.source.clone().filter(|s| matches!(s, RomSource::Collection(_))) else { return };
-        let mut codes: Vec<String> = self.list.iter().chain(&self.others).filter_map(|e| e.recipe.as_ref()).flat_map(|r| r.roms().iter().cloned()).collect();
-        codes.sort();
-        codes.dedup();
-        match source.keep_copies(&codes, &copies()) {
+        match source.keep_copies(&self.rom_codes(), &copies()) {
             Ok(kept) => {
                 crate::errors::log("keeping the Legacy Collection's ROMs", &format_args!("{kept} kept"));
                 self.source = Some(RomSource::Copies(copies()));

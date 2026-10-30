@@ -5,8 +5,9 @@
 #   NETTAI_IOS=simulator packaging/ios/package.sh
 #
 # The bundle: nettai (the program), Info.plist (packaging/ios/Info.plist: full screen, every orientation, the
-# extended gamepad profile), its icons, LICENSE and THIRD-PARTY-NOTICES.txt. No ffmpeg (iOS exports video with
-# VideoToolbox), no content (the app downloads it, as every package does), no ROM.
+# extended gamepad profile, the local network's DNS-SD service; its words in the other languages, *.lproj), its
+# icons, LICENSE and THIRD-PARTY-NOTICES.txt. No ffmpeg (iOS exports video with VideoToolbox), no content (the app
+# downloads it, as every package does), no ROM.
 #
 # NETTAI_IOS                 simulator (the default) or device
 # NETTAI_VERSION             the version, if set; else the app crate's
@@ -40,6 +41,10 @@ cp "$program" "$app/nettai"
 chmod 755 "$app/nettai"
 sed -e "s/@VERSION@/$version/" -e "s/@SHORT_VERSION@/${version%%-*}/" -e "s/@PLATFORM@/$platform/" \
     -e "s/@MINIMUM_OS@/$minimum_os/" "$root/packaging/ios/Info.plist" > "$app/Info.plist"
+# Info.plist's words in the other languages (the local network's question).
+for strings in "$root"/packaging/ios/*.lproj; do
+    cp -R "$strings" "$app/"
+done
 printf 'APPL????' > "$app/PkgInfo"
 cp "$root/LICENSE" "$app/LICENSE"
 cp "$notices" "$app/THIRD-PARTY-NOTICES.txt"

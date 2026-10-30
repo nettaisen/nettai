@@ -97,6 +97,21 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- The Legacy Collection from a computer nearby (nettai-nearby; docs/app.md §17): the DNS-SD service browsed for,
+	     and why the local network is asked for (in the player's language: <lang>.lproj/InfoPlist.strings). -->
+	<key>NSBonjourServices</key>
+	<array>
+		<string>_nettai._tcp</string>
+	</array>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>nettai looks on your network for a computer running nettai with the Legacy Collection, which can send it here.</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ja</string>
+		<string>zh-Hans</string>
+		<string>zh-Hant</string>
+	</array>
 	<key>GCSupportsControllerUserInteraction</key>
 	<true/>
 	<key>GCSupportedGameControllers</key>

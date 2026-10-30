@@ -72,6 +72,8 @@ toml = "0.8"
 # The Legacy Collection found (or a folder chosen), and each game's recipe, whose ROMs the games' loading extracts
 # (`games.rs`; docs/app.md §17).
 nettai-extract = { path = "../nettai-extract" }
+# The Legacy Collection from a computer nearby, to a device without it (`nearby.rs`; docs/app.md §17).
+nettai-nearby = { path = "../nettai-nearby" }
 
 # Updates (`updates.rs`): the installed app's own (Velopack's packages: packaging/), from the project's GitHub
 # releases; the desktop's alone (a phone's app is its store's: `updates_none.rs`). The version the release workflow's

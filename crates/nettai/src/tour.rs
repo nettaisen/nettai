@@ -413,6 +413,47 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     );
     shot(&mut add, "no-legacy-collection-dialog", Pair::None);
     add(SETTLE, act(Action::Back));
+
+    // A computer nearby that sends the collection (`crate::nearby`; `NETTAI_TOUR_ONLY=nearby`: these alone): the
+    // note's states where no game can be played (the bar while the copies come), then the computer's dialog when a
+    // device asks.
+    taking.set(walks("nearby"));
+    use nettai_ui::NearbyState as N;
+    for (state, name, tag) in [
+        (N::Looking, "", "nearby-looking"),
+        (N::NotFound, "", "nearby-not-found"),
+        (N::Asking, "MacBookPro", "nearby-asking"),
+        (N::Receiving, "MacBookPro", "nearby-receiving"),
+        (N::Declined, "MacBookPro", "nearby-declined"),
+        (N::Unreachable, "MacBookPro", "nearby-unreachable"),
+        (N::NotAllowed, "", "nearby-not-allowed"),
+    ] {
+        add(
+            SETTLE,
+            Box::new(move |ui, app, _| {
+                // (The loading screen held up, as the app has it while no game can be played.)
+                app.borrow_mut().shell.hold_loading = Some(0.0);
+                let shell = ui.global::<nettai_ui::Shell>();
+                shell.set_no_games(true);
+                shell.set_nearby(state);
+                shell.set_nearby_name(name.into());
+                shell.set_nearby_progress(0.42);
+            }),
+        );
+        shot(&mut add, tag, Pair::None);
+    }
+    add(
+        SETTLE,
+        Box::new(|ui, app, _| {
+            let shell = ui.global::<nettai_ui::Shell>();
+            shell.set_no_games(false);
+            shell.set_nearby(N::None);
+            app.borrow_mut().shell.hold_loading = None;
+        }),
+    );
+    add(SETTLE, Box::new(|_, app, _| crate::nearby::open_ask(&mut app.borrow_mut().shell, "iPhone")));
+    shot(&mut add, "nearby-ask-dialog", Pair::None);
+    add(SETTLE, act(Action::Back));
     taking.set(walks("shell"));
 
     // The main menu: the focus a step down, and the pad's hints.

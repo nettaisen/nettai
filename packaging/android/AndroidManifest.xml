@@ -7,6 +7,8 @@
      is AppCompat's, whose theme it takes. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- (The internet's is all NsdManager asks at this target SDK, too: the system's own service does the multicast
+         that finds a computer nearby, nettai-nearby's.) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-feature android:glEsVersion="0x00030000" android:required="true" />
     <!-- (A touch screen isn't required: a TV or a box with a pad plays too.) -->

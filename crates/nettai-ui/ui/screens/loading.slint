@@ -1,10 +1,11 @@
 // Loading (docs/design/app-ui.md §6): the logo (the icon over the name) and one bar while the selected game loads, as the app starts and
 // whenever the player steps to a game that isn't ready yet (its assets are extracted from the Legacy Collection's ROMs as
 // it loads); before that, while its content is downloaded, the bar is the download's. The bar has one width and the
-// percentage fixed-width digits, so nothing moves as it fills.
+// percentage fixed-width digits, so nothing moves as it fills. Where no Legacy Collection is found, a computer nearby
+// is looked for that sends it (src/nearby.rs): the note says how that goes, and the bar is its transfer's.
 
 import { Theme, I18n } from "../theme.slint";
-import { Shell, Errors, ErrorKind } from "../shell.slint";
+import { Shell, Errors, ErrorKind, NearbyState, NearbyWords } from "../shell.slint";
 import { Label, Mono, Bar, Note, Button, ButtonKind } from "../widgets.slint";
 import { Tween } from "../motion.slint";
 
@@ -20,6 +21,8 @@ export component LoadingScreen inherits Rectangle {
     property <bool> wants-folder: Shell.no-games && !Shell.no-content;
     // The app's update is checked for or downloading, as the app starts (its line in place of the game's).
     property <bool> updating: Shell.update-line != "";
+    // The Legacy Collection coming in from a computer nearby: the bar is that, in place of the note and the button.
+    property <bool> receiving: root.wants-folder && Shell.nearby == NearbyState.receiving;
     // The room the line's steps from Steam take below what the bar's would (two lines more).
     property <length> steps: root.wants-folder ? 32px : 0px;
     // The logo settles into place as the app starts.
@@ -66,8 +69,8 @@ export component LoadingScreen inherits Rectangle {
     Bar {
         y: root.top + 122px;
         width: root.column;
-        visible: !Shell.no-games || root.updating;
-        value: Shell.loading-progress;
+        visible: !Shell.no-games || root.updating || root.receiving;
+        value: root.receiving ? Shell.nearby-progress : Shell.loading-progress;
     }
 
     Label {
@@ -77,8 +80,8 @@ export component LoadingScreen inherits Rectangle {
         height: 16px;
         // (No game known yet: the catalog of games is being read, the bar alone. The app's update, as it starts:
         // its line.)
-        visible: root.updating || (!Shell.no-games && Shell.game != "");
-        text: root.updating ? I18n.upper(Shell.update-line) : Shell.downloading ? I18n.upper(@tr("Downloading {}", Shell.game)) : I18n.upper(@tr("Loading {}", Shell.game));
+        visible: root.updating || root.receiving || (!Shell.no-games && Shell.game != "");
+        text: root.updating ? I18n.upper(Shell.update-line) : root.receiving ? I18n.upper(NearbyWords.receiving(Shell.nearby-name)) : Shell.downloading ? I18n.upper(@tr("Downloading {}", Shell.game)) : I18n.upper(@tr("Loading {}", Shell.game));
     }
 
     Mono {
@@ -86,30 +89,31 @@ export component LoadingScreen inherits Rectangle {
         y: root.top + 142px;
         width: 48px;
         height: 16px;
-        visible: root.updating ? !Shell.update-checking : !Shell.no-games && Shell.game != "";
-        text: "\{round(Shell.loading-progress * 100)}%";
+        visible: root.updating ? !Shell.update-checking : root.receiving || (!Shell.no-games && Shell.game != "");
+        text: "\{round((root.receiving ? Shell.nearby-progress : Shell.loading-progress) * 100)}%";
         horizontal-alignment: right;
     }
 
     // No game can be played: what to do about it. The Legacy Collection is what is missing (the error's own line with
     // the steps to drag the folder in from Steam: five lines on a phone in Japanese, down to the button's top less
-    // 4), or the games' content.
+    // 4), or the games' content. While a computer nearby is looked for, the line is how that goes, which says the
+    // collection is needed as it starts.
     Note {
         y: root.top + 116px;
         width: root.column;
         height: root.wants-folder ? 64px + root.steps : 88px;
         vertical-alignment: TextVerticalAlignment.top;
         wrap: word-wrap;
-        visible: Shell.no-games && !root.updating;
-        text: Shell.no-content ? Errors.line(Shell.unpublished ? ErrorKind.content-unpublished : ErrorKind.download-failed, "") : Shell.incomplete != "" ? Errors.line(ErrorKind.incomplete-legacy-collection, Shell.incomplete) : Errors.line(ErrorKind.no-legacy-collection, "");
+        visible: Shell.no-games && !root.updating && !root.receiving;
+        text: Shell.no-content ? Errors.line(Shell.unpublished ? ErrorKind.content-unpublished : ErrorKind.download-failed, "") : Shell.incomplete != "" ? Errors.line(ErrorKind.incomplete-legacy-collection, Shell.incomplete) : Shell.nearby != NearbyState.none ? NearbyWords.line(Shell.nearby, Shell.nearby-name) : Errors.line(ErrorKind.no-legacy-collection, "");
         horizontal-alignment: center;
     }
 
     Button {
         x: (parent.width - self.width) / 2;
         y: root.top + 184px + root.steps;
-        visible: root.wants-folder && !root.updating;
-        enabled: root.wants-folder && !root.updating;
+        visible: root.wants-folder && !root.updating && !root.receiving;
+        enabled: root.wants-folder && !root.updating && !root.receiving;
         nav: "source.choose";
         kind: ButtonKind.main;
         text: Errors.choose-folder();

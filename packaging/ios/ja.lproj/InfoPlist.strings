@@ -1,0 +1,2 @@
+/* Why the local network is asked for (Info.plist's NSLocalNetworkUsageDescription), in this language. */
+"NSLocalNetworkUsageDescription" = "nettai は、アドバンスドコレクションがあり nettai を開いているパソコンをネットワーク上で探し、そこから受け取ります。";
