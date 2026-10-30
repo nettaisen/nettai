@@ -271,9 +271,6 @@ jobs:
       signed: ${{ steps.keystore.outputs.signed }}
     env:
       ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
-      # (kotlinc where the runner has none: Homebrew's pin of the same zip.)
-      KOTLIN_VERSION: 2.4.21
-      KOTLIN_SHA256: 7cc140e76daf416a0424a5557f99afd7ca89ebd463ea1101261e3e01c33e75cd
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
@@ -284,15 +281,15 @@ jobs:
       - name: Android platform and build tools
         run: |
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install 'platforms;android-36' 'build-tools;36.0.0' > /dev/null
-      - name: Kotlin
-        run: |
-          if ! command -v kotlinc > /dev/null; then
-            curl --fail --location --silent --show-error --output "$RUNNER_TEMP/kotlin.zip" \
-              "https://github.com/JetBrains/kotlin/releases/download/v$KOTLIN_VERSION/kotlin-compiler-$KOTLIN_VERSION.zip"
-            echo "$KOTLIN_SHA256  $RUNNER_TEMP/kotlin.zip" | sha256sum --check --quiet
-            unzip -q "$RUNNER_TEMP/kotlin.zip" -d "$RUNNER_TEMP"
-            echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
-          fi
+      # (The JDK Gradle and AGP run on, which also keeps Gradle's downloads between runs, keyed by the build's files.)
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+          cache-dependency-path: |
+            packaging/android/*.gradle.kts
+            packaging/android/gradle/wrapper/gradle-wrapper.properties
       - name: Rust
         run: |
           rustup toolchain install stable --profile minimal --target aarch64-linux-android --no-self-update
@@ -313,9 +310,7 @@ jobs:
           NETTAI_ICONS: ${{ runner.temp }}/icons
           NETTAI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           NETTAI_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
-        run: |
-          kotlinc -version
-          packaging/android/package.sh
+        run: packaging/android/package.sh
       - uses: actions/upload-artifact@v7
         with:
           name: android-apk

@@ -131,6 +131,7 @@ dependencies = [
  "ndk-context",
  "ndk-sys",
  "num_enum",
+ "simd_cesu8",
  "thiserror 2.0.21",
 ]
 
@@ -3949,7 +3950,6 @@ dependencies = [
 name = "nettai-gamepad"
 version = "0.1.0"
 dependencies = [
- "android-activity",
  "cfg_aliases",
  "jni",
  "js-sys",

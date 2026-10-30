@@ -1,5 +1,5 @@
 //! The nettai app on Android: the library the APK's activity loads (`libnettai_app.so`, the manifest's
-//! `android.app.lib_name`; the activity is a NativeActivity: android/nettai/app/NettaiActivity.kt), whose
+//! `android.app.lib_name`; the activity is a GameActivity: android/nettai/app/NettaiActivity.kt), whose
 //! [`android_main`] android-activity calls on a thread of its own once the activity is made. android-activity puts
 //! what the app writes to stdout and stderr on logcat (tagged RustStdoutStderr), and a panic of this thread too
 //! (RustPanic). packaging/android/package.sh makes the APK (docs/app.md §7). Elsewhere it is empty.

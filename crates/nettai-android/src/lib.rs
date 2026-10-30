@@ -1,14 +1,19 @@
 //! Android's side of the app: the app's activity, which the program's entry point hands over before anything else
-//! ([`init`]), and Java's calls through JNI, from any thread ([`java`]), which the other crates' Android parts use
-//! (nettai-files' folders, nettai-dialogs' pickers, nettai-lifecycle's screen kept on). On any other system the crate
-//! is empty.
+//! ([`init`]), Java's calls through JNI, from any thread ([`java`]), which the other crates' Android parts use
+//! (nettai-files' folders, nettai-dialogs' pickers, nettai-lifecycle's screen kept on), and the safe area the
+//! activity hands over ([`safe_area`]). On any other system the crate is empty.
 #![cfg(target_os = "android")]
 
 use android_activity::AndroidApp;
 use jni::objects::JObject;
-use std::sync::OnceLock;
+use jni::sys::jint;
+use jni::EnvUnowned;
+use std::sync::{Mutex, OnceLock};
 
 static APP: OnceLock<AndroidApp> = OnceLock::new();
+
+/// The safe area's insets, as the activity last handed them over.
+static SAFE_AREA: Mutex<Option<[i32; 4]>> = Mutex::new(None);
 
 /// Keep the app's activity: the entry point's first call (`android_main` is given it).
 pub fn init(app: AndroidApp) {
@@ -44,4 +49,18 @@ pub fn folder(name: &'static str) -> Result<std::path::PathBuf, String> {
         let path = env.cast_local::<jni::objects::JString>(path)?;
         Ok(std::path::PathBuf::from(path.try_to_string(env)?))
     })
+}
+
+/// The safe area's insets in the window's pixels (left, top, right, bottom): how far Android's bars and cutouts
+/// reach into the window, which the app's own screens keep out of. Android says them to the activity
+/// (crates/nettai-android-app/android/nettai/app/NettaiActivity.kt), which hands them over on its main thread
+/// whenever they change: none till it first has.
+pub fn safe_area() -> Option<[i32; 4]> {
+    *SAFE_AREA.lock().unwrap_or_else(|e| e.into_inner())
+}
+
+/// `NettaiActivity.safeArea`: the safe area's insets as Android says them now.
+#[unsafe(no_mangle)]
+extern "system" fn Java_nettai_app_NettaiActivity_safeArea<'local>(_env: EnvUnowned<'local>, _activity: JObject<'local>, left: jint, top: jint, right: jint, bottom: jint) {
+    *SAFE_AREA.lock().unwrap_or_else(|e| e.into_inner()) = Some([left, top, right, bottom]);
 }

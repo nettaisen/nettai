@@ -50,10 +50,9 @@ objc2-game-controller = { version = "0.3", default-features = false, features = 
     "GCPhysicalInputProfile",
 ] }
 
-# Android: the activity's input events, which the host hands over (`android::input`), and the system's list of
+# Android: the native methods the activity's Kotlin hands a gamepad's events to (android/), and the system's list of
 # input devices, through JNI (ndk-context's VM, which android-activity sets).
 [target.'cfg(target_os = "android")'.dependencies]
-android-activity = "0.6"
 jni = "0.22"
 ndk-context = "0.1"
 

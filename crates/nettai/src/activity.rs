@@ -14,7 +14,7 @@
 
 use i_slint_backend_winit::winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
 use i_slint_backend_winit::winit::platform::android::EventLoopBuilderExtAndroid;
-use i_slint_backend_winit::{CustomApplicationHandler, EventResult, SlintEvent, WinitWindowAccessor};
+use i_slint_backend_winit::{CustomApplicationHandler, EventResult, SlintEvent};
 use nettai_ui::AppWindow;
 use slint::ComponentHandle;
 use std::cell::OnceCell;
@@ -47,22 +47,19 @@ pub(crate) fn run(ui: &AppWindow) -> Result<(), slint::PlatformError> {
 }
 
 /// The safe area's insets into the UI (`safe-left` and the rest, Slint's `safe-area-insets` on the other systems,
-/// which Slint's winit backend leaves empty on Android): the activity's content rect is the window less its system
-/// bars and cutouts. Android moves it without a word from winit (as the phone turns, a little after the window's new
-/// size), so it is read at each frame; it is nothing till Android first says where it is.
+/// which Slint's winit backend leaves empty on Android): how far the system bars and cutouts reach into the window,
+/// which the activity hands over (`nettai_android::safe_area`). The window is the whole screen, under the bars
+/// (GameActivity's content rect is all of it). Android changes them without a word from winit (as the phone turns,
+/// a little after the window's new size), so they are read at each frame; they are nothing till Android first says.
 pub(crate) fn safe_area(ui: &AppWindow) {
-    use i_slint_backend_winit::winit::platform::android::WindowExtAndroid;
-    let Some((rect, size)) = ui.window().with_winit_window(|w| (w.content_rect(), w.inner_size())) else { return };
-    if rect.right <= rect.left || rect.bottom <= rect.top {
-        return;
-    }
+    let Some([left, top, right, bottom]) = nettai_android::safe_area() else { return };
     // (In the UI's units as they are now: Slint's scale is the system's times the unit.)
     let factor = ui.window().scale_factor();
     let edge = |pixels: i32| pixels.max(0) as f32 / factor;
-    ui.set_safe_left(edge(rect.left));
-    ui.set_safe_top(edge(rect.top));
-    ui.set_safe_right(edge(size.width as i32 - rect.right));
-    ui.set_safe_bottom(edge(size.height as i32 - rect.bottom));
+    ui.set_safe_left(edge(left));
+    ui.set_safe_top(edge(top));
+    ui.set_safe_right(edge(right));
+    ui.set_safe_bottom(edge(bottom));
 }
 
 fn with_window(f: impl FnOnce(&AppWindow)) {

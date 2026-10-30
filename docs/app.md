@@ -1401,9 +1401,9 @@ run in the emulator (below, "Android"). What builds: the whole app, for iOS (typ
   window's touches itself, every finger its own; no touch screen has run it. Gamepads are nettai-gamepad's phone
   backends (no SDL there: its iOS joystick code needs its UIKit video, its Android one its Java classes): iOS's
   GameController framework (every pad with the extended gamepad profile, read each poll), and Android's gamepad
-  key and motion events, which nothing hands over yet (`nettai_gamepad::android::input`): below, "Android". Neither
-  has run with a pad: the iOS backend's calls ran on macOS (the same framework) with none attached, and Android's
-  key and axis mapping is unit-tested.
+  key and motion events, which the activity hands over before the rest of the app hears them (below, "Android").
+  No pad has run: the iOS backend's calls ran on macOS (the same framework) with none attached, and Android's ran
+  in the emulator on events adb made.
 - **Text:** the system's input method works through winit on iOS; on Android, below.
 - **Updates** are the store's: a phone's app has the no-updater stand-in (`updates_none.rs`, the web's).
 - **Netplay:** nettai-rtc natively is str0m (pure Rust, its sockets on tokio), which builds for both; not tried.
@@ -1433,16 +1433,18 @@ run in the emulator (below, "Android"). What builds: the whole app, for iOS (typ
 `nettai_android::init` first, sets up the certificate verifier (`rustls_platform_verifier::android::init_with_env`)
 and runs `nettai::run` under tokio, as the desktop's `main` does. android-activity puts stdout and stderr on logcat
 (tagged RustStdoutStderr), and a panic of that thread (RustPanic). The activity is `nettai.app.NettaiActivity`
-(Kotlin, the crate's `android/`), a NativeActivity; its build script links the NDK's compiler-rt builtins, whose
-outline atomics aws-lc (str0m's DTLS) calls and rustc's `-nodefaultlibs` link leaves out.
+(Kotlin, the crate's `android/`), a GameActivity: androidx.games' games-activity 4.4.0, the version
+android-activity 0.6's `game-activity` feature is written for (winit's is `android-game-activity`). Its build
+script links the NDK's compiler-rt builtins, whose outline atomics aws-lc (str0m's DTLS) calls and rustc's
+`-nodefaultlibs` link leaves out.
 
 **The window and the input: Slint's winit backend on the activity's loop.** Slint's selector offers Android its
-android-activity backend alone, which reads the activity's input queue itself and gives the app none of it. The app
+android-activity backend alone, which reads the activity's input itself and gives the app none of it. The app
 needs winit's events before Slint, as everywhere (`on_winit_window_event`: the keys, the on-screen pad's fingers,
 focus), so it builds Slint's winit backend itself with winit's event loop on the activity
 (`crates/nettai/src/activity.rs`; `i-slint-backend-winit` directly, as Slint's `unstable-winit-030` breaks the
-selector's build for Android), femtovg on OpenGL ES. One code path for every system's input; what it costs is winit
-0.30's Android input, which is thin (gamepads, the input method: below).
+selector's build for Android), femtovg on OpenGL ES. One code path for every system's input but gamepads, which a
+GameActivity's Java side takes first (below); what winit 0.30's Android input lacks is the input method's text.
 - Android takes the activity's window away while the app is in the background, and winit says so (`suspended`,
   `resumed`); Slint's winit backend makes its windows once and keeps them. So the app's window waits for the
   activity's (Slint would make it at the loop's first wait, before there is one, fail, and drop it for good: the
@@ -1450,68 +1452,91 @@ selector's build for Android), femtovg on OpenGL ES. One code path for every sys
   surface (Slint drops a hidden window's surface when `SLINT_DESTROY_WINDOW_ON_HIDE` is set, which `NettaiActivity`
   sets before the library loads). The loop is `run_event_loop_until_quit`, so the hidden window doesn't end it.
 - **Sound** pauses as the window loses focus and starts again as it gains it (`nettai_lifecycle::came_back`).
-- **The safe area:** Slint's winit backend has none on Android; the activity's content rect (the window less its
-  system bars and cutouts) is it, read each frame (Android moves it without a winit event) into the UI's
-  `safe-left` and the rest. In landscape Android keeps the cutout's side black itself.
-- **Touch:** winit's touches, every finger its own: the menus and the on-screen pad work (taps in the emulator).
-- **Keys:** a hardware keyboard's keys are winit's key events, as on the desktop: typing, Enter, Escape.
+- **The safe area:** Slint's winit backend has none on Android. GameActivity's surface is the whole window, under
+  the bars, which the activity makes see-through (`enableEdgeToEdge`, light icons on the app's dark colors), so
+  its content rect is the whole window too. The activity hands over the bars' and cutouts' insets as Android says
+  them (`onApplyWindowInsets`, to `nettai_android::safe_area`), read each frame (Android changes them without a
+  winit event) into the UI's `safe-left` and the rest.
+- **Touch:** winit's touches, every finger its own: the menus and the on-screen pad work. (In the emulator a pad's
+  button wants a press held a while, `adb shell input swipe x y x y 150`: `input tap` lets go within one of the
+  battle's ticks, which then never sees it held.)
+- **Keys:** a hardware keyboard's keys are winit's key events, as on the desktop: typing, Enter, Escape, the arrows
+  and the bound buttons in a battle.
 - **Text:** a text field shows the soft keyboard (winit's `set_ime_allowed`: `showSoftInput`), over the app: the
-  activity says `SOFT_INPUT_ADJUST_NOTHING`, since NativeActivity's own choice shrinks the content rect to what the
-  keyboard leaves and a phone's layout would turn to the desktop's. The keyboard sends each key as a key event:
-  NativeActivity's view gives the input method no input connection (its input type is `TYPE_NULL`), so there is
-  no composition, and no suggestions or swipe typing: Latin letters, digits and symbols type, Japanese or Chinese
-  don't. Composition needs an input connection, which GameActivity's GameTextInput gives (winit 0.30 doesn't read
-  it) or a view of the app's own in Kotlin.
-- **Gamepads:** not hooked up. winit 0.30 turns a gamepad's buttons into key events with Android's key codes (an
-  unidentified key) from one device it doesn't name, and every joystick motion event (the sticks, the triggers,
-  most pads' d-pads, which are the hat axes) into touch moves at the axes' values, marking them handled, so
-  Android doesn't make d-pad keys of them either. nettai-gamepad's Android backend wants the raw key and motion
-  events. Ways, each the user's choice: the buttons alone from winit's key events (small; no sticks, triggers or
-  hat d-pads, so Xbox and PlayStation pads can't move); the app reading the activity's input itself, through a
-  platform of its own for Slint on android-activity (large: Slint's Android backend redone, with the hooks); or a
-  change in winit (its Android joystick events as axis motion), upstream.
+  activity says `SOFT_INPUT_ADJUST_NOTHING`, since GameActivity's own (adjust resize) would shrink the window to
+  what the keyboard leaves and turn a phone's layout to the desktop's. The keyboard sends each key as a key event:
+  the activity's surface (`KeySurface`) gives the input method no input connection (its input type is
+  `TYPE_NULL`), and GameTextInput's key listener is taken off it, so a key reaches GameActivity's `onKeyDown` and
+  winit, as a NativeActivity's did. So there is no composition, and no suggestions or swipe typing: Latin letters,
+  digits and symbols type, Japanese or Chinese don't. GameTextInput's own connection has composition, but winit
+  0.30 doesn't read it (android-activity's text events are a TODO in its Android backend): with it, nothing typed
+  reached the app. Composition needs that in winit, or a text path of the app's own.
+- **Gamepads:** a GameActivity's Java side sees input before native code (a NativeActivity's doesn't), so the
+  activity's `dispatchKeyEvent` and `dispatchGenericMotionEvent` give a gamepad's or a joystick's events (by their
+  source) to nettai-gamepad first: its Kotlin (`crates/nettai-gamepad/android/nettai/gamepad/NettaiGamepads.kt`)
+  hands each to Rust through native methods (a key's down and up; a motion's sticks, hat and triggers) and keeps it
+  from the rest of the app, so winit never makes touches of a stick's motion; any other key goes on, as a
+  keyboard's. The app's thread takes what was handed over at its next poll, mapped by `android_map.rs`; pads come
+  and go by a look at `InputDevice.getDeviceIds` each second. The default binding is Nintendo's layout: East is
+  the GBA's A, South its B.
 
-**The APK:** `packaging/android/package.sh` (no Gradle), arm64, Android 8 (API 26) and later, target API 34:
+**The APK:** `packaging/android/package.sh`, arm64, Android 8 (API 26) and later, target API 34. The script makes
+what goes in, in `target/package/android`:
 - the library built by cargo with the NDK's clang (release, `NETTAI_PACKAGED`), stripped of its debug information,
   with the NDK's `libc++_shared.so` beside it (Luau's C++ links it);
-- the Kotlin (every crate's `android/**/*.kt`: `NettaiActivity`, nettai-dialogs' `NettaiFiles`, nettai-lifecycle's
-  `NettaiAwake`) compiled by `kotlinc` (Homebrew's `kotlin`, 2.4.21) against android-36's `android.jar`, and dexed
-  by d8 with the Kotlin standard library and rustls-platform-verifier's component: its AAR (pinned by hash in
-  `verifier.sha256`, the version Cargo.lock has, downloaded from the crate's Maven archive) holds Kotlin classes
-  and no standard library, so the APK has it once. The standard library is most of `classes.dex`: 2.3 MB of its
-  2.3 MB, 0.66 MB compressed in the APK (d8 doesn't shrink; R8 would);
-- the manifest (`AndroidManifest.xml`: INTERNET; OpenGL ES 3; touch screen and gamepad optional; both
-  orientations; `configChanges` so the activity isn't made again as the phone turns; the verifier's network
-  security config) and the launcher icon (packaging/icons.sh's 256 px) linked by aapt2;
-- the library stored uncompressed (`extractNativeLibs="false"`: Android maps it from the APK), aligned for 16 KB
-  pages (`zipalign -P 16`), signed by apksigner with `NETTAI_ANDROID_KEYSTORE` (its password and key alias in
-  `NETTAI_ANDROID_KEYSTORE_PASSWORD`, `NETTAI_ANDROID_KEY_ALIAS`), else a debug key made in
-  `target/package/android`. `NETTAI_ANDROID_DEBUGGABLE=1` marks it debuggable (`adb shell run-as`).
-- 0.17.0's APK is 96 MB, the library 94 MB of it.
+- the build's notices and the license as assets, the launcher icon (packaging/icons.sh's 256 px);
+- rustls-platform-verifier's Android component, its AAR (pinned by hash in `verifier.sha256`, the version
+  Cargo.lock has, downloaded from the crate's Maven archive);
+- a debug key when `NETTAI_ANDROID_KEYSTORE` names none,
+
+then runs Gradle in packaging/android on them (their paths as `-P` properties): `gradlew`, the wrapper, fetches
+Gradle 9.8.1 and checks its zip's SHA-256; `build.gradle.kts` is AGP 9.5.0 with its own Kotlin (2.2.10), on a
+JDK 17 (`JAVA_HOME`). Gradle
+- compiles every crate's `android/**/*.kt` (`NettaiActivity`, nettai-gamepad's `NettaiGamepads`, nettai-dialogs'
+  `NettaiFiles`, nettai-lifecycle's `NettaiAwake`);
+- adds GameActivity (`androidx.games:games-activity:4.4.0`), AppCompat (`androidx.appcompat:appcompat:1.7.1`,
+  GameActivity's base class) and the verifier's AAR;
+- shrinks the code and resources with R8 (`proguard-rules.pro` keeps what native code finds by name: the crates'
+  classes, GameActivity's, the verifier's): `classes.dex` is 1.3 MB with AppCompat and GameActivity in it, where
+  the hand-built APK's was 2.3 MB of Kotlin's standard library unshrunk;
+- merges the manifest (`AndroidManifest.xml`: INTERNET; OpenGL ES 3; touch screen and gamepad optional; both
+  orientations; `configChanges` so the activity isn't made again as the phone turns; AppCompat's theme, which
+  GameActivity needs; the verifier's network security config);
+- stores the library uncompressed (Android maps it from the APK), aligned for 16 KB pages, and signs the APK with
+  `NETTAI_ANDROID_KEYSTORE` (its password and key alias in `NETTAI_ANDROID_KEYSTORE_PASSWORD`,
+  `NETTAI_ANDROID_KEY_ALIAS`), else the debug key. `NETTAI_ANDROID_DEBUGGABLE=1` marks it debuggable (`adb shell
+  run-as`).
+
+0.17.0's APK is 96.5 MB (the hand-built one with a NativeActivity was 96 MB), the library 94 MB of it.
 
 The release workflow's Android job builds it on Ubuntu with the runner's SDK and NDK (`sdkmanager` adds android-36
-and build-tools 36), the runner's `kotlinc` or a pinned download: the APK is the run's artifact, and goes up with the
-release only when the secrets hold the release key (`ANDROID_KEYSTORE`, base64, with `ANDROID_KEYSTORE_PASSWORD`
-and `ANDROID_KEY_ALIAS`).
+and build-tools 36) and Temurin's JDK 17 (`actions/setup-java`, which also keeps Gradle's downloads between runs,
+keyed by the build's files): the APK is the run's artifact, and goes up with the release only when the secrets hold
+the release key (`ANDROID_KEYSTORE`, base64, with `ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_ALIAS`).
 
 **The emulator** (Apple silicon; the system image is 4.3 GB, an emulator 1.2 GB):
 
     sdkmanager emulator platform-tools 'system-images;android-36;google_apis;arm64-v8a'
     avdmanager create avd -n nettai -k 'system-images;android-36;google_apis;arm64-v8a' -d pixel_8
     emulator -avd nettai -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect &
+    export JAVA_HOME=$(/usr/libexec/java_home -v 17)
     NETTAI_ANDROID_DEBUGGABLE=1 packaging/android/package.sh
     adb install -r target/package/android/nettai-<version>.apk
     adb shell am start -n net.n1gp.nettai/nettai.app.NettaiActivity
 
 The Legacy Collection's ROMs go in as the app keeps them, its data folder's `.stowed/roms/<code>.zip` (copied in with
-`adb shell run-as net.n1gp.nettai`), or through CHOOSE FOLDER from a folder pushed to the device.
+`adb shell run-as net.n1gp.nettai`), or through CHOOSE FOLDER from a folder pushed to the device. A gamepad's
+presses are `adb shell input gamepad keyevent --duration 150 KEYCODE_BUTTON_B` (and the d-pad's keycodes), a
+stick's `adb shell input joystick motionevent MOVE 0 0.95`.
 
 **What ran** (2026-10-29, the emulator: Android 16, Pixel 8 size, 1080×2400): the first start's screen; the games'
-content downloaded over HTTPS; with the ROMs in, BN6 loaded and the main menu with its demo battle; Play, the
-invite code typed on the soft keyboard and with `adb shell input text`, a new build, its page, Practice (Enter on
-the focused button too), a battle on the custom screen, the on-screen pad's A choosing a chip; the phone turned to landscape and back; the app sent
-home and brought back (the window made anew). Not run: a phone, a gamepad, the pickers and the share sheet, video
-export, netplay.
+content downloaded over HTTPS; with the ROMs in, BN6 loaded and the main menu with its demo battle; Play, a field
+typed on the soft keyboard and with `adb shell input text`, a new build, its page, Practice, a battle on the custom
+screen; the phone turned to landscape and back; the app sent home and brought back (the window made anew, the
+battle where it was). With GameActivity: the soft keyboard's letters, Escape and Enter, the arrows in a battle;
+the on-screen pad's d-pad and A moving the chip cursor and choosing a chip; a gamepad's d-pad and buttons (adb's)
+moving the menus' focus and the chip cursor and opening Settings, its stick moving the focus with no touch made of
+it. Not run: a phone, a real gamepad, the pickers and the share sheet, video export, netplay.
 
 ## 8. Builds
 

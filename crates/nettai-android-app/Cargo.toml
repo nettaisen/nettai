@@ -14,7 +14,7 @@ crate-type = ["cdylib"]
 [target.'cfg(target_os = "android")'.dependencies]
 nettai = { path = "../nettai" }
 nettai-android = { path = "../nettai-android" }
-android-activity = { version = "0.6", features = ["native-activity"] }
+android-activity = { version = "0.6", features = ["game-activity"] }
 # The app's futures under tokio, as the desktop's `main` runs them (crates/nettai/src/main.rs).
 tokio = { version = "1", features = ["rt-multi-thread"] }
 # reqwest checks certificates with Android's own verifier through this (the version reqwest's is), which calls its

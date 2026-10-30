@@ -3,9 +3,9 @@
 //! browser backends.)
 //!
 //! Callers see only [`Button`], [`Axis`], [`Id`] and [`Event`], drive input with [`init`] + [`next_event`], and stay
-//! oblivious to which backend is underneath, but on Android, where the host also hands over the activity's input
-//! events ([`android::input`]).
-//!
+//! oblivious to which backend is underneath. (On Android the app's activity also hands a gamepad's events over, in
+//! Kotlin: `android/nettai/gamepad/NettaiGamepads.kt`, which an APK's build compiles in.)
+
 //! [Gamepad API]: https://developer.mozilla.org/en-US/docs/Web/API/Gamepad_API
 //!
 //! # Event model
@@ -34,7 +34,7 @@
 //! | --- | --- |
 //! | wasm32 | the browser's Gamepad API |
 //! | iOS | the GameController framework: every pad with the extended gamepad profile (MFi, Xbox, PlayStation, Switch Pro) |
-//! | Android | the activity's gamepad key and motion events, handed over by the host ([`android::input`]) |
+//! | Android | the activity's gamepad key and motion events, which its Kotlin hands over before the app hears them |
 //! | the desktop, `sdl3` feature (the default) | SDL3 |
 //! | the desktop without it | a stub that reports no gamepads, so a host that doesn't want to link SDL still builds |
 //!
@@ -62,7 +62,7 @@ mod web;
 mod ios;
 
 #[cfg(android)]
-pub mod android;
+mod android;
 
 #[cfg(any(ios, android, test))]
 mod pads;

@@ -105,12 +105,6 @@ impl<K: std::hash::Hash + Eq + Clone> Pads<K> {
         }
     }
 
-    /// The pads known, by key.
-    #[cfg_attr(not(android), allow(dead_code))]
-    pub fn keys(&self) -> Vec<K> {
-        self.known.keys().cloned().collect()
-    }
-
     /// The state of the pad `key` as last seen (at rest for one not known).
     #[cfg_attr(not(any(android, test)), allow(dead_code))]
     pub fn state(&self, key: &K) -> Pad {

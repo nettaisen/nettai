@@ -5,7 +5,7 @@ edition.workspace = true
 license.workspace = true
 description = "Android's side of the app: the activity the entry point hands over, and Java's calls through JNI, which the other crates' Android parts use (empty elsewhere)"
 
-# The app's activity (a NativeActivity: crates/nettai-android-app) and Java's calls, through JNI.
+# The app's activity (a GameActivity: crates/nettai-android-app) and Java's calls, through JNI.
 [target.'cfg(target_os = "android")'.dependencies]
-android-activity = { version = "0.6", features = ["native-activity"] }
+android-activity = { version = "0.6", features = ["game-activity"] }
 jni = "0.22"
