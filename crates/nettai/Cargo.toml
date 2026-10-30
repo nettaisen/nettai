@@ -27,9 +27,7 @@ nettai-content-api = { path = "../nettai-content-api" }
 # The audio device (`Output`: the `playback` feature, cpal).
 nettai-audio = { path = "../nettai-audio" }
 # The window's types (the features are nettai-ui's).
-slint = { version = "1.18", default-features = false, features = ["std", "backend-winit", "renderer-femtovg", "compat-1-2", "unstable-winit-030", "unstable-fontique-011"] }
-# Gamepads: SDL3's, behind one small API (the user's choice; Cargo.lock pins the revision).
-gamepad-facade = { git = "https://github.com/tangobattle/gamepad-facade" }
+slint = { version = "1.18", default-features = false, features = ["std", "backend-winit", "compat-1-2", "unstable-winit-030", "unstable-fontique-011"] }
 # gamepad-facade says what goes wrong through `log`: it goes to the app's log file.
 log = "0.4"
 # The system's language, for the first one shown.
@@ -60,14 +58,24 @@ toml = "0.8"
 # (`games.rs`; docs/app.md §17).
 nettai-extract = { path = "../nettai-extract" }
 
+# Gamepads: SDL3's, behind one small API (Cargo.lock pins the revision). On a phone, none yet: SDL's iOS
+# joystick code needs SDL's own UIKit video, and its Android one its Java classes; the API is there, reporting no
+# gamepads, until a phone's own (GameController, Android's input events) is written.
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+gamepad-facade = { git = "https://github.com/tangobattle/gamepad-facade" }
+# Updates (`updates.rs`): the installed app's own (Velopack's packages: packaging/), from the project's GitHub
+# releases; the desktop's alone (a phone's app is its store's: `updates_none.rs`). The version the release workflow's
+# `vpk` is (VPK_VERSION), exactly: the first release on crates.io that asks for zip 9 (the ones before asked for
+# zip 8, all of whose versions are yanked).
+[target.'cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android")))'.dependencies]
+velopack = "=1.3.39-g8d2844f"
+[target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
+gamepad-facade = { git = "https://github.com/tangobattle/gamepad-facade", default-features = false }
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # The program runs under tokio (main.rs: `#[tokio::main]`, Slint's loop in `block_in_place`), so the futures the
 # window's loop runs can use reqwest (`nettai_platform::http`).
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-# Updates (`updates.rs`): the installed app's own (Velopack's packages: packaging/), from the project's GitHub
-# releases. The version the release workflow's `vpk` is (VPK_VERSION), exactly: the first release on crates.io that
-# asks for zip 9 (the ones before asked for zip 8, all of whose versions are yanked).
-velopack = "=1.3.39-g8d2844f"
 
 # The log on the browser's console.
 [target.'cfg(target_arch = "wasm32")'.dependencies]

@@ -32,8 +32,9 @@ mod settings;
 mod shell;
 mod sound;
 mod stage;
-// (The browser's app is the page's, which has no updater: its stand-in says none is found.)
-#[cfg_attr(target_arch = "wasm32", path = "updates_web.rs")]
+// (A browser's app is the page's, and a phone's is its store's: neither has an updater, and the stand-in says none
+// is found.)
+#[cfg_attr(any(target_arch = "wasm32", target_os = "ios", target_os = "android"), path = "updates_none.rs")]
 mod updates;
 // (The screenshot pass is the `tour` feature's: a player's build has none of it. The tests compile it all the
 // same, so that it keeps compiling.)

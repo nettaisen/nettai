@@ -1,17 +1,19 @@
-//! Text copied to the system's clipboard (an invite's code, an address): the desktop's (arboard), or the
-//! browser's (`navigator.clipboard`). What goes wrong is said in `log`'s warning.
+//! Text copied to the system's clipboard (an invite's code, an address): the desktop's (arboard), the browser's
+//! (`navigator.clipboard`), or a phone's. What goes wrong is said in `log`'s warning.
 
 /// Copy `text`.
 pub fn copy(text: &str) {
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(phone)]
+    crate::dialog::phone::copy(text);
+    #[cfg(desktop)]
     if let Err(why) = arboard::Clipboard::new().and_then(|mut c| c.set_text(text.to_string())) {
         log::warn!("copying to the clipboard: {why}");
     }
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(web)]
     web::nettai_copy(text);
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(web)]
 mod web {
     use wasm_bindgen::prelude::*;
 

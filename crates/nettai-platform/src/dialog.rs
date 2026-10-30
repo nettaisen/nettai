@@ -18,9 +18,11 @@ pub struct Filter<'a> {
 
 /// Files to open, one or more: `done` hears those chosen (none if none were).
 pub fn open_files(filter: Filter, done: impl FnOnce(Vec<PathBuf>) + 'static) {
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(phone)]
+    phone::open_files(filter, Box::new(done));
+    #[cfg(desktop)]
     done(rfd::FileDialog::new().add_filter(filter.kind, filter.extensions).pick_files().unwrap_or_default());
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(web)]
     web::open_files(filter, Box::new(done));
 }
 
@@ -29,12 +31,14 @@ pub fn open_files(filter: Filter, done: impl FnOnce(Vec<PathBuf>) + 'static) {
 /// letters and one letter of a file's name: `exe/data/exe?*.dat`) are read into the app's files, in a folder of
 /// their own at the same paths, and `done` hears that folder.
 pub fn open_folder(wanted: &[&str], done: impl FnOnce(Option<PathBuf>) + 'static) {
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(phone)]
+    phone::open_folder(wanted, Box::new(done));
+    #[cfg(desktop)]
     {
         let _ = wanted;
         done(rfd::FileDialog::new().pick_folder());
     }
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(web)]
     web::open_folder(wanted, Box::new(done));
 }
 
@@ -42,7 +46,12 @@ pub fn open_folder(wanted: &[&str], done: impl FnOnce(Option<PathBuf>) + 'static
 /// browser no dialog asks: it is a path in the app's files, and the file is downloaded once it is written there
 /// ([`saved`]).
 pub fn save_path(filter: Filter, name: &str, near: Option<&Path>) -> Option<PathBuf> {
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(phone)]
+    {
+        let _ = (filter, near);
+        phone::outgoing(name)
+    }
+    #[cfg(desktop)]
     {
         let mut dialog = rfd::FileDialog::new().add_filter(filter.kind, filter.extensions).set_file_name(name);
         if let Some(folder) = near.and_then(Path::parent).filter(|f| crate::fs::is_dir(f)) {
@@ -50,7 +59,7 @@ pub fn save_path(filter: Filter, name: &str, near: Option<&Path>) -> Option<Path
         }
         dialog.save_file()
     }
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(web)]
     {
         let _ = (filter, near);
         Some(web::download_path(name))
@@ -62,9 +71,9 @@ pub fn save_path(filter: Filter, name: &str, near: Option<&Path>) -> Option<Path
 /// own storage, written as the bytes come, so nothing of it is kept in memory, and handed over as a download named
 /// `name` once whole (the browser's downloads say where it went).
 pub fn save_stream(filter: Filter, name: &str, done: impl FnOnce(Option<Stream>) + 'static) {
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(web))]
     done(save_path(filter, name, None).and_then(file_stream));
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(web)]
     {
         let _ = filter;
         web::save_stream(name, Box::new(|made: std::io::Result<Option<Stream>>| done(made.ok().flatten())));
@@ -76,13 +85,13 @@ pub fn save_stream(filter: Filter, name: &str, done: impl FnOnce(Option<Stream>)
 /// a download named as `path`'s file. `done` hears it: an error if it couldn't be made.
 pub fn save_stream_to(filter: Filter, path: &Path, done: impl FnOnce(std::io::Result<Option<Stream>>) + 'static) {
     let _ = filter;
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(web))]
     done(Stream::at(path.to_path_buf()).map(Some));
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(web)]
     web::save_stream(&path.file_name().unwrap_or_default().to_string_lossy(), Box::new(done));
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(web))]
 fn file_stream(path: PathBuf) -> Option<Stream> {
     match Stream::at(path.clone()) {
         Ok(stream) => Some(stream),
@@ -113,10 +122,10 @@ struct State {
     queued: usize,
     /// The desktop's file: its place, and what is written, as `NAME.body.part` beside it (made whole as
     /// `NAME.part`, its head first, which then takes the name).
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(web))]
     file: Option<(PathBuf, PathBuf, std::fs::File)>,
     /// The browser's: what goes before what is written, once it is whole.
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(web)]
     head: Vec<u8>,
     ended: Option<Ending>,
     failed: Option<String>,
@@ -131,7 +140,7 @@ enum Ending {
 impl Stream {
     /// The desktop's file at `path`: written beside it as `NAME.body.part`, put after its head as `NAME.part`
     /// once it is whole, which then takes the name (a file there before stays till then); removed if it is let go.
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(web))]
     fn at(path: PathBuf) -> std::io::Result<Stream> {
         if let Some(folder) = path.parent().filter(|f| !f.as_os_str().is_empty()) {
             std::fs::create_dir_all(folder)?;
@@ -159,7 +168,7 @@ impl Stream {
         if let Some(why) = &state.failed {
             return Err(why.clone());
         }
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(web))]
         if let Some((_, _, file)) = &mut state.file {
             return std::io::Write::write_all(file, &bytes).map_err(|e| e.to_string());
         }
@@ -193,17 +202,22 @@ impl Stream {
         let failed = state.failed.clone().filter(|_| ending == Ending::Finished).map(std::io::Error::other);
         let ending = if failed.is_some() { Ending::Aborted } else { ending };
         state.ended = Some(ending);
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(web)]
         let made = {
             state.head = head;
             Ok(())
         };
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(web))]
         let made = match state.file.take() {
             Some((path, body, file)) => {
                 drop(file);
                 let made = if ending == Ending::Finished { whole(&path, &body, &head) } else { Ok(()) };
                 let _ = std::fs::remove_file(body);
+                // (A phone's is in the app's own storage, which the player doesn't see: handed over, once whole.)
+                #[cfg(phone)]
+                if made.is_ok() && ending == Ending::Finished {
+                    phone::hand_over(&path);
+                }
                 made
             }
             None => Ok(()),
@@ -214,7 +228,7 @@ impl Stream {
 
 /// The desktop's file at `path` made whole: `head`, then what was written at `body`; made beside it as `NAME.part`,
 /// which takes the name once it is whole (and is removed if it can't be).
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(web))]
 fn whole(path: &Path, body: &Path, head: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
     let part = path.with_file_name(format!("{}.part", path.file_name().unwrap_or_default().to_string_lossy()));
@@ -254,18 +268,22 @@ impl Drop for Stream {
 /// The file [`save_path`] gave is written. In the browser it is handed over as a download and let go of here; on
 /// the desktop it is where it was asked to be, and nothing is done.
 pub fn saved(path: &Path) {
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(web)]
     web::download(path);
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(phone)]
+    phone::hand_over(path);
+    #[cfg(desktop)]
     let _ = path;
 }
 
 /// A file of the app's shown to the player: on the desktop in the system's file manager; in the browser, whose
 /// files the player can't see, handed over as a download (a copy: the file stays).
 pub fn show_file(path: &Path) {
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(web)]
     web::send(path);
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(phone)]
+    phone::share(path);
+    #[cfg(desktop)]
     {
         let mut command = if cfg!(target_os = "macos") {
             let mut c = std::process::Command::new("open");
@@ -294,13 +312,16 @@ pub fn show_file(path: &Path) {
 /// its path is a folder holding those (an empty one if none is there). (On the desktop the window's own events
 /// carry them, winit's `DroppedFile`, the folder's own path, and this does nothing.)
 pub fn take_drops(wanted: &[&str], dropped: impl FnMut(Vec<PathBuf>) + 'static) {
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(web)]
     web::take_drops(wanted, Box::new(dropped));
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(not(web))]
     drop((wanted, dropped));
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(phone)]
+pub(crate) mod phone;
+
+#[cfg(web)]
 mod web {
     use super::{Ending, Filter, Shared, State, Stream};
     use std::sync::Arc;
@@ -612,7 +633,7 @@ export function nettai_download(name, bytes) {
     }
 }
 
-#[cfg(all(test, not(target_arch = "wasm32")))]
+#[cfg(all(test, not(web)))]
 mod tests {
     use super::*;
     use std::io::Write;

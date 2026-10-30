@@ -1,5 +1,5 @@
-//! What the app asks of the system, the same calls on the desktop and in a browser (crates/nettai-web), each module
-//! the desktop's own where it has one:
+//! What the app asks of the system, the same calls on the desktop, in a browser (crates/nettai-web) and on a phone
+//! (iOS, Android), each module the desktop's own where it has one:
 //!
 //! - [`fs`]: files (`std::fs`; in the browser a tree in memory the page keeps);
 //! - [`thread`]: threads and the locks they share (`std::thread`; in the browser Web Workers);
@@ -11,9 +11,14 @@
 //! - [`text_entry`]: a field's text typed (in the browser an HTML input laid over it, for its input method);
 //! - [`task`]: work done off the window's thread for the app's futures (run on its event loop, under tokio);
 //! - [`http`]: a file fetched over HTTP(S), async (reqwest's; in the browser its `fetch`);
+//! - [`folders`]: the system's folders for the app's data and for files kept a while;
+//! - `android`: Android's activity, which the program's entry point hands over first ([`android::init`]).
 
+#[cfg(target_os = "android")]
+pub mod android;
 pub mod clipboard;
 pub mod dialog;
+pub mod folders;
 pub mod fs;
 pub mod http;
 pub mod task;

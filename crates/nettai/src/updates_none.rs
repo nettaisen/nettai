@@ -1,5 +1,5 @@
-//! The browser's stand-in for the app's updates (`updates.rs`): the page is the app's, and is new when it is
-//! loaded again, so no update is ever found.
+//! The stand-in for the app's updates (`updates.rs`) where the app has no updater of its own: a browser's page is new
+//! each time it is loaded, and a phone's app is updated by its store, so no update is ever found here.
 
 /// What the loading screen waits on (never anything, here).
 pub enum Holding {
