@@ -47,7 +47,8 @@ fn bad(why: impl Into<String>) -> io::Error {
 }
 
 fn write_str(out: &mut impl Write, s: &str) -> io::Result<()> {
-    let bytes = &s.as_bytes()[..s.len().min(MOST_NAME)];
+    // (Cut at a character's start, so what is read is still UTF-8.)
+    let bytes = &s.as_bytes()[..s.floor_char_boundary(MOST_NAME)];
     out.write_all(&(bytes.len() as u16).to_be_bytes())?;
     out.write_all(bytes)
 }
@@ -165,7 +166,7 @@ pub fn read_files(input: &mut impl Read, count: usize, total: u64, progress: &mu
             return Err(bad(format!("a file named {name:?}")));
         }
         let size = read_u64(input)?;
-        if done + size > total {
+        if size > total - done {
             return Err(bad("more bytes than the total said"));
         }
         let mut bytes = Vec::with_capacity(size as usize);
@@ -213,6 +214,15 @@ mod tests {
         assert_eq!(read, total);
     }
 
+    /// A name longer than a hello holds is cut at a character's start, and reads back.
+    #[test]
+    fn a_long_name_is_cut_whole() {
+        let name = "あ".repeat(100);
+        let mut wire = Vec::new();
+        write_hello(&mut wire, &name).unwrap();
+        assert_eq!(read_hello(&mut wire.as_slice()).unwrap().name, "あ".repeat(MOST_NAME / 3));
+    }
+
     /// Each refusal reads back as itself; another version's is said with its version.
     #[test]
     fn refusals_read_back() {
@@ -223,10 +233,18 @@ mod tests {
         }
     }
 
-    /// What isn't nettai's, a file named as a path, and more bytes than said are refused.
+    /// What isn't nettai's, a file named as a path, a size past the total, and more bytes than said are refused.
     #[test]
     fn bad_bytes_are_refused() {
         assert!(read_hello(&mut &b"GET / HTTP/1.1\r\n"[..]).is_err());
+        let mut wire = Vec::new();
+        write_files(&mut wire, &files(), &mut |_, _| {}).unwrap();
+        // (The first file's size said as the most a u64 holds.)
+        let at = MAGIC.len() + 2 + 1 + 2 + 8 + 2 + "BR6E.zip".len();
+        wire[at..at + 8].copy_from_slice(&u64::MAX.to_be_bytes());
+        let mut input = wire.as_slice();
+        let Reply::Accepted { count, total } = read_reply(&mut input).unwrap() else { panic!() };
+        assert!(read_files(&mut input, count, total, &mut |_, _| {}).is_err());
         let mut wire = Vec::new();
         write_files(&mut wire, &[File { name: "../evil".into(), bytes: vec![0] }], &mut |_, _| {}).unwrap();
         let mut input = wire.as_slice();
