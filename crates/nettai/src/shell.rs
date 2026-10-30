@@ -691,6 +691,7 @@ impl Shell {
         shell.set_dialog_message(dialog.message.as_str().into());
         shell.set_dialog_buttons(ModelRc::new(VecModel::from(dialog.buttons)));
         shell.set_dialog_shake(shake);
+        shell.set_dialog_bar(false);
         shell.set_dialog(true);
         self.dialog = Some(Asked { tag: dialog.tag, owner, cancel: dialog.cancel });
         self.keys.release();
@@ -716,7 +717,40 @@ impl Shell {
         self.open_dialog(Dialog { tag, title, message, buttons: vec![button(button_text, ButtonKind::Main)], focus: 0, cancel: 0 }, owner, true);
     }
 
-    fn close_dialog(&mut self) -> Option<Asked> {
+    /// Change the shell's own dialog in place, if the one up is tagged as `dialog` is (no arrival again): its words,
+    /// its buttons, the one focused and the one Esc presses.
+    pub(crate) fn change_dialog(&mut self, dialog: Dialog) {
+        if !self.dialog_is(dialog.tag) {
+            return;
+        }
+        let ui = self.ui();
+        let shell = ui.global::<nettai_ui::Shell>();
+        shell.set_dialog_title(dialog.title.as_str().into());
+        shell.set_dialog_message(dialog.message.as_str().into());
+        shell.set_dialog_buttons(ModelRc::new(VecModel::from(dialog.buttons)));
+        self.dialog = Some(Asked { tag: dialog.tag, owner: None, cancel: dialog.cancel });
+        self.keys.release();
+        self.nav.close("dialog.");
+        self.nav.open("dialog.", Key::new("dialog.button", dialog.focus as i32));
+    }
+
+    /// The bar under the shell's own dialog `tag`'s message, if it is up: how far (0 to 1), or none.
+    pub(crate) fn dialog_progress(&self, tag: &str, progress: Option<f32>) {
+        if !self.dialog_is(tag) {
+            return;
+        }
+        let ui = self.ui();
+        let shell = ui.global::<nettai_ui::Shell>();
+        shell.set_dialog_bar(progress.is_some());
+        shell.set_dialog_progress(progress.unwrap_or(0.0));
+    }
+
+    /// Whether the dialog up is the shell's own, tagged `tag`.
+    pub(crate) fn dialog_is(&self, tag: &str) -> bool {
+        self.dialog.as_ref().is_some_and(|asked| asked.owner.is_none() && asked.tag == tag)
+    }
+
+    pub(crate) fn close_dialog(&mut self) -> Option<Asked> {
         let asked = self.dialog.take()?;
         self.ui().global::<nettai_ui::Shell>().set_dialog(false);
         self.nav.close("dialog.");
@@ -1255,15 +1289,19 @@ impl App {
         self.settle();
     }
 
-    /// A dialog's button: the dialog closes, and the screen that asked hears which.
+    /// A dialog's button: the dialog closes, and the screen that asked hears which. (The nearby dialog's buttons are
+    /// its own: Send keeps it up, to show the send.)
     fn answer(&mut self, choice: usize) {
+        if self.shell.dialog_is(crate::nearby::DIALOG) {
+            crate::nearby::pressed(&mut self.shell, choice);
+            return;
+        }
         let Some(asked) = self.shell.close_dialog() else { return };
         match asked.owner {
             Some(owner) => {
                 self.call(owner, |s, shell| s.answered(shell, asked.tag, choice));
             }
             None if asked.tag == SOURCE && choice == 0 => self.choose_source(),
-            None if asked.tag == crate::nearby::DIALOG => crate::nearby::answered(&mut self.shell, choice == 0),
             None => {}
         }
     }

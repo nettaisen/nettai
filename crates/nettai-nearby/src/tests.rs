@@ -40,7 +40,7 @@ fn an_ask_is_answered_with_the_files() {
     offerer.answer(request, Some(files()));
     let Event::Received { name, files: got } = wait_for(&mut asker, |e| matches!(e, Event::Received { .. })) else { unreachable!() };
     assert_eq!((name.as_str(), got), ("computer", files()));
-    assert!(matches!(wait_for(&mut offerer, |e| matches!(e, Event::Sent { .. })), Event::Sent { name } if name == "phone"));
+    assert!(matches!(wait_for(&mut offerer, |e| matches!(e, Event::Sent { .. })), Event::Sent { request: r, name } if r == request && name == "phone"));
 
     asker.ask_at("computer".into(), at);
     let Event::Asked { request, .. } = wait_for(&mut offerer, |e| matches!(e, Event::Asked { .. })) else { unreachable!() };
@@ -60,6 +60,31 @@ fn a_second_asker_is_told_busy() {
     assert!(matches!(wait_for(&mut second, |e| matches!(e, Event::Busy { .. })), Event::Busy { name } if name == "computer"));
     offerer.answer(request, None);
     assert!(matches!(wait_for(&mut first, |e| matches!(e, Event::Declined { .. })), Event::Declined { .. }));
+}
+
+/// A send stopped by the offerer's player ends: said as not sent, and the asker's transfer fails. (The asker here
+/// reads nothing, so the send can't be done before it is stopped.)
+#[test]
+fn a_send_stopped_is_not_sent() {
+    let (mut offerer, at) = offerer();
+    let mut stream = TcpStream::connect(at[0]).unwrap();
+    protocol::write_hello(&mut stream, "phone").unwrap();
+    let Event::Asked { request, .. } = wait_for(&mut offerer, |e| matches!(e, Event::Asked { .. })) else { unreachable!() };
+    offerer.answer(request, Some(vec![File { name: "BR6E.zip".into(), bytes: vec![7; 64 << 20] }]));
+    offerer.stop(request);
+    let said = wait_for(&mut offerer, |e| matches!(e, Event::NotSent { .. } | Event::Sent { .. }));
+    assert!(matches!(said, Event::NotSent { request: r, ref name, .. } if r == request && name == "phone"), "{said:?}");
+}
+
+/// Stopped before its player answered, an ask is declined.
+#[test]
+fn an_ask_stopped_is_declined() {
+    let (mut offerer, at) = offerer();
+    let mut asker = Nearby::named("phone".into(), false);
+    asker.ask_at("computer".into(), at);
+    let Event::Asked { request, .. } = wait_for(&mut offerer, |e| matches!(e, Event::Asked { .. })) else { unreachable!() };
+    offerer.stop(request);
+    assert!(matches!(wait_for(&mut asker, |e| matches!(e, Event::Declined { .. })), Event::Declined { .. }));
 }
 
 /// An asker of another version is told the offerer's, and the offerer's player isn't asked.

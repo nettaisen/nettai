@@ -1,8 +1,8 @@
 //! The Legacy Collection's ROMs from one device to another on the local network, with no server and nothing typed. A
 //! device that has the collection offers it ([`Nearby::offer`]): it listens for a TCP connection and advertises itself
 //! by DNS-SD (Bonjour: multicast DNS, the service [`SERVICE`]). One that hasn't seeks ([`Nearby::seek`]): it browses for
-//! those, asks one ([`Nearby::ask`]), whose player answers ([`Nearby::answer`]: the files, or none), and the files
-//! arrive. Polled: [`Nearby::poll`] says what happened since, on the app's thread; the network's work is on threads of
+//! those, asks one ([`Nearby::ask`]), whose player answers ([`Nearby::answer`]: the files, or none; and may stop the
+//! send, [`Nearby::stop`]), and the files arrive. Polled: [`Nearby::poll`] says what happened since, on the app's thread; the network's work is on threads of
 //! this crate's.
 //!
 //! Discovery is the system's, a module each (`src/platform.rs`): `mdns-sd` on the desktop, which offers and seeks;
@@ -23,7 +23,7 @@ mod transfer;
 
 use platform::system;
 use std::collections::HashMap;
-use std::net::{SocketAddr, TcpListener};
+use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::sync::{Arc, Mutex};
@@ -56,12 +56,17 @@ pub enum Event {
     Lost { peer: Peer },
     /// A device asks for what is offered (offering): [`Nearby::answer`] it.
     Asked { request: Request, name: String },
-    /// A transfer's bytes moved, of its total (either side).
-    Progress { done: u64, total: u64 },
+    /// The files' bytes arrived so far, of their total (asking).
+    Receiving { done: u64, total: u64 },
     /// What was asked for arrived whole, from the device named.
     Received { name: String, files: Vec<File> },
-    /// What was asked for was sent whole, to the device named.
-    Sent { name: String },
+    /// The files' bytes sent so far for `request`, of their total (offering).
+    Sending { request: Request, done: u64, total: u64 },
+    /// What was asked for was sent whole for `request`, to the device named.
+    Sent { request: Request, name: String },
+    /// Sending for `request` to the device named ended before the files did: stopped ([`Nearby::stop`]), or it
+    /// failed: why, for the log.
+    NotSent { request: Request, name: String, why: String },
     /// The device asked said no.
     Declined { name: String },
     /// The device asked is sending already, or asking its player of another.
@@ -109,6 +114,9 @@ pub(crate) const ANSWER_WAIT: Duration = Duration::from_secs(10 * 60);
 /// The answers awaited, by request: what the offerer's connection waits on.
 pub(crate) type Answers = Arc<Mutex<HashMap<u32, Sender<Option<Vec<File>>>>>>;
 
+/// The offerer's connections, by request, from the ask till the send's end: what [`Nearby::stop`] closes.
+pub(crate) type Connections = Arc<Mutex<HashMap<u32, TcpStream>>>;
+
 /// Offering, seeking and the transfers: one an app.
 pub struct Nearby {
     name: String,
@@ -125,6 +133,7 @@ pub struct Nearby {
     by_key: HashMap<String, u32>,
     next: u32,
     answers: Answers,
+    connections: Connections,
     next_request: Arc<AtomicU32>,
     /// A transfer is under way on this side (one at a time).
     busy: Arc<AtomicBool>,
@@ -172,6 +181,7 @@ impl Nearby {
             by_key: HashMap::new(),
             next: 0,
             answers: Arc::default(),
+            connections: Arc::default(),
             next_request: Arc::default(),
             busy: Arc::default(),
         }
@@ -200,7 +210,13 @@ impl Nearby {
         listener.set_nonblocking(true).map_err(|e| e.to_string())?;
         let advertised = if self.advertise { Some(system::advertise(&self.name, port)?) } else { None };
         let stop = Arc::new(AtomicBool::new(false));
-        let offerer = transfer::Offerer { tell: self.tell.clone(), answers: self.answers.clone(), next: self.next_request.clone(), busy: self.busy.clone() };
+        let offerer = transfer::Offerer {
+            tell: self.tell.clone(),
+            answers: self.answers.clone(),
+            connections: self.connections.clone(),
+            next: self.next_request.clone(),
+            busy: self.busy.clone(),
+        };
         let stopped = stop.clone();
         std::thread::Builder::new().name("nettai-nearby-offer".into()).spawn(move || offerer.accept(listener, &stopped)).map_err(|e| format!("no thread: {e}"))?;
         Ok(Offering { stop, _advertised: advertised, port })
@@ -254,6 +270,22 @@ impl Nearby {
     pub fn answer(&mut self, request: Request, files: Option<Vec<File>>) {
         if let Some(waiting) = self.answers.lock().unwrap_or_else(|e| e.into_inner()).remove(&request.0) {
             let _ = waiting.send(files);
+        }
+    }
+
+    /// Stop `request`: one not answered yet is declined; one being sent ends where it is, said as [`Event::NotSent`].
+    pub fn stop(&mut self, request: Request) {
+        let waiting = self.answers.lock().unwrap_or_else(|e| e.into_inner()).remove(&request.0);
+        match waiting {
+            Some(waiting) => {
+                let _ = waiting.send(None);
+            }
+            None => {
+                if let Some(connection) = self.connections.lock().unwrap_or_else(|e| e.into_inner()).get(&request.0) {
+                    // (The send's next write fails.)
+                    let _ = connection.shutdown(std::net::Shutdown::Both);
+                }
+            }
         }
     }
 

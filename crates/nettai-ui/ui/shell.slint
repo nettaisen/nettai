@@ -4,7 +4,7 @@
 
 import { Theme, Audit, Look, PatternKind, I18n } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
-import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Field, Chevron, ArrowLeft, ArrowRight, RowBack, RowTouch, ListView, ScrollPage, Pill } from "widgets.slint";
+import { Cut, Label, Note, Value, Mono, Bar, Button, ButtonKind, Stepper, Field, Chevron, ArrowLeft, ArrowRight, RowBack, RowTouch, ListView, ScrollPage, Pill } from "widgets.slint";
 import { Tween, Pulse, Shake } from "motion.slint";
 import { VersionTag } from "build.slint";
 
@@ -273,6 +273,9 @@ export global Shell {
     in property <[DialogButton]> dialog-buttons;
     // It is a failure's: it shakes once as it arrives.
     in property <bool> dialog-shake;
+    // A bar under its message, how far something it waits on has come (0 to 1): a send of the Legacy Collection's.
+    in property <bool> dialog-bar;
+    in property <float> dialog-progress;
 
     // A select's choices, open under it (on a phone, a sheet from the bottom): a list of `picker-rows` rows'
     // height, which scrolls where there are more.
@@ -416,6 +419,16 @@ export global NearbyWords {
     }
     out property <string> send: @tr("Send");
     out property <string> not-now: @tr("Not now");
+    // The dialog once Send is chosen, while the copies are made and sent (its bar shows how far), and if that fails.
+    public pure function sending-title(name: string) -> string {
+        return @tr("Sending the Legacy Collection to {}", name);
+    }
+    out property <string> sending-message: @tr("Keep nettai open until it's done.");
+    out property <string> cancel: @tr("Cancel");
+    public pure function failed-title(name: string) -> string {
+        return @tr("Couldn't send the Legacy Collection to {}", name);
+    }
+    out property <string> failed-message: @tr("Details are in the log file.");
 }
 
 // An update of the app (src/updates.rs; docs/app.md §19, "Updates"): the loading screen's lines as the app starts,
@@ -1604,11 +1617,13 @@ export component DialogFrame inherits Rectangle {
 }
 
 // The shell's dialog: a failure that ends what the player was doing, or a question asked once (`Shell::fail`,
-// `Shell::ask`): a message and its buttons.
+// `Shell::ask`): a message and its buttons; and, while it waits on something, a bar under the message, with its
+// percent under the bar's end (as the loading screen's).
 export component DialogLayer inherits DialogFrame {
     title: Shell.dialog-title;
     panel-width: 460px;
-    content-height: message.height + 24px + 40px;
+    property <length> bar-height: Shell.dialog-bar ? 20px + 4px + 8px + 16px : 0px;
+    content-height: message.height + root.bar-height + 24px + 40px;
     shake: Shell.dialog-shake;
     message := Text {
         x: 0;
@@ -1622,9 +1637,27 @@ export component DialogLayer inherits DialogFrame {
         wrap: word-wrap;
     }
 
+    Bar {
+        x: 0;
+        y: message.height + 20px;
+        width: root.inner-width;
+        visible: Shell.dialog-bar;
+        value: Shell.dialog-progress;
+    }
+
+    Mono {
+        x: root.inner-width - 48px;
+        y: message.height + 32px;
+        width: 48px;
+        height: 16px;
+        visible: Shell.dialog-bar;
+        text: "\{round(Shell.dialog-progress * 100)}%";
+        horizontal-alignment: right;
+    }
+
     HorizontalLayout {
         x: 0;
-        y: message.height + 24px;
+        y: message.height + root.bar-height + 24px;
         width: root.inner-width;
         height: 40px;
         spacing: 12px;

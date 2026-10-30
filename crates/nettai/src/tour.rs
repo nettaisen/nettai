@@ -416,7 +416,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
 
     // A computer nearby that sends the collection (`crate::nearby`; `NETTAI_TOUR_ONLY=nearby`: these alone): the
     // note's states where no game can be played (the bar while the copies come), then the computer's dialog when a
-    // device asks.
+    // device asks, and while it sends.
     taking.set(walks("nearby"));
     use nettai_ui::NearbyState as N;
     for (state, name, tag) in [
@@ -453,6 +453,8 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     );
     add(SETTLE, Box::new(|_, app, _| crate::nearby::open_ask(&mut app.borrow_mut().shell, "iPhone")));
     shot(&mut add, "nearby-ask-dialog", Pair::None);
+    add(SETTLE, Box::new(|_, app, _| crate::nearby::show_sending(&mut app.borrow_mut().shell, "iPhone", 0.42)));
+    shot(&mut add, "nearby-sending-dialog", Pair::None);
     add(SETTLE, act(Action::Back));
     taking.set(walks("shell"));
 
