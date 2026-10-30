@@ -12,7 +12,10 @@
 //! looked at when the queue is empty, once a second at most: a gamepad on it is connected, and one that was on it
 //! and is gone is disconnected. A pad heard from before the list says so is connected at once.
 
-use super::android_map::{axis, is_gamepad, key as key_of, keyed, moved};
+
+mod map;
+
+use map::{axis, is_gamepad, key as key_of, keyed, moved};
 use super::pads::Pads;
 use crate::Event;
 use jni::objects::{JClass, JIntArray, JValue};

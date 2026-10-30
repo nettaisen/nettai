@@ -42,7 +42,7 @@ pub fn is_dir(path: impl AsRef<Path>) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use crate::platform::memory as m;
+    use crate::platform::web::memory as m;
     use std::io::{Read, Seek, SeekFrom, Write};
 
     /// The browser's tree, as `std::fs` behaves: folders made and listed, files written, read, appended to and

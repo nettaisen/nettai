@@ -38,6 +38,11 @@ objc2-uniform-type-identifiers = { version = "0.3", default-features = false, fe
 jni = "0.22"
 ndk-context = "0.1"
 
+# A phone's dialogs in tests on the desktop (with Android's pickers: the files wanted in a folder, matched).
+[dev-dependencies]
+jni = "0.22"
+ndk-context = "0.1"
+
 [build-dependencies]
 # The targets by name (build.rs: `desktop`, `web`, `phone`, `ios`, `android`).
 cfg_aliases = "0.2"

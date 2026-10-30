@@ -2,7 +2,7 @@
 //! axes (`MotionEvent.AXIS_*`), as Android's standard layout has them for every gamepad. Apart from the backend
 //! (`android`) so that it builds, and is tested, anywhere.
 
-use super::pads::Pad;
+use super::super::pads::Pad;
 use crate::{Axis, Button};
 
 /// What a gamepad key is: a button, or a trigger pressed (a pad with digital triggers' L2 and R2).

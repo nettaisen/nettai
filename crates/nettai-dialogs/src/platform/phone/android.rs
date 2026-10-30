@@ -8,7 +8,7 @@
 //! says where, and the file is copied there. A picker filters by MIME type, which a save's extension has none of, so
 //! it offers any file.
 
-use super::phone::{Answer, answer, lot};
+use super::{Answer, answer, lot};
 use super::wanted::{depth, is_wanted};
 use crate::Filter;
 use jni::objects::{JClass, JObject, JString, JValue};

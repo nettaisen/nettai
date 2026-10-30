@@ -1,11 +1,13 @@
 //! The system's files and folders, each chosen here, once. The files: `std::fs` natively (the desktop and both
-//! phones share [`native`]), the browser's tree in memory ([`web`], on [`memory`]). The app's folders: each
+//! phones share [`native`]), the browser's tree in memory ([`web`], on its `memory`). The app's folders: each
 //! system's own ([`desktop`], [`ios`], [`android`], [`web`]). What only one has is public from here as the crate's
 //! own (the browser's `listed`).
 
 #[cfg(not(web))]
 pub(crate) mod native;
-#[cfg(web)]
+// (In tests anywhere too: the browser's tree's tests run on the desktop.)
+#[cfg(any(web, test))]
+#[cfg_attr(not(web), allow(dead_code, unused_imports))]
 pub(crate) mod web;
 #[cfg(desktop)]
 pub(crate) mod desktop;
@@ -13,10 +15,6 @@ pub(crate) mod desktop;
 pub(crate) mod ios;
 #[cfg(android)]
 pub(crate) mod android;
-// (Plain Rust: tested on the desktop too.)
-#[cfg(any(web, test))]
-#[cfg_attr(not(web), allow(dead_code))]
-pub(crate) mod memory;
 
 #[cfg(not(web))]
 pub(crate) use native as files;

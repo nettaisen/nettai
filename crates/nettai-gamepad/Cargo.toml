@@ -57,6 +57,11 @@ jni = "0.22"
 ndk-context = "0.1"
 
 # The same on macOS, whose framework is iOS's: this crate's tests run the iOS backend there.
+# Android's backend in tests on the desktop (its key and axis map's).
+[dev-dependencies]
+jni = "0.22"
+ndk-context = "0.1"
+
 [target.'cfg(target_os = "macos")'.dev-dependencies]
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray"] }
