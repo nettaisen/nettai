@@ -389,6 +389,12 @@ msgid "Send"
 msgstr "傳送"
 msgid "Not now"
 msgstr "暫時不要"
+msgid "Sending the Legacy Collection to {}"
+msgstr "正在將《洛克人EXE 合集》傳送到 {}"
+msgid "Keep nettai open until it's done."
+msgstr "完成前請不要關閉 nettai。"
+msgid "Couldn't send the Legacy Collection to {}"
+msgstr "無法將《洛克人EXE 合集》傳送到 {}"
 # A game's content couldn't be downloaded: {} is the game, as the header shows it (the first: no game named,
 # none could be).
 msgid "The games' content couldn't be downloaded. Check your connection, then start nettai again."

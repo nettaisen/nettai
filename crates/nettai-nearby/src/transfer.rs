@@ -1,7 +1,7 @@
 //! The two sides of a transfer, each on a thread of its own: the asker's ([`receive`]) and the offerer's, which
 //! accepts connections ([`Offerer::accept`]) and serves each ([`Offerer::serve`]).
 
-use crate::{ANSWER_WAIT, Answers, Event, Request, protocol};
+use crate::{ANSWER_WAIT, Answers, Connections, Event, Request, protocol};
 use std::net::{SocketAddr, TcpListener, TcpStream};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::mpsc::{self, Sender};
@@ -33,8 +33,12 @@ pub fn receive(me: &str, addrs: &[SocketAddr], name: &str, tell: &Sender<Event>)
             stream.set_read_timeout(Some(SILENCE)).map_err(|e| e.to_string())?;
             let mut said = 0;
             let mut input = std::io::BufReader::with_capacity(256 << 10, &mut stream);
-            let files = protocol::read_files(&mut input, count, total, &mut |done, total| say_progress(tell, &mut said, done, total))
-                .map_err(|e| format!("receiving: {e}"))?;
+            let files = protocol::read_files(&mut input, count, total, &mut |done, total| {
+                if passes_percent(&mut said, done, total) {
+                    let _ = tell.send(Event::Receiving { done, total });
+                }
+            })
+            .map_err(|e| format!("receiving: {e}"))?;
             Event::Received { name, files }
         }
     })
@@ -44,6 +48,7 @@ pub fn receive(me: &str, addrs: &[SocketAddr], name: &str, tell: &Sender<Event>)
 pub struct Offerer {
     pub tell: Sender<Event>,
     pub answers: Answers,
+    pub connections: Connections,
     pub next: Arc<AtomicU32>,
     pub busy: Arc<AtomicBool>,
 }
@@ -54,7 +59,13 @@ impl Offerer {
         while !stop.load(Ordering::Relaxed) {
             match listener.accept() {
                 Ok((stream, _)) => {
-                    let offerer = Offerer { tell: self.tell.clone(), answers: self.answers.clone(), next: self.next.clone(), busy: self.busy.clone() };
+                    let offerer = Offerer {
+                        tell: self.tell.clone(),
+                        answers: self.answers.clone(),
+                        connections: self.connections.clone(),
+                        next: self.next.clone(),
+                        busy: self.busy.clone(),
+                    };
                     let _ = std::thread::Builder::new().name("nettai-nearby-send".into()).spawn(move || offerer.serve(stream));
                 }
                 Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => std::thread::sleep(Duration::from_millis(50)),
@@ -92,6 +103,9 @@ impl Offerer {
         let id = self.next.fetch_add(1, Ordering::Relaxed);
         let (answer, answered) = mpsc::channel();
         self.answers.lock().unwrap_or_else(|e| e.into_inner()).insert(id, answer);
+        if let Ok(connection) = stream.try_clone() {
+            self.connections.lock().unwrap_or_else(|e| e.into_inner()).insert(id, connection);
+        }
         let _ = self.tell.send(Event::Asked { request: Request(id), name: name.clone() });
         let files = answered.recv_timeout(ANSWER_WAIT).ok().flatten();
         self.answers.lock().unwrap_or_else(|e| e.into_inner()).remove(&id);
@@ -103,16 +117,23 @@ impl Offerer {
             Some(files) => {
                 let mut said = 0;
                 let mut out = std::io::BufWriter::with_capacity(256 << 10, &mut stream);
-                let sent = protocol::write_files(&mut out, &files, &mut |done, total| say_progress(&self.tell, &mut said, done, total)).and_then(|()| {
+                let request = Request(id);
+                let sent = protocol::write_files(&mut out, &files, &mut |done, total| {
+                    if passes_percent(&mut said, done, total) {
+                        let _ = self.tell.send(Event::Sending { request, done, total });
+                    }
+                })
+                .and_then(|()| {
                     use std::io::Write;
                     out.flush()
                 });
                 Some(match sent {
-                    Ok(()) => Event::Sent { name },
-                    Err(e) => Event::Failed { name, why: format!("sending: {e}") },
+                    Ok(()) => Event::Sent { request, name },
+                    Err(e) => Event::NotSent { request, name, why: format!("sending: {e}") },
                 })
             }
         };
+        self.connections.lock().unwrap_or_else(|e| e.into_inner()).remove(&id);
         self.busy.store(false, Ordering::Relaxed);
         if let Some(event) = event {
             let _ = self.tell.send(event);
@@ -120,11 +141,10 @@ impl Offerer {
     }
 }
 
-/// Progress said as each whole percent is passed.
-fn say_progress(tell: &Sender<Event>, said: &mut u64, done: u64, total: u64) {
+/// Whether `done` of `total` passes a whole percent since the one `said` (or is the end): progress is said as each is.
+fn passes_percent(said: &mut u64, done: u64, total: u64) -> bool {
     let percent = done * 100 / total.max(1);
-    if percent != *said || done == total {
-        *said = percent;
-        let _ = tell.send(Event::Progress { done, total });
-    }
+    let passes = percent != *said || done == total;
+    *said = percent;
+    passes
 }

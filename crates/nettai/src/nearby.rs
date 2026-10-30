@@ -1,6 +1,7 @@
 //! The Legacy Collection from a computer nearby (nettai-nearby; docs/app.md §17, "From a computer nearby"). A desktop
 //! whose games' ROMs are found offers them on the local network, and when a device asks, its player is asked in a
-//! dialog (Send, Not now); Send sends the ROMs as copies, as a phone keeps them ([`RomSource::copies`]). A device whose
+//! dialog (Send, Not now); Send sends the ROMs as copies, as a phone keeps them ([`RomSource::copies`]), the dialog
+//! staying up with a bar till they are sent (Cancel stops the send), or saying it failed. A device whose
 //! ROMs aren't found (a phone, or a desktop without the collection) looks for one, asks the first it finds, and keeps
 //! the copies it is sent ([`nettai_extract::source::check_copy`]: each checked by its header), from which the games
 //! are played at once and at each start. The loading screen's note says how that goes ([`nettai_ui::NearbyState`]).
@@ -33,10 +34,25 @@ pub struct Nearby {
     seeking: Option<Seeking>,
     /// The asks heard, waiting for the player to be asked: one at a time, when no dialog nor battle is up.
     asks: VecDeque<(Request, String)>,
-    /// The ask whose dialog is up.
-    asked: Option<(Request, String)>,
-    /// The copies being made for an ask the player said Send to, on a thread.
-    making: Option<(Request, Receiver<Option<Vec<File>>>)>,
+    /// The ask put to the player, from its dialog's opening till the send's end.
+    asked: Option<Asked>,
+}
+
+/// An ask put to the player: the device's, by its name, and where it is at.
+struct Asked {
+    request: Request,
+    name: String,
+    step: Step,
+}
+
+enum Step {
+    /// The dialog asks: Send, Not now.
+    Asking,
+    /// Send was chosen: the copies are made on a thread (`made`, till they come), then sent, the dialog's bar showing
+    /// how far, with Cancel.
+    Sending { made: Option<Receiver<Option<Vec<File>>>> },
+    /// The send failed: the dialog says so, with OK.
+    Failed,
 }
 
 /// Looking for a computer to send the collection, and what has come of it.
@@ -62,7 +78,7 @@ struct Seeking {
 
 impl Default for Nearby {
     fn default() -> Nearby {
-        Nearby { link: nettai_nearby::Nearby::new(), offering: false, seeking: None, asks: VecDeque::new(), asked: None, making: None }
+        Nearby { link: nettai_nearby::Nearby::new(), offering: false, seeking: None, asks: VecDeque::new(), asked: None }
     }
 }
 
@@ -104,6 +120,7 @@ pub fn frame(shell: &mut Shell, now: Instant) {
     }
     keep_received(shell);
     send_made(shell);
+    let_go(shell);
     if let Some(seeking) = &mut shell.nearby.seeking {
         seeking.ask_next(&mut shell.nearby.link, now);
     }
@@ -116,7 +133,28 @@ fn hear(shell: &mut Shell, event: Event, now: Instant) {
     let nearby = &mut shell.nearby;
     match event {
         Event::Asked { request, name } => nearby.asks.push_back((request, name)),
-        Event::Sent { name } => crate::errors::log("sending the Legacy Collection", &format_args!("sent to {name}")),
+        Event::Sending { request, done, total } => {
+            if nearby.asked.as_ref().is_some_and(|a| a.request == request) {
+                shell.dialog_progress(DIALOG, Some(done as f32 / total.max(1) as f32));
+            }
+        }
+        Event::Sent { request, name } => {
+            crate::errors::log("sending the Legacy Collection", &format_args!("sent to {name}"));
+            if nearby.asked.as_ref().is_some_and(|a| a.request == request) {
+                nearby.asked = None;
+                if shell.dialog_is(DIALOG) {
+                    shell.close_dialog();
+                }
+            }
+        }
+        Event::NotSent { request, name, why } => {
+            crate::errors::log("sending the Legacy Collection", &format_args!("{name}: {why}"));
+            if let Some(asked) = nearby.asked.as_mut().filter(|a| a.request == request) {
+                asked.step = Step::Failed;
+                let name = asked.name.clone();
+                show_failed(shell, &name);
+            }
+        }
         Event::Failed { name, why } if nearby.seeking.as_ref().is_none_or(|s| s.asking.is_none()) || name.is_empty() => {
             crate::errors::log("the Legacy Collection nearby", &format_args!("{name}: {why}"));
         }
@@ -160,7 +198,7 @@ impl Seeking {
                 self.found.retain(|(p, _)| *p != peer);
                 self.passed.remove(&peer);
             }
-            Event::Progress { done, total } if self.asking.is_some() => {
+            Event::Receiving { done, total } if self.asking.is_some() => {
                 self.state = NearbyState::Receiving;
                 self.progress = done as f32 / total.max(1) as f32;
             }
@@ -201,7 +239,7 @@ impl Seeking {
                 crate::errors::log("looking for a computer nearby", &"the local network isn't allowed");
                 self.say(NearbyState::NotAllowed, String::new());
             }
-            Event::Asked { .. } | Event::Sent { .. } | Event::Progress { .. } => {}
+            Event::Asked { .. } | Event::Receiving { .. } | Event::Sending { .. } | Event::Sent { .. } | Event::NotSent { .. } => {}
         }
     }
 
@@ -277,18 +315,40 @@ fn keep_received(shell: &mut Shell) {
     seeking.state = NearbyState::Unusable;
 }
 
-/// The copies made for an ask the player said Send to: sent (none, where they couldn't be made: declined).
+/// The copies made for the ask the player said Send to: sent; none (they couldn't be made): declined, and the dialog
+/// says it failed.
 fn send_made(shell: &mut Shell) {
-    let nearby = &mut shell.nearby;
-    let Some((request, made)) = &nearby.making else { return };
+    let Some(asked) = &mut shell.nearby.asked else { return };
+    let Step::Sending { made: Some(made) } = &asked.step else { return };
     let files = match made.try_recv() {
         Ok(files) => files,
         Err(TryRecvError::Disconnected) => None,
         Err(TryRecvError::Empty) => return,
     };
-    let request = *request;
-    nearby.making = None;
-    nearby.link.answer(request, files);
+    let failed = files.is_none();
+    shell.nearby.link.answer(asked.request, files);
+    asked.step = if failed { Step::Failed } else { Step::Sending { made: None } };
+    if failed {
+        let name = asked.name.clone();
+        show_failed(shell, &name);
+    }
+}
+
+/// The ask's dialog closed by something else (another dialog over it): not asked, it is declined; being sent, the
+/// send goes on, unseen.
+fn let_go(shell: &mut Shell) {
+    let Some(asked) = &shell.nearby.asked else { return };
+    if shell.dialog_is(DIALOG) {
+        return;
+    }
+    match asked.step {
+        Step::Asking => {
+            shell.nearby.link.answer(asked.request, None);
+            shell.nearby.asked = None;
+        }
+        Step::Sending { .. } => {}
+        Step::Failed => shell.nearby.asked = None,
+    }
 }
 
 /// The next ask, put to the player in the shell's dialog when nothing else is up.
@@ -298,7 +358,7 @@ fn ask_player(shell: &mut Shell) {
     }
     let Some((request, name)) = shell.nearby.asks.pop_front() else { return };
     open_ask(shell, &name);
-    shell.nearby.asked = Some((request, name));
+    shell.nearby.asked = Some(Asked { request, name, step: Step::Asking });
 }
 
 /// The dialog that asks the player whether to send the collection to the device `name` (Send, Not now). (The
@@ -311,17 +371,62 @@ pub(crate) fn open_ask(shell: &mut Shell, name: &str) {
     shell.open_dialog(Dialog { tag: DIALOG, title, message, buttons, focus: 0, cancel: 1 }, None, false);
 }
 
-/// The player's answer to the ask in the dialog: Send (the copies are made on a thread, then sent), or not.
-pub fn answered(shell: &mut Shell, send: bool) {
-    let Some((request, name)) = shell.nearby.asked.take() else { return };
-    let source = shell.games.rom_source().cloned().filter(|_| send);
-    let Some(source) = source else {
-        shell.nearby.link.answer(request, None);
+/// The dialog, once Send is chosen: sending to the device `name`, its bar at `progress`, with Cancel.
+pub(crate) fn show_sending(shell: &mut Shell, name: &str, progress: f32) {
+    let ui = shell.ui();
+    let words = ui.global::<NearbyWords>();
+    let (title, message) = (words.invoke_sending_title(name.into()).to_string(), words.get_sending_message().to_string());
+    let buttons = vec![button(&words.get_cancel(), ButtonKind::Normal)];
+    shell.change_dialog(Dialog { tag: DIALOG, title, message, buttons, focus: 0, cancel: 0 });
+    shell.dialog_progress(DIALOG, Some(progress));
+}
+
+/// The dialog, once the send to the device `name` failed, with OK (if it is up).
+fn show_failed(shell: &mut Shell, name: &str) {
+    if !shell.dialog_is(DIALOG) {
+        return;
+    }
+    let ui = shell.ui();
+    let words = ui.global::<NearbyWords>();
+    let (title, message) = (words.invoke_failed_title(name.into()).to_string(), words.get_failed_message().to_string());
+    let ok = ui.global::<nettai_ui::Errors>().invoke_ok();
+    shell.change_dialog(Dialog { tag: DIALOG, title, message, buttons: vec![button(&ok, ButtonKind::Main)], focus: 0, cancel: 0 });
+    shell.dialog_progress(DIALOG, None);
+    shell.sound.play(crate::sound::Cue::Refused);
+}
+
+/// A button of the dialog: Send (it stays up, the copies made on a thread, then sent) or Not now; Cancel, which stops
+/// the send; OK, once it failed. All but Send close it.
+pub fn pressed(shell: &mut Shell, choice: usize) {
+    let Some(asked) = shell.nearby.asked.take() else {
+        shell.close_dialog();
         return;
     };
-    let codes = shell.games.rom_codes();
+    match asked.step {
+        Step::Asking if choice == 0 => {
+            if let Some(source) = shell.games.rom_source().cloned() {
+                let made = make_copies(source, shell.games.rom_codes(), asked.name.clone());
+                show_sending(shell, &asked.name, 0.0);
+                shell.nearby.asked = Some(Asked { step: Step::Sending { made: Some(made) }, ..asked });
+                return;
+            }
+            // (The ROMs are gone since: declined.)
+            shell.nearby.link.answer(asked.request, None);
+        }
+        Step::Asking => shell.nearby.link.answer(asked.request, None),
+        Step::Sending { .. } => {
+            crate::errors::log("sending the Legacy Collection", &format_args!("canceled for {}", asked.name));
+            shell.nearby.link.stop(asked.request);
+        }
+        Step::Failed => {}
+    }
+    shell.close_dialog();
+}
+
+/// The copies of the ROMs `codes` from `source`, made on a thread for the device `name`: none where they couldn't be.
+fn make_copies(source: RomSource, codes: Vec<String>, name: String) -> Receiver<Option<Vec<File>>> {
     let (tell, told) = mpsc::channel();
-    // (A thread that can't start drops its sender: heard as no copies, and the ask declined.)
+    // (A thread that can't start drops its sender: heard as no copies.)
     let _ = nettai_threads::spawn("copying the Legacy Collection's ROMs", move || {
         let files = match source.copies(&codes) {
             Ok(copies) => Some(copies.into_iter().map(|(name, bytes)| File { name, bytes }).collect()),
@@ -332,7 +437,7 @@ pub fn answered(shell: &mut Shell, send: bool) {
         };
         let _ = tell.send(files);
     });
-    shell.nearby.making = Some((request, told));
+    told
 }
 
 /// The loading screen's note, as it is now.

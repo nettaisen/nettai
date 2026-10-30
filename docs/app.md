@@ -2825,7 +2825,7 @@ down; a click over another piece, then off the board; a right click; a click off
 Settings, a dialog, a battle; in the probe, a change of game too), `collection` (the Legacy Collection not found:
 the loading screen's line and button, and its dialog), `nearby` (a computer nearby that sends the collection: the
 loading screen's note in each of its states, the bar while the copies come, and the computer's dialog when a device
-asks; §17), `practice`, `builds`, `build-tabs`,
+asks, and while it sends; §17), `practice`, `builds`, `build-tabs`,
 `party` (the Party tab, with `NETTAI_TOUR_GAME=exe5`: the ruleset page's party pages, the slots and the library that
 follows them, every drag it takes, each let go and checked, the held states shot, and Patch cards' library and the
 NaviCust's list beside it for comparing; on a phone, the slots and the navis' sheet), `play` and `replays`; `play` or `replays` named alone walks Play's or Replays' steps alone. (The pass reads the ROMs `$NETTAI_ROMS`
@@ -4134,7 +4134,12 @@ Collection to iPhone?", and Send is all.
   NsdManager and `mdns-sd` speak.
 - *The transfer* (nettai-nearby's `protocol.rs`, version 1): the phone connects to an address the service resolved
   to and says hello (magic `NETTAINB`, the version, its name); the computer's app asks its player in the shell's
-  dialog (Send, Not now; Esc is Not now; not over another dialog or a battle: the ask waits, up to ten minutes); the
+  dialog (Send, Not now; Esc is Not now; not over another dialog or a battle: the ask waits, up to ten minutes). Send
+  keeps the dialog up: "Sending the Legacy Collection to iPhone", the loading screen's bar and percent under its
+  message (`Event::Sending`, each whole percent), and Cancel (`Nearby::stop`: an ask not answered yet is declined; a
+  send under way has its connection shut, said as `Event::NotSent`). It closes once the files are sent; if the copies
+  can't be made or the send fails, it says "Couldn't send the Legacy Collection to iPhone" with OK. (Another dialog
+  over it while it asks declines the ask; while it sends, the send goes on, unseen.) The
   reply is declined, busy (a transfer or an ask is under way), another version (with the computer's), or accepted
   with the files: each ROM's copy as the app keeps it (`RomSource::copies`: `<code>.zip`, the archive entry's
   compressed bytes, as `copy_of` makes them), their count and total said first. One transfer at a time on each
@@ -4159,7 +4164,7 @@ Collection to iPhone?", and Send is all.
 - *What has run* (2026-10-29). Tests: the protocol's hello, acceptance and refusals read back, and what isn't
   nettai's, a file named as a path and more bytes than said refused (`protocol.rs`); over the loopback, an ask
   answered with the files and a second declined, a second asker told busy, another version refused without asking
-  the player, an ask of nothing failing (`tests.rs`); on this Mac, the system's DNS-SD finding the desktop's
+  the player, an ask of nothing failing, a send stopped said as not sent and an ask stopped declined (`tests.rs`); on this Mac, the system's DNS-SD finding the desktop's
   `mdns-sd` advertisement with its name and addresses (`platform::ios`'s test, ignored by default: it needs an
   interface that carries multicast); the copies sent made as kept ones and checked, a copy of a ROM no game wants,
   one named for another code, one of two entries, one whose header is another's and one changed in the middle
