@@ -37,16 +37,30 @@ tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 getrandom = "0.3"
 
-# The web: the browser's connections (`web-datachannel`, nettai's copy of
-# datachannel-facade's web backend), WebSocket and randomness.
+# The web: the browser's connections (`web::rtc`: its RTCPeerConnection and
+# data channels, the Promises they answer with awaited), WebSocket and
+# randomness.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-web-datachannel = { path = "web-datachannel" }
 wasm-bindgen = "0.2.126"
+wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 web-sys = { version = "0.3", features = [
     "CloseEvent",
     "Crypto",
     "MessageEvent",
+    "RtcConfiguration",
+    "RtcDataChannel",
+    "RtcDataChannelInit",
+    "RtcDataChannelType",
+    "RtcIceCandidate",
+    "RtcIceCandidateInit",
+    "RtcIceTransportPolicy",
+    "RtcPeerConnection",
+    "RtcPeerConnectionIceEvent",
+    "RtcPeerConnectionState",
+    "RtcSdpType",
+    "RtcSessionDescription",
+    "RtcSessionDescriptionInit",
     "WebSocket",
 ] }
 

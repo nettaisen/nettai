@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = ["crates/*"]
-exclude = ["crates/nettai-luau/wasm/libc", "crates/nettai-rtc/web-datachannel"]
+exclude = ["crates/nettai-luau/wasm/libc"]
 
 [workspace.package]
 # The app's version, which nettai, nettai-frontend and nettai-extract take: the lobby and replays compare nettai-frontend's (builds of one minor version play together), and a pack's fingerprint has nettai-extract's line.
