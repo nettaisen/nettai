@@ -972,6 +972,9 @@ impl Shell {
         let size = window.size();
         let (phone, factor) = (fit.phone, fit.os * fit.unit);
         let turned = phone != self.scale.phone;
+        if turned {
+            self.touch.forget();
+        }
         let resized = self.unfitted(&fit);
         self.scale = Scale { size: (size.width, size.height), ground: self.scale.ground, ..fit };
         if resized {
@@ -1661,7 +1664,9 @@ impl App {
     /// on-screen pad's, if it came down on one of its buttons while the battle has them. True if it was the
     /// pad's (Slint doesn't get it); false and it goes on to Slint, as a pointer.
     pub fn touched(&mut self, finger: u64, phase: TouchPhase, x: f64, y: f64) -> bool {
-        if !(self.shell.scale.phone && self.shell.battle_has_keys()) {
+        // (The pad is on screen upright, and over the picture on a phone held sideways.)
+        let pad = self.shell.scale.phone || cfg!(any(target_os = "ios", target_os = "android"));
+        if !(pad && self.shell.battle_has_keys()) {
             self.shell.touch.clear();
             self.shell.show_pad();
             return false;

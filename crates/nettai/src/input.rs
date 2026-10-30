@@ -840,6 +840,13 @@ impl TouchPad {
         self.fingers.clear();
     }
 
+    /// Every button's place forgotten, and every finger off: the pad is laid out anew (the phone turned, from the
+    /// pad under the picture to the one over it), each button saying its place again.
+    pub fn forget(&mut self) {
+        self.keys.clear();
+        self.fingers.clear();
+    }
+
     /// The buttons held, as the GBA's bits (the party battle's switches as theirs: [`SWITCHES`]).
     pub fn held(&self) -> u16 {
         self.fingers.iter().filter_map(|(_, b)| *b).filter(|b| *b < 16).fold(0, |held, b| held | 1 << b)

@@ -376,13 +376,17 @@ component LinkPanel inherits Rectangle {
 
 // A button of the on-screen pad: held while a finger is on it. The fingers are the app's to follow (each its
 // own: a direction and a button held together), so the button says where it is and is drawn as the app says it
-// is held; the mouse, one pointer, comes through its `TouchArea`.
+// is held; the mouse, one pointer, comes through its `TouchArea`. Over the picture (`over`: a phone held sideways)
+// it is see-through.
 component PadKey inherits Rectangle {
     in property <string> text;
-    // An arrow, as a path in a box of 14, in place of a text.
+    // An arrow, as a path in a box of `glyph`, in place of a text.
     in property <string> shape;
     in property <int> button;
     in property <bool> round;
+    in property <bool> over;
+    in property <length> font-size: 16px;
+    in property <length> glyph: 14px;
     property <length> ax: self.absolute-position.x;
     property <length> ay: self.absolute-position.y;
     property <bool> held: Shell.pad-held.length > root.button && Shell.pad-held[root.button];
@@ -394,23 +398,26 @@ component PadKey inherits Rectangle {
         border-width: 1px;
         border-color: Theme.line;
         border-radius: root.round ? self.width / 2 : 0px;
+        opacity: !root.over ? 1 : root.held ? 0.75 : 0.35;
     }
 
     Text {
         text: root.text;
         color: Theme.text;
         font-family: "Chakra Petch";
-        font-size: 16px;
+        font-size: root.font-size;
         font-weight: 700;
         horizontal-alignment: center;
         vertical-alignment: center;
+        opacity: root.over ? 0.8 : 1;
     }
 
     Path {
-        width: 14px;
-        height: 14px;
+        width: root.glyph;
+        height: root.glyph;
         commands: root.shape;
         fill: Theme.text;
+        opacity: root.over ? 0.8 : 1;
         viewbox-width: 14;
         viewbox-height: 14;
     }
@@ -766,6 +773,164 @@ component TouchPad inherits Rectangle {
     }
 }
 
+// The pad on a phone held sideways (the user chose it over a smaller picture with the pad beside it): the picture
+// keeps the window's height, and the GBA's buttons are over its left and right edges, see-through: L and R at the
+// top corners, the directions and A and B at the sides, SELECT, MENU and START along the foot. Sized by the window's
+// height (`u`, a hundredth of it: about 4 points on a phone), as the layout's units are the desktop's here.
+component TouchOverlay inherits Rectangle {
+    property <length> u: self.height / 100;
+    property <length> margin: 3 * root.u;
+    // A direction's key, and the square the four make.
+    property <length> key: 12.5 * root.u;
+    property <length> pad-top: (self.height - 3 * root.key) / 2 + 4 * root.u;
+    property <length> face: 17 * root.u;
+    property <length> foot-y: self.height - root.margin - 8.5 * root.u;
+    property <length> text-size: 4.5 * root.u;
+    property <length> glyph: 4.5 * root.u;
+    PadKey {
+        x: root.margin;
+        y: root.margin;
+        width: 26 * root.u;
+        height: 10.5 * root.u;
+        over: true;
+        font-size: root.text-size;
+        text: "L";
+        button: 9;
+    }
+
+    PadKey {
+        x: root.width - root.margin - self.width;
+        y: root.margin;
+        width: 26 * root.u;
+        height: 10.5 * root.u;
+        over: true;
+        font-size: root.text-size;
+        text: "R";
+        button: 8;
+    }
+
+    PadKey {
+        x: root.margin + root.key;
+        y: root.pad-top;
+        width: root.key;
+        height: root.key;
+        over: true;
+        glyph: root.glyph;
+        shape: "M 7 1 L 13 12 L 1 12 Z";
+        button: 6;
+    }
+
+    PadKey {
+        x: root.margin;
+        y: root.pad-top + root.key;
+        width: root.key;
+        height: root.key;
+        over: true;
+        glyph: root.glyph;
+        shape: "M 1 7 L 12 1 L 12 13 Z";
+        button: 5;
+    }
+
+    PadKey {
+        x: root.margin + 2 * root.key;
+        y: root.pad-top + root.key;
+        width: root.key;
+        height: root.key;
+        over: true;
+        glyph: root.glyph;
+        shape: "M 13 7 L 2 1 L 2 13 Z";
+        button: 4;
+    }
+
+    PadKey {
+        x: root.margin + root.key;
+        y: root.pad-top + 2 * root.key;
+        width: root.key;
+        height: root.key;
+        over: true;
+        glyph: root.glyph;
+        shape: "M 7 13 L 13 2 L 1 2 Z";
+        button: 7;
+    }
+
+    PadKey {
+        x: root.width - root.margin - root.face;
+        y: 31 * root.u;
+        width: root.face;
+        height: root.face;
+        over: true;
+        font-size: root.text-size;
+        text: "A";
+        button: 0;
+        round: true;
+    }
+
+    PadKey {
+        x: root.width - root.margin - root.face - 19 * root.u;
+        y: 50 * root.u;
+        width: root.face;
+        height: root.face;
+        over: true;
+        font-size: root.text-size;
+        text: "B";
+        button: 1;
+        round: true;
+    }
+
+    PadKey {
+        x: root.margin;
+        y: root.foot-y;
+        width: 21 * root.u;
+        height: 8.5 * root.u;
+        over: true;
+        font-size: root.text-size * 0.8;
+        text: "SELECT";
+        button: 2;
+    }
+
+    // (MENU opens the match's menu, as the upright pad's does.)
+    Rectangle {
+        x: (root.width - self.width) / 2;
+        y: root.foot-y;
+        width: 21 * root.u;
+        height: 8.5 * root.u;
+        Rectangle {
+            background: menu-touch.pressed ? Theme.line : Theme.raised;
+            border-width: 1px;
+            border-color: Theme.line;
+            opacity: menu-touch.pressed ? 0.75 : 0.35;
+        }
+
+        Text {
+            text: I18n.upper(@tr("Menu"));
+            color: Theme.text;
+            font-family: Theme.display;
+            font-size: root.text-size * 0.8;
+            font-weight: Theme.display-bold;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            opacity: 0.8;
+        }
+
+        menu-touch := TouchArea {
+            clicked => {
+                Nav.activate("pad.menu", 0);
+            }
+        }
+    }
+
+    PadKey {
+        x: root.width - root.margin - self.width;
+        y: root.foot-y;
+        width: 21 * root.u;
+        height: 8.5 * root.u;
+        over: true;
+        font-size: root.text-size * 0.8;
+        text: "START";
+        button: 3;
+    }
+}
+
 // The battle's own part of the window: the picture, the connection's corner, the phone's pad. The menus over it
 // are put in by app.slint, each from its screen's file.
 export component BattleScreen inherits Rectangle {
@@ -781,9 +946,11 @@ export component BattleScreen inherits Rectangle {
         ground: transparent;
     }
 
+    // (A phone held sideways: at the foot, right of the pad's MENU, clear of START in the corner.)
+    property <bool> overlay: Theme.phone-app && !Theme.phone;
     corner := Connection {
-        x: parent.width - self.width - (Theme.phone ? Theme.margin : 56px);
-        y: (Theme.phone ? root.picture-height : parent.height) - self.height - 16px;
+        x: root.overlay ? (parent.width + parent.height * 0.21) / 2 + parent.height * 0.03 : parent.width - self.width - (Theme.phone ? Theme.margin : 56px);
+        y: root.overlay ? parent.height - parent.height * 0.03 - (parent.height * 0.085 + self.height) / 2 : (Theme.phone ? root.picture-height : parent.height) - self.height - 16px;
         visible: Shell.connection-shown;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
@@ -801,7 +968,7 @@ export component BattleScreen inherits Rectangle {
     PartyStrip {
         x: (corner.visible ? min(root.strip-right, corner.x - 12px) : root.strip-right) - self.width;
         y: root.height - root.picture-bottom >= self.height + 16px || Shell.picture-height <= 0 ? root.height - self.height - 16px : root.picture-bottom - root.foot + max(0px, (root.foot - self.height) / 2);
-        visible: Shell.party.shown && !Theme.phone;
+        visible: Shell.party.shown && !Theme.phone && !root.overlay;
         party: Shell.party;
     }
 
@@ -820,5 +987,10 @@ export component BattleScreen inherits Rectangle {
         height: parent.height - self.y - Theme.margin;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
+    if root.overlay: TouchOverlay {
+        width: parent.width;
+        height: parent.height;
     }
 }
