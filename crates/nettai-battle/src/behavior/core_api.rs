@@ -1236,7 +1236,7 @@ impl CoreApi for Battle {
         Ok(nettai_content_api::api::CustomPlayer {
             emotion: self.game_rules().emotion.name(s.emotion).to_string(),
             random_battle: self.setup.settings.effects & crate::setup::effects::RANDOM != 0,
-            member: s.screen.and_then(|screen| screen.member),
+            member: self.screen_member(side),
         })
     }
 

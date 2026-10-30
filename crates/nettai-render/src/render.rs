@@ -477,11 +477,12 @@ impl Renderer {
         // (The consoles whose pieces the frame draws, each with its HUD's
         // state: the local one's, and on a screen of both the other's.)
         let seats = Seat::of(self.consoles, b);
-        // (Each one's emblem, for its custom screen.)
+        // (Each one's emblem, for its custom screen: the navi's the screen
+        // is for, which a switch on it changes.)
         let emblems: Vec<(nettai_assets::Tiles, nettai_assets::Palette)> = seats
             .iter()
             .map(|seat| {
-                let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[seat.side as usize].navi, &mut self.problems);
+                let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.screen_stats(seat.side).navi, &mut self.problems);
                 (crate::custom::emblem_sprite(emblem), emblem.map_or([0; 16], |e| e.palette))
             })
             .collect();

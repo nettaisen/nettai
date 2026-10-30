@@ -44,6 +44,9 @@ pub struct HudState {
     frame: u8,
     /// The mugshot's mood and its change blink.
     mood: Option<Mood>,
+    /// The party member the custom screen switched to, as the emotion
+    /// window and the HP box show it, and the face's blink as it changes.
+    screen_face: ScreenFace,
     /// As of the previous tick: whether the round was decided (the HUD
     /// thins out a frame after the decision) and the gauge was running.
     was_over: bool,
@@ -431,6 +434,31 @@ impl Mood {
     }
 }
 
+/// The navi a switch on the custom screen shows in the emotion window and
+/// the HP box until the switch is made (`Battle::screen_member`; EXE5 DS's
+/// 0x0206391C: `sub_801E724` puts the navi's face in the window, or takes
+/// it back for the navi on the field, and `sub_801E0C8` the member's HP in
+/// the box, `sub_801E0BC` the field navi's again). The HP shows at once;
+/// the face blinks back to the one before for 12 ticks, two of every four,
+/// as a change of the window's picture does (`sub_801CB38`).
+#[derive(Clone, Copy, Debug, Default)]
+struct ScreenFace {
+    /// The member shown (none: the navi on the field).
+    member: Option<u8>,
+    /// The member shown before the last change.
+    before: Option<u8>,
+    blink: u8,
+    /// Show `before`'s face this frame.
+    flash: bool,
+}
+
+impl ScreenFace {
+    /// The member whose face the window shows this frame.
+    fn shown(self) -> Option<u8> {
+        if self.flash { self.before } else { self.member }
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 struct RollingHp {
     shown: u16,
@@ -472,6 +500,16 @@ impl HudState {
         } else if gauge_shown(b, self, local) && b.gauge_for(local) >= FULL && !b.late_turns() {
             self.frame = if self.frame + 1 >= 0x70 { 0 } else { self.frame + 1 };
         }
+        // A switch on the custom screen: the face of the navi it is for,
+        // blinking, and its HP at once.
+        let member = b.screen_member(local);
+        let f = &mut self.screen_face;
+        if member != f.member {
+            *f = ScreenFace { member, before: f.member, blink: 12, flash: false };
+            self.hp = None;
+        }
+        f.flash = f.blink & 2 != 0;
+        f.blink = f.blink.saturating_sub(1);
         if let Some(r) = b.player(local) {
             let now = Face::of(b, r);
             let m = self.mood.get_or_insert(Mood { now, before: now, blink: 0, flash: false, white: false });
@@ -503,10 +541,14 @@ impl HudState {
             }
         }
         (self.is_over, self.gauge_is_on) = (decided(b), b.gauge.enabled);
-        // The local navi's HP box.
+        // The local navi's HP box (the member's a switch on the custom
+        // screen is to bring in).
         if let Some(r) = b.player(local) {
             let o = b.objects.get(r);
-            let (h, m) = (o.hp, o.max_hp);
+            let (h, m) = match member.and_then(|m| b.party[local as usize & 1].member(m)) {
+                Some(s) => (s.hp, s.max_hp),
+                None => (o.hp, o.max_hp),
+            };
             let s = self.hp.get_or_insert(RollingHp { shown: h, color: 0, hold: 0 });
             if h > s.shown {
                 s.color = 1;
@@ -1714,7 +1756,10 @@ fn mugshot_parts<'a>(
 ) -> Vec<TextItem> {
     let mut items = Vec::new();
     let side = b.objects.get(r).alliance as usize;
-    let stats = &b.stats[side];
+    // (The navi a switch on the custom screen is to bring in, else the one
+    // on the field.)
+    let member = state.screen_face.shown();
+    let stats = member.and_then(|m| b.party[side].member(m)).unwrap_or(&b.stats[side]);
     let flip = seat.mirrored();
     // (The face's place and the box's.)
     let at = (seat.x(x, 32), seat.x(x + 32, 16));
@@ -1723,7 +1768,7 @@ fn mugshot_parts<'a>(
     let navi = b.content.navi(stats.navi);
     if !navi.changes_form() {
         let Some((tiles, palettes, number)) = crate::lookups::navi_face(graphics, &b.content, stats.navi, problems) else { return items };
-        let full_synchro = emotion_role(b, side as u8) == Some(EmotionRole::FullSynchro);
+        let full_synchro = member.is_none() && emotion_role(b, side as u8) == Some(EmotionRole::FullSynchro);
         let pal = window_faded(b, side as u8, palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default());
         let tiles = face_with_ring(hud, number, tiles, &pal, (at.0, flip), text, &mut items);
         out.push(SpritePart { hflip: flip, ..block(tiles, 32, 16, pal, at.0, EMOTION_WINDOW_Y) });
@@ -1731,7 +1776,10 @@ fn mugshot_parts<'a>(
         note_true_face(b, graphics, side, navi.version.as_deref(), seat.x(x, 48), problems);
         return items;
     }
-    let mut face = state.mood.map(|m| m.shown()).unwrap_or_else(|| Face::of(b, r));
+    let mut face = match member {
+        Some(_) => Face::in_form(b, r, stats.form),
+        None => state.mood.map(|m| m.shown()).unwrap_or_else(|| Face::of(b, r)),
+    };
     // A form chosen on the custom screen shows in the window until the
     // screens close (`sub_802A040`, `sub_802A088`).
     if let Some(form) = crate::custom::face(b, side) {

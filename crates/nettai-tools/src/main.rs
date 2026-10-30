@@ -154,7 +154,8 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    what a console shows otherwise there
   --keys K         with --headless --match: the buttons you hold, by tick (e.g.
                    232-233:up,300:a+b; a b l r up down left right start
-                   select)
+                   select; switch0 switch1 switch2 ask a party's switch
+                   to that member)
   --opponent O     with --headless --match: what the other side does in the
                    fight: still (default: it presses nothing), moves (it
                    moves about at random and never attacks) or attacks (it

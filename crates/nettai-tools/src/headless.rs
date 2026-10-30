@@ -27,9 +27,11 @@ pub fn parse_frames(s: &str) -> Result<BTreeSet<u32>, String> {
 
 /// Buttons held on chosen ticks, for headless live play (`--keys`): a
 /// list like "232-233:up,300:a+b" (ticks, then buttons by name: a, b, l,
-/// r, up, down, left, right, start, select). Other ticks hold none.
+/// r, up, down, left, right, start, select). Other ticks hold none. A
+/// party's switch is asked for the same way, by the member: switch0 (the
+/// side's own navi), switch1, switch2 (its partners).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct KeyScript(Vec<(u32, u32, u16)>);
+pub struct KeyScript(Vec<(u32, u32, u16, Option<u8>)>);
 
 impl KeyScript {
     pub fn parse(s: &str) -> Result<KeyScript, String> {
@@ -42,9 +44,14 @@ impl KeyScript {
                 Some((a, b)) => (num(a)?, num(b)?),
                 None => (num(ticks)?, num(ticks)?),
             };
-            let mut held = 0;
+            let (mut held, mut switch) = (0, None);
             for b in buttons.split('+') {
-                held |= match b.trim().to_ascii_lowercase().as_str() {
+                let name = b.trim().to_ascii_lowercase();
+                if let Some(member) = name.strip_prefix("switch") {
+                    switch = Some(member.parse::<u8>().ok().filter(|&m| m < 3).ok_or_else(|| format!("no member {member:?} to switch to"))?);
+                    continue;
+                }
+                held |= match name.as_str() {
                     "a" => keys::A,
                     "b" => keys::B,
                     "l" => keys::L,
@@ -58,14 +65,28 @@ impl KeyScript {
                     other => return Err(format!("no button {other:?}")),
                 };
             }
-            out.push((from, to, held));
+            out.push((from, to, held, switch));
         }
         Ok(KeyScript(out))
     }
 
     /// The buttons held on tick `tick`.
     pub fn held(&self, tick: u32) -> u16 {
-        self.0.iter().filter(|(a, b, _)| (*a..=*b).contains(&tick)).fold(0, |k, (_, _, h)| k | h)
+        self.0.iter().filter(|(a, b, ..)| (*a..=*b).contains(&tick)).fold(0, |k, (_, _, h, _)| k | h)
+    }
+
+    /// The party member a switch is asked to on tick `tick`, if any.
+    pub fn switch(&self, tick: u32) -> Option<u8> {
+        self.0.iter().filter(|(a, b, ..)| (*a..=*b).contains(&tick)).find_map(|(.., s)| *s)
+    }
+
+    /// One tick of `player` with what the script holds on it.
+    fn tick(&self, player: &mut Player) -> bool {
+        let tick = player.ticks() as u32 + 1;
+        if let Some(member) = self.switch(tick) {
+            player.ask_switch(member);
+        }
+        player.tick(self.held(tick))
     }
 }
 
@@ -104,7 +125,7 @@ pub fn time_frames(player: &mut Player, wanted: &BTreeSet<u32>, scale: usize, ke
     let (mut made, mut shown, mut most, mut n) = (0f64, 0f64, 0f64, 0u32);
     let mut after_first = None;
     let start = nettai_assets::shapes::work_done();
-    while player.tick(keys.held(player.ticks() as u32 + 1)) {
+    while keys.tick(player) {
         let Some(f) = player.session().frame else { continue };
         if wanted.contains(&f) {
             let t = std::time::Instant::now();
@@ -158,7 +179,7 @@ pub fn render_frames_with(
     let last = wanted.iter().next_back().copied().unwrap_or(0);
     let mut rest = rest.into_iter();
     loop {
-        while player.tick(keys.held(player.ticks() as u32 + 1)) {
+        while keys.tick(player) {
             let Some(f) = player.session().frame else { continue };
             player.renderer().problems.at(Some(f));
             if wanted.contains(&f) {
@@ -381,5 +402,8 @@ mod tests {
         let k = super::KeyScript::parse("232-233:up, 300:a+b").unwrap();
         assert_eq!((k.held(231), k.held(232), k.held(233), k.held(300)), (0, keys::UP, keys::UP, keys::A | keys::B));
         assert!(super::KeyScript::parse("3:jump").is_err());
+        let k = super::KeyScript::parse("10:switch1, 11:a+switch0").unwrap();
+        assert_eq!((k.switch(9), k.switch(10), k.switch(11), k.held(11)), (None, Some(1), Some(0), keys::A));
+        assert!(super::KeyScript::parse("3:switch3").is_err());
     }
 }

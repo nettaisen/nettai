@@ -301,7 +301,11 @@ Two places read it, so a switch is taken in battle or on the custom screen.
   There is no "used this battle" test, which the GBA's gate path had.
 - **Accepting** (state 0x40, its sub-state 4, 0x0206391C):
   - saves the active navi's HP into its member block;
-  - sets the screen's navi and shows the member's HP;
+  - sets the screen's navi and shows the member's HP: the emotion window shows the navi's face (`sub_801E724`, or
+    0xFF for the field navi again, a change that blinks back to the face before as any does) and the HP box the
+    member's HP and max HP at once (`sub_801E0C8`; `sub_801E0BC` for the field navi), until the turn's start takes
+    the switch; the screen's emblem is the navi's too (`sub_802812C`). nettai: `Battle::screen_member` and
+    `screen_stats`, which the HUD, the emblem and the rules (`custom.player(side).member`) read;
   - **clears the chips already picked**;
   - rebuilds the screen for the navi (`sub_802812C`);
   - swaps the panel's button and member, and counts the switch;

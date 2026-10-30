@@ -707,6 +707,25 @@ impl Battle {
 }
 
 impl Battle {
+    /// The party member side `side`'s custom screen switched to, until the
+    /// switch is made (EXE5 DS's state 0x40 sets the screen's navi, +0x10,
+    /// and the HUD shows that navi's face and HP from then until the turn's
+    /// start takes the switch): none when the screen is for the member on
+    /// the field, or once the screens are down with no switch to come.
+    pub fn screen_member(&self, side: u8) -> Option<u8> {
+        let i = side as usize & 1;
+        let member = self.custom.sides[i].screen.as_ref()?.member?;
+        let up = self.round.mode == crate::battle::mode::CUSTOM || self.transform_seq.requests[i].navi_switch.is_some();
+        (up && member != self.party[i].active).then_some(member)
+    }
+
+    /// The stats of the navi side `side`'s custom screen is for: those of
+    /// the member it switched to (`screen_member`), else the side's navi's.
+    pub fn screen_stats(&self, side: u8) -> &crate::setup::NaviStats {
+        let i = side as usize & 1;
+        self.screen_member(side).and_then(|m| self.party[i].member(m)).unwrap_or(&self.stats[i])
+    }
+
     /// Side `side`'s custom-screen extras (the rules' `custom` hooks),
     /// for a screen run outside the battle's own loop (exe6-compat's check
     /// of the traces' screens, which sets the side's stats and the turn
