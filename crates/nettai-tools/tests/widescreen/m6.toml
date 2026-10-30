@@ -1,0 +1,78 @@
+game = "exe6"
+seed = 7
+
+[[round]]
+stage = "netbattle-29"
+background = "sky-hp"
+
+[left]
+navi = "megaman"
+cybeast = "falzar-beast"
+folder = [
+    { chip = "cannon", code = "*" },
+    { chip = "cannon", code = "*" },
+    { chip = "cannon", code = "*" },
+    { chip = "cannon", code = "*" },
+    { chip = "cannon", code = "*" },
+    { chip = "sword", code = "*" },
+    { chip = "sword", code = "*" },
+    { chip = "sword", code = "*" },
+    { chip = "sword", code = "*" },
+    { chip = "sword", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "recov30", code = "*" },
+    { chip = "recov30", code = "*" },
+    { chip = "recov30", code = "*" },
+    { chip = "recov30", code = "*" },
+    { chip = "recov30", code = "*" },
+    { chip = "longswrd", code = "*" },
+    { chip = "longswrd", code = "*" },
+    { chip = "longswrd", code = "*" },
+    { chip = "longswrd", code = "*" },
+    { chip = "crakshot", code = "*" },
+]
+
+[right]
+navi = "megaman"
+cybeast = "gregar-beast"
+folder = [
+    { chip = "cannon", code = "*" },
+    { chip = "cannon", code = "*" },
+    { chip = "cannon", code = "*" },
+    { chip = "cannon", code = "*" },
+    { chip = "cannon", code = "*" },
+    { chip = "sword", code = "*" },
+    { chip = "sword", code = "*" },
+    { chip = "sword", code = "*" },
+    { chip = "sword", code = "*" },
+    { chip = "sword", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "recov30", code = "*" },
+    { chip = "recov30", code = "*" },
+    { chip = "recov30", code = "*" },
+    { chip = "recov30", code = "*" },
+    { chip = "recov30", code = "*" },
+    { chip = "longswrd", code = "*" },
+    { chip = "longswrd", code = "*" },
+    { chip = "longswrd", code = "*" },
+    { chip = "longswrd", code = "*" },
+    { chip = "crakshot", code = "*" },
+]

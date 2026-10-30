@@ -1538,7 +1538,13 @@ unless named):
 | The chatbox (a description, a message), its portrait and arrow | the bottom of the screen, its whole width | Center (spans the original's screen: kept with the field) |
 
 nettai-tool draws them with `--headless F --width N` (the enhanced mode
-only).
+only). nettai-tools' tests/widescreen.rs holds them to this on the ROMs
+(`cargo test --release -p nettai-tools --test widescreen -- --ignored`):
+each game's match file beside it (tests/widescreen) played to a custom
+screen and a fight, and EXE6's on a screen of both, at 284 and 347
+columns: the HUD's pieces and text items where their anchors put them, the
+field moved to the middle, the background at both edges; the original
+mode's frames 240 columns whatever the width.
 
 ### Both on one screen
 

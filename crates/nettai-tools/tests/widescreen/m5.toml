@@ -1,0 +1,75 @@
+game = "exe5"
+seed = 7
+custom_screen_time = 60
+
+[[round]]
+
+[left]
+navi = "megaman"
+folder = [
+    { chip = "cannon", code = "*" },
+    { chip = "cannon", code = "*" },
+    { chip = "cannon", code = "*" },
+    { chip = "cannon", code = "*" },
+    { chip = "sword", code = "S" },
+    { chip = "sword", code = "S" },
+    { chip = "sword", code = "S" },
+    { chip = "sword", code = "S" },
+    { chip = "minibomb", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "boomer", code = "*" },
+    { chip = "boomer", code = "*" },
+    { chip = "boomer", code = "*" },
+    { chip = "boomer", code = "*" },
+    { chip = "vulcan1", code = "*" },
+    { chip = "vulcan1", code = "*" },
+    { chip = "vulcan1", code = "*" },
+    { chip = "vulcan1", code = "*" },
+    { chip = "spreader", code = "*" },
+    { chip = "spreader", code = "*" },
+    { chip = "spreader", code = "*" },
+    { chip = "spreader", code = "*" },
+    { chip = "recov10", code = "*" },
+    { chip = "recov10", code = "*" },
+]
+
+[right]
+navi = "megaman"
+folder = [
+    { chip = "cannon", code = "*" },
+    { chip = "cannon", code = "*" },
+    { chip = "cannon", code = "*" },
+    { chip = "cannon", code = "*" },
+    { chip = "sword", code = "S" },
+    { chip = "sword", code = "S" },
+    { chip = "sword", code = "S" },
+    { chip = "sword", code = "S" },
+    { chip = "minibomb", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "minibomb", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "airshot", code = "*" },
+    { chip = "boomer", code = "*" },
+    { chip = "boomer", code = "*" },
+    { chip = "boomer", code = "*" },
+    { chip = "boomer", code = "*" },
+    { chip = "vulcan1", code = "*" },
+    { chip = "vulcan1", code = "*" },
+    { chip = "vulcan1", code = "*" },
+    { chip = "vulcan1", code = "*" },
+    { chip = "spreader", code = "*" },
+    { chip = "spreader", code = "*" },
+    { chip = "spreader", code = "*" },
+    { chip = "spreader", code = "*" },
+    { chip = "recov10", code = "*" },
+    { chip = "recov10", code = "*" },
+]
