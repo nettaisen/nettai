@@ -167,8 +167,8 @@ pub struct Games {
     others: Vec<Entry>,
 }
 
-/// Where the browser keeps its copies of the Legacy Collection's ROMs ([`Games::keep_copies`]): stowed in the data
-/// folder, not read as the page starts.
+/// Where a browser or a phone keeps its copies of the Legacy Collection's ROMs ([`Games::keep_copies`]): stowed in the
+/// data folder, not read as the page starts.
 fn copies() -> PathBuf {
     crate::paths::data().join(nettai_platform::fs::STOWED).join("roms")
 }
@@ -239,7 +239,7 @@ impl Games {
                 Some(source) => {
                     self.found(source);
                 }
-                None if cfg!(target_arch = "wasm32") => crate::errors::log("finding the Legacy Collection", &"no folder chosen, and no ROMs kept of one"),
+                None if !nettai_platform::dialog::FOLDERS_READ_AGAIN => crate::errors::log("finding the Legacy Collection", &"no folder chosen, and no ROMs kept of one"),
                 None => crate::errors::log("finding the Legacy Collection", &"not found through Steam, nor in the folder chosen"),
             }
         } else {
@@ -251,21 +251,22 @@ impl Games {
         }
     }
 
-    /// Where the ROMs are: `$NETTAI_ROMS`'s (development); in the browser, the copies kept of the collection chosen
-    /// before ([`Games::keep_copies`]); else the Legacy Collection in the folder chosen, else through Steam.
+    /// Where the ROMs are: `$NETTAI_ROMS`'s (development); in a browser and on a phone, the copies kept of the
+    /// collection chosen before ([`Games::keep_copies`]); else the Legacy Collection in the folder chosen, else
+    /// through Steam.
     fn look(&self) -> Option<RomSource> {
         if std::env::var_os(nettai_extract::source::ROMS).is_some() {
             return RomSource::from_env().map_err(|why| crate::errors::log("finding the ROMs", &why)).ok();
         }
-        if cfg!(target_arch = "wasm32") {
+        if !nettai_platform::dialog::FOLDERS_READ_AGAIN {
             return (!nettai_platform::fs::stowed(&copies()).is_empty()).then(|| RomSource::Copies(copies()));
         }
         Install::find(self.chosen.as_deref()).map(RomSource::Collection)
     }
 
-    /// In the browser, the collection just found in `folder` (the player's, its archives read into the app's
-    /// files) kept as copies of its ROMs, every game's it has: the page can't read the player's folder again without
-    /// asking, so the games are read from the copies from now on and at each start ([`RomSource::Copies`]: each
+    /// In a browser or on a phone, the collection just found in `folder` (the player's, its archives read into the
+    /// app's files) kept as copies of its ROMs, every game's it has: the app can't read the player's folder again
+    /// without asking, so the games are read from the copies from now on and at each start ([`RomSource::Copies`]: each
     /// ROM's archive entry as it was, about 51 MB for the twelve, read as a game wants it), and the archives are let
     /// go.
     pub fn keep_copies(&mut self, folder: &Path) {

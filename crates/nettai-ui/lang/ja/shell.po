@@ -342,6 +342,12 @@ msgid "nettai needs Battle Network Legacy Collection Vol. 2. In Steam, right-cli
 msgstr "nettai にはロックマンエグゼ アドバンスドコレクション Vol.2 が必要です。Steam のライブラリで右クリックして「管理」→「ローカルファイルを閲覧」を選び、exe フォルダをこのページにドラッグしてください。"
 msgid "In Steam, right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this page."
 msgstr "Steam のライブラリで右クリックして「管理」→「ローカルファイルを閲覧」を選び、exe フォルダをこのページにドラッグしてください。"
+# The same on a phone (iOS, Android), which has no Steam and takes nothing dragged onto it: the exe folder copied
+# to it from a computer, then chosen.
+msgid "nettai needs Battle Network Legacy Collection Vol. 2. On a computer, right-click it in your Steam library, choose Manage > Browse local files, and copy the exe folder to this device. Then choose that folder here."
+msgstr "nettai にはロックマンエグゼ アドバンスドコレクション Vol.2 が必要です。パソコンの Steam のライブラリで右クリックして「管理」→「ローカルファイルを閲覧」を選び、exe フォルダをこの端末にコピーしてから、ここでそのフォルダを選んでください。"
+msgid "On a computer, right-click it in your Steam library, choose Manage > Browse local files, and copy the exe folder to this device. Then choose that folder here."
+msgstr "パソコンの Steam のライブラリで右クリックして「管理」→「ローカルファイルを閲覧」を選び、exe フォルダをこの端末にコピーしてから、ここでそのフォルダを選んでください。"
 msgid "Choose folder"
 msgstr "フォルダを選ぶ"
 # The Legacy Collection found lacks some of a game's ROMs: {} is the game, as the header

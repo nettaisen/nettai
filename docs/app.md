@@ -73,15 +73,15 @@ variables are for development:
 `AfterRendering` notes that the frame was drawn and asks for the next one, so the app runs at the display's rate:
 120 frames a second on this Mac's display. A frame shows the picture presented for it, not the previous frame's.
 
-**The app keeps its time while something runs** (`awake.rs`). macOS gives an app that isn't in front, or whose
+**The app keeps its time while something runs** (`nettai_platform::awake`). macOS gives an app that isn't in front, or whose
 window is covered, the lowest priority and delays its timers (App Nap); on a busy machine it then gets no time at
 all. The screenshot pass found it: covered by another window while builds loaded the machine (load average 170),
 it stopped mid-walk, in the middle of a frame, and never went on. So while a battle is loading or running, while
 a screen says it has something that must go on (`Shell::stay_awake`: a link to another player), and during the
 screenshot pass, the app holds a Foundation activity (user-initiated, latency-critical, the display kept on: a
 player on a pad presses no key). It was checked by the system's list of them (`pmset -g assertions` names the
-app's, "a battle is running", during a practice battle), not by covering the window under load again. Windows
-and Linux have nothing held.
+app's, "a battle is running", during a practice battle), not by covering the window under load again. A phone
+keeps its screen on then instead (§7). Windows and Linux have nothing held.
 
 **The clock when the window isn't drawn.** The system draws no frames for a window that is minimized or hidden,
 and the clock is the drawing: a battle in one stood still for as long, and a link would have gone unpolled,
@@ -463,7 +463,6 @@ again, and so that the UI can be built without optimization (§14).
                       shell.rs            `Shell` (what a screen is handed) and `App` (who carries what happens)
                       nav.rs input.rs     the focus; the keys and the pads
                       battle.rs stage.rs sound.rs games.rs            the battle's host (§1)
-                      awake.rs                                          the app's time kept (§1)
                       settings.rs lang.rs paths.rs errors.rs tour.rs  §9, §3, §12, §13
                       tour/<name>.rs                                    a screen's steps of the screenshot pass
                       replays.rs                                        the replays folder, read on a thread (§16)
@@ -1326,35 +1325,79 @@ isolated (COOP and COEP), which a page with threads must be.
 
 ## 7. Android and iOS
 
-Not built. What it would take:
+Not packaged yet (no Xcode project, no APK), and nothing has run on a phone or a simulator. What builds: the whole
+app type-checks for iOS, and for Android the crates below the app (nettai-platform, nettai-audio, nettai-video):
+
+    cargo check --target aarch64-apple-ios -p nettai
+    # The NDK's compilers for the C dependencies (Luau, ring): NDK 30 and the SDK as Homebrew installs them.
+    export ANDROID_NDK_HOME=/opt/homebrew/share/android-ndk ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+    T=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/darwin-x86_64/bin
+    export CC_aarch64_linux_android=$T/aarch64-linux-android26-clang AR_aarch64_linux_android=$T/llvm-ar
+    export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$T/aarch64-linux-android26-clang
+    cargo check --target aarch64-linux-android -p nettai-platform -p nettai-audio -p nettai-video
 
 - **Slint:**
-  - Android is supported (`backend-android-activity-06`, built with `cargo apk` or xbuild and the NDK). It
-    isn't winit there, so the app's winit hooks (`on_winit_window_event`: the keys, the on-screen pad's
-    fingers, the input method) need an Android way of their own.
-  - iOS is supported through winit (an Xcode project around the static library, as Slint's iOS template has it).
-  - The renderer: femtovg on GLES on Android; on iOS, where Slint has no OpenGL, Skia or femtovg on wgpu
-    (Metal). Each calls the rendering notifier, so the clock carries over, and the picture is an image on every
-    renderer (§1): nothing of the app's drawing changes.
-- **The layout** is there: a window taller than wide is the phone's (§9), with the main menu and Settings laid
-  out for it, and the battle's pad drawn under the picture.
-- **The engine:** Luau's C++ builds with the platforms' clang (`cc`); nothing in the engine is
-  platform-specific.
-- **Files:**
-  - The content embedded in the app.
-  - The ROMs imported by the user (Android's Storage Access Framework, iOS's document picker) into the app's
-    storage, as the web keeps copies of them (§6), and each game's assets extracted from them as it loads.
-  - Replays in the app's storage, shared with the system's share sheet.
-- **Sound:** cpal plays through AAudio/Oboe on Android and CoreAudio on iOS.
-- **Input:**
-  - Touch is the on-screen pad (`TouchPad`, battle.slint; §11, "The on-screen pad"): it takes the window's
-    touches itself, every finger its own. No touch screen has run it.
-  - Gamepads: gamepad-facade's native backend is SDL3, which has both platforms' controllers.
-- **Text:** the system IME works through winit on Android and iOS.
-- **Netplay:** nettai-rtc natively is str0m (pure Rust, its sockets on tokio), which builds for both platforms;
-  not tried here.
-- **Lifecycle:** suspend and resume. Netplay can't tick in the background, so a suspended match is a dropped
-  link, which reconnects within its 30 s or ends.
+  - iOS: winit, drawn by femtovg on wgpu (Metal), since Slint has no OpenGL there (nettai-ui's features by
+    target). Its rendering notifier keeps the clock (§1), and the picture is an image as everywhere. wgpu is held
+    at 30.0.0: 30.0.1's web dependencies want a js-sys newer than the one the web build's pinned wasm-bindgen
+    takes.
+  - Android: Slint's backend there is android-activity, not winit, so the app crate doesn't build for Android
+    yet: its winit hooks (`on_winit_window_event`: the keys, the on-screen pad's fingers, the input method; and
+    `with_winit_window`) need an Android way of their own first.
+- **The layout:** a window taller than wide is the phone's (§9), and every screen is laid out in the safe area
+  (§9, "The safe area").
+- **The engine:** Luau's C++ builds with the platforms' clang (`cc`); nothing in the engine is platform-specific.
+- **The data folder** (`nettai_platform::folders::app_data`): on iOS the app's own `Library/Application Support`
+  in its container, hidden from the player (the user's choice over Documents: what goes in and out goes through the
+  pickers and the share sheet); on Android its files folder (`Context.getFilesDir`, through JNI). Files kept a
+  while go in `folders::temporary`: iOS's temporary folder, Android's cache folder (`getCacheDir`).
+- **The Legacy Collection** (§17): as in a browser, a folder chosen can't be read again at another start
+  (`nettai_platform::dialog::FOLDERS_READ_AGAIN`), so the app keeps copies of its ROMs (about 51 MB) and lets the
+  archives go. The player copies the install's `exe` folder to the phone from a computer (a cable, a cloud drive,
+  AirDrop), and CHOOSE FOLDER opens the system's folder picker: iOS's document picker, Android's
+  `ACTION_OPEN_DOCUMENT_TREE`. The missing collection's message says so on a phone (`Theme.phone-app`).
+- **Files picked and saved** (nettai-platform's `dialog/phone`):
+  - Files to open, and a folder's wanted files (its paths matched as the browser matches them: `dialog/wanted.rs`),
+    are copied into the temporary folder's `picked/<n>`, a folder of their own on a thread of its own, and the app
+    is given their paths there. iOS picks files as copies and holds a folder's security-scoped access while it is
+    copied; Android lists a folder's files through its content resolver and copies each.
+  - A file saved is made in the temporary folder's `outgoing` and handed over once whole: iOS's share sheet (Save
+    to Files, AirDrop, another app), Android's save dialog (`ACTION_CREATE_DOCUMENT`: the player says where, the
+    file is copied there and removed). A replay's SAVE REPLAY (Show file on the desktop) hands over a copy. The
+    video's Save as field is the desktop's alone.
+  - The answers come on the system's threads (iOS's main thread, Java's), so each waits until the app's next
+    frame takes it (`nettai_platform::dialog::poll`) and calls the dialog's `done` on the app's thread.
+  - Android's side is Java (`crates/nettai-platform/android/nettai/platform/NettaiFiles.java`: a fragment that
+    starts the system's dialog and hears its result, the clipboard, a document's bytes copied out), found through
+    the activity's class loader, its answers through native methods registered from Rust. It compiles with
+    javac against android-36 and d8 (`--min-api 26`); `android.app.Fragment` is deprecated, and present.
+- **The clipboard:** iOS's general pasteboard; Android's clipboard manager, on Java's main thread.
+- **Kept awake** (`nettai_platform::awake`): while a battle or a link runs, iOS's idle timer is off and Android's
+  window keeps the screen on (`FLAG_KEEP_SCREEN_ON`).
+- **Sound:** cpal plays through CoreAudio on iOS and AAudio on Android. On iOS the audio session is the system's
+  default: the silent switch mutes the game, as it does most games (the user's choice), and other apps' sound
+  stops while it plays. A phone stops the sound's device while the app is away or a call has the sound:
+  `nettai_platform::lifecycle::resumed` says when the app came back (iOS: made active again, or its audio session
+  interrupted or given back), and the sound starts its device again (`Output::resume`, as the web does after a
+  click).
+- **Input:** touch is the on-screen pad (`TouchPad`, battle.slint; §11, "The on-screen pad"), which takes the
+  window's touches itself, every finger its own; no touch screen has run it. No gamepads on a phone yet:
+  gamepad-facade is built without SDL there (SDL's iOS joystick code needs its UIKit video, its Android one its
+  Java classes), and reports none until a phone's own (GameController, Android's input events) is written.
+- **Text:** the system's input method works through winit on iOS.
+- **Updates** are the store's: a phone's app has the no-updater stand-in (`updates_none.rs`, the web's).
+- **Netplay:** nettai-rtc natively is str0m (pure Rust, its sockets on tokio), which builds for both; not tried.
+  On Android, reqwest's certificate checks (rustls-platform-verifier) need that crate's JNI set-up and its
+  Android component in the APK.
+- **Lifecycle:** a battle doesn't catch up more than 250 ms after a stall (`MOST_ELAPSED`), so one resumed goes on
+  where it was; a match's link drops while the app is away and reconnects within its 30 s or ends.
+- **What the packaging is to do** (not written):
+  - iOS: an Xcode project around the static library, which runs the app on the main thread.
+  - Android: an APK of the library with an `android_main` that hands the activity to
+    `nettai_platform::android::init` before anything else and calls `nettai_platform::lifecycle::came_back` on
+    `MainEvent::Resume` (Slint's `AndroidPlatform::new_with_event_listener`); `NettaiFiles.java` among its
+    classes; a NativeActivity that isn't made again as the phone turns (`android:configChanges`), so the
+    fragment's system dialog answers the activity that asked.
 
 ## 8. Builds
 
@@ -2148,6 +2191,15 @@ On a phone the battle's picture has the window's whole width, at its top, with n
 so has Practice's arena: the picture is a whole multiple of the game's 240 (§1), and the gutters' 32 can be the
 difference between one multiple and the next (a window 780 of the display's pixels wide takes three times, 720;
 716 took two).
+
+**The safe area.** A phone keeps some of its screen for itself: a notch or an island, the home bar, rounded
+corners. Slint gives the window's `safe-area-insets`, and every screen and what opens over it (its overlay, a
+ruleset's page, the loading and versus screens, the battle, the pickers and dialogs) is laid out in the rest
+(app.slint's one box around them); the backdrop, the cursor and what flies go across the whole window. The app fits
+its units to the safe area (`Shell::fit_window`: the window less the insets, in the system's points), places what
+opens by a control in it (`Shell::room`, `Rect::within`: a select's list, the replays' up-next list), and places
+the picture's room from its corner (`Shell.safe-left`, `Shell.safe-top`), on the display's pixels as before (a
+phone's insets are whole ones). On the desktop the safe area is the window, and nothing moves. Not seen on a phone.
 
 ## 10. The design system
 
@@ -3808,8 +3860,8 @@ played, and the player is told why; there is no other way to its assets.
 `zip`). `$NETTAI_ROMS` wins (development, the screenshot pass): a folder that is the collection's install, or that
 holds its ROM files (any names; each file's header says which ROM it is), as nettai-tool reads them. Else the folder
 the player chose is looked in (the settings' `legacy_collection`: the install's own folder, its `exe` or its
-`exe/data`, whichever was chosen), then Steam, for the app id of Vol. 2, 1798020. (In a browser, the copies of a
-folder chosen before: §6.) `steamlocate` finds Steam on
+`exe/data`, whichever was chosen), then Steam, for the app id of Vol. 2, 1798020. (In a browser and on a phone, the
+copies of a folder chosen before: §6, §7.) `steamlocate` finds Steam on
 Windows by the registry's `InstallPath` (`HKLM\SOFTWARE\Wow6432Node\Valve\Steam`, else `SOFTWARE\Valve\Steam`), on
 macOS at `~/Library/Application Support/Steam`, and on Linux in each of Flatpak's, the usual (`$XDG_DATA_HOME/Steam`,
 `~/.steam/steam`, `~/.steam/root`, `~/.steam/debian-installation`) and Snap's folders that has a `steamapps` folder;

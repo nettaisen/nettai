@@ -16,6 +16,11 @@ pub struct Filter<'a> {
     pub extensions: &'a [&'a str],
 }
 
+/// Whether a folder the player chose can be read again later, at another start, by its path: the desktop's can; a
+/// browser's and a phone's can't (the system hands the app its files once), so the app keeps copies of what it
+/// needs of one ([`open_folder`]'s files are read in).
+pub const FOLDERS_READ_AGAIN: bool = cfg!(desktop);
+
 /// Files to open, one or more: `done` hears those chosen (none if none were).
 pub fn open_files(filter: Filter, done: impl FnOnce(Vec<PathBuf>) + 'static) {
     #[cfg(phone)]
@@ -307,6 +312,13 @@ pub fn show_file(path: &Path) {
     }
 }
 
+/// The dialogs' answers that came since, each heard by its `done`: a phone's come on the system's threads, and wait
+/// for this, which the app calls each frame, on its own thread. (On the desktop and in a browser, nothing waits.)
+pub fn poll() {
+    #[cfg(phone)]
+    phone::poll();
+}
+
 /// Files and folders dropped on the page go to `dropped`, from now on: a path for each. A file is read into the
 /// app's files whole; of a folder, only the files at `wanted` (paths within it, as [`open_folder`] takes them), and
 /// its path is a folder holding those (an empty one if none is there). (On the desktop the window's own events
@@ -320,6 +332,9 @@ pub fn take_drops(wanted: &[&str], dropped: impl FnMut(Vec<PathBuf>) + 'static) 
 
 #[cfg(phone)]
 pub(crate) mod phone;
+#[cfg(any(phone, test))]
+#[cfg_attr(not(phone), allow(dead_code))]
+mod wanted;
 
 #[cfg(web)]
 mod web {

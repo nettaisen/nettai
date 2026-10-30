@@ -93,6 +93,7 @@ pub fn run() -> Result<(), slint::PlatformError> {
     let ui = AppWindow::new()?;
     #[cfg(target_arch = "wasm32")]
     ui.global::<nettai_ui::Theme>().set_web(true);
+    ui.global::<nettai_ui::Theme>().set_phone_app(cfg!(any(target_os = "ios", target_os = "android")));
     let app = Rc::new(RefCell::new(App::new(&ui, tour.is_some())));
     APP.with(|a| a.set(app.clone())).unwrap_or_else(|_| unreachable!("the app starts once"));
     wire(&ui, &app);

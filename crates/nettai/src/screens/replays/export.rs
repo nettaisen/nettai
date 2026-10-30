@@ -128,9 +128,13 @@ pub fn set_here(range: &Range<u32>, length: u32, end: bool, tick: u32) -> Range<
 
 /// The system's folder for videos.
 fn videos() -> PathBuf {
-    // (In the browser a video is made in the app's files and downloaded: `Shell::saved`.)
+    // (In the browser a video is made in the app's files and downloaded: `Shell::saved`. On a phone it is made in
+    // the app's temporary folder and handed over once whole: the share sheet, or the save dialog.)
     if cfg!(target_arch = "wasm32") {
         return PathBuf::from("/videos");
+    }
+    if cfg!(any(target_os = "ios", target_os = "android")) {
+        return nettai_platform::folders::temporary().unwrap_or_default().join("outgoing");
     }
     let var = |name: &str| std::env::var_os(name).filter(|v| !v.is_empty()).map(PathBuf::from);
     let home = if cfg!(target_os = "windows") { var("USERPROFILE") } else { var("HOME") };

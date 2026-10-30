@@ -435,8 +435,12 @@ export global Errors {
         }
         if kind == ErrorKind.no-legacy-collection {
             // (How to drag its folder in from Steam, which shows where it is installed: the install's `exe` folder,
-            // the first thing in it. A browser has no Steam to install from, and is a page. The button chooses the
-            // folder too.)
+            // the first thing in it. A browser has no Steam to install from, and is a page. A phone has no Steam and
+            // nothing is dragged onto it: the folder is copied to it from a computer and chosen. The button chooses
+            // the folder too.)
+            if Theme.phone-app {
+                return @tr("nettai needs Battle Network Legacy Collection Vol. 2. On a computer, right-click it in your Steam library, choose Manage > Browse local files, and copy the exe folder to this device. Then choose that folder here.");
+            }
             if Theme.web {
                 return @tr("nettai needs Battle Network Legacy Collection Vol. 2. In Steam, right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this page.");
             }
@@ -630,6 +634,9 @@ export global Errors {
             return "";
         }
         if kind == ErrorKind.no-legacy-collection {
+            if Theme.phone-app {
+                return @tr("On a computer, right-click it in your Steam library, choose Manage > Browse local files, and copy the exe folder to this device. Then choose that folder here.");
+            }
             if Theme.web {
                 return @tr("In Steam, right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this page.");
             }

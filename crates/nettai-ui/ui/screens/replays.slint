@@ -177,7 +177,7 @@ export global ReplaysView {
     out property <string> start-word: I18n.upper(@tr("Play next"));
     out property <string> export-word: I18n.upper(@tr("verb" => "Export video"));
     // (In the browser its files are the page's: the replay is downloaded.)
-    out property <string> file-word: Theme.web ? I18n.upper(@tr("Save replay")) : I18n.upper(@tr("Show file"));
+    out property <string> file-word: Theme.web || Theme.phone-app ? I18n.upper(@tr("Save replay")) : I18n.upper(@tr("Show file"));
     out property <string> from-here-word: I18n.upper(@tr("Watch from here"));
     out property <string> up-word: I18n.upper(@tr("Move up"));
     out property <string> down-word: I18n.upper(@tr("Move down"));
@@ -1452,9 +1452,9 @@ component ExportOptions inherits Rectangle {
         enabled: !root.busy;
     }
 
-    // (Not in the browser, which asks where each time.)
+    // (Not in a browser, which asks where each time, nor on a phone, which hands the video over once made.)
     path-label := Value {
-        visible: !Theme.web;
+        visible: !Theme.web && !Theme.phone-app;
         x: root.phone ? root.edge : sides.x + sides.width + 24px;
         y: root.phone ? root.edge + 104px : root.edge;
         width: root.phone ? root.label : self.preferred-width;
@@ -1463,13 +1463,13 @@ component ExportOptions inherits Rectangle {
     }
 
     PathBox {
-        visible: !Theme.web;
+        visible: !Theme.web && !Theme.phone-app;
         x: path-label.x + path-label.width + 12px;
         y: path-label.y;
         width: max(80px, root.width - root.edge - self.x);
         nav: "export.path";
         value: ReplaysView.export-path;
-        enabled: !root.busy && !Theme.web;
+        enabled: !root.busy && !Theme.web && !Theme.phone-app;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }

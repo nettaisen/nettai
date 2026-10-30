@@ -44,8 +44,9 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["std
 [target.'cfg(target_os = "ios")'.dependencies]
 objc2 = "0.6"
 block2 = "0.6"
-objc2-foundation = { version = "0.3", default-features = false, features = ["std", "block2", "NSArray", "NSError", "NSNotification", "NSObject", "NSOperation", "NSString", "NSURL"] }
-objc2-ui-kit = { version = "0.3", default-features = false, features = ["std", "block2", "objc2-uniform-type-identifiers", "UIActivityViewController", "UIApplication", "UIDocumentPickerViewController", "UIPasteboard", "UIResponder", "UIScene", "UISceneDefinitions", "UIView", "UIViewController", "UIWindow", "UIWindowScene"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "block2", "NSArray", "NSEnumerator", "NSError", "NSNotification", "NSObject", "NSOperation", "NSSet", "NSString", "NSURL"] }
+objc2-core-foundation = { version = "0.3", default-features = false, features = ["std", "CFCGTypes"] }
+objc2-ui-kit = { version = "0.3", default-features = false, features = ["std", "block2", "objc2-core-foundation", "objc2-uniform-type-identifiers", "UIActivity", "UIActivityViewController", "UIApplication", "UIDocumentPickerViewController", "UIPasteboard", "UIPopoverPresentationController", "UIPresentationController", "UIResponder", "UIScene", "UISceneDefinitions", "UIView", "UIViewController", "UIWindow", "UIWindowScene"] }
 objc2-uniform-type-identifiers = { version = "0.3", default-features = false, features = ["std", "UTType", "UTCoreTypes"] }
 objc2-avf-audio = { version = "0.3", default-features = false, features = ["std", "AVAudioSessionTypes"] }
 

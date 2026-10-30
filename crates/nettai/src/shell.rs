@@ -1265,9 +1265,9 @@ impl App {
             }
             return;
         }
-        // (The browser keeps copies of its ROMs, as its folder can't be read again without asking; the desktop keeps
-        // the folder.)
-        if cfg!(target_arch = "wasm32") {
+        // (A browser and a phone keep copies of its ROMs, as its folder can't be read again without asking; the
+        // desktop keeps the folder.)
+        if !nettai_platform::dialog::FOLDERS_READ_AGAIN {
             self.shell.games.keep_copies(&folder);
             return;
         }
@@ -1756,6 +1756,8 @@ impl App {
     /// battle's ticks and its picture, the sound, the focus.
     /// A frame the window is about to draw: the app's clock (docs/app.md §1).
     pub fn frame(&mut self, now: Instant) {
+        // (A phone's dialogs answer on the system's threads: what came is heard here, on the app's.)
+        nettai_platform::dialog::poll();
         // (The browser's input over a field goes once its edit has ended, however it ended.)
         #[cfg(target_arch = "wasm32")]
         if !self.shell.nav.editing() && nettai_platform::text_entry::is_open() {

@@ -155,6 +155,9 @@ export global Theme {
 
     // The app runs in a browser (nettai-web): no Steam, no direct links, the browser's own dialogs.
     in property <bool> web;
+    // The app is a phone's (iOS, Android), whatever its window's shape: no Steam, nothing dragged onto it, the
+    // system's own pickers and share sheet. (`phone`, below, is the upright layout.)
+    in property <bool> phone-app;
 
     // Metrics. `phone` is the upright-phone layout (the app sets it when the window is taller than wide): one
     // column, no footer, everything tapped at least 44 tall.

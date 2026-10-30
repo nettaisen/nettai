@@ -342,6 +342,12 @@ msgid "nettai needs Battle Network Legacy Collection Vol. 2. In Steam, right-cli
 msgstr "nettai 需要《洛克人EXE 合集 Vol. 2》。請在 Steam 收藏庫中對它按右鍵，選擇「管理」→「瀏覽本機檔案」，再將 exe 資料夾拖曳到此頁面。"
 msgid "In Steam, right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this page."
 msgstr "請在 Steam 收藏庫中對它按右鍵，選擇「管理」→「瀏覽本機檔案」，再將 exe 資料夾拖曳到此頁面。"
+# The same on a phone (iOS, Android), which has no Steam and takes nothing dragged onto it: the exe folder copied
+# to it from a computer, then chosen.
+msgid "nettai needs Battle Network Legacy Collection Vol. 2. On a computer, right-click it in your Steam library, choose Manage > Browse local files, and copy the exe folder to this device. Then choose that folder here."
+msgstr "nettai 需要《洛克人EXE 合集 Vol. 2》。請在電腦上的 Steam 收藏庫中對它按右鍵，選擇「管理」→「瀏覽本機檔案」，將 exe 資料夾複製到此裝置，再於這裡選擇該資料夾。"
+msgid "On a computer, right-click it in your Steam library, choose Manage > Browse local files, and copy the exe folder to this device. Then choose that folder here."
+msgstr "請在電腦上的 Steam 收藏庫中對它按右鍵，選擇「管理」→「瀏覽本機檔案」，將 exe 資料夾複製到此裝置，再於這裡選擇該資料夾。"
 msgid "Choose folder"
 msgstr "選擇資料夾"
 # The Legacy Collection found lacks some of a game's ROMs: {} is the game, as the header
