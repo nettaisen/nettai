@@ -1,5 +1,5 @@
 //! The bundled fonts' big files, which the repository holds as WOFF2: Noto Sans CJK's cuts (`vfont`), Fusion
-//! Pixel's (`pixeltext`) and M PLUS 1 Code (the app's code face, which the app registers: this crate draws nothing
+//! Pixel's and MuzaiPixel (`pixeltext`) and M PLUS 1 Code (the app's code face, which the app registers: this crate draws nothing
 //! with it). The program holds the WOFF2 files as they are, about a third of the fonts' size; the first time a font
 //! is wanted its file is unpacked into memory, once, and kept for the program's life, and what draws with the font
 //! borrows its bytes from there.
@@ -13,14 +13,13 @@ static NOTO_SANS_CJK: [Packed; 3] = [
     Packed::new(include_bytes!("../fonts/noto-sans-cjk/NotoSansSC[wght].woff2")),
     Packed::new(include_bytes!("../fonts/noto-sans-cjk/NotoSansTC[wght].woff2")),
 ];
-/// Fusion Pixel 12px's Simplified and Traditional cuts, then its bold build's (fonts/fusion-pixel,
-/// fonts/fusion-bold-pixel).
-static FUSION_PIXEL: [Packed; 4] = [
+/// Fusion Pixel 12px's Simplified and Traditional cuts (fonts/fusion-pixel).
+static FUSION_PIXEL: [Packed; 2] = [
     Packed::new(include_bytes!("../fonts/fusion-pixel/fusion-pixel-12px-monospaced-zh_hans.woff2")),
     Packed::new(include_bytes!("../fonts/fusion-pixel/fusion-pixel-12px-monospaced-zh_tw.woff2")),
-    Packed::new(include_bytes!("../fonts/fusion-bold-pixel/fusion-bold-pixel-12px-monospaced-zh_hans.woff2")),
-    Packed::new(include_bytes!("../fonts/fusion-bold-pixel/fusion-bold-pixel-12px-monospaced-zh_tw.woff2")),
 ];
+/// MuzaiPixel (fonts/muzai-pixel).
+static MUZAI_PIXEL: Packed = Packed::new(include_bytes!("../fonts/muzai-pixel/MZPXorig.woff2"));
 /// M PLUS 1 Code (fonts/mplus1code).
 static M_PLUS_1_CODE: Packed = Packed::new(include_bytes!("../fonts/mplus1code/MPLUS1Code-VariableFont_wght.woff2"));
 
@@ -29,9 +28,14 @@ pub fn noto_sans_cjk(cut: Cut) -> &'static [u8] {
     NOTO_SANS_CJK[cut as usize].font()
 }
 
-/// Fusion Pixel 12px's font, or its bold build's, in Simplified Chinese's forms or Traditional's.
-pub fn fusion_pixel(bold: bool, traditional: bool) -> &'static [u8] {
-    FUSION_PIXEL[2 * usize::from(bold) + usize::from(traditional)].font()
+/// Fusion Pixel 12px's font, in Simplified Chinese's forms or Traditional's.
+pub fn fusion_pixel(traditional: bool) -> &'static [u8] {
+    FUSION_PIXEL[usize::from(traditional)].font()
+}
+
+/// MuzaiPixel's font: its 8x12 build (`MZPXorig`), both Chinese's forms in one.
+pub fn muzai_pixel() -> &'static [u8] {
+    MUZAI_PIXEL.font()
 }
 
 /// M PLUS 1 Code's font (the variable font, weights 100 to 700).
@@ -80,11 +84,10 @@ mod tests {
         for (cut, name) in [(Cut::Japanese, "JP"), (Cut::Simplified, "SC"), (Cut::Traditional, "TC")] {
             assert!(family(noto_sans_cjk(cut)).starts_with(&format!("Noto Sans {name}")), "Noto Sans {name}");
         }
-        for (bold, build) in [(false, "Fusion Pixel"), (true, "Fusion Bold Pixel")] {
-            for (traditional, forms) in [(false, "zh-Hans"), (true, "zh-TW")] {
-                assert_eq!(family(fusion_pixel(bold, traditional)), format!("{build} 12px Mono {forms}"));
-            }
+        for (traditional, forms) in [(false, "zh-Hans"), (true, "zh-TW")] {
+            assert_eq!(family(fusion_pixel(traditional)), format!("Fusion Pixel 12px Mono {forms}"));
         }
+        assert_eq!(family(muzai_pixel()), "MuzaiPixel");
         assert_eq!(family(m_plus_1_code()), "M PLUS 1 Code");
     }
 

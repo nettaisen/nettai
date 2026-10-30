@@ -1,10 +1,11 @@
 //! The original mode's strings where the graphics can't spell the language shown
 //! (Chinese, which no GBA ROM has a font for; every game's graphics have both
 //! releases' fonts, English's and Japanese's), drawn at their own size
-//! into the 240x160 frame in pixel fonts: Fusion Pixel Bold 12px for the
-//! 8x16 font's strings (chip names, enemy names, the telop) and Fusion
-//! Pixel 12px for the chatbox's (fonts/fusion-bold-pixel,
-//! fonts/fusion-pixel; docs/design/text-rendering.md §15).
+//! into the 240x160 frame in pixel fonts (docs/design/text-rendering.md
+//! §15): MuzaiPixel for the 8x16 font's strings (chip names, enemy names,
+//! the telop), its hanzi 7 pixels wide in an 8-pixel cell as the game's
+//! letters are, and Fusion Pixel 12px for the chatbox's (fonts/muzai-pixel,
+//! fonts/fusion-pixel).
 //!
 //! The places that draw text lay the strings out as the enhanced mode does
 //! (a [`TextSink`](crate::textlayer::TextSink) that measures with
@@ -131,8 +132,8 @@ impl PixelText {
     /// The fonts in `cut`'s forms (the language shown's: [`Cut::of`]); none
     /// in the Japanese cut's, English's and Japanese's, which every game's graphics
     /// spells in its own fonts. Fusion Pixel 12px draws the chatbox's
-    /// strings, its bold build the 8x16 font's ([`crate::bundled`] holds
-    /// both).
+    /// strings in the cut's forms; MuzaiPixel, one font of both forms, the
+    /// 8x16 font's ([`crate::bundled`] holds both).
     pub fn new(cut: Cut) -> Option<PixelText> {
         let traditional = match cut {
             Cut::Japanese => return None,
@@ -140,8 +141,8 @@ impl PixelText {
             Cut::Traditional => true,
         };
         let mut scaler = ScaleContext::new();
-        let text = Face::new(crate::bundled::fusion_pixel(false, traditional), &mut scaler);
-        let cells = Face::new(crate::bundled::fusion_pixel(true, traditional), &mut scaler);
+        let text = Face::new(crate::bundled::fusion_pixel(traditional), &mut scaler);
+        let cells = Face::new(crate::bundled::muzai_pixel(), &mut scaler);
         Some(PixelText { text, cells, scaler, glyphs: HashMap::new(), own: Own::default() })
     }
 
@@ -182,13 +183,14 @@ impl PixelText {
         self.own = Own { pack, cells, dialogue };
     }
 
-    /// Whether the fonts draw every character of `text`, and the game's graphics every
-    /// mark of the game's in it (spaces always).
-    pub fn covers(&self, text: &str) -> bool {
-        let has = |f: &Face, c: char| f.font().charmap().map(c) != 0;
+    /// Whether `role`'s font draws every character of `text`, and the
+    /// game's graphics every mark of the game's in it (spaces always).
+    pub fn covers(&self, text: &str, role: Role) -> bool {
+        let own = if role == Role::Dialogue { &self.own.dialogue } else { &self.own.cells };
+        let font = self.face(role).font();
         text.chars().all(|c| match private(c) {
-            true => self.own.cells.contains_key(&c) || self.own.dialogue.contains_key(&c),
-            false => c.is_whitespace() || (has(&self.text, c) && has(&self.cells, c)),
+            true => own.contains_key(&c),
+            false => c.is_whitespace() || font.charmap().map(c) != 0,
         })
     }
 
@@ -374,17 +376,17 @@ mod tests {
         assert!(f.pixels.contains(&face) && f.pixels.contains(&shadow));
     }
 
-    /// The box is as wide as the text in its role's font, and the chatbox's
-    /// font is the narrower: the 8x16 font's strings are in the bold build.
+    /// The box is as wide as the text in its role's font, and its ink
+    /// within it.
     #[test]
     fn a_box_is_as_wide_as_its_text() {
         let mut p = PixelText::new(Cut::Traditional).unwrap();
-        let bold = p.width("加農砲", Role::FittedCell);
+        let cells = p.width("加農砲", Role::FittedCell);
         let regular = p.width("加農砲", Role::Dialogue);
-        assert!(bold > regular && regular > 0, "{bold} {regular}");
-        assert!(p.covers("加農砲Ⓑ") && !p.covers("\u{E002}"), "a mark of the game's is the game's");
+        assert!(cells > 0 && regular > 0, "{cells} {regular}");
+        assert!(p.covers("加農砲Ⓑ", Role::Dialogue) && !p.covers("\u{E002}", Role::FittedCell), "a mark of the game's is the game's");
         let (i0, i1) = p.ink_extent("加農砲", Role::FittedCell).unwrap();
-        assert!(i0 >= 0.0 && i1 <= bold as f32);
+        assert!(i0 >= 0.0 && i1 <= cells as f32, "{i0} {i1}");
     }
 
     /// English and Japanese have no pixel fonts: every game's graphics spell them in
@@ -403,9 +405,9 @@ mod tests {
         font.pixels.fill(1);
         let hud = Hud { font, font_chars: vec!["\u{E002}".into()], ..Hud::default() };
         let mut p = PixelText::new(Cut::Simplified).unwrap();
-        assert!(!p.covers("冲锋人\u{E002}"));
+        assert!(!p.covers("冲锋人\u{E002}", Role::FittedCell));
         p.use_pack(&hud);
-        assert!(p.covers("冲锋人\u{E002}"));
+        assert!(p.covers("冲锋人\u{E002}", Role::FittedCell));
         assert_eq!(p.width("冲锋人\u{E002}", Role::FittedCell), p.width("冲锋人", Role::FittedCell) + 8);
     }
 

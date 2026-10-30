@@ -277,7 +277,7 @@ impl<'f> TextSink<'f> {
         use crate::vfont::LetteringFont;
         match font {
             LetteringFont::Display => self.takes_lettering(text),
-            LetteringFont::Text => self.takes(text),
+            LetteringFont::Text => self.takes(text, Role::Cell),
             LetteringFont::Numbers => self.lettering && !text.is_empty() && crate::numbers::font().covers(text),
         }
     }
@@ -364,12 +364,13 @@ impl<'f> TextSink<'f> {
         TextSink::new(GraphicsMode::Original, None)
     }
 
-    /// Whether `text` goes to the text layer: in the enhanced mode, when the
-    /// font (or the original mode's pixel fonts) has every character of it
-    /// (else the whole string is drawn in the game's font, as in the
-    /// original mode: a string never mixes two fonts).
-    pub fn takes(&self, text: &str) -> bool {
-        self.mode == GraphicsMode::Enhanced && (self.font.is_some_and(|f| f.covers(text)) || self.pixels.is_some_and(|p| p.borrow().covers(text)))
+    /// Whether `text`, to be drawn in `role`, goes to the text layer: in the
+    /// enhanced mode, when the font (or the original mode's pixel font of
+    /// the role) has every character of it (else the whole string is drawn
+    /// in the game's font, as in the original mode: a string never mixes two
+    /// fonts).
+    pub fn takes(&self, text: &str, role: Role) -> bool {
+        self.mode == GraphicsMode::Enhanced && (self.font.is_some_and(|f| f.covers(text)) || self.pixels.is_some_and(|p| p.borrow().covers(text, role)))
     }
 
     /// A new tag for the sprite parts an item stands in for.
@@ -466,8 +467,8 @@ mod tests {
     #[test]
     fn the_original_mode_takes_nothing() {
         let font = VectorFont::bundled();
-        assert!(!TextSink::original().takes("Cannon"));
-        assert!(TextSink::new(GraphicsMode::Enhanced, Some(&font)).takes("Cannon"));
-        assert!(TextSink::new(GraphicsMode::Enhanced, Some(&font)).takes("ElecMan\u{E002}"));
+        assert!(!TextSink::original().takes("Cannon", Role::FittedCell));
+        assert!(TextSink::new(GraphicsMode::Enhanced, Some(&font)).takes("Cannon", Role::FittedCell));
+        assert!(TextSink::new(GraphicsMode::Enhanced, Some(&font)).takes("ElecMan\u{E002}", Role::FittedCell));
     }
 }

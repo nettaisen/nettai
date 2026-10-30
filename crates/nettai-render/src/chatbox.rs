@@ -121,7 +121,7 @@ pub fn prepare<'a>(b: &Battle, side: u8, assets: &'a Bundle, graphics: &crate::g
         Some(l) => crate::lookups::dialogue(&assets.hud.dialogue_font, l, string, problems),
         None => Vec::new(),
     };
-    let (text, lines) = if sink.takes(string) {
+    let (text, lines) = if sink.takes(string, Role::Dialogue) {
         (Tiles { pixels: vec![0; TEXT_WIDTH * TEXT_ROWS] }, Some(printed(&chatbox, string, translated)))
     } else {
         (text_tiles(assets, &chatbox, &glyphs, translated), None)

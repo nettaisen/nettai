@@ -275,7 +275,7 @@ pub fn shared_glyphs<'a>(
         let codes = match name {
             TelopName::Chip(chip) => {
                 let words = text.strings.chip_name(&b.content, chip);
-                if text.takes(words) {
+                if text.takes(words, Role::Cell) {
                     return None;
                 }
                 name_glyphs(b, hud, words, chip, problems)
@@ -910,7 +910,7 @@ pub fn draw<'a>(
             // name: the text layer's cell role in the palette's face and
             // shadow (the user: "the ???? trap font should use the telop
             // font").
-            if text.takes("????") {
+            if text.takes("????", Role::Cell) {
                 text.push(Plane::Hud, TextItem::new("????", Role::Cell, Rect::new(x, 16, 32, 16), pal[1], Some(pal[2])));
                 continue;
             }
@@ -1474,13 +1474,13 @@ fn draw_chip_name(
     let words = text.strings.chip_name(&b.content, chip);
     let name = name_glyphs(b, hud, words, chip, problems);
     // (The text layer's box: the name's own width.)
-    let cells = if text.takes(words) { fonts::box_cells(text, words, name.len(), Role::FittedCell) } else { name.len() };
+    let cells = if text.takes(words, Role::FittedCell) { fonts::box_cells(text, words, name.len(), Role::FittedCell) } else { name.len() };
     fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, cells, pal, (0, 18 * 8), (Role::FittedCell, Align::Left));
     // The damage follows the name: after the cells its glyphs take, or in
     // the enhanced mode after the name as the text layer draws it.
     let mut x = 8 * cells as i32;
     let mut words_end = None;
-    if text.takes(words)
+    if text.takes(words, Role::FittedCell)
         && let Some(w) = text.fitted_width(words, Role::FittedCell, 8 * cells as i32)
     {
         x = w.ceil() as i32 + 1;
@@ -1593,7 +1593,7 @@ fn time_left(layer: &mut Layer, text: &mut TextSink, hud: &Hud, left: u16, at: T
         return;
     }
     let (glyphs, _) = fonts::cell_glyphs(hud, &seconds);
-    let cells = if text.takes(&seconds) { fonts::box_cells(text, &seconds, glyphs.len(), Role::FittedCell) } else { glyphs.len() };
+    let cells = if text.takes(&seconds, Role::FittedCell) { fonts::box_cells(text, &seconds, glyphs.len(), Role::FittedCell) } else { glyphs.len() };
     let x = match at {
         TimeAt::Corner(seat) => seat.x(width - 8 * cells as i32, 8 * cells as i32),
         TimeAt::Between => (width - 8 * cells as i32) / 2,
@@ -2456,7 +2456,7 @@ fn name_parts<'a>(
         0 => (Vec::new(), Vec::new(), false),
         d => (digits(d), if bonus_value != 0 { std::iter::once(style.plus).chain(digits(bonus_value)).collect() } else { Vec::new() }, doubled),
     };
-    let font = !words.is_empty() && text.takes(words);
+    let font = !words.is_empty() && text.takes(words, Role::Cell);
     let cells = if font { fonts::box_cells(text, words, name.len(), Role::Cell) } else { name.len() };
     let width = (cells + damage.len() + bonus.len()) as i32;
     let mut x = (style.at.0 as i32 + (15 - width) * 4) & 0xFF;

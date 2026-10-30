@@ -1308,7 +1308,7 @@ impl Window {
         let mut glyphs = crate::lookups::advance_name(v.hud, chip, name, problems);
         let letter = code.map(|code| if code < 26 { char::from(b'A' + code).to_string() } else { "*".to_string() });
         let at = self.layout.art + (2 * ADVANCE_NAME_CELLS * k) as u16;
-        if text.takes(name) && letter.as_deref().is_none_or(|l| text.takes(l)) {
+        if text.takes(name, Role::Cell) && letter.as_deref().is_none_or(|l| text.takes(l, Role::Cell)) {
             // (The name's box: the cells before the code's, which nothing
             // else uses.)
             let cells = ADVANCE_NAME_CELLS - 1;
@@ -1540,7 +1540,7 @@ impl Window {
         let data = v.b.content.chip(c);
         let name = text.strings.chip_name(&v.b.content, c);
         let glyphs = crate::lookups::chip_name(v.hud, &v.b.content, c, name, problems);
-        if text.takes(name) {
+        if text.takes(name, Role::FittedCell) {
             // The name's cells in the window's color, the words on the
             // text layer in all eight of them (nothing follows the name).
             self.tiles.put(self.layout.name, &fonts::cell_text(v.hud, &[], NAME_CELLS, NAME_SHIFT));
@@ -2212,7 +2212,7 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
     let glyphs = crate::lookups::navi_name(v.hud, other, variant.is_some(), name, problems);
     // (On the text layer as wide as the name is, which still ends at column
     // 30: right-aligned in its cells.)
-    let len = if text.takes(name) { fonts::box_cells(text, name, glyphs.len(), Role::FittedCell) } else { glyphs.len() };
+    let len = if text.takes(name, Role::FittedCell) { fonts::box_cells(text, name, glyphs.len(), Role::FittedCell) } else { glyphs.len() };
     let name_col = 0x1E - len as i32;
     let palette = &w.palettes[13];
     // The bar: the slanted end, then one cell a glyph (eight at most; a

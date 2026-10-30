@@ -91,7 +91,7 @@ pub fn layer_text(
     (x, y): (i32, i32),
     (role, align): (Role, Align),
 ) {
-    if sink.takes(text) {
+    if sink.takes(text, role) {
         let n = box_cells(sink, text, glyphs.len().min(cells), role) as i32;
         let item = TextItem::new(text, role, Rect::new(x, y, 8 * n, 16), palette[1], Some(palette[2]));
         sink.push(plane, TextItem { align, ..item });
@@ -109,7 +109,7 @@ pub fn layer_line(sink: &mut TextSink, plane: Plane, layer: &mut Layer, hud: &Hu
     let lead = words.iter().take_while(blank).count();
     let used = (words.len() - words.iter().rev().take_while(blank).count()).max(lead);
     let text = words[lead..used].concat();
-    if !text.is_empty() && sink.takes(&text) {
+    if !text.is_empty() && sink.takes(&text, Role::Cell) {
         let rect = Rect::new(x + 8 * lead as i32, y, 8 * (used - lead) as i32, 16);
         sink.push(plane, TextItem::new(text, Role::Cell, rect, palette[1], Some(palette[2])));
     } else {

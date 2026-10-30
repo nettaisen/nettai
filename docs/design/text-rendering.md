@@ -2050,7 +2050,7 @@ fonts, English's and Japanese's), the original mode lays the strings out as the 
 takes and measures them with the pixel fonts) and draws them into the 240x160 frame (`pixeltext`, at the end of
 `Renderer::render`), in place of the vector font shrunk to the frame's pixels that it drew before:
 
-- **Fusion Pixel Bold 12px** for the 8x16 font's strings (chip names, the enemy's name, the telop, the Program
+- **Fusion Pixel Bold 12px** (since 2026-10-30 MuzaiPixel, §15.4) for the 8x16 font's strings (chip names, the enemy's name, the telop, the Program
   Advance's names, the HUD's seconds) and **Fusion Pixel 12px** for the chatbox's: TakWolf's fonts, release
   2026.10.25, whole, in two cuts by `Cut::of` (zh_hans, zh_tw; the ja cut went on 2026-10-27, as every pack spells
   English and Japanese in its own fonts), under the OFL with the notices of the fonts they are stitched from
@@ -2072,7 +2072,8 @@ takes and measures them with the pixel fonts) and draws them into the 240x160 fr
 - A string is never narrowed: its box is as wide as its text (§14.4). The chip window's name has the original's
   eight cells, which its clip keeps: five hanzi fit (13 pixels each, the last column blank), a longer name is cut
   at the box (MEGA加农炮, 小小热水壶1: 22 of EXE6's 354 chip names, 22 of EXE4's, 28 of EXE5's). The user chose that
-  from four mocked in real frames (cut, a 10px font, squeezed to the box, run past it): "keep cutting".
+  from four mocked in real frames (cut, a 10px font, squeezed to the box, run past it): "keep cutting". Since MuzaiPixel
+  (§15.4) every name fits.
 
 The telop's text rides on blank sprite parts (so it is as deep as they are, and the sprite budget counts them):
 they were one a glyph of the pack's for the name, so a name of which the pack has no glyph (双重野兽, DblBeast's)
@@ -2094,6 +2095,27 @@ text, the bold the wider; a mark from the pack; depth, clip and printing), the A
 EXE6 in zh-Hans and zh-Hant: the custom screen with a chip's description, the chip in hand with its damage, the
 other player's telop (Atk+10), DblBeast's telop, the enemy name on its bar, and chip names too long for the chip
 window. Packs with the language shown never reach it: the frame comparisons are unchanged.
+
+### 15.4 A hanzi a cell: MuzaiPixel (2026-10-30)
+
+The user: "for the chinese font in original mode, can you squeeze it into half the width by e.g. removing every
+second column of pixels?", then "can you make the font the width of the english chip font?". Squeezed, it looked
+"really bad", and a 12px font narrowed by taking out its least-needed columns still "kinda janky"; the user asked for
+a pixel font drawn at that width, picked MuzaiPixel from a specimen of narrow fonts in the chip window (MuzaiPixel,
+ChillBitmap 7px, Fusion Pixel 8px, 袖珍像素体 6x8), and kept it as drawn ("just use the original font", "i don't care
+about the extra row anymore it's fine") over a 7x10 cut of it.
+
+- **MuzaiPixel** (目哉像素, DWNfonts, OFL, release 2.0.20241013 repacked as 2.0.20260705: k8x12's 8x12 Japanese
+  font extended for Chinese) draws the 8x16 font's strings: its hanzi are 7 pixels wide and 11 tall in an 8-pixel
+  advance, so a hanzi takes one of the game's cells, as its letters do, the 8th column the shadow's. Every Chinese
+  name fits the chip window's eight cells (the longest, 吸血鬼净化系统, takes seven): none is cut any more.
+- One file serves both forms of the hanzi (`MZPXorig`, its square-pixel build; it has every character of every
+  game's names in both tables, 518 Simplified, 521 Traditional). The 11 rows end on the capitals' last row, one row
+  above their top.
+- Fusion Pixel 12px still draws the chatbox; its bold build is gone from the program and the About screen.
+- Checked: headless frames of EXE6's custom screen in zh-Hans and zh-Hant hovering long names (杀手传感器3,
+  MEGA能量炸弹, 防护罩100), the enemy name, and EXE5's PileDrvr (吸血鬼净化系统) formed: the Program Advance's names
+  and the chip in hand.
 
 ## 16. The bundled fonts as WOFF2 (as built, 2026-10-27)
 

@@ -1,9 +1,8 @@
 # Fusion Pixel 12px
 
 The original mode's chatbox text where a pack has no font for the language shown (Chinese), drawn at its own size
-into the 240x160 frame (`pixeltext`). The 8x16 font's
-strings beside it (chip names, enemy names, the telop) are in its bold build, Fusion Pixel Bold
-(`../fusion-bold-pixel`). The user (2026-10-25), from a specimen of candidates drawn into battle frames: "Fusion
+into the 240x160 frame (`pixeltext`). The 8x16 font's strings beside it (chip names, enemy names, the telop) are in
+MuzaiPixel (`../muzai-pixel`). The user (2026-10-25), from a specimen of candidates drawn into battle frames: "Fusion
 Pixel 12px looks good for the dialog box font".
 
 Fusion Pixel Font (缝合像素字体), by TakWolf: github.com/TakWolf/fusion-pixel-font, release 2026.10.25,

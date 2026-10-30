@@ -19,8 +19,8 @@ const FONTS: [(&str, &str, &[&str]); 11] = [
     ("Chakra Petch", "OFL-1.1", &["crates/nettai-ui/fonts/chakra-petch/OFL.txt"]),
     ("Corporate Logo", "OFL-1.1", &["crates/nettai-ui/fonts/corporate-logo/OFL.txt"]),
     ("Fusion Pixel", "OFL-1.1", &FUSION_PIXEL),
-    ("Fusion Pixel Bold", "OFL-1.1", &FUSION_PIXEL_BOLD),
     ("M PLUS 1 Code", "OFL-1.1", &["crates/nettai-render/fonts/mplus1code/OFL.txt"]),
+    ("MuzaiPixel", "OFL-1.1", &["crates/nettai-render/fonts/muzai-pixel/OFL.txt"]),
     ("Noto Sans CJK", "OFL-1.1", &["crates/nettai-render/fonts/noto-sans-cjk/OFL.txt"]),
     ("Nettai Banner Digits", "MPL-2.0", &["LICENSE"]),
     ("Nettai Chip Codes", "MPL-2.0", &["LICENSE"]),
@@ -34,12 +34,6 @@ const FUSION_PIXEL: [&str; 4] = [
     "crates/nettai-render/fonts/fusion-pixel/LICENSES/ark-pixel/OFL.txt",
     "crates/nettai-render/fonts/fusion-pixel/LICENSES/cubic-11/OFL.txt",
     "crates/nettai-render/fonts/fusion-pixel/LICENSES/galmuri/LICENSE.txt",
-];
-const FUSION_PIXEL_BOLD: [&str; 4] = [
-    "crates/nettai-render/fonts/fusion-bold-pixel/OFL.txt",
-    "crates/nettai-render/fonts/fusion-bold-pixel/LICENSES/ark-pixel/OFL.txt",
-    "crates/nettai-render/fonts/fusion-bold-pixel/LICENSES/cubic-11/OFL.txt",
-    "crates/nettai-render/fonts/fusion-bold-pixel/LICENSES/galmuri/LICENSE.txt",
 ];
 
 /// A package's license files: by name, in its folder, in a `LICENSES` folder, or in a folder of its own (a

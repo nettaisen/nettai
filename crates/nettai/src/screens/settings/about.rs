@@ -234,7 +234,7 @@ mod tests {
         let names: Vec<&str> = FONTS.iter().map(|f| f.name).collect();
         assert_eq!(
             names,
-            ["Bungee", "Chakra Petch", "Corporate Logo", "Fusion Pixel", "Fusion Pixel Bold", "M PLUS 1 Code", "Noto Sans CJK", "Nettai Banner Digits", "Nettai Chip Codes", "Nettai Digits", "Nettai Slot Codes"]
+            ["Bungee", "Chakra Petch", "Corporate Logo", "Fusion Pixel", "M PLUS 1 Code", "MuzaiPixel", "Noto Sans CJK", "Nettai Banner Digits", "Nettai Chip Codes", "Nettai Digits", "Nettai Slot Codes"]
         );
         // (The bought-in fonts under the OFL; the digit and chip code fonts nettai's own, under its license.)
         assert!(FONTS.iter().all(|f| !f.texts.is_empty() && f.license == if f.name.starts_with("Nettai") { "MPL-2.0" } else { "OFL-1.1" }));

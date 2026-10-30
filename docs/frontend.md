@@ -1249,8 +1249,9 @@ words, English and Japanese (its recipe reads all four ROMs; the HUD's
 `language` and `languages` say so); Chinese, which no game has a font
 for, keeps the graphics' own pictures with words, and its strings are drawn
 in other fonts: the vector font in the enhanced mode, and in the original
-mode pixel fonts into the frame, Fusion Pixel Bold 12px for the 8x16
-font's strings and Fusion Pixel 12px for the chatbox's, with the game's
+mode pixel fonts into the frame, MuzaiPixel for the 8x16 font's strings
+(a hanzi an 8-pixel cell, as the game's letters) and Fusion Pixel 12px for
+the chatbox's, with the game's
 own glyphs for digits, Latin letters and the game's marks
 (text-rendering.md §10.3, §15).
 
