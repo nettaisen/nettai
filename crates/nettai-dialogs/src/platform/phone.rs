@@ -11,7 +11,16 @@
 //! is copied on a thread of its own, so each waits in a queue until the app's next frame takes it ([`poll`]), which
 //! calls the dialog's `done` on the app's thread.
 
-use super::pickers;
+#[cfg(ios)]
+mod ios;
+#[cfg(any(android, test))]
+mod android;
+mod wanted;
+
+#[cfg(ios)]
+use ios as pickers;
+#[cfg(not(ios))]
+use android as pickers;
 use crate::Filter;
 use std::cell::RefCell;
 use std::collections::HashMap;

@@ -25,7 +25,7 @@ jni = "0.22"
 ndk-context = "0.1"
 
 [dev-dependencies]
-# The browser's tree's locks and times, in its tests on the desktop.
+# The browser's tree, in tests on the desktop.
 nettai-threads = { path = "../nettai-threads" }
 web-time = "1"
 
