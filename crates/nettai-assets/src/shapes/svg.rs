@@ -43,7 +43,9 @@ fn inherited(node: roxmltree::Node, name: &str) -> Result<Option<u8>, String> {
 /// A drawing read from its SVG file's text: the `viewBox`'s size, the
 /// palette entries its shapes name, its words; checked as usvg reads it,
 /// every shape filled or outlined in a palette entry. The text is kept as
-/// its source.
+/// its source without its words' `text` elements: the text layer draws
+/// those, and usvg would look for a font for them (its default, Times New
+/// Roman, which nothing has).
 pub fn from_svg(text: &str) -> Result<Drawing, String> {
     let doc = roxmltree::Document::parse(text).map_err(|e| e.to_string())?;
     let svg = doc.root_element();
@@ -58,6 +60,7 @@ pub fn from_svg(text: &str) -> Result<Drawing, String> {
     }
     let mut colors: Vec<(u8, u8)> = Vec::new();
     let mut words = Vec::new();
+    let mut cut = Vec::new();
     let mut add = |p: u8, c: u8| {
         if !colors.contains(&(p, c)) {
             colors.push((p, c));
@@ -67,6 +70,7 @@ pub fn from_svg(text: &str) -> Result<Drawing, String> {
         let name = node.tag_name().name();
         if name == "text" && node.has_attribute("data-words") {
             words.push(words_of(node)?);
+            cut.push(node.range());
             continue;
         }
         let palette = inherited(node, "data-palette")?.unwrap_or(0);
@@ -106,9 +110,15 @@ pub fn from_svg(text: &str) -> Result<Drawing, String> {
         text.hash(&mut h);
         h.finish()
     };
-    let d = Drawing { size: [w as u16, h as u16], source: text.into(), hash, colors, words };
-    usvg::Tree::from_xmltree(&doc, &options(String::new())).map_err(|e| e.to_string())?;
-    Ok(d)
+    let mut drawn = String::with_capacity(text.len());
+    let mut from = 0;
+    for range in cut {
+        drawn.push_str(&text[from..range.start]);
+        from = range.end;
+    }
+    drawn.push_str(&text[from..]);
+    usvg::Tree::from_str(&drawn, &options(String::new())).map_err(|e| e.to_string())?;
+    Ok(Drawing { size: [w as u16, h as u16], source: drawn.into(), hash, colors, words })
 }
 
 /// usvg's options for a drawing, with `style` over its own.
@@ -117,10 +127,10 @@ fn options(style: String) -> usvg::Options<'static> {
 }
 
 /// The style sheet that puts `rgb`'s colors into `d`'s shapes (each of its
-/// palette entries'), leaves its words out and (`crisp`) draws each pixel
-/// whole, in its center's color.
+/// palette entries') and (`crisp`) draws each pixel whole, in its center's
+/// color.
 fn style(d: &Drawing, rgb: &dyn Fn(u8, u8) -> [u8; 3], crisp: bool) -> String {
-    let mut s = String::from("[data-words] { display: none }\n");
+    let mut s = String::new();
     if crisp {
         s.push_str("* { shape-rendering: crispEdges }\n");
     }
@@ -438,6 +448,7 @@ mod tests {
         assert_eq!(d.colors, [(0, 1), (0, 2), (9, 3), (0, 4)]);
         assert_eq!(d.words.len(), 1);
         assert_eq!((d.words[0].key.as_str(), d.words[0].color, d.words[0].rect), ("window.ok", 5, [64, 64, 384, 256]));
+        assert!(!d.source.contains("<text"), "the words are the text layer's, not usvg's: {}", d.source);
         let l = labels(&d);
         assert_eq!(l[0], Some((0, 1)), "the ground in the corner, past the rounded rectangle's curve");
         assert_eq!(l[2 * 16 + 2], Some((0, 2)));
