@@ -892,16 +892,14 @@ impl Shell {
 
     // ---- The window's scale ------------------------------------------------------------------------------
 
-    /// Fit the layout to the window: one unit is a 1280th of its width or an 800th of its height, whichever is
-    /// less (upright, a 390th of its width), and the window's scale is set to that. A short window makes the whole
-    /// layout smaller: no screen is laid out shorter than the reference and scrolled. True if the layout turned
-    /// between the desktop's and the phone's.
-    fn fit_window(&mut self) -> bool {
+    /// The layout's fit to the window as it is now (its size and the system's scale less a phone's safe area's
+    /// insets: [`Shell::fit_window`]), none for a window of no size yet.
+    fn window_fit(&self) -> Option<Scale> {
         let ui = self.ui();
         let window = ui.window();
         let size = window.size();
         if size.width == 0 || size.height == 0 {
-            return false;
+            return None;
         }
         let os = window.with_winit_window(|w| w.scale_factor() as f32).unwrap_or(1.0).max(0.1);
         #[cfg(target_os = "android")]
@@ -913,10 +911,33 @@ impl Shell {
         let (width, height) = ((size.width as f32 / os - across).max(1.0), (size.height as f32 / os - down).max(1.0));
         let phone = width < 0.8 * height;
         let unit = if phone { width / 390.0 } else { (width / 1280.0).min(height / 800.0) }.max(0.2);
-        let factor = os * unit;
+        Some(Scale { os, unit, phone, size: (size.width, size.height), ground: self.scale.ground })
+    }
+
+    /// Whether `fit` differs from the layout's: another window size, or another scale for Slint.
+    fn unfitted(&self, fit: &Scale) -> bool {
+        let ui = self.ui();
+        fit.size != self.scale.size || (ui.window().scale_factor() - fit.os * fit.unit).abs() > 0.0005
+    }
+
+    /// Whether the layout no longer fits the window (a phone's safe area changed, which no window event says).
+    pub fn refit_wanted(&self) -> bool {
+        self.window_fit().is_some_and(|fit| self.unfitted(&fit) || fit.phone != self.scale.phone)
+    }
+
+    /// Fit the layout to the window: one unit is a 1280th of its width or an 800th of its height, whichever is
+    /// less (upright, a 390th of its width), and the window's scale is set to that. A short window makes the whole
+    /// layout smaller: no screen is laid out shorter than the reference and scrolled. True if the layout turned
+    /// between the desktop's and the phone's.
+    fn fit_window(&mut self) -> bool {
+        let Some(fit) = self.window_fit() else { return false };
+        let ui = self.ui();
+        let window = ui.window();
+        let size = window.size();
+        let (phone, factor) = (fit.phone, fit.os * fit.unit);
         let turned = phone != self.scale.phone;
-        let resized = (size.width, size.height) != self.scale.size || (window.scale_factor() - factor).abs() > 0.0005;
-        self.scale = Scale { os, unit, phone, size: (size.width, size.height), ground: self.scale.ground };
+        let resized = self.unfitted(&fit);
+        self.scale = Scale { size: (size.width, size.height), ground: self.scale.ground, ..fit };
         if resized {
             // (Slint's own scale is the system's times the unit: its `px` are the UI's units.)
             window.dispatch_event(slint::platform::WindowEvent::ScaleFactorChanged { scale_factor: factor });
@@ -977,6 +998,8 @@ pub struct App {
     pub(crate) first_frame_after: Option<(Instant, Option<(Instant, Instant)>)>,
     /// `NETTAI_PLAY_STATS`: since when, the frames the window drew and the frames the timer ran since.
     clock_stats: Option<(Instant, u32, u32)>,
+    /// A refit of the layout is asked for after this frame ([`App::resized`]).
+    refitting: bool,
 }
 
 impl App {
@@ -1043,6 +1066,7 @@ impl App {
             slow: SlowFrames::default(),
             first_frame_after: None,
             clock_stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| (Instant::now(), 0, 0)),
+            refitting: false,
         }
     }
 
@@ -1817,8 +1841,16 @@ impl App {
         // (The last frame was drawn, if the renderer didn't say so.)
         self.drawn();
         self.shell.showing.reset();
-        if self.shell.fit_window() {
-            self.shell.refresh();
+        // (A change no window event said, a phone's safe area: fitted just after this frame, as the window's events
+        // are, since a renderer mustn't be resized while it draws, which this frame is part of.)
+        if !self.refitting && self.shell.refit_wanted() {
+            self.refitting = true;
+            slint::Timer::single_shot(Duration::ZERO, || {
+                crate::with_app(|app| {
+                    app.refitting = false;
+                    app.resized();
+                })
+            });
         }
         self.read_pad(now);
         self.repeat_key(now);

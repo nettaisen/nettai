@@ -13,12 +13,15 @@ description = "The nettai app's UI: its Slint files compiled to Rust, with its f
 # Slint on winit (the app reaches winit's events itself, through Slint's winit backend: crates/nettai).
 slint = { version = "1.18", default-features = false, features = ["std", "backend-winit", "compat-1-2", "unstable-fontique-011"] }
 
-# The renderer: femtovg, on OpenGL (WebGL in a browser); on iOS, where Slint has no OpenGL, on wgpu (Metal). The app
-# draws the same on either, and its clock runs on either (each tells when it draws: docs/app.md §1).
+# The renderer: femtovg, on OpenGL (WebGL in a browser); on iOS, where Slint has no OpenGL, on wgpu (Metal), which tells
+# when it draws, as the app's clock asks (docs/app.md §1), only with `unstable-wgpu-30` (without it the window drew
+# and nothing ran). (Slint's winit backend builds Skia on iOS too, and would pick it: the app asks for femtovg by name
+# there, since Skia can't have the UI changed in its rendering notifier, where the app's frame runs: a component
+# dropped there panics in it.) The app draws the same on each.
 [target.'cfg(not(target_os = "ios"))'.dependencies]
 slint = { version = "1.18", default-features = false, features = ["renderer-femtovg"] }
 [target.'cfg(target_os = "ios")'.dependencies]
-slint = { version = "1.18", default-features = false, features = ["renderer-femtovg-wgpu"] }
+slint = { version = "1.18", default-features = false, features = ["renderer-femtovg-wgpu", "unstable-wgpu-30"] }
 
 [build-dependencies]
 slint-build = "1.18"

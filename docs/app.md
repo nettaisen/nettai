@@ -112,12 +112,15 @@ apps since (§4, "The window away under a link"). Not tested: the app's own wind
 (nothing moves one without the user), and other systems.
 
 Slint on Apple's systems draws its frames from a display link with no window event before them, so the clock is
-the rendering notifier: it needs a renderer that calls `BeforeRendering` and `AfterRendering`. In Slint 1.18
-every GPU renderer does: femtovg on OpenGL (WebGL on the web), femtovg on wgpu, and Skia, which draws through
-wgpu (Metal, Direct3D 12, Vulkan) and calls them there (read in its source; not run here). Slint's software
-renderer doesn't. The app names no renderer and nothing of one: the build's features choose it, femtovg alone
-today (§14). (Until 2026-10-29 the app asked for femtovg by name: the Skia it was written against drew on Metal
-directly and never called `BeforeRendering`, and the picture was an OpenGL texture of the app's own.)
+the rendering notifier: it needs a renderer that calls `BeforeRendering` and `AfterRendering`. femtovg on OpenGL
+(WebGL on the web) does; femtovg on wgpu, and Skia (which draws through wgpu: Metal, Direct3D 12, Vulkan), do only
+with Slint's `unstable-wgpu-30`, which hands the notifier their wgpu: without it, in the iOS Simulator, the window
+drew and nothing of the app's frame ran. Slint's software renderer doesn't. And Skia can't have the UI changed in
+its notifier, where the app's frame runs: a component dropped there (a model's row taken out) panics in it, as
+it looks for its notifier, which it holds. So the build's features choose femtovg (on OpenGL; on iOS, where Slint
+has no OpenGL, on wgpu, with `unstable-wgpu-30`), and the app names it on iOS alone, where Slint's winit backend
+builds Skia too and would pick it (§14, §7). (Until 2026-10-29 the app asked for femtovg by name everywhere, and the
+picture was an OpenGL texture of the app's own.)
 
 **The picture is a new image each time** (`Surface::picture`). Each new picture's buffer (0x00RRGGBB) is written
 as opaque RGBA into a `SharedPixelBuffer`, whose image is set as the UI's `Shell.picture`, which the renderer
@@ -1343,9 +1346,12 @@ run in the emulator (below, "Android"). What builds: the whole app, for iOS (typ
 
 - **Slint:**
   - iOS: winit, drawn by femtovg on wgpu (Metal), since Slint has no OpenGL there (nettai-ui's features by
-    target). Its rendering notifier keeps the clock (§1), and the picture is an image as everywhere. wgpu is held
-    at 30.0.0: 30.0.1's web dependencies want a js-sys newer than the one the web build's pinned wasm-bindgen
-    takes.
+    target, with `unstable-wgpu-30`, without which its rendering notifier, the clock, is never called: §1). Slint's
+    winit backend builds Skia there too and picks it first, so the app names femtovg on wgpu (`lib.rs`). The
+    picture is an image as everywhere. wgpu is held at 30.0.0: 30.0.1's web dependencies want a js-sys newer than
+    the one the web build's pinned wasm-bindgen takes. iOS 27's SDK refuses an app without the UIScene life cycle;
+    Slint 1.18's winit backend has the scene delegate (`SlintWindowSceneDelegate`), which Info.plist's
+    `UIApplicationSceneManifest` names.
   - Android: winit too, which the app sets up itself (Slint's selector offers Android its android-activity backend
     alone), drawn by femtovg on OpenGL ES (below, "Android").
 - **The layout:** a window taller than wide is the phone's (§9), and every screen is laid out in the safe area
@@ -1405,8 +1411,21 @@ run in the emulator (below, "Android"). What builds: the whole app, for iOS (typ
   and its Android component in the APK; the emulator's app downloaded the games' content over HTTPS with them.
 - **Lifecycle:** a battle doesn't catch up more than 250 ms after a stall (`MOST_ELAPSED`), so one resumed goes on
   where it was; a match's link drops while the app is away and reconnects within its 30 s or ends.
-- **What the packaging is to do** (not written):
-  - iOS: an Xcode project around the static library, which runs the app on the main thread.
+- **iOS's packaging** (`packaging/ios/package.sh`, `Info.plist`; §19) and **what ran in the Simulator**
+  (2026-10-29, Xcode 27.1, its iOS 27.0 runtime, an iPhone 18 Pro; a debug build, then the script's release build):
+  - Run it: `NETTAI_IOS=simulator packaging/ios/package.sh`, then `xcrun simctl install booted
+    target/package/ios/simulator/nettai.app` and `xcrun simctl launch booted net.n1gp.nettai`; the development
+    variables go as `SIMCTL_CHILD_NETTAI_ROMS=…` (a Simulator app reads the Mac's files: the ROMs, and a development
+    build's repository content). Its log is the container's (`xcrun simctl get_app_container booted net.n1gp.nettai
+    data`, then `Library/Application Support/nettai/nettai.log`).
+  - Seen: the main menu (its demo playing, the safe area under the Dynamic Island), a practice battle upright
+    (the picture the window's width under the island, the Enhanced custom screen, the on-screen pad under it) and
+    sideways (the desktop's layout, the picture clear of the island). The sound device started.
+  - Not exercised: touch (the Simulator app isn't installed with Xcode 27.1's command-line runtime, and simctl has
+    no taps), so no picker, share sheet, pad press or rotation while running (sideways was a landscape-only copy of
+    the bundle); a gamepad; netplay; a device (no signing account).
+  - Seen to fix: sideways the layout is the desktop's, which has no on-screen pad, so a phone held sideways has no
+    touch controls; and the main menu's EXIT, which iOS apps don't have.
 
 ### Android
 
@@ -1482,10 +1501,10 @@ and `ANDROID_KEY_ALIAS`).
     emulator -avd nettai -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect &
     NETTAI_ANDROID_DEBUGGABLE=1 packaging/android/package.sh
     adb install -r target/package/android/nettai-<version>.apk
-    adb shell am start -n io.github.bigfarts.nettai/nettai.app.NettaiActivity
+    adb shell am start -n net.n1gp.nettai/nettai.app.NettaiActivity
 
 The Legacy Collection's ROMs go in as the app keeps them, its data folder's `.stowed/roms/<code>.zip` (copied in with
-`adb shell run-as io.github.bigfarts.nettai`), or through CHOOSE FOLDER from a folder pushed to the device.
+`adb shell run-as net.n1gp.nettai`), or through CHOOSE FOLDER from a folder pushed to the device.
 
 **What ran** (2026-10-29, the emulator: Android 16, Pixel 8 size, 1080×2400): the first start's screen; the games'
 content downloaded over HTTPS; with the ROMs in, BN6 loaded and the main menu with its demo battle; Play, the
@@ -2916,9 +2935,9 @@ Slint compiler in the build script was 8 s, and linking 2. Three things made it 
    | a `Label`, a `Button` | 7.2, 9.4 KB |
    | an `if` around a rectangle | 15.7 KB |
    | a `ListView` beside its rows; a `ScrollPage` | 17.7, 15.5 KB |
-4. **One renderer and no more features than are used:** femtovg alone (any GPU renderer keeps the clock, §1;
-   the app names none, so another is a feature changed), without the software renderer and the accessibility
-   backend the first app also built. No standard widgets are imported.
+4. **One renderer and no more features than are used:** femtovg alone (on iOS on wgpu, where Slint's winit backend
+   builds Skia as well and the app names femtovg: §1), without the software renderer and the accessibility backend
+   the first app also built. No standard widgets are imported.
    The fonts are embedded as files (7.4 MB in all: 3.9 of it M PLUS 1 Code and 1.8 M PLUS 1 at 800, each with
    its Japanese), which costs the linker nothing measurable.
 5. **The build script writes a file only when what it says changed** (the merged catalogs, which Slint has cargo
@@ -4155,7 +4174,7 @@ and appimagetool.
   (`%LOCALAPPDATA%\nettai`, no administrator), with a Start menu and a desktop shortcut and an uninstaller that
   leaves the data folder; and `nettai-win-Portable.zip`. vpk signs every program in it (the app's, ffmpeg,
   Velopack's installer and updater) with the certificate `$env:WINDOWS_CERTIFICATE_PATH` names, if one does.
-- **macOS** (`packaging/macos/package.sh`, `Info.plist`): `nettai.app` (bundle id `io.github.bigfarts.nettai`;
+- **macOS** (`packaging/macos/package.sh`, `Info.plist`): `nettai.app` (bundle id `net.n1gp.nettai`;
   the content in `Contents/Resources/`, where the content lookup finds it), zipped, one per architecture, so that a
   player downloads half of what the universal app was (v0.12.0's: 168 MB, against about 85 MB for Windows and
   Linux): Apple silicon's `nettai-osx-arm64-Portable.zip`, Intel's `nettai-osx-x64-Portable.zip`, and for now the
@@ -4174,6 +4193,15 @@ and appimagetool.
   in.
 - **Linux** (`packaging/linux/package.sh`): `nettai.AppImage`, vpk's, with its entry, desktop file and icon. The
   program needs the glibc it was built against or a later one, so it is built on an old distribution.
+- **iOS** (`packaging/ios/package.sh`, `Info.plist`): `nettai.app`, zipped (`nettai-ios-<kind>.zip`), for the
+  Simulator (`NETTAI_IOS=simulator`, aarch64-apple-ios-sim, signed ad hoc) or a device (`device`, aarch64-apple-ios:
+  unsigned, unless `IOS_SIGN_IDENTITY` and `IOS_PROVISIONING_PROFILE` name an Apple Developer account's identity and
+  profile, which sign it with the profile's entitlements). The program, Info.plist (bundle id `net.n1gp.nettai`;
+  iOS 15 at least; full screen by `UILaunchScreen`; every orientation; the UIScene life cycle's manifest, iOS 27's
+  SDK's requirement; the extended gamepad profile), the icons drawn full bleed from the logo at the sizes it names,
+  LICENSE and THIRD-PARTY-NOTICES.txt. No ffmpeg (iOS exports with VideoToolbox) and no content (downloaded, as
+  every package's is). No Xcode project: the bundle is the program and its files. The release workflow makes both
+  as the run's artifacts, not the release's (§7).
 
 **The bundled ffmpeg.** The user: "i think you also need like the equivalent of
 https://github.com/tangobattle/ffmpeg-build for encoding and bundle ffmpeg with it. it should support whatever

@@ -71,12 +71,18 @@ pub(crate) fn with_app(f: impl FnOnce(&mut App)) {
 }
 
 /// Slint on winit, everywhere: the app hears winit's events before Slint does (`wire`), the same on every system.
-/// The renderer is whichever the build has: the clock needs one that tells when it draws, as every GPU renderer
-/// does, femtovg's and Skia's; Slint's software renderer doesn't, and the window says so. (`tour`: the screenshot
-/// pass's window doesn't take the keyboard.)
+/// The renderer is the build's femtovg (on OpenGL; on iOS on wgpu, with `unstable-wgpu-30`: nettai-ui's
+/// Cargo.toml), which tells the app when it draws, its clock; Slint's software renderer doesn't, and the window says
+/// so. On iOS femtovg is named: Slint's winit backend builds Skia there too and picks it first, and Skia panics when
+/// the UI drops a component in its rendering notifier, where the app's frame runs. (`tour`: the screenshot pass's
+/// window doesn't take the keyboard.)
 #[cfg(not(target_os = "android"))]
 fn select_backend(tour: bool) -> Result<(), slint::PlatformError> {
     let mut backend = slint::BackendSelector::new().backend_name("winit".into());
+    #[cfg(target_os = "ios")]
+    {
+        backend = backend.renderer_name("femtovg-wgpu".into());
+    }
     if tour {
         backend = backend.with_winit_window_attributes_hook(|a| a.with_active(false));
     }
