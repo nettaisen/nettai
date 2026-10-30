@@ -3797,8 +3797,8 @@ found, the file not written, anything else with the log named). The app keeps aw
 - *On the desktop* the codecs are ffmpeg's children, a track each (nettai-video's `platform::desktop`): x264 at
   CRF 16, given the NV12 raw, writing raw H.264 (`-f h264`, each frame after an access unit delimiter); ffmpeg's
   AAC writing ADTS. nettai-video reads both as they come, without parsing any container. ffmpeg's AAC priming is
-  its encoder's 1024 samples (libavcodec's `aacenc.c`, `initial_padding`). The bundled ffmpeg needs the h264 and
-  adts muxers for this (nettaisen/ffmpeg-build: `--enable-muxer=h264,adts`).
+  its encoder's 1024 samples (libavcodec's `aacenc.c`, `initial_padding`). The bundled ffmpeg has the h264 and
+  adts muxers for this since ffmpeg-9.0.2-3 (§19).
   - *B-frames dropped* (2026-10-29, so that no platform's codec reorders its frames): an EXE5 set of 7,199 ticks
     (two minutes, recorded headless from verify's `exe5-dark` match with scripted keys against `--opponent attacks`)
     at four times the frame, through `nettai-tool --mp4`: 17,903,532 bytes with B-frames (H.264 at 987 kb/s),
@@ -4089,15 +4089,14 @@ nettai needs and nothing more so the build is minimal", then "make sure to bundl
 you to build it with a separate workflow in https://github.com/nettaisen/ffmpeg-build so you don't have to
 build ffmpeg everty time". That repository's workflow, run by hand, builds a static `ffmpeg` per platform from
 `--disable-everything` with only what the export's commands run (the raw video and float PCM demuxers and
-decoders, the pipe protocol, swscale's `scale` and `format`, `setparams`, swresample's `aresample` with
-`aformat`, `null` and `anull`, libx264 and the native AAC encoder, the MP4 muxer: its README traces each to the
-commands), smoke-tests it with those commands on the raw bytes nettai writes, decodes the MP4s with a full
-ffmpeg, and publishes a release `ffmpeg-<version>-<revision>` (ffmpeg-9.0.2-2 since the export stopped writing
-NUT: the user, "can we avoid emitting nut entirely?"). Since 2026-10-29 the export's commands write raw H.264 and
-ADTS instead of MP4s (nettai-video reads its codecs' own output on every platform: §16), which want the `h264` and
-`adts` muxers in place of the MP4 one (and no longer `scale`, `format` or `setparams`: the frames come as NV12):
-the release at ffmpeg-9.0.2-2 has the MP4 muxer alone, so a release of nettai with this needs a new one of
-nettaisen/ffmpeg-build first (`--enable-muxer=h264,adts`) and its pin here. `packaging/ffmpeg.sha256` pins the release a
+decoders, the pipe protocol, swresample's `aresample` with `aformat`, `null` and `anull`, libx264 and the native
+AAC encoder, the `h264` and `adts` muxers: its README traces each to the commands), smoke-tests it with those
+commands on the raw bytes nettai writes (NV12 made as nettai makes it), decodes the outputs with a full ffmpeg,
+and publishes a release `ffmpeg-<version>-<revision>`. ffmpeg-9.0.2-3 (2026-10-30) is the one for the export's
+raw H.264 and ADTS (nettai-video reads its codecs' own output on every platform: §16): the `h264` and `adts`
+muxers in place of the MP4 one, and no `scale`, `format` or `setparams`, as the frames come as NV12; 9.0.2-2 had
+the MP4 muxer alone (the export before, released to 0.17.0). Its macOS arm64 build ran nettai-video's tests
+(`NETTAI_FFMPEG`, the end-to-end export among them). `packaging/ffmpeg.sha256` pins the release a
 package takes by its tag and each file by its SHA-256; the scripts download them once into
 `target/package/ffmpeg/<tag>/` and check them (or bundle the ffmpeg `NETTAI_BUNDLE_FFMPEG`, `-Ffmpeg` on Windows,
 names). Where it goes: `ffmpeg.exe` beside `nettai.exe` (the installer and the .zip), `Contents/MacOS/ffmpeg` in
