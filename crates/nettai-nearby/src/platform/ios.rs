@@ -236,7 +236,7 @@ pub fn advertise(_name: &str, _port: u16) -> Result<Advertised, String> {
 }
 
 /// UIDevice's name: the model's ("iPhone"), as iOS tells apps without an entitlement Apple grants.
-#[cfg(target_os = "ios")]
+#[cfg(ios)]
 pub fn device_name() -> String {
     // UIDevice is the main thread's; the app makes its Nearby there.
     let name = objc2::MainThreadMarker::new().map(|mtm| objc2_ui_kit::UIDevice::currentDevice(mtm).name().to_string());

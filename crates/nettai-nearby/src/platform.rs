@@ -13,23 +13,23 @@
 //! ([`system::browse`], told as [`crate::Seen`]), and the device's name ([`system::device_name`]). The rest (the
 //! transfers, the peers found) is the same for all.
 
-#[cfg(target_os = "android")]
+#[cfg(android)]
 #[allow(unsafe_code)]
 pub(crate) mod android;
 #[cfg(desktop)]
 #[allow(unsafe_code)]
 pub(crate) mod desktop;
-#[cfg(any(target_os = "ios", all(test, target_os = "macos")))]
+#[cfg(any(ios, all(test, target_os = "macos")))]
 #[allow(unsafe_code)]
 pub(crate) mod ios;
 #[cfg(web)]
 pub(crate) mod web;
 
-#[cfg(target_os = "android")]
+#[cfg(android)]
 pub(crate) use android as system;
 #[cfg(desktop)]
 pub(crate) use desktop as system;
-#[cfg(target_os = "ios")]
+#[cfg(ios)]
 pub(crate) use ios as system;
 #[cfg(web)]
 pub(crate) use web as system;
