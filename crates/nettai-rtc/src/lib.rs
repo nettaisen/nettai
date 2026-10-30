@@ -2,8 +2,8 @@
 //! (docs/design/rollback.md §4.7, §4.8), one API on both targets: natively
 //! str0m (pure Rust, sans I/O: ICE, DTLS and SCTP), its sockets, timers,
 //! candidates and TURN relays this crate's, on a thread of its own
-//! (`native::rtc`); on wasm32 the browser's `RTCPeerConnection`
-//! (web-datachannel, nettai's copy of datachannel-facade's web backend). It
+//! (`native::rtc`); on wasm32 the browser's `RTCPeerConnection` and data
+//! channels (`web::rtc`, which began as datachannel-facade's web backend). It
 //! took libdatachannel's place natively (C++, through datachannel-facade),
 //! which had taken the `rtc` crate's.
 //!

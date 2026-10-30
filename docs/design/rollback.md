@@ -757,8 +757,8 @@ reconnecting, so that a drop the link mends doesn't end the lobby. Then, each fr
 
 nettai-rtc carries the frames on a WebRTC data channel, as Tango does. Natively the connection is str0m (pure Rust,
 sans I/O: ICE, DTLS with dimpl and RustCrypto, SCTP), its sockets, timers, candidates and TURN relays nettai-rtc's
-own (`native::rtc`); on wasm32 it is the browser's `RTCPeerConnection`, through web-datachannel (nettai's copy of
-datachannel-facade's web backend; `web::rtc`). Both are behind one API (`rtc`): calls, and events the caller takes
+own (`native::rtc`); on wasm32 it is the browser's `RTCPeerConnection` and data channels (`web::rtc`, which began as
+datachannel-facade's web backend and drives the browser's API directly). Both are behind one API (`rtc`): calls, and events the caller takes
 in turn (`rtc::Event`: this side's description, its candidates, the state, a channel open or closed, a message),
 with no callbacks, so the connection above them is one module for both targets (`peer`). It took the place of
 libdatachannel (C++ with Mbed TLS, through datachannel-facade), which had taken the `rtc` crate's (webrtc-rs's

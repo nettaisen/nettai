@@ -1,13 +1,12 @@
-//! One WebRTC connection and its data channels, on one synchronous,
-//! callback-based API on both targets: nettai-rtc's own natively
-//! (`crate::native::rtc`, on str0m: its sockets, timers, ICE, DTLS and SCTP
-//! driven on a thread of this crate's) and web-datachannel's on wasm32 (the
-//! browser's `RTCPeerConnection`), the one shaped like the other. So this
-//! module is the same on both targets: the callbacks put what they learn in a
-//! queue (natively behind a mutex, since they come from the connections'
-//! thread; on the web in a `RefCell`, since the browser calls them on the
-//! page's one thread), and the calls here take from it, never waiting, from
-//! the caller's frame loop.
+//! One WebRTC connection and its data channels, on `crate::rtc`'s one API on
+//! both targets: nettai-rtc's own natively (`crate::native::rtc`, on str0m:
+//! its sockets, timers, ICE, DTLS and SCTP driven on a thread of this
+//! crate's) and the browser's on wasm32 (`crate::web::rtc`: its
+//! `RTCPeerConnection` and data channels). So this module is the same on
+//! both targets: each backend puts what it learns in a queue (natively from
+//! the connections' thread; on the web from the browser's handlers and
+//! Promises, on the page's one thread), and the calls here take from it
+//! ([`crate::rtc`]'s `poll`), never waiting, from the caller's frame loop.
 //!
 //! **Candidates and servers** are the backend's: natively a host candidate on
 //! each of the machine's interfaces, one STUN server asked for the address the

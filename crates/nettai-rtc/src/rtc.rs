@@ -1,6 +1,6 @@
 //! The WebRTC connection under [`crate::peer`], one API on both targets:
 //! natively nettai-rtc's own (`native::rtc`, on str0m), on the web the
-//! browser's (`web::rtc`, over web-datachannel). A connection is told
+//! browser's (`web::rtc`, its `RTCPeerConnection`). A connection is told
 //! things by calls and says what happened through [`PeerConnection::poll`]'s
 //! [`Event`]s, which its caller takes in turn: no callbacks.
 
