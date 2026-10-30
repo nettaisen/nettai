@@ -1,7 +1,7 @@
 //! Work for the app's futures, which run on the window's event loop (`slint::spawn_local`: their results land on the
 //! window's thread, and its `JoinHandle::abort` cancels one). On the desktop the program runs under tokio (nettai's
-//! main.rs: `#[tokio::main]`, Slint's loop in `block_in_place`), so those futures can use tokio's (reqwest's:
-//! nettai-http); in the browser there is no tokio, the page's fetch instead.
+//! main.rs: `#[tokio::main]`, Slint's loop in `block_in_place`), so those futures can use tokio's (reqwest's: the
+//! app's `http.rs`); in the browser there is no tokio, the page's fetch instead.
 //!
 //! [`off_thread`]: work too long for the window's thread (reading a file, hashing it), done on a thread of its own
 //! ([`crate::spawn`]: a Web Worker in the browser) and awaited.

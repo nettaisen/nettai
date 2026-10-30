@@ -1251,8 +1251,9 @@ isolated (COOP and COEP), which a page with threads must be.
 - **What the app asks of the system** is the same calls everywhere, a crate a concern (nettai-platform's modules
   until 2026-10-30): nettai-files (files, the app's folders), nettai-threads (threads, their locks, work off the
   window's thread), nettai-dialogs (files to open, a folder, where to save, a file written as it is made, files
-  dropped, the clipboard), nettai-http, nettai-page (the window is the page's whole, following its size, and the
-  input over a field: `text_entry`), nettai-lifecycle and nettai-android; time is web-time's. A dialog answers
+  dropped, the clipboard), nettai-page (the window is the page's whole, following its size, and the input over a
+  field: `text_entry`), nettai-lifecycle and nettai-android; time is web-time's; files over HTTP are the app's own
+  (`http.rs`, nettai-http's until it folded in, 2026-10-30). A dialog answers
   through a callback, after the call on both (the browser's later), and the screen shown hears the files
   (`Screen::chosen`). In the browser a file chosen or dropped is read into the app's files; a folder chosen is
   read as far as the app names its files (the collection's archives: `nettai_extract::source::ARCHIVES`); a file
@@ -3509,7 +3510,7 @@ without a release, and a version
 that changes what the network sees waits for one trained for it (docs/design/training-ai.md §10.5). It is asked for
 when Fights is first picked in a run (`screens/practice/weights.rs`, `Weights::wanted`), then shared by every
 dummy that fights: the data folder's copy (`ai/<line>/nettai-ai.safetensors`) where that is the index's, else the
-index's downloaded (`nettai_http`), checked by its SHA-256 and kept; with no index (no connection, or no
+index's downloaded (the app's `http.rs`), checked by its SHA-256 and kept; with no index (no connection, or no
 weights for the line yet) the copy kept plays, if there is one. Till it has arrived the dummy waits as it waits for
 its fingerprints (`WaitingAi`: its custom screen held), and the corner's count below counts it as one more thing
 to make ready; one that can't be had, or weights this encoder can't play, is said in the log and the dummy stands

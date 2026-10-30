@@ -144,7 +144,7 @@ and the WASI SDK; see [docs/app.md](docs/app.md) §6.
 | `crates/nettai-netplay`, `nettai-rtc` | Rollback netplay, and its WebRTC transport |
 | `crates/nettai-replay`, `nettai-video` | The replay format; replays exported as MP4 |
 | `crates/nettai`, `nettai-ui` | The app (Slint), and its UI files |
-| `crates/nettai-files`, `nettai-threads`, `nettai-dialogs`, `nettai-http`, `nettai-page`, `nettai-lifecycle`, `nettai-android`, `nettai-gamepad` | What the app asks of the system, the same on the desktop, in a browser and on a phone, a crate a concern |
+| `crates/nettai-files`, `nettai-threads`, `nettai-dialogs`, `nettai-page`, `nettai-lifecycle`, `nettai-android`, `nettai-gamepad` | What the app asks of the system, the same on the desktop, in a browser and on a phone, a crate a concern |
 | `crates/nettai-web` | The browser build |
 | `crates/nettai-tools` | `nettai-tool`, the command line |
 | `crates/nettai-training`, `training/` | A learned AI opponent (work in progress): the Rust side and the Python trainer |

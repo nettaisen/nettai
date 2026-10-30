@@ -3741,6 +3741,7 @@ dependencies = [
  "exe4-compat",
  "exe5-compat",
  "exe6-compat",
+ "futures-util",
  "i-slint-backend-winit",
  "icu_casemap",
  "icu_list",
@@ -3757,7 +3758,6 @@ dependencies = [
  "nettai-files",
  "nettai-frontend",
  "nettai-gamepad",
- "nettai-http",
  "nettai-lifecycle",
  "nettai-match",
  "nettai-page",
@@ -3769,6 +3769,8 @@ dependencies = [
  "nettai-ui",
  "nettai-video",
  "png 0.17.16",
+ "reqwest",
+ "rustls",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -3963,15 +3965,6 @@ dependencies = [
  "send_wrapper",
  "wasm-bindgen",
  "web-sys",
-]
-
-[[package]]
-name = "nettai-http"
-version = "0.1.0"
-dependencies = [
- "futures-util",
- "reqwest",
- "rustls",
 ]
 
 [[package]]

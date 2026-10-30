@@ -7,16 +7,19 @@ description = "The nettai app: the menus, the builds, netplay and the replays ar
 
 [dependencies]
 # What the app asks of its system, the same on the desktop, in a browser and on a phone, a crate a concern: files
-# and the app's folders, threads, dialogs (and the clipboard), files over HTTP (the games' content, `contents.rs`,
-# and the dummy's network), the browser's page, and the app's life (kept awake, come back).
+# and the app's folders, threads, dialogs (and the clipboard), the browser's page, and the app's life (kept awake,
+# come back).
 nettai-files = { path = "../nettai-files" }
 nettai-threads = { path = "../nettai-threads" }
 nettai-dialogs = { path = "../nettai-dialogs" }
-nettai-http = { path = "../nettai-http" }
 nettai-page = { path = "../nettai-page" }
 nettai-lifecycle = { path = "../nettai-lifecycle" }
 # Time: std's natively, the browser's `performance.now()` there (std's panics).
 web-time = "1"
+# Files over HTTP(S) (`http.rs`: the games' content, the dummy's network): reqwest, hyper and rustls natively (no
+# provider of its own: ring's, given), the browser's fetch there; a body taken as it comes, for its progress.
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "stream"] }
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
 # The UI: the Slint files compiled, a crate of its own so an edit here doesn't compile it again (docs/app.md §14).
 nettai-ui = { path = "../nettai-ui" }
 nettai-frontend = { path = "../nettai-frontend" }
@@ -94,8 +97,10 @@ nettai-android = { path = "../nettai-android" }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # The program runs under tokio (main.rs: `#[tokio::main]`, Slint's loop in `block_in_place`), so the futures the
-# window's loop runs can use reqwest (`nettai_http`).
+# window's loop runs can use reqwest (`http.rs`).
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+# The TLS provider reqwest is given (`http.rs`): ring's, as the tree's rustls has (nettai-rtc's).
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 
 # The log on the browser's console.
 [target.'cfg(target_arch = "wasm32")'.dependencies]

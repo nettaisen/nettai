@@ -1,5 +1,6 @@
-//! A file over HTTP(S) ([`get`], [`get_reporting`]): reqwest's, async, the same call everywhere: hyper and rustls
-//! (ring) on the desktop and a phone, the browser's `fetch` there. Await it where tokio's context is (on the desktop
+//! A file over HTTP(S) ([`get`], [`get_reporting`]): the games' content (`contents.rs`) and the dummy's network
+//! (`screens/practice/weights.rs`). reqwest's, async, the same call everywhere: hyper and rustls (ring) on the
+//! desktop and a phone, the browser's `fetch` there. Await it where tokio's context is (on the desktop
 //! the app's window's thread, the program running under tokio: nettai-threads' `off_thread`); dropping it cancels
 //! the request.
 

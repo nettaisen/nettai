@@ -266,7 +266,7 @@ impl Contents {
     /// Read the catalog of games ([`Contents::catalog`]), and keep it: its games.
     async fn fetch_catalog(&self) -> Result<Vec<String>, String> {
         let url = &self.catalog;
-        let body = nettai_http::get(url, MAX_INDEX).await?;
+        let body = crate::http::get(url, MAX_INDEX).await?;
         let catalog: Catalog = serde_json::from_slice(&body).map_err(|e| format!("{url}: a catalog that doesn't read: {e}"))?;
         keep(self.store.dir.join(CATALOG_FILE), &body);
         if let Ok(mut read) = nettai_threads::lock(&self.read) {
@@ -285,7 +285,7 @@ impl Contents {
             let catalog = read.catalog.as_ref().ok_or_else(|| "no catalog of games has been read".to_string())?;
             catalog.games.get(game).cloned().ok_or_else(|| format!("the catalog of games has no {game}"))?
         };
-        let body = nettai_http::get(&url, MAX_INDEX).await?;
+        let body = crate::http::get(&url, MAX_INDEX).await?;
         let index: Index = serde_json::from_slice(&body).map_err(|e| format!("{url}: an index that doesn't read: {e}"))?;
         if index.game != game {
             return Err(format!("{url}: the index of {}, not {game}", index.game));
@@ -307,7 +307,7 @@ impl Contents {
         }
         let url = published.url()?.to_string();
         let size = published.size.max(1) as f32;
-        let gz = nettai_http::get_reporting(&url, MAX_BUNDLE, |got| progress((got as f32 / size).min(1.0))).await?;
+        let gz = crate::http::get_reporting(&url, MAX_BUNDLE, |got| progress((got as f32 / size).min(1.0))).await?;
         let (id, hash) = (published.id, published.content_hash);
         nettai_threads::off_thread("storing content", move || storing(|| store.add(&gz, id, Some(hash))))
             .await?
