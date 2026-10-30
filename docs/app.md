@@ -73,7 +73,7 @@ variables are for development:
 `AfterRendering` notes that the frame was drawn and asks for the next one, so the app runs at the display's rate:
 120 frames a second on this Mac's display. A frame shows the picture presented for it, not the previous frame's.
 
-**The app keeps its time while something runs** (`nettai_lifecycle::Awake`). macOS gives an app that isn't in front, or whose
+**The app keeps its time while something runs** (the app's `lifecycle::Awake`). macOS gives an app that isn't in front, or whose
 window is covered, the lowest priority and delays its timers (App Nap); on a busy machine it then gets no time at
 all. The screenshot pass found it: covered by another window while builds loaded the machine (load average 170),
 it stopped mid-walk, in the middle of a frame, and never went on. So while a battle is loading or running, while
@@ -1240,19 +1240,28 @@ the next tick (8.4 ms on average). The dev profile wasn't measured.
 
 ## 6. The web
 
-The app runs in a browser (Chromium: the folder dialog is `showDirectoryPicker`): crates/nettai-web is the module
-the page loads and the page itself (web/index.html). `bash crates/nettai-web/build.sh` builds it into
-target/web/site (Rust nightly with rust-src, wasm-bindgen-cli at Cargo.lock's wasm-bindgen version, WASI SDK 34 at
-`WASI_SDK_PATH`, in the environment or `~/.cargo/config.toml`'s `[env]`): the module is plain cargo,
-`cargo +nightly build --target wasm32-unknown-unknown -p nettai-web` (its atomics' flags and `build-std` are in
-.cargo/config.toml), and the script makes the page of it. And `python3 crates/nettai-web/serve.py` serves it at http://localhost:8000/ cross-origin
-isolated (COOP and COEP), which a page with threads must be.
+The app runs in a browser (Chromium: the folder dialog is `showDirectoryPicker`): the module the page loads is the
+app's crate's library, built as a cdylib for wasm32 alone (what the page calls: `page/platform/web/entry.rs`), and
+the page is packaging/web's (index.html, beside packaging/{android,ios,macos}). `bash packaging/web/build.sh` builds
+it into target/web/site (Rust nightly with rust-src, wasm-bindgen-cli at Cargo.lock's wasm-bindgen version, WASI
+SDK 34 at `WASI_SDK_PATH`, in the environment or `~/.cargo/config.toml`'s `[env]`): the module is plain cargo,
+`cargo +nightly rustc --target wasm32-unknown-unknown -p nettai --lib --crate-type cdylib` (its atomics' flags and
+`build-std` are in .cargo/config.toml), and the script makes the page of it (`nettai.js`, `nettai_bg.wasm`). The
+web type-check is `cargo +nightly check --target wasm32-unknown-unknown -p nettai`. And `python3
+packaging/web/serve.py` serves it at http://localhost:8000/ cross-origin isolated (COOP and COEP), which a page
+with threads must be.
 
 - **What the app asks of the system** is the same calls everywhere, a crate a concern (nettai-platform's modules
   until 2026-10-30): nettai-files (files, the app's folders), nettai-threads (threads, their locks, work off the
-  window's thread), nettai-dialogs (files to open, a folder, where to save, a file written as it is made, files
-  dropped, the clipboard), nettai-http, nettai-page (the window is the page's whole, following its size, and the
-  input over a field: `text_entry`), nettai-lifecycle and nettai-android; time is web-time's. A dialog answers
+  window's thread) and nettai-dialogs (files to open, a folder, where to save, a file written as it is made, files
+  dropped, the clipboard); time is web-time's; the browser's page (the window is the page's whole, following its
+  size, and the input over a field: `page::text_entry`), the app's life (kept awake, come back: `lifecycle`), files
+  over HTTP (`http.rs`), what the browser's page calls (`page`) and Android's entry point, activity and safe area
+  (`activity.rs`) are the app's own modules (nettai-page's, nettai-lifecycle's, nettai-http's, nettai-web's,
+  nettai-android's and nettai-android-app's until they folded in, 2026-10-30). Each crate (and each of those modules) has its systems' code in modules of their own under
+  `platform/`, `desktop`, `web`, `ios`, `android` or one several share (`native`: the desktop's and a phone's;
+  `phone`; `none`: nothing to do), chosen in one place (`platform.rs`), as nettai-video's are. Android's crates
+  reach Java through ndk-context's VM and activity, which android-activity sets. A dialog answers
   through a callback, after the call on both (the browser's later), and the screen shown hears the files
   (`Screen::chosen`). In the browser a file chosen or dropped is read into the app's files; a folder chosen is
   read as far as the app names its files (the collection's archives: `nettai_extract::source::ARCHIVES`); a file
@@ -1318,7 +1327,7 @@ isolated (COOP and COEP), which a page with threads must be.
   wordmark and bar, in its places) shows the download (against build.sh's sizes.json) and the kept files' loading,
   and fades as the app draws.
 - **Text typed.** winit gives the canvas no input method, so a field being edited has an HTML `<input>` laid over
-  it (`nettai_page::text_entry`), in its place, in the system's face: it takes the keys, the input method's
+  it (`page::text_entry`), in its place, in the system's face: it takes the keys, the input method's
   composing and candidates, the caret and the selection; its changes go to the app as the field's own would, and
   the field says back what the app kept of each (a code in capitals, a name at its length: `Nav.edit-kept`, each
   time `Nav.edit-heard` counts a change), which the input shows. Enter, Esc, Up, Down, Tab and a click elsewhere
@@ -1342,7 +1351,7 @@ run in the emulator (below, "Android"). What builds: the whole app, for iOS (typ
     export CC_aarch64_linux_android=$T/aarch64-linux-android26-clang AR_aarch64_linux_android=$T/llvm-ar
     export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=$T/aarch64-linux-android26-clang
     export CXX_aarch64_linux_android=$T/aarch64-linux-android26-clang++
-    cargo check --target aarch64-linux-android -p nettai-android-app
+    cargo check --target aarch64-linux-android -p nettai
 
 - **Slint:**
   - iOS: winit, drawn by femtovg on wgpu (Metal), since Slint has no OpenGL there (nettai-ui's features by
@@ -1388,14 +1397,14 @@ run in the emulator (below, "Android"). What builds: the whole app, for iOS (typ
     its companion, static by `@JvmStatic`). The APK's build compiles it (below); `android.app.Fragment` is
     deprecated, and present.
 - **The clipboard:** iOS's general pasteboard; Android's clipboard manager, on Java's main thread.
-- **Kept awake** (`nettai_lifecycle::Awake`): while a battle or a link runs, iOS's idle timer is off and Android's
-  window keeps the screen on (`FLAG_KEEP_SCREEN_ON`, set on the activity's thread by nettai-lifecycle's
+- **Kept awake** (`lifecycle::Awake`): while a battle or a link runs, iOS's idle timer is off and Android's
+  window keeps the screen on (`FLAG_KEEP_SCREEN_ON`, set on the activity's thread by the app's
   `NettaiAwake.kt`: android-activity's own `set_window_flags` waits forever when called from the app's loop, as it
   takes for writing the lock its loop holds for reading).
 - **Sound:** cpal plays through CoreAudio on iOS and AAudio on Android. On iOS the audio session is the system's
   default: the silent switch mutes the game, as it does most games (the user's choice), and other apps' sound
   stops while it plays. A phone stops the sound's device while the app is away or a call has the sound:
-  `nettai_lifecycle::resumed` says when the app came back (iOS: made active again, or its audio session
+  `lifecycle::resumed` says when the app came back (iOS: made active again, or its audio session
   interrupted or given back), and the sound starts its device again (`Output::resume`, as the web does after a
   click).
 - **Video export:** each phone's own codecs (§16; nettai-video's `platform::ios` and `platform::android`):
@@ -1434,14 +1443,15 @@ run in the emulator (below, "Android"). What builds: the whole app, for iOS (typ
 
 ### Android
 
-**The app** is crates/nettai-android-app: `libnettai_app.so`, whose `android_main` hands the activity to
-`nettai_android::init` first, sets up the certificate verifier (`rustls_platform_verifier::android::init_with_env`)
-and runs `nettai::run` under tokio, as the desktop's `main` does. android-activity puts stdout and stderr on logcat
-(tagged RustStdoutStderr), and a panic of that thread (RustPanic). The activity is `nettai.app.NettaiActivity`
-(Kotlin, the crate's `android/`), a GameActivity: androidx.games' games-activity 4.4.0, the version
-android-activity 0.6's `game-activity` feature is written for (winit's is `android-game-activity`). Its build
-script links the NDK's compiler-rt builtins, whose outline atomics aws-lc (str0m's DTLS) calls and rustc's
-`-nodefaultlibs` link leaves out.
+**The app** is the app's crate's library built as a cdylib for Android alone (`cargo rustc -p nettai --lib
+--crate-type cdylib`: packaging/android/package.sh; the desktop and iOS make none): `libnettai.so`, whose
+`android_main` (`activity.rs`) keeps the activity first, sets up the certificate verifier
+(`rustls_platform_verifier::android::init_with_env`) and runs `nettai::run` under tokio, as the desktop's `main`
+does. android-activity puts stdout and stderr on logcat (tagged RustStdoutStderr), and a panic of that thread
+(RustPanic). The activity is `nettai.app.NettaiActivity` (Kotlin, crates/nettai/android), a GameActivity:
+androidx.games' games-activity 4.4.0, the version android-activity 0.6's `game-activity` feature is written for
+(winit's is `android-game-activity`). The app's build script links the NDK's compiler-rt builtins there, whose
+outline atomics aws-lc (str0m's DTLS) calls and rustc's `-nodefaultlibs` link leaves out.
 
 **The window and the input: Slint's winit backend on the activity's loop.** Slint's selector offers Android its
 android-activity backend alone, which reads the activity's input itself and gives the app none of it. The app
@@ -1456,11 +1466,11 @@ GameActivity's Java side takes first (below); what winit 0.30's Android input la
   first runs drew nothing), and is hidden at each suspend and shown at each resume, which makes it anew on the new
   surface (Slint drops a hidden window's surface when `SLINT_DESTROY_WINDOW_ON_HIDE` is set, which `NettaiActivity`
   sets before the library loads). The loop is `run_event_loop_until_quit`, so the hidden window doesn't end it.
-- **Sound** pauses as the window loses focus and starts again as it gains it (`nettai_lifecycle::came_back`).
+- **Sound** pauses as the window loses focus and starts again as it gains it (`lifecycle::came_back`).
 - **The safe area:** Slint's winit backend has none on Android. GameActivity's surface is the whole window, under
   the bars, which the activity makes see-through (`enableEdgeToEdge`, light icons on the app's dark colors), so
   its content rect is the whole window too. The activity hands over the bars' and cutouts' insets as Android says
-  them (`onApplyWindowInsets`, to `nettai_android::safe_area`), read each frame (Android changes them without a
+  them (`onApplyWindowInsets`, to `activity.rs`'s safe area), read each frame (Android changes them without a
   winit event) into the UI's `safe-left` and the rest.
 - **Touch:** winit's touches, every finger its own: the menus and the on-screen pad work. (In the emulator a pad's
   button wants a press held a while, `adb shell input swipe x y x y 150`: `input tap` lets go within one of the
@@ -1497,8 +1507,8 @@ what goes in, in `target/package/android`:
 then runs Gradle in packaging/android on them (their paths as `-P` properties): `gradlew`, the wrapper, fetches
 Gradle 9.8.1 and checks its zip's SHA-256; `build.gradle.kts` is AGP 9.5.0 with its own Kotlin (2.2.10), on a
 JDK 17 (`JAVA_HOME`). Gradle
-- compiles every crate's `android/**/*.kt` (`NettaiActivity`, nettai-gamepad's `NettaiGamepads`, nettai-dialogs'
-  `NettaiFiles`, nettai-lifecycle's `NettaiAwake`);
+- compiles every crate's `android/**/*.kt` (the app's `NettaiActivity` and `NettaiAwake`, nettai-gamepad's
+  `NettaiGamepads`, nettai-dialogs' `NettaiFiles`);
 - adds GameActivity (`androidx.games:games-activity:4.4.0`), AppCompat (`androidx.appcompat:appcompat:1.7.1`,
   GameActivity's base class) and the verifier's AAR;
 - shrinks the code and resources with R8 (`proguard-rules.pro` keeps what native code finds by name: the crates'
@@ -3516,7 +3526,7 @@ without a release, and a version
 that changes what the network sees waits for one trained for it (docs/design/training-ai.md §10.5). It is asked for
 when Fights is first picked in a run (`screens/practice/weights.rs`, `Weights::wanted`), then shared by every
 dummy that fights: the data folder's copy (`ai/<line>/nettai-ai.safetensors`) where that is the index's, else the
-index's downloaded (`nettai_http`), checked by its SHA-256 and kept; with no index (no connection, or no
+index's downloaded (the app's `http.rs`), checked by its SHA-256 and kept; with no index (no connection, or no
 weights for the line yet) the copy kept plays, if there is one. Till it has arrived the dummy waits as it waits for
 its fingerprints (`WaitingAi`: its custom screen held), and the corner's count below counts it as one more thing
 to make ready; one that can't be had, or weights this encoder can't play, is said in the log and the dummy stands

@@ -1,4 +1,4 @@
-# Builds for the browser (crates/nettai-web): Wasm's atomics, so its threads are Web Workers on one shared memory.
+# Builds for the browser (the app's page: packaging/web): Wasm's atomics, so its threads are Web Workers on one shared memory.
 # The standard library is built again with them (nightly with rust-src; stable ignores [unstable], and a build for
 # the machine itself builds none: only one with --target). WASI SDK 34's settings are the machine's
 # (WASI_SDK_PATH in ~/.cargo/config.toml's [env]; crates/nettai-luau/README.md).

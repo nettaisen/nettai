@@ -337,7 +337,7 @@ msgid "nettai needs Battle Network Legacy Collection Vol. 2"
 msgstr "nettai 需要《洛克人EXE 合集 Vol. 2》"
 msgid "Install it from Steam, then right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this window."
 msgstr "請從 Steam 安裝後，在收藏庫中對它按右鍵，選擇「管理」→「瀏覽本機檔案」，再將 exe 資料夾拖曳到此視窗。"
-# The same in a browser (nettai-web), which has no Steam to install it from.
+# The same in a browser (the web build), which has no Steam to install it from.
 msgid "nettai needs Battle Network Legacy Collection Vol. 2. In Steam, right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this page."
 msgstr "nettai 需要《洛克人EXE 合集 Vol. 2》。請在 Steam 收藏庫中對它按右鍵，選擇「管理」→「瀏覽本機檔案」，再將 exe 資料夾拖曳到此頁面。"
 msgid "In Steam, right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this page."

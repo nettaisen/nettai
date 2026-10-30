@@ -3763,18 +3763,23 @@ dependencies = [
 name = "nettai"
 version = "0.17.0"
 dependencies = [
+ "block2 0.6.2",
+ "cc",
  "chrono",
+ "console_error_panic_hook",
  "console_log",
  "exe4-compat",
  "exe5-compat",
  "exe6-compat",
+ "futures-util",
  "i-slint-backend-winit",
  "icu_casemap",
  "icu_list",
  "icu_locale_core",
+ "jni",
+ "js-sys",
  "libc 0.2.190",
  "log",
- "nettai-android",
  "nettai-audio",
  "nettai-battle",
  "nettai-content",
@@ -3784,11 +3789,8 @@ dependencies = [
  "nettai-files",
  "nettai-frontend",
  "nettai-gamepad",
- "nettai-http",
- "nettai-lifecycle",
  "nettai-match",
  "nettai-nearby",
- "nettai-page",
  "nettai-render",
  "nettai-replay",
  "nettai-rtc",
@@ -3796,7 +3798,14 @@ dependencies = [
  "nettai-training",
  "nettai-ui",
  "nettai-video",
+ "objc2 0.6.4",
+ "objc2-avf-audio",
+ "objc2-foundation 0.3.2",
+ "objc2-ui-kit 0.3.2",
  "png 0.17.16",
+ "reqwest",
+ "rustls",
+ "rustls-platform-verifier",
  "serde",
  "serde_json",
  "sha2 0.10.9",
@@ -3806,29 +3815,10 @@ dependencies = [
  "tokio",
  "toml 0.8.23",
  "velopack",
+ "wasm-bindgen",
  "web-time",
  "winit",
  "winresource",
-]
-
-[[package]]
-name = "nettai-android"
-version = "0.1.0"
-dependencies = [
- "android-activity",
- "jni",
-]
-
-[[package]]
-name = "nettai-android-app"
-version = "0.17.0"
-dependencies = [
- "android-activity",
- "cc",
- "nettai",
- "nettai-android",
- "rustls-platform-verifier",
- "tokio",
 ]
 
 [[package]]
@@ -3905,7 +3895,7 @@ dependencies = [
  "jni",
  "js-sys",
  "log",
- "nettai-android",
+ "ndk-context",
  "nettai-files",
  "nettai-threads",
  "objc2 0.6.4",
@@ -3942,9 +3932,10 @@ name = "nettai-files"
 version = "0.1.0"
 dependencies = [
  "cfg_aliases",
+ "jni",
  "js-sys",
  "log",
- "nettai-android",
+ "ndk-context",
  "nettai-threads",
  "wasm-bindgen",
  "wasm-bindgen-futures",
@@ -3994,29 +3985,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nettai-http"
-version = "0.1.0"
-dependencies = [
- "futures-util",
- "reqwest",
- "rustls",
-]
-
-[[package]]
-name = "nettai-lifecycle"
-version = "0.1.0"
-dependencies = [
- "block2 0.6.2",
- "jni",
- "log",
- "nettai-android",
- "objc2 0.6.4",
- "objc2-avf-audio",
- "objc2-foundation 0.3.2",
- "objc2-ui-kit 0.3.2",
-]
-
-[[package]]
 name = "nettai-luau"
 version = "0.1.0"
 dependencies = [
@@ -4048,7 +4016,7 @@ dependencies = [
  "libc 0.2.190",
  "log",
  "mdns-sd",
- "nettai-android",
+ "ndk-context",
  "objc2 0.6.4",
  "objc2-foundation 0.3.2",
  "objc2-ui-kit 0.3.2",
@@ -4062,14 +4030,6 @@ dependencies = [
  "nettai-battle",
  "nettai-content-api",
  "rennet",
-]
-
-[[package]]
-name = "nettai-page"
-version = "0.1.0"
-dependencies = [
- "js-sys",
- "wasm-bindgen",
 ]
 
 [[package]]
@@ -4126,6 +4086,7 @@ dependencies = [
 name = "nettai-threads"
 version = "0.1.0"
 dependencies = [
+ "cfg_aliases",
  "futures-channel",
  "futures-executor",
  "js-sys",
@@ -4203,17 +4164,6 @@ dependencies = [
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-time",
-]
-
-[[package]]
-name = "nettai-web"
-version = "0.17.0"
-dependencies = [
- "console_error_panic_hook",
- "js-sys",
- "nettai",
- "nettai-files",
- "wasm-bindgen",
 ]
 
 [[package]]

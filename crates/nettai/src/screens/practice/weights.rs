@@ -8,7 +8,7 @@
 //!
 //! It is asked for when Fights is first picked in a run ([`Weights::wanted`]), then the same for every dummy that
 //! fights. The data folder keeps the last one downloaded (`ai/<line>/nettai-ai.safetensors`): where it is the
-//! index's, it is read from there; else the index's is downloaded (nettai-http, reqwest's, in a future on
+//! index's, it is read from there; else the index's is downloaded (`crate::http`, reqwest's, in a future on
 //! the window's loop, `slint::spawn_local`, aborted if the app quits first; the files read, hashed and written off
 //! that thread, `nettai_threads::off_thread`), checked against its SHA-256 and kept. With no
 //! index (no connection, or no line for this version), the one kept plays if there is one.
@@ -82,8 +82,8 @@ fn index_address(body: &[u8]) -> Result<String, String> {
 
 /// This line's entry: the catalog, then the AI's index it names.
 async fn listed() -> Result<Entry, String> {
-    let catalog = nettai_http::get(&nettai_content::bundle::catalog_url(), MAX_INDEX).await?;
-    let index = nettai_http::get(&index_address(&catalog)?, MAX_INDEX).await?;
+    let catalog = crate::http::get(&nettai_content::bundle::catalog_url(), MAX_INDEX).await?;
+    let index = crate::http::get(&index_address(&catalog)?, MAX_INDEX).await?;
     entry(&index, &line())
 }
 
@@ -151,7 +151,7 @@ async fn network() -> Result<Arc<Net>, String> {
     if let Some(net) = off_thread("ai-weights", move || nettai_files::read(&k).ok().filter(|bytes| sha256(bytes) == sha).map(|bytes| read(&bytes))).await? {
         return net;
     }
-    let bytes = nettai_http::get(&entry.url, MAX_BYTES).await?;
+    let bytes = crate::http::get(&entry.url, MAX_BYTES).await?;
     off_thread("ai-weights", move || {
         let net = checked(&bytes, &entry)?;
         let written = kept.parent().map_or(Ok(()), nettai_files::create_dir_all).and_then(|_| nettai_files::write(&kept, &bytes));

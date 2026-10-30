@@ -53,7 +53,7 @@
 //! - the host waits for the next generation: an offer in the room (which it
 //!   asks for every 2 seconds), or the joiner's connectivity checks
 //!   directly (once its connection is over, which has the port till then:
-//!   `crate::native::direct`; one that doesn't open within
+//!   `platform::native::direct`; one that doesn't open within
 //!   [`Config::dial_timeout`] is given up).
 //!
 //! **STUN and TURN** in a room are the server's: once both players are in
@@ -97,8 +97,7 @@ use crate::room::{Room, RoomEvent};
 use crate::signal::{self, Signal};
 use crate::{Config, Duration, Error, ErrorKind, IceServer, Instant, Message, PeerConnection, PeerEvent, Role};
 
-#[cfg(not(target_arch = "wasm32"))]
-use crate::native::direct::{Listener, MAX_DATAGRAM};
+use crate::platform::system::direct::Direct;
 
 /// How often a host in a room asks the joiner to dial again while it is
 /// down.
@@ -131,12 +130,9 @@ const ACK: &str = "ack ";
 enum Way {
     /// Through the signaling server.
     Server(Signaling),
-    /// Directly: the host listens.
-    #[cfg(not(target_arch = "wasm32"))]
-    Listen(Listener),
-    /// Directly: the joiner dials the host's address, as `nonce`.
-    #[cfg(not(target_arch = "wasm32"))]
-    Dial { host: std::net::SocketAddr, nonce: u32 },
+    /// Directly (natively: the host listens, the joiner dials it; a browser
+    /// has no way to).
+    Direct(Direct),
 }
 
 /// A room of the signaling server.
@@ -285,8 +281,6 @@ pub struct Link {
     /// connection that has since dropped first.
     inbox: VecDeque<Vec<u8>>,
     taken: Vec<u8>,
-    #[cfg(not(target_arch = "wasm32"))]
-    buf: Vec<u8>,
     /// Drop everything sent and taken until then (tests).
     outage: Option<Instant>,
 }
@@ -314,10 +308,15 @@ impl Link {
             failed: None,
             inbox: VecDeque::new(),
             taken: Vec::new(),
-            #[cfg(not(target_arch = "wasm32"))]
-            buf: vec![0; MAX_DATAGRAM],
             outage: None,
         }
+    }
+
+    /// A link meeting directly (`Link::host` and `Link::join`, the native
+    /// build's: `platform::native::direct`).
+    #[allow(dead_code)] // (A browser's never does: its `Direct` has no value.)
+    pub(crate) fn directly(config: Config, direct: Direct, role: Role) -> Link {
+        Link::new(config, Way::Direct(direct), Some(role))
     }
 
     /// Ask the signaling server at `server` (`wss://...`) for a new room,
@@ -346,31 +345,6 @@ impl Link {
         Ok(Link::new(config, way, None))
     }
 
-    /// Host directly: listen on UDP `port` of every IPv4 interface (0: one
-    /// the system picks, [`Link::port`]) for the joiner. A port that can't
-    /// be listened on errs ([`ErrorKind::PortUnavailable`]). A direct link
-    /// asks no STUN or TURN server: it says no candidate to anyone.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn host(port: u16, config: Config) -> Result<Link, Error> {
-        let listener = Listener::bind(port)?;
-        Ok(Link::new(config, Way::Listen(listener), Some(Role::Host)))
-    }
-
-    /// Join the host at `addr` (`host:port`) directly (resolving its name
-    /// now, which may wait). An address that names no machine errs
-    /// ([`ErrorKind::BadAddress`]).
-    #[cfg(not(target_arch = "wasm32"))]
-    pub fn join(addr: &str, config: Config) -> Result<Link, Error> {
-        use std::net::ToSocketAddrs;
-        let host = addr
-            .to_socket_addrs()
-            .map_err(|e| Error::new(ErrorKind::BadAddress, format!("can't resolve {addr}: {e}")))?
-            .min_by_key(|a| !a.is_ipv4())
-            .ok_or_else(|| Error::new(ErrorKind::BadAddress, format!("{addr} resolves to nothing")))?;
-        let nonce = crate::random_u64() as u32;
-        Ok(Link::new(config, Way::Dial { host, nonce }, Some(Role::Join)))
-    }
-
     /// This side's role: known at once directly, and from the server's
     /// welcome in a room.
     pub fn role(&self) -> Option<Role> {
@@ -380,9 +354,8 @@ impl Link {
     /// The direct host's port.
     pub fn port(&self) -> Option<u16> {
         match &self.way {
-            #[cfg(not(target_arch = "wasm32"))]
-            Way::Listen(l) => Some(l.port()),
-            _ => None,
+            Way::Server(_) => None,
+            Way::Direct(direct) => direct.port(),
         }
     }
 
@@ -394,8 +367,7 @@ impl Link {
     pub fn code(&self) -> Option<&str> {
         match &self.way {
             Way::Server(s) => s.invite.as_deref(),
-            #[cfg(not(target_arch = "wasm32"))]
-            _ => None,
+            Way::Direct(_) => None,
         }
     }
 
@@ -404,10 +376,7 @@ impl Link {
     pub fn describe(&self) -> String {
         match &self.way {
             Way::Server(s) => s.invite.as_ref().map_or_else(|| "a new room".to_string(), |code| format!("room {code}")),
-            #[cfg(not(target_arch = "wasm32"))]
-            Way::Listen(l) => format!("UDP port {}", l.port()),
-            #[cfg(not(target_arch = "wasm32"))]
-            Way::Dial { host, .. } => host.to_string(),
+            Way::Direct(direct) => direct.describe(),
         }
     }
 
@@ -489,7 +458,6 @@ impl Link {
 
     /// Drop everything sent and taken for `length`, as a network outage
     /// would (tests).
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn outage(&mut self, length: Duration) {
         let until = Instant::now() + length;
         self.outage = Some(until);
@@ -565,10 +533,7 @@ impl Link {
                     self.room_event(now, place, e)?;
                 }
             }
-            #[cfg(not(target_arch = "wasm32"))]
-            Way::Listen(_) => self.listen(now)?,
-            #[cfg(not(target_arch = "wasm32"))]
-            Way::Dial { .. } => {}
+            Way::Direct(_) => self.listen(now)?,
         }
         // The connection's news.
         if let Some(pc) = &mut self.pc {
@@ -614,10 +579,7 @@ impl Link {
         let meeting = !self.ever_open
             && match &self.way {
                 Way::Server(s) => s.there() && self.role.is_some(),
-                #[cfg(not(target_arch = "wasm32"))]
-                Way::Dial { .. } => true,
-                #[cfg(not(target_arch = "wasm32"))]
-                Way::Listen(_) => self.generation > 0,
+                Way::Direct(direct) => !direct.hosts() || self.generation > 0,
             };
         match (meeting, self.meeting) {
             (false, _) => self.meeting = None,
@@ -727,16 +689,14 @@ impl Link {
     /// [`Config::dial_timeout`] (it has the port, which the next dial
     /// needs).
     fn give_up_answer(&mut self, now: Instant) {
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Way::Listen(_) = self.way
+        if let Way::Direct(direct) = &self.way
+            && direct.hosts()
             && !self.open
             && self.dialed.is_some_and(|t| now.duration_since(t) >= self.config.dial_timeout)
         {
             let secs = self.config.dial_timeout.as_secs();
             self.lost(now, format!("no connection in {secs} seconds"));
         }
-        #[cfg(target_arch = "wasm32")]
-        let _ = now;
     }
 
     /// What the other side's link said on the channel: the host's code (the
@@ -788,25 +748,14 @@ impl Link {
     /// The direct host without a connection: listen on its port, and answer
     /// a joiner's check of a newer generation with a new connection (which
     /// has the port then).
-    #[cfg(not(target_arch = "wasm32"))]
     fn listen(&mut self, now: Instant) -> Result<(), Error> {
-        let Way::Listen(listener) = &mut self.way else { return Ok(()) };
+        let Way::Direct(direct) = &mut self.way else { return Ok(()) };
         if self.pc.is_some() {
             return Ok(());
         }
-        listener.listen();
-        while let Some((n, from)) = listener.recv(&mut self.buf) {
-            if self.outage.is_some() {
-                continue;
-            }
-            if let Some(generation) = listener.dialed(&self.buf[..n])
-                && generation > self.generation
-            {
-                let pc = listener.answer(&self.config, generation, from)?;
-                self.adopt(pc, generation);
-                self.dialed = Some(now);
-                break;
-            }
+        if let Some((pc, generation)) = direct.answer(&self.config, self.generation, self.outage.is_some())? {
+            self.adopt(pc, generation);
+            self.dialed = Some(now);
         }
         Ok(())
     }
@@ -877,7 +826,6 @@ impl Link {
         self.generation = generation;
         self.open = false;
         let pc = self.pc.insert(pc);
-        #[cfg(not(target_arch = "wasm32"))]
         pc.set_outage(self.outage);
         pc
     }
@@ -905,10 +853,10 @@ impl Link {
                 }
                 PeerConnection::offer_with(&self.config, &self.servers)
             }
-            #[cfg(not(target_arch = "wasm32"))]
-            Way::Dial { host, nonce } => PeerConnection::direct_dial(&self.config, *host, *nonce, generation),
-            #[cfg(not(target_arch = "wasm32"))]
-            Way::Listen(_) => return Ok(()),
+            Way::Direct(direct) => match direct.dial(&self.config, generation) {
+                Some(pc) => pc,
+                None => return Ok(()),
+            },
         };
         match pc {
             Ok(pc) => {

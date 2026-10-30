@@ -105,7 +105,7 @@ impl Sound {
     }
 
     /// The app went to the background (Android's: it would play on there): the device stops till the app comes
-    /// back (`nettai_lifecycle::resumed`, in [`Sound::frame`]).
+    /// back (`crate::lifecycle::resumed`, in [`Sound::frame`]).
     #[cfg(target_os = "android")]
     pub fn pause(&self) {
         if let Some(out) = &self.out {
@@ -199,7 +199,7 @@ impl Sound {
     pub fn frame(&mut self, now: Instant, ticks: Option<u32>, battle: &mut Vec<[f32; 2]>) {
         // (A phone's app back from the background, or its sound given back after a call: the device stopped then,
         // and is started again.)
-        if nettai_lifecycle::resumed()
+        if crate::lifecycle::resumed()
             && let Some(out) = &self.out
         {
             out.resume();

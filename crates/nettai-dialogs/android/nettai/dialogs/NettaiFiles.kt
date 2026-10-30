@@ -24,7 +24,7 @@ import java.io.InputStream
 import java.io.OutputStream
 
 /**
- * nettai's dialogs on Android (crates/nettai-dialogs/src/phone/android.rs): the system's pickers and its save
+ * nettai's dialogs on Android (crates/nettai-dialogs/src/platform/android.rs): the system's pickers and its save
  * dialog, each started by a fragment of its own added to the activity, which hears its result; and the clipboard.
  * The app's native library calls the companion's functions through JNI (static, @JvmStatic; the class found by
  * the activity's class loader) and hears the answers through the `external` functions it registers. Part of the

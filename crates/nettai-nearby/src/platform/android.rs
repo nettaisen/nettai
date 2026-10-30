@@ -7,7 +7,6 @@ use crate::Seen;
 use jni::objects::{JClass, JObject, JString, JValue};
 use jni::sys::jint;
 use jni::{Env, EnvUnowned, NativeMethod, jni_sig, jni_str};
-use nettai_android::java;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Mutex;
 use std::sync::mpsc::Sender;
@@ -29,6 +28,20 @@ fn tell(seen: Seen) {
     if let Some(tell) = SEEN.lock().unwrap_or_else(|e| e.into_inner()).as_ref() {
         let _ = tell.send(seen);
     }
+}
+
+/// `call` run with Java's environment (this thread attached to the VM) and the activity: ndk-context's, which
+/// android-activity sets as the app starts. What Java threw, or what went wrong, is the error, said.
+fn java<T>(call: impl FnOnce(&mut Env, &JObject) -> jni::errors::Result<T>) -> Result<T, String> {
+    let context = ndk_context::android_context();
+    // SAFETY: the process's VM, which android-activity hands ndk-context as the app starts.
+    let vm = unsafe { jni::JavaVM::from_raw(context.vm().cast()) };
+    vm.attach_current_thread(|env| {
+        // SAFETY: the activity, which android-activity holds as a global reference for the app's life.
+        let activity = unsafe { JObject::from_raw(env, context.context().cast()) };
+        call(env, &activity)
+    })
+    .map_err(|e: jni::errors::Error| e.to_string())
 }
 
 /// Browsing, until dropped.

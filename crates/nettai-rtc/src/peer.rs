@@ -1,7 +1,7 @@
 //! One WebRTC connection and its data channels, on `crate::rtc`'s one API on
-//! both targets: nettai-rtc's own natively (`crate::native::rtc`, on str0m:
-//! its sockets, timers, ICE, DTLS and SCTP driven on a thread of this
-//! crate's) and the browser's on wasm32 (`crate::web::rtc`: its
+//! both targets: nettai-rtc's own natively (`platform::native::rtc`, on
+//! str0m: its sockets, timers, ICE, DTLS and SCTP driven on a thread of this
+//! crate's) and the browser's on wasm32 (`platform::web::rtc`: its
 //! `RTCPeerConnection` and data channels). So this module is the same on
 //! both targets: each backend puts what it learns in a queue (natively from
 //! the connections' thread; on the web from the browser's handlers and
@@ -184,12 +184,8 @@ impl PeerConnection {
         if c.candidate.is_empty() {
             return Ok(());
         }
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let fields: Vec<&str> = c.candidate.split_whitespace().collect();
-            if fields.get(2).is_some_and(|p| !p.eq_ignore_ascii_case("udp")) || fields.get(4).is_some_and(|a| a.ends_with(".local")) {
-                return Ok(());
-            }
+        if !rtc::reaches(&c.candidate) {
+            return Ok(());
         }
         self.pc.add_remote_candidate(&c.candidate).map_err(err("can't take a candidate"))
     }
@@ -325,7 +321,6 @@ impl PeerConnection {
     /// outage): what comes is dropped as it comes, and a channel that opens
     /// meanwhile is said open once it is over, as a dial made during a real
     /// outage connects only after it.
-    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn set_outage(&mut self, until: Option<Instant>) {
         self.outage = until;
     }
@@ -342,21 +337,8 @@ impl Drop for PeerConnection {
 /// A connection's configuration in a room: its servers, relayed only if
 /// asked.
 fn configuration(config: &Config, servers: &[IceServer]) -> Configuration {
-    Configuration {
-        ice_servers: servers.to_vec(),
-        relay_only: config.relay_only,
-        #[cfg(not(target_arch = "wasm32"))]
-        checks_for: config.dial_timeout,
-        ..Configuration::default()
-    }
+    Configuration { ice_servers: servers.to_vec(), relay_only: config.relay_only, system: rtc::Options::in_room(config) }
 }
-
-// A connection goes to another thread with the link it is in (natively).
-#[cfg(not(target_arch = "wasm32"))]
-const _: () = {
-    const fn send<T: Send>() {}
-    send::<PeerConnection>();
-};
 
 #[cfg(test)]
 mod tests {

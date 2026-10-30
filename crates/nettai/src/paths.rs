@@ -15,7 +15,7 @@ use std::path::PathBuf;
 
 /// The app's data folder.
 pub fn data() -> PathBuf {
-    // (The browser's are the page's files, under one folder the page keeps: crates/nettai-web.)
+    // (The browser's are the page's files, under one folder the page keeps: packaging/web.)
     if cfg!(target_arch = "wasm32") {
         return PathBuf::from("/data");
     }

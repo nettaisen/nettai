@@ -24,10 +24,10 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["std
 objc2-ui-kit = { version = "0.3", default-features = false, features = ["std", "UIDevice"] }
 
 # Android's discovery is NsdManager, from Kotlin (android/), heard through native methods; started through JNI on the
-# activity.
+# activity (ndk-context's VM and activity, which android-activity sets).
 [target.'cfg(target_os = "android")'.dependencies]
-nettai-android = { path = "../nettai-android" }
 jni = "0.22"
+ndk-context = "0.1"
 
 [build-dependencies]
 # The targets by name (build.rs).

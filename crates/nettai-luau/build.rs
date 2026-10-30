@@ -9,7 +9,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=WASI_SDK_PATH");
     let sdk = PathBuf::from(env::var_os("WASI_SDK_PATH").expect("set WASI_SDK_PATH to wasi-sdk 34 (see crates/nettai-luau/README.md)"))
         .canonicalize().expect("WASI_SDK_PATH must name an existing SDK directory");
-    // A module with Wasm's atomics (the app's, whose threads are Web Workers on one shared memory: crates/nettai-web)
+    // A module with Wasm's atomics (the app's, whose threads are Web Workers on one shared memory: packaging/web)
     // takes the SDK's threads build of Luau's C++ and its runtime; any other the single-threaded one.
     let atomics = env::var("CARGO_CFG_TARGET_FEATURE").is_ok_and(|f| f.split(',').any(|f| f == "atomics"));
     let c_target = if atomics { "wasm32-wasip1-threads" } else { "wasm32-wasip1" };

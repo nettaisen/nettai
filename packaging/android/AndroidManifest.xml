@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- nettai's APK's manifest (build.gradle.kts gives the app id, net.n1gp.nettai, and the version). The activity is a
-     GameActivity (crates/nettai-android-app/android/nettai/app/NettaiActivity.kt), which loads libnettai_app.so and
+     GameActivity (crates/nettai/android/nettai/app/NettaiActivity.kt), which loads libnettai.so (the app's crate) and
      runs its android_main; the app reads its input and draws through winit, a gamepad's input through
      nettai-gamepad first (docs/app.md §7). It isn't made again as the phone turns or a keyboard comes and goes
      (configChanges): winit hears the new size, and a dialog's fragment answers the activity that asked. GameActivity
@@ -30,7 +30,7 @@
             android:launchMode="singleTask"
             android:theme="@style/Theme.AppCompat.NoActionBar"
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode|density">
-            <meta-data android:name="android.app.lib_name" android:value="nettai_app" />
+            <meta-data android:name="android.app.lib_name" android:value="nettai" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

@@ -337,7 +337,7 @@ msgid "nettai needs Battle Network Legacy Collection Vol. 2"
 msgstr "nettai にはロックマンエグゼ アドバンスドコレクション Vol.2 が必要です"
 msgid "Install it from Steam, then right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this window."
 msgstr "Steam でインストールしてから、ライブラリで右クリックして「管理」→「ローカルファイルを閲覧」を選び、exe フォルダをこのウィンドウにドラッグしてください。"
-# The same in a browser (nettai-web), which has no Steam to install it from.
+# The same in a browser (the web build), which has no Steam to install it from.
 msgid "nettai needs Battle Network Legacy Collection Vol. 2. In Steam, right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this page."
 msgstr "nettai にはロックマンエグゼ アドバンスドコレクション Vol.2 が必要です。Steam のライブラリで右クリックして「管理」→「ローカルファイルを閲覧」を選び、exe フォルダをこのページにドラッグしてください。"
 msgid "In Steam, right-click it in your library, choose Manage > Browse local files, and drag the exe folder onto this page."

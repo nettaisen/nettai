@@ -205,6 +205,7 @@ fn main() {
     std::fs::write(out.join("licenses.txt"), txt).expect("licenses.txt written");
 
     windows_icon();
+    android_builtins();
 }
 
 /// The Windows program's icon, from the .ico `$NETTAI_WINDOWS_ICON` names (packaging/icons.sh makes it from
@@ -220,4 +221,25 @@ fn windows_icon() {
     winresource::WindowsResource::new().set_icon(&icon.to_string_lossy()).compile().expect("the icon's resource compiles");
     #[cfg(not(windows))]
     println!("cargo:warning=NETTAI_WINDOWS_ICON is set, but a Windows program's icon is compiled on Windows only");
+}
+
+/// Android's library: the NDK's compiler-rt builtins linked in. rustc links with `-nodefaultlibs`, and C the library
+/// compiles calls their outline atomics (aws-lc's, under str0m's DTLS: `__aarch64_cas4_acq_rel`), which nothing else
+/// then defines. Where the archive is, the NDK's clang says (the one cc compiles the target's C with).
+fn android_builtins() {
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() != Ok("android") {
+        return;
+    }
+    let clang = cc::Build::new().cargo_metadata(false).get_compiler();
+    let said = std::process::Command::new(clang.path())
+        .args(clang.args())
+        .args(["-rtlib=compiler-rt", "-print-libgcc-file-name"])
+        .output()
+        .expect("the NDK's clang runs");
+    let builtins = String::from_utf8(said.stdout).expect("a path");
+    let builtins = builtins.trim();
+    assert!(Path::new(builtins).is_file(), "no compiler-rt builtins at {builtins}");
+    println!("cargo:rustc-link-arg={builtins}");
+    println!("cargo:rerun-if-env-changed=CC_aarch64_linux_android");
+    println!("cargo:rerun-if-env-changed=ANDROID_NDK_HOME");
 }
