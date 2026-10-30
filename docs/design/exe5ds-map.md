@@ -302,10 +302,10 @@ Two places read it, so a switch is taken in battle or on the custom screen.
 - **Accepting** (state 0x40, its sub-state 4, 0x0206391C):
   - saves the active navi's HP into its member block;
   - sets the screen's navi and shows the member's HP: the emotion window shows the navi's face (`sub_801E724`, or
-    0xFF for the field navi again, a change that blinks back to the face before as any does) and the HP box the
-    member's HP and max HP at once (`sub_801E0C8`; `sub_801E0BC` for the field navi), until the turn's start takes
-    the switch; the screen's emblem is the navi's too (`sub_802812C`). nettai: `Battle::screen_member` and
-    `screen_stats`, which the HUD, the emblem and the rules (`custom.player(side).member`) read;
+    0xFF for the field navi again) and the HP box the member's HP and max HP at once (`sub_801E0C8`; `sub_801E0BC`
+    for the field navi), until the turn's start takes the switch; the screen's emblem is the navi's too
+    (`sub_802812C`). nettai: `Battle::screen_member` and `screen_stats`, which the HUD, the emblem and the rules
+    (`custom.player(side).member`) read;
   - **clears the chips already picked**;
   - rebuilds the screen for the navi (`sub_802812C`);
   - swaps the panel's button and member, and counts the switch;
@@ -386,6 +386,14 @@ The paused path's steps are rewritten from the GBA's. The step tables are 0x020D
    - animation 0;
    - `sub_800FC9E` gets NaviStats +0x4C as a third argument (open);
    - 0x02098804 (collision +0x26 = 0, sound 0x93), and the mugshot on the local side.
+
+**The emotion window's navi** (0x0206FA00, DS code before the GBA's window update): the navi it shows is the one
+`sub_801E724` set (a switch on the custom screen), else the field navi (NaviStats +0x29). When that differs from
+the navi shown (+0x15), a timer at +0x14 starts at 10; while it runs, the window shows the navi before (+0x1F) on
+the counts with bit 2 set (7, 6, 3, 2), so the new face shows 3 ticks, the old 2, the new 2, the old 2, then the
+new. A team navi's face goes to the same tiles as MegaMan's (0x0206FBBC). The swap's change also sets the HP box
+at once (`sub_801E0D0`). Seen on the DS (`double/d-hero` frames 366 to 376, `double/d-hero-custom-screen`);
+nettai-render's `NaviFace`.
 
 **Settle** (0x0202C130, 21 ticks, new): it clears AIData +0x48 0x01409800 and +0x44 0x00100600, and ends in the
 **Double Attack trigger** (0x02042E74, §5). The trigger sets AIData +0x44 bit 0x02000000. The live handler then
