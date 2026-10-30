@@ -421,28 +421,33 @@ fn offered_icon<'a>(v: &View<'a>) -> Option<(&'a Tiles, usize)> {
         return None;
     }
     let b = view_look(v, ButtonView::FormOffer)?;
-    let n = offer_icon(v.b, v.side, v.b.offer(v.side)?);
+    let n = offer_icon(v.b, screen_navi(v), v.b.offer(v.side)?);
     (b.icons.len() >= 4 * (n + 1)).then_some((&b.icons, 4 * n))
 }
 
-/// An offer's icon among its button's: the offered form's place in the
-/// side's navi's form list that holds it, from 1 (the list is in the icons'
+/// The navi the screen is for: the party member a switch on it took (EXE5
+/// DS's state 0x40), else the side's navi.
+fn screen_navi(v: &View<'_>) -> NaviHandle {
+    let side = v.side as usize & 1;
+    v.screen.member.and_then(|m| v.b.party[side].member(m)).map_or(v.b.stats[side].navi, |s| s.navi)
+}
+
+/// An offer's icon among its button's: the offered form's place in
+/// `navi`'s form list that holds it, from 1 (the list is in the icons'
 /// order: EXE5's and EXE4's souls, the original's soul numbers), and the
 /// form's alternate (`offer_chaos`) the one after the list's; 0, the empty
 /// icon, for no form or one none of the navi's lists holds.
-fn offer_icon(b: &Battle, side: u8, offer: nettai_battle::rules::Offer) -> usize {
-    match form_place(b, side, offer.form) {
+fn offer_icon(b: &Battle, navi: NaviHandle, offer: nettai_battle::rules::Offer) -> usize {
+    match form_place(b, navi, offer.form) {
         Some((_, len)) if offer.alternate => len + 1,
         Some((place, _)) => place + 1,
         None => 0,
     }
 }
 
-/// Where `form` is among side `side`'s navi's forms: its place in the
-/// first of the navi's form lists that holds it (from 0), and the list's
-/// length.
-fn form_place(b: &Battle, side: u8, form: Option<FormHandle>) -> Option<(usize, usize)> {
-    let navi = b.stats[side as usize & 1].navi;
+/// Where `form` is among `navi`'s forms: its place in the first of the
+/// navi's form lists that holds it (from 0), and the list's length.
+fn form_place(b: &Battle, navi: NaviHandle, form: Option<FormHandle>) -> Option<(usize, usize)> {
     let (place, list) = b.content.navi(navi).forms.as_ref()?.holding(form?)?;
     Some((place, list.len()))
 }

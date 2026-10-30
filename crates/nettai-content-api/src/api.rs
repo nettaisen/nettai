@@ -1008,6 +1008,10 @@ pub struct CustomPlayer {
     /// The emotion the screen reads of its navi (its game's name).
     pub emotion: String,
     pub random_battle: bool,
+    /// The party member a switch on the screen took (EXE5 DS's state 0x40:
+    /// the screen's navi, its +0x10), whose navi the screen is for; none
+    /// while the screen is for the member on the field.
+    pub member: Option<u8>,
 }
 
 named_flags! {

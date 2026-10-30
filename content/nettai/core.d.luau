@@ -3332,7 +3332,7 @@ declare custom: {
     -- whether another button's or window's holds it; whether the picks are full;
     -- whether one of the rules' buttons is picked; what the screen reads
     -- of its player that isn't the rules' setup (the emotion it reads, a
-    -- random battle).
+    -- random battle, the party member a switch on it took).
     -- The form takes, beside it, the transform record's turns and Chaos flag
     -- (EXE5's Soul Unison). The last pick, if it is a chip (dealt, or a link
     -- navi's own), as the screen checked it; the rules' button in the last
@@ -3412,6 +3412,10 @@ declare custom: {
     player: (side: number) -> {
         emotion: Emotion,
         random_battle: boolean,
+        -- The party member a switch on the screen took (EXE5 DS's screen's
+        -- navi), whose navi the screen is for (`battle.member`); nil while
+        -- it is for the member on the field (`battle.navi`).
+        member: number?,
     },
 }
 

@@ -1292,6 +1292,44 @@ fn a_switch_on_the_custom_screen_is_the_turns() {
     assert_eq!((o.hp, o.max_hp), (700, 700));
 }
 
+/// The soul button is MegaMan's: the screen shows it by the navi it is for
+/// (EXE5 DS's 0x0200AAA0: the screen's navi, its +0x10, is MegaMan), not by
+/// the navi on the field. A switch on the screen to a team navi takes it
+/// away, and a switch back brings it again.
+#[test]
+fn the_soul_button_follows_the_screens_navi() {
+    use nettai_battle::content::ButtonView;
+    use nettai_battle::custom::screen::{Phase, SPECIAL_SLOT, SlotKind};
+    let content = exe5_content();
+    let left = exe5(&TANGO_EXE5, r#"party = [{ navi = "protoman" }]"#);
+    let m = parse(&content, &left, &exe5(&TANGO_EXE5, "")).unwrap_or_else(|p| panic!("{p:?}"));
+    let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
+    let choosing = |b: &nettai_battle::Battle| b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing);
+    let settle = |b: &mut nettai_battle::Battle| {
+        for _ in 0..400 {
+            if choosing(b) {
+                break;
+            }
+            b.tick(&Default::default(), Default::default());
+        }
+        assert!(choosing(b));
+    };
+    let soul_button = |b: &nettai_battle::Battle| {
+        let s = b.custom.sides[0].screen.unwrap();
+        matches!(s.slots[SPECIAL_SLOT as usize].kind, SlotKind::Button { button, .. } if b.content.defs.button(button).view == Some(ButtonView::FormOffer))
+    };
+    settle(&mut b);
+    assert!(soul_button(&b), "MegaMan's screen has the soul button");
+    ask_switch(&mut b, 1);
+    settle(&mut b);
+    assert_eq!(b.custom.sides[0].screen.unwrap().member, Some(1));
+    assert!(!soul_button(&b), "ProtoMan's screen has none");
+    ask_switch(&mut b, 0);
+    settle(&mut b);
+    assert_eq!(b.custom.sides[0].screen.unwrap().member, None);
+    assert!(soul_button(&b), "MegaMan's again: the button again");
+}
+
 /// EXE5 DS's shout (rules/shout), which nothing in nettai makes: a worried
 /// MegaMan at a quarter of his HP who shouts loudly enough is healed,
 /// charged or barriered once a battle; the strongest shout puts him in Full

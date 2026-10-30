@@ -308,6 +308,14 @@ Two places read it, so a switch is taken in battle or on the custom screen.
   - plays sound 0x8D (`cross-change`) and returns to state 4.
 
   Every accepted press counts against the limit, even a switch back.
+- **The soul button goes by the screen's navi** (0x0200AA5C, BRBE 0x08023C54: `ldrb r0, [r5, #0x10]` must be 0,
+  MegaMan). A screen rebuilt for a team navi has no Double Soul button; one rebuilt for MegaMan has it again, and the
+  round's souls used (0x02034E10) still count. The emotion test still reads the navi on the field. A soul's own slots
+  (0x08023CF8) likewise need the screen's navi to be MegaMan. Nothing else in the test is about the party: MegaMan
+  may Double Soul after any switch. When OK asks for a switch and a soul together (MegaMan picked on the screen with
+  a team navi on the field), the engine's turn start takes the switch and not the form (`sub_801486C`'s order); the
+  DS's is not recorded. The rules read the screen's member as `custom.player(side).member` (rules/souls/custom.luau
+  `screen_navi`; nettai-match's `the_soul_button_follows_the_screens_navi`).
 - **OK** (the hand builder, 0x0200BED8): when the screen's navi differs from the active NaviStats +0x29, it writes
   the transform record's navi (0x0200DEDC: 0x021B82F0+4, the counterpart of `sub_802DCD8`, which has no caller in
   EXE6). It also marks the navi in 0x021B8300+0xE and counts team navis in 0x021B8300+5.

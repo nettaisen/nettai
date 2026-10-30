@@ -2211,6 +2211,7 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let t = lua.create_table()?;
         t.raw_set("emotion", p.emotion.as_str())?;
         t.raw_set("random_battle", p.random_battle)?;
+        t.raw_set("member", p.member)?;
         Ok(t)
     });
     Ok(t)
