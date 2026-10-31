@@ -27,7 +27,7 @@ shapes (§4, "Frames as shapes").
 | Sound | `SoundBank`: songs, voicegroups, key maps, PSG waves, samples, mixer, players | the ROMs |
 | A version's own songs | `nettai_extract::SongVersions` | the other version's ROM |
 | Names | `AssetIndex`: every asset by kind and name, with the game's number for it | the content's compat/assets.toml |
-| Custom backgrounds | `Background`, as the ROMs' are, numbered past theirs | the content's own pictures (§7) |
+| Custom backgrounds and sprites | `Background` and `SpriteSheet`, as the ROMs' are, numbered past theirs | the content's own pictures (§7) |
 
 ## 1. Principles
 
@@ -392,6 +392,23 @@ battle's background"). A module runs only when something requires it: a backgrou
 the game's root, `backgrounds = require("@self/backgrounds")`, where backgrounds/init.luau returns a list of them
 (`packs::BACKGROUNDS`).
 
-**Sprites and music** are next: a sprite from an indexed PNG of its frames, its timing the module's as a ROM
-sprite's is; a song from MIDI, played on instruments the game has.
+**Sprites.** `asset.sprite(name, animations, { file, frame, origin, shadow })`, beside `parts` where content reads
+them; the animations time it, as a ROM sprite's do. `file` is an indexed PNG of cells `frame = { width, height }`
+(none: one row of as many cells as the animations have frames), read left to right, then down: one per frame, the
+animations' in order, cells past them blank. Color 0 is clear and every pixel one of the first 16 colors; each 16 of
+its palette is a palette of the sprite's set, the first what it is drawn in and the others what an object may pick
+(`sprite_setPalette`'s). `origin` is where in a cell the object stands (none: the middle of the cell's bottom edge).
+
+Each frame is cut into parts as the hardware draws them: the box of its opaque pixels in 32-pixel squares from its
+top left, each square the smallest shape that holds its opaque pixels (8x8 to 32x32), its pixels outside the
+square clear, so no pixel is drawn twice under blending. A part is placed from the origin, within 128 pixels of it,
+and a frame has at most 32 parts. Its tiles are its parts' in turn, row by row, in a tile set of its own (what the
+sprite draw reserves for it each frame: a frame's tiles count against the game's sprite budget as a ROM frame's
+do), and frames that are alike share theirs. Every frame's first part is the shadow, which an object draws on the
+ground or hides (`Look::shadow`): `shadow` is an indexed PNG of a hardware sprite's shape (8x8 to 64x64) in the
+sprite's colors (each of its colors one of the first 16), centered on the object's place; none, an empty 8x8 part
+stands in for it. Sprites are numbered from the category past the ROMs' last, from index 0, in their names' order.
+The timing check against the ROMs (`Extraction::timing_differences`) passes them by: no ROM times them.
+
+**Music** is next: a song from MIDI, played on instruments the game has.
 

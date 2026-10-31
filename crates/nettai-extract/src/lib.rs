@@ -211,7 +211,8 @@ impl Extraction {
     /// defines (`sprites`, by handle, its names `names`, its numbers here `numbers`), each animation's
     /// frames' durations and whether it loops (the flag 0x40 on its last frame, 0x80 ending it), and the places of
     /// the parts it states (`SpriteDef::parts`) against the sheet's layouts. Each difference names its sprite and
-    /// animation; none, the content is the ROMs' timing.
+    /// animation; none, the content is the ROMs' timing. A sprite no ROM gave (a custom one, made from the content's
+    /// own picture: `nettai_content::custom`) has nothing to differ from.
     pub fn timing_differences(
         &self,
         names: &nettai_content_api::AssetNames,
@@ -247,10 +248,8 @@ fn timing_differences(
     for (h, def) in sprites.iter().enumerate() {
         let name = names.sprites.get(h).map_or("?", String::as_str);
         let Some(id) = numbers.sprites.get(h) else { continue };
-        let Some(rom) = timing.get(&(id.category, id.index)) else {
-            out.push(format!("sprite {name}: no ROM gave its sheet"));
-            continue;
-        };
+        // (A sheet no ROM gave is a custom sprite's, the content's alone: no ROM times it.)
+        let Some(rom) = timing.get(&(id.category, id.index)) else { continue };
         if def.animations.len() != rom.len() {
             out.push(format!("sprite {name}: the content's {} animations, the ROM's {}", def.animations.len(), rom.len()));
         }

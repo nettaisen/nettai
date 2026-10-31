@@ -29,8 +29,9 @@ game's `depends.lock` names its support packs' commits. It needs no ROMs. `netta
 
 ## Custom assets
 
-A game can have backgrounds of its own, beside the ones extracted from its ROMs: an indexed PNG of at most 16
-colors, each side a multiple of 8 pixels, defined by a module beside it.
+A game can have backgrounds and sprites of its own, beside the ones extracted from its ROMs, each an indexed PNG
+in the GBA's colors, defined by a module beside it. A background is at most 16 colors, each side a multiple of 8
+pixels.
 
 ```luau
 -- content/exe6/backgrounds/my_stage.luau
@@ -40,8 +41,22 @@ return asset.background("my-stage", { file = "./my_stage.png", scroll = { 16, 8 
 A stage uses it by requiring that module (`background = require("./backgrounds/my_stage")`). To offer it in the
 background pool, name it in the game's `locales/en.toml` under `[backgrounds]`, and if no stage requires it, list
 it in the game's `init.luau` as `backgrounds = require("@self/backgrounds")`, with `backgrounds/init.luau`
-returning `{ require("@self/my_stage") }`. `nettai-content check` then loads it with the game's assets. The details
-are in [design/asset-formats.md](design/asset-formats.md) §7.
+returning `{ require("@self/my_stage") }`. `nettai-content check` then loads it with the game's assets.
+
+A sprite is a sheet of equal cells, one per frame in the order its animations list them, color 0 clear:
+
+```luau
+-- content/exe6/objects/drone/drone_sprite.luau
+return asset.sprite("drone", { { 4, 4, 4, 4, loop = true }, { 3, 3 } }, {
+    file = "./drone.png",            -- 6 cells: the first animation's 4, then the second's 2
+    frame = { 32, 32 },              -- each cell's size (left out: one row of cells)
+    origin = { 16, 30 },             -- where the object stands in a cell (left out: the bottom middle)
+    shadow = "./drone_shadow.png",   -- optional: drawn on the ground under it
+})
+```
+
+Whatever shows it requires that module, as with the ROMs' sprites. The details are in
+[design/asset-formats.md](design/asset-formats.md) §7.
 
 ## Editing in Zed
 

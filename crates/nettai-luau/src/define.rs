@@ -45,7 +45,7 @@ use std::ffi::c_void;
 use std::rc::Rc;
 
 use nettai_content_api::{
-    AssetKind, AssetNames, CustomAssets, CustomBackground, Data, DataKey, DefinedAssets, Definition, Definitions, Registry, SpriteDef, keys,
+    AssetKind, AssetNames, CustomAssets, CustomBackground, CustomSprite, Data, DataKey, DefinedAssets, Definition, Definitions, Registry, SpriteDef, keys,
     valid_key,
 };
 use mlua::{Lua, Table, Value as LuaValue};
@@ -178,7 +178,7 @@ impl AssetTables {
 
     /// Sprite `name` as module `module` defines it: its value. A sprite is
     /// defined once.
-    fn define_sprite(&mut self, lua: &Lua, module: &str, name: &str, def: SpriteDef) -> mlua::Result<Table> {
+    fn define_sprite(&mut self, lua: &Lua, module: &str, name: &str, def: SpriteDef, custom: Option<CustomSprite>) -> mlua::Result<Table> {
         if let Some((other, _)) = self.sprites.get(name) {
             return Err(mlua::Error::runtime(format!(
                 "{module}: sprite {name:?} is defined twice: in {}.luau and in {}.luau (a sprite is defined once, by its module: require it)",
@@ -187,6 +187,9 @@ impl AssetTables {
             )));
         }
         self.sprites.insert(name.to_string(), (module.to_string(), def));
+        if let Some(custom) = custom {
+            self.custom.sprites.insert(name.to_string(), custom);
+        }
         self.named(lua, AssetKind::Sprite, name)
     }
 
@@ -249,7 +252,7 @@ impl AssetTables {
 /// to 255) with `loop = true` where it loops; and the parts content reads,
 /// by part number, each animation's frames' `{ x, y }`, as many as the
 /// animations' frames.
-fn sprite_def(at: &str, animations: &LuaValue, extra: &LuaValue) -> Result<SpriteDef, String> {
+fn sprite_def(at: &str, module: &str, animations: &LuaValue, extra: &LuaValue) -> Result<(SpriteDef, Option<CustomSprite>), String> {
     let int = |v: &LuaValue, what: &str, lo: i64, hi: i64| -> Result<i64, String> {
         let n = match v {
             LuaValue::Integer(i) => i64::from(*i),
@@ -292,12 +295,48 @@ fn sprite_def(at: &str, animations: &LuaValue, extra: &LuaValue) -> Result<Sprit
         }
         def.animations.push(a);
     }
+    let mut custom = CustomSprite { module: module.to_string(), ..Default::default() };
+    let pair = |v: &LuaValue, what: &str, lo: i64, hi: i64| -> Result<(i64, i64), String> {
+        let wrong = || format!("{at}: `{what}` is {{ x, y }}, each an integer from {lo} to {hi}");
+        let LuaValue::Table(t) = v else { return Err(wrong()) };
+        match &fields(t, at)?[..] {
+            [(DataKey::Int(1), x), (DataKey::Int(2), y)] => Ok((int(x, what, lo, hi).map_err(|_| wrong())?, int(y, what, lo, hi).map_err(|_| wrong())?)),
+            _ => Err(wrong()),
+        }
+    };
+    let path = |v: &LuaValue, what: &str| -> Result<String, String> {
+        let LuaValue::String(p) = v else { return Err(format!("{at}: `{what}` is a {}, not a path", v.type_name())) };
+        asset_file(at, module, &p.to_str().map_err(|e| format!("{at}: `{what}` isn't UTF-8 ({e})"))?, "png").map_err(|e| e.replace("`file`", &format!("`{what}`")))
+    };
     match extra {
         LuaValue::Nil => {}
         LuaValue::Table(t) => {
             for (k, v) in fields(t, at)? {
-                if k != DataKey::Str("parts".into()) {
-                    return Err(format!("{at}: a sprite's third argument holds its `parts`, not {k}"));
+                match &k {
+                    DataKey::Str(s) if s == "file" => {
+                        custom.file = path(&v, "file")?;
+                        continue;
+                    }
+                    DataKey::Str(s) if s == "shadow" => {
+                        custom.shadow = Some(path(&v, "shadow")?);
+                        continue;
+                    }
+                    DataKey::Str(s) if s == "frame" => {
+                        let (w, h) = pair(&v, "frame", 1, 255)?;
+                        custom.frame = Some((w as u16, h as u16));
+                        continue;
+                    }
+                    DataKey::Str(s) if s == "origin" => {
+                        let (x, y) = pair(&v, "origin", -255, 510)?;
+                        custom.origin = Some((x as i16, y as i16));
+                        continue;
+                    }
+                    DataKey::Str(s) if s == "parts" => {}
+                    k => {
+                        return Err(format!(
+                            "{at}: a sprite's third argument holds its `parts`, and for a sprite made from a picture its `file`, `frame`, `origin` and `shadow`, not {k}"
+                        ));
+                    }
                 }
                 let LuaValue::Table(parts) = v else { return Err(format!("{at}: `parts` is a {}, not a table", v.type_name())) };
                 for (k, v) in fields(&parts, at)? {
@@ -337,7 +376,13 @@ fn sprite_def(at: &str, animations: &LuaValue, extra: &LuaValue) -> Result<Sprit
         }
         v => return Err(format!("{at}: a sprite's third argument is a table (`{{ parts = ... }}`), not {}", v.type_name())),
     }
-    Ok(def)
+    if custom.file.is_empty() {
+        if custom != (CustomSprite { module: module.to_string(), ..Default::default() }) {
+            return Err(format!("{at}: `frame`, `origin` and `shadow` are a sprite's made from a picture: it names its `file` (an indexed PNG)"));
+        }
+        return Ok((def, None));
+    }
+    Ok((def, Some(custom)))
 }
 
 /// A custom background's definition, as content writes it (`asset.background(name, { file = "./my_stage.png",
@@ -406,8 +451,8 @@ pub(crate) fn install_assets(
             };
             let name = name.to_str()?.to_string();
             if kind == AssetKind::Sprite {
-                let def = sprite_def(&format!("{at}: sprite {name:?}"), &animations, &extra).map_err(mlua::Error::runtime)?;
-                return tables.borrow_mut().define_sprite(lua, &at, &name, def);
+                let (def, custom) = sprite_def(&format!("{at}: sprite {name:?}"), &at, &animations, &extra).map_err(mlua::Error::runtime)?;
+                return tables.borrow_mut().define_sprite(lua, &at, &name, def, custom);
             }
             if kind == AssetKind::Background
                 && let LuaValue::Table(def) = &animations

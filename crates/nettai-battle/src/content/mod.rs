@@ -197,7 +197,7 @@ pub struct Content {
     /// (`nettai_content_api::AssetNumbers`).
     pub assets: nettai_content_api::AssetNames,
     /// The assets the content makes from files of its own, not its ROMs'
-    /// (`asset.background(name, { file = ... })`): made by
+    /// (`asset.background(name, { file = ... })`, a sprite's `file`): made by
     /// [`Content::define`], and added to the game's assets as they load
     /// (`nettai_content::custom`). Presentation, left out of the hash.
     pub custom_assets: nettai_content_api::CustomAssets,

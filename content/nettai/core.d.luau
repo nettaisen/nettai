@@ -1784,6 +1784,32 @@ export type SpriteAnimation = { [number]: number, loop: boolean? }
 -- The parts of a sprite content reads, by part number (from 0, as `sprite:part_offset(n)` counts them): for
 -- each animation, each frame's `{ x, y }`, in pixels from the object, unflipped.
 export type SpriteParts = { [number]: { { { number } } } }
+-- A sprite's third argument: the parts content reads; and for a sprite made from a picture of the content's own,
+-- not the ROMs' (docs/design/asset-formats.md §7), the picture:
+--
+--     -- objects/drone/drone_sprite.luau
+--     return asset.sprite("drone", { { 4, 4, 4, 4, loop = true }, { 3, 3 } }, {
+--         file = "./drone.png",
+--         frame = { 32, 32 },
+--         origin = { 16, 30 },
+--         shadow = "./drone_shadow.png",
+--     })
+--
+-- `file` is an indexed PNG (a path as a `require` writes one, with its `.png`) of cells `frame` wide and tall, read
+-- left to right, then down: one for each frame, the animations' in order, and any cells past them blank. Without
+-- `frame`, it is one row of them. Color 0 is clear; each pixel is a color of the first 16, which the sprite draws
+-- in; each further 16 of its palette is another palette an object may pick. `origin` is where in a cell the object
+-- stands (else the middle of the cell's bottom edge); each frame's pixels within 128 of it. `shadow` is an
+-- indexed PNG in the sprite's colors (each of its colors one of the first 16), an 8 to 64 pixel shape a hardware
+-- sprite has (8x8, 16x8, 32x16, 64x64, ...), centered on the object's place, which an object may draw on the
+-- ground or hide (else none). Its name is a new one: no ROM sprite's.
+export type SpriteExtra = {
+    parts: SpriteParts?,
+    file: string?,
+    frame: { number }?,
+    origin: { number }?,
+    shadow: string?,
+}
 declare extern type Sound with
     name: string
 end
@@ -1809,7 +1835,7 @@ declare extern type Mugshot with
 end
 
 declare asset: {
-    sprite: (name: string, animations: { SpriteAnimation }, extra: { parts: SpriteParts }?) -> SpriteAsset,
+    sprite: (name: string, animations: { SpriteAnimation }, extra: SpriteExtra?) -> SpriteAsset,
     sound: (name: string) -> Sound,
     banner: (name: string) -> Banner,
     background: (name: string, made: BackgroundFile?) -> Background,

@@ -180,6 +180,7 @@ pub struct DefinedAssets {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CustomAssets {
     pub backgrounds: BTreeMap<String, CustomBackground>,
+    pub sprites: BTreeMap<String, CustomSprite>,
 }
 
 impl std::hash::Hash for CustomAssets {
@@ -188,7 +189,7 @@ impl std::hash::Hash for CustomAssets {
 
 impl CustomAssets {
     pub fn is_empty(&self) -> bool {
-        self.backgrounds.is_empty()
+        self.backgrounds.is_empty() && self.sprites.is_empty()
     }
 }
 
@@ -204,6 +205,30 @@ pub struct CustomBackground {
     /// How far it scrolls each frame, in 1/16 pixel (a ROM background's
     /// `scroll`).
     pub scroll: (i32, i32),
+}
+
+/// A sprite made from a picture of the content's own
+/// (`asset.sprite(name, animations, { file = ..., frame = ..., origin =
+/// ..., shadow = ... })`): its frames, in its animations' order, each a
+/// cell of the picture. Its timing is its [`SpriteDef`]'s, as a ROM
+/// sprite's is.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct CustomSprite {
+    /// The module that defines it.
+    pub module: String,
+    /// Its frames: an indexed PNG of cells, by its pack and its path in the
+    /// pack (as [`CustomBackground::file`]).
+    pub file: String,
+    /// A cell's width and height in pixels; none: the picture is one row of
+    /// as many cells as the animations have frames.
+    pub frame: Option<(u16, u16)>,
+    /// Where in a cell the object stands, in pixels from its top left;
+    /// none: the middle of its bottom edge.
+    pub origin: Option<(i16, i16)>,
+    /// Its shadow (every frame's first part, which an object may draw on
+    /// the ground or hide): an indexed PNG, by its pack and its path, drawn
+    /// centered on the object's place; none: no shadow.
+    pub shadow: Option<String>,
 }
 
 /// A game's assets by unqualified name, each with its number (the extracted

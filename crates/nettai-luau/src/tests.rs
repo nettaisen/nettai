@@ -441,6 +441,44 @@ fn a_sprite_states_the_parts_content_reads() {
     assert!(e.contains("offset is 200, not -128 to 127"), "{e}");
 }
 
+/// docs/design/asset-formats.md §7: a sprite made from a picture of the
+/// content's own is defined as any sprite is, with its file, its cells' size,
+/// its origin and its shadow beside its parts.
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
+fn a_custom_sprite_is_defined_by_its_module() {
+    let (_, assets) = define_assets(&[
+        (
+            "objects/drone/drone_sprite",
+            "return asset.sprite('drone', { { 4, 4, loop = true }, { 3 } }, { file = './drone.png', frame = { 32, 24 }, origin = { 16, 22 }, shadow = './shadow.png', parts = { [1] = { { { 0, -8 }, { 0, -9 } }, { { 0, -8 } } } } })",
+        ),
+        ("sprites/bomb", "return asset.sprite('bomb', { { 1 } })"),
+    ])
+    .unwrap();
+    assert_eq!(assets.custom.sprites.keys().collect::<Vec<_>>(), ["drone"], "the ROMs' sprites are timed alone");
+    assert_eq!(
+        assets.custom.sprites["drone"],
+        nettai_content_api::CustomSprite {
+            module: "test:objects/drone/drone_sprite".into(),
+            file: "test:objects/drone/drone.png".into(),
+            frame: Some((32, 24)),
+            origin: Some((16, 22)),
+            shadow: Some("test:objects/drone/shadow.png".into()),
+        }
+    );
+    assert_eq!(assets.sprites[1].parts[&1][0], [(0, -8), (0, -9)], "its parts as any sprite's");
+    for (extra, wrong) in [
+        ("{ frame = { 32, 24 } }", "`frame`, `origin` and `shadow` are a sprite's made from a picture: it names its `file`"),
+        ("{ file = './d.png', frame = { 0, 24 } }", "`frame` is { x, y }, each an integer from 1 to 255"),
+        ("{ file = './d.png', origin = { 1 } }", "`origin` is { x, y }"),
+        ("{ file = './d.png', shadow = './s.gif' }", "`shadow` \"./s.gif\" is a .png file"),
+        ("{ file = './d.png', speed = 2 }", "its `file`, `frame`, `origin` and `shadow`, not speed"),
+    ] {
+        let e = define_named(&[("m", &format!("return asset.sprite('drone', {{ {{ 1 }} }}, {extra})"))]).unwrap_err();
+        assert!(e.contains(wrong), "{extra}: {e}");
+    }
+}
+
 /// docs/design/asset-formats.md §7: a background made from a picture of the
 /// content's own is defined, once, by its module, with its file (a path as a
 /// `require` writes one, resolved to its pack's) and its scroll; naming it
