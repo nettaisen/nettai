@@ -1,7 +1,8 @@
 //! Custom songs: a standard MIDI file made into the M4A driver's song, as the GBA's own mid2agb makes one, played on
 //! the instruments of a song the ROMs have.
 
-use m4a::bank::{Command, Song, Track};
+use m4a::bank::{Command, Envelope, Sample, SampleId, Song, Track, Voice, VoiceKind};
+use nettai_content_api::CustomInstrument;
 use midly::{MetaMessage, MidiMessage, Smf, Timing, TrackEventKind};
 use std::collections::{BTreeMap, HashMap, VecDeque};
 
@@ -169,6 +170,40 @@ pub(super) fn song(bytes: &[u8], like: &Song, max_tracks: usize) -> Result<Song,
     Ok(Song { player: like.player, priority: like.priority, reverb: like.reverb, voicegroup: like.voicegroup, tracks })
 }
 
+/// The sample of instrument `def`, the WAV recording `bytes`: its channels mixed to one, as the driver's signed 8-bit
+/// samples (each sample's top 8 bits, or a float's scaled), at the rate that plays its key `def.key` at its pitch.
+pub(super) fn sample(bytes: &[u8], def: &CustomInstrument) -> Result<Sample, String> {
+    let mut wav = hound::WavReader::new(bytes).map_err(|e| format!("not a WAV recording ({e})"))?;
+    let spec = wav.spec();
+    let channels = usize::from(spec.channels.max(1));
+    let values: Vec<f64> = match spec.sample_format {
+        hound::SampleFormat::Int => {
+            let full = f64::from(1u32 << (spec.bits_per_sample.clamp(1, 32) - 1));
+            wav.samples::<i32>().map(|v| v.map(|v| f64::from(v) / full)).collect::<Result<_, _>>()
+        }
+        hound::SampleFormat::Float => wav.samples::<f32>().map(|v| v.map(f64::from)).collect::<Result<_, _>>(),
+    }
+    .map_err(|e| format!("a WAV recording that doesn't read ({e})"))?;
+    let data: Vec<i8> =
+        values.chunks(channels).map(|c| (c.iter().sum::<f64>() / c.len() as f64 * 128.0).round().clamp(-128.0, 127.0) as i8).collect();
+    if data.is_empty() {
+        return Err("a WAV recording with no samples".to_string());
+    }
+    if let Some(l) = def.loop_start.filter(|&l| l as usize >= data.len()) {
+        return Err(format!("its loop starts at sample {l}, and it has {}", data.len()));
+    }
+    // (The driver's rate is a sample's at key 60, in 1/1024 Hz.)
+    let rate = f64::from(spec.sample_rate) * 2f64.powf((60.0 - f64::from(def.key)) / 12.0) * 1024.0;
+    let tail = Sample::usual_tail(&data, def.loop_start);
+    Ok(Sample { rate: rate.round().clamp(1.0, f64::from(u32::MAX)) as u32, loop_start: def.loop_start, data, tail })
+}
+
+/// A Direct Sound voice of sample `sample`, its envelope `def`'s.
+pub(super) fn voice(sample: SampleId, def: &CustomInstrument) -> Voice {
+    let [attack, decay, sustain, release] = def.envelope;
+    Voice { kind: VoiceKind::DirectSound { sample, fixed: false }, key: 60, pan: None, length: 0, envelope: Envelope { attack, decay, sustain, release } }
+}
+
 /// A track's commands: its steps (in order) with waits between them to `end`, then a jump back to where it was at
 /// tick `loop_start`, or with none its end.
 fn commands(steps: Vec<(u32, Step, Command)>, end: u32, loop_start: Option<u32>) -> Vec<Command> {
@@ -211,6 +246,34 @@ fn commands(steps: Vec<(u32, Step, Command)>, end: u32, loop_start: Option<u32>)
 mod tests {
     use super::*;
     use midly::num::{u4, u7, u15, u28};
+
+    /// A WAV recording at `rate` Hz of `channels` channels, its samples 16-bit.
+    pub(crate) fn wav(rate: u32, channels: u16, samples: &[i16]) -> Vec<u8> {
+        let spec = hound::WavSpec { channels, sample_rate: rate, bits_per_sample: 16, sample_format: hound::SampleFormat::Int };
+        let mut out = std::io::Cursor::new(Vec::new());
+        let mut w = hound::WavWriter::new(&mut out, spec).unwrap();
+        for &v in samples {
+            w.write_sample(v).unwrap();
+        }
+        w.finalize().unwrap();
+        out.into_inner()
+    }
+
+    /// A recording is the driver's sample: its channels mixed, 8 bits, at the rate that plays its key at its pitch
+    /// (a recording of A4, key 69, at 22050 Hz plays at key 60 nine semitones lower).
+    #[test]
+    fn a_recording_is_a_sample() {
+        let def = CustomInstrument { key: 69, loop_start: Some(1), ..Default::default() };
+        let s = sample(&wav(22050, 2, &[0x4000, 0x2000, -0x8000, -0x8000, 0x7FFF, 0x7FFF]), &def).unwrap();
+        assert_eq!(s.data, [48, -128, 127]);
+        assert_eq!((s.loop_start, s.tail), (Some(1), -128));
+        assert_eq!(s.rate, (22050.0 * 1024.0 * 2f64.powf(-9.0 / 12.0)).round() as u32);
+        let e = sample(&wav(8000, 1, &[1, 2]), &CustomInstrument { loop_start: Some(2), ..Default::default() }).unwrap_err();
+        assert_eq!(e, "its loop starts at sample 2, and it has 2");
+        assert!(sample(b"RIFF", &def).unwrap_err().starts_with("not a WAV recording"));
+        let v = voice(SampleId(9), &CustomInstrument { envelope: [200, 10, 128, 250], ..Default::default() });
+        assert_eq!((v.kind, v.envelope.release), (VoiceKind::DirectSound { sample: SampleId(9), fixed: false }, 250));
+    }
     use midly::{Format, Header, TrackEvent};
 
     /// A MIDI file of 96 ticks a beat: its tracks' events, each (delta, event).

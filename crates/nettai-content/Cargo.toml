@@ -19,6 +19,8 @@ nettai-extract = { path = "../nettai-extract" }
 png = "0.17"
 # Custom songs (custom/song.rs): standard MIDI files, made into the M4A driver's songs.
 midly = { version = "0.5", default-features = false, features = ["std"] }
+# Custom songs' instruments (custom/song.rs): WAV recordings, made into the driver's samples.
+hound = "3.5"
 m4a.workspace = true
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

@@ -51,6 +51,36 @@ impl Indexed {
         Ok(())
     }
 
+    /// The 16 of the palette (0 the first 16 colors, 1 the next, ...) whose colors its pixels are: one for all of them
+    /// (color 0 counts as any's first; with no other color, the first 16).
+    pub(super) fn group(&self) -> Result<usize, String> {
+        let mut found: Option<(usize, usize)> = None;
+        for (i, &p) in self.pixels.iter().enumerate() {
+            if p == 0 {
+                continue;
+            }
+            let g = usize::from(p) / 16;
+            match found {
+                None => found = Some((g, i)),
+                Some((other, at)) if other != g => {
+                    let place = |i: usize| format!("({}, {})", i % self.width, i / self.width);
+                    return Err(format!(
+                        "its colors are of two 16s of the palette: color {} at {} (colors {} to {}) and color {p} at {} (colors {} to {}); a picture is in one",
+                        self.pixels[at],
+                        place(at),
+                        16 * other,
+                        16 * other + 15,
+                        place(i),
+                        16 * g,
+                        16 * g + 15
+                    ));
+                }
+                Some(_) => {}
+            }
+        }
+        Ok(found.map_or(0, |(g, _)| g))
+    }
+
     /// Whether every pixel is one of the palette's first `count` colors.
     pub(super) fn colors_below(&self, count: u8) -> Result<(), String> {
         match self.pixels.iter().position(|&p| p >= count) {
@@ -68,11 +98,6 @@ impl Indexed {
     /// The tile at column `tx`, row `ty` (in tiles): its 64 color numbers, row by row.
     pub(super) fn tile(&self, tx: usize, ty: usize) -> [u8; 64] {
         std::array::from_fn(|i| self.pixels[(ty * 8 + i / 8) * self.width + tx * 8 + i % 8])
-    }
-
-    /// Its first 16 colors as a palette (a color it hasn't is black).
-    pub(super) fn palette(&self) -> Palette {
-        self.palettes()[0]
     }
 
     /// Its colors as palettes, each 16 in turn (a color past its last is black): at least one.

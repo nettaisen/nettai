@@ -495,8 +495,37 @@ fn a_custom_sound_is_defined_by_its_module() {
     assert_eq!(assets.names.sounds, ["my-theme", "virus-battle"]);
     assert_eq!(
         assets.custom.sounds["my-theme"],
-        nettai_content_api::CustomSound { module: "test:music/theme".into(), file: "test:music/theme.mid".into(), voices: "virus-battle".into() }
+        nettai_content_api::CustomSound {
+            module: "test:music/theme".into(),
+            file: "test:music/theme.mid".into(),
+            voices: "virus-battle".into(),
+            instruments: Default::default()
+        }
     );
+    // Instruments of its own, by program: a recording, its key, its loop, its envelope.
+    let (_, assets) = define_assets(&[(
+        "music/theme",
+        "return asset.sound('t', { file = './t.mid', voices = asset.sound('v'), instruments = { [41] = { file = './strings.wav', key = 69, loop = 1024, envelope = { release = 200 } }, [0] = { file = './kick.wav' } } })",
+    )])
+    .unwrap();
+    let inst = &assets.custom.sounds["t"].instruments;
+    assert_eq!(
+        inst[&41],
+        nettai_content_api::CustomInstrument { file: "test:music/strings.wav".into(), key: 69, loop_start: Some(1024), envelope: [255, 0, 255, 200] }
+    );
+    assert_eq!(inst[&0], nettai_content_api::CustomInstrument { file: "test:music/kick.wav".into(), ..Default::default() });
+    for (inst, wrong) in [
+        ("{ [128] = { file = './a.wav' } }", "`instruments` is keyed by program, 0 to 127, not 128"),
+        ("{ [1] = './a.wav' }", "instrument 1 is a string, not a table"),
+        ("{ [1] = { key = 60 } }", "instrument 1: an instrument names its `file`"),
+        ("{ [1] = { file = './a.mp3' } }", "`file` \"./a.mp3\" is a .wav file"),
+        ("{ [1] = { file = './a.wav', key = 200 } }", "`key` is 200, not a whole number from 0 to 127"),
+        ("{ [1] = { file = './a.wav', envelope = { hold = 3 } } }", "`envelope` has its `attack`, `decay`, `sustain` and `release`, not hold"),
+        ("{ [1] = { file = './a.wav', pan = 3 } }", "an instrument has its `file`, `key`, `loop` and `envelope`, not pan"),
+    ] {
+        let e = define_named(&[("m", &format!("return asset.sound('t', {{ file = './t.mid', voices = asset.sound('v'), instruments = {inst} }})"))]).unwrap_err();
+        assert!(e.contains(wrong), "{inst}: {e}");
+    }
     let twice = "return asset.sound('t', { file = './t.mid', voices = asset.sound('v') })";
     let e = define_named(&[("a", twice), ("b", twice)]).unwrap_err();
     assert!(e.contains("sound \"t\" is defined twice: in test/a.luau and in test/b.luau"), "{e}");
@@ -506,7 +535,7 @@ fn a_custom_sound_is_defined_by_its_module() {
         ("{ file = './t.mid', voices = 'v' }", "`voices` is a string, not a sound"),
         ("{ file = './t.mid', voices = asset.background('v') }", "`voices` is a table, not a sound"),
         ("{ file = './t.wav', voices = asset.sound('v') }", "`file` \"./t.wav\" is a .mid file"),
-        ("{ file = './t.mid', voices = asset.sound('v'), loop = true }", "has its `file` and its `voices`, not loop"),
+        ("{ file = './t.mid', voices = asset.sound('v'), loop = true }", "has its `file`, its `voices` and its `instruments`, not loop"),
     ] {
         let e = define_named(&[("m", &format!("return asset.sound('t', {made})"))]).unwrap_err();
         assert!(e.contains(wrong), "{made}: {e}");
@@ -536,9 +565,22 @@ fn a_custom_background_is_defined_by_its_module() {
     assert_eq!(custom.keys().collect::<Vec<_>>(), ["sky", "still"], "the ROMs' are named alone");
     assert_eq!(
         custom["sky"],
-        nettai_content_api::CustomBackground { module: "test:backgrounds/sky".into(), file: "test:backgrounds/sky/sky.png".into(), scroll: (16, -8) }
+        nettai_content_api::CustomBackground {
+            module: "test:backgrounds/sky".into(),
+            file: "test:backgrounds/sky/sky.png".into(),
+            scroll: (16, -8),
+            ..Default::default()
+        }
     );
     assert_eq!((custom["still"].file.as_str(), custom["still"].scroll), ("test:backgrounds/still/still.png", (0, 0)));
+    // An animated one has its pictures' durations, and one may speed up to its scroll.
+    let (_, assets) = define_assets(&[(
+        "backgrounds/sea",
+        "return asset.background('sea', { file = './sea.png', scroll = { 0, 32 }, speed_up = 90, frames = { 8, 8, 12, loop = true } })",
+    )])
+    .unwrap();
+    let sea = &assets.custom.backgrounds["sea"];
+    assert_eq!((sea.frames.as_slice(), sea.looping, sea.speed_up, sea.scroll), (&[8, 8, 12][..], true, Some(90), (0, 32)));
     // Defined once, by its module.
     let twice = "return asset.background('sky', { file = './sky.png' })";
     let e = define_named(&[("a", twice), ("b", twice)]).unwrap_err();
@@ -551,7 +593,13 @@ fn a_custom_background_is_defined_by_its_module() {
         ("{ file = '../../sky.png' }", "leaves pack test"),
         ("{ file = './sky.png', scroll = { 1 } }", "`scroll` is { x, y }"),
         ("{ file = './sky.png', scroll = { 1, 40000 } }", "`scroll` is { x, y }"),
-        ("{ file = './sky.png', speed = 3 }", "has its `file` and its `scroll`, not speed"),
+        ("{ file = './sky.png', speed = 3 }", "has its `file`, `scroll`, `speed_up` and `frames`, not speed"),
+        ("{ file = './sky.png', speed_up = 30 }", "`speed_up` is how many frames it takes to reach its `scroll`, and it has none"),
+        ("{ file = './sky.png', scroll = { 1, 0 }, speed_up = 0 }", "`speed_up` is 0, not a whole number of frames from 1 to 65535"),
+        ("{ file = './sky.png', frames = {} }", "`frames` has no frame"),
+        ("{ file = './sky.png', frames = { 8, 0 } }", "frame 1 is 0, not a whole number of frames"),
+        ("{ file = './sky.png', frames = { 8, last = true } }", "`frames` holds its pictures' durations (1, 2, ...) and `loop`, not last"),
+        ("{ file = './sky.png', frames = 8 }", "`frames` is a integer, not a list of durations"),
         ("{ file = 3 }", "`file` is a integer, not a path"),
     ] {
         let e = define_named(&[("backgrounds/sky", &format!("return asset.background('sky', {made})"))]).unwrap_err();

@@ -2,8 +2,10 @@
 //! its ROMs (`Content::custom_assets`, which its modules define: `asset.background("my-stage", { file =
 //! "./my_stage.png" })`). Each is made into the model the ROMs' assets are extracted into and added to the game's
 //! assets after them, under its name, numbered past the ROMs' ([`add`]); a frontend then draws it as it draws theirs.
+//! One with the name of a ROM asset stands in its place: the name is the custom one's (another name the ROM asset has
+//! keeps it).
 //! They are GBA-shaped, as the ROMs' are: pictures indexed, 16 colors to a palette, cut into 8x8 tiles; songs the M4A
-//! driver's, from MIDI files.
+//! driver's, from MIDI files, with instruments of their own from WAV recordings.
 
 mod background;
 mod picture;
@@ -16,33 +18,49 @@ use nettai_assets::Bundle;
 use nettai_content_api::{AssetIndex, AssetKind, SpriteNumber, keys, packs};
 
 /// Add content `c`'s custom assets to its game's assets as its ROMs gave them: their graphics `graphics`, their sound
-/// `sound` and their index `index`. An error names the asset and what is wrong with it: its file isn't there or isn't
-/// what its kind takes, or the ROMs have an asset by its name.
+/// `sound` and their index `index`, each at a number of its own past theirs, under its name (one the ROMs have too is
+/// the custom one's now). An error names the asset and what is wrong with it: its file isn't there or isn't what its
+/// kind takes.
 pub fn add(c: &nettai_battle::Content, graphics: &mut Bundle, sound: &mut m4a::SoundBank, index: &mut AssetIndex) -> Result<(), String> {
     let dirs = &c.scripts.dirs.0;
     // (A custom song plays on a ROM song's instruments: the ROMs' sounds, before any custom one is added.)
     let rom_sounds = index.sounds.clone();
     for (name, def) in &c.custom_assets.sounds {
         let at = format!("{}.luau: sound {name:?}", keys::module_path(&def.module));
-        if index.sounds.contains_key(name) {
-            return Err(format!("{at}: the ROMs have a sound of that name (a custom one takes a name of its own)"));
-        }
         let like = rom_sounds
             .get(&def.voices)
             .and_then(|&n| sound.song(m4a::SongId(n)))
             .cloned()
             .ok_or_else(|| format!("{at}: its `voices`, {:?}, is no song the ROMs have", def.voices))?;
         let max_tracks = sound.players.get(usize::from(like.player.0)).map_or(0, |p| usize::from(p.max_tracks));
-        let song = read(dirs, &def.file).and_then(|bytes| song::song(&bytes, &like, max_tracks)).map_err(|e| format!("{at}: {}: {e}", def.file))?;
+        let mut song = read(dirs, &def.file).and_then(|bytes| song::song(&bytes, &like, max_tracks)).map_err(|e| format!("{at}: {}: {e}", def.file))?;
+        // Its own instruments: a copy of the voicegroup, those programs its recordings (a program past the
+        // voicegroup's end gets silent ones before it).
+        if !def.instruments.is_empty() {
+            let mut group = sound.voicegroups[usize::from(like.voicegroup.0)].clone();
+            for (&program, inst) in &def.instruments {
+                let made = read(dirs, &inst.file).and_then(|bytes| song::sample(&bytes, inst)).map_err(|e| format!("{at}: instrument {program}: {}: {e}", inst.file))?;
+                let id = m4a::bank::SampleId(u16::try_from(sound.samples.len()).map_err(|_| format!("{at}: a game has at most 65536 samples"))?);
+                sound.samples.push(made);
+                let p = usize::from(program);
+                if group.voices.len() <= p {
+                    let silent = m4a::bank::Voice { kind: m4a::bank::VoiceKind::Silent, key: 60, pan: None, length: 0, envelope: Default::default() };
+                    group.voices.resize(p + 1, silent);
+                }
+                group.voices[p] = song::voice(id, inst);
+            }
+            song.voicegroup = m4a::bank::VoicegroupId(u16::try_from(sound.voicegroups.len()).map_err(|_| format!("{at}: a game has at most 65536 voicegroups"))?);
+            sound.voicegroups.push(group);
+        }
         let n = u16::try_from(sound.songs.len()).map_err(|_| format!("{at}: a game has at most 65536 songs"))?;
         sound.songs.push(Some(song));
         index.sounds.insert(name.clone(), n);
     }
+    if !c.custom_assets.sounds.is_empty() {
+        sound.validate().map_err(|e| format!("the sound with the content's songs: {e}"))?;
+    }
     for (name, def) in &c.custom_assets.backgrounds {
         let at = format!("{}.luau: background {name:?}", keys::module_path(&def.module));
-        if index.backgrounds.contains_key(name) {
-            return Err(format!("{at}: the ROMs have a background of that name (a custom one takes a name of its own)"));
-        }
         let bg = read(dirs, &def.file).and_then(|bytes| background::background(&bytes, def)).map_err(|e| format!("{at}: {}: {e}", def.file))?;
         let id = u8::try_from(graphics.backgrounds.len()).map_err(|_| format!("{at}: a game has at most 256 backgrounds"))?;
         graphics.backgrounds.push(Some(bg));
@@ -56,9 +74,6 @@ pub fn add(c: &nettai_battle::Content, graphics: &mut Bundle, sound: &mut m4a::S
     };
     for (name, def) in &c.custom_assets.sprites {
         let at = format!("{}.luau: sprite {name:?}", keys::module_path(&def.module));
-        if index.sprites.contains_key(name) {
-            return Err(format!("{at}: the ROMs have a sprite of that name (a custom one takes a name of its own)"));
-        }
         let frames: Vec<usize> = c
             .assets
             .handle(AssetKind::Sprite, name)
@@ -119,7 +134,8 @@ mod tests {
     }
 
     /// A content's custom backgrounds come after its ROMs', each numbered past them under its name, read from its
-    /// pack's folder; a name the ROMs have, or a file that isn't there, is said with the module that defines it.
+    /// pack's folder; one with a name the ROMs have stands in place of theirs (another name of theirs keeps it); a
+    /// file that isn't there is said with the module that defines it.
     #[test]
     fn custom_backgrounds_come_after_the_roms() {
         let dir = std::env::temp_dir().join(format!("nettai-custom-{}", std::process::id()));
@@ -134,11 +150,14 @@ mod tests {
         add(&c, &mut graphics, &mut sound(), &mut index).unwrap();
         assert_eq!(index.backgrounds["sky"], 2, "past the ROMs' numbers, holes too");
         assert_eq!(graphics.background(2).map(|b| (b.map_width, b.first_tile)), Some((2, BACKGROUND_FIRST_TILE)));
-        // A name the ROMs have.
+        // A name the ROMs have: the custom one's now, the ROMs' picture kept for their other name.
+        let mut graphics = Bundle { backgrounds: vec![Some(Background::default())], ..Default::default() };
         let mut index = AssetIndex::default();
         index.backgrounds.insert("sky".into(), 0);
-        let e = add(&c, &mut Bundle::default(), &mut sound(), &mut index).unwrap_err();
-        assert_eq!(e, "g/backgrounds/x.luau: background \"sky\": the ROMs have a background of that name (a custom one takes a name of its own)");
+        index.backgrounds.insert("sky-alt".into(), 0);
+        add(&c, &mut graphics, &mut sound(), &mut index).unwrap();
+        assert_eq!((index.backgrounds["sky"], index.backgrounds["sky-alt"]), (1, 0));
+        assert_eq!(graphics.background(0), Some(&Background::default()));
         // A file that isn't there.
         c.custom_assets.backgrounds.get_mut("sky").unwrap().file = "g:backgrounds/gone.png".into();
         let e = add(&c, &mut Bundle::default(), &mut sound(), &mut AssetIndex::default()).unwrap_err();

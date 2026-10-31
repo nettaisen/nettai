@@ -206,6 +206,16 @@ pub struct CustomBackground {
     /// How far it scrolls each frame, in 1/16 pixel (a ROM background's
     /// `scroll`).
     pub scroll: (i32, i32),
+    /// How many frames its scroll takes to speed up to `scroll` from
+    /// standing still (a ROM background's `speeding`); none: it scrolls at
+    /// `scroll` from the first.
+    pub speed_up: Option<u16>,
+    /// Its pictures' durations in frames, in turn (its picture is as many,
+    /// one below another); none: one picture, still.
+    pub frames: Vec<u16>,
+    /// Whether its pictures play again from the first after the last (else
+    /// the last stays).
+    pub looping: bool,
 }
 
 /// A sprite made from a picture of the content's own
@@ -245,6 +255,32 @@ pub struct CustomSound {
     /// The ROMs' sound whose instruments it plays on, by name: its
     /// voicegroup, its music player, its priority and its reverb.
     pub voices: String,
+    /// Instruments of its own, by program (0 to 127), in place of those
+    /// programs of `voices`' voicegroup.
+    pub instruments: BTreeMap<u8, CustomInstrument>,
+}
+
+/// An instrument made from a recording of the content's own: a Direct
+/// Sound voice of a sample.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CustomInstrument {
+    /// Its sample: a WAV file, by its pack and its path in the pack (as
+    /// [`CustomBackground::file`]).
+    pub file: String,
+    /// The key (MIDI's numbers, 60 middle C) the recording sounds at.
+    pub key: u8,
+    /// Where it loops from to its end, in samples; none: it plays once.
+    pub loop_start: Option<u32>,
+    /// Its envelope as the driver takes a Direct Sound voice's: attack,
+    /// decay, sustain and release, 0 to 255 each.
+    pub envelope: [u8; 4],
+}
+
+impl Default for CustomInstrument {
+    /// Middle C, no loop, and the envelope that plays the recording as it is and stops it at the note's end.
+    fn default() -> CustomInstrument {
+        CustomInstrument { file: String::new(), key: 60, loop_start: None, envelope: [255, 0, 255, 0] }
+    }
 }
 
 /// A game's assets by unqualified name, each with its number (the extracted

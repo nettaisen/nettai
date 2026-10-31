@@ -30,15 +30,19 @@ game's `depends.lock` names its support packs' commits. It needs no ROMs. `netta
 ## Custom assets
 
 A game can have backgrounds, sprites and songs of its own, beside the ones extracted from its ROMs: pictures as
-indexed PNGs in the GBA's colors, songs as MIDI files, each defined by a module beside it. A background is at most 16 colors, each side a multiple of 8
-pixels.
+indexed PNGs in the GBA's colors, songs as MIDI files (with WAV recordings for instruments), each defined by a module
+beside it. One given the name of a ROM asset replaces it wherever that name is used (a reskin). A background is 16
+colors, each side a multiple of 8 pixels.
 
 ```luau
 -- content/exe6/backgrounds/my_stage.luau
 return asset.background("my-stage", { file = "./my_stage.png", scroll = { 16, 8 } })
 ```
 
-A stage uses it by requiring that module (`background = require("./backgrounds/my_stage")`). To offer it in the
+A stage uses it by requiring that module (`background = require("./backgrounds/my_stage")`). `speed_up = 120` has
+the scroll start still and reach its speed in 120 frames, and `frames = { 8, 8, 8, loop = true }` animates it: the
+PNG is that many pictures stacked top to bottom, each shown for its frames (each picture may use its own 16
+colors). To offer it in the
 background pool, name it in the game's `locales/en.toml` under `[backgrounds]`, and if no stage requires it, list
 it in the game's `init.luau` as `backgrounds = require("@self/backgrounds")`, with `backgrounds/init.luau`
 returning `{ require("@self/my_stage") }`. `nettai-content check` then loads it with the game's assets.
@@ -66,7 +70,13 @@ return asset.sound("my-theme", { file = "./my_theme.mid", voices = asset.sound("
 ```
 
 A stage plays it with `music = require("./music/my_theme")`. Markers named `[` and `]` in the MIDI file make it
-loop. The details are in [design/asset-formats.md](design/asset-formats.md) §7.
+loop. To use recordings of your own, put them in place of programs:
+
+```luau
+instruments = { [41] = { file = "./strings.wav", key = 69, loop = 1024, envelope = { release = 200 } } }
+```
+
+where `key` is the note the recording sounds at (60 is middle C) and `loop` the sample it loops back to. The details are in [design/asset-formats.md](design/asset-formats.md) §7.
 
 ## Editing in Zed
 

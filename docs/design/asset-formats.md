@@ -364,7 +364,11 @@ return asset.background("my-stage", { file = "./my_stage.png", scroll = { 16, 8 
 ```
 
 A name defined with a file is custom; one named alone (`asset.background("comp")`) is the ROMs'. A custom asset
-takes a name of its own: one the ROMs have is an error. The define phase keeps the definitions
+may take the name of one of the ROMs' (the user: "do all the rest", after replacing them was offered): it stands in
+their place wherever the name is used, a reskin (MegaMan's sprite, a stage's background, the battle theme). It is
+added at a number of its own all the same and the name moved to it, so another name the ROMs' asset has (two names
+of one sheet) keeps the ROMs' one, and a replaced sprite is not held to the ROMs' timing. The define phase keeps the
+definitions
 (`Content::custom_assets`, nettai-content-api's `CustomAssets`; presentation, left out of the content's hash, as the
 modules that state them are in it), and as a game's assets load, after the recipe has extracted the ROMs', each is
 made into the model the ROMs' are extracted into and added under its name, numbered past the ROMs'
@@ -373,18 +377,28 @@ made into the model the ROMs' are extracted into and added under its name, numbe
 The files are part of the game's folder, so its bundle carries them (docs/design/content-deployment.md).
 
 Custom assets are GBA-shaped, as the ROMs' are (the user chose GBA-shaped pictures over full color, MIDI over
-recorded audio and indexed PNG over Aseprite): they play by the same rules, through the same renderer and sound
+recorded audio and indexed PNG over Aseprite; a recording is an instrument's, played by the song): they play by the same rules, through the same renderer and sound
 driver, and look and sound like the game's own.
 
-**Backgrounds.** `asset.background(name, { file, scroll })`. `file` is an indexed PNG, by a path as a `require`
-writes one (`./`, `../`, `@self/` in an init.luau, `@<pack>/`) with its `.png`: any bit depth, at most 16 colors
-used (color numbers 0 to 15; a longer palette's other entries are ignored), color 0 the backdrop, each side whole
-8x8 tiles. Its colors become BGR555 (each channel's top five bits), its pixels tiles numbered from 0x400 (past every
-number a GBA map reaches, so past every game's field's tiles, whichever game's field it is drawn with), each tile
-kept once (one that is another flipped is that one, flipped) and mapped across the picture in background palette 0,
-which takes its colors. It repeats both ways, as a ROM background's map does. `scroll` is how far it moves each frame,
-in 1/16 pixel (a ROM background's `scroll`); none, it stands still. Palette and tile animations and a speeding scroll
-are the ROMs' alone for now.
+**Backgrounds.** `asset.background(name, { file, scroll, speed_up, frames })`. `file` is an indexed PNG, by a path
+as a `require` writes one (`./`, `../`, `@self/` in an init.luau, `@<pack>/`) with its `.png`: any bit depth, each
+side whole 8x8 tiles, its pixels the colors of one 16 of its palette (colors 0 to 15, or 16 to 31, ...), color 0 of
+the 16 the backdrop. Its colors become BGR555 (each channel's top five bits), its pixels tiles numbered from 0x400
+(past every number a GBA map reaches, so past every game's field's tiles, whichever game's field it is drawn with),
+each tile kept once (one that is another flipped is that one, flipped) and mapped across the picture in background
+palette 0, which takes the colors of its 16. It repeats both ways, as a ROM background's map does. `scroll` is how far
+it moves each frame, in 1/16 pixel (a ROM background's `scroll`); none, it stands still. `speed_up` is how many
+frames it takes to get to that speed from standing still: the ROMs' speeding scroll (`Speeding`), its top `scroll`
+and its step the top over `speed_up` (in the model's 1/65536 pixel, at least 1).
+
+`frames = { 8, 8, 12, loop = true }` makes it an animation, as the ROMs' backgrounds' graphics animations are
+(`GfxAnim`): the picture is as many pictures, one below another, each shown for its duration in frames (60 a
+second) in turn on the background's clock, then from the first again with `loop`, else the last stays. Each picture
+may be in another 16 of the palette's colors. Each place of the map has its tiles in turn, a run, and each run is
+kept once (flipped as a whole); the runs that stay the same are numbered first, and the tiles of the runs that
+change are what a tile animation replaces, so only they are held for every picture. Where the pictures' 16s
+differ, a palette animation replaces palette 0 on the same schedule. A still background is the one-picture case.
+The ROMs' brightening and darkening palette shift (EXE4's) is not taken: a picture in other colors does the same.
 
 A background is in the background pool when the game's own language's `[backgrounds]` names it (with its name as a
 player sees it), and the content check holds that table to the assets, the custom ones too (docs/app.md §1, "The
@@ -431,5 +445,15 @@ and replaces it as the game's own would. The file is made into the driver's song
   follows it left out. Without them each track ends at the song's last note.
 
 Songs are numbered past the ROMs' song table. Sound effects are songs too: a MIDI file played on an effect's
-voices is a new effect. Instruments of the content's own (WAV samples) are not taken yet.
+voices is a new effect.
+
+`instruments = { [41] = { file, key, loop, envelope } }` are instruments of the song's own, by program, in place of
+those programs of `voices`' voicegroup: the song gets a copy of that voicegroup with them (a program past its end
+has silent ones before it), so the song it borrows from is unchanged. `file` is a WAV recording (`hound`): its
+channels mixed to one and made the driver's signed 8-bit samples (an integer sample's top bits, a float scaled),
+its rate the one that plays `key` (MIDI's numbers, 60 when none) at the recording's pitch, as the driver tunes a
+Direct Sound sample by its rate at key 60. `loop` is the sample it loops from to its end (none: it plays once), and
+`envelope` its `attack`, `decay`, `sustain` and `release` as the driver takes a Direct Sound voice's, 0 to 255 (those
+left out 255, 0, 255 and 0: the recording as it is, cut at the note's end). The bank with the content's songs is
+checked as a whole (`SoundBank::validate`).
 

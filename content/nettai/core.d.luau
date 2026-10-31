@@ -1802,7 +1802,8 @@ export type SpriteParts = { [number]: { { { number } } } }
 -- stands (else the middle of the cell's bottom edge); each frame's pixels within 128 of it. `shadow` is an
 -- indexed PNG in the sprite's colors (each of its colors one of the first 16), an 8 to 64 pixel shape a hardware
 -- sprite has (8x8, 16x8, 32x16, 64x64, ...), centered on the object's place, which an object may draw on the
--- ground or hide (else none). Its name is a new one: no ROM sprite's.
+-- ground or hide (else none). A name the ROMs have too is this one wherever it is named (a reskin: the ROMs'
+-- sheet stays under any other name it has).
 export type SpriteExtra = {
     parts: SpriteParts?,
     file: string?,
@@ -1824,8 +1825,21 @@ end
 -- volume (7), pan (10), modulation (1), bend range (20, or RPN 0), LFO speed (21), modulation type (22), tune (24)
 -- and LFO delay (26), pitch bend, tempo, and the markers "[" and "]" (or "loopStart" and "loopEnd"), where it loops
 -- from and back. `voices` is the ROMs' sound whose instruments it plays on: its voicegroup, player, priority and
--- reverb. Its name is a new one: no ROM sound's.
-export type SoundFile = { file: string, voices: Sound }
+-- reverb. `instruments` puts recordings of its own in place of programs of that voicegroup, by program:
+--
+--     instruments = { [41] = { file = "./strings.wav", key = 69, loop = 1024, envelope = { release = 200 } } }
+--
+-- `file` is a WAV recording (mixed to one channel, played as the GBA's 8-bit samples), `key` the key it sounds at
+-- (MIDI's numbers, else 60, middle C), `loop` the sample it loops from to its end (else it plays once), and
+-- `envelope` the driver's attack, decay, sustain and release, 0 to 255 (else 255, 0, 255, 0: as recorded, cut at
+-- the note's end). A name the ROMs have too is this one wherever it is named (the ROMs' stays under any other).
+export type InstrumentFile = {
+    file: string,
+    key: number?,
+    loop: number?,
+    envelope: { attack: number?, decay: number?, sustain: number?, release: number? }?,
+}
+export type SoundFile = { file: string, voices: Sound, instruments: { [number]: InstrumentFile }? }
 declare extern type Banner with
     name: string
 end
@@ -1838,11 +1852,18 @@ end
 --     -- backgrounds/my_stage.luau
 --     return asset.background("my-stage", { file = "./my_stage.png", scroll = { 16, 8 } })
 --
--- `file` is an indexed PNG beside the module (a path as a `require` writes one, with its `.png`): at most 16
--- colors, color 0 the backdrop, its width and height whole tiles (multiples of 8); it repeats both ways.
--- `scroll` is how far it moves each frame, in 1/16 pixel (none: it stands still). Its name is a new one: no
--- ROM background's.
-export type BackgroundFile = { file: string, scroll: { number }? }
+-- `file` is an indexed PNG beside the module (a path as a `require` writes one, with its `.png`): its pixels the
+-- colors of one 16 of its palette (0 to 15, or 16 to 31, ...), color 0 of the 16 the backdrop, its width and height
+-- whole tiles (multiples of 8); it repeats both ways. `scroll` is how far it moves each frame, in 1/16 pixel (none:
+-- it stands still), and `speed_up` how many frames it takes to get to that speed from standing still (none: it
+-- moves at it from the first). With `frames`, the picture is as many pictures, one below another, each shown for
+-- its duration in frames in turn (60 a second), and again from the first with `loop = true` (else the last stays);
+-- each may be in another 16 of the palette's colors:
+--
+--     return asset.background("sea", { file = "./sea.png", scroll = { 0, 16 }, frames = { 8, 8, 8, loop = true } })
+--
+-- A name the ROMs have too is this one wherever it is named (the ROMs' stays under any other name it has).
+export type BackgroundFile = { file: string, scroll: { number }?, speed_up: number?, frames: { [number]: number, loop: boolean? }? }
 declare extern type Mugshot with
     name: string
 end
