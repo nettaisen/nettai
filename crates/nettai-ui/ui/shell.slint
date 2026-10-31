@@ -243,15 +243,16 @@ export global Shell {
     in-out property <bool> connection-open;
     in property <LinkFigures> link;
 
-    // The battle's picture (one texture, written in place), and its size as drawn: a whole multiple of the frame's
-    // 160 rows (of 240 columns, or in the enhanced mode as many as the room has). A screen shows it with a `Picture`,
-    // which says how much room it has.
+    // The battle's picture (one texture, written in place), and its size as drawn: a whole multiple of the frame
+    // (240 by 160, or in the enhanced mode as many columns and rows as the room has), and the frame's rows. A screen
+    // shows it with a `Picture`, which says how much room it has.
     in property <image> picture;
     // Something was shown in it this frame (a battle, the menu's reel, a replay's still or its viewer): a
     // `Picture` whose screen shows nothing of its own shows its ground, never what another presented last.
     in property <bool> picture-shown;
     in property <length> picture-width;
     in property <length> picture-height;
+    in property <int> picture-rows: 160;
     // Where it is drawn in its room: the room's middle, moved onto the display's pixels (the app does it: a
     // picture drawn across them would not show each of the game's pixels as one square).
     in property <length> picture-x;
@@ -1495,7 +1496,7 @@ export component Page inherits Rectangle {
 // ---- The battle's picture -------------------------------------------------------------------------------
 
 // The battle's picture, in the middle of the room it is given: the largest whole multiple of 240 by 160 display
-// pixels that fits, in the enhanced mode as wide as the room at that multiple (the app sizes it:
+// pixels that fits, in the enhanced mode as wide and as tall as the room at that multiple (the app sizes it:
 // `Shell.picture-width`). The box keeps its size whatever the multiple, so
 // nothing beside it moves. One is shown at a time; the picture is there only while something is shown in it
 // (`Shell.picture-shown`), and never past the box.

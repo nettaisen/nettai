@@ -1533,7 +1533,7 @@ component ViewerPage inherits Rectangle {
     // Over the picture, each while it is on (and there throughout, shown by `visible`: an `if` would be a
     // component of its own): the other console's picture in the bottom right corner of the one shown, a line
     // around it; and the input display in its top right corner, under the line the battle's own text takes there
-    // (its top eighth), as Practice's is. Both are placed by the picture's room (`Picture`: in the window's
+    // (its top 20 rows), as Practice's is. Both are placed by the picture's room (`Picture`: in the window's
     // coordinates, as this page's are), take no clicks, and are under the page: the transport is over them while
     // it is shown.
     Rectangle {
@@ -1559,7 +1559,7 @@ component ViewerPage inherits Rectangle {
     // is on the right"), left of the other console's picture where that is on; the other side's over that picture.)
     property <length> picture-right: Shell.picture-room-x + Shell.picture-x + Shell.picture-width;
     property <length> picture-bottom: Shell.picture-room-y + Shell.picture-y + Shell.picture-height;
-    property <length> foot: Shell.picture-height * 10 / 160;
+    property <length> foot: Shell.picture-height * 10 / Shell.picture-rows;
     PartyStrip {
         x: (ReplaysView.inset-on ? min(root.picture-right - 16px, Shell.picture-room-x + ReplaysView.inset-x - 12px) : root.picture-right - 16px) - self.width;
         y: root.picture-bottom - root.foot + max(0px, (root.foot - self.height) / 2);
@@ -1577,7 +1577,7 @@ component ViewerPage inherits Rectangle {
     InputDisplay {
         visible: ReplaysView.inputs && Shell.picture-shown;
         x: Shell.picture-room-x + Shell.picture-x + Shell.picture-width - self.width - 12px;
-        y: Shell.picture-room-y + Shell.picture-y + Shell.picture-height / 8 + 8px;
+        y: Shell.picture-room-y + Shell.picture-y + Shell.picture-height * 20 / Shell.picture-rows + 8px;
         held-top: ReplaysView.held-shown;
         held-bottom: ReplaysView.held-other;
     }

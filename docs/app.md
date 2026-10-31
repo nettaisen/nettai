@@ -167,18 +167,24 @@ a picture drawn across them wouldn't show each of the game's pixels as one squar
 whatever the multiple, so nothing beside it moves. In a battle the box is the window; on the main menu it is the
 reel's 720 by 480.
 
-In the enhanced mode a battle's picture is as wide as its box at that multiple: the frame has as many whole
-columns as the box has at the scale, 240 at least (`stage::columns`, `Fit::columns`; the renderer's
-`Renderer::wide`, docs/frontend.md §3, "Wider than the original"), so the bars are only above and below it: the
-field in the middle, the background on to both edges, the HUD against the edges the original draws it against.
-A battle, the menu's reel and a replay's viewer draw so (`Shell::show`, `Shell::show_surface` with `wide`); a
-replay's still, the viewer's inset of the other console, Practice's thumbnails and a video keep the original's
-240 columns. The original mode's picture is always the original's 240 by 160.
+In the enhanced mode a battle's picture is as wide and as tall as its box at that multiple: the frame has as
+many whole columns and rows as the box has at the scale, 240 by 160 at least (`stage::columns`, `stage::rows`,
+`Fit::columns`, `Fit::rows`; the renderer's `Renderer::size`, docs/frontend.md §3, "Larger than the original"),
+so there are no bars, what is left being less than one of the game's pixels each way: the field in the middle,
+the background on to all four edges, the HUD against the edges the original draws it against (the custom
+screen's window at the top left, its 160 rows not stretched). A battle, the menu's reel and a replay's viewer
+draw so (`Shell::show`, `Shell::show_surface` with `large`); a replay's still, the viewer's inset of the other
+console, Practice's thumbnails and a video keep the original's 240 by 160. The original mode's picture is always
+the original's 240 by 160. A phone held sideways has the whole screen for its picture, the see-through pad over
+it; held upright, the picture's room is the 3:2 box at the top of the screen, over the pad (battle.slint's
+`picture-height`), so the frame grows only to what that box holds (a few rows where the screen's width isn't a
+whole multiple of 240). What the Slint lays by the picture's rows (the party strip over its last 10, the input
+display under its top 20) has them from `Shell.picture-rows`.
 
 It is presented at the window's density (the scale over the display's factor, rounded up), or at the display's
 density with `NETTAI_PHYSICAL_PIXELS`, and drawn with `image-rendering: pixelated` at exactly `columns × scale`
-display pixels. The density need not divide the scale. Each display pixel samples the presented pixel its center
-falls in, and that pixel always belongs to the right frame pixel, so every frame pixel is the same square
+by `rows × scale` display pixels. The density need not divide the scale. Each display pixel samples the presented
+pixel its center falls in, and that pixel always belongs to the right frame pixel, so every frame pixel is the same square
 (`stage::tests::every_frame_pixel_is_a_square_at_any_density`). Only the text layer, drawn at the density, is
 scaled by a fraction.
 
@@ -278,8 +284,9 @@ docs/design/exe5ds-map.md §4.2). Where the player's side has partners, the wind
 the app's layer and never in the battle's picture (which shows only what the original's top screen draws): on a
 desktop a strip at the picture's bottom right (the user: "you should show the navi switcher on the right actually"),
 left of the connection's corner where that shows: under the picture where the window leaves room, else over the field's
-foot, its last 10 of 160 rows under the panels' lip, where nothing of the battle is drawn, at any shape of window: one
-row, 34 tall, the layout the user chose (the verification workspace's docs/nettai-ui/party/chosen/battle-strip-2.png):
+foot, the frame's last 10 rows under the panels' lip (in a frame taller than 160 rows, the background under the
+field), where nothing of the battle is drawn, at any shape of window: one row, 34 tall, the layout the user chose
+(the verification workspace's docs/nettai-ui/party/chosen/battle-strip-2.png):
 each switch, its control as bound, the face of the member it switches to (48 by 24) and its HP, then the round's navi
 changes as pips, those made outlined, those left lit, each switch and the pips a cell of their own with a line between
 (the user: "you should visually separate the two navis and dots"); the member on the field isn't in it, the battle's own

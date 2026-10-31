@@ -960,10 +960,10 @@ export component BattleScreen inherits Rectangle {
     // as it has to be.)
     // (The player's party, in a party battle: on a phone its pad's. At the right (the user: "you should show the navi
     // switcher on the right actually"), left of the connection's corner where that shows. Under the picture where the
-    // window leaves room, else over the field's foot, its last 10 of 160 rows, under the panels' lip: nothing of the
-    // battle is there, at any size of window.)
+    // window leaves room, else over the frame's last 10 rows, the field's foot under the panels' lip (in a frame taller
+    // than 160 rows, the background under the field): nothing of the battle is there, at any size of window.)
     property <length> picture-bottom: Shell.picture-y + Shell.picture-height;
-    property <length> foot: Shell.picture-height * 10 / 160;
+    property <length> foot: Shell.picture-height * 10 / Shell.picture-rows;
     property <length> strip-right: min(root.width - 16px, Shell.picture-x + Shell.picture-width - 16px);
     PartyStrip {
         x: (corner.visible ? min(root.strip-right, corner.x - 12px) : root.strip-right) - self.width;

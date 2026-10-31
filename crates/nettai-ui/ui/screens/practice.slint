@@ -456,13 +456,13 @@ export component PracticeMenu inherits MenuOverlay {
 // ---- The input display ------------------------------------------------------------------------------------
 
 // The input display: the player's buttons over the dummy's, in the picture's top right corner, under the line
-// the battle's own text takes there (its top eighth); on a phone, where the picture is small, under MENU. It is
+// the battle's own text takes there (its top 20 rows); on a phone, where the picture is small, under MENU. It is
 // over the battle and under the menu, and takes no clicks.
 export component PracticeInputs inherits Rectangle {
     InputDisplay {
         visible: PracticeView.inputs;
         x: Theme.phone ? Theme.margin : Shell.picture-room-x + Shell.picture-x + Shell.picture-width - self.width - 12px;
-        y: Theme.phone ? Shell.picture-room-y + Shell.picture-room-height + 68px : Shell.picture-room-y + Shell.picture-y + Shell.picture-height / 8 + 8px;
+        y: Theme.phone ? Shell.picture-room-y + Shell.picture-room-height + 68px : Shell.picture-room-y + Shell.picture-y + Shell.picture-height * 20 / Shell.picture-rows + 8px;
         held-top: PracticeView.held-yours;
         held-bottom: PracticeView.held-dummys;
     }

@@ -493,13 +493,14 @@ impl Shell {
     }
 
     /// How the picture fits a room of `width` by `height` display pixels: `stage::fit`, held to the settings'
-    /// picture size (the enhanced mode's frame as wide as the room at the multiple held to).
+    /// picture size (the enhanced mode's frame as wide and as tall as the room at the multiple held to).
     pub fn fit(&self, width: f32, height: f32) -> stage::Fit {
         let mut fit = stage::fit(width, height, self.scale.os, self.sharp, self.settings.enhanced);
         if self.settings.picture_size > 0 && fit.scale > self.settings.picture_size {
             fit.scale = self.settings.picture_size;
             fit.density = fit.density.min(fit.scale);
             fit.columns = stage::columns(width, fit.scale, self.settings.enhanced);
+            fit.rows = stage::rows(height, fit.scale, self.settings.enhanced);
         }
         fit
     }
@@ -517,15 +518,15 @@ impl Shell {
     }
 
     /// Show a picture of a screen's own in the room its `Picture` has (a replay's viewer): `present` draws it
-    /// into the buffer it is given, a frame as wide as it is given (the original's 240 columns but where
-    /// `wide`, a battle's picture: the enhanced mode's as wide as the room), when `surface` is out of date (the
+    /// into the buffer it is given, a frame as large as it is given (the original's 240 by 160 but where
+    /// `large`, a battle's picture: the enhanced mode's as large as the room), when `surface` is out of date (the
     /// screen sets `surface.stale` as its picture changes) or the room changed.
-    pub fn show_surface(&mut self, surface: &mut Surface, wide: bool, present: impl FnOnce(nettai_render::compose::Size, &mut [u32], usize, usize)) {
+    pub fn show_surface(&mut self, surface: &mut Surface, large: bool, present: impl FnOnce(nettai_render::compose::Size, &mut [u32], usize, usize)) {
         if !self.drawing {
             return;
         }
         let Some(fit) = self.room_fit(surface) else { return };
-        let fit = if wide { fit } else { fit.original() };
+        let fit = if large { fit } else { fit.original() };
         let shown = surface.picture(fit, present);
         self.place_picture(fit, shown);
     }
@@ -576,9 +577,10 @@ impl Shell {
         if let Some(image) = shown {
             shell.set_picture(image);
         }
-        let size = (fit.columns as f32 * fit.scale as f32, nettai_render::compose::HEIGHT as f32 * fit.scale as f32);
+        let size = (fit.columns as f32 * fit.scale as f32, fit.rows as f32 * fit.scale as f32);
         shell.set_picture_width(size.0 / factor);
         shell.set_picture_height(size.1 / factor);
+        shell.set_picture_rows(fit.rows as i32);
         // In the room's middle, on the display's pixels: each of the game's pixels is one square of them. (The room
         // is placed from the safe area's corner, which is on the display's pixels: a phone's insets are whole ones.)
         let room = (shell.get_picture_room_x() * factor, shell.get_picture_room_y() * factor);
