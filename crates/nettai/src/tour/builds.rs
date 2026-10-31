@@ -25,6 +25,15 @@ fn on_tab(tab: EditorTab, name: &'static str) -> Step {
     })
 }
 
+/// The editor's tab of kind `tab`, by what it is (`build_tabs::go_to_tab`: a tab's place in the bar is its game's,
+/// EXE5's PARTY after NAVI). Every game has the tabs these steps go to; where one isn't there to go to, the step
+/// does nothing and `on_tab` after the picture says so.
+fn tab(tab: EditorTab) -> Step {
+    Box::new(move |ui, app, _| {
+        super::build_tabs::go_to_tab(ui, app, tab);
+    })
+}
+
 /// The names of the builds made: the second in another script, the third long.
 const NAMES: [&str; 3] = ["Falzar heat", "ジャッジ対策 v3", "Tournament build 10-18 with a long name"];
 
@@ -104,8 +113,8 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     add(SETTLE, fresh());
     make(add, NAMES[0], 1);
     add(SETTLE, press("edit", 0));
-    add(SETTLE, press("tab", 0));
-    burst(add, "builds-tab", &[0, 30, 60, 100, 160, 260], press("tab", 1));
+    add(SETTLE, tab(EditorTab::Navi));
+    burst(add, "builds-tab", &[0, 30, 60, 100, 160, 260], tab(EditorTab::Folder));
     add(90, on_tab(EditorTab::Folder, "Folder"));
     // The library by MB, the most first: its third row is a Giga chip of this build's version (the folder has
     // none: the count goes from 0 to 1), its fourth the other version's.
@@ -231,7 +240,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     }
     // The game's navis, the focus a card on; another navi chosen (the tabs that are the game's own navi's
     // greyed), and the first again.
-    add(SETTLE, press("tab", 0));
+    add(SETTLE, tab(EditorTab::Navi));
     add(SETTLE, navis());
     add(SETTLE, card(0, false));
     shot(add, "builds-navi", Pair::First);
@@ -265,7 +274,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
         Box::new(|_, app, _| leave_library(&mut app.borrow_mut()))
     }
     // The folder, and the strip for the entry under the cursor; the library, its controls a focus move apart.
-    add(SETTLE, press("tab", 1));
+    add(SETTLE, tab(EditorTab::Folder));
     add(SETTLE, focus("slot", 13));
     shot(add, "builds-folder", Pair::None);
     add(90, on_tab(EditorTab::Folder, "Folder"));
@@ -325,8 +334,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
 
     // The tabs to come, as they are.
     add(SETTLE, folder());
-    // (The tab after Folder, by the key that goes to it: a tab's place in the bar is its game's.)
-    add(SETTLE, act(Action::Next));
+    add(SETTLE, tab(EditorTab::Navicust));
     shot(add, "builds-navicust", Pair::None);
     add(90, on_tab(EditorTab::Navicust, "NaviCust"));
 
@@ -369,7 +377,7 @@ fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
         }),
     );
     add(SETTLE, press("edit", 0));
-    add(SETTLE, press("tab", 0));
+    add(SETTLE, tab(EditorTab::Navi));
     add(SETTLE, focus("form", 0));
     shot(add, "builds-forms-focus", Pair::None);
     add(90, on_tab(EditorTab::Navi, "Navi"));
@@ -414,7 +422,7 @@ fn choose_other(other: bool) -> Step {
 /// category, a game's forms in a section a version (`rulesets-forms`: EXE6's Crosses, EXE5's souls); and Back, the
 /// editor marking what the copy holds back (`rulesets-folder-marked`: the Folder tab, the library's rows).
 fn rulesets(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair)) {
-    add(SETTLE, press("tab", 0));
+    add(SETTLE, tab(EditorTab::Navi));
     add(SETTLE, press("ruleset-edit", 0));
     shot(add, "rulesets-preset", Pair::None);
     add(SETTLE, press("rules.duplicate", 0));
@@ -434,9 +442,10 @@ fn rulesets(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
     add(SETTLE, focus("rules.items", 0));
     shot(add, "rulesets-forms", Pair::None);
     add(SETTLE, act(Action::Back));
-    add(SETTLE, press("tab", 1));
+    add(SETTLE, tab(EditorTab::Folder));
     add(SETTLE, focus("slot", 0));
     shot(add, "rulesets-folder-marked", Pair::None);
+    add(90, on_tab(EditorTab::Folder, "Folder"));
     // (The build is made for the game's first preset again: the walk in the next language is as this one was.)
     add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
 }

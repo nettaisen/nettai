@@ -2831,7 +2831,7 @@ the Regular chip and two tag chips marked, a mark the rules refuse with its reas
 (`builds-folder-short`: the empty entry's strip says the folder's size, Chips in the error red), the entry of the
 other version's Giga chip put in before (`builds-folder-mixed`: its name red with every thing of either version
 the build holds, its strip saying the mix), the
-sort's list), then the tab after it; last, the selector of forms (`switched`: a build of the game's first version
+sort's list), then the NaviCust tab; last, the selector of forms (`switched`: a build of the game's first version
 made beside the walk's; `builds-forms-focus`, its first form focused, ready, the note under the selector;
 `builds-forms-mixed`, the other version's first form of the first fact chosen, every form of either version the
 build has in the error red and the note's place saying the mix the ruleset has against the form focused;
@@ -2841,8 +2841,9 @@ build's state are as the picture's name says); then a ruleset's page
 the reserved line saying so), DUPLICATE (`rulesets-own`), its chips (`rulesets-chips`, chosen by the category's
 select's choice: a phone has no list of them), the first chip held back and the first version's quick choice
 (`rulesets-chips-held`), and Back, the Folder tab marking what the copy holds back (`rulesets-folder-marked`); the
-game's first preset is picked again after, so the next language's walk is as this one. A game may have one navi or thirteen, a choice or none, four tabs or five:
-a step names the control it is for and does nothing where the game has none. The probe's bursts are the
+game's first preset is picked again after, so the next language's walk is as this one. A game may have one navi or thirteen, a choice or none, four tabs, five or six:
+a step names the control it is for and does nothing where the game has none, and goes to a tab by what it is (its
+word in the bar), never by its place, which is the game's (EXE5's PARTY comes after NAVI). The probe's bursts are the
 editor's body arriving as the tab changes, a chip the rules refuse (its row shakes) and a chip put in (it flies
 to its entry, the entry flashes, a count that changed ticks).
 
@@ -2908,7 +2909,10 @@ and what is cut. Two things went unseen that way, and each now has its check.
 - *A picture of another tab under a tab's name.* EXE4's editor had no NaviCust tab (a mistake of the editor's),
   and the walk's "builds-navicust" was a clean picture of PATCH CARDS. After a picture whose name says a tab,
   Builds' steps ask the view which tab is shown (`on_tab`) and report a picture that is of another, counted
-  against it as a cut text is.
+  against it as a cut text is. (EXE5's PARTY, after NAVI, later put the pictures of steps that went to a tab by
+  its place one tab off, `builds-folder` of PARTY: the steps go to a tab by what it is now.) A step that acts on
+  the NaviCust's board where the view shows none, the walk on another tab, says so the same way
+  (`Board::shown`), rather than read past it.
 - *A game that doesn't load is passed over, and the pass goes on with another.* The shell selects the next
   game that can be played, and the pass then walks that one and ends well: `NETTAI_TOUR_GAME=exe6` with content
   whose assets don't load (a sprite the content names and the assets haven't) gives a clean report of EXE4's

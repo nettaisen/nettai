@@ -88,19 +88,28 @@ fn open_build(add: &mut dyn FnMut(u64, Step)) {
     add(SETTLE, press("edit", 0));
 }
 
-/// The editor's tab of kind `tab`, by its place in the bar. A tab the game hasn't is passed by: the steps after
-/// this do nothing and take no picture, until the next tab is gone to or the walk ends.
+/// Go to the editor's tab of kind `tab` as a tap on its word in the bar does, the tab found by its word (a tab's place
+/// in the bar is its game's: EXE5's PARTY is after NAVI). Not by the focus put on the word and Enter: on a phone the
+/// bar is a window on the tabs, a word outside it can't take the focus, and Enter would act on whatever has it. False
+/// where the game hasn't the tab, it can't be gone to, or the editor isn't shown.
+pub(super) fn go_to_tab(ui: &nettai_ui::AppWindow, app: &Rc<RefCell<App>>, tab: EditorTab) -> bool {
+    let view = ui.global::<BuildsView>();
+    let word = view.get_tab_names().row_data(tab as usize).unwrap_or_default();
+    let at = view.get_tabs().iter().position(|t| t.text == word && t.enabled);
+    let mut app = app.borrow_mut();
+    let Some(at) = at.filter(|_| app.shell.screen() == ScreenId::Builds) else { return false };
+    app.with_screen(ScreenId::Builds, |s, shell| s.activate(shell, "tab", at as i32));
+    true
+}
+
+/// The editor's tab of kind `tab` (`go_to_tab`). A tab the game hasn't is passed by: the steps after this do
+/// nothing and take no picture, until the next tab is gone to or the walk ends. (Off the editor, the report says so.)
 pub(super) fn to_tab(tab: EditorTab) -> Step {
     Box::new(move |ui, app, tour| {
-        let view = ui.global::<BuildsView>();
-        let names = view.get_tab_names();
-        let word = names.row_data(tab as usize).unwrap_or_default();
-        let at = view.get_tabs().iter().position(|t| t.text == word && t.enabled);
-        tour.passing.set(at.is_none());
-        let Some(at) = at else { return };
-        let mut app = app.borrow_mut();
-        app.shell.nav.focus("tab", at as i32);
-        app.act(Action::Confirm);
+        if app.borrow().shell.screen() != ScreenId::Builds {
+            ui.global::<nettai_ui::Audit>().invoke_clipped("(the walk isn't on the editor: it goes to none of its tabs)".into());
+        }
+        tour.passing.set(!go_to_tab(ui, app, tab));
     })
 }
 
@@ -161,13 +170,13 @@ pub(super) fn put(spot: Spot) -> Step {
     })
 }
 
-/// `put`'s work, done at once.
+/// `put`'s work, done at once. (No board shown, the report says so: `Board::shown`.)
 fn put_now(ui: &nettai_ui::AppWindow, app: &Rc<RefCell<App>>, spot: Spot) {
+    let Some(board) = Board::shown(ui) else { return };
     let view = ui.global::<NavicustView>();
-    let (n, command) = (view.get_columns(), view.get_command());
-    let cells: Vec<nettai_ui::GridCell> = view.get_cells().iter().collect();
+    let (n, command) = (board.n, view.get_command());
     let held: Vec<(i32, i32)> = view.get_held().iter().map(|c| (c.x, c.y)).collect();
-    let at = |x: i32, y: i32| (x >= 0 && y >= 0 && x < n && y < n).then(|| &cells[(y * n + x) as usize]);
+    let at = |x: i32, y: i32| board.at(x, y);
     let fits = |gx: i32, gy: i32, ring: bool| -> bool {
         let on: Vec<Option<&nettai_ui::GridCell>> = held.iter().map(|&(dx, dy)| at(gx + dx, gy + dy)).collect();
         let real = on.iter().all(|c| c.is_some_and(|c| c.kind != nettai_ui::CellKind::None));
@@ -380,7 +389,8 @@ fn mouse_on(place: fn(&Board) -> Option<Point>, click: bool) -> Step {
         if tour.passing.get() {
             return;
         }
-        let Some(position) = place(&Board::of(ui)).and_then(|p| locate(ui, app, p)) else {
+        let Some(board) = Board::shown(ui) else { return };
+        let Some(position) = place(&board).and_then(|p| locate(ui, app, p)) else {
             tour.key_wrong("the pointer on the NaviCust: no place for it (no piece on the board?)".to_string());
             return;
         };
@@ -503,9 +513,27 @@ struct Board {
 }
 
 impl Board {
+    /// The board as the view shows it, or one of no cells where the view shows none: its cells are emptied while the
+    /// NaviCust tab isn't the one shown (its columns kept), and nothing is read past them.
     fn of(ui: &nettai_ui::AppWindow) -> Board {
         let view = ui.global::<NavicustView>();
-        Board { n: view.get_columns(), cells: view.get_cells().iter().collect() }
+        let (n, cells): (i32, Vec<nettai_ui::GridCell>) = (view.get_columns(), view.get_cells().iter().collect());
+        match n > 0 && cells.len() >= (n * n) as usize {
+            true => Board { n, cells },
+            false => Board { n: 0, cells: Vec::new() },
+        }
+    }
+
+    /// The board as the view shows it, for a step that acts on it: none where the editor shows another tab (the view's
+    /// board is the NaviCust's as it was last shown) or the view has no board (none until the tab is first shown).
+    /// The report says so, as `on_tab` says of a picture of another tab.
+    fn shown(ui: &nettai_ui::AppWindow) -> Option<Board> {
+        let board = Board::of(ui);
+        if ui.global::<BuildsView>().get_shown() != EditorTab::Navicust || board.n == 0 {
+            ui.global::<nettai_ui::Audit>().invoke_clipped("(the walk isn't on the editor's NaviCust tab: there is no board to act on)".into());
+            return None;
+        }
+        Some(board)
     }
 
     fn at(&self, x: i32, y: i32) -> Option<&nettai_ui::GridCell> {
@@ -1931,7 +1959,7 @@ fn rules_category(name: &'static str) -> Step {
 /// page with ProtoMan chosen alone. Returns the name the build's ruleset was shown by while the page's copy was the
 /// build's (filled as the steps run), for [`to_ruleset`] to make the build its again.
 fn party_rules(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) -> Rc<RefCell<String>> {
-    add(SETTLE, press("tab", 0));
+    add(SETTLE, to_tab(EditorTab::Navi));
     add(SETTLE, press("ruleset-edit", 0));
     add(SETTLE, press("rules.duplicate", 0));
     add(SETTLE, rules_category("Party"));
