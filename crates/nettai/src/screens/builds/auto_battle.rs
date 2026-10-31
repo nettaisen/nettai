@@ -116,11 +116,11 @@ impl AutoBattle {
         draft.pane_problems(&[auto::PLACES_FIELD.to_string()], false).into_iter().filter(|p| p.field.as_deref() != Some(auto::PLACES_FIELD) || p.entry.is_none_or(|e| e >= places)).collect()
     }
 
-    /// The places under their lists' titles, two columns of them (on a phone one), each place where it is, marked
+    /// The places under their lists' titles, two columns of them (on a phone one, upright or sideways), each place where it is, marked
     /// where the build's problems are about it; in a phone's header, what the game's rules have against the data, a
     /// place of it or the whole (docs/design/app-ui.md §2.66).
     fn show_places(&mut self, shell: &Shell, draft: &Draft) {
-        let columns = if shell.scale.phone { 1 } else { 2 };
+        let columns = if shell.scale.handheld() { 1 } else { 2 };
         let kit = draft.kit.clone();
         let Some(layout) = kit.auto_layout() else { return };
         let data = Data::of_side(draft.content(), draft.side());
@@ -570,6 +570,10 @@ impl Tab for AutoBattle {
     fn show(&mut self, shell: &mut Shell, draft: &mut Draft) {
         if self.described.is_none() {
             self.described = Some(Described::Place(self.place));
+        }
+        // (A phone turned sideways has the library beside the places: its sheet shuts.)
+        if !shell.scale.phone && shell.ui().global::<AutoBattleView>().get_sheet() {
+            self.leave_library(shell);
         }
         self.changed(shell, draft);
     }

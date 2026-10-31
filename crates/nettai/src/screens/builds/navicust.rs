@@ -1002,6 +1002,10 @@ impl Tab for Navicust {
     }
 
     fn show(&mut self, shell: &mut Shell, draft: &mut Draft) {
+        // (A phone turned sideways has the programs beside the board: their sheet shuts.)
+        if !shell.scale.phone {
+            self.close_sheet(shell);
+        }
         self.grid(draft);
         if self.programs.is_empty() {
             self.list(draft);

@@ -557,7 +557,7 @@ impl Folder {
     fn drop_at(shell: &Shell, at: i32) -> Option<usize> {
         let point = editor::pointer_at(at);
         let size = nettai_battle::custom::folder::FOLDER_SIZE;
-        if shell.scale.phone { editor::list_row(shell, "slot", point, size) } else { editor::nearest(shell, "slot", 0..size, point, None) }
+        if shell.scale.handheld() { editor::list_row(shell, "slot", point, size) } else { editor::nearest(shell, "slot", 0..size, point, None) }
     }
 
     /// Move entry `from` to `to`, those between shifting toward where it was; its marks go with it (and the entry
@@ -611,6 +611,10 @@ impl Tab for Folder {
 
     fn show(&mut self, shell: &mut Shell, draft: &mut Draft) {
         self.slot = self.slot.min(nettai_battle::custom::folder::FOLDER_SIZE - 1);
+        // (A phone turned sideways has the library beside the folder: its sheet shuts.)
+        if !shell.scale.phone && shell.ui().global::<FolderView>().get_sheet() {
+            self.leave_library(shell, self.slot);
+        }
         if self.described.is_none() {
             self.described = Some(Described::Slot(self.slot));
         }

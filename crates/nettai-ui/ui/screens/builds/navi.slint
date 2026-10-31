@@ -128,8 +128,8 @@ component NaviCardView inherits Rectangle {
     in property <NaviCard> navi;
     in property <string> nav: "navi";
     in property <int> nav-index;
-    property <length> pad: Theme.phone ? 8px : 12px;
-    property <length> face-width: Theme.phone ? 64px : 96px;
+    property <length> pad: Theme.handheld ? 8px : 12px;
+    property <length> face-width: Theme.handheld ? 64px : 96px;
     Cut {
         cut: 9px;
         background: root.navi.chosen ? Theme.raised : (hit.has-hover ? Theme.raised : Theme.panel);
@@ -194,7 +194,7 @@ component NaviCardView inherits Rectangle {
 component FormRow inherits Rectangle {
     in property <NaviForm> form;
     in property <int> nav-index;
-    property <length> face-height: Theme.phone ? 32px : 16px;
+    property <length> face-height: Theme.handheld ? 32px : 16px;
     Rectangle {
         background: hit.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
     }
@@ -233,7 +233,7 @@ component FormRow inherits Rectangle {
         text: root.form.name;
         color: root.form.flagged ? Theme.bad : root.form.chosen ? Theme.text : Theme.dim;
         font-family: Theme.body;
-        font-size: Theme.phone ? 14px : 12px;
+        font-size: Theme.handheld ? 14px : 12px;
         font-weight: 600;
         vertical-alignment: center;
         overflow: elide;
@@ -321,35 +321,41 @@ component ChoiceSeg inherits Rectangle {
 }
 
 export component NaviTab inherits Rectangle {
-    // (The grid: a desktop's. A phone's is its sheet, `NaviOverlay`.)
+    // (The grid: a desktop's. A phone's is its sheet, `NaviOverlay`; held sideways it is at the right, four across,
+    // under the ruleset's select, EDIT and PRACTICE, the panel at the left: docs/design/app-ui.md §2.103.)
     property <int> columns: 4;
-    property <length> gap: 12px;
+    property <length> gap: Theme.sideways ? 8px : 12px;
     // The build's navi's panel: beside the grid, the tab's height; on a phone the tab's width, as tall as what it shows
-    // up to the room the ruleset's row and PRACTICE leave under it, where its forms scroll.
-    property <length> panel-width: Theme.phone ? self.width : 360px;
+    // up to the room the ruleset's row and PRACTICE leave under it, where its forms scroll (as they do sideways, in
+    // the tab's height).
+    property <length> panel-width: Theme.phone ? self.width : Theme.sideways ? max(300px, (self.width - 12px) * 0.45) : 360px;
     property <length> panel-height: Theme.phone ? min(root.forms-y + forms-list.preferred-height + root.pad, self.height - root.under-panel) : self.height;
-    property <length> panel-x: Theme.phone ? 0px : self.width - 360px;
-    // (On a phone the ruleset's select and EDIT are under the panel, and PRACTICE under them.)
+    property <length> panel-x: Theme.handheld ? 0px : self.width - 360px;
+    // (On a phone the ruleset's select and EDIT are under the panel, and PRACTICE under them; sideways the three are
+    // a row over the grid.)
     property <length> under-panel: 12px + 40px + (NaviView.practice ? 52px : 0px);
-    property <length> grid-width: self.width - 360px - 24px;
+    property <length> grid-x: Theme.sideways ? root.panel-width + 12px : 0px;
+    property <length> grid-y: Theme.sideways ? 36px + 12px : 0px;
+    property <length> grid-width: Theme.sideways ? self.width - root.grid-x - 12px : self.width - 360px - 24px;
     property <length> card-width: (root.grid-width - (root.columns - 1) * root.gap) / root.columns;
-    property <length> card-height: 140px;
+    property <length> card-height: Theme.sideways ? 84px : 140px;
     // The panel's padding: 16 around what it shows, as the editor's strips and the NaviCust's effects have.
     property <length> pad: 16px;
     // Where the panel's facts are: beside the face; and under them, `pad` below, what else the panel shows.
-    property <length> facts-x: root.panel-x + (Theme.phone ? 96px : 128px);
+    property <length> facts-x: root.panel-x + (Theme.handheld ? 96px : 128px);
     property <length> facts-y: Theme.phone ? 16px : 12px;
     // Under the facts, a line kept for what the build's problems have against the form under the cursor or the
     // pointer, else against the navi: in the same place whatever the selector holds (the user, of it in the note's
     // place: "the error message placement on the navi tab is janky as hell").
-    property <length> stat-pitch: Theme.phone ? 20px : 22px;
+    property <length> stat-pitch: Theme.handheld ? 20px : 22px;
     property <length> element-y: root.facts-y + 28px + NaviView.stats.length * root.stat-pitch;
     property <length> fault-y: root.element-y + root.stat-pitch + 4px;
-    property <length> body-y: root.fault-y + 28px;
-    property <length> label-width: Theme.phone ? 84px : 110px;
+    property <length> body-y: root.fault-y + (Theme.sideways ? 24px : 28px);
+    property <length> label-width: Theme.handheld ? 84px : 110px;
     property <[string]> stat-labels: [@tr("HP")];
-    // Between the choices, the facts of forms and the note: room enough that each reads as its own.
-    property <length> fact-gap: 20px;
+    // Between the choices, the facts of forms and the note: room enough that each reads as its own (sideways, closer:
+    // the window is short).
+    property <length> fact-gap: Theme.sideways ? 14px : 20px;
     // The selector: each fact's name and count over its forms' rows, the editor's lists' rows: one column (a phone's
     // too, where two cut the names), or on a desktop each version's group a column where each of two has one form (the
     // app places them: the group's `columns`, the form's `column` and `row`), each version's under its name: a head 16
@@ -363,10 +369,10 @@ export component NaviTab inherits Rectangle {
     property <length> grid-height: ceil(NaviView.navis.length / root.columns) * (root.card-height + root.gap) - root.gap;
     // (Its scroll bar in the gap at its right.)
     if !Theme.phone: ScrollPage {
-        x: 0;
-        y: 0;
+        x: root.grid-x;
+        y: root.grid-y;
         width: root.grid-width + 12px;
-        height: root.height;
+        height: root.height - root.grid-y;
         nav: "navi";
         content-height: root.grid-height;
         for navi[i] in NaviView.navis: NaviCardView {
@@ -406,7 +412,7 @@ export component NaviTab inherits Rectangle {
     Image {
         x: root.panel-x + root.pad;
         y: root.pad;
-        width: Theme.phone ? 64px : 96px;
+        width: Theme.handheld ? 64px : 96px;
         height: self.width / 2;
         source: NaviView.face;
         image-rendering: pixelated;
@@ -542,7 +548,7 @@ export component NaviTab inherits Rectangle {
         x: root.panel-x + root.pad;
         y: root.forms-y;
         width: root.panel-width - 2 * root.pad + 12px;
-        height: Theme.phone ? max(0px, root.panel-height - root.pad - self.y) : forms-list.preferred-height;
+        height: Theme.handheld ? max(0px, root.panel-height - root.pad - self.y) : forms-list.preferred-height;
         nav: "form";
         content-height: forms-list.preferred-height;
         forms-list := VerticalLayout {
@@ -625,35 +631,41 @@ export component NaviTab inherits Rectangle {
         }
     }
 
-    // (On a phone, the build's ruleset and EDIT, under the panel.)
+    // (On a phone, the build's ruleset and EDIT, under the panel; sideways at the grid's top, PRACTICE beside them,
+    // each 36 tall.)
+    property <length> sideways-practice: NaviView.practice ? phone-practice.width + 8px : 0px;
     Select {
-        x: 0;
-        y: root.panel-height + 12px;
-        width: root.width - 8px - phone-edit.width;
-        height: 40px;
-        visible: Theme.phone;
-        focusable: Theme.phone;
+        x: Theme.sideways ? root.grid-x : 0px;
+        y: Theme.sideways ? 0px : root.panel-height + 12px;
+        width: Theme.sideways ? max(0px, root.width - self.x - 8px - phone-edit.width - root.sideways-practice) : root.width - 8px - phone-edit.width;
+        height: Theme.sideways ? 36px : 40px;
+        visible: Theme.handheld;
+        focusable: Theme.handheld;
         nav: "ruleset";
         value: NaviView.ruleset;
         note: NaviView.ruleset-missing ? @tr("(missing)") : "";
     }
 
     phone-edit := Button {
-        x: root.width - self.width;
-        y: root.panel-height + 12px;
+        x: root.width - self.width - (Theme.sideways ? root.sideways-practice : 0px);
+        y: Theme.sideways ? 0px : root.panel-height + 12px;
         width: self.natural-width;
-        visible: Theme.phone;
-        nav: Theme.phone ? "ruleset-edit" : "";
+        height: Theme.sideways ? 36px : 40px;
+        compact: Theme.sideways;
+        visible: Theme.handheld;
+        nav: Theme.handheld ? "ruleset-edit" : "";
         text: I18n.upper(@tr("Edit"));
     }
 
-    // (On a phone, PRACTICE under them, the row's width: the tab bar has no room for it.)
-    Button {
-        x: 0;
-        y: root.panel-height + 64px;
-        width: root.width;
-        visible: Theme.phone && NaviView.practice;
-        nav: Theme.phone && NaviView.practice ? "practice" : "";
+    // (On a phone, PRACTICE under them, the row's width: the tab bar has no room for it. Sideways at the row's end.)
+    phone-practice := Button {
+        x: Theme.sideways ? root.width - self.width : 0px;
+        y: Theme.sideways ? 0px : root.panel-height + 64px;
+        width: Theme.sideways ? self.natural-width : root.width;
+        height: Theme.sideways ? 36px : 40px;
+        compact: Theme.sideways;
+        visible: Theme.handheld && NaviView.practice;
+        nav: Theme.handheld && NaviView.practice ? "practice" : "";
         text: I18n.upper(@tr("Practice"));
     }
 }

@@ -96,12 +96,15 @@ component EditorBody inherits Rectangle {
 }
 
 export component BuildsScreen inherits Page {
-    // The tab bar's place, and the tab's under it (the bar is flush under the header).
+    // The tab bar's place, and the tab's under it (the bar is flush under the header). On a phone held sideways the
+    // bar is in the header's row after the name's box, 160 wide (docs/design/app-ui.md §2.103), and the tab has the
+    // whole body.
     property <length> bar-y: Theme.phone ? -8px : -16px;
-    property <length> tab-y: Theme.phone ? 44px : 40px;
-    property <length> tab-height: self.body-height - root.tab-y + (Theme.phone ? 0px : 8px);
+    property <length> tab-y: Theme.phone ? 44px : Theme.sideways ? 0px : 40px;
+    property <length> tab-height: self.body-height - root.tab-y + (Theme.handheld ? 0px : 8px);
     title: BuildsView.name;
     title-nav: "name";
+    title-most: Theme.sideways ? 152px : 10000px;
     back: BuildsView.to-practice ? I18n.upper(@tr("Practice")) : I18n.upper(@tr("Play"));
     // (A phone's header leaves the game out. A build has no version: docs/design/versions.md §3.3.)
     game: !Theme.phone;
@@ -113,23 +116,25 @@ export component BuildsScreen inherits Page {
         x: -Theme.margin;
         y: root.bar-y + 39px;
         width: root.body-width + 2 * Theme.margin;
+        visible: !Theme.sideways;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     // (At the bar's right end on a desktop, the ruleset the build is made for, and EDIT: its page; then past a divider
     // PRACTICE, straight into a practice battle with the build, whose EXIT comes back here (none where the editor was
-    // opened from Practice, whose Back goes back to it). A phone has them on the Navi tab.)
+    // opened from Practice, whose Back goes back to it). A phone has them on the Navi tab, upright or sideways.)
     property <bool> practice: !BuildsView.to-practice;
     property <length> practice-width: root.practice ? 16px + 1px + 16px + practice-button.width : 0px;
-    property <length> ruleset-width: Theme.phone ? 0px : ruleset-label.width + 12px + 176px + 8px + rules-edit.width + root.practice-width + 16px;
+    property <length> ruleset-width: Theme.handheld ? 0px : ruleset-label.width + 12px + 176px + 8px + rules-edit.width + root.practice-width + 16px;
     tab-bar := TabBar {
-        x: Theme.phone ? -8px : 0px;
-        y: root.bar-y;
-        width: root.body-width + (Theme.phone ? 16px : 0px) - root.ruleset-width;
+        x: Theme.phone ? -8px : Theme.sideways ? root.header-room-x : 0px;
+        y: Theme.sideways ? root.header-top + (Theme.header - self.height) / 2 : root.bar-y;
+        width: Theme.sideways ? root.header-room-width : root.body-width + (Theme.phone ? 16px : 0px) - root.ruleset-width;
         nav: "tab";
         tabs: BuildsView.tabs;
         chosen: BuildsView.tab;
+        headed: Theme.sideways;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
@@ -139,7 +144,7 @@ export component BuildsScreen inherits Page {
         y: root.bar-y;
         width: self.preferred-width;
         height: 36px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: I18n.upper(@tr("Ruleset"));
     }
 
@@ -148,8 +153,8 @@ export component BuildsScreen inherits Page {
         y: root.bar-y;
         width: 176px;
         height: 36px;
-        visible: !Theme.phone;
-        focusable: !Theme.phone;
+        visible: !Theme.handheld;
+        focusable: !Theme.handheld;
         nav: "ruleset";
         value: BuildsView.ruleset;
         note: BuildsView.ruleset-missing ? @tr("(missing)") : "";
@@ -162,8 +167,8 @@ export component BuildsScreen inherits Page {
         height: 36px;
         width: self.natural-width;
         compact: true;
-        visible: !Theme.phone;
-        nav: Theme.phone ? "" : "ruleset-edit";
+        visible: !Theme.handheld;
+        nav: Theme.handheld ? "" : "ruleset-edit";
         text: I18n.upper(@tr("Edit"));
     }
 
@@ -172,7 +177,7 @@ export component BuildsScreen inherits Page {
         y: root.bar-y + 8px;
         width: 1px;
         height: 20px;
-        visible: !Theme.phone && root.practice;
+        visible: !Theme.handheld && root.practice;
         background: Theme.line;
     }
 
@@ -183,8 +188,8 @@ export component BuildsScreen inherits Page {
         height: 36px;
         width: self.natural-width;
         compact: true;
-        visible: !Theme.phone && root.practice;
-        nav: !Theme.phone && root.practice ? "practice" : "";
+        visible: !Theme.handheld && root.practice;
+        nav: !Theme.handheld && root.practice ? "practice" : "";
         text: I18n.upper(@tr("Practice"));
     }
 

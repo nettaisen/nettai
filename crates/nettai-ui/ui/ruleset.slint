@@ -10,13 +10,15 @@
 // the reserved line at the foot. The user: "why are the buttons on the ruleset editor transparent? i also feel like
 // the layout is so weird" (a control's raised fill is drawn for a panel, and there was none). On a phone one column,
 // no panels: Version exclusives (its word over its control), the buttons, the category as a select, the head, the
-// items.
+// items. Held sideways (docs/design/app-ui.md §2.103) the categories are tabs in the header's row after the name, as
+// the build editor's are; the row is Version exclusives' control (its two words say it) and the buttons, compact;
+// under it the category's panel the body's width, its search on its header line.
 
 import { Theme, I18n } from "theme.slint";
 import { Nav, Focusable, NavKind } from "nav.slint";
 import { Shell, Page, PadButton, Hint } from "shell.slint";
 import { Arrive } from "motion.slint";
-import { Button, ButtonKind, Field, Seg, Select, Label, Value, Message, ListView, ScrollPage, PanelBack, RowTouch, RowBack, Pill, AllNone } from "widgets.slint";
+import { Button, ButtonKind, Field, Seg, Select, Label, Value, Message, ListView, ScrollPage, PanelBack, RowTouch, RowBack, Pill, AllNone, TabBar, Tab } from "widgets.slint";
 import { VersionTag, VersionMark } from "build.slint";
 
 // A category in the list: its name, and how much it allows.
@@ -96,6 +98,8 @@ export global RulesetView {
     // Version exclusives: 0 one version's alone in a build, 1 the versions' mixed.
     in property <int> versions;
     in property <[RulesetCategory]> categories;
+    // The same, as a phone held sideways has them: tabs in the header (their names, set in capitals by the tab bar).
+    in property <[Tab]> tabs;
     in property <int> category;
     in property <[RulesetChoice]> choices;
     in property <string> search;
@@ -252,7 +256,7 @@ component Check inherits Rectangle {
 component ItemRow inherits Rectangle {
     in property <RulesetItem> line;
     in property <int> nav-index;
-    property <length> picture-height: Theme.phone ? 32px : 16px;
+    property <length> picture-height: Theme.handheld ? 32px : 16px;
     Rectangle {
         background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
     }
@@ -280,7 +284,7 @@ component ItemRow inherits Rectangle {
         text: root.line.name;
         color: root.line.allowed ? Theme.text : Theme.dim;
         font-family: Theme.body;
-        font-size: Theme.phone ? 14px : 13px;
+        font-size: Theme.handheld ? 14px : 13px;
         font-weight: 600;
         vertical-alignment: center;
         overflow: elide;
@@ -306,7 +310,7 @@ component KeyRow inherits Rectangle {
     in property <RulesetKey> line;
     in property <int> nav-index;
     in property <bool> chosen;
-    property <length> picture-height: Theme.phone ? 32px : 16px;
+    property <length> picture-height: Theme.handheld ? 32px : 16px;
     RowBack {
         chosen: root.chosen;
         hover: touch.has-hover;
@@ -335,7 +339,7 @@ component KeyRow inherits Rectangle {
         text: root.line.name;
         color: root.line.allowed ? Theme.text : Theme.dim;
         font-family: Theme.body;
-        font-size: Theme.phone ? 14px : 13px;
+        font-size: Theme.handheld ? 14px : 13px;
         font-weight: 600;
         vertical-alignment: center;
         overflow: elide;
@@ -379,7 +383,7 @@ component ProgramRow inherits Rectangle {
         text: root.line.name;
         color: root.line.allowed ? Theme.text : Theme.dim;
         font-family: Theme.body;
-        font-size: Theme.phone ? 14px : 13px;
+        font-size: Theme.handheld ? 14px : 13px;
         font-weight: 600;
         vertical-alignment: center;
         overflow: elide;
@@ -406,7 +410,7 @@ component ProgramRow inherits Rectangle {
 // in the cursor's color where it is; hairlines between. Each takes a little more than its line, and nothing moves.
 component VersionPicks inherits Rectangle {
     property <length> pad: 6px;
-    property <length> reach: Theme.phone ? 6px : 2px;
+    property <length> reach: Theme.handheld ? 6px : 2px;
     height: 16px;
     width: words.preferred-width;
     words := HorizontalLayout {
@@ -455,21 +459,24 @@ export component RulesetPage inherits Page {
     // the head over the items, no panels).
     property <length> list-width: 300px;
     property <length> pad: 16px;
-    property <length> panel-y: Theme.phone ? 228px : 64px;
+    property <length> panel-y: Theme.phone ? 228px : Theme.sideways ? 48px : 64px;
     property <length> foot: 26px;
     property <length> panel-height: self.body-height - root.panel-y - root.foot;
-    property <length> right-x: Theme.phone ? 0px : root.list-width + 24px;
+    property <length> right-x: Theme.handheld ? 0px : root.list-width + 24px;
     property <length> right-width: self.body-width - root.right-x;
     // In the right panel (a phone's body): the toolbar's rows, then the items.
     property <length> inner-x: Theme.phone ? 0px : root.right-x + root.pad;
     property <length> inner-width: Theme.phone ? root.right-width : root.right-width - 2 * root.pad;
     // Each panel's header line, as the build editor's panes have theirs: its title, what it holds, its small words
-    // at its right end. Under the category's, the search; under that, the items.
-    property <length> line-y: Theme.phone ? root.panel-y : root.panel-y + 14px;
+    // at its right end. Under the category's, the search; under that, the items. (Sideways the search is on the line,
+    // between what it holds and its small words, all in the search's 40.)
+    property <length> line-y: Theme.phone ? root.panel-y : Theme.sideways ? root.panel-y + 24px : root.panel-y + 14px;
     // (On a phone the line's small words are a line of their own under it: beside them, what the line says had no
     // room, "11 of 12 allowed, 4 program bans" cut to "1…".)
     property <length> picks-y: Theme.phone ? root.line-y + 24px : root.line-y;
-    property <length> search-y: root.picks-y + 30px;
+    property <length> search-y: Theme.sideways ? root.panel-y + 12px : root.picks-y + 30px;
+    property <length> search-x: Theme.sideways ? root.inner-x + root.note-width + 12px : root.inner-x;
+    property <length> note-width: 184px;
     property <length> items-y: root.search-y + 52px;
     // (Where the header line's words begin: what the line says ends before them.)
     property <length> words-x: RulesetView.choices.length > 0 ? version-picks.x : category-picks.x;
@@ -478,6 +485,8 @@ export component RulesetPage inherits Page {
     property <length> cell-min: 260px;
     property <length> gap: 12px;
     property <int> columns: Theme.phone ? 1 : max(1, floor((items.view-width + root.gap) / (root.cell-min + root.gap)));
+    // (Sideways the categories are the header's tabs: `TabBar` takes them as tabs.)
+    property <[Tab]> tabs: RulesetView.tabs;
     property <length> cell-width: (items.view-width - (root.columns - 1) * root.gap) / root.columns;
     property <length> pitch: Theme.list-row + Theme.list-gap;
     // In sections: each a column on a desktop (its head over its items), stacked on a phone.
@@ -487,18 +496,20 @@ export component RulesetPage inherits Page {
     // Paired (the Party page): the keys' list at the left (`key-width`, a version's head `head` over its first), a rule,
     // the chosen key's items beside it in two columns (`program-width` apart); on a phone the keys, then the items in
     // one column under them.
-    property <length> key-width: 300px;
+    property <length> key-width: Theme.sideways ? 260px : 300px;
     property <length> head: 22px;
     property <int> key-heads: RulesetView.keys.length > 0 ? RulesetView.keys[RulesetView.keys.length - 1].heads : 0;
     property <length> keys-height: RulesetView.keys.length * root.pitch + root.key-heads * root.head;
     property <length> programs-x: Theme.phone ? 0px : root.key-width + 40px;
     property <length> programs-y: Theme.phone ? root.keys-height + 16px : 0px;
-    property <length> program-width: Theme.phone ? pair.view-width : 255px;
-    property <int> program-columns: Theme.phone ? 1 : 2;
+    // (Sideways one column of them beside the keys, as wide as the page leaves.)
+    property <length> program-width: Theme.phone ? pair.view-width : Theme.sideways ? max(0px, pair.view-width - root.programs-x) : 255px;
+    property <int> program-columns: Theme.handheld ? 1 : 2;
     // (The ruleset's name, a field where it can be renamed: the user, "you should just be able to edit the build
     // name/ruleset name from the edit screen in the header". The game, locked, as the build editor shows it.)
     title: RulesetView.name;
     title-nav: RulesetView.editable ? "rules.name" : "";
+    title-most: Theme.sideways ? 152px : 10000px;
     back: RulesetView.back;
     game: !Theme.phone;
     tag: { text: RulesetView.preset ? RulesetView.preset-word : "", tone: Theme.muted };
@@ -507,6 +518,21 @@ export component RulesetPage inherits Page {
 
     // (The page's parts arrive as a screen's do, one after another: the row, the categories, the category's head,
     // its items.)
+    // (Sideways, the categories as the header's tabs, as the build editor's are.)
+    TabBar {
+        x: root.header-room-x;
+        y: root.header-top + (Theme.header - self.height) / 2;
+        width: root.header-room-width;
+        visible: Theme.sideways;
+        nav: Theme.sideways ? "rules.tab" : "";
+        tabs: root.tabs;
+        chosen: RulesetView.category;
+        headed: true;
+        upper: true;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
     Arrive {
         order: 0;
         // ---- The row: Version exclusives, IMPORT, EXPORT, DUPLICATE and DELETE.
@@ -518,12 +544,13 @@ export component RulesetPage inherits Page {
             y: 0px;
             width: self.preferred-width;
             height: Theme.phone ? 16px : 40px;
+            visible: !Theme.sideways;
             text: I18n.upper(@tr("Version exclusives"));
         }
 
         Seg {
-            x: Theme.phone ? 0px : versions-label.x + versions-label.width + 12px;
-            y: Theme.phone ? 20px : versions-label.y + 2px;
+            x: Theme.phone || Theme.sideways ? 0px : versions-label.x + versions-label.width + 12px;
+            y: Theme.phone ? 20px : Theme.sideways ? 0px : versions-label.y + 2px;
             nav: "rules.versions";
             first: I18n.upper(@tr("One version"));
             second: I18n.upper(@tr("Mix versions"));
@@ -533,8 +560,9 @@ export component RulesetPage inherits Page {
 
         delete := Button {
             x: root.body-width - self.width;
-            y: Theme.phone ? 76px : 0px;
+            y: Theme.phone ? 76px : Theme.sideways ? 2px : 0px;
             width: self.natural-width;
+            compact: Theme.sideways;
             visible: RulesetView.deletable;
             nav: "rules.delete";
             text: I18n.upper(@tr("Delete"));
@@ -547,6 +575,7 @@ export component RulesetPage inherits Page {
             x: RulesetView.deletable ? delete.x - 8px - self.width : root.body-width - self.width;
             y: delete.y;
             width: self.natural-width;
+            compact: Theme.sideways;
             nav: "rules.duplicate";
             text: I18n.upper(@tr("Duplicate"));
         }
@@ -557,6 +586,7 @@ export component RulesetPage inherits Page {
             x: Theme.phone ? root.body-width - self.width : duplicate.x - 8px - self.width;
             y: Theme.phone ? delete.y + 48px : delete.y;
             width: self.natural-width;
+            compact: Theme.sideways;
             nav: "rules.export";
             text: I18n.upper(@tr("verb" => "Export"));
         }
@@ -565,6 +595,7 @@ export component RulesetPage inherits Page {
             x: export.x - 8px - self.width;
             y: export.y;
             width: self.natural-width;
+            compact: Theme.sideways;
             nav: "rules.import";
             text: I18n.upper(@tr("verb" => "Import"));
         }
@@ -572,15 +603,15 @@ export component RulesetPage inherits Page {
 
     Arrive {
         order: 1;
-        // ---- The categories: a list in its panel, or on a phone a select.
-        if !Theme.phone: PanelBack {
+        // ---- The categories: a list in its panel, or on a phone a select (sideways the header's tabs).
+        if !Theme.handheld: PanelBack {
             x: 0;
             y: root.panel-y;
             width: root.list-width;
             height: root.panel-height;
         }
 
-        if !Theme.phone: Label {
+        if !Theme.handheld: Label {
             x: root.pad;
             y: root.line-y;
             width: self.preferred-width;
@@ -588,7 +619,7 @@ export component RulesetPage inherits Page {
             text: I18n.upper(@tr("Categories"));
         }
 
-        if !Theme.phone: categories := ListView {
+        if !Theme.handheld: categories := ListView {
             x: 8px;
             y: root.search-y;
             width: root.list-width - 16px;
@@ -640,15 +671,15 @@ export component RulesetPage inherits Page {
             y: root.line-y;
             width: Theme.phone ? self.preferred-width : min(self.preferred-width, root.words-x - 16px - self.x);
             height: 16px;
-            visible: !Theme.phone;
+            visible: !Theme.handheld;
             text: I18n.upper(RulesetView.categories[RulesetView.category].name);
             color: Theme.cursor;
         }
 
         Text {
-            x: Theme.phone ? root.inner-x : category-title.x + category-title.width + 12px;
+            x: Theme.handheld ? root.inner-x : category-title.x + category-title.width + 12px;
             y: root.line-y;
-            width: Theme.phone ? root.inner-width : max(0px, root.words-x - 12px - self.x);
+            width: Theme.phone ? root.inner-width : Theme.sideways ? root.note-width : max(0px, root.words-x - 12px - self.x);
             height: 16px;
             text: RulesetView.paired ? RulesetView.head-note : RulesetView.categories[RulesetView.category].note;
             color: Theme.muted;
@@ -675,9 +706,9 @@ export component RulesetPage inherits Page {
         }
 
         Field {
-            x: root.inner-x;
+            x: root.search-x;
             y: root.search-y;
-            width: root.inner-width;
+            width: Theme.sideways ? max(0px, root.words-x - 12px - self.x) : root.inner-width;
             nav: "rules.search";
             text: RulesetView.search;
             placeholder: @tr("Search");
@@ -749,7 +780,7 @@ export component RulesetPage inherits Page {
             height: root.items-bottom - root.items-y;
             visible: RulesetView.paired;
             nav: "rules.pair";
-            content-height: Theme.phone ? root.programs-y + 30px + RulesetView.programs.length * root.pitch : max(root.keys-height, 30px + ceil(RulesetView.programs.length / 2) * root.pitch);
+            content-height: Theme.phone ? root.programs-y + 30px + RulesetView.programs.length * root.pitch : max(root.keys-height, 30px + ceil(RulesetView.programs.length / root.program-columns) * root.pitch);
             for line[i] in RulesetView.keys: Rectangle {
                 x: 0;
                 y: i * root.pitch + line.heads * root.head;

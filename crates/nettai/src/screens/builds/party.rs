@@ -963,6 +963,10 @@ impl Tab for Party {
     }
 
     fn show(&mut self, shell: &mut Shell, draft: &mut Draft) {
+        // (A phone turned sideways has the library beside PARTY: its sheet shuts.)
+        if !shell.scale.phone {
+            self.close_sheet(shell);
+        }
         self.changed(shell, draft);
     }
 

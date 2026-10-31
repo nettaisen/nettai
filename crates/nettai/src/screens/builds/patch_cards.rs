@@ -718,6 +718,10 @@ impl Tab for PatchCards {
         if self.described.is_none() {
             self.described = Some(Described::Installed(self.slot));
         }
+        // (A phone turned sideways has the library beside the cards: its sheet shuts.)
+        if !shell.scale.phone && shell.ui().global::<PatchCardsView>().get_sheet() {
+            self.leave_library(shell);
+        }
         self.changed(shell, draft);
     }
 

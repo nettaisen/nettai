@@ -6,7 +6,9 @@
 // pink. A chip that can't go in stays, greyed, with why at the end of its row in the error red.
 //
 // On a phone the folder is one column under its counts, and the library opens as a sheet from the bottom
-// (`FolderOverlay`), with what a slot's keys do as buttons. Its Rust half is src/screens/builds/folder.rs.
+// (`FolderOverlay`), with what a slot's keys do as buttons. Held sideways (docs/design/app-ui.md §2.103) there is no
+// strip: the folder, framed, is the phone's one column under the desktop's header, and the library is beside it, the
+// sheet's buttons over its rows. Its Rust half is src/screens/builds/folder.rs.
 
 import { Theme, Audit, I18n } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
@@ -321,10 +323,10 @@ component LibraryRowView inherits Rectangle {
     in property <length> dx;
     property <length> code-x: self.width - 8px - 18px;
     property <length> element-x: root.code-x - 8px - 16px;
-    // (A phone's sheet has no room for the MB and the attack.)
-    property <length> attack-x: Theme.phone ? root.element-x : root.element-x - 8px - 40px;
-    property <length> megabytes-x: Theme.phone ? root.element-x : root.attack-x - 8px - 56px;
-    property <length> note-width: Theme.phone ? 118px : 150px;
+    // (A phone's sheet has no room for the MB and the attack, nor a phone's pane sideways.)
+    property <length> attack-x: Theme.handheld ? root.element-x : root.element-x - 8px - 40px;
+    property <length> megabytes-x: Theme.handheld ? root.element-x : root.attack-x - 8px - 56px;
+    property <length> note-width: Theme.handheld ? 118px : 150px;
     property <length> note-x: root.megabytes-x - 8px - root.note-width;
     Rectangle {
         background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
@@ -379,7 +381,7 @@ component LibraryRowView inherits Rectangle {
     Text {
         x: root.megabytes-x;
         width: 56px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: root.line.megabytes;
         color: Theme.muted;
         font-family: Theme.mono;
@@ -392,7 +394,7 @@ component LibraryRowView inherits Rectangle {
     Text {
         x: root.attack-x;
         width: 40px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: root.line.attack;
         color: Theme.muted;
         font-family: Theme.mono;
@@ -474,7 +476,8 @@ export component LibraryHead inherits Rectangle {
     in property <string> placeholder;
     in property <string> sort;
     in property <bool> descending;
-    property <bool> bare: Theme.phone || root.compact;
+    // (A phone's pane held sideways is too narrow for them as well.)
+    property <bool> bare: Theme.handheld || root.compact;
     property <length> title-width: root.bare ? 0px : title.preferred-width + 12px;
     property <length> sort-width: root.bare ? 132px : 176px;
     property <length> sort-title-width: root.bare ? 0px : sort-title.preferred-width + 12px;
@@ -549,8 +552,8 @@ export component LibraryRowLook inherits Rectangle {
     in property <bool> removable;
     in property <bool> inert;
     property <length> end-x: self.width - 8px - root.end-width;
-    property <length> note-width: Theme.phone ? 96px : 104px;
-    property <length> note-x: root.end-x - (Theme.phone ? 0px : 8px) - root.note-width;
+    property <length> note-width: Theme.handheld ? 96px : 104px;
+    property <length> note-x: root.end-x - (Theme.handheld ? 0px : 8px) - root.note-width;
     property <length> name-x: 8px + root.lead-width + 8px;
     // (The name's room, up to the note; the version's mark follows the name, a square of its color where the two don't
     // fit.)
@@ -601,7 +604,7 @@ export component LibraryRowLook inherits Rectangle {
     Text {
         x: root.end-x;
         width: root.end-width;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: root.end;
         color: Theme.muted;
         font-family: Theme.mono;
@@ -622,8 +625,10 @@ export component LibraryRowLook inherits Rectangle {
 }
 
 // The library: its title, the search field, the sort and its direction, and under them its rows, fifteen
-// showing. (A phone's sheet has no room for the two titles.)
+// showing. (A phone's sheet has no room for the two titles.) Its rows start `list-top` down: under the head, or
+// under what a pane puts between (a phone's sideways: the sheet's buttons).
 component LibraryPane inherits Rectangle {
+    in property <length> list-top: 52px;
     shake := Shake {
         seq: FolderView.refused-seq;
     }
@@ -641,9 +646,9 @@ component LibraryPane inherits Rectangle {
 
     list := ListView {
         x: Theme.phone ? 0px : 4px;
-        y: 52px;
+        y: root.list-top;
         width: parent.width - self.x;
-        height: parent.height - 52px;
+        height: parent.height - root.list-top;
         nav: "lib.rows";
         count: FolderView.rows.length;
         row-height: Theme.list-row;
@@ -668,11 +673,12 @@ export component FolderTab inherits Rectangle {
     // (The folder's tab starts 4 nearer the tab bar than the others: the strip, the two panes and their gaps
     // are the page's whole height.)
     property <length> top: -4px;
-    property <length> pane-y: root.top + 104px + 12px;
-    property <length> pane-width: 528px;
+    // (Sideways: no strip, and the two panes share the tab's width, the folder a little the wider.)
+    property <length> pane-y: Theme.sideways ? 0px : root.top + 104px + 12px;
+    property <length> pane-width: Theme.sideways ? (root.width - 12px) / 2 + 24px : 528px;
     // The panes run down to 18 over the tab's foot (482 tall at the reference window: the folder's fifteen rows and
-    // its header); the library's list fills its pane.
-    property <length> pane-height: root.height - root.pane-y - 18px;
+    // its header); the library's list fills its pane. (Sideways, to the tab's foot.)
+    property <length> pane-height: root.height - root.pane-y - (Theme.sideways ? 0px : 18px);
     property <length> slot-width: (root.pane-width - 24px - 12px) / 2;
     // A phone: the counts' box, its last line kept for what is wrong with the folder, and the folder in one column
     // under it.
@@ -688,7 +694,7 @@ export component FolderTab inherits Rectangle {
     // (Where the counts end: before CLEAR on its line, else at the header's right end.)
     property <length> counts-right: root.two-lines ? root.pane-width - 12px : clear.x + clear.pad - 12px;
     // (The screenshot pass is told if the counts don't fit the pane even so.)
-    property <bool> counts-over: Theme.audit && !Theme.phone && root.counts-width > root.pane-width - 24px + 0.5px;
+    property <bool> counts-over: Theme.audit && !Theme.handheld && root.counts-width > root.pane-width - 24px + 0.5px;
     // Where entry `i` is in the framed folder's two columns.
     pure function slot-x(i: int) -> length {
         return 12px + floor(i / 15) * (root.slot-width + 12px);
@@ -706,8 +712,8 @@ export component FolderTab inherits Rectangle {
     PanelBack {
         x: 0;
         y: root.top;
-        height: Theme.phone ? 0px : 104px;
-        visible: !Theme.phone;
+        height: Theme.handheld ? 0px : 104px;
+        visible: !Theme.handheld;
     }
 
     Image {
@@ -715,7 +721,7 @@ export component FolderTab inherits Rectangle {
         y: root.top + 16px;
         width: 84px;
         height: 72px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         source: FolderView.detail.art;
         image-rendering: pixelated;
     }
@@ -726,7 +732,7 @@ export component FolderTab inherits Rectangle {
         y: root.top + 19px;
         width: max(0px, root.width / 2 - 120px - 8px);
         height: 20px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         spacing: 6px;
         alignment: start;
         Text {
@@ -755,7 +761,7 @@ export component FolderTab inherits Rectangle {
         x: root.width / 2;
         y: root.top + 19px;
         width: root.width / 2 - 16px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: FolderView.detail.problem;
         problem: FolderView.detail.fault;
 
@@ -767,7 +773,7 @@ export component FolderTab inherits Rectangle {
         y: root.top + 43px;
         width: parent.width - 136px;
         height: 18px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: FolderView.detail.description;
         color: Theme.muted;
         font-family: Theme.body;
@@ -781,7 +787,7 @@ export component FolderTab inherits Rectangle {
         y: root.top + 69px;
         width: parent.width - 136px;
         height: 16px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         spacing: 16px;
         alignment: start;
         Image {
@@ -812,18 +818,19 @@ export component FolderTab inherits Rectangle {
 
     folder-title := Label {
         x: 12px;
-        y: root.pane-y + (root.two-lines ? 5px : 0px);
+        y: root.pane-y + (Theme.sideways ? 8px : root.two-lines ? 5px : 0px);
         width: root.pane-width - 24px;
-        height: root.two-lines ? 14px : 44px;
+        height: Theme.sideways || root.two-lines ? 14px : 44px;
         visible: !Theme.phone;
         text: I18n.upper(@tr("Folder"));
         color: FolderView.in-library ? Theme.muted : Theme.cursor;
     }
 
-    // (On a phone the counts are two columns in their own box.)
+    // (On a phone the counts are two columns in their own box; sideways two lines under the title from its left, Chips,
+    // Mega and Giga, then Regular and Tag.)
     chips := CountBox {
-        x: Theme.phone ? 12px : mega.x - 12px - self.width;
-        y: Theme.phone ? 12px : root.counts-y;
+        x: Theme.phone || Theme.sideways ? 12px : mega.x - 12px - self.width;
+        y: Theme.phone ? 12px : Theme.sideways ? root.pane-y + 30px : root.counts-y;
         label: @tr("Chips");
         value: FolderView.counts.chips;
         suffix: "/\{FolderView.counts.size}";
@@ -832,7 +839,7 @@ export component FolderTab inherits Rectangle {
     }
 
     mega := CountBox {
-        x: Theme.phone ? parent.width / 2 : giga.x - 12px - self.width;
+        x: Theme.phone ? parent.width / 2 : Theme.sideways ? 24px + chips.width : giga.x - 12px - self.width;
         y: chips.y;
         label: @tr("Mega");
         value: FolderView.counts.mega;
@@ -842,7 +849,7 @@ export component FolderTab inherits Rectangle {
     }
 
     giga := CountBox {
-        x: Theme.phone ? 12px : regular.x - 12px - self.width;
+        x: Theme.phone ? 12px : Theme.sideways ? 36px + chips.width + mega.width : regular.x - 12px - self.width;
         y: Theme.phone ? 34px : chips.y;
         label: @tr("Giga");
         value: FolderView.counts.giga;
@@ -852,9 +859,9 @@ export component FolderTab inherits Rectangle {
     }
 
     regular := CountBox {
-        x: Theme.phone ? parent.width / 2 : (FolderView.counts.tags ? tag.x - 12px : root.counts-right) - self.width;
-        y: giga.y;
-        label: Theme.phone ? @tr("Regular") : @tr("Reg");
+        x: Theme.phone ? parent.width / 2 : Theme.sideways ? 12px : (FolderView.counts.tags ? tag.x - 12px : root.counts-right) - self.width;
+        y: Theme.sideways ? root.pane-y + 48px : giga.y;
+        label: Theme.handheld ? @tr("Regular") : @tr("Reg");
         value: FolderView.counts.regular;
         suffix: "/\{FolderView.counts.regular-limit} MB";
         value-width: 52px;
@@ -862,8 +869,8 @@ export component FolderTab inherits Rectangle {
     }
 
     tag := CountBox {
-        x: Theme.phone ? 12px : root.counts-right - self.width;
-        y: Theme.phone ? 56px : chips.y;
+        x: Theme.phone ? 12px : Theme.sideways ? 24px + regular.width : root.counts-right - self.width;
+        y: Theme.phone ? 56px : Theme.sideways ? regular.y : chips.y;
         visible: FolderView.counts.tags;
         label: @tr("Tag");
         value: FolderView.counts.tag;
@@ -877,30 +884,31 @@ export component FolderTab inherits Rectangle {
     // word where a count's would end; on a phone at the right of the counts' box's first line.
     clear := WordButton {
         x: (Theme.phone ? parent.width : root.pane-width) - 12px + self.pad - self.width;
-        y: Theme.phone ? 12px : root.two-lines ? root.pane-y + 4px : root.counts-y;
+        y: Theme.phone ? 12px : Theme.sideways ? root.pane-y + 7px : root.two-lines ? root.pane-y + 4px : root.counts-y;
         nav: "clear";
         text: I18n.upper(@tr("Clear"));
         enabled: FolderView.counts.chips > 0;
     }
 
-    // (What is wrong with the folder: a phone's last line of its counts' box.)
+    // (What is wrong with the folder: a phone's last line of its counts' box; sideways on the header's first line,
+    // between the title and CLEAR.)
     ProblemNote {
-        x: 12px;
-        y: root.counts-height - 12px - self.height;
-        width: parent.width - 24px;
-        visible: Theme.phone;
+        x: Theme.sideways ? folder-title.x + folder-title.preferred-width + 12px : 12px;
+        y: Theme.sideways ? root.pane-y + 7px : root.counts-height - 12px - self.height;
+        width: Theme.sideways ? max(0px, clear.x - 12px - self.x) : parent.width - 24px;
+        visible: Theme.handheld;
         text: FolderView.problems;
     }
 
 
     if !Theme.phone: Rectangle {
-        // (Where an entry would land while one is dragged.)
+        // (Where an entry would land while one is dragged. Sideways the entries are the phone's list's, below.)
         DropGap {
             x: root.slot-x(max(0, FolderDrag.to));
             y: root.slot-y(max(0, FolderDrag.to));
             width: root.slot-width;
             height: Theme.chip-row;
-            visible: FolderDrag.to >= 0;
+            visible: FolderDrag.to >= 0 && !Theme.sideways;
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
@@ -908,6 +916,7 @@ export component FolderTab inherits Rectangle {
         for chip[i] in FolderView.slots: SlotView {
             x: root.slot-x(i);
             y: root.slot-y(i);
+            visible: !Theme.sideways;
             width: root.slot-width;
             chip: chip;
             index: i;
@@ -924,17 +933,55 @@ export component FolderTab inherits Rectangle {
             y: root.pane-y + 52px + mod(FolderView.landed, 15) * (Theme.chip-row + 2px);
             width: root.slot-width;
             height: Theme.chip-row;
+            visible: !Theme.sideways;
             seq: FolderView.landed-seq;
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
-        // ---- The library, open.
+        // ---- The library, open. (Sideways, what a slot's keys do over its rows, as the phone's sheet has them: the
+        // Regular chip, a tag, taking the chip out, of the entry being filled.)
         library := LibraryPane {
-            x: root.pane-width + 24px;
+            x: root.pane-width + (Theme.sideways ? 12px : 24px);
             y: root.pane-y;
             width: parent.width - self.x;
-            height: root.pane-height - 12px;
+            height: root.pane-height - (Theme.sideways ? 0px : 12px);
+            list-top: Theme.sideways ? 96px : 52px;
+        }
+
+        regular-button := Button {
+            x: library.x;
+            y: library.y + 52px;
+            width: self.natural-width;
+            visible: Theme.sideways;
+            enabled: Theme.sideways;
+            nav: Theme.sideways ? "lib.regular" : "";
+            text: I18n.upper(@tr("Regular"));
+            compact: true;
+        }
+
+        tag-button := Button {
+            x: regular-button.x + regular-button.width + 8px;
+            y: regular-button.y;
+            width: self.natural-width;
+            visible: Theme.sideways && FolderView.counts.tags;
+            enabled: Theme.sideways && FolderView.counts.tags;
+            nav: Theme.sideways && FolderView.counts.tags ? "lib.tag" : "";
+            text: I18n.upper(@tr("Tag"));
+            compact: true;
+        }
+
+        Button {
+            x: FolderView.counts.tags ? tag-button.x + tag-button.width + 8px : tag-button.x;
+            y: regular-button.y;
+            width: self.natural-width;
+            visible: Theme.sideways;
+            enabled: Theme.sideways;
+            nav: Theme.sideways ? "lib.remove" : "";
+            text: I18n.upper(@tr("Remove"));
+            kind: ButtonKind.ghost;
+            danger: true;
+            compact: true;
         }
 
         // (An entry dragged over the library is taken out, let go there.)
@@ -952,12 +999,14 @@ export component FolderTab inherits Rectangle {
         // (The entry being dragged, under the pointer, over everything; or a ghost of the library's chip, in an
         // entry's shape, faint until it is over the entry it would go in.)
         LiftedRow {
-            // (A library's row is wider than an entry: its ghost is held no farther in than its middle.)
+            // (A library's row is wider than an entry: its ghost is held no farther in than its middle. Sideways an
+            // entry's is the phone's list's, below, and the ghost as wide as its rows.)
             x: Drag.x - root.absolute-position.x - (FolderDrag.filling ? min(Drag.grab-x, self.width / 2) : Drag.grab-x);
             y: Drag.y - root.absolute-position.y - Drag.grab-y;
-            width: root.slot-width;
-            height: Theme.chip-row;
-            visible: FolderDrag.on || FolderDrag.filling;
+            width: Theme.sideways ? root.pane-width - 8px : root.slot-width;
+            height: Theme.sideways ? 40px : Theme.chip-row;
+            big: Theme.sideways;
+            visible: (FolderDrag.on && !Theme.sideways) || FolderDrag.filling;
             opacity: FolderDrag.filling && FolderDrag.to < 0 ? 0.7 : 1;
             chip: FolderDrag.filling ? FolderView.ghost : FolderView.slots[max(0, Drag.from)];
             number: FolderDrag.filling ? 0 : FolderDrag.shown(max(0, Drag.from)) + 1;
@@ -965,11 +1014,14 @@ export component FolderTab inherits Rectangle {
         }
     }
 
-    if Theme.phone: Rectangle {
+    // (A phone's folder, one column of the lists' rows: upright under its counts' box, sideways in the frame under its
+    // header.)
+    if Theme.handheld: Rectangle {
         folder := ListView {
-            x: 0;
-            y: root.counts-height + 12px;
-            height: parent.height - self.y;
+            x: Theme.sideways ? 4px : 0px;
+            y: Theme.sideways ? root.pane-y + 72px : root.counts-height + 12px;
+            width: Theme.sideways ? root.pane-width - 8px : parent.width;
+            height: Theme.sideways ? root.pane-y + root.pane-height - 4px - self.y : parent.height - self.y;
             nav: "slot";
             count: FolderView.slots.length;
             row-height: 40px;

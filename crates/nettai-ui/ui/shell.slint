@@ -1089,7 +1089,7 @@ export component Header inherits Rectangle {
     property <length> field-width: min(root.title-room + 8px, Theme.handheld ? root.title-room + 8px : 400px);
     // Where the title's room ends (its field's, where it is one), and where the game starts (the header's end without
     // it): what a screen puts after the title in the header goes between them.
-    out property <length> title-end: root.field ? root.title-x - 8px + root.field-width : root.title-x + root.title-width;
+    out property <length> title-end: root.field ? root.title-x - 8px + root.field-width : root.title-x + root.title-width + (Theme.phone ? 0px : root.tag-width);
     out property <length> tools-x: root.game ? game.x : self.width - root.pad;
     property <bool> over: Theme.audit && !root.field && (title-text.preferred-width > root.title-room + 0.5px);
     // (Sideways the bar goes across the whole window, past the safe area's sides, as upright it goes under the

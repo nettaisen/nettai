@@ -1416,11 +1416,12 @@ component TabItem inherits Rectangle {
     in property <int> nav-index;
     in property <Tab> tab;
     in property <bool> chosen;
+    in property <bool> upper;
     property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
     height: 40px;
     width: label.preferred-width + (Theme.handheld ? 20px : 32px);
     label := Text {
-        text: root.tab.text;
+        text: root.upper ? I18n.upper(root.tab.text) : root.tab.text;
         color: !root.tab.enabled ? Theme.dim : (root.chosen ? Theme.text : Theme.muted);
         font-family: Theme.display;
         font-size: Theme.handheld ? 11px : 13px;
@@ -1465,6 +1466,8 @@ export component TabBar inherits Rectangle {
     // It is in the header's row (a phone held sideways): no line of its own under it (the header's is), and its ends
     // fade into the header's bar.
     in property <bool> headed;
+    // Its tabs' words are set in capitals here (a ruleset's categories, by their names as the game has them).
+    in property <bool> upper;
     property <color> fade: root.headed ? Theme.ground-top.mix(Theme.bar.with-alpha(1), 0.28) : Theme.ground-top;
     // Where the chosen tab is: the underline's place.
     property <length> under-x;
@@ -1506,6 +1509,7 @@ export component TabBar inherits Rectangle {
                     nav-index: i;
                     tab: tab;
                     chosen: i == root.chosen;
+                    upper: root.upper;
                     init => {
                         say();
                     }

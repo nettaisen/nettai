@@ -4,8 +4,9 @@
 // beside it the library, an open list of the chips, with a search and a sort. Enter on a place goes to the library;
 // Enter on a chip puts it in the place and goes on to the next; Del empties a place.
 //
-// On a phone the places are one column, and the library opens as a sheet from the bottom (`AutoBattleOverlay`). Its
-// Rust half is src/screens/builds/auto_battle.rs.
+// On a phone the places are one column, and the library opens as a sheet from the bottom (`AutoBattleOverlay`). Held
+// sideways (docs/design/app-ui.md §2.103) there is no strip: the places, framed, one column at the left, the library
+// beside them. Its Rust half is src/screens/builds/auto_battle.rs.
 
 import { Theme, Audit, I18n } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
@@ -138,7 +139,7 @@ component PlaceView inherits Rectangle {
         number: root.number;
         chosen: root.chosen;
         hover: hit.has-hover && !PlaceDrag.on && !PlaceDrag.filling;
-        big: Theme.phone;
+        big: Theme.handheld;
         animate x, y {
             duration: PlaceDrag.on ? Theme.quick : 0ms;
             easing: ease-out;
@@ -161,9 +162,9 @@ component AutoLibraryRowView inherits Rectangle {
     in property <int> nav-index;
     in property <length> dx;
     property <length> element-x: self.width - 8px - 16px;
-    property <length> attack-x: Theme.phone ? root.element-x : root.element-x - 8px - 40px;
-    property <length> megabytes-x: Theme.phone ? root.element-x : root.attack-x - 8px - 56px;
-    property <length> note-width: Theme.phone ? 118px : 150px;
+    property <length> attack-x: Theme.handheld ? root.element-x : root.element-x - 8px - 40px;
+    property <length> megabytes-x: Theme.handheld ? root.element-x : root.attack-x - 8px - 56px;
+    property <length> note-width: Theme.handheld ? 118px : 150px;
     property <length> note-x: root.megabytes-x - 8px - root.note-width;
     Rectangle {
         background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
@@ -188,7 +189,7 @@ component AutoLibraryRowView inherits Rectangle {
         color: root.row-data.kind == ChipKind.mega ? Theme.mega : root.row-data.kind == ChipKind.giga ? Theme.giga : (root.row-data.refused ? Theme.dim : Theme.text);
         opacity: root.row-data.refused && root.row-data.kind != ChipKind.standard ? 0.5 : 1;
         font-family: Theme.body;
-        font-size: Theme.phone ? 14px : 12px;
+        font-size: Theme.handheld ? 14px : 12px;
         font-weight: 600;
         vertical-alignment: center;
         overflow: elide;
@@ -217,7 +218,7 @@ component AutoLibraryRowView inherits Rectangle {
     Text {
         x: root.megabytes-x;
         width: 56px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: root.row-data.megabytes;
         color: Theme.muted;
         font-family: Theme.mono;
@@ -230,7 +231,7 @@ component AutoLibraryRowView inherits Rectangle {
     Text {
         x: root.attack-x;
         width: 40px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: root.row-data.attack;
         color: Theme.muted;
         font-family: Theme.mono;
@@ -304,11 +305,11 @@ component ChipsPane inherits Rectangle {
 
 export component AutoBattleTab inherits Rectangle {
     property <length> top: -4px;
-    property <length> pane-y: Theme.phone ? 0px : root.top + 104px + 12px;
-    property <length> pane-width: Theme.phone ? self.width : 528px;
+    property <length> pane-y: Theme.handheld ? 0px : root.top + 104px + 12px;
+    property <length> pane-width: Theme.phone ? self.width : Theme.sideways ? (self.width - 12px) / 2 + 24px : 528px;
     // (On a desktop down to 18 over the tab's foot, as the folder's: 482 at the reference window.)
-    property <length> pane-height: Theme.phone ? self.height : self.height - root.pane-y - 18px;
-    property <int> columns: Theme.phone ? 1 : 2;
+    property <length> pane-height: Theme.handheld ? self.height : self.height - root.pane-y - 18px;
+    property <int> columns: Theme.handheld ? 1 : 2;
     // (A phone's line for what is wrong with the data, over the places.)
     property <length> phone-lead: 24px;
     property <length> place-width: (root.pane-width - 24px - 12px - (root.columns - 1) * 12px) / root.columns;
@@ -319,8 +320,8 @@ export component AutoBattleTab inherits Rectangle {
     PanelBack {
         x: 0;
         y: root.top;
-        height: Theme.phone ? 0px : 104px;
-        visible: !Theme.phone;
+        height: Theme.handheld ? 0px : 104px;
+        visible: !Theme.handheld;
     }
 
     Image {
@@ -328,7 +329,7 @@ export component AutoBattleTab inherits Rectangle {
         y: root.top + 16px;
         width: 84px;
         height: 72px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         source: AutoBattleView.detail.art;
         image-rendering: pixelated;
     }
@@ -338,7 +339,7 @@ export component AutoBattleTab inherits Rectangle {
         y: root.top + 19px;
         width: root.width / 2 - 120px;
         height: 20px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: AutoBattleView.detail.name;
         color: AutoBattleView.detail.kind == ChipKind.mega ? Theme.mega : AutoBattleView.detail.kind == ChipKind.giga ? Theme.giga : Theme.text;
         font-family: Theme.body;
@@ -354,7 +355,7 @@ export component AutoBattleTab inherits Rectangle {
         x: root.width / 2;
         y: root.top + 19px;
         width: root.width / 2 - 16px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: AutoBattleView.detail.problem;
         problem: AutoBattleView.detail.fault;
 
@@ -366,7 +367,7 @@ export component AutoBattleTab inherits Rectangle {
         y: root.top + 43px;
         width: parent.width - 136px;
         height: 18px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: AutoBattleView.detail.description;
         color: Theme.muted;
         font-family: Theme.body;
@@ -381,7 +382,7 @@ export component AutoBattleTab inherits Rectangle {
         y: root.top + 69px;
         width: parent.width - 136px;
         height: 16px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         spacing: 16px;
         alignment: start;
         Image {
@@ -430,12 +431,13 @@ export component AutoBattleTab inherits Rectangle {
         enabled: AutoBattleView.filled > 0;
     }
 
-    // (What is wrong with the data: a phone's line of its own over the places, before CLEAR.)
+    // (What is wrong with the data: a phone's line of its own over the places, before CLEAR; sideways in the header,
+    // after the title, as there is no strip.)
     ProblemNote {
-        x: 0px;
-        y: 0px;
-        width: max(0px, clear.x + clear.pad - 12px);
-        visible: Theme.phone;
+        x: Theme.sideways ? places-title.x + places-title.preferred-width + 12px : 0px;
+        y: Theme.sideways ? clear.y : 0px;
+        width: max(0px, clear.x + clear.pad - 12px - self.x);
+        visible: Theme.handheld;
         text: AutoBattleView.problems;
     }
 
@@ -481,10 +483,10 @@ export component AutoBattleTab inherits Rectangle {
     // ---- The library, open; a place's chip dragged over it is taken out, let go there.
     if !Theme.phone: Rectangle {
         library := ChipsPane {
-            x: root.pane-width + 24px;
+            x: root.pane-width + (Theme.sideways ? 12px : 24px);
             y: root.pane-y;
             width: parent.width - self.x;
-            height: root.pane-height - 12px;
+            height: root.pane-height - (Theme.sideways ? 0px : 12px);
         }
 
         RemoveTarget {
@@ -509,7 +511,7 @@ export component AutoBattleTab inherits Rectangle {
         height: root.pitch - 2px;
         visible: PlaceDrag.on || PlaceDrag.filling;
         opacity: PlaceDrag.filling && PlaceDrag.to < 0 ? 0.7 : 1;
-        big: Theme.phone;
+        big: Theme.handheld;
         chip: AutoBattleView.lifted.chip;
         number: AutoBattleView.lifted.number;
         removing: Drag.removing;

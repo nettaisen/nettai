@@ -150,6 +150,10 @@ impl Tab for Navi {
     }
 
     fn show(&mut self, shell: &mut Shell, draft: &mut Draft) {
+        // (A phone turned sideways has the grid beside the panel: its sheet shuts.)
+        if !shell.scale.phone {
+            self.close_sheet(shell);
+        }
         let content = draft.content().clone();
         let kit = draft.kit.clone();
         // (The game's own navi first: the content states no order of the others, which are by their keys.)
@@ -204,8 +208,8 @@ impl Tab for Navi {
         // problem is about it, and "Not allowed" at the end of one the ruleset holds back.
         let choices = kit.builds.form_choices(&content, draft.side());
         self.forms = choices.iter().flat_map(|c| c.forms.iter().map(|&f| (c.fact.clone(), f))).collect();
-        // (One column of rows, a phone's too: two to a row there cut the names.)
-        let phone = shell.scale.phone;
+        // (One column of rows, a phone's too, upright or sideways: two to a row there cut the names.)
+        let (phone, one_column) = (shell.scale.phone, shell.scale.handheld());
         let mut sets: Vec<(String, Vec<FormHandle>)> = Vec::new();
         let groups: Vec<NaviFormGroup> = draft.with_words(shell, |words| {
             let mut at = 0;
@@ -220,7 +224,7 @@ impl Tab for Navi {
                     // a desktop has the two groups side by side, a column each, one row under their heads; a phone
                     // one over the other, as half its width cuts their names.)
                     let versions: Vec<Option<String>> = c.forms.iter().map(|f| content.defs.forms.get(f.index()).and_then(|d| d.record.version.clone())).collect();
-                    let side_by_side = !phone && versions.len() == 2 && versions[0].is_some() && versions[1].is_some() && versions[0] != versions[1];
+                    let side_by_side = !one_column && versions.len() == 2 && versions[0].is_some() && versions[1].is_some() && versions[0] != versions[1];
                     // (A list's ALL and NONE: on each version's head where its forms are grouped by version, a group of
                     // none's too, else on the fact's heading; whether each would do anything, ALL where the list has
                     // room for one of them it lacks that the ruleset allows, NONE where it has one. A fact of one form has
@@ -308,7 +312,7 @@ impl Tab for Navi {
         view.set_element(kit.pictures.element(family(&content, content.navi(chosen).element)));
         // (The focus starts on the build's navi's card: in the grid, or on a phone the one that opens its sheet.)
         let known = ["navi", "navi-pick", "form", "forms-all", "forms-none", "choice", "tab", "ruleset", "ruleset-edit", "practice"];
-        if shell.nav.focused().is_none_or(|k| !known.contains(&k.id.as_str()) && !k.id.starts_with(SHEET)) {
+        if shell.nav.focused().is_none_or(|k| (!known.contains(&k.id.as_str()) && !k.id.starts_with(SHEET)) || (!phone && k.id == "navi-pick")) {
             if phone {
                 shell.nav.focus("navi-pick", 0);
             } else if let Some(at) = self.navis.iter().position(|&n| n == chosen) {

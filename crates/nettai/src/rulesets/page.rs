@@ -113,6 +113,8 @@ impl Page {
         shell.nav.open(PREFIX, Key::new("rules.categories", 0));
         if shell.scale.phone {
             shell.nav.focus("rules.category", 0);
+        } else if shell.scale.sideways {
+            shell.nav.focus("rules.tab", page.category as i32);
         }
         Some(page)
     }
@@ -186,7 +188,10 @@ impl Page {
                 RulesetCategory { name: name.into(), note }
             })
             .collect();
+        // (On a phone held sideways they are the header's tabs.)
+        let tabs: Vec<nettai_ui::Tab> = categories.iter().map(|c| nettai_ui::Tab { text: c.name.clone(), enabled: true, flagged: false }).collect();
         view.set_categories(ModelRc::new(VecModel::from(categories)));
+        view.set_tabs(ModelRc::new(VecModel::from(tabs)));
         view.set_category(self.category as i32);
         let message = match (&ruleset.name, self.editable()) {
             (_, true) => Default::default(),
@@ -631,6 +636,11 @@ impl Page {
                 let ui = shell.ui();
                 let names: Vec<String> = ui.global::<RulesetView>().get_categories().iter().map(|c| c.name.to_string()).collect();
                 shell.pick("rules.category", 0, names, self.category);
+                Outcome::Nothing
+            }
+            // (A phone held sideways: the categories are the header's tabs, which stay where they are.)
+            "rules.tab" => {
+                self.choose_category(shell, index);
                 Outcome::Nothing
             }
             // Paired: a key's allow box (the row of every key has none: it is chosen), and an item of the key chosen,

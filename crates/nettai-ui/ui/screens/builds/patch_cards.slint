@@ -11,7 +11,9 @@
 //
 // On a phone the cards are one column under their counts, what they add up to a line each under them (Effects,
 // Bugs), and the library opens as a sheet from the bottom
-// (`PatchCardsOverlay`), with what a card's keys do as buttons. Its Rust half is src/screens/builds/patch_cards.rs.
+// (`PatchCardsOverlay`), with what a card's keys do as buttons. Held sideways (docs/design/app-ui.md §2.103) there is
+// no strip: the cards, framed, at the left, what they add up to a line each at the frame's foot, and the library beside
+// them. Its Rust half is src/screens/builds/patch_cards.rs.
 
 import { Theme, Audit, I18n } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
@@ -302,7 +304,7 @@ component CardLibraryRowView inherits Rectangle {
         note: root.card.note;
         bad: root.card.bad;
         end: PatchCardsView.counts.slotted ? root.card.slot : root.card.megabytes;
-        end-width: Theme.phone ? 0px : (PatchCardsView.counts.slotted ? 40px : 52px);
+        end-width: Theme.handheld ? 0px : (PatchCardsView.counts.slotted ? 40px : 52px);
         end-weight: PatchCardsView.counts.slotted ? 700 : 500;
         dx: root.dx;
         nav: "lib.rows";
@@ -451,20 +453,20 @@ component GroupColumn inherits Rectangle {
 export component PatchCardsTab inherits Rectangle {
     // (As the folder's: the strip, the two panes and their gaps are the page's whole height.)
     property <length> top: -4px;
-    property <length> pane-y: root.top + 104px + 12px;
+    property <length> pane-y: Theme.sideways ? 0px : root.top + 104px + 12px;
     // Three columns, as the NaviCust's: the build's cards, the library, and what the cards add up to (EFFECTS over
-    // BUGS).
-    property <length> pane-width: 500px;
-    // (Down to 18 over the tab's foot, as the folder's: 482 at the reference window.)
-    property <length> pane-height: root.height - root.pane-y - 18px;
-    property <length> library-x: root.pane-width + 24px;
-    property <length> library-width: 384px;
+    // BUGS). (Sideways two: the cards, with what they add up to at the frame's foot, and the library.)
+    property <length> pane-width: Theme.sideways ? (root.width - 12px) / 2 + 24px : 500px;
+    // (Down to 18 over the tab's foot, as the folder's: 482 at the reference window. Sideways, to the foot.)
+    property <length> pane-height: root.height - root.pane-y - (Theme.sideways ? 0px : 18px);
+    property <length> library-x: root.pane-width + (Theme.sideways ? 12px : 24px);
+    property <length> library-width: Theme.sideways ? root.width - root.library-x : 384px;
     property <length> side-x: root.library-x + root.library-width + 24px;
     property <length> side-width: self.width - root.side-x;
     property <length> effects-height: (root.pane-height - 12px) / 2;
     // A phone: the counts' box over the cards, and what they add up to under them, a line each.
     property <length> counts-height: 44px;
-    property <length> lines-height: Theme.phone ? 2 * 22px + 8px : 0px;
+    property <length> lines-height: Theme.handheld ? 2 * 22px + 8px : 0px;
     // (The strip's right of the card's name: its two groups, and the place at the top right every tab's strip keeps for
     // a refusal or a problem, a third as wide as each, which the groups' lines end before, so neither runs into the
     // other whatever the language or the window's width.)
@@ -474,8 +476,8 @@ export component PatchCardsTab inherits Rectangle {
     PanelBack {
         x: 0;
         y: root.top;
-        height: Theme.phone ? 0px : 104px;
-        visible: !Theme.phone;
+        height: Theme.handheld ? 0px : 104px;
+        visible: !Theme.handheld;
     }
 
     Text {
@@ -483,7 +485,7 @@ export component PatchCardsTab inherits Rectangle {
         y: root.top + 12px;
         width: 200px;
         height: 14px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: PatchCardsView.detail.number == "" ? "" : @tr("No. {}", PatchCardsView.detail.number);
         color: Theme.dim;
         font-family: Theme.mono;
@@ -497,7 +499,7 @@ export component PatchCardsTab inherits Rectangle {
         y: root.top + 28px;
         width: 224px;
         height: 22px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: PatchCardsView.detail.there ? PatchCardsView.detail.name : "";
         color: Theme.text;
         font-family: Theme.body;
@@ -512,7 +514,7 @@ export component PatchCardsTab inherits Rectangle {
         y: root.top + 54px;
         width: 224px;
         height: 16px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: PatchCardsView.detail.facts;
         color: Theme.muted;
         font-family: Theme.body;
@@ -527,8 +529,8 @@ export component PatchCardsTab inherits Rectangle {
         y: root.top + 12px;
         width: root.group-width;
         height: 84px;
-        visible: !Theme.phone && PatchCardsView.detail.there;
-        title: Theme.phone ? "" : PatchCardsView.detail.first-title;
+        visible: !Theme.handheld && PatchCardsView.detail.there;
+        title: Theme.handheld ? "" : PatchCardsView.detail.first-title;
         lines: PatchCardsView.detail.first;
     }
 
@@ -537,8 +539,8 @@ export component PatchCardsTab inherits Rectangle {
         y: root.top + 12px;
         width: root.group-width;
         height: 84px;
-        visible: !Theme.phone && PatchCardsView.detail.there;
-        title: Theme.phone ? "" : PatchCardsView.detail.second-title;
+        visible: !Theme.handheld && PatchCardsView.detail.there;
+        title: Theme.handheld ? "" : PatchCardsView.detail.second-title;
         lines: PatchCardsView.detail.second;
     }
 
@@ -548,7 +550,7 @@ export component PatchCardsTab inherits Rectangle {
         x: 256px + 2 * (root.group-width + 24px);
         y: root.top + 19px;
         width: root.group-width;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: PatchCardsView.detail.problem;
         problem: PatchCardsView.detail.fault;
 
@@ -586,12 +588,13 @@ export component PatchCardsTab inherits Rectangle {
         enabled: PatchCardsView.counts.slotted ? PatchCardsView.counts.filled > 0 : PatchCardsView.counts.cards > 0;
     }
 
-    // (What is wrong with the cards: on a phone's header, after the counts, before CLEAR.)
+    // (What is wrong with the cards: on a phone's header, after the counts, before CLEAR; sideways after the title,
+    // before the counts, as there is no strip.)
     ProblemNote {
-        x: counts.x + counts.width + 16px;
+        x: Theme.sideways ? cards-title.x + cards-title.preferred-width + 12px : counts.x + counts.width + 16px;
         y: counts.y;
-        width: max(0px, clear.x + clear.pad - 12px - self.x);
-        visible: Theme.phone;
+        width: max(0px, (Theme.sideways ? counts.x : clear.x + clear.pad) - 12px - self.x);
+        visible: Theme.handheld;
         text: PatchCardsView.problems;
     }
 
@@ -630,7 +633,7 @@ export component PatchCardsTab inherits Rectangle {
         x: Theme.phone ? 0px : 4px;
         y: Theme.phone ? root.counts-height + 12px : root.pane-y + 44px;
         width: (Theme.phone ? parent.width : root.pane-width - 4px) - (Theme.phone ? 0px : 4px);
-        height: Theme.phone ? parent.height - self.y - root.lines-height : root.pane-height - 44px;
+        height: Theme.phone ? parent.height - self.y - root.lines-height : root.pane-height - 44px - root.lines-height;
         nav: "card";
         count: PatchCardsView.installed.length;
         row-height: Theme.list-row;
@@ -676,8 +679,9 @@ export component PatchCardsTab inherits Rectangle {
         }
     }
 
-    // ---- What the cards add up to: two panels at the right, or on a phone a line each under the cards.
-    if !Theme.phone: Rectangle {
+    // ---- What the cards add up to: two panels at the right, or on a phone a line each under the cards (sideways at
+    // the cards' frame's foot).
+    if !Theme.handheld: Rectangle {
         PanelBack {
             x: root.side-x;
             y: root.pane-y;
@@ -709,11 +713,11 @@ export component PatchCardsTab inherits Rectangle {
         }
     }
 
-    if Theme.phone: Rectangle {
+    if Theme.handheld: Rectangle {
         for line[i] in [{ title: @tr("Effects"), text: I18n.join(PatchCardsView.effect-items), bug: false }, { title: @tr("Bugs"), text: I18n.join(PatchCardsView.bug-items), bug: true }]: Rectangle {
-            x: 0;
-            y: root.height - root.lines-height + 8px + i * 22px;
-            width: root.width;
+            x: Theme.sideways ? 12px : 0px;
+            y: (Theme.sideways ? root.pane-y + root.pane-height : root.height) - root.lines-height + (Theme.sideways ? 2px : 8px) + i * 22px;
+            width: Theme.sideways ? root.pane-width - 24px : root.width;
             height: 16px;
             Text {
                 x: 0;
@@ -747,7 +751,7 @@ export component PatchCardsTab inherits Rectangle {
             y: root.pane-y;
             width: root.library-width;
             height: root.pane-height;
-            titled: true;
+            titled: !Theme.sideways;
         }
 
         RemoveTarget {

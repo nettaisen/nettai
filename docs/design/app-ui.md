@@ -1816,6 +1816,24 @@ Each is settled unless the user changes it.
        under them, each named over its control; the player's connection at the foot's left, READY, CHANGE BUILD and
        LEAVE (PRACTICE and CANCEL INVITE while waiting) beside it, 52 tall, the reserved line over them. The wait's
        practice battle fills the window as upright (PRACTICE starts it): a battle's pad shows only there.
+     - *The build editor:* the name's box 160 wide, then the tabs, then the game, locked; no strip (as upright, a pane's
+       header says what the game's rules have against it). Folder: the folder framed at the left, its header on three
+       lines (FOLDER, its problems and CLEAR; Chips, Mega, Giga; Regular, Tag) over the upright phone's one column of
+       rows 40; the library beside it (its search, sort and direction on one row, no titles, no MB and attack columns),
+       and between its head and its rows what a slot's keys do, as the upright sheet has them: REGULAR, TAG, REMOVE, of
+       the entry being filled. A chip is dragged into the folder, and an entry onto the library to take it out, as on
+       the desktop. Navi: the navi's panel at the left (its card, the choices, the forms one to a row with their names
+       whole, scrolling in it), at the right the ruleset's select, EDIT and PRACTICE over the navi grid, four across.
+       Party, Patch cards and Auto battle: the build's list framed at the left (the Party's head and the cards' and
+       places' as upright, what the cards add up to a line each at the frame's foot), the library at the right.
+       NaviCust: the board framed, as large as the tab's height takes, with a column beside it in the frame (the key a
+       line each, the effects and the bugs each its title over its words, the notice's line at its foot), and the
+       programs beside the frame, what the game's rules have against the NaviCust after their title.
+     - *A ruleset's page:* its categories are the header's tabs after its name, as the editor's tabs are; the row under
+       the header is Version exclusives' control without its word (ONE VERSION and MIX VERSIONS say it, and the row has
+       no room for both) and IMPORT, EXPORT, DUPLICATE and DELETE, compact; under it the category's panel the body's
+       width, its search on its header line between what the category allows and its quick choices, its items in as
+       many columns as fit (a Party page's keys at the left and their programs in one column beside them).
      - *Dialogs* are centered at the upright phone's width (358). Two whose upright arrangement is taller than the
        window are the desktop's arrangement and width: a new build's (600 wide, FROM A SAVE FILE… at the buttons' left
        in place of under a line) and a direct connection's. The lobby's CHANGE BUILD shows four rows. *A select's

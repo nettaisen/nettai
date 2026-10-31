@@ -25,7 +25,8 @@
 // head onto another's (they trade places, programs with them), onto the library (taken out).
 //
 // On a phone, which has no strip, PARTY is the tab's width, and a button under it opens the slot's library as a sheet
-// (`PartyOverlay`). Its Rust half is src/screens/builds/party.rs.
+// (`PartyOverlay`). Held sideways there is no strip either: PARTY's head is the phone's, and the library is beside it
+// (docs/design/app-ui.md §2.103). Its Rust half is src/screens/builds/party.rs.
 
 import { Theme, I18n } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
@@ -417,16 +418,19 @@ component SlotView inherits Rectangle {
 
 export component PartyTab inherits Rectangle {
     property <bool> phone: Theme.phone;
+    // (No strip, and PARTY's head a phone's: upright, or sideways with the library beside it: docs/design/app-ui.md
+    // §2.103.)
+    property <bool> bare: Theme.handheld;
     property <length> top: -4px;
-    property <length> strip: root.phone ? 0px : 104px;
+    property <length> strip: root.bare ? 0px : 104px;
     property <[string]> stat-labels: [@tr("HP"), @tr("Attack")];
     // PARTY at the left (on a phone, the tab's width), the library at the right: as the Patch cards tab's panes, the
     // strip and the two panes and their gaps the page's whole height (on a desktop down to 18 over the tab's foot);
     // the slots a list in PARTY, which scrolls in it.
-    property <length> pane-y: root.phone ? 0px : root.top + root.strip + 12px;
-    property <length> pane-width: root.phone ? root.width : 560px;
-    property <length> pane-height: root.phone ? root.height - 12px - 44px : root.height - root.pane-y - 18px;
-    property <length> head: root.phone ? 64px : 44px;
+    property <length> pane-y: root.bare ? 0px : root.top + root.strip + 12px;
+    property <length> pane-width: root.phone ? root.width : Theme.sideways ? (root.width - 12px) / 2 + 24px : 560px;
+    property <length> pane-height: root.phone ? root.height - 12px - 44px : Theme.sideways ? root.height : root.height - root.pane-y - 18px;
+    property <length> head: root.bare ? 64px : 44px;
     property <length> pitch: Theme.list-row + Theme.list-gap;
     // A drag in PARTY's slots (a slot of its own, `slots-on`; a library's row, `slots-filling`): where it would land
     // (`Drag.to`); a program among the programs, the slots from there on shifting to leave a gap; a navi or a head onto
@@ -443,7 +447,7 @@ export component PartyTab inherits Rectangle {
         x: 0;
         y: root.top;
         height: root.strip;
-        visible: !root.phone;
+        visible: !root.bare;
     }
 
     Image {
@@ -451,7 +455,7 @@ export component PartyTab inherits Rectangle {
         y: root.top + 20px;
         width: 84px;
         height: 42px;
-        visible: !root.phone && PartyView.detail.there && PartyView.detail.blocks == 0;
+        visible: !root.bare && PartyView.detail.there && PartyView.detail.blocks == 0;
         source: PartyView.detail.face;
         image-rendering: pixelated;
     }
@@ -460,7 +464,7 @@ export component PartyTab inherits Rectangle {
     Blocks {
         x: 18px;
         y: root.top + 22px;
-        visible: !root.phone && PartyView.detail.blocks > 0;
+        visible: !root.bare && PartyView.detail.blocks > 0;
         count: PartyView.detail.blocks;
         filled: PartyView.detail.blocks;
         tone: PartyView.detail.tone;
@@ -473,7 +477,7 @@ export component PartyTab inherits Rectangle {
         y: root.top + 19px;
         width: max(0px, root.width / 2 - 120px - 8px);
         height: 20px;
-        visible: !root.phone;
+        visible: !root.bare;
         spacing: 6px;
         alignment: start;
         Text {
@@ -498,7 +502,7 @@ export component PartyTab inherits Rectangle {
         x: root.width / 2;
         y: root.top + 19px;
         width: root.width / 2 - 16px;
-        visible: !root.phone;
+        visible: !root.bare;
         text: PartyView.detail.problem;
         problem: PartyView.detail.fault;
 
@@ -510,7 +514,7 @@ export component PartyTab inherits Rectangle {
         y: root.top + 43px;
         width: root.width - 136px;
         height: 18px;
-        visible: !root.phone && PartyView.detail.stats.length == 0;
+        visible: !root.bare && PartyView.detail.stats.length == 0;
         text: I18n.join(PartyView.detail.description);
         color: Theme.muted;
         font-family: Theme.body;
@@ -526,7 +530,7 @@ export component PartyTab inherits Rectangle {
         y: root.top + 43px;
         width: root.width - 136px;
         height: 18px;
-        visible: !root.phone;
+        visible: !root.bare;
         spacing: 18px;
         alignment: start;
         for stat[i] in PartyView.detail.stats: HorizontalLayout {
@@ -587,7 +591,7 @@ export component PartyTab inherits Rectangle {
         y: root.top + 69px;
         width: root.width - 136px;
         height: 16px;
-        visible: !root.phone;
+        visible: !root.bare;
         spacing: 16px;
         alignment: start;
         for fact in PartyView.detail.facts: Text {
@@ -611,14 +615,14 @@ export component PartyTab inherits Rectangle {
         x: 12px;
         y: root.pane-y;
         width: max(0px, partners-count.x - 12px - self.x);
-        height: root.phone ? 32px : root.head;
+        height: root.bare ? 32px : root.head;
         text: I18n.upper(@tr("Party"));
         color: PartyView.in-library ? Theme.muted : Theme.cursor;
     }
 
     partners-count := CountBox {
         x: changes-count.x - 16px - self.width;
-        y: root.pane-y + (root.phone ? 8px : 14px);
+        y: root.pane-y + (root.bare ? 8px : 14px);
         label: @tr("Partners");
         value: PartyView.partners;
         suffix: "/\{PartyView.room}";
@@ -648,7 +652,7 @@ export component PartyTab inherits Rectangle {
         x: 12px;
         y: root.pane-y + 36px;
         width: root.pane-width - 24px;
-        visible: root.phone;
+        visible: root.bare;
         text: PartyView.problems;
     }
 
@@ -691,7 +695,7 @@ export component PartyTab inherits Rectangle {
     // ---- The library of what the slot takes, open beside it (a phone's, a sheet a button opens); what is dragged
     // from PARTY over it is taken out, let go there.
     if !root.phone: Rectangle {
-        x: root.pane-width + 24px;
+        x: root.pane-width + (Theme.sideways ? 12px : 24px);
         y: root.pane-y;
         width: root.width - self.x;
         height: root.pane-height;

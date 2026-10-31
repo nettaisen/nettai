@@ -13,7 +13,10 @@
 // The piece in hand is drawn over the board where the cursor holds it: lifted (a little larger, with a shadow), and
 // it turns a quarter at a time and drops with a pulse along its cells. On a phone the board has the tab's width, the
 // effects and the bugs a line each under it, and under them PROGRAMS, which opens the list as a sheet from the bottom
-// (`NavicustOverlay`); with a piece in hand it is PUT AWAY. Its Rust half is src/screens/builds/navicust.rs.
+// (`NavicustOverlay`); with a piece in hand it is PUT AWAY. Held sideways (docs/design/app-ui.md §2.103) there is no
+// strip: the board, framed, as large as the tab's height takes, with a column beside it in the frame (the key, the
+// effects and the bugs, the notice's line), and the programs beside the frame. Its Rust half is
+// src/screens/builds/navicust.rs.
 
 import { Theme, Audit, I18n } from "../../theme.slint";
 import { Nav, Focusable } from "../../nav.slint";
@@ -920,7 +923,7 @@ component ProgramsPane inherits Rectangle {
             height: list.row-height;
             program: NavicustView.programs[self.at];
             nav-index: self.at;
-            big: Theme.phone;
+            big: Theme.handheld;
             most-colors: NavicustView.most-colors;
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
@@ -943,10 +946,16 @@ component ProgramsPane inherits Rectangle {
 export component NavicustTab inherits Rectangle {
     // The board's frame: its cells, the room for the command line's arrows at its sides, and its height.
     property <length> gap: 3px;
-    property <length> pad-x: Theme.phone ? 26px : 34px;
-    property <length> pad-y: Theme.phone ? 12px : 16px;
-    property <length> board-width: Theme.phone ? self.width : (NavicustView.columns == 7 ? 436px : 400px);
-    property <length> cell: Theme.phone ? max(16px, min(root.across, root.down)) : (NavicustView.columns == 7 ? 50px : 64px);
+    property <length> pad-x: Theme.handheld ? 26px : 34px;
+    property <length> pad-y: Theme.handheld ? 12px : 16px;
+    property <length> board-width: Theme.phone ? self.width : Theme.sideways ? root.beside-width : (NavicustView.columns == 7 ? 436px : 400px);
+    property <length> cell: Theme.phone ? max(16px, min(root.across, root.down)) : Theme.sideways ? root.beside-cell : (NavicustView.columns == 7 ? 50px : 64px);
+    // (Sideways: as large as the tab's height takes under the head, and the board's frame as wide as that, the column
+    // beside the board in it.)
+    property <length> beside-cell: max(16px, floor((root.height - root.head-height - 2 * root.pad-y - (NavicustView.columns - 1) * root.gap) / NavicustView.columns / 1px) * 1px);
+    property <length> beside-width: NavicustView.columns * (root.beside-cell + root.gap) - root.gap + 2 * root.pad-x;
+    property <length> column-width: Theme.sideways && NavicustView.board ? 132px : 0px;
+    property <length> frame-width: root.board-width + root.column-width;
     // (A phone's: as large as the tab's width takes, or where the tab is too short for that (an iPhone SE's), as large as
     // leaves the room under the board for the key, the notice's line, the effects' and the bugs' and PROGRAMS.)
     property <length> across: floor((root.board-width - 2 * root.pad-x - (NavicustView.columns - 1) * root.gap) / NavicustView.columns / 1px) * 1px;
@@ -959,9 +968,9 @@ export component NavicustTab inherits Rectangle {
     property <length> board-height: NavicustView.board ? root.grid-width + 2 * root.pad-y : 0px;
     // (Under the strip, as the folder's panes are; a phone has no strip.)
     property <length> top: -4px;
-    property <length> body-y: Theme.phone ? 0px : root.top + 104px + 12px;
+    property <length> body-y: Theme.handheld ? 0px : root.top + 104px + 12px;
     // The board's pane's header, as the folder's and the cards' panes have: NAVICUST, and CLEAR at its right end.
-    property <length> head-height: NavicustView.board ? (Theme.phone ? 36px : 44px) : 0px;
+    property <length> head-height: NavicustView.board ? (Theme.handheld ? 36px : 44px) : 0px;
     property <length> board-top: root.body-y + root.head-height;
     property <length> key-y: root.board-top + root.board-height + 12px;
     property <length> key-width: 4 * 20px + 3 * 16px + board-key-word.preferred-width + line-key-word.preferred-width + plus-key-word.preferred-width + (NavicustView.ring ? ring-key-word.preferred-width : -36px);
@@ -971,14 +980,21 @@ export component NavicustTab inherits Rectangle {
     property <bool> key-over: Theme.audit && root.key-lines == 2 && max(line-key.x + line-key.width, ring-key.x + ring-key.width) > root.board-width + 0.5px;
     // The list, and the effects and bugs beside it (on a phone, a line each under the board). The board's column
     // is EXE6's board's width in every game, so the columns are where they are whatever the game.
-    property <length> list-x: Theme.phone ? 0px : 436px + 24px;
-    property <length> list-width: Theme.phone ? self.width : 320px;
+    property <length> list-x: Theme.phone ? 0px : Theme.sideways ? (NavicustView.board ? root.frame-width + 12px : 0px) : 436px + 24px;
+    property <length> list-width: Theme.phone ? self.width : Theme.sideways ? self.width - root.list-x : 320px;
     property <length> lines-y: root.key-y + root.key-height + 10px + 16px + 8px;
     // (On a phone the list is a sheet: PROGRAMS, 12 under the lines, opens it.)
     property <length> list-y: Theme.phone ? root.lines-y + 2 * 22px - 6px + 12px : root.body-y;
     property <length> side-x: root.list-x + root.list-width + 24px;
     property <length> side-width: self.width - root.side-x;
     property <length> effects-height: (self.height - root.body-y - 12px) * 0.5;
+    // (Sideways, the column beside the board: the key a line each, then the effects and the bugs, each its title over
+    // its words, wrapped; the notice's line at its foot.)
+    property <length> column-x: root.board-width + 4px;
+    property <int> key-count: NavicustView.ring ? 4 : 3;
+    property <length> facts-y: root.board-top + 12px + root.key-count * 20px + 6px;
+    property <length> notice-y: root.board-top + root.board-height - 12px - 16px;
+    property <length> fact-pitch: max(36px, (root.notice-y - 6px - root.facts-y) / 2);
     // The command line's arrows pulse.
     property <float> breath: Theme.motion ? 0.6 + 0.4 * sin(animation-tick() / 900ms * 360deg) : 1;
     // ---- The strip: the program under the cursor (or the pointer): where it compresses into another shape, its
@@ -1062,11 +1078,11 @@ export component NavicustTab inherits Rectangle {
     PanelBack {
         x: 0;
         y: root.top;
-        height: Theme.phone ? 0px : 104px;
-        visible: !Theme.phone;
+        height: Theme.handheld ? 0px : 104px;
+        visible: !Theme.handheld;
     }
 
-    if !Theme.phone && NavicustView.detail.there: Rectangle {
+    if !Theme.handheld && NavicustView.detail.there: Rectangle {
         x: 0;
         y: root.top;
         width: root.words-x;
@@ -1123,7 +1139,7 @@ export component NavicustTab inherits Rectangle {
         y: root.top + 21px;
         width: 16px;
         height: 16px;
-        visible: !Theme.phone && NavicustView.detail.there;
+        visible: !Theme.handheld && NavicustView.detail.there;
         background: NavicustView.detail.tone;
         Cross {
             visible: NavicustView.detail.plus;
@@ -1136,7 +1152,7 @@ export component NavicustTab inherits Rectangle {
         y: root.top + 19px;
         width: parent.width / 2 - self.x - 8px;
         height: 20px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: NavicustView.detail.name;
         color: Theme.text;
         font-family: Theme.body;
@@ -1151,7 +1167,7 @@ export component NavicustTab inherits Rectangle {
         y: root.top + 43px;
         width: parent.width - self.x - 16px;
         height: 18px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: NavicustView.detail.description;
         color: Theme.muted;
         font-family: Theme.body;
@@ -1165,7 +1181,7 @@ export component NavicustTab inherits Rectangle {
         y: root.top + 69px;
         width: parent.width - self.x - 16px;
         height: 16px;
-        visible: !Theme.phone && NavicustView.detail.there;
+        visible: !Theme.handheld && NavicustView.detail.there;
         spacing: 6px;
         alignment: start;
         Text {
@@ -1199,7 +1215,7 @@ export component NavicustTab inherits Rectangle {
     PanelBack {
         x: 0;
         y: root.body-y;
-        width: root.board-width;
+        width: root.frame-width;
         height: root.head-height + root.board-height;
         visible: NavicustView.board;
     }
@@ -1410,33 +1426,34 @@ export component NavicustTab inherits Rectangle {
 
     // ---- The key under the board: on one line where the language's words leave it the room, else on two (which
     // depends on the language alone).
+    // (Sideways, a line each in the column beside the board.)
     board-key := KeyEntry {
-        x: 0;
-        y: root.key-y;
+        x: Theme.sideways ? root.column-x : 0px;
+        y: Theme.sideways ? root.board-top + 12px : root.key-y;
         visible: NavicustView.board;
         text: @tr("Board");
         swatch: 0;
     }
 
     line-key := KeyEntry {
-        x: board-key.width + 16px;
-        y: root.key-y;
+        x: Theme.sideways ? root.column-x : board-key.width + 16px;
+        y: Theme.sideways ? board-key.y + 20px : root.key-y;
         visible: NavicustView.board;
         text: @tr("Command line");
         swatch: 1;
     }
 
     plus-key := KeyEntry {
-        x: root.key-lines == 2 ? 0px : line-key.x + line-key.width + 16px;
-        y: root.key-y + (root.key-lines == 2 ? 22px : 0px);
+        x: Theme.sideways ? root.column-x : root.key-lines == 2 ? 0px : line-key.x + line-key.width + 16px;
+        y: Theme.sideways ? line-key.y + 20px : root.key-y + (root.key-lines == 2 ? 22px : 0px);
         visible: NavicustView.board;
         text: @tr("Plus part");
         swatch: 2;
     }
 
     ring-key := KeyEntry {
-        x: plus-key.x + plus-key.width + 16px;
-        y: plus-key.y;
+        x: Theme.sideways ? root.column-x : plus-key.x + plus-key.width + 16px;
+        y: Theme.sideways ? plus-key.y + 20px : plus-key.y;
         visible: NavicustView.board && NavicustView.ring;
         text: @tr("Out of bounds");
         swatch: 3;
@@ -1449,18 +1466,20 @@ export component NavicustTab inherits Rectangle {
         x: root.width / 2;
         y: root.top + 19px;
         width: root.width / 2 - 16px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: NavicustView.notice;
         problem: NavicustView.fault;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
+    // (Sideways at the foot of the column beside the board; what the game's rules have against the NaviCust is after
+    // PROGRAMS there.)
     Message {
-        x: 0;
-        y: root.key-y + root.key-height + 10px;
-        width: root.board-width;
-        visible: Theme.phone;
+        x: Theme.sideways ? root.column-x : 0px;
+        y: Theme.sideways ? root.notice-y : root.key-y + root.key-height + 10px;
+        width: Theme.sideways ? root.column-width - 12px : root.board-width;
+        visible: Theme.handheld;
         text: NavicustView.notice;
     }
 
@@ -1482,6 +1501,7 @@ export component NavicustTab inherits Rectangle {
         width: root.list-width;
         height: max(0px, root.height - root.list-y);
         title-width: NavicustView.board ? root.list-width : max(0px, clear.x + clear.pad - 12px - root.list-x);
+        note: Theme.sideways;
         lit: NavicustView.in-list;
     }
 
@@ -1501,15 +1521,16 @@ export component NavicustTab inherits Rectangle {
     // in the header which you should add so it matches how it looks everywhere else"); where the game draws none, at
     // the right end of the programs' title's line.
     clear := WordButton {
-        x: NavicustView.board || Theme.phone ? root.board-width - 12px + self.pad - self.width : root.list-x + root.list-width + self.pad - self.width;
+        x: NavicustView.board || Theme.phone ? root.frame-width - 12px + self.pad - self.width : root.list-x + root.list-width + self.pad - self.width;
         y: NavicustView.board || Theme.phone ? root.body-y + (root.head-height - self.height) / 2 : root.list-y + 2px;
         nav: "clear";
         text: I18n.upper(@tr("Clear"));
         enabled: NavicustView.clearable;
     }
 
-    // ---- What the NaviCust does, and its bugs: two panels beside the list, or on a phone a line each.
-    if !Theme.phone: Rectangle {
+    // ---- What the NaviCust does, and its bugs: two panels beside the list, or on a phone a line each (sideways each
+    // its title over its words in the column beside the board).
+    if !Theme.handheld: Rectangle {
         PanelBack {
             x: root.side-x;
             y: root.body-y;
@@ -1541,15 +1562,18 @@ export component NavicustTab inherits Rectangle {
         }
     }
 
-    if Theme.phone: Rectangle {
+    if Theme.handheld: Rectangle {
         for line[i] in [{ title: @tr("Effects"), text: I18n.join(NavicustView.effect-items), bug: false }, { title: @tr("Bugs"), text: I18n.join(NavicustView.bug-items), bug: true }]: Rectangle {
-            x: 0;
-            y: root.lines-y + i * 22px;
-            width: root.width;
-            height: 16px;
+            x: Theme.sideways ? root.column-x : 0px;
+            y: Theme.sideways ? root.facts-y + i * root.fact-pitch : root.lines-y + i * 22px;
+            width: Theme.sideways ? root.column-width - 12px : root.width;
+            height: Theme.sideways ? root.fact-pitch - 6px : 16px;
+            visible: !Theme.sideways || NavicustView.board;
             Text {
                 x: 0;
-                width: 96px;
+                y: 0;
+                width: Theme.sideways ? parent.width : 96px;
+                height: 16px;
                 text: line.title;
                 color: Theme.muted;
                 font-family: Theme.body;
@@ -1559,14 +1583,17 @@ export component NavicustTab inherits Rectangle {
             }
 
             Text {
-                x: 100px;
-                width: parent.width - 100px;
+                x: Theme.sideways ? 0px : 100px;
+                y: Theme.sideways ? 18px : 0px;
+                width: parent.width - self.x;
+                height: parent.height - self.y;
                 text: line.text == "" ? @tr("None") : line.text;
                 color: line.text == "" ? Theme.dim : (line.bug ? Theme.bug : Theme.text);
                 font-family: Theme.body;
                 font-size: 13px;
                 font-weight: 600;
-                vertical-alignment: center;
+                vertical-alignment: Theme.sideways ? TextVerticalAlignment.top : TextVerticalAlignment.center;
+                wrap: Theme.sideways ? TextWrap.word-wrap : TextWrap.no-wrap;
                 overflow: elide;
             }
         }
