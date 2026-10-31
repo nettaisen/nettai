@@ -1068,7 +1068,9 @@ fn flush_burst(tour: &Tour) {
     }
 }
 
-/// Walk once the selected game is ready, or after five minutes.
+/// Walk once the game asked for (`NETTAI_TOUR_GAME`) is ready; with none asked for, once the shell's is, or after
+/// five minutes. The pass walks no game in place of the one asked for: one that can't be played, or isn't ready in
+/// five minutes, ends it with its report saying so, and it fails.
 fn when_ready(
     ui: slint::Weak<AppWindow>,
     app: Rc<RefCell<App>>,
@@ -1076,12 +1078,53 @@ fn when_ready(
     steps: Rc<Vec<(u64, Step)>>,
     waited: u32,
 ) {
-    if app.borrow().shell.ready().is_some() || waited >= 600 {
-        return run(ui, app, tour, steps, 0);
+    let asked = std::env::var("NETTAI_TOUR_GAME").ok();
+    let shown = app.borrow().shell.ready().map(|(id, _)| id);
+    match (asked, shown) {
+        (None, Some(_)) => return run(ui, app, tour, steps, 0),
+        (Some(asked), Some(shown)) if asked == shown => return run(ui, app, tour, steps, 0),
+        // Another game is ready: the shell went on to it from the one asked for, which `begin` selected before every
+        // game's ROMs were looked for (a game's are looked for once every game's content is read, and one whose
+        // content is read first is taken for one without ROMs until then). They have been by now, another game
+        // being ready: the one asked for is selected again where it can be played, and the walk waits for it.
+        (Some(asked), Some(_)) => {
+            let mut app = app.borrow_mut();
+            if !app.shell.games.playable().contains(&asked) {
+                let why = unplayable(&app.shell.games, &asked);
+                drop(app);
+                return wrong_game(&tour, &format!("the game asked for, {asked}, {why}"));
+            }
+            app.shell.select_game(&asked);
+        }
+        (Some(asked), None) if waited >= 600 => {
+            return wrong_game(&tour, &format!("the game asked for, {asked}, wasn't ready after five minutes"));
+        }
+        (None, None) if waited >= 600 => return run(ui, app, tour, steps, 0),
+        _ => {}
     }
     Timer::single_shot(Duration::from_millis(500), move || {
         when_ready(ui, app, tour, steps, waited + 1)
     });
+}
+
+/// Why game `id` can't be played, as its state says.
+fn unplayable(games: &crate::games::Games, id: &str) -> &'static str {
+    use crate::games::State;
+    match games.get(id).map(|e| &e.state) {
+        None => "isn't a game the app has",
+        Some(State::NoRoms) => "can't be played: its ROMs aren't found",
+        Some(State::NoContent { .. }) => "can't be played: there is no content of it",
+        Some(State::Failed) => "couldn't be loaded (the log says why)",
+        Some(_) => "can't be played",
+    }
+}
+
+/// The game asked for can't be walked (`why`): the pass walks nothing, says why at its report's top, and fails.
+fn wrong_game(tour: &Tour, why: &str) {
+    WALKING.with(|w| *w.borrow_mut() = None);
+    report(tour, &format!("The pass walked nothing: {why}.\n\n"));
+    FAILED.with(|f| f.set(true));
+    let _ = slint::quit_event_loop();
 }
 
 fn run(

@@ -2914,10 +2914,14 @@ and what is cut. Two things went unseen that way, and each now has its check.
   the NaviCust's board where the view shows none, the walk on another tab, says so the same way
   (`Board::shown`), rather than read past it.
 - *A game that doesn't load is passed over, and the pass goes on with another.* The shell selects the next
-  game that can be played, and the pass then walks that one and ends well: `NETTAI_TOUR_GAME=exe6` with content
-  whose assets don't load (a sprite the content names and the assets haven't) gives a clean report of EXE4's
-  screens. The log says so (`loading exe6: can't load ...`) and the pictures' headers name the game shown; the
-  report doesn't. Read one before trusting a run.
+  game that can be played, and the pass walked that one and ended well: `NETTAI_TOUR_GAME=exe6` with content
+  whose assets don't load (a sprite the content names and the assets haven't) gave a clean report of EXE4's
+  screens. So did a game asked for whose content was read before the others': the pass selects it as it starts,
+  before any game's ROMs are looked for (they are once every game's content is read), and the shell took it for
+  one without ROMs. The walk now waits for the game asked for (`tour::when_ready`): another being ready, every
+  game's ROMs have been looked for, and the one asked for is selected again; one that can't be played, or isn't
+  ready in five minutes, ends the pass before its walk, the report's first line saying why, and the pass fails.
+  (The shell's going on to the next game is the player's, and stays.)
 
 **Replays' steps.** While the pass runs the replays folder is `<folder>/replays`, and the first time through
 three sets of the selected game are played by themselves there, recorded, and written again under other names,
