@@ -27,7 +27,7 @@ shapes (§4, "Frames as shapes").
 | Sound | `SoundBank`: songs, voicegroups, key maps, PSG waves, samples, mixer, players | the ROMs |
 | A version's own songs | `nettai_extract::SongVersions` | the other version's ROM |
 | Names | `AssetIndex`: every asset by kind and name, with the game's number for it | the content's compat/assets.toml |
-| Custom backgrounds and sprites | `Background` and `SpriteSheet`, as the ROMs' are, numbered past theirs | the content's own pictures (§7) |
+| Custom backgrounds, sprites and songs | `Background`, `SpriteSheet` and `Song`, as the ROMs' are, numbered past theirs | the content's own pictures and MIDI files (§7) |
 
 ## 1. Principles
 
@@ -374,7 +374,7 @@ The files are part of the game's folder, so its bundle carries them (docs/design
 
 Custom assets are GBA-shaped, as the ROMs' are (the user chose GBA-shaped pictures over full color, MIDI over
 recorded audio and indexed PNG over Aseprite): they play by the same rules, through the same renderer and sound
-driver, and look like the game's own.
+driver, and look and sound like the game's own.
 
 **Backgrounds.** `asset.background(name, { file, scroll })`. `file` is an indexed PNG, by a path as a `require`
 writes one (`./`, `../`, `@self/` in an init.luau, `@<pack>/`) with its `.png`: any bit depth, at most 16 colors
@@ -410,5 +410,26 @@ sprite's colors (each of its colors one of the first 16), centered on the object
 stands in for it. Sprites are numbered from the category past the ROMs' last, from index 0, in their names' order.
 The timing check against the ROMs (`Extraction::timing_differences`) passes them by: no ROM times them.
 
-**Music** is next: a song from MIDI, played on instruments the game has.
+**Songs.** `asset.sound(name, { file, voices })`. `file` is a standard MIDI file (format 0 or 1, timed in ticks a
+beat), and `voices` the ROMs' sound (`asset.sound("virus-battle")`) whose instruments it plays on: the song takes
+that song's voicegroup, music player, priority and reverb, so a new battle theme plays on the battle music's player
+and replaces it as the game's own would. The file is made into the driver's song as the GBA's own mid2agb makes one
+(`nettai_content::custom::song`), and the `m4a` driver and the mixer play it as they play the ROMs':
+
+- each MIDI channel with a note is a track, in the channels' order (as many as the player plays at most); a program
+  change is the voicegroup's instrument of that number (channel 10 is no drum channel: a drum kit is the
+  voicegroup's instrument the program names, as in the GBA's tools);
+- time is the driver's 24 ticks a beat, each event's time rounded to the nearest; the tempo events are the first
+  track's TEMPO;
+- a note is a note command of its key, velocity and length (1 to 99 ticks), or a tie and its end where it is
+  longer; a chord's notes are at one tick;
+- the controllers volume (7), pan (10), modulation (1), bend range (20, or RPN 0's data entry), LFO speed (21),
+  modulation type (22), tune (24) and LFO delay (26), and pitch bend (its top 7 bits), are the driver's commands of
+  the same; any other event is passed by;
+- the markers (or texts, or cue points) "[" and "]", or "loopStart" and "loopEnd", are where it loops: each track
+  jumps back to where it was at the start when it reaches the end, and a note past the end is cut there, what
+  follows it left out. Without them each track ends at the song's last note.
+
+Songs are numbered past the ROMs' song table. Sound effects are songs too: a MIDI file played on an effect's
+voices is a new effect. Instruments of the content's own (WAV samples) are not taken yet.
 

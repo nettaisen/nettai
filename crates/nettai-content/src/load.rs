@@ -79,7 +79,7 @@ pub fn extract(content: &Path, game: &str, roms: &RomSource) -> Result<(nettai_b
 /// failed: the ROMs, their extraction or a custom asset.
 pub fn assets(content: &nettai_battle::Content, recipe: &Recipe, roms: &RomSource) -> Result<Extraction, String> {
     let mut e = recipe.extract(&roms.read(recipe).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
-    crate::custom::add(content, &mut e.graphics, &mut e.index)?;
+    crate::custom::add(content, &mut e.graphics, &mut e.sound, &mut e.index)?;
     Ok(e)
 }
 

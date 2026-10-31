@@ -29,8 +29,8 @@ game's `depends.lock` names its support packs' commits. It needs no ROMs. `netta
 
 ## Custom assets
 
-A game can have backgrounds and sprites of its own, beside the ones extracted from its ROMs, each an indexed PNG
-in the GBA's colors, defined by a module beside it. A background is at most 16 colors, each side a multiple of 8
+A game can have backgrounds, sprites and songs of its own, beside the ones extracted from its ROMs: pictures as
+indexed PNGs in the GBA's colors, songs as MIDI files, each defined by a module beside it. A background is at most 16 colors, each side a multiple of 8
 pixels.
 
 ```luau
@@ -55,8 +55,18 @@ return asset.sprite("drone", { { 4, 4, 4, 4, loop = true }, { 3, 3 } }, {
 })
 ```
 
-Whatever shows it requires that module, as with the ROMs' sprites. The details are in
-[design/asset-formats.md](design/asset-formats.md) §7.
+Whatever shows it requires that module, as with the ROMs' sprites.
+
+A song is a MIDI file played on the instruments of one of the game's songs, read the way the GBA's mid2agb reads
+one (a program change picks that song's instrument of that number):
+
+```luau
+-- content/exe6/music/my_theme.luau
+return asset.sound("my-theme", { file = "./my_theme.mid", voices = asset.sound("virus-battle") })
+```
+
+A stage plays it with `music = require("./music/my_theme")`. Markers named `[` and `]` in the MIDI file make it
+loop. The details are in [design/asset-formats.md](design/asset-formats.md) §7.
 
 ## Editing in Zed
 

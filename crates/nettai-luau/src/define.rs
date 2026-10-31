@@ -45,7 +45,7 @@ use std::ffi::c_void;
 use std::rc::Rc;
 
 use nettai_content_api::{
-    AssetKind, AssetNames, CustomAssets, CustomBackground, CustomSprite, Data, DataKey, DefinedAssets, Definition, Definitions, Registry, SpriteDef, keys,
+    AssetKind, AssetNames, CustomAssets, CustomBackground, CustomSound, CustomSprite, Data, DataKey, DefinedAssets, Definition, Definitions, Registry, SpriteDef, keys,
     valid_key,
 };
 use mlua::{Lua, Table, Value as LuaValue};
@@ -225,6 +225,21 @@ impl AssetTables {
     pub fn defined(&self) -> DefinedAssets {
         let sprites = self.names.sprites.iter().map(|n| self.sprites[n].1.clone()).collect();
         DefinedAssets { names: self.names.clone(), sprites, custom: self.custom.clone() }
+    }
+
+    /// Sound `name` as its module makes it from a MIDI file of its own
+    /// (`def.module`): its value. A custom sound is defined once.
+    fn define_sound(&mut self, lua: &Lua, name: &str, def: CustomSound) -> mlua::Result<Table> {
+        if let Some(other) = self.custom.sounds.get(name) {
+            return Err(mlua::Error::runtime(format!(
+                "{}: sound {name:?} is defined twice: in {}.luau and in {}.luau (a sound is defined once, by its module: require it)",
+                def.module,
+                keys::module_path(&other.module),
+                keys::module_path(&def.module)
+            )));
+        }
+        self.custom.sounds.insert(name.to_string(), def);
+        self.named(lua, AssetKind::Sound, name)
     }
 
     /// Whether content made background `name` from a picture of its own.
@@ -419,6 +434,42 @@ fn background_def(at: &str, module: &str, def: &Table) -> Result<CustomBackgroun
     Ok(CustomBackground { module: module.to_string(), file, scroll })
 }
 
+/// A custom sound's definition, as content writes it (`asset.sound(name, { file = "./my_theme.mid", voices =
+/// asset.sound("virus-battle") })`, core.d.luau's `SoundFile`): its notes, a MIDI file of its pack's by a path from
+/// the module that defines it, and the sound (the ROMs') whose instruments it plays on.
+fn sound_def(at: &str, module: &str, def: &Table) -> Result<CustomSound, String> {
+    let mut made = CustomSound { module: module.to_string(), ..Default::default() };
+    for (k, v) in fields(def, at)? {
+        match (&k, v) {
+            (DataKey::Str(s), LuaValue::String(path)) if s == "file" => {
+                let path = path.to_str().map_err(|e| format!("{at}: `file` isn't UTF-8 ({e})"))?.to_string();
+                made.file = asset_file(at, module, &path, "mid")?;
+            }
+            (DataKey::Str(s), LuaValue::Table(t)) if s == "voices" && asset_kind(&t) == Some(AssetKind::Sound) => {
+                made.voices = t.raw_get::<String>("name").map_err(|e| format!("{at}: `voices`: {e}"))?;
+            }
+            (DataKey::Str(s), v) if s == "file" || s == "voices" => {
+                let what = if s == "file" { "a path" } else { "a sound (`asset.sound(name)`)" };
+                return Err(format!("{at}: `{s}` is a {}, not {what}", v.type_name()));
+            }
+            (k, _) => return Err(format!("{at}: a sound made from a MIDI file has its `file` and its `voices`, not {k}")),
+        }
+    }
+    if made.file.is_empty() {
+        return Err(format!("{at}: a sound made from a MIDI file names its `file`"));
+    }
+    if made.voices.is_empty() {
+        return Err(format!("{at}: a sound made from a MIDI file names the sound whose instruments it plays on, its `voices` (`asset.sound(name)`)"));
+    }
+    Ok(made)
+}
+
+/// The kind of asset value `t` is (`asset.sound("throw")`'s table), if it is one.
+fn asset_kind(t: &Table) -> Option<AssetKind> {
+    let kind: String = t.metatable()?.raw_get("__asset").ok()?;
+    AssetKind::from_name(&kind)
+}
+
 /// The file `path` names, written in module `module`, as a custom asset's file is named: its pack, then its path in
 /// the pack (`exe6:backgrounds/my_stage.png`), its extension `extension`.
 fn asset_file(at: &str, module: &str, path: &str, extension: &str) -> Result<String, String> {
@@ -461,8 +512,19 @@ pub(crate) fn install_assets(
                 let def = background_def(&format!("{at}: background {name:?}"), &at, def).map_err(mlua::Error::runtime)?;
                 return tables.borrow_mut().define_background(lua, &name, def);
             }
+            if kind == AssetKind::Sound
+                && let LuaValue::Table(def) = &animations
+                && extra.is_nil()
+            {
+                let def = sound_def(&format!("{at}: sound {name:?}"), &at, def).map_err(mlua::Error::runtime)?;
+                return tables.borrow_mut().define_sound(lua, &name, def);
+            }
             if !animations.is_nil() || !extra.is_nil() {
-                let made = if kind == AssetKind::Background { ", or a name and what it is made from ({ file = ... })" } else { "" };
+                let made = if matches!(kind, AssetKind::Background | AssetKind::Sound) {
+                    ", or a name and what it is made from ({ file = ... })"
+                } else {
+                    ""
+                };
                 return Err(mlua::Error::runtime(format!("{at}: {what} takes a name alone{made}")));
             }
             tables.borrow_mut().named(lua, kind, &name)

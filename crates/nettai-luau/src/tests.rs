@@ -417,8 +417,10 @@ fn assets_resolve_by_name_while_content_loads() {
         assert!(e.contains(wrong), "{animations}: {e}");
     }
     // Other assets are named alone.
-    let e = define_named(&[("m", "return asset.sound('throw', {})")]).unwrap_err();
-    assert!(e.contains("asset.sound takes a name alone"), "{e}");
+    let e = define_named(&[("m", "return asset.banner('finish', {})")]).unwrap_err();
+    assert!(e.contains("asset.banner takes a name alone"), "{e}");
+    let e = define_named(&[("m", "return asset.sound('throw', 3)")]).unwrap_err();
+    assert!(e.contains("asset.sound takes a name alone, or a name and what it is made from"), "{e}");
     let e = define_named(&[("m", "return { f = function() return asset.sound('throw') end }")]);
     assert!(e.is_ok(), "calling it later is the runtime's error, not the define phase's");
 }
@@ -476,6 +478,38 @@ fn a_custom_sprite_is_defined_by_its_module() {
     ] {
         let e = define_named(&[("m", &format!("return asset.sprite('drone', {{ {{ 1 }} }}, {extra})"))]).unwrap_err();
         assert!(e.contains(wrong), "{extra}: {e}");
+    }
+}
+
+/// docs/design/asset-formats.md §7: a sound made from a MIDI file of the
+/// content's own is defined, once, by its module, with its file and the
+/// ROMs' sound whose instruments it plays on.
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
+fn a_custom_sound_is_defined_by_its_module() {
+    let (_, assets) = define_assets(&[
+        ("music/theme", "return asset.sound('my-theme', { file = './theme.mid', voices = asset.sound('virus-battle') })"),
+        ("stages", "return { music = require('./music/theme') }"),
+    ])
+    .unwrap();
+    assert_eq!(assets.names.sounds, ["my-theme", "virus-battle"]);
+    assert_eq!(
+        assets.custom.sounds["my-theme"],
+        nettai_content_api::CustomSound { module: "test:music/theme".into(), file: "test:music/theme.mid".into(), voices: "virus-battle".into() }
+    );
+    let twice = "return asset.sound('t', { file = './t.mid', voices = asset.sound('v') })";
+    let e = define_named(&[("a", twice), ("b", twice)]).unwrap_err();
+    assert!(e.contains("sound \"t\" is defined twice: in test/a.luau and in test/b.luau"), "{e}");
+    for (made, wrong) in [
+        ("{ voices = asset.sound('v') }", "names its `file`"),
+        ("{ file = './t.mid' }", "its `voices` (`asset.sound(name)`)"),
+        ("{ file = './t.mid', voices = 'v' }", "`voices` is a string, not a sound"),
+        ("{ file = './t.mid', voices = asset.background('v') }", "`voices` is a table, not a sound"),
+        ("{ file = './t.wav', voices = asset.sound('v') }", "`file` \"./t.wav\" is a .mid file"),
+        ("{ file = './t.mid', voices = asset.sound('v'), loop = true }", "has its `file` and its `voices`, not loop"),
+    ] {
+        let e = define_named(&[("m", &format!("return asset.sound('t', {made})"))]).unwrap_err();
+        assert!(e.contains(wrong), "{made}: {e}");
     }
 }
 

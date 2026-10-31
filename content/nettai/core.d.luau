@@ -1813,6 +1813,19 @@ export type SpriteExtra = {
 declare extern type Sound with
     name: string
 end
+-- A song made from a MIDI file of the content's own, not the ROMs' (docs/design/asset-formats.md §7), defined
+-- once, by a module of its own that returns it; whoever plays it requires that module:
+--
+--     -- music/my_theme.luau
+--     return asset.sound("my-theme", { file = "./my_theme.mid", voices = asset.sound("virus-battle") })
+--
+-- `file` is a standard MIDI file beside the module (a path as a `require` writes one, with its `.mid`), read as the
+-- GBA's mid2agb reads one: each channel a track, a program change the instrument of that number, the controllers
+-- volume (7), pan (10), modulation (1), bend range (20, or RPN 0), LFO speed (21), modulation type (22), tune (24)
+-- and LFO delay (26), pitch bend, tempo, and the markers "[" and "]" (or "loopStart" and "loopEnd"), where it loops
+-- from and back. `voices` is the ROMs' sound whose instruments it plays on: its voicegroup, player, priority and
+-- reverb. Its name is a new one: no ROM sound's.
+export type SoundFile = { file: string, voices: Sound }
 declare extern type Banner with
     name: string
 end
@@ -1836,7 +1849,7 @@ end
 
 declare asset: {
     sprite: (name: string, animations: { SpriteAnimation }, extra: SpriteExtra?) -> SpriteAsset,
-    sound: (name: string) -> Sound,
+    sound: (name: string, made: SoundFile?) -> Sound,
     banner: (name: string) -> Banner,
     background: (name: string, made: BackgroundFile?) -> Background,
     mugshot: (name: string) -> Mugshot,

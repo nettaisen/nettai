@@ -181,6 +181,7 @@ pub struct DefinedAssets {
 pub struct CustomAssets {
     pub backgrounds: BTreeMap<String, CustomBackground>,
     pub sprites: BTreeMap<String, CustomSprite>,
+    pub sounds: BTreeMap<String, CustomSound>,
 }
 
 impl std::hash::Hash for CustomAssets {
@@ -189,7 +190,7 @@ impl std::hash::Hash for CustomAssets {
 
 impl CustomAssets {
     pub fn is_empty(&self) -> bool {
-        self.backgrounds.is_empty() && self.sprites.is_empty()
+        self.backgrounds.is_empty() && self.sprites.is_empty() && self.sounds.is_empty()
     }
 }
 
@@ -229,6 +230,21 @@ pub struct CustomSprite {
     /// the ground or hide): an indexed PNG, by its pack and its path, drawn
     /// centered on the object's place; none: no shadow.
     pub shadow: Option<String>,
+}
+
+/// A song made from a MIDI file of the content's own (`asset.sound(name, {
+/// file = ..., voices = asset.sound(...) })`), played on the instruments
+/// of a song the ROMs have.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct CustomSound {
+    /// The module that defines it.
+    pub module: String,
+    /// Its notes: a standard MIDI file, by its pack and its path in the
+    /// pack (as [`CustomBackground::file`]).
+    pub file: String,
+    /// The ROMs' sound whose instruments it plays on, by name: its
+    /// voicegroup, its music player, its priority and its reverb.
+    pub voices: String,
 }
 
 /// A game's assets by unqualified name, each with its number (the extracted
