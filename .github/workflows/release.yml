@@ -278,9 +278,14 @@ jobs:
   # signs it with the player's own Apple ID as it installs it.
   ios:
     name: iOS app
+    needs: icons
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: icons
+          path: ${{ runner.temp }}/icons
       - name: Rust
         run: |
           rustup toolchain install stable --profile minimal --no-self-update
@@ -291,10 +296,9 @@ jobs:
           key: ios-device
       - name: Fetch the crates
         run: cargo fetch --locked
-      - name: librsvg (the icons)
-        run: brew install librsvg
       - name: Package
         env:
+          NETTAI_ICONS: ${{ runner.temp }}/icons
           NETTAI_IOS: device
         run: packaging/ios/package.sh
       - uses: actions/upload-artifact@v7

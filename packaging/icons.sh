@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The app's icons, made from docs/logo/nettai-icon.svg (nothing raster is committed):
 #
-#   <out>/png/<n>x<n>.png   full bleed, 16 to 512 pixels (Linux's hicolor sizes)
+#   <out>/png/<n>x<n>.png   full bleed, 16 to 512 pixels (Linux's hicolor sizes, and the iPhone's and iPad's: 120,
+#                           152, 167, 180)
 #   <out>/nettai.ico        full bleed, 16 to 256 pixels (the Windows program and its installer)
 #   <out>/nettai.iconset/   macOS's set for iconutil: the rounded square on Apple's grid (824 of 1024, centered,
 #                           a transparent margin around it), so that it is no larger than other apps in the Dock
@@ -24,7 +25,7 @@ render() { # <size> <file>
     rsvg-convert --width "$1" --height "$1" --keep-aspect-ratio "$svg" --output "$2"
 }
 
-for size in 16 24 32 48 64 128 256 512; do
+for size in 16 24 32 48 64 120 128 152 167 180 256 512; do
     render "$size" "$out/png/${size}x${size}.png"
 done
 

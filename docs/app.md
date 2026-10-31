@@ -4367,7 +4367,7 @@ the program is built from, its license, the license texts, and where its complet
 itself: the FFmpeg and x264 source tarballs it was built from and the build scripts at the commit that built it.
 
 The icons are made from `docs/logo/nettai-icon.svg` by `packaging/icons.sh` (rsvg-convert and ImageMagick):
-PNGs, the Windows .ico, and macOS's icon set, the artwork on Apple's grid (824 of 1024, centered) so that it is no
+PNGs (Linux's sizes, and the iPhone's and iPad's, which iOS's app takes), the Windows .ico, and macOS's icon set, the artwork on Apple's grid (824 of 1024, centered) so that it is no
 larger than other apps in the Dock; nothing raster is committed. The Windows program takes its icon from the .ico
 `$NETTAI_WINDOWS_ICON` names (build.rs, through winresource); without it, it has none. The window's icon is the
 SVG itself (`app.slint`).

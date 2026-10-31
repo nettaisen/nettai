@@ -12,6 +12,7 @@
 # downloads it, as every package does), no ROM.
 #
 # NETTAI_IOS                 simulator (the default) or device
+# NETTAI_ICONS               a folder packaging/icons.sh made; else it is made here (needs librsvg and ImageMagick)
 # NETTAI_VERSION             the version, if set; else the app crate's
 # IOS_SIGN_IDENTITY          with IOS_PROVISIONING_PROFILE, a device build signed for a device with that identity
 # IOS_PROVISIONING_PROFILE   (an Apple Developer account's); else a device build is unsigned, for signing later.
@@ -53,14 +54,15 @@ cp "$notices" "$app/THIRD-PARTY-NOTICES.txt"
 
 # The icons, full bleed (iOS rounds the corners itself), at the sizes Info.plist names: the iPhone's 60 points at
 # two and three times, the iPad's 76 and 83.5 at two.
-command -v rsvg-convert >/dev/null || { echo "rsvg-convert is needed (librsvg)" >&2; exit 1; }
-icon() { # <pixels> <file>
-    rsvg-convert --width "$1" --height "$1" --keep-aspect-ratio "$root/docs/logo/nettai-icon.svg" --output "$app/$2"
-}
-icon 120 AppIcon60x60@2x.png
-icon 180 AppIcon60x60@3x.png
-icon 152 AppIcon76x76@2x~ipad.png
-icon 167 AppIcon83.5x83.5@2x~ipad.png
+icons=${NETTAI_ICONS:-}
+if [ -z "$icons" ]; then
+    icons=$out/icons
+    "$root/packaging/icons.sh" "$icons"
+fi
+cp "$icons/png/120x120.png" "$app/AppIcon60x60@2x.png"
+cp "$icons/png/180x180.png" "$app/AppIcon60x60@3x.png"
+cp "$icons/png/152x152.png" "$app/AppIcon76x76@2x~ipad.png"
+cp "$icons/png/167x167.png" "$app/AppIcon83.5x83.5@2x~ipad.png"
 
 if [ "$kind" = simulator ]; then
     codesign --force --sign - --timestamp=none "$app"
