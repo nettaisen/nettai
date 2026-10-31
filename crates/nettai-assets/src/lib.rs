@@ -151,6 +151,12 @@ pub fn rgb(c: u16) -> [u8; 3] {
     [w(c & 31), w((c >> 5) & 31), w((c >> 10) & 31)]
 }
 
+/// An RGB color as BGR555, each channel's top five bits ([`rgb`]'s
+/// colors come back as they were).
+pub fn bgr555([r, g, b]: [u8; 3]) -> u16 {
+    u16::from(r >> 3) | u16::from(g >> 3) << 5 | u16::from(b >> 3) << 10
+}
+
 /// A background map entry: which tile, flipped how, in which palette.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct MapEntry {

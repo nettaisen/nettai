@@ -160,11 +160,50 @@ pub struct SpriteAnimation {
 }
 
 /// What the define phase made of the assets content names: their names
-/// (the handles), and each sprite's definition, by handle.
+/// (the handles), each sprite's definition, by handle, and the assets the
+/// content makes from files of its own.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct DefinedAssets {
     pub names: AssetNames,
     pub sprites: Vec<SpriteDef>,
+    pub custom: CustomAssets,
+}
+
+/// The assets content makes from files of its own, not the ROMs'
+/// (docs/design/asset-formats.md §7, "Custom assets"): each defined once,
+/// by its module, with its file (`asset.background("my-stage", { file =
+/// "./my_stage.png" })`), and added to the game's assets as they load,
+/// after its ROMs' (`nettai_content::custom`). By name.
+///
+/// Presentation: no tick reads one, so it is left out of a content's hash
+/// (the modules that state it are in it).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct CustomAssets {
+    pub backgrounds: BTreeMap<String, CustomBackground>,
+}
+
+impl std::hash::Hash for CustomAssets {
+    fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
+}
+
+impl CustomAssets {
+    pub fn is_empty(&self) -> bool {
+        self.backgrounds.is_empty()
+    }
+}
+
+/// A background made from a picture of the content's own
+/// (`asset.background(name, { file = ..., scroll = ... })`).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct CustomBackground {
+    /// The module that defines it (`exe6:backgrounds/my_stage`).
+    pub module: String,
+    /// Its picture: an indexed PNG, by its pack and its path in the pack
+    /// (`exe6:backgrounds/my_stage.png`; `packs::Dirs::asset_file`).
+    pub file: String,
+    /// How far it scrolls each frame, in 1/16 pixel (a ROM background's
+    /// `scroll`).
+    pub scroll: (i32, i32),
 }
 
 /// A game's assets by unqualified name, each with its number (the extracted

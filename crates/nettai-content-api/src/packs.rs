@@ -207,6 +207,17 @@ impl Dirs {
         Some(self.0.get(pack)?.join(format!("{path}.luau")))
     }
 
+    /// File `name` of a pack (its pack, then its path in the pack with its
+    /// extension: `exe6:backgrounds/my_stage.png`), the file a custom
+    /// asset is made from (`crate::CustomAssets`).
+    pub fn asset_file(&self, name: &str) -> Option<PathBuf> {
+        let (pack, path) = name.split_once(keys::SEPARATOR)?;
+        if path.split('/').any(|s| s.is_empty() || s == "." || s == "..") {
+            return None;
+        }
+        Some(self.0.get(pack)?.join(path))
+    }
+
     /// Every module the folders hold, by name, in name order (definition
     /// files, `.d.luau`, aside): what a tool lists, never what a load
     /// reads.
@@ -282,6 +293,11 @@ pub const SECTIONS: [(&str, &str); 4] = [("chips", "Chip"), ("navis", "NaviDef")
 
 /// The root's field that is the game's rules.
 pub const RULES: &str = "rules";
+
+/// The root's field that lists the custom backgrounds no stage names (`asset.background(name, { file = ... })`,
+/// docs/design/asset-formats.md §7): what the background pool offers past the stages'. A module runs only when
+/// something requires it, so a background no stage requires is reached from here.
+pub const BACKGROUNDS: &str = "backgrounds";
 
 /// The sections module source `source` gives definitions of: those a
 /// top-level local of its is written as (`local chip: Chip = {`, a series'

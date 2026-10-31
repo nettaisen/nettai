@@ -1793,6 +1793,17 @@ end
 declare extern type Background with
     name: string
 end
+-- A background made from a picture of the content's own, not the ROMs' (docs/design/asset-formats.md §7), defined
+-- once, by a module of its own that returns it; whoever shows it requires that module:
+--
+--     -- backgrounds/my_stage.luau
+--     return asset.background("my-stage", { file = "./my_stage.png", scroll = { 16, 8 } })
+--
+-- `file` is an indexed PNG beside the module (a path as a `require` writes one, with its `.png`): at most 16
+-- colors, color 0 the backdrop, its width and height whole tiles (multiples of 8); it repeats both ways.
+-- `scroll` is how far it moves each frame, in 1/16 pixel (none: it stands still). Its name is a new one: no
+-- ROM background's.
+export type BackgroundFile = { file: string, scroll: { number }? }
 declare extern type Mugshot with
     name: string
 end
@@ -1801,7 +1812,7 @@ declare asset: {
     sprite: (name: string, animations: { SpriteAnimation }, extra: { parts: SpriteParts }?) -> SpriteAsset,
     sound: (name: string) -> Sound,
     banner: (name: string) -> Banner,
-    background: (name: string) -> Background,
+    background: (name: string, made: BackgroundFile?) -> Background,
     mugshot: (name: string) -> Mugshot,
 }
 

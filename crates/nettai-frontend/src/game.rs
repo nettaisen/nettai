@@ -201,7 +201,7 @@ impl ContentLoaded {
     fn extract(self, roms: &RomSource) -> Result<Game, LoadError> {
         let ContentLoaded { name, content, recipe, dir, pool, mut report } = self;
         let failed = |report: Report| LoadError { what: Failed::Assets { game: name.clone() }, report };
-        let extracted = recipe.and_then(|recipe| recipe.extract(&roms.read(&recipe).map_err(|e| e.to_string())?).map_err(|e| e.to_string()));
+        let extracted = recipe.and_then(|recipe| nettai_content::load::assets(&content, &recipe, roms));
         let own = match extracted {
             Ok(own) => own,
             Err(e) => {

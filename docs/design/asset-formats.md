@@ -27,12 +27,14 @@ shapes (§4, "Frames as shapes").
 | Sound | `SoundBank`: songs, voicegroups, key maps, PSG waves, samples, mixer, players | the ROMs |
 | A version's own songs | `nettai_extract::SongVersions` | the other version's ROM |
 | Names | `AssetIndex`: every asset by kind and name, with the game's number for it | the content's compat/assets.toml |
+| Custom backgrounds | `Background`, as the ROMs' are, numbered past theirs | the content's own pictures (§7) |
 
 ## 1. Principles
 
 - **The ROMs are the input.** A game's assets are extracted from every ROM of the game (a complete Legacy
   Collection's: no partial sets), each block read through the game's own pointer to it. The one other input is the
-  recipe's own files, its drawings among them (§4, "Frames as shapes").
+  recipe's own files, its drawings among them (§4, "Frames as shapes"). Assets the content makes from files of its
+  own come after the extraction, not from it (§7).
 - **Extraction explains.** What it notices that isn't wrong enough to fail it is said (`Extraction::warnings`: a
   picture with no drawing, a drawing far off its picture, a set of digits with no face); what is wrong fails it, with
   the reason.
@@ -348,3 +350,48 @@ plays a version's own songs yet: a console plays the bank's.
   content defines, in every language (docs/tools.md).
 - **Frames and sound**: the verification workspace compares frames drawn from the extracted assets with mGBA's, and
   the battle's sound with the original's (docs/frontend.md).
+
+## 7. Custom assets
+
+A game's content may add assets the ROMs don't have, made from files of its own (the user, 2026-10-31: "add a new
+background, new music, new sprites, etc. but in content rather than from extraction"). Each is defined once, by a
+module of the game's that returns it, with its file beside it, and whoever uses it requires that module, as a sprite
+is defined (§3.3):
+
+```luau
+-- backgrounds/my_stage.luau
+return asset.background("my-stage", { file = "./my_stage.png", scroll = { 16, 8 } })
+```
+
+A name defined with a file is custom; one named alone (`asset.background("comp")`) is the ROMs'. A custom asset
+takes a name of its own: one the ROMs have is an error. The define phase keeps the definitions
+(`Content::custom_assets`, nettai-content-api's `CustomAssets`; presentation, left out of the content's hash, as the
+modules that state them are in it), and as a game's assets load, after the recipe has extracted the ROMs', each is
+made into the model the ROMs' are extracted into and added under its name, numbered past the ROMs'
+(`nettai_content::custom::add`, through `nettai_content::load::assets`, which every loader calls: the app, the tools,
+`nettai-content check` and the background pool's other games). A frontend then draws and plays it as it does theirs.
+The files are part of the game's folder, so its bundle carries them (docs/design/content-deployment.md).
+
+Custom assets are GBA-shaped, as the ROMs' are (the user chose GBA-shaped pictures over full color, MIDI over
+recorded audio and indexed PNG over Aseprite): they play by the same rules, through the same renderer and sound
+driver, and look like the game's own.
+
+**Backgrounds.** `asset.background(name, { file, scroll })`. `file` is an indexed PNG, by a path as a `require`
+writes one (`./`, `../`, `@self/` in an init.luau, `@<pack>/`) with its `.png`: any bit depth, at most 16 colors
+used (color numbers 0 to 15; a longer palette's other entries are ignored), color 0 the backdrop, each side whole
+8x8 tiles. Its colors become BGR555 (each channel's top five bits), its pixels tiles numbered from 0x400 (past every
+number a GBA map reaches, so past every game's field's tiles, whichever game's field it is drawn with), each tile
+kept once (one that is another flipped is that one, flipped) and mapped across the picture in background palette 0,
+which takes its colors. It repeats both ways, as a ROM background's map does. `scroll` is how far it moves each frame,
+in 1/16 pixel (a ROM background's `scroll`); none, it stands still. Palette and tile animations and a speeding scroll
+are the ROMs' alone for now.
+
+A background is in the background pool when the game's own language's `[backgrounds]` names it (with its name as a
+player sees it), and the content check holds that table to the assets, the custom ones too (docs/app.md §1, "The
+battle's background"). A module runs only when something requires it: a background no stage requires is listed in
+the game's root, `backgrounds = require("@self/backgrounds")`, where backgrounds/init.luau returns a list of them
+(`packs::BACKGROUNDS`).
+
+**Sprites and music** are next: a sprite from an indexed PNG of its frames, its timing the module's as a ROM
+sprite's is; a song from MIDI, played on instruments the game has.
+

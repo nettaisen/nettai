@@ -441,6 +441,63 @@ fn a_sprite_states_the_parts_content_reads() {
     assert!(e.contains("offset is 200, not -128 to 127"), "{e}");
 }
 
+/// docs/design/asset-formats.md §7: a background made from a picture of the
+/// content's own is defined, once, by its module, with its file (a path as a
+/// `require` writes one, resolved to its pack's) and its scroll; naming it
+/// elsewhere is the same asset.
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
+fn a_custom_background_is_defined_by_its_module() {
+    let (_, assets) = define_assets(&[
+        ("backgrounds/sky", "return asset.background('sky', { file = './sky/sky.png', scroll = { 16, -8 } })"),
+        ("backgrounds/still/init", "return asset.background('still', { file = '@self/still.png' })"),
+        (
+            "stages",
+            "local _ = require('./backgrounds/still')\n\
+             if asset.background('sky') ~= require('./backgrounds/sky') then error('one value per asset') end\n\
+             return { a = asset.background('comp') }",
+        ),
+    ])
+    .unwrap();
+    assert_eq!(assets.names.backgrounds, ["comp", "sky", "still"]);
+    let custom = &assets.custom.backgrounds;
+    assert_eq!(custom.keys().collect::<Vec<_>>(), ["sky", "still"], "the ROMs' are named alone");
+    assert_eq!(
+        custom["sky"],
+        nettai_content_api::CustomBackground { module: "test:backgrounds/sky".into(), file: "test:backgrounds/sky/sky.png".into(), scroll: (16, -8) }
+    );
+    assert_eq!((custom["still"].file.as_str(), custom["still"].scroll), ("test:backgrounds/still/still.png", (0, 0)));
+    // Defined once, by its module.
+    let twice = "return asset.background('sky', { file = './sky.png' })";
+    let e = define_named(&[("a", twice), ("b", twice)]).unwrap_err();
+    assert!(e.contains("background \"sky\" is defined twice: in test/a.luau and in test/b.luau"), "{e}");
+    // What a definition can't be is said.
+    for (made, wrong) in [
+        ("{ scroll = { 1, 1 } }", "names its `file` (an indexed PNG)"),
+        ("{ file = './sky.bmp' }", "`file` \"./sky.bmp\" is a .png file"),
+        ("{ file = 'sky.png' }", "content paths start with ./, ../, @self/ or @<pack>/"),
+        ("{ file = '../../sky.png' }", "leaves pack test"),
+        ("{ file = './sky.png', scroll = { 1 } }", "`scroll` is { x, y }"),
+        ("{ file = './sky.png', scroll = { 1, 40000 } }", "`scroll` is { x, y }"),
+        ("{ file = './sky.png', speed = 3 }", "has its `file` and its `scroll`, not speed"),
+        ("{ file = 3 }", "`file` is a integer, not a path"),
+    ] {
+        let e = define_named(&[("backgrounds/sky", &format!("return asset.background('sky', {made})"))]).unwrap_err();
+        assert!(e.contains(wrong), "{made}: {e}");
+    }
+    let e = define_named(&[("m", "return asset.background('sky', './sky.png')")]).unwrap_err();
+    assert!(e.contains("asset.background takes a name alone, or a name and what it is made from ({ file = ... })"), "{e}");
+    // A game's root lists those no stage names (the background pool's), as a list of custom backgrounds.
+    let sky = ("backgrounds/sky", "return asset.background('sky', { file = './sky.png' })");
+    let (_, assets) = define_assets(&[sky, ("backgrounds/init", "return { require('@self/sky') }"), ("init", "return { backgrounds = require('@self/backgrounds') }")])
+        .unwrap();
+    assert_eq!(assets.custom.backgrounds.keys().collect::<Vec<_>>(), ["sky"]);
+    for list in ["{ asset.background('comp') }", "{ sky = require('@self/backgrounds/sky') }", "require('@self/backgrounds/sky')", "3"] {
+        let e = define_named(&[sky, ("init", &format!("return {{ backgrounds = {list} }}"))]).unwrap_err();
+        assert!(e.contains("`backgrounds` is a list of the game's custom backgrounds"), "{list}: {e}");
+    }
+}
+
 /// A game's rules are one definition, its rules (rules/init.luau), which
 /// takes no id and is keyed `rules`:
 /// its rule sections and its roles are plain tables in it, whose

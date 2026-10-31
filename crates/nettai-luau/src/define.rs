@@ -44,7 +44,10 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ffi::c_void;
 use std::rc::Rc;
 
-use nettai_content_api::{AssetKind, AssetNames, Data, DataKey, DefinedAssets, Definition, Definitions, Registry, SpriteDef, keys, valid_key};
+use nettai_content_api::{
+    AssetKind, AssetNames, CustomAssets, CustomBackground, Data, DataKey, DefinedAssets, Definition, Definitions, Registry, SpriteDef, keys,
+    valid_key,
+};
 use mlua::{Lua, Table, Value as LuaValue};
 
 /// What a tag constructor says of a table: its type, and where it was
@@ -81,6 +84,9 @@ pub const SECTIONS: [(&str, Registry); 4] =
 
 /// The root's field the game's rules are.
 pub const RULES_SECTION: &str = nettai_content_api::packs::RULES;
+
+/// The root's list of custom backgrounds no stage names (`packs::BACKGROUNDS`).
+pub const BACKGROUNDS_SECTION: &str = nettai_content_api::packs::BACKGROUNDS;
 
 /// The root's field the game's extraction recipe is (docs/design/extraction-recipes.md §4.2): what a module of its
 /// pack's `extract/` folder returns (`require("@self/extract")`). It defines nothing a match has: the walk doesn't go
@@ -127,6 +133,8 @@ pub(crate) struct AssetTables {
     /// The sprites content defines, by name: the module that defines each,
     /// and its definition.
     sprites: BTreeMap<String, (String, SpriteDef)>,
+    /// The assets content makes from files of its own, by kind and name.
+    custom: CustomAssets,
     /// The names, once loading is done: their places are the handles.
     pub names: AssetNames,
     pub by_ptr: HashMap<Ptr, (AssetKind, u16)>,
@@ -147,6 +155,7 @@ impl AssetTables {
             metas,
             named: BTreeMap::new(),
             sprites: BTreeMap::new(),
+            custom: CustomAssets::default(),
             names: AssetNames::default(),
             by_ptr: HashMap::new(),
             by_handle: HashMap::new(),
@@ -181,6 +190,21 @@ impl AssetTables {
         self.named(lua, AssetKind::Sprite, name)
     }
 
+    /// Background `name` as its module makes it from a picture of its own
+    /// (`def.module`): its value. A custom background is defined once.
+    fn define_background(&mut self, lua: &Lua, name: &str, def: CustomBackground) -> mlua::Result<Table> {
+        if let Some(other) = self.custom.backgrounds.get(name) {
+            return Err(mlua::Error::runtime(format!(
+                "{}: background {name:?} is defined twice: in {}.luau and in {}.luau (a background is defined once, by its module: require it)",
+                def.module,
+                keys::module_path(&other.module),
+                keys::module_path(&def.module)
+            )));
+        }
+        self.custom.backgrounds.insert(name.to_string(), def);
+        self.named(lua, AssetKind::Background, name)
+    }
+
     /// Loading is done: every name content gave, each kind's in byte order,
     /// are the handles.
     pub fn finish(&mut self) {
@@ -197,7 +221,12 @@ impl AssetTables {
     /// sprite is named only by its definition.)
     pub fn defined(&self) -> DefinedAssets {
         let sprites = self.names.sprites.iter().map(|n| self.sprites[n].1.clone()).collect();
-        DefinedAssets { names: self.names.clone(), sprites }
+        DefinedAssets { names: self.names.clone(), sprites, custom: self.custom.clone() }
+    }
+
+    /// Whether content made background `name` from a picture of its own.
+    pub fn is_custom_background(&self, name: &str) -> bool {
+        self.custom.backgrounds.contains_key(name)
     }
 
     /// The value of asset `h` of `kind`.
@@ -311,6 +340,49 @@ fn sprite_def(at: &str, animations: &LuaValue, extra: &LuaValue) -> Result<Sprit
     Ok(def)
 }
 
+/// A custom background's definition, as content writes it (`asset.background(name, { file = "./my_stage.png",
+/// scroll = { x, y } })`, core.d.luau's `BackgroundFile`): its picture, a file of its pack's by a path from the
+/// module that defines it (as a `require` names a module: `keys::resolve`), and its scroll.
+fn background_def(at: &str, module: &str, def: &Table) -> Result<CustomBackground, String> {
+    let mut file = None;
+    let mut scroll = (0, 0);
+    for (k, v) in fields(def, at)? {
+        match (&k, v) {
+            (DataKey::Str(s), LuaValue::String(path)) if s == "file" => {
+                let path = path.to_str().map_err(|e| format!("{at}: `file` isn't UTF-8 ({e})"))?.to_string();
+                file = Some(asset_file(at, module, &path, "png")?);
+            }
+            (DataKey::Str(s), LuaValue::Table(xy)) if s == "scroll" => {
+                let int = |v: &LuaValue| match v {
+                    LuaValue::Integer(i) if (-0x8000..=0x7FFF).contains(i) => Some(*i as i32),
+                    LuaValue::Number(n) if n.fract() == 0.0 && (-32768.0..=32767.0).contains(n) => Some(*n as i32),
+                    _ => None,
+                };
+                scroll = match &fields(&xy, at)?[..] {
+                    [(DataKey::Int(1), x), (DataKey::Int(2), y)] => int(x).zip(int(y)),
+                    _ => None,
+                }
+                .ok_or_else(|| format!("{at}: `scroll` is {{ x, y }}, each an integer (1/16 pixel a frame) from -32768 to 32767"))?;
+            }
+            (DataKey::Str(s), v) if s == "file" || s == "scroll" => {
+                return Err(format!("{at}: `{s}` is a {}, not {}", v.type_name(), if s == "file" { "a path" } else { "{ x, y }" }));
+            }
+            (k, _) => return Err(format!("{at}: a background made from a picture has its `file` and its `scroll`, not {k}")),
+        }
+    }
+    let file = file.ok_or_else(|| format!("{at}: a background made from a picture names its `file` (an indexed PNG)"))?;
+    Ok(CustomBackground { module: module.to_string(), file, scroll })
+}
+
+/// The file `path` names, written in module `module`, as a custom asset's file is named: its pack, then its path in
+/// the pack (`exe6:backgrounds/my_stage.png`), its extension `extension`.
+fn asset_file(at: &str, module: &str, path: &str, extension: &str) -> Result<String, String> {
+    if !path.rsplit_once('.').is_some_and(|(_, ext)| ext == extension) {
+        return Err(format!("{at}: `file` {path:?} is a .{extension} file"));
+    }
+    keys::resolve(module, path).map_err(|e| format!("{at}: `file`: {}", e.replace("require(", "file(")))
+}
+
 /// Install `asset`: a resolver per asset kind, working while content
 /// loads. A sprite is defined where its module makes it
 /// (`asset.sprite("bomb", animations)`); any other asset is named
@@ -337,8 +409,16 @@ pub(crate) fn install_assets(
                 let def = sprite_def(&format!("{at}: sprite {name:?}"), &animations, &extra).map_err(mlua::Error::runtime)?;
                 return tables.borrow_mut().define_sprite(lua, &at, &name, def);
             }
+            if kind == AssetKind::Background
+                && let LuaValue::Table(def) = &animations
+                && extra.is_nil()
+            {
+                let def = background_def(&format!("{at}: background {name:?}"), &at, def).map_err(mlua::Error::runtime)?;
+                return tables.borrow_mut().define_background(lua, &name, def);
+            }
             if !animations.is_nil() || !extra.is_nil() {
-                return Err(mlua::Error::runtime(format!("{at}: {what} takes a name alone")));
+                let made = if kind == AssetKind::Background { ", or a name and what it is made from ({ file = ... })" } else { "" };
+                return Err(mlua::Error::runtime(format!("{at}: {what} takes a name alone{made}")));
             }
             tables.borrow_mut().named(lua, kind, &name)
         })?;
@@ -653,14 +733,14 @@ pub(crate) fn finish(
     let mut roots = 0;
     for (module, value) in entries {
         let LuaValue::Table(root) = value else { continue };
-        let named = |k: &str| SECTIONS.iter().any(|(s, _)| *s == k) || k == RULES_SECTION;
+        let named = |k: &str| SECTIONS.iter().any(|(s, _)| *s == k) || k == RULES_SECTION || k == BACKGROUNDS_SECTION;
         let entries_ = fields(root, module)?;
         // (A game's top module is its root; any other entry is a module
         // walked loose, unless what it returns is a root: a test's.)
         let top = keys::root_of(module).is_some_and(|p| games.contains(p)) && keys::local(module) == nettai_content_api::packs::INIT;
         // (A top module's result is its game's root, whose other keys are
         // its collections; a loose module's is a root where every key is a
-        // section's or the rules'.)
+        // section's, the rules' or the backgrounds'.)
         let is_root = top || (!entries_.is_empty() && entries_.iter().all(|(k, _)| matches!(k, DataKey::Str(s) if named(s))));
         if !is_root {
             queue.push_back((value.clone(), module_key(module, games), false));
@@ -676,7 +756,11 @@ pub(crate) fn finish(
         let collections: Vec<String> = entries_
             .iter()
             .filter_map(|(k, _)| match k {
-                DataKey::Str(s) if !SECTIONS.iter().any(|(c, _)| c == s) && s != RULES_SECTION && s != RECIPE_SECTION => Some(s.clone()),
+                DataKey::Str(s)
+                    if !SECTIONS.iter().any(|(c, _)| c == s) && s != RULES_SECTION && s != RECIPE_SECTION && s != BACKGROUNDS_SECTION =>
+                {
+                    Some(s.clone())
+                }
                 _ => None,
             })
             .collect();
@@ -758,6 +842,25 @@ pub(crate) fn finish(
                 recipes.insert(game.to_string(), (*m).clone());
             }
             v => return Err(format!("{}, a table, not {}", recipe_is(), v.type_name())),
+        }
+        // The custom backgrounds no stage names: a list of them (their modules ran as the root required them).
+        let backgrounds_are = || {
+            format!(
+                "{}.luau: `{BACKGROUNDS_SECTION}` is a list of the game's custom backgrounds (each `asset.background(name, {{ file = ... }})`, its module's)",
+                keys::module_path(module)
+            )
+        };
+        match root.raw_get::<LuaValue>(BACKGROUNDS_SECTION).map_err(|e| e.to_string())? {
+            LuaValue::Nil => {}
+            LuaValue::Table(list) => {
+                for (i, (k, v)) in fields(&list, module)?.into_iter().enumerate() {
+                    let custom = assets.asset(&v).and_then(|(kind, h)| (kind == AssetKind::Background).then(|| assets.names.name(kind, h)).flatten());
+                    if k != DataKey::Int(i as i64 + 1) || !custom.is_some_and(|name| assets.is_custom_background(name)) {
+                        return Err(backgrounds_are());
+                    }
+                }
+            }
+            _ => return Err(backgrounds_are()),
         }
     }
     let reaches = |x: &LuaValue| matches!(x, LuaValue::Table(_) | LuaValue::Function(_));

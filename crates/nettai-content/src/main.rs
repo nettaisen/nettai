@@ -122,8 +122,9 @@ fn main() {
 }
 
 /// The game's assets, extracted from its ROMs (the ROMs `--roms` names, else `RomSource::from_env`'s) by the recipe
-/// of its content `c`, defined; what the extraction noticed as notes. None, and why as an error: the content gives no
-/// recipe that reads, or the ROMs aren't there, or don't extract.
+/// of its content `c`, defined, with the content's custom assets (`nettai_content::load::assets`); what the
+/// extraction noticed as notes. None, and why as an error: the content gives no recipe that reads, or the ROMs aren't
+/// there, or don't extract, or a custom asset's file isn't what its kind takes.
 fn extract(a: &Args, c: &nettai_battle::Content, r: &mut Report) -> Option<nettai_extract::Extraction> {
     let t = std::time::Instant::now();
     let at = format!("{}'s assets", a.game);
@@ -133,7 +134,7 @@ fn extract(a: &Args, c: &nettai_battle::Content, r: &mut Report) -> Option<netta
     };
     let extracted = roms.and_then(|roms| {
         let recipe = nettai_content::load::recipe(c)?;
-        recipe.extract(&roms.read(&recipe).map_err(|e| e.to_string())?).map_err(|e| e.to_string())
+        nettai_content::load::assets(c, &recipe, &roms)
     });
     match extracted {
         Ok(e) => {

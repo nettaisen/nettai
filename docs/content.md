@@ -27,6 +27,22 @@ requires name only modules that exist, that a pack requires only itself and the 
 game's `depends.lock` names its support packs' commits. It needs no ROMs. `nettai-content check` reads the ROMs from
 `$NETTAI_ROMS` (see the README).
 
+## Custom assets
+
+A game can have backgrounds of its own, beside the ones extracted from its ROMs: an indexed PNG of at most 16
+colors, each side a multiple of 8 pixels, defined by a module beside it.
+
+```luau
+-- content/exe6/backgrounds/my_stage.luau
+return asset.background("my-stage", { file = "./my_stage.png", scroll = { 16, 8 } })
+```
+
+A stage uses it by requiring that module (`background = require("./backgrounds/my_stage")`). To offer it in the
+background pool, name it in the game's `locales/en.toml` under `[backgrounds]`, and if no stage requires it, list
+it in the game's `init.luau` as `backgrounds = require("@self/backgrounds")`, with `backgrounds/init.luau`
+returning `{ require("@self/my_stage") }`. `nettai-content check` then loads it with the game's assets. The details
+are in [design/asset-formats.md](design/asset-formats.md) §7.
+
 ## Editing in Zed
 
 Install the [Luau extension](https://github.com/4teapo/zed-luau), open the repository root, and generate the

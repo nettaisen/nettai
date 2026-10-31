@@ -196,6 +196,11 @@ pub struct Content {
     /// is read: what number the game's assets give each is a frontend's
     /// (`nettai_content_api::AssetNumbers`).
     pub assets: nettai_content_api::AssetNames,
+    /// The assets the content makes from files of its own, not its ROMs'
+    /// (`asset.background(name, { file = ... })`): made by
+    /// [`Content::define`], and added to the game's assets as they load
+    /// (`nettai_content::custom`). Presentation, left out of the hash.
+    pub custom_assets: nettai_content_api::CustomAssets,
     /// The pack's scripts (see `scripts`).
     pub scripts: Scripts,
     /// What the content defines: the registries and their handles, and the
@@ -298,6 +303,7 @@ impl Content {
         // The assets the modules name, and the sprites they define.
         self.assets = assets.names;
         self.animations = Animations { sprites: assets.sprites };
+        self.custom_assets = assets.custom;
         // What the load read is the content's modules from here on (those
         // it read from the packs' folders with those held in memory).
         for (name, source) in compiled.sources() {

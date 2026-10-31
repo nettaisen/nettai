@@ -3,8 +3,9 @@
 //! The battle content is the content directory's games (`crate::index`, content/ in this repository), whose modules
 //! name the assets and define the sprites' timing: [`load_battle`] loads a game's content alone, and a battle reads
 //! nothing else. Its assets (graphics and sound) are extracted from the game's ROMs (`nettai_extract`) by its recipe,
-//! which the game's root gives and which loads with the content ([`recipe`]; [`extract`] is the whole of it in one
-//! call); what they hold of the content's, for whoever draws and plays them, is [`asset_numbers`].
+//! which the game's root gives and which loads with the content ([`recipe`]), with the assets the content makes from
+//! files of its own added ([`assets`]; [`extract`] is the whole of it in one call); what they hold of the content's,
+//! for whoever draws and plays them, is [`asset_numbers`].
 
 use crate::report::Report;
 use nettai_assets::Bundle;
@@ -69,8 +70,17 @@ pub fn recipe(content: &nettai_battle::Content) -> Result<Recipe, String> {
 pub fn extract(content: &Path, game: &str, roms: &RomSource) -> Result<(nettai_battle::Content, Extraction), String> {
     let (c, _) = load_battle(content, game).map_err(|r| format!("{game}'s content doesn't load:\n{r}"))?;
     let recipe = recipe(&c)?;
-    let extracted = recipe.extract(&roms.read(&recipe).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    let extracted = assets(&c, &recipe, roms)?;
     Ok((c, extracted))
+}
+
+/// The assets of `content` (defined: [`load_battle`]): extracted from `roms` by its recipe `recipe` ([`recipe`]), with
+/// the assets the content makes from files of its own added after the ROMs' ([`crate::custom`]). An error says what
+/// failed: the ROMs, their extraction or a custom asset.
+pub fn assets(content: &nettai_battle::Content, recipe: &Recipe, roms: &RomSource) -> Result<Extraction, String> {
+    let mut e = recipe.extract(&roms.read(recipe).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    crate::custom::add(content, &mut e.graphics, &mut e.index)?;
+    Ok(e)
 }
 
 /// [`load_battle`]'s content before the define phase: the game's modules,
