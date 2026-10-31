@@ -200,8 +200,13 @@ component SoftwareHead inherits Rectangle {
 }
 
 export component AboutPage inherits Page {
-    property <length> list-width: Theme.phone ? self.body-width : 440px;
-    property <length> list-top: 236px;
+    // (On a phone held sideways, docs/design/app-ui.md §2.103: the list under the app's name, at the left, half the
+    // body; Slint's widget at the top of the license's panel beside it, which the window's height has no room for over
+    // the list.)
+    property <length> list-width: Theme.phone ? self.body-width : Theme.sideways ? (self.body-width - 12px) / 2 : 440px;
+    property <length> list-top: Theme.sideways ? 100px : 236px;
+    property <length> panel-x: root.list-width + (Theme.sideways ? 12px : 24px);
+    property <length> slint-height: Theme.sideways ? 112px : 0px;
     title: I18n.upper(@tr("About"));
     back: I18n.upper(@tr("Settings"));
     game: false;
@@ -237,8 +242,8 @@ export component AboutPage inherits Page {
 
         // (Its own padding is 12 each way: its logo starts where the text does.)
         AboutSlint {
-            x: -12px;
-            y: 64px;
+            x: Theme.sideways ? root.panel-x + 4px : -12px;
+            y: Theme.sideways ? 0px : 64px;
             width: 280px;
             height: 120px;
         }
@@ -279,10 +284,10 @@ export component AboutPage inherits Page {
     Arrive {
         order: 2;
         if !Theme.phone: Rectangle {
-            x: root.list-width + 24px;
-            y: 0;
-            width: root.body-width - root.list-width - 24px;
-            height: root.body-height;
+            x: root.panel-x;
+            y: root.slint-height;
+            width: root.body-width - root.panel-x;
+            height: root.body-height - root.slint-height;
             PanelBack { }
 
             SoftwareHead {

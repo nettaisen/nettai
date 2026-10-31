@@ -1834,6 +1834,27 @@ Each is settled unless the user changes it.
        no room for both) and IMPORT, EXPORT, DUPLICATE and DELETE, compact; under it the category's panel the body's
        width, its search on its header line between what the category allows and its quick choices, its items in as
        many columns as fit (a Party page's keys at the left and their programs in one column beside them).
+     - *Replays:* the list at the left (the search and ALL/ONLINE on one row over it; the date with its time, the
+       opponent, the result, the length), the tabs in the header's row (REPLAYS, and QUEUE while the queue holds
+       something); the replay's panel beside it, its still three fifths of the panel's width with the facts beside it
+       (each fact's word over its value), then WATCH and its arrow, EXPORT VIDEO, and SHOW FILE beside DELETE, each row
+       the panel's width or half of it (a queue entry's WATCH FROM HERE with MOVE UP and MOVE DOWN, then REMOVE). The
+       list has no frame, as the desktop's has none.
+     - *Watching a replay:* the desktop's viewer: the picture the window's height, the header and the transport over
+       it for a while after a tap, as after the pointer moves on a desktop; the export's options over the transport;
+       BUILDS's two sheets each half the window; the popup up next as many rows as fit over its button.
+     - *Settings:* the groups down the left (172), the page at the right, a row's word in a column 170 wide and its
+       control beside it, its note under the control.
+     - *Practice's menu* (and the match menu's pages): the side panel 400 wide at most, the window's height less 8 at
+       the top and the foot, its padding 16 and its title 20; its rows' words 124 wide (HP's and Emotion's 70) and the
+       controls the rest, 36 tall; RESUME, RESTART and EXIT in one row at the foot, RESTART and EXIT as wide as their
+       words. The match menu's Settings and Controls pages scroll where their rows don't fit (a page each, its rows'
+       names `menu.set.` and `menu.keys.`), Back kept at the foot.
+     - *The rest at the phone's sizes in the desktop's arrangement:* loading (the icon 112, the name smaller), the two
+       cards before a battle (side by side, 176 tall, 54 apart), About (the list under the app's name at the left,
+       Slint's widget over the license's panel at the right, as the height has no room for it over the list), a match's
+       result (the halves left and right, the word 60 and the score's digits 28), and the two builds held up in a match
+       (each half the window).
      - *Dialogs* are centered at the upright phone's width (358). Two whose upright arrangement is taller than the
        window are the desktop's arrangement and width: a new build's (600 wide, FROM A SAVE FILE… at the buttons' left
        in place of under a line) and a direct connection's. The lobby's CHANGE BUILD shows four rows. *A select's

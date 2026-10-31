@@ -10,7 +10,7 @@ import { Tween } from "../motion.slint";
 component Card inherits Rectangle {
     in property <VersusCard> card;
     in property <int> side;
-    property <length> pad: Theme.phone ? 16px : 24px;
+    property <length> pad: Theme.handheld ? 16px : 24px;
     PanelBack {
         side: root.side;
         accent: false;
@@ -75,10 +75,10 @@ component Card inherits Rectangle {
 }
 
 export component VersusScreen inherits Rectangle {
-    // Side by side, VS between; on a phone one over the other.
-    property <length> card-width: Theme.phone ? self.width - 2 * Theme.margin : min(440px, (self.width - 80px - 2 * Theme.margin) / 2);
-    property <length> card-height: Theme.phone ? 176px : 220px;
-    property <length> middle: Theme.phone ? 48px : 80px;
+    // Side by side, VS between; on a phone one over the other (held sideways, side by side at the phone's size).
+    property <length> card-width: Theme.phone ? self.width - 2 * Theme.margin : min(440px, (self.width - self.middle - 2 * Theme.margin) / 2);
+    property <length> card-height: Theme.handheld ? 176px : 220px;
+    property <length> middle: Theme.phone ? 48px : Theme.sideways ? 54px : 80px;
     property <length> top: Theme.phone ? (self.height - 2 * self.card-height - self.middle - 32px) / 2 : (self.height - self.card-height - 32px) / 2;
     // The two cards slide in from their sides, and then VS stamps between them.
     cards := Tween { }

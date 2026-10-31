@@ -16,7 +16,7 @@
 import { Theme, Audit, I18n } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Hint, Picture, DialogFrame, FaceButton } from "../shell.slint";
-import { Cut, Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Select, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ProblemMark } from "../widgets.slint";
+import { Cut, Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Select, Slider, MenuItem, RowBack, RowTouch, ListView, ScrollPage, PanelBack, Rule, Bars, ArrowDown, ProblemMark } from "../widgets.slint";
 import { MenuOverlay } from "battle.slint";
 import { SettingsView, BindBox } from "settings.slint";
 import { Arrive, Tween, Pulse, Flash, Count } from "../motion.slint";
@@ -1518,36 +1518,46 @@ export component MatchMenu inherits MenuOverlay {
             text: I18n.upper(@tr("Pad"));
         }
 
-        for action[i] in root.actions: Rectangle {
+        // (The rows scroll where the panel is too short for them all, a phone's held sideways: their page's bar is in
+        // the panel's margin, so they are the panel's width either way.)
+        ScrollPage {
             x: 0;
-            y: 24px + i * 44px;
-            width: root.inner-width;
-            height: 40px;
-            Value {
+            y: 24px;
+            width: root.inner-width + 12px;
+            height: max(0px, root.inner-height - 24px - 52px);
+            nav: "menu.keys.";
+            content-height: root.actions.length * 44px - 4px;
+            for action[i] in root.actions: Rectangle {
                 x: 0;
-                width: parent.width - 244px;
-                text: action;
-            }
+                y: i * 44px;
+                width: root.inner-width;
+                height: 40px;
+                Value {
+                    x: 0;
+                    width: parent.width - 244px;
+                    text: action;
+                }
 
-            BindBox {
-                x: parent.width - 232px;
-                width: 110px;
-                nav: "menu.key";
-                nav-index: i;
-                value: SettingsView.keys[i];
-                asking: SettingsView.asking-key == i;
-                ask: @tr("Press a key");
-            }
+                BindBox {
+                    x: parent.width - 232px;
+                    width: 110px;
+                    nav: "menu.keys.key";
+                    nav-index: i;
+                    value: SettingsView.keys[i];
+                    asking: SettingsView.asking-key == i;
+                    ask: @tr("Press a key");
+                }
 
-            BindBox {
-                x: parent.width - 110px;
-                width: 110px;
-                nav: "menu.button";
-                nav-index: i;
-                value: SettingsView.buttons[i].text;
-                face: SettingsView.buttons[i].face;
-                asking: SettingsView.asking-button == i;
-                ask: @tr("Press a button");
+                BindBox {
+                    x: parent.width - 110px;
+                    width: 110px;
+                    nav: "menu.keys.button";
+                    nav-index: i;
+                    value: SettingsView.buttons[i].text;
+                    face: SettingsView.buttons[i].face;
+                    asking: SettingsView.asking-button == i;
+                    ask: @tr("Press a button");
+                }
             }
         }
 
@@ -1569,7 +1579,7 @@ export component MatchMenu inherits MenuOverlay {
     // The settings a player may want in a match, as the Settings screen has them: the language, the picture's size,
     // full screen, the battle graphics, the sound's two levels and their input delay. Each changes at once, the
     // match's picture and sound with it. On a phone each label is over its control.
-    if PlayView.page == MatchPage.settings: Rectangle {
+    if PlayView.page == MatchPage.settings: settings-page := Rectangle {
         x: 0;
         y: 0;
         width: root.inner-width;
@@ -1581,71 +1591,80 @@ export component MatchMenu inherits MenuOverlay {
         property <length> control-width: Theme.phone ? root.inner-width : 232px;
         property <length> label-width: Theme.phone ? root.inner-width : root.inner-width - 244px;
         property <length> label-height: Theme.phone ? 20px : 44px;
-        for label[i] in [@tr("Language"), @tr("Picture size"), @tr("Full screen"), @tr("Battle graphics"), @tr("Music"), @tr("Sound effects"), @tr("Input delay")]: Value {
+        // (The rows scroll where the panel is too short for them all, as the controls' do.)
+        ScrollPage {
             x: 0;
-            y: i * parent.pitch;
-            width: parent.label-width;
-            height: parent.label-height;
-            text: label;
-        }
+            y: 0;
+            width: root.inner-width + 12px;
+            height: max(0px, root.inner-height - 52px);
+            nav: "menu.set.";
+            content-height: 7 * settings-page.pitch;
+            for label[i] in [@tr("Language"), @tr("Picture size"), @tr("Full screen"), @tr("Battle graphics"), @tr("Music"), @tr("Sound effects"), @tr("Input delay")]: Value {
+                x: 0;
+                y: i * settings-page.pitch;
+                width: settings-page.label-width;
+                height: settings-page.label-height;
+                text: label;
+            }
 
-        Select {
-            x: parent.control-x;
-            y: parent.below + 2px;
-            width: parent.control-width;
-            nav: "menu.language";
-            value: SettingsView.language;
-        }
+            Select {
+                x: settings-page.control-x;
+                y: settings-page.below + 2px;
+                width: settings-page.control-width;
+                nav: "menu.set.language";
+                value: SettingsView.language;
+            }
 
-        Select {
-            x: parent.control-x;
-            y: parent.pitch + parent.below + 2px;
-            width: parent.control-width;
-            nav: "menu.picture";
-            value: SettingsView.picture-size == "" ? SettingsView.largest : SettingsView.picture-size;
-        }
+            Select {
+                x: settings-page.control-x;
+                y: settings-page.pitch + settings-page.below + 2px;
+                width: settings-page.control-width;
+                nav: "menu.set.picture";
+                value: SettingsView.picture-size == "" ? SettingsView.largest : SettingsView.picture-size;
+            }
 
-        Seg {
-            x: parent.control-x;
-            y: 2 * parent.pitch + parent.below + 4px;
-            nav: "menu.fullscreen";
-            first: I18n.upper(@tr("Off"));
-            second: I18n.upper(@tr("On"));
-            chosen: SettingsView.full-screen ? 1 : 0;
-        }
+            Seg {
+                x: settings-page.control-x;
+                y: 2 * settings-page.pitch + settings-page.below + 4px;
+                nav: "menu.set.fullscreen";
+                first: I18n.upper(@tr("Off"));
+                second: I18n.upper(@tr("On"));
+                chosen: SettingsView.full-screen ? 1 : 0;
+            }
 
-        Seg {
-            x: parent.control-x;
-            y: 3 * parent.pitch + parent.below + 4px;
-            nav: "menu.graphics";
-            first: I18n.upper(@tr("Enhanced"));
-            second: I18n.upper(@tr("Original"));
-            chosen: SettingsView.enhanced ? 0 : 1;
-        }
+            Seg {
+                x: settings-page.control-x;
+                y: 3 * settings-page.pitch + settings-page.below + 4px;
+                nav: "menu.set.graphics";
+                first: I18n.upper(@tr("Enhanced"));
+                second: I18n.upper(@tr("Original"));
+                chosen: SettingsView.enhanced ? 0 : 1;
+            }
 
-        Slider {
-            x: parent.control-x;
-            y: 4 * parent.pitch + parent.below + 2px;
-            width: parent.control-width;
-            nav: "menu.music";
-            value: PlayView.music;
-        }
+            Slider {
+                x: settings-page.control-x;
+                y: 4 * settings-page.pitch + settings-page.below + 2px;
+                width: settings-page.control-width;
+                nav: "menu.set.music";
+                value: PlayView.music;
+            }
 
-        Slider {
-            x: parent.control-x;
-            y: 5 * parent.pitch + parent.below + 2px;
-            width: parent.control-width;
-            nav: "menu.effects";
-            value: PlayView.effects;
-        }
+            Slider {
+                x: settings-page.control-x;
+                y: 5 * settings-page.pitch + settings-page.below + 2px;
+                width: settings-page.control-width;
+                nav: "menu.set.effects";
+                value: PlayView.effects;
+            }
 
-        Stepper {
-            x: Theme.phone ? 0px : root.inner-width - self.width;
-            y: 6 * parent.pitch + parent.below + 4px;
-            nav: "menu.delay";
-            value: PlayView.input-delay;
-            value-width: 48px;
-            numeric: true;
+            Stepper {
+                x: Theme.phone ? 0px : root.inner-width - self.width;
+                y: 6 * settings-page.pitch + settings-page.below + 4px;
+                nav: "menu.set.delay";
+                value: PlayView.input-delay;
+                value-width: 48px;
+                numeric: true;
+            }
         }
 
         Button {
@@ -1681,7 +1700,8 @@ component Scrub inherits TouchArea {
 // they scroll together, by the wheel and a drag over them, and while the menu is open by the keys and the pad
 // (`Play::scroll`). It takes no keys: the match goes on under it.
 export component MatchPeek inherits Rectangle {
-    property <length> sheet-width: min(430px, self.width - 2 * Theme.margin);
+    // (Sideways each half the window, less the gap between them.)
+    property <length> sheet-width: Theme.sideways ? (self.width - 12px) / 2 : min(430px, self.width - 2 * Theme.margin);
     // (Over the menu they leave its footer in view.)
     property <length> room: self.height - 2 * Theme.margin - (Shell.battle-menu ? Theme.footer : 0px);
     property <length> half: (root.room - Theme.margin) / 2;
@@ -1779,8 +1799,8 @@ export component MatchResult inherits Rectangle {
     // The player's own half's middle: the word, and the numbers under it.
     property <length> mid-x: root.half-width / 2;
     property <length> mid-y: root.half-height / 2;
-    property <length> stats-width: Theme.phone ? 300px : 360px;
-    property <length> digits: Theme.phone ? 28px : 34px;
+    property <length> stats-width: Theme.handheld ? 300px : 360px;
+    property <length> digits: Theme.handheld ? 28px : 34px;
     // One after another, by the theme's table: the flood, the word, the score, then the time to the set piece's
     // end.
     flood := Tween {
@@ -1830,13 +1850,13 @@ export component MatchResult inherits Rectangle {
     Text {
         property <bool> over: Theme.audit && self.preferred-width > self.width + 0.5px;
         x: Theme.margin;
-        y: root.mid-y - (Theme.phone ? 100px : 140px);
+        y: root.mid-y - (Theme.handheld ? 100px : 140px);
         width: root.half-width - 2 * Theme.margin;
-        height: Theme.phone ? 92px : 150px;
+        height: Theme.handheld ? 92px : 150px;
         text: root.won ? I18n.upper(@tr("Win")) : root.lost ? I18n.upper(@tr("Lose")) : I18n.upper(@tr("Draw"));
         color: root.lost ? Theme.muted : Theme.text;
         font-family: Theme.display;
-        font-size: Theme.phone ? 60px : 104px;
+        font-size: Theme.handheld ? 60px : 104px;
         font-weight: Theme.display-bold;
         letter-spacing: Theme.title-tracking * 2;
         horizontal-alignment: center;
@@ -1854,7 +1874,7 @@ export component MatchResult inherits Rectangle {
     // The rounds' score and the match's time, each label over its number.
     Rectangle {
         x: root.mid-x - root.stats-width / 2;
-        y: root.mid-y + (Theme.phone ? 4px : 30px);
+        y: root.mid-y + (Theme.handheld ? 4px : 30px);
         width: root.stats-width;
         height: 64px;
         Label {

@@ -25,9 +25,13 @@ export component MenuOverlay inherits Rectangle {
     in property <length> content-height;
     in property <[Hint]> hints;
     property <length> foot: root.hints.length > 0 ? Theme.footer : 0px;
-    out property <length> inner-width: panel.width - 48px;
-    out property <length> inner-height: panel.height - 48px - root.head;
-    property <length> head: root.note == "" ? 56px : 76px;
+    // (On a phone held sideways, docs/design/app-ui.md §2.103: the side panel 400 wide at most and 8 from the window's
+    // top and foot, its padding 16 and its title smaller, at the phone's size.)
+    property <length> pad: Theme.sideways ? 16px : 24px;
+    property <length> edge: Theme.sideways ? 8px : 24px;
+    out property <length> inner-width: panel.width - 2 * root.pad;
+    out property <length> inner-height: panel.height - 2 * root.pad - root.head;
+    property <length> head: Theme.sideways ? (root.note == "" ? 40px : 58px) : (root.note == "" ? 56px : 76px);
     // The shade fades in as the panel slides in from the left.
     arrive := Tween { }
 
@@ -39,9 +43,9 @@ export component MenuOverlay inherits Rectangle {
 
     panel := Rectangle {
         x: (root.side ? Theme.margin : (parent.width - self.width) / 2) - (1 - arrive.t) * 40px;
-        y: root.side ? 24px : (parent.height - root.foot - self.height) / 2;
-        width: min(parent.width - 2 * Theme.margin, root.side ? 500px : 340px);
-        height: root.side ? parent.height - root.foot - 48px : min(parent.height - root.foot - 48px, root.head + root.content-height + 48px);
+        y: root.side ? root.edge : (parent.height - root.foot - self.height) / 2;
+        width: min(parent.width - 2 * Theme.margin, root.side ? (Theme.sideways ? 400px : 500px) : 340px);
+        height: root.side ? parent.height - root.foot - 2 * root.edge : min(parent.height - root.foot - 48px, root.head + root.content-height + 2 * root.pad);
         opacity: arrive.t;
         Cut {
             cut: 18px;
@@ -56,18 +60,18 @@ export component MenuOverlay inherits Rectangle {
         }
 
         Heading {
-            x: 24px;
-            y: 24px;
-            width: parent.width - 48px;
-            height: 36px;
+            x: root.pad;
+            y: root.pad;
+            width: parent.width - 2 * root.pad;
+            height: Theme.sideways ? 28px : 36px;
             text: root.title;
-            font-size: 28px;
+            font-size: Theme.sideways ? 20px : 28px;
         }
 
         Note {
-            x: 24px;
-            y: 60px;
-            width: parent.width - 48px;
+            x: root.pad;
+            y: root.pad + (Theme.sideways ? 28px : 36px);
+            width: parent.width - 2 * root.pad;
             height: 22px;
             text: root.note;
             wrap: no-wrap;
@@ -75,10 +79,10 @@ export component MenuOverlay inherits Rectangle {
         }
 
         Rectangle {
-            x: 24px;
-            y: 24px + root.head;
-            width: parent.width - 48px;
-            height: parent.height - 48px - root.head;
+            x: root.pad;
+            y: root.pad + root.head;
+            width: parent.width - 2 * root.pad;
+            height: parent.height - 2 * root.pad - root.head;
             @children
         }
     }
@@ -129,8 +133,8 @@ component Connection inherits Rectangle {
 
     // (On a phone what is tapped is 44 tall: the corner's touch reaches past its box.)
     hit := TouchArea {
-        y: Theme.phone ? -7px : 0;
-        height: Theme.phone ? 44px : parent.height;
+        y: Theme.handheld ? -7px : 0;
+        height: Theme.handheld ? 44px : parent.height;
         clicked => {
             Shell.connection-open = !Shell.connection-open;
         }
@@ -190,7 +194,7 @@ component LinkPanel inherits Rectangle {
 
         TouchArea {
             clicked => {
-                if Theme.phone {
+                if Theme.handheld {
                     Shell.connection-open = false;
                 }
             }

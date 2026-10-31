@@ -223,16 +223,17 @@ component MenuRow inherits Rectangle {
     // The value's box: sized for the longest value in the longest language (a longer one the stepper fits to it,
     // and tells the pass if it can't); the stepper and the select are as wide as it and their arrows (`box`), and
     // 40 tall (36 on a phone).
-    property <length> value-width: Theme.phone ? root.width - 72px : 196px;
+    // (On a phone held sideways the panel is narrower: the label keeps 124 and the box has the rest.)
+    property <length> value-width: Theme.phone ? root.width - 72px : Theme.sideways ? max(48px, root.width - 228px) : 196px;
     property <length> box: root.value-width + 72px;
     // A row of two columns' steppers, each as wide as its value's box (room for the longest of the two rows'
     // values, Full Synchro and フルシンクロ) and its arrows (`pair`), 20 apart, the dummy's ending where the other
-    // rows' controls do; on a phone each half the row.
-    property <length> pair-value-width: Theme.phone ? (root.width - 20px) / 2 - 72px : 92px;
+    // rows' controls do; on a phone each half the row (sideways what the label's 70 leaves, shared).
+    property <length> pair-value-width: Theme.phone ? (root.width - 20px) / 2 - 72px : Theme.sideways ? max(40px, (root.width - 118px) / 2 - 72px) : 92px;
     property <length> pair: root.pair-value-width + 72px;
     property <length> yours-x: Theme.phone ? 0px : root.width - 2 * root.pair - 28px;
     property <length> dummys-x: root.yours-x + root.pair + 20px;
-    property <length> control: Theme.phone ? 36px : 40px;
+    property <length> control: Theme.handheld ? 36px : 40px;
     property <bool> over: Theme.audit && root.option && name.preferred-width > name.width + 0.5px;
     height: root.title ? head.height : root.added ? 48px : root.edit ? root.control + 12px : root.columns ? 20px : (Theme.phone ? 64px : 52px);
     head := GroupTitle {
@@ -394,9 +395,10 @@ component MenuRow inherits Rectangle {
 // The practice menu: Start or Esc in a practice battle. The battle is paused behind it, the dummy in view at the right.
 export component PracticeMenu inherits MenuOverlay {
     // RESUME and RESTART side by side, and under them EXIT, the way out of a session Practice started itself, as
-    // wide as the two; on a phone one over the other.
-    property <length> button-width: Theme.phone ? root.inner-width : (root.inner-width - 8px) / 2;
-    property <length> buttons-height: Theme.phone ? (PracticeView.leave ? 136px : 88px) : (PracticeView.leave ? 88px : 40px);
+    // wide as the two; on a phone one over the other; on a phone held sideways the three in one row, RESTART and EXIT
+    // as wide as their words and RESUME the rest, so the rows have the room.
+    property <length> button-width: Theme.phone ? root.inner-width : Theme.sideways ? root.inner-width - restart.natural-width - 8px - (PracticeView.leave ? exit.natural-width + 8px : 0px) : (root.inner-width - 8px) / 2;
+    property <length> buttons-height: Theme.phone ? (PracticeView.leave ? 136px : 88px) : Theme.sideways ? 40px : (PracticeView.leave ? 88px : 40px);
     property <length> buttons-y: root.inner-height - root.buttons-height;
     title: I18n.upper(@tr("Practice"));
     note: @tr("{} vs {}", PracticeView.session-yours, PracticeView.session-dummys);
@@ -432,19 +434,23 @@ export component PracticeMenu inherits MenuOverlay {
         kind: ButtonKind.main;
     }
 
-    Button {
+    restart := Button {
         x: Theme.phone ? 0px : root.button-width + 8px;
         y: root.buttons-y + (Theme.phone ? 48px : 0px);
-        width: root.button-width;
+        width: Theme.sideways ? self.natural-width : root.button-width;
+        height: 40px;
+        compact: Theme.sideways;
         nav: "menu.restart";
         text: I18n.upper(@tr("Restart"));
     }
 
     // (Back to Play: docs/design/app-ui.md §2.57.)
-    Button {
-        x: 0;
-        y: root.buttons-y + (Theme.phone ? 96px : 48px);
-        width: root.inner-width;
+    exit := Button {
+        x: Theme.sideways ? restart.x + restart.width + 8px : 0px;
+        y: root.buttons-y + (Theme.phone ? 96px : Theme.sideways ? 0px : 48px);
+        width: Theme.sideways ? self.natural-width : root.inner-width;
+        height: 40px;
+        compact: Theme.sideways;
         visible: PracticeView.leave;
         enabled: PracticeView.leave;
         nav: "menu.exit";

@@ -928,7 +928,9 @@ impl Replays {
         let room = shell.room();
         let (by, window) = (shell.rect_of(&Key::new("up-next", 0)).within(&room), slint::LogicalSize::new(room.w, room.h));
         let width = if shell.scale.phone { window.width - 32.0 } else { UP_NEXT_WIDTH };
-        let rows = count.clamp(1, UP_NEXT_ROWS);
+        // (A phone held sideways is short: as many rows as there is room for over the button.)
+        let most = if shell.scale.sideways { (((by.y - 14.0 - UP_NEXT_ROOM - 8.0) / 44.0).floor().max(1.0) as usize).min(UP_NEXT_ROWS) } else { UP_NEXT_ROWS };
+        let rows = count.clamp(1, most);
         let height = UP_NEXT_ROOM + rows as f32 * 44.0 + 8.0;
         let y = if by.y - 6.0 - height >= 8.0 { by.y - 6.0 - height } else { by.bottom() + 6.0 };
         let x = if shell.scale.phone { 16.0 } else { (by.right() - width).clamp(8.0, (window.width - width - 8.0).max(8.0)) };

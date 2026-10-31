@@ -53,8 +53,8 @@ component SettingLabel inherits Rectangle {
     in property <length> row-height: 48px;
     in property <length> control-x;
     in property <length> control-width;
-    property <bool> over: Theme.audit && (Theme.phone ? name.preferred-height > name.height + 0.5px : name.preferred-width > name.width + 0.5px);
-    height: root.row-height + (Theme.phone && root.note != "" ? below.preferred-height + 4px : 0px);
+    property <bool> over: Theme.audit && (Theme.handheld ? name.preferred-height > name.height + 0.5px : name.preferred-width > name.width + 0.5px);
+    height: root.row-height + (Theme.handheld && root.note != "" ? below.preferred-height + 4px : 0px);
     name := Text {
         x: 0;
         y: 0;
@@ -66,8 +66,8 @@ component SettingLabel inherits Rectangle {
         font-size: 14px;
         font-weight: 600;
         vertical-alignment: center;
-        wrap: Theme.phone ? word-wrap : no-wrap;
-        overflow: Theme.phone ? clip : elide;
+        wrap: Theme.handheld ? word-wrap : no-wrap;
+        overflow: Theme.handheld ? clip : elide;
     }
 
     Note {
@@ -75,7 +75,7 @@ component SettingLabel inherits Rectangle {
         y: 0;
         width: max(0px, parent.width - 568px);
         height: root.row-height;
-        text: Theme.phone ? "" : root.note;
+        text: Theme.handheld ? "" : root.note;
         wrap: root.cut ? no-wrap : word-wrap;
         overflow: root.cut ? elide : clip;
     }
@@ -85,7 +85,7 @@ component SettingLabel inherits Rectangle {
         y: root.row-height;
         width: root.control-width;
         height: self.preferred-height;
-        text: Theme.phone ? root.note : "";
+        text: Theme.handheld ? root.note : "";
         wrap: root.cut ? no-wrap : word-wrap;
         overflow: root.cut ? elide : clip;
     }
@@ -148,10 +148,12 @@ component SettingsPage inherits Page {
     property <[string]> actions: [@tr("Up"), @tr("Down"), @tr("Left"), @tr("Right"), @tr("A · Pad confirms"), @tr("B · Pad goes back"), "L", "R", "START", "SELECT", @tr("Navi change left"), @tr("Navi change right")];
     // (A phone has the page alone.)
     property <[string]> shown-groups: Theme.phone ? [] : root.groups;
-    property <length> list-width: Theme.phone ? 0px : 260px;
+    property <length> list-width: Theme.phone ? 0px : Theme.sideways ? 172px : 260px;
+    // (The groups' rows: the list's width less the gap to the page.)
+    property <length> group-width: root.list-width - (Theme.sideways ? 12px : 40px);
     // Where a row's control is, and how wide its column.
-    property <length> control-x: Theme.phone ? 124px : 224px;
-    property <length> control-width: Theme.phone ? page.view-width - 124px : 320px;
+    property <length> control-x: Theme.phone ? 124px : Theme.sideways ? 170px : 224px;
+    property <length> control-width: Theme.phone ? page.view-width - 124px : Theme.sideways ? min(260px, page.view-width - 170px) : 320px;
     title: I18n.upper(@tr("Settings"));
     back: I18n.upper(@tr("Menu"));
     game: false;
@@ -168,7 +170,7 @@ component SettingsPage inherits Page {
         Marker {
             x: 0;
             y: SettingsView.group * (Theme.row + 2px);
-            width: 220px;
+            width: root.group-width;
             height: Theme.row;
             visible: !Theme.phone;
             animate y {
@@ -182,7 +184,7 @@ component SettingsPage inherits Page {
         for group[i] in root.shown-groups: Row {
             x: 0;
             y: i * (Theme.row + 2px);
-            width: 220px;
+            width: root.group-width;
             nav: "group";
             nav-index: i;
             text: group;

@@ -261,7 +261,7 @@ component ReplayRowView inherits Rectangle {
     in property <bool> compact;
     property <bool> narrow: Theme.phone || root.compact;
     property <length> date-width: root.narrow ? 76px : 124px;
-    property <length> score-width: Theme.phone ? 56px : 76px;
+    property <length> score-width: Theme.handheld ? 56px : 76px;
     property <length> length-width: 44px;
     property <length> rest: self.width - 36px - root.date-width;
     property <bool> plays: root.replay.reason == "";
@@ -345,7 +345,7 @@ component IconButton inherits Rectangle {
     property <bool> down: hit.pressed || reach.pressed;
     property <length> dip: press.v > 0.4 ? 1px : 0px;
     width: 40px;
-    height: Theme.phone ? 44px : 40px;
+    height: Theme.handheld ? 44px : 40px;
     press := Pulse {
         seq: root.presses;
     }
@@ -418,26 +418,32 @@ component IconButton inherits Rectangle {
     }
 }
 
-// A fact of the selected replay: what it is, and its value.
+// A fact of the selected replay: what it is, and its value; `stacked`, what it is over its value (a phone's pane held
+// sideways, beside the still).
 component Fact inherits Rectangle {
     in property <string> label;
     in property <string> value;
     in property <color> tone: Theme.text;
-    height: 20px;
+    in property <bool> stacked;
+    height: root.stacked ? 32px : 20px;
     Text {
         x: 0;
-        width: 108px;
+        y: 0;
+        width: root.stacked ? parent.width : 108px;
+        height: root.stacked ? 14px : parent.height;
         text: root.value == "" ? "" : root.label;
         color: Theme.muted;
         font-family: Theme.body;
-        font-size: 13px;
+        font-size: root.stacked ? 12px : 13px;
         vertical-alignment: center;
         overflow: elide;
     }
 
     Text {
-        x: 120px;
-        width: parent.width - 120px;
+        x: root.stacked ? 0px : 120px;
+        y: root.stacked ? 14px : 0px;
+        width: parent.width - self.x;
+        height: root.stacked ? 18px : parent.height;
         text: root.value;
         color: root.tone;
         font-family: Theme.body;
@@ -449,8 +455,11 @@ component Fact inherits Rectangle {
 }
 
 // What is said of the selected replay under its still: who played, when, how it went, how long it was; or why
-// it can't be played.
+// it can't be played. (`stacked`: beside the still, each fact's word over its value.)
 component Facts inherits Rectangle {
+    in property <bool> stacked;
+    property <length> pitch: root.stacked ? 34px : 28px;
+    property <length> first: root.stacked ? 28px : 36px;
     HorizontalLayout {
         x: 0;
         y: 0;
@@ -479,30 +488,37 @@ component Facts inherits Rectangle {
 
     Fact {
         x: 0;
-        y: 36px;
+        y: root.first;
+        width: root.width;
         label: @tr("Played");
         value: ReplaysView.played;
+        stacked: root.stacked;
     }
 
     Fact {
         x: 0;
-        y: 64px;
+        y: root.first + root.pitch;
+        width: root.width;
         label: @tr("Result");
         value: ReplaysView.result;
         tone: ReplaysView.result-tone == 1 ? Theme.good : ReplaysView.result-tone == 2 ? Theme.bad : Theme.text;
+        stacked: root.stacked;
     }
 
     Fact {
         x: 0;
-        y: 92px;
+        y: root.first + 2 * root.pitch;
+        width: root.width;
         label: @tr("Length");
         value: ReplaysView.length;
+        stacked: root.stacked;
     }
 
     Note {
         x: 0;
-        y: 64px;
-        height: 48px;
+        y: root.stacked ? root.first : 64px;
+        width: root.width;
+        height: root.stacked ? root.height - root.first : 48px;
         text: ReplaysView.reason;
         color: Theme.bad;
         vertical-alignment: top;
@@ -514,79 +530,100 @@ global Signs {
     out property <string> arrow: "M 3.5 6 L 12.5 6 L 8 11 Z";
 }
 
-// The selected replay, beside the list: its still, what is said of it, and what can be done with it.
+// The selected replay, beside the list: its still, what is said of it, and what can be done with it. On a phone held
+// sideways (docs/design/app-ui.md §2.103) the still is smaller with the facts beside it, and the buttons are rows under
+// them, each its row's width or half of it: WATCH and its arrow, EXPORT VIDEO, then SHOW FILE and DELETE (a queue
+// entry's WATCH FROM HERE with MOVE UP and MOVE DOWN, then REMOVE).
 component DetailPanel inherits Rectangle {
+    property <bool> beside: Theme.sideways;
+    property <length> pad: root.beside ? 14px : 16px;
+    property <length> inner: root.width - 2 * root.pad;
+    property <length> still-width: root.beside ? floor(root.inner * 0.6 / 1px) * 1px : 480px;
+    property <length> still-height: root.beside ? root.still-width * 2 / 3 : 320px;
+    // (Sideways: the buttons' rows, from the still's foot.)
+    property <length> row-1: root.pad + root.still-height + 12px;
+    property <length> row-2: root.row-1 + 44px + 8px;
+    property <length> row-3: root.row-2 + 40px + 8px;
+    property <length> half: (root.inner - 8px) / 2;
+    // (The desktop's: a row of them over DELETE at the foot.)
+    property <length> buttons-y: root.height - 108px;
     PanelBack { }
 
     Picture {
-        x: 16px;
-        y: 16px;
-        width: 480px;
-        height: 320px;
+        x: root.pad;
+        y: root.pad;
+        width: root.still-width;
+        height: root.still-height;
         ground: Theme.inset;
     }
 
     // (No still of it, yet or at all: the box alone.)
     Rectangle {
-        x: 16px;
-        y: 16px;
-        width: 480px;
-        height: 320px;
+        x: root.pad;
+        y: root.pad;
+        width: root.still-width;
+        height: root.still-height;
         visible: !ReplaysView.still;
         background: Theme.inset;
     }
 
     Facts {
-        x: 16px;
-        y: 352px;
-        width: parent.width - 32px;
-        height: 112px;
+        x: root.beside ? root.pad + root.still-width + 12px : 16px;
+        y: root.beside ? root.pad - 4px : 352px;
+        width: root.beside ? root.inner - root.still-width - 12px : parent.width - 32px;
+        height: root.beside ? root.still-height + 4px : 112px;
         visible: ReplaysView.selected;
+        stacked: root.beside;
     }
 
     // (A replay's: WATCH and its arrow, the other ways to watch it (a split button: ADD TO QUEUE, PLAY NEXT), EXPORT VIDEO, SHOW FILE; apart, DELETE. Hidden in the Queue tab, and passed by.)
-    HorizontalLayout {
-        x: 16px;
-        y: parent.height - 108px;
-        width: parent.width - 32px;
-        height: 40px;
-        spacing: 12px;
-        alignment: start;
+    watch := Button {
+        x: root.pad;
+        y: root.beside ? root.row-1 : root.buttons-y;
+        width: root.beside ? root.inner - 2px - watch-more.width : self.natural-width;
+        height: root.beside ? 44px : 40px;
         visible: ReplaysView.tab == 0;
-        HorizontalLayout {
-            spacing: 2px;
-            Button {
-                nav: "watch";
-                text: I18n.upper(@tr("Watch"));
-                kind: ButtonKind.main;
-                square: true;
-                enabled: ReplaysView.tab == 0 && ReplaysView.playable;
-            }
+        nav: "watch";
+        text: I18n.upper(@tr("Watch"));
+        kind: ButtonKind.main;
+        square: true;
+        enabled: ReplaysView.tab == 0 && ReplaysView.playable;
+    }
 
-            IconButton {
-                nav: "watch-more";
-                icon: Signs.arrow;
-                main: true;
-                enabled: ReplaysView.tab == 0 && ReplaysView.playable;
-            }
-        }
+    watch-more := IconButton {
+        x: watch.x + watch.width + 2px;
+        y: watch.y;
+        visible: ReplaysView.tab == 0;
+        nav: "watch-more";
+        icon: Signs.arrow;
+        main: true;
+        enabled: ReplaysView.tab == 0 && ReplaysView.playable;
+    }
 
-        Button {
-            nav: "export";
-            text: I18n.upper(@tr("verb" => "Export video"));
-            enabled: ReplaysView.tab == 0 && ReplaysView.playable;
-        }
-
-        Button {
-            nav: "file";
-            text: ReplaysView.file-word;
-            enabled: ReplaysView.tab == 0 && ReplaysView.selected;
-        }
+    export := Button {
+        x: root.beside ? root.pad : watch-more.x + watch-more.width + 12px;
+        y: root.beside ? root.row-2 : root.buttons-y;
+        width: root.beside ? root.inner : self.natural-width;
+        visible: ReplaysView.tab == 0;
+        nav: "export";
+        text: I18n.upper(@tr("verb" => "Export video"));
+        enabled: ReplaysView.tab == 0 && ReplaysView.playable;
     }
 
     Button {
-        x: parent.width - 16px - self.width;
-        y: parent.height - 56px;
+        x: root.beside ? root.pad : export.x + export.width + 12px;
+        y: root.beside ? root.row-3 : root.buttons-y;
+        width: root.beside ? root.half : self.natural-width;
+        visible: ReplaysView.tab == 0;
+        nav: "file";
+        text: ReplaysView.file-word;
+        enabled: ReplaysView.tab == 0 && ReplaysView.selected;
+    }
+
+    Button {
+        x: root.beside ? root.pad + root.half + 8px : parent.width - 16px - self.width;
+        y: root.beside ? root.row-3 : parent.height - 56px;
+        width: root.beside ? root.half : self.natural-width;
         visible: ReplaysView.tab == 0;
         nav: "delete";
         text: I18n.upper(@tr("Delete"));
@@ -596,37 +633,40 @@ component DetailPanel inherits Rectangle {
     }
 
     // (A queue entry's: WATCH FROM HERE, MOVE UP and MOVE DOWN; apart, REMOVE, which leaves its file be.)
-    HorizontalLayout {
-        x: 16px;
-        y: parent.height - 108px;
-        width: parent.width - 32px;
-        height: 40px;
-        spacing: 12px;
-        alignment: start;
+    watch-from := Button {
+        x: root.pad;
+        y: root.beside ? root.row-1 : root.buttons-y;
+        width: root.beside ? root.inner - 2 * (40px + 12px) : self.natural-width;
+        height: root.beside ? 44px : 40px;
         visible: ReplaysView.tab == 1;
-        Button {
-            nav: "watch-from";
-            text: I18n.upper(@tr("Watch from here"));
-            kind: ButtonKind.main;
-            enabled: ReplaysView.tab == 1 && ReplaysView.playable;
-        }
+        nav: "watch-from";
+        text: I18n.upper(@tr("Watch from here"));
+        kind: ButtonKind.main;
+        enabled: ReplaysView.tab == 1 && ReplaysView.playable;
+    }
 
-        IconButton {
-            nav: "move-up";
-            icon: "M 8 3 L 13.5 11 L 2.5 11 Z";
-            enabled: ReplaysView.tab == 1 && ReplaysView.queue-chosen > 0;
-        }
+    move-up := IconButton {
+        x: watch-from.x + watch-from.width + 12px;
+        y: watch-from.y;
+        visible: ReplaysView.tab == 1;
+        nav: "move-up";
+        icon: "M 8 3 L 13.5 11 L 2.5 11 Z";
+        enabled: ReplaysView.tab == 1 && ReplaysView.queue-chosen > 0;
+    }
 
-        IconButton {
-            nav: "move-down";
-            icon: "M 2.5 5 L 13.5 5 L 8 13 Z";
-            enabled: ReplaysView.tab == 1 && ReplaysView.queue-chosen >= 0 && ReplaysView.queue-chosen < ReplaysView.queue.length - 1;
-        }
+    IconButton {
+        x: move-up.x + move-up.width + 12px;
+        y: watch-from.y;
+        visible: ReplaysView.tab == 1;
+        nav: "move-down";
+        icon: "M 2.5 5 L 13.5 5 L 8 13 Z";
+        enabled: ReplaysView.tab == 1 && ReplaysView.queue-chosen >= 0 && ReplaysView.queue-chosen < ReplaysView.queue.length - 1;
     }
 
     Button {
-        x: parent.width - 16px - self.width;
-        y: parent.height - 56px;
+        x: root.beside ? root.pad : parent.width - 16px - self.width;
+        y: root.beside ? root.row-2 : parent.height - 56px;
+        width: root.beside ? root.inner : self.natural-width;
         visible: ReplaysView.tab == 1;
         nav: "remove";
         text: I18n.upper(@tr("Remove"));
@@ -794,10 +834,12 @@ component DetailSheet inherits Rectangle {
 // its start) and CLEAR over the queue. The other tab's parts are hidden and passed by.
 component ListPage inherits Page {
     property <bool> queue: ReplaysView.tab == 1;
-    property <length> list-width: Theme.phone ? self.body-width : 600px;
+    // (On a phone held sideways, docs/design/app-ui.md §2.103: the tabs in the header's row after the title, the list
+    // at the left and the replay's panel beside it.)
+    property <length> list-width: Theme.phone ? self.body-width : Theme.sideways ? (self.body-width - 12px) / 2 + 24px : 600px;
     // (The tabs, then the filter at the search's right; on a phone under it.)
-    property <length> top: 52px;
-    property <length> filter-room: ReplaysView.kinds && !Theme.phone ? 232px : 0px;
+    property <length> top: Theme.sideways ? 0px : 52px;
+    property <length> filter-room: ReplaysView.kinds && !Theme.phone ? (Theme.sideways ? kind.width + 8px : 232px) : 0px;
     property <length> list-top: root.top + (ReplaysView.kinds && Theme.phone && !root.queue ? 96px : 52px);
     title: I18n.upper(@tr("Replays"));
     back: I18n.upper(@tr("Menu"));
@@ -819,9 +861,10 @@ component ListPage inherits Page {
     Arrive {
         order: 0;
         TabBar {
-            x: Theme.phone ? -8px : 0px;
-            y: 0;
-            width: root.list-width + (Theme.phone ? 16px : 0px);
+            x: Theme.phone ? -8px : Theme.sideways ? root.header-room-x : 0px;
+            y: Theme.sideways ? root.header-top + (Theme.header - self.height) / 2 : 0px;
+            width: Theme.sideways ? root.header-room-width : root.list-width + (Theme.phone ? 16px : 0px);
+            headed: Theme.sideways;
             nav: "tab";
             // (The Queue tab only while the queue holds something.)
             tabs: ReplaysView.queue.length > 0 ? [{ text: I18n.upper(@tr("Replays")), enabled: true, flagged: false }, { text: I18n.upper(@tr("Queue")), enabled: true, flagged: false }] : [{ text: I18n.upper(@tr("Replays")), enabled: true, flagged: false }];
@@ -840,7 +883,7 @@ component ListPage inherits Page {
         }
 
         // (Hidden, not under an `if`: a small part, docs/app.md §14.)
-        Seg {
+        kind := Seg {
             x: Theme.phone ? 0px : root.list-width - self.width;
             y: root.top + (Theme.phone ? 50px : 2px);
             visible: ReplaysView.kinds && !root.queue;
@@ -944,9 +987,9 @@ component ListPage inherits Page {
     Arrive {
         order: 1;
         if !Theme.phone: DetailPanel {
-            x: 624px;
+            x: Theme.sideways ? root.list-width + 12px : 624px;
             y: 0;
-            width: root.body-width - 624px;
+            width: root.body-width - self.x;
             height: root.body-height;
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
@@ -1062,8 +1105,8 @@ component SeekBar inherits Rectangle {
 
     // (A phone's reaches 10 over and under the bar: 44 tall.)
     drag := TouchArea {
-        y: Theme.phone ? -10px : 0px;
-        height: root.height + (Theme.phone ? 20px : 0px);
+        y: Theme.handheld ? -10px : 0px;
+        height: root.height + (Theme.handheld ? 20px : 0px);
         // (The handle the pointer is on: within 8 of one, the nearer; two at one place, by the side it is on.)
         property <length> to-start: abs(self.mouse-x - root.from);
         property <length> to-end: abs(self.mouse-x - root.to);
@@ -1117,7 +1160,7 @@ component SeekBar inherits Rectangle {
         y: -self.height - 12px;
         width: 242px;
         height: 188px;
-        visible: drag.has-hover && !Theme.phone;
+        visible: drag.has-hover && !Theme.handheld;
         background: Theme.panel;
         border-width: 1px;
         border-color: Theme.line;
@@ -1227,7 +1270,7 @@ component Transport inherits Rectangle {
         x: root.edge;
         y: root.buttons-y;
         width: 144px;
-        height: root.phone ? 44px : 40px;
+        height: Theme.handheld ? 44px : 40px;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
@@ -1687,8 +1730,9 @@ export component ReplaysScreen inherits Rectangle {
 // press or a click on them or between them puts them away (as do the ⋯ menu's BUILDS, B, Select and Esc).
 component ViewerBuilds inherits Rectangle {
     property <length> top: Theme.header + (Theme.phone ? 0px : 12px);
-    property <length> foot: Theme.phone ? Theme.header + 44px + self.width * 2 / 3 : self.height - Theme.footer - 24px - 108px - 12px - (ReplaysView.exporting ? 120px : 0px);
-    property <length> sheet-width: Theme.phone ? page.view-width : 430px;
+    property <length> foot: Theme.phone ? Theme.header + 44px + self.width * 2 / 3 : self.height - Theme.footer - (Theme.sideways ? 12px : 24px) - 108px - 12px - (ReplaysView.exporting ? 120px : 0px);
+    // (Sideways each half the page, less the gap between them: the narrow sheet, one column of stats and chips.)
+    property <length> sheet-width: Theme.phone ? page.view-width : Theme.sideways ? (page.view-width - 12px) / 2 : 430px;
     Rectangle {
         y: root.top;
         height: root.foot - root.top;
@@ -1796,7 +1840,7 @@ component UpNextPopup inherits Rectangle {
         // (A switch: its knob a triangle at the right while on, a square at the left while off.)
         autoplay := IconButton {
             x: parent.width - 16px - self.width;
-            y: Theme.phone ? 10px : 8px;
+            y: Theme.handheld ? 10px : 8px;
             nav: "upnext.autoplay";
             icon: ReplaysView.autoplay ? "M 1 4 h 14 v 8 h -14 Z M 2.5 5.5 v 5 h 11 v -5 Z M 9 6.5 L 12.5 8 L 9 9.5 Z" : "M 1 4 h 14 v 8 h -14 Z M 2.5 5.5 v 5 h 11 v -5 Z M 3.5 6.5 h 3 v 3 h -3 Z";
             lit: ReplaysView.autoplay;

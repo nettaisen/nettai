@@ -1838,13 +1838,13 @@ impl Screen for Play {
             "menu.controls" => self.set_page(shell, MatchPage::Controls),
             "menu.settings" => self.set_page(shell, MatchPage::Settings),
             "menu.back" => self.set_page(shell, MatchPage::Menu),
-            "menu.delay" => {}
+            "menu.set.delay" => {}
             // (The settings and the controls as the Settings screen changes them.)
-            "menu.language" => settings::pick_language(shell, id),
-            "menu.picture" => settings::pick_picture_size(shell, id),
-            "menu.fullscreen" => self.set_full_screen(shell, !shell.settings.full_screen),
-            "menu.graphics" => self.set_enhanced(shell, !shell.settings.enhanced),
-            "menu.key" | "menu.button" => self.binding.ask(shell, index, id == "menu.button"),
+            "menu.set.language" => settings::pick_language(shell, id),
+            "menu.set.picture" => settings::pick_picture_size(shell, id),
+            "menu.set.fullscreen" => self.set_full_screen(shell, !shell.settings.full_screen),
+            "menu.set.graphics" => self.set_enhanced(shell, !shell.settings.enhanced),
+            "menu.keys.key" | "menu.keys.button" => self.binding.ask(shell, index, id == "menu.keys.button"),
             "menu.reset" => {
                 self.binding.reset(shell);
                 self.show_match(shell);
@@ -1876,17 +1876,17 @@ impl Screen for Play {
             "lobby.open" => self.set_open(shell, by > 0),
             "lobby.custom-time" => self.step_custom_time(shell, by),
             "lobby.ruleset" => self.pick_ruleset(shell, 0, by),
-            "lobby.delay" | "menu.delay" => self.set_delay(shell, by),
-            "menu.music" => self.set_levels(shell, (shell.settings.music as i32 + 5 * by).clamp(0, 100) as u32, shell.settings.effects),
-            "menu.effects" => self.set_levels(shell, shell.settings.music, (shell.settings.effects as i32 + 5 * by).clamp(0, 100) as u32),
-            "menu.language" => settings::set_language(shell, crate::lang::step(shell.i18n.code, by)),
-            "menu.picture" => {
+            "lobby.delay" | "menu.set.delay" => self.set_delay(shell, by),
+            "menu.set.music" => self.set_levels(shell, (shell.settings.music as i32 + 5 * by).clamp(0, 100) as u32, shell.settings.effects),
+            "menu.set.effects" => self.set_levels(shell, shell.settings.music, (shell.settings.effects as i32 + 5 * by).clamp(0, 100) as u32),
+            "menu.set.language" => settings::set_language(shell, crate::lang::step(shell.i18n.code, by)),
+            "menu.set.picture" => {
                 settings::step_picture_size(shell, by);
                 self.show_match(shell);
             }
-            "menu.fullscreen" => self.set_full_screen(shell, by > 0),
+            "menu.set.fullscreen" => self.set_full_screen(shell, by > 0),
             // (Enhanced is the first of the two.)
-            "menu.graphics" => self.set_enhanced(shell, by < 0),
+            "menu.set.graphics" => self.set_enhanced(shell, by < 0),
             "name.version" => self.step_version(shell, by),
             _ => {}
         }
@@ -1905,15 +1905,15 @@ impl Screen for Play {
             "name.version" => self.choose_version(shell, choice.max(0) as usize),
             "lobby.open" => self.set_open(shell, choice == 1),
             "lobby.ruleset" => self.pick_ruleset(shell, choice, 0),
-            "menu.music" => self.set_levels(shell, choice.clamp(0, 100) as u32, shell.settings.effects),
-            "menu.effects" => self.set_levels(shell, shell.settings.music, choice.clamp(0, 100) as u32),
-            "menu.language" => settings::choose_language(shell, choice),
-            "menu.picture" => {
+            "menu.set.music" => self.set_levels(shell, choice.clamp(0, 100) as u32, shell.settings.effects),
+            "menu.set.effects" => self.set_levels(shell, shell.settings.music, choice.clamp(0, 100) as u32),
+            "menu.set.language" => settings::choose_language(shell, choice),
+            "menu.set.picture" => {
                 settings::set_picture_size(shell, choice.max(0) as u32);
                 self.show_match(shell);
             }
-            "menu.fullscreen" => self.set_full_screen(shell, choice == 1),
-            "menu.graphics" => self.set_enhanced(shell, choice == 0),
+            "menu.set.fullscreen" => self.set_full_screen(shell, choice == 1),
+            "menu.set.graphics" => self.set_enhanced(shell, choice == 0),
             _ => {}
         }
     }
