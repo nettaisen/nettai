@@ -2898,7 +2898,9 @@ asks, and while it sends; §17), `practice`, `builds`, `build-tabs`,
 `party` (the Party tab, with `NETTAI_TOUR_GAME=exe5`: the ruleset page's party pages, the slots and the library that
 follows them, every drag it takes, each let go and checked, the held states shot, and Patch cards' library and the
 NaviCust's list beside it for comparing; on a phone, the slots and the navis' sheet), `play` and `replays`; `play` or `replays` named alone walks Play's or Replays' steps alone. (The pass reads the ROMs `$NETTAI_ROMS`
-names, and the missing collection's screens are set on the view.)
+names, and the missing collection's screens are set on the view. The loading screen is held up for the shots
+that show it alone, `loading`'s and the collection's and the computer nearby's, and let go after each, so that the
+screens after them are shown whatever parts are walked.)
 
 **A picture's name says what it is of, and the pass doesn't check that**: it checks what moves between a pair
 and what is cut. Two things went unseen that way, and each now has its check.

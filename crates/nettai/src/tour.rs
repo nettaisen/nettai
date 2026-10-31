@@ -384,20 +384,28 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     }
     taking.set(walks("shell"));
 
-    // Loading, as the app starts.
+    // Loading, as the app starts; let go after its shot, so that the screens after it are shown whatever parts are
+    // walked.
     add(
         SETTLE,
         Box::new(|_, app, _| app.borrow_mut().shell.hold_loading = Some(0.62)),
     );
     shot(&mut add, "loading", Pair::None);
+    add(
+        SETTLE,
+        Box::new(|_, app, _| app.borrow_mut().shell.hold_loading = None),
+    );
 
-    // No game, the Legacy Collection not found (the pass reads no ROMs, so it is set on the view): the way to its
-    // folder under the error's line; then the error's dialog, where a game can be played.
-    // (`NETTAI_TOUR_ONLY=collection`: these alone.)
+    // No game, the Legacy Collection not found (the pass reads no ROMs, so it is set on the view, the loading screen
+    // held up as the app has it): the way to its folder under the error's line; then the error's dialog, where a game
+    // can be played. (`NETTAI_TOUR_ONLY=collection`: these alone.)
     taking.set(walks("collection"));
     add(
         SETTLE,
-        Box::new(|ui, _, _| ui.global::<nettai_ui::Shell>().set_no_games(true)),
+        Box::new(|ui, app, _| {
+            app.borrow_mut().shell.hold_loading = Some(0.62);
+            ui.global::<nettai_ui::Shell>().set_no_games(true);
+        }),
     );
     shot(&mut add, "no-legacy-collection", Pair::None);
     add(
