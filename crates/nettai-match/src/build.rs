@@ -1205,7 +1205,7 @@ pub fn sorted(content: &Content, chips: &[ChipInfo], sort: Sort, descending: boo
     let mut rows: Vec<(&ChipInfo, ChipCode)> = chips.iter().flat_map(|c| c.codes.iter().map(move |&code| (c, code))).collect();
     rows.sort_by(|(a, x), (b, y)| {
         let first = match sort {
-            Sort::Library => std::cmp::Ordering::Equal,
+            Sort::Library => by_library(content, a, b),
             Sort::Name => names[&a.chip].cmp(&names[&b.chip]),
             Sort::Code => x.0.cmp(&y.0),
             Sort::Mb => a.mb.cmp(&b.mb),
@@ -1761,6 +1761,10 @@ mod tests {
         assert_eq!(rows[..4].iter().map(|c| (c.id, c.code.letter())).collect::<Vec<_>>(), [(chip("cannon"), 'A'), (chip("cannon"), 'B'), (chip("cannon"), 'C'), (chip("cannon"), '*')]);
         assert_eq!(rows.len(), chips.iter().map(|c| c.codes.len()).sum::<usize>());
         let by = |sort: Sort, descending: bool| sorted(&content, &chips, sort, descending, &name);
+        // The other way, the library's order is the other way too (each chip's codes still A to Z).
+        let back = by(Sort::Library, true);
+        assert_eq!(back.iter().map(|c| c.id).collect::<Vec<_>>(), rows.iter().rev().map(|c| c.id).collect::<Vec<_>>());
+        assert_eq!(back.iter().rev().take(4).map(|c| c.code.letter()).collect::<String>(), "*CBA");
         let mb = |c: &FolderChip| content.chip(c.id).mb;
         assert!(by(Sort::Mb, false).windows(2).all(|w| mb(&w[0]) <= mb(&w[1])));
         assert!(by(Sort::Mb, true).windows(2).all(|w| mb(&w[0]) >= mb(&w[1])));
