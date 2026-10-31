@@ -2335,10 +2335,17 @@ a move; a patch card with the focus left in the library, as after a click).
   a click there (`tabs-navicust-put-back`: back where it was, the board as it was). On a phone, the folder's drag, with
   the mouse (the pass has no touches to give).
 
-**On a phone** each of the three is one column: the NaviCust's board over its key, the effects and the bugs a line
-each, then the programs; the patch cards' counts, their cards and Together, with the library as a sheet from the
-bottom (`PatchCardsOverlay`, with UP, DOWN and REMOVE, or EMPTY); the auto battle's places, one column, with
-the library as a sheet (`AutoBattleOverlay`, with REMOVE). The strips are left out, as the folder's is.
+**On a phone** each of the three is one column: the NaviCust's board over its key, a line of why the piece in hand
+wasn't put down (else what the game's rules have against the NaviCust), the effects and the bugs a line each, then
+PROGRAMS, the tab's width, which opens the programs (their title and those problems, the search, the list) as a
+sheet from the bottom (`NavicustOverlay`, its controls' names `programs…`); a program taken shuts it, the piece in
+hand over the board, and with a piece in hand the button is PUT AWAY (it puts the piece away into the list, as a
+click on the list does). The board's cells are as large as the width takes (41 on EXE6's seven columns, 58 on a
+5x5), or on a phone too short for all that (a tab under about 540 units: an iPhone SE's is about that) as large as
+leaves it room (on seven columns 40 at 533 units, 36 at 508; a 5x5's 52 to 58, by its key's lines). The patch cards'
+counts, their cards and Together, with the library as a sheet from the bottom (`PatchCardsOverlay`, with UP, DOWN
+and REMOVE, or EMPTY); the auto battle's places, one column, with the library as a sheet (`AutoBattleOverlay`, with
+REMOVE). The strips are left out, as the folder's is.
 
 `crates/nettai/src/builds/` keeps the parts they share with no screen's code: the NaviCust's grid (`grid`),
 the patch cards' lines (`cards`), the auto battle data (`auto`), a list's edits (`edit`) and the library's order

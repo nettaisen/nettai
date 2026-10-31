@@ -48,6 +48,14 @@
 //! piece comes under the pointer). A right click puts the piece in hand away, however it was taken, or takes off the
 //! piece under the pointer. A key moves the piece in hand from where it is, and the pointer's next move takes it back
 //! under the pointer.
+//!
+//! **On a phone the list is a sheet** (the user: "the navicust part selection gets cut off on smaller screens"): the
+//! board, its key, the line of why a piece wasn't put down (else what the rules have against the NaviCust) and the
+//! effects' and bugs' lines keep the tab, its cells smaller on a phone too short for them all, and under them PROGRAMS
+//! (`open-programs`) opens the list, its search and its title as a sheet from the bottom (`NavicustOverlay`), the keys
+//! held to them while it is open (its controls' names begin with `programs`). A program taken from it shuts it, the
+//! piece in hand over the board, which taps put down as before; a tap on the shade or Back shuts it with nothing
+//! taken. With a piece in hand PROGRAMS is PUT AWAY, which puts it away into the list, as a click on the list does.
 
 use crate::builds::grid::{self, Edit, GridData, Held, tone};
 use crate::builds::overview;
@@ -63,7 +71,7 @@ use nettai_match::build::{Checked, Overview, Stat};
 use nettai_match::ruleset::Item;
 use nettai_ui::{BuildWords, CellKind, Crossing, ColorSlot, EditorTab, EffectKind, EffectLine, GridCell, NavicustView, PieceCell, ProgramColor, ProgramDetail, ProgramRow, ProgramState};
 use i_slint_backend_winit::winit::keyboard::KeyCode;
-use slint::{ComponentHandle, ModelRc, SharedString, VecModel};
+use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -88,6 +96,11 @@ const NOTCH: i32 = 40;
 
 /// The most letters the programs' search has.
 const SEARCH_LENGTH: usize = 24;
+
+/// A phone's sheet of the programs: what its controls' names begin with (the list's `programs`, its search's
+/// `programs.search`), and the tab's button that opens it.
+const SHEET: &str = "programs";
+const OPEN: &str = "open-programs";
 
 #[derive(Default)]
 pub struct Navicust {
@@ -589,6 +602,8 @@ impl Navicust {
             self.show_board(shell, draft);
             self.show_list(shell, draft);
         }
+        // (A phone's sheet shuts: the piece in hand is over the board.)
+        self.close_sheet(shell);
         shell.nav.focus("cell", self.index_of(self.at));
     }
 
@@ -661,7 +676,11 @@ impl Navicust {
             shell.sound.play(Cue::Back);
         }
         self.changed(shell, draft);
-        shell.nav.focus("programs", 0);
+        if shell.scale.phone {
+            shell.nav.focus(OPEN, 0);
+        } else {
+            shell.nav.focus("programs", 0);
+        }
     }
 
     /// The last copy on the board of row `row`'s program, in its color.
@@ -865,6 +884,28 @@ impl Navicust {
         self.show_strip(shell, draft);
     }
 
+    /// A phone's sheet of the programs opens, the focus on the list's first row (on its search, where the list is
+    /// empty).
+    fn open_sheet(&mut self, shell: &mut Shell) {
+        let ui = shell.ui();
+        let view = ui.global::<NavicustView>();
+        let to = if view.get_programs().row_count() == 0 { crate::nav::Key::new("programs.search", 0) } else { crate::nav::Key::new("programs", 0) };
+        view.set_sheet(true);
+        shell.nav.open(SHEET, to);
+    }
+
+    /// The sheet shuts, if it is open (the focus back where it was under it): whether it was.
+    fn close_sheet(&mut self, shell: &mut Shell) -> bool {
+        let ui = shell.ui();
+        let view = ui.global::<NavicustView>();
+        if !view.get_sheet() {
+            return false;
+        }
+        view.set_sheet(false);
+        shell.nav.close(SHEET);
+        true
+    }
+
     /// The list's row the cursor is on, if it is on one.
     fn focused_row(&self, shell: &Shell) -> Option<usize> {
         shell.nav.focused().filter(|k| k.id == "programs").map(|k| k.index.max(0) as usize)
@@ -970,12 +1011,12 @@ impl Tab for Navicust {
         self.changed(shell, draft);
     }
 
-    /// A piece in hand isn't lost: one picked up off the board goes back where it was.
+    /// A piece in hand isn't lost: one picked up off the board goes back where it was. A phone's sheet shuts.
     fn hide(&mut self, shell: &mut Shell, draft: &mut Draft) {
         self.let_go(draft);
         self.notice = None;
         self.hovered = None;
-        let _ = shell;
+        self.close_sheet(shell);
     }
 
     /// Enter on a program's row takes a new copy of it in hand, however many are placed (Del takes the last one
@@ -990,6 +1031,13 @@ impl Tab for Navicust {
             "clear" => {
                 let question = shell.ui().global::<NavicustView>().get_clear_question();
                 editor::ask_clear(shell, question, self.empty(draft));
+            }
+            // (A phone's PROGRAMS: the list's sheet; with a piece in hand, PUT AWAY. A tap on the sheet's shade shuts
+            // it.)
+            OPEN if self.held.is_some() => self.put_away(shell, draft),
+            OPEN => self.open_sheet(shell),
+            "programs.close" => {
+                self.close_sheet(shell);
             }
             _ => {}
         }
@@ -1121,8 +1169,11 @@ impl Tab for Navicust {
         true
     }
 
-    /// Back (Esc, the pad's east button) with a piece in hand puts it away into the list.
+    /// Back (Esc, the pad's east button) shuts a phone's sheet; with a piece in hand it puts it away into the list.
     fn back(&mut self, shell: &mut Shell, draft: &mut Draft) -> bool {
+        if self.close_sheet(shell) {
+            return true;
+        }
         if self.held.is_none() {
             return false;
         }

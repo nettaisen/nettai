@@ -1776,6 +1776,11 @@ Each is settled unless the user changes it.
        library's sort direction (docs/app.md §11). The lists' rows (40, 42 apart), the tab bar's tabs (40) and the
        small words on a line (ALL and NONE, CLEAR: 28) are short of it still: making them 44 moves what is around
        them, which is the user's to choose.
+     - *The NaviCust tab* stacked the board, its key, its lines, then PROGRAMS and the list, which got what was left:
+       one row on an iPhone 16, none on an iPhone SE ("the navicust part selection gets cut off on smaller
+       screens"). The list is a sheet now, as the folder's library is: PROGRAMS under the lines opens it, a program
+       taken shuts it with the piece in hand over the board, and while one is in hand the button is PUT AWAY. The
+       board's cells shrink on a phone too short for the rest under it.
 
 ## 3. Chosen where the user gave no answer
 
@@ -2264,7 +2269,8 @@ DUPLICATE and DELETE.
   error red, the row dimmed (the ruleset holds it back: it isn't taken, the strip's top right saying so; a copy a
   build has placed all the same is red, §2.68); then at the row's right edge
   its colors as small boxes where it has more than one, Left and Right choosing, a click or a tap choosing it alone (§2.72); its name in the error red where a placed copy has a problem, which the strip's top right
-  says of the program it describes, §2.66; a phone's PROGRAMS' line), and CLEAR at the right end of the board's pane's
+  says of the program it describes, §2.66; a phone's line under the key and its sheet's title's line), and CLEAR at
+  the right end of the board's pane's
   header, NAVICUST (§2.72), which takes every placed program off the board, asked first (X; §2.71); after NAVICUST
   the color bar, as the game's: its slots (the colors the game's rules place without a bug) each a color placed, in
   the order placed, or empty, the colors past them spilling out of its frame (the color bug; §2.76); Effects and Bugs at
@@ -2284,7 +2290,10 @@ DUPLICATE and DELETE.
   last copy off (§2.26). The mouse carries a piece by clicks (§2.38): a click takes up a placed piece or a new copy
   from a program's row, the piece follows the pointer with no button held, and a click puts it down; a click on the
   list puts it away (the list shows CLICK TO PUT AWAY while the pointer is over it), a click anywhere else off the
-  board puts it back where it was; a right click puts it away, or takes off the piece under the pointer.
+  board puts it back where it was; a right click puts it away, or takes off the piece under the pointer. On a phone
+  (§2.102) the board, its key, the line of why a piece wasn't put down and the effects' and bugs' lines keep the tab
+  (its cells smaller on a phone too short for all of them), and under them PROGRAMS opens the list as a sheet from the
+  bottom: a program taken shuts it, the piece in hand over the board; with a piece in hand the button is PUT AWAY.
 - **Patch cards** (§2.19, §2.20, §2.64): the folder's shape. EXE5 and EXE6: the installed cards in order in the
   framed panel, rows as the folder's (number, name, its version's mark, MB), Cards and MB used in its header (a phone's
   with what the game's rules have against the cards after them) and CLEAR at its right end, which takes every card
@@ -2436,11 +2445,12 @@ files beside it in a panel, scrolling (§2.25). On a phone the list is the page 
 the bottom.
 
 ### On a phone
-One column; pickers, the chip library and the navis open as sheets from the bottom; what is tapped is 44 by 44 at
-least (a control drawn smaller takes a tap past its box: §2.102), but a list's rows, the tabs and the small words on
-a line; no key hints, and the cursor only with a pad or keyboard connected; in battle the pad is drawn under the
-picture and START and MENU open the same menus. Held sideways, a phone uses the desktop layout. Where a screen
-doesn't fit a short phone, its lists take the height that is left: nothing scrolls the whole screen (§2.98).
+One column; pickers, the chip library, the NaviCust's programs and the navis open as sheets from the bottom; what is
+tapped is 44 by 44 at least (a control drawn smaller takes a tap past its box: §2.102), but a list's rows, the tabs
+and the small words on a line; no key hints, and the cursor only with a pad or keyboard connected; in battle the pad
+is drawn under the picture and START and MENU open the same menus. Held sideways, a phone uses the desktop layout.
+Where a screen doesn't fit a short phone, its lists take the height that is left: nothing scrolls the whole screen
+(§2.98).
 
 ## 7. Errors the player can see
 

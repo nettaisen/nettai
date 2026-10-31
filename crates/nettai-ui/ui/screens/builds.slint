@@ -16,7 +16,7 @@ import { Tween } from "../motion.slint";
 import { VersionTag } from "../build.slint";
 import { NaviView, NaviTab, NaviOverlay } from "builds/navi.slint";
 import { FolderView, FolderTab, FolderOverlay } from "builds/folder.slint";
-import { NavicustView, NavicustTab } from "builds/navicust.slint";
+import { NavicustView, NavicustTab, NavicustOverlay } from "builds/navicust.slint";
 import { PatchCardsView, PatchCardsTab, PatchCardsOverlay } from "builds/patch_cards.slint";
 import { AutoBattleView, AutoBattleTab, AutoBattleOverlay } from "builds/auto_battle.slint";
 import { PartyView, PartyTab, PartyOverlay } from "builds/party.slint";
@@ -198,10 +198,14 @@ export component BuildsScreen inherits Page {
     }
 }
 
-// What opens over the editor: on a phone the Navi tab's, the Folder's, the Patch cards', the Auto battle and the Party tab's
-// sheets. It covers the whole window, over the screen and under the shell's own dialogs; empty, it takes no clicks.
+// What opens over the editor: on a phone the Navi tab's, the Folder's, the NaviCust's, the Patch cards', the Auto battle
+// and the Party tab's sheets. It covers the whole window, over the screen and under the shell's own dialogs; empty, it
+// takes no clicks.
 export component BuildsOverlay inherits Rectangle {
     if BuildsView.shown == EditorTab.navi && NaviView.sheet: NaviOverlay {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    if BuildsView.shown == EditorTab.navicust && NavicustView.sheet: NavicustOverlay {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
     if BuildsView.shown == EditorTab.folder && FolderView.sheet: FolderOverlay {

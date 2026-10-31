@@ -112,8 +112,31 @@ pub(super) fn take(nth: usize, which: fn(&nettai_ui::ProgramRow) -> bool) -> Ste
         }
         let rows = ui.global::<NavicustView>().get_programs();
         let Some(at) = rows.iter().enumerate().filter(|(_, r)| which(r)).nth(nth).map(|(i, _)| i) else { return };
-        let mut app = app.borrow_mut();
+        take_row(&mut app.borrow_mut(), at);
+    })
+}
+
+/// The NaviCust's list's row `at` taken in hand, as Enter on it does: a phone's list is a sheet, which may be shut, so
+/// there the row is chosen as Enter on it would be, the sheet or not.
+fn take_row(app: &mut App, at: usize) {
+    if app.shell.scale.phone {
+        app.with_screen(ScreenId::Builds, |s, shell| s.activate(shell, "programs", at as i32));
+    } else {
         app.shell.nav.focus("programs", at as i32);
+        app.act(Action::Confirm);
+    }
+}
+
+/// On a phone, the NaviCust's programs' sheet opened by PROGRAMS, where it is shut and no piece is in hand, so the
+/// list's rows are there for the steps after it (a desktop's list is beside the board).
+fn programs() -> Step {
+    Box::new(|ui, app, tour| {
+        let view = ui.global::<NavicustView>();
+        let mut app = app.borrow_mut();
+        if tour.passing.get() || !app.shell.scale.phone || view.get_sheet() || view.get_holding() {
+            return;
+        }
+        app.shell.nav.focus("open-programs", 0);
         app.act(Action::Confirm);
     })
 }
@@ -210,7 +233,9 @@ pub(super) fn program(r: &nettai_ui::ProgramRow) -> bool {
 /// The NaviCust tab's steps.
 fn navicust(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     add(SETTLE, to_tab(EditorTab::Navicust));
-    // The programs' search: a name typed, the list those it finds; cleared.
+    // The programs' search: a name typed, the list those it finds; cleared. (On a phone in their sheet, which a
+    // program taken shuts.)
+    add(SETTLE, programs());
     add(SETTLE, focus("programs.search", 0));
     add(SETTLE, screen(|s, shell| s.edit(shell, "programs.search", 0, "custom", false)));
     shot(add, "tabs-navicust-search", Pair::None);
@@ -283,18 +308,16 @@ fn navicust(add: &mut dyn FnMut(u64, Step), shot: Shot) {
             return;
         }
         let Some(at) = rows.iter().position(|r| r.plus) else { return };
-        {
-            let mut app = app.borrow_mut();
-            app.shell.nav.focus("programs", at as i32);
-            app.act(Action::Confirm);
-        }
+        take_row(&mut app.borrow_mut(), at);
         put_now(ui, app, Spot::Free);
     }));
+    add(SETTLE, programs());
     add(SETTLE, row(|r| r.plus && r.state == nettai_ui::ProgramState::Placed));
     shot(add, "tabs-navicust-row-placed", Pair::None);
     add(SETTLE, act(Action::Confirm));
     shot(add, "tabs-navicust-row-taken", Pair::None);
     add(SETTLE, put(Spot::Free));
+    add(SETTLE, programs());
     add(SETTLE, row(|r| r.copies > 1));
     shot(add, "tabs-navicust-twice", Pair::None);
     add(SETTLE, expect(|ui, _| {
