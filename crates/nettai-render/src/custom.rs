@@ -2313,7 +2313,7 @@ fn form_list_cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<S
     let palette = a.form_list_cursor_palette;
     pieces
         .map(|((dy, dx, hflip, vflip), edge)| SpritePart {
-            x: ((x + dx) & 0x1FF) as u16,
+            x: x + dx,
             y: (y + dy) as u8,
             width: 8,
             height: 8,
@@ -2363,7 +2363,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
         .iter()
         .rev()
         .map(|&(dy, dx, hflip, vflip)| SpritePart {
-            x: ((x - 3 + dx) & 0x1FF) as u16,
+            x: x - 3 + dx,
             y: (y - 3 + dy) as u8,
             width: 8,
             height: 8,
@@ -2405,8 +2405,8 @@ fn drawn_parts<'a>(parts: Vec<SpritePart<'a>>, drawings: &[nettai_assets::shapes
             Some(d) => {
                 let tag = text.tag();
                 tags.push(Some(tag));
-                let (x, y) = (part.x as i32, part.y as i32);
-                let (x, y) = (if x >= 240 { x - 512 } else { x }, if y >= 160 { y - 256 } else { y });
+                let (x, y) = (part.x, part.y as i32);
+                let y = if y >= 160 { y - 256 } else { y };
                 let palette = part.palette;
                 let drawn = crate::shapes::drawn(d, |_, c| palette[c as usize & 15], (part.hflip, part.vflip), None);
                 text.push(Plane::Sprite(tag), crate::shapes::item(drawn, (x, y), (part.width as i32, part.height as i32)));
@@ -2424,7 +2424,7 @@ fn drawn_parts<'a>(parts: Vec<SpritePart<'a>>, drawings: &[nettai_assets::shapes
 /// emblem in its middle, over the picked column, at the window's offset;
 /// nudged while it spins; turned and scaled by its matrix.
 fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> SpritePart<'a> {
-    let mut x = (0x57 - x_slide as i32) & 0x1FF;
+    let mut x = 0x57 - x_slide as i32;
     let mut y = 0xFCi32;
     if (2..=6).contains(&spin) {
         y -= 1;
@@ -2446,7 +2446,7 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
     let q = scale as i32 >> 2;
     let m = |v: i32| (v * q) >> 4;
     SpritePart {
-        x: (x & 0x1FF) as u16,
+        x,
         y: (y & 0xFF) as u8,
         width: 32,
         height: 32,
@@ -2508,7 +2508,7 @@ fn element_part<'a>(v: &View, a: &'a CustomScreen, place: Placement) -> Option<S
         return None;
     }
     Some(SpritePart {
-        x: ((e.x as i32 - place.scroll as i32) & 0x1FF) as u16,
+        x: e.x as i32 - place.scroll as i32,
         y: e.y as u8,
         width: 16,
         height: 16,
@@ -2545,8 +2545,8 @@ fn framed_element<'a>(part: SpritePart<'a>, a: &'a CustomScreen, text: &mut Text
     };
     let tag = text.tag();
     tags.push(Some(tag));
-    let (x, y) = (part.x as i32, part.y as i32);
-    let (x, y) = (if x >= 240 { x - 512 } else { x }, if y >= 160 { y - 256 } else { y });
+    let (x, y) = (part.x, part.y as i32);
+    let y = if y >= 160 { y - 256 } else { y };
     let palette = part.palette;
     let mut drawn = crate::shapes::drawn(d, |_, c| palette[c as usize & 15], (false, false), None);
     drawn.off = symbol_off(a, family);
@@ -2570,7 +2570,7 @@ fn held_part<'a>(v: &View, graphics: &crate::graphics::Graphics<'a>, problems: &
     let chip = v.screen.look.slot_chips[h.chip as usize]?;
     let (tiles, palette) = crate::lookups::chip_icon(graphics, &v.b.content, chip.id, problems)?;
     Some(SpritePart {
-        x: (x & 0x1FF) as u16,
+        x,
         y: (y & 0xFF) as u8,
         width: 16,
         height: 16,
@@ -2592,7 +2592,7 @@ fn held_part<'a>(v: &View, graphics: &crate::graphics::Graphics<'a>, problems: &
 
 fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
     SpritePart {
-        x: (a.layout.regular.0 & 0x1FF) as u16,
+        x: a.layout.regular.0 as i32,
         y: (a.layout.regular.1 & 0xFF) as u8,
         width: 32,
         height: 32,
@@ -2816,10 +2816,9 @@ pub fn draw<'a>(
     if let Some((x, spin)) = drawn.emblem.filter(|_| a.window_emblem.is_none()) {
         let part = emblem_part(&v, emblem, x, spin);
         if let Some(why) = known_emblem(b, graphics, side) {
-            // (Where the sprite is, its coordinates wrapped as the
-            // hardware's.)
-            let (x, y) = (part.x as i32, part.y as i32);
-            problems.known(if x >= 240 { x - 512 } else { x }, if y >= 160 { y - 256 } else { y }, 32, 32, why);
+            // (Where the sprite is, its row wrapped as the hardware's.)
+            let y = part.y as i32;
+            problems.known(part.x, if y >= 160 { y - 256 } else { y }, 32, 32, why);
         }
         queue.push(part);
         sprite_ends(&queue);

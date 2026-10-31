@@ -164,9 +164,9 @@ impl Overlay {
             Reading::Turned(m) if m.double => (2 * w, 2 * h),
             _ => (w, h),
         };
-        // (Its place wrapped as the hardware's, where `wide` puts it.)
+        // (Its place as `wide` reads it, where `wide` puts it.)
         let origin = wide.origin(part.anchor);
-        let x = crate::compose::sprite_x(part.x, bw, origin) + origin;
+        let x = crate::compose::sprite_x(part.x, bw, wide) + origin;
         let y = if part.y as i32 + bh > 0x100 { part.y as i32 - 0x100 } else { part.y as i32 };
         Some(Overlay { x, y, width: bw, height: bh, texture_width: w, texels, reading, depth, fine })
     }

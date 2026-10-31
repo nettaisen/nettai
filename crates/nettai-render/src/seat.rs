@@ -341,7 +341,7 @@ impl Mirror {
                 for p in parts.iter_mut() {
                     let box_width = p.width as i32 * if p.affine.is_some_and(|m| m.double) { 2 } else { 1 };
                     let [a, b] = part_ink(p).unwrap_or([0, box_width]);
-                    p.x = ((WIDTH as i32 - part_x(p) - a - b) & 0x1FF) as u16;
+                    p.x = WIDTH as i32 - p.x - a - b;
                 }
             }
         }
@@ -474,11 +474,9 @@ pub fn ink_span(parts: &[SpritePart]) -> Option<(i32, i32)> {
     spans.reduce(|(a0, a1), (b0, b1)| (a0.min(b0), a1.max(b1)))
 }
 
-/// The screen x of a sprite part (its coordinate wrapped as the
-/// hardware's: 0 to 511).
+/// The screen x of a sprite part (its column on the original's screen).
 pub fn part_x(p: &SpritePart) -> i32 {
-    let x = p.x as i32 & 0x1FF;
-    if x >= 256 { x - 512 } else { x }
+    p.x
 }
 
 /// Move sprite parts and their text items `dx` pixels right: a piece laid
@@ -488,7 +486,7 @@ pub fn move_parts(parts: &mut [SpritePart], items: &mut [TextItem], dx: i32) {
         return;
     }
     for p in parts {
-        p.x = ((part_x(p) + dx) & 0x1FF) as u16;
+        p.x += dx;
     }
     for item in items {
         item.rect = item.rect.offset(dx, 0);

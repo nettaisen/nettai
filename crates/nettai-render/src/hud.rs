@@ -1497,7 +1497,7 @@ fn warning_parts<'a>(b: &Battle, hud: &'a Hud, view: &View, seat: Seat, list: &m
         let part = SpritePart { first_tile: frame, priority: 0, ..block(&hud.warning, 16, 16, hud.warning_palette, x, y) };
         // (A place's mirrored as its arrow's pixels are, upright.)
         let shift = if w.at.is_some() { seat.ink_shift(std::slice::from_ref(&part), x, 16) } else { 0 };
-        let part = SpritePart { x: ((x + shift) & 0x1FF) as u16, ..part };
+        let part = SpritePart { x: x + shift, ..part };
         list.insert_placed(FRONT_LAYER, 0, vec![part], None, fine);
     }
 }
@@ -1759,7 +1759,7 @@ fn line_under(glyphs: &[u16], over: &[u16], width: usize) -> Vec<u16> {
 /// An 8x16 glyph (tiles 2k and 2k + 1 of `tiles`) as a sprite.
 fn glyph(tiles: &Tiles, k: usize, palette: Palette, x: i32, y: i32, priority: u8, vscale: Option<i32>) -> SpritePart<'_> {
     SpritePart {
-        x: (x & 0x1FF) as u16,
+        x,
         y: y as u8,
         width: 8,
         height: 16,
@@ -2761,8 +2761,8 @@ mod tests {
         // 15 are, then "x2".
         let mut parts = Vec::new();
         telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &TextSink::original(), &mut problems);
-        let xs: Vec<u16> = parts.iter().map(|p| p.x).collect();
-        assert_eq!(xs, (0..15).map(|i| 8 + 8 * i).collect::<Vec<u16>>());
+        let xs: Vec<i32> = parts.iter().map(|p| p.x).collect();
+        assert_eq!(xs, (0..15).map(|i| 8 + 8 * i).collect::<Vec<i32>>());
         assert!(parts.iter().all(|p| p.y == 32 && p.priority == 0 && p.vscale.is_some()));
         let name: Vec<usize> = parts[..7].iter().map(|p| p.first_tile).collect();
         assert_eq!(name, "SunGun3".chars().map(glyph_of).collect::<Vec<_>>());
@@ -2917,8 +2917,8 @@ mod tests {
         let item = telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &text, &mut problems).name.into_iter().next().unwrap();
         // The same parts where the original's go (so the sprite limit
         // counts the same), the name's blank; the item in the name's cells.
-        let xs: Vec<u16> = parts.iter().map(|p| p.x).collect();
-        assert_eq!(xs, (0..15).map(|i| 8 + 8 * i).collect::<Vec<u16>>());
+        let xs: Vec<i32> = parts.iter().map(|p| p.x).collect();
+        assert_eq!(xs, (0..15).map(|i| 8 + 8 * i).collect::<Vec<i32>>());
         assert!(parts[..7].iter().all(|p| p.tiles.pixels.iter().all(|&v| v == 0)));
         // (Its numbers in the numbers' font: their parts blank too.)
         assert!(parts[7..].iter().all(|p| p.tiles.pixels.iter().all(|&v| v == 0)));

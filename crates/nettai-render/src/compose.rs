@@ -98,15 +98,17 @@ impl Wide {
     }
 }
 
-/// A sprite part's X on the original's screen from its 9-bit coordinate,
-/// `span` columns wide, for a frame whose column 0 is that screen's column
-/// `-left` (`Wide::origin`): a part that reaches past 512 wraps to the left
-/// of the screen, as the hardware has it, and so does one that reaches past
-/// 512 less the columns the frame shows left of that screen (where its
-/// coordinate read as left of the screen shows it there).
-pub fn sprite_x(x: u16, span: i32, left: i32) -> i32 {
-    let x = x as i32 & 0x1FF;
-    if x + span > 0x200 - left { x - 0x200 } else { x }
+/// A sprite part's X on the original's screen, `span` columns wide, as
+/// `wide` draws it: the original's 240 columns read its coordinate as the
+/// hardware does (9 bits: a part that reaches past 512 wraps to the left of
+/// the screen); a wider frame draws it where it is, its coordinate
+/// unwrapped, as no 512 columns hold all that frame shows.
+pub fn sprite_x(x: i32, span: i32, wide: Wide) -> i32 {
+    if wide.width > WIDTH {
+        return x;
+    }
+    let x = x & 0x1FF;
+    if x + span > 0x200 { x - 0x200 } else { x }
 }
 
 /// A layer of tiles as wide as the frame (the field, the background, the
@@ -316,8 +318,10 @@ impl Layer {
 /// One sprite part as the original's hardware would draw it.
 #[derive(Clone)]
 pub struct SpritePart<'a> {
-    /// Screen position, wrapped like the original's (x 0..512, y 0..256).
-    pub x: u16,
+    /// Its column on the original's screen, not wrapped ([`sprite_x`]: the
+    /// original's 240 columns wrap it at 512 as the hardware does), and its
+    /// row, wrapped as the hardware's (0..256).
+    pub x: i32,
     pub y: u8,
     pub width: u8,
     pub height: u8,
@@ -602,7 +606,7 @@ fn draw_part(p: &SpritePart, wide: Wide, k: u16, obj: &mut SpriteBuffers) {
         };
         // Horizontal mosaic samples the column at the start of each screen
         // block; the sprite's span extends to the end of its last block.
-        let x0 = sprite_x(p.x, w, origin);
+        let x0 = sprite_x(p.x, w, wide);
         let span = match mosaic {
             Some(n) => (x0 + w + n - 1).div_euclid(n) * n - x0,
             None => w,
@@ -642,7 +646,7 @@ fn draw_affine(p: &SpritePart, m: Affine, wide: Wide, k: u16, obj: &mut SpriteBu
     let (bw, bh) = if m.double { (2 * w, 2 * h) } else { (w, h) };
     let tiles_per_row = (p.width / 8) as usize;
     let ([c0, c1], origin) = p.placed(wide);
-    let x0 = sprite_x(p.x, bw, origin);
+    let x0 = sprite_x(p.x, bw, wide);
     for by in 0..bh {
         let sy = (p.y as i32 + by) & 0xFF;
         if sy >= HEIGHT as i32 {
@@ -765,20 +769,21 @@ mod tests {
     }
 
     /// On the original's screen a part's coordinate reads as the hardware
-    /// reads it, whatever a wider frame reads it as: the columns it shows
-    /// are the same either way.
+    /// reads it, wrapped at 512; a wider frame draws it where it is, however
+    /// wide (one of 1374 columns shows 567 left of the original's screen).
     #[test]
     fn a_part_reads_as_the_hardware_reads_it_on_the_original_screen() {
-        let shown = |x0: i32, w: i32| (x0.max(0)..(x0 + w).min(WIDTH as i32)).collect::<Vec<i32>>();
         for w in [8, 16, 32, 64, 128] {
-            for x in 0..0x200u16 {
-                let hardware = if x as i32 + w > 0x200 { x as i32 - 0x200 } else { x as i32 };
-                assert_eq!(shown(sprite_x(x, w, 0), w), shown(hardware, w), "x {x}, {w} wide");
+            for x in 0..0x200 {
+                let hardware = if x + w > 0x200 { x - 0x200 } else { x };
+                for unwrapped in [x - 0x400, x - 0x200, x, x + 0x200] {
+                    assert_eq!(sprite_x(unwrapped, w, Wide::ORIGINAL), hardware, "x {unwrapped}, {w} wide");
+                }
             }
         }
-        // (A frame showing 22 columns left of it reads a part 16 left of it
-        // there, which the original's reads past its right edge.)
-        assert_eq!((sprite_x(496, 16, 0), sprite_x(496, 16, 22), sprite_x(300, 16, 22)), (496, -16, 300));
+        for wide in [Wide::new(284), Wide::new(568), Wide::new(1374)] {
+            assert_eq!([-300, -16, 180, 300, 496].map(|x| sprite_x(x, 16, wide)), [-300, -16, 180, 300, 496]);
+        }
     }
 
     /// The battle's sprites past the old edges show in a wider frame, each
@@ -788,11 +793,11 @@ mod tests {
     fn sprites_past_the_old_edges_show() {
         let t = solid_tiles(1, 1);
         // (A shot 4 columns past the right edge, one 6 left of the left
-        // edge (its coordinate wrapped), and a piece kept to the right edge
-        // past the original's right edge.)
+        // edge, and a piece kept to the right edge past the original's
+        // right edge.)
         let parts = [
             part(&t, 244, 0, 2, 0x001F),
-            part(&t, 0x200 - 6, 10, 2, 0x03E0),
+            part(&t, -6, 10, 2, 0x03E0),
             SpritePart { anchor: Anchor::Right, ..part(&t, 236, 20, 2, 0x7C00) },
         ];
         let mut background = Layer::new(3, 1);
@@ -825,7 +830,7 @@ mod tests {
         Tiles { pixels: vec![index; n * Tiles::TILE] }
     }
 
-    fn part(tiles: &Tiles, x: u16, y: u8, prio: u8, color: u16) -> SpritePart<'_> {
+    fn part(tiles: &Tiles, x: i32, y: u8, prio: u8, color: u16) -> SpritePart<'_> {
         let mut palette = [0u16; 16];
         palette[1] = color;
         SpritePart {
@@ -1115,7 +1120,7 @@ mod tests {
             let layers: Vec<&Layer> = layers.iter().collect();
             let parts: Vec<SpritePart> = (0..12)
                 .map(|_| {
-                    let mut p = part(&tiles, (random() % 260) as u16, (random() % 170) as u8, (random() % 4) as u8, (random() & 0x7FFF) as u16);
+                    let mut p = part(&tiles, (random() % 260) as i32, (random() % 170) as u8, (random() % 4) as u8, (random() & 0x7FFF) as u16);
                     (p.width, p.height) = (16, 16);
                     p.first_tile = (random() % 8) as usize;
                     p.palette = std::array::from_fn(|_| (random() & 0x7FFF) as u16);

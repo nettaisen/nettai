@@ -14,9 +14,9 @@ use nettai_render::vfont::TextRenderer;
 use nettai_render::{Consoles, Frame, GraphicsMode};
 use std::path::{Path, PathBuf};
 
-/// The widths the placement is checked at: 16:9 at the frame's height, and a phone held sideways (an odd
-/// column left over).
-const WIDTHS: [usize; 2] = [284, 347];
+/// The widths the placement is checked at: 16:9 at the frame's height, a phone held sideways (an odd column
+/// left over), and a short window on a wide screen (more columns than a sprite's 9-bit X spans).
+const WIDTHS: [usize; 3] = [284, 347, 1374];
 
 /// The keys each match is played with: a chip picked and sent on the first custom screen, then moves and
 /// attacks in the fight (the opponent attacks at random).
@@ -132,8 +132,9 @@ fn items_placed(narrow: &Frame, wide: &Frame, expected: &[(&str, [i32; 4], Ancho
 }
 
 /// The field and the sprites on it are the 240-column frame's moved to the middle: of the stage's and the
-/// sprites' pixels in a box of the original's screen (x, y, w, h), where the wide frame shows the same kind of
-/// thing at the moved place, nearly all match (what a HUD piece kept to an edge uncovers or covers differs).
+/// sprites' pixels in a box of the original's screen (x, y, w, h), where the wide frame shows no HUD at the
+/// moved place, nearly all match (what a HUD piece kept to an edge uncovers or covers differs; a sprite drawn
+/// elsewhere leaves the stage in its place).
 fn field_centered(narrow: &Frame, wide: &Frame, [x0, y0, bw, bh]: [usize; 4], label: &str) {
     let w = wide.width();
     let m = Anchor::Center.origin(w) as usize;
@@ -141,7 +142,7 @@ fn field_centered(narrow: &Frame, wide: &Frame, [x0, y0, bw, bh]: [usize; 4], la
     for y in y0..y0 + bh {
         for x in x0..x0 + bw {
             let (i, j) = (y * WIDTH + x, y * w + x + m);
-            if won(narrow.depth[i]) == Won::Hud || won(wide.depth[j]) != won(narrow.depth[i]) {
+            if won(narrow.depth[i]) == Won::Hud || won(wide.depth[j]) == Won::Hud {
                 continue;
             }
             all += 1;

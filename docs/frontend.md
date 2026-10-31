@@ -1494,13 +1494,14 @@ and every trace replay see what they always have.
 - The battle's sprites show wherever they fall in the frame, past the old
   edges too (a shot flying off the field, an effect half off the screen,
   a navi's back at the field's edge: the user's pick over cutting them at
-  the old edges). A sprite part's 9-bit X reads as the hardware reads it
-  on the original's screen, and where a wider frame shows columns left of
-  that screen, a part that reaches past 512 less those columns as left of
-  it (`compose::sprite_x`): the original's screen shows the same either
-  way. The original's culling stays as it is (an object's anchor 64
-  pixels left of the old left edge to column 305), so what it culls shows
-  in no frame.
+  the old edges). A sprite part's X is its column on the original's
+  screen, never wrapped (`SpritePart::x`): the original's 240 columns
+  wrap it at 512 as the hardware does, and a wider frame draws it where
+  it is (`compose::sprite_x`). (Read from 9 bits, a frame over about 450
+  columns wide would show some parts at two places and one over 512 had
+  every part 512 columns left of its place.) The original's culling stays
+  as it is (an object's anchor 64 pixels left of the old left edge to
+  column 305), so what it culls shows in no frame.
 - On a screen of both (`Consoles::Both`) the right console's pieces are
   mirrored as before, and what keeps to an edge on its console keeps to
   the other edge (`Seat::edge`): its HP box and emotion window to the top

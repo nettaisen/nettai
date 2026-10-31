@@ -589,7 +589,7 @@ pub fn queue_objects<'a>(
                 let dy = if vflip { -(part.y as i32) - h } else { part.y as i32 };
                 let base_y = if as_shadow && !under { p.ground } else { p.y };
                 let sprite = SpritePart {
-                    x: ((p.x + dx) & 0x1FF) as u16,
+                    x: p.x + dx,
                     y: ((base_y & 0xFF) + dy) as u8,
                     width: part.width,
                     height: part.height,
@@ -643,8 +643,8 @@ pub fn queue_objects<'a>(
 fn object_box(p: &Projected, group: &[(usize, i32, SpritePart, Fine)]) -> [i32; 4] {
     let mut rect = [p.x, p.y.min(p.ground), p.x, p.y.max(p.ground)];
     for (_, _, s, _) in group {
-        // (The hardware's coordinates wrap: X at 512, Y at 256.)
-        let x = if s.x >= 0x100 { s.x as i32 - 0x200 } else { s.x as i32 };
+        // (The hardware's rows wrap at 256.)
+        let x = s.x;
         let y = if s.y >= 0xC0 { s.y as i32 - 0x100 } else { s.y as i32 };
         rect = [rect[0].min(x), rect[1].min(y), rect[2].max(x + s.width as i32), rect[3].max(y + s.height as i32)];
     }
@@ -709,7 +709,7 @@ mod tests {
     #[test]
     fn deeper_and_later_parts_come_first() {
         let tiles = nettai_assets::Tiles::default();
-        let part = |x: u16| SpritePart {
+        let part = |x: i32| SpritePart {
             x,
             y: 0,
             width: 8,
@@ -736,7 +736,7 @@ mod tests {
         // field's sprites by its bucket.
         list.insert_at(0, 0, vec![part(8), part(9)]);
         list.insert_at(2, 120, vec![part(10)]);
-        let order: Vec<u16> = list.into_parts().iter().map(|p| p.x).collect();
+        let order: Vec<i32> = list.into_parts().iter().map(|p| p.x).collect();
         assert_eq!(order, vec![8, 9, 3, 10, 5, 2, 1, 4]);
     }
 
