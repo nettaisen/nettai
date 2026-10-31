@@ -778,7 +778,7 @@ impl Watching {
         // (The other console's picture is of the same tick: out of date when this one is.)
         inset.stale |= stale;
         shell.show_surface(surface, true, |wide, buffer, width, height| {
-            viewer.renderer().wide = wide;
+            viewer.renderer().size = wide;
             viewer.present(buffer, width, height)
         });
         if self.overlays.inset {
@@ -808,9 +808,9 @@ impl Watching {
         let viewer = &mut self.viewer;
         // (The original's 240 columns: the shown console's frame is drawn as wide again after it.)
         let Some((image, width, height)) = shell.show_inset(&mut self.inset, multiple, |wide, buffer, w, h| {
-            let shown = std::mem::replace(&mut viewer.renderer().wide, wide);
+            let shown = std::mem::replace(&mut viewer.renderer().size, wide);
             viewer.present_view(other, buffer, w, h);
-            viewer.renderer().wide = shown;
+            viewer.renderer().size = shown;
         }) else {
             return;
         };

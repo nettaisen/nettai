@@ -21,7 +21,7 @@
 //! half by a [`Mirror`]: its frame mirrored, its parts that read moved
 //! whole.
 
-use crate::compose::{Anchor, CLEAR, HEIGHT, Layer, SpritePart, WIDTH, Wide};
+use crate::compose::{Anchor, CLEAR, Layer, Size, SpritePart, WIDTH};
 use crate::textlayer::{Rect, TextItem};
 use nettai_battle::Battle;
 
@@ -144,10 +144,10 @@ impl Seat {
     /// last), on a screen of both where not all: its own half (`Half`), or
     /// all but where the other console's window is as it leaves over it
     /// (`Screen` beside a `Window`). A frame wider than the original's
-    /// (`wide`) is halved at the original's middle, and a window keeps to
+    /// (`size`) is halved at the original's middle, and a window keeps to
     /// its edge.
-    pub fn clip(self, b: &Battle, seats: &[Seat], wide: Wide) -> Option<[i16; 2]> {
-        let (middle, width) = (wide.middle() as i16, wide.width as i16);
+    pub fn clip(self, b: &Battle, seats: &[Seat], size: Size) -> Option<[i16; 2]> {
+        let (middle, width) = (size.middle() as i16, size.width as i16);
         match self.shows {
             Shows::Half => Some(if self.mirrored() { [middle, width] } else { [0, middle] }),
             Shows::Screen => {
@@ -284,30 +284,32 @@ impl Mirror {
         }
     }
 
-    /// `from`'s pixels put into `to` (a layer as wide), each moved with its
+    /// `from`'s pixels put into `to` (a layer as large), each moved with its
     /// block or mirrored on the original's screen, and put in the frame as
     /// its piece's anchor says (`Layer::anchors`: the seat's already, kept).
     pub fn layer(&self, from: &Layer, to: &mut Layer) {
         if !to.drawn {
             return;
         }
-        debug_assert_eq!(from.width, to.width);
-        let w = from.width as i32;
+        debug_assert_eq!(from.size(), to.size());
+        let (size, w) = (from.size(), from.width as i32);
         // (In three passes: a block's pixels mirrored where no block moves
         // to, which fills what a block laid in a larger frame leaves
         // (that frame's part about it, the chip window's box's edge); the
         // blocks moved; the frame mirrored over them, which puts back what
         // a block's frame took of it.)
         for pass in 0..3 {
-            for y in 0..HEIGHT {
+            for y in 0..from.height {
                 for x in 0..w {
                     let i = y * w as usize + x as usize;
                     if from.pixels[i] == CLEAR {
                         continue;
                     }
-                    // (On the original's screen, where its piece is laid.)
+                    // (On the original's screen, where its piece is laid;
+                    // mirroring moves it across, never down.)
                     let anchor = from.anchors[i];
-                    let (px, py) = (x - anchor.origin(from.width), y as i32);
+                    let (ox, oy) = anchor.origin(size);
+                    let (px, py) = (x - ox, y as i32 - oy);
                     let mirrored = WIDTH as i32 - 1 - px;
                     let at = self.slide
                         + match (pass, self.block(px, py)) {
@@ -316,7 +318,7 @@ impl Mirror {
                             (2, None) => mirrored,
                             _ => continue,
                         };
-                    let at = at + anchor.origin(to.width);
+                    let at = at + ox;
                     if (0..w).contains(&at) {
                         to.put_pixel(at as usize, y, (from.pixels[i], from.past_ranged[i], anchor));
                     }
@@ -332,8 +334,8 @@ impl Mirror {
         // (Where they are on the piece at rest.)
         move_parts(parts, &mut [], self.slide);
         let Some((x0, x1)) = parts_span(parts) else { return };
-        let y0 = parts.iter().map(|p| p.y as i32).min().unwrap_or(0);
-        let y1 = parts.iter().map(|p| p.y as i32 + p.height as i32).max().unwrap_or(0);
+        let y0 = parts.iter().map(|p| p.y).min().unwrap_or(0);
+        let y1 = parts.iter().map(|p| p.y + p.height as i32).max().unwrap_or(0);
         match self.block((x0 + x1) / 2, (y0 + y1) / 2) {
             Some(b) => move_parts(parts, &mut [], Self::shift(b)),
             // (Each where what it draws mirrors: its pixels' columns.)
@@ -582,7 +584,7 @@ mod tests {
             affine: None,
             fade: None,
             clip: None,
-            anchor: crate::compose::Anchor::Center,
+            anchor: crate::compose::Anchor::CENTER,
         };
         let m = Mirror::new(Vec::new());
         let mut parts = [part.clone()];

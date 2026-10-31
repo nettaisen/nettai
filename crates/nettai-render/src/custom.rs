@@ -539,11 +539,11 @@ fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, form: Op
     };
     let y = 24 + 16 * screen.selection().len() as i32 - rise;
     if console.is_some_and(|console| console != row) {
-        problems.known(0x60, y & 0xFF, 16, 16, OTHER_VERSIONS_ICON);
+        problems.known(0x60, y, 16, 16, OTHER_VERSIONS_ICON);
     }
     Some(SpritePart {
         x: 0x60,
-        y: (y & 0xFF) as u8,
+        y,
         width: 16,
         height: 16,
         tiles,
@@ -558,7 +558,7 @@ fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, form: Op
         affine: None,
         fade: None,
         clip: None,
-        anchor: crate::compose::Anchor::Center,
+        anchor: crate::compose::Anchor::CENTER,
     })
 }
 
@@ -2314,7 +2314,7 @@ fn form_list_cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<S
     pieces
         .map(|((dy, dx, hflip, vflip), edge)| SpritePart {
             x: x + dx,
-            y: (y + dy) as u8,
+            y: y + dy,
             width: 8,
             height: 8,
             tiles: &a.form_list_cursor,
@@ -2329,7 +2329,7 @@ fn form_list_cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<S
             affine: None,
             fade: None,
             clip: None,
-            anchor: crate::compose::Anchor::Center,
+            anchor: crate::compose::Anchor::CENTER,
         })
         .collect()
 }
@@ -2364,7 +2364,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
         .rev()
         .map(|&(dy, dx, hflip, vflip)| SpritePart {
             x: x - 3 + dx,
-            y: (y - 3 + dy) as u8,
+            y: y - 3 + dy,
             width: 8,
             height: 8,
             tiles: &a.cursor,
@@ -2379,7 +2379,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
             affine: None,
             fade: None,
             clip: None,
-            anchor: crate::compose::Anchor::Center,
+            anchor: crate::compose::Anchor::CENTER,
         })
         .collect()
 }
@@ -2405,8 +2405,7 @@ fn drawn_parts<'a>(parts: Vec<SpritePart<'a>>, drawings: &[nettai_assets::shapes
             Some(d) => {
                 let tag = text.tag();
                 tags.push(Some(tag));
-                let (x, y) = (part.x, part.y as i32);
-                let y = if y >= 160 { y - 256 } else { y };
+                let (x, y) = (part.x, part.y);
                 let palette = part.palette;
                 let drawn = crate::shapes::drawn(d, |_, c| palette[c as usize & 15], (part.hflip, part.vflip), None);
                 text.push(Plane::Sprite(tag), crate::shapes::item(drawn, (x, y), (part.width as i32, part.height as i32)));
@@ -2425,7 +2424,8 @@ fn drawn_parts<'a>(parts: Vec<SpritePart<'a>>, drawings: &[nettai_assets::shapes
 /// nudged while it spins; turned and scaled by its matrix.
 fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> SpritePart<'a> {
     let mut x = 0x57 - x_slide as i32;
-    let mut y = 0xFCi32;
+    // (0xFC: four rows above the screen's top, as the hardware wraps it.)
+    let mut y = -4;
     if (2..=6).contains(&spin) {
         y -= 1;
         if (3..=4).contains(&spin) {
@@ -2447,7 +2447,7 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
     let m = |v: i32| (v * q) >> 4;
     SpritePart {
         x,
-        y: (y & 0xFF) as u8,
+        y,
         width: 32,
         height: 32,
         tiles,
@@ -2462,7 +2462,7 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
         affine: Some(Affine { pa: m(cos), pb: m(sin), pc: m(-sin), pd: m(cos), double: false }),
         fade: None,
         clip: None,
-        anchor: crate::compose::Anchor::Center,
+        anchor: crate::compose::Anchor::CENTER,
     }
 }
 
@@ -2509,7 +2509,7 @@ fn element_part<'a>(v: &View, a: &'a CustomScreen, place: Placement) -> Option<S
     }
     Some(SpritePart {
         x: e.x as i32 - place.scroll as i32,
-        y: e.y as u8,
+        y: e.y as i32,
         width: 16,
         height: 16,
         tiles: &a.elements,
@@ -2524,7 +2524,7 @@ fn element_part<'a>(v: &View, a: &'a CustomScreen, place: Placement) -> Option<S
         affine: None,
         fade: None,
         clip: None,
-        anchor: crate::compose::Anchor::Center,
+        anchor: crate::compose::Anchor::CENTER,
     })
 }
 
@@ -2545,8 +2545,7 @@ fn framed_element<'a>(part: SpritePart<'a>, a: &'a CustomScreen, text: &mut Text
     };
     let tag = text.tag();
     tags.push(Some(tag));
-    let (x, y) = (part.x, part.y as i32);
-    let y = if y >= 160 { y - 256 } else { y };
+    let (x, y) = (part.x, part.y);
     let palette = part.palette;
     let mut drawn = crate::shapes::drawn(d, |_, c| palette[c as usize & 15], (false, false), None);
     drawn.off = symbol_off(a, family);
@@ -2571,7 +2570,7 @@ fn held_part<'a>(v: &View, graphics: &crate::graphics::Graphics<'a>, problems: &
     let (tiles, palette) = crate::lookups::chip_icon(graphics, &v.b.content, chip.id, problems)?;
     Some(SpritePart {
         x,
-        y: (y & 0xFF) as u8,
+        y,
         width: 16,
         height: 16,
         tiles,
@@ -2586,14 +2585,14 @@ fn held_part<'a>(v: &View, graphics: &crate::graphics::Graphics<'a>, problems: &
         affine: None,
         fade: None,
         clip: None,
-        anchor: crate::compose::Anchor::Center,
+        anchor: crate::compose::Anchor::CENTER,
     })
 }
 
 fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
     SpritePart {
         x: a.layout.regular.0 as i32,
-        y: (a.layout.regular.1 & 0xFF) as u8,
+        y: a.layout.regular.1 as i32,
         width: 32,
         height: 32,
         tiles: &a.regular,
@@ -2608,7 +2607,7 @@ fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
         affine: None,
         fade: None,
         clip: None,
-        anchor: crate::compose::Anchor::Center,
+        anchor: crate::compose::Anchor::CENTER,
     }
 }
 
@@ -2652,8 +2651,8 @@ pub fn draw<'a>(
     // (The window, and what goes beside it, keep to the left edge, as the
     // original docks it; its names to the right edge. On the right of a
     // screen of both, the other edges: `Seat::edge`.)
-    crate::hud::keep_to(seat, Anchor::Left, (&mut *out_hud, &mut *out_names), list, text);
-    crate::hud::keep_to(seat, Anchor::Left, (&mut *scratch_hud, &mut *scratch_names), list, text);
+    crate::hud::keep_to(seat, Anchor::TOP_LEFT, (&mut *out_hud, &mut *out_names), list, text);
+    crate::hud::keep_to(seat, Anchor::TOP_LEFT, (&mut *scratch_hud, &mut *scratch_names), list, text);
     let mark = text.mark();
     let (hud_layer, names_layer): (&mut Layer, &mut Layer) = if mirrored { (&mut *scratch_hud, &mut *scratch_names) } else { (&mut *out_hud, &mut *out_names) };
     // (The parts that read beside the window's own, for the mirror.)
@@ -2759,9 +2758,9 @@ pub fn draw<'a>(
     // window leaving over the other console's screen; in its half, beside
     // the other player's window, they don't show.)
     if names_shown(b, screen) && !a.name_bar.is_empty() && matches!(seat.shows, crate::seat::Shows::Screen | crate::seat::Shows::Half) {
-        crate::hud::keep_to(seat, Anchor::Right, (&mut *hud_layer, &mut *names_layer), list, text);
+        crate::hud::keep_to(seat, Anchor::TOP_RIGHT, (&mut *hud_layer, &mut *names_layer), list, text);
         upright.push(crate::seat::Block::whole(draw_names(&v, &w, hud_layer, names_layer, text, problems)));
-        crate::hud::keep_to(seat, Anchor::Left, (&mut *hud_layer, &mut *names_layer), list, text);
+        crate::hud::keep_to(seat, Anchor::TOP_LEFT, (&mut *hud_layer, &mut *names_layer), list, text);
     }
     // The sprites, as their routines queue them (each in front of the
     // one before).
@@ -2816,9 +2815,8 @@ pub fn draw<'a>(
     if let Some((x, spin)) = drawn.emblem.filter(|_| a.window_emblem.is_none()) {
         let part = emblem_part(&v, emblem, x, spin);
         if let Some(why) = known_emblem(b, graphics, side) {
-            // (Where the sprite is, its row wrapped as the hardware's.)
-            let y = part.y as i32;
-            problems.known(part.x, if y >= 160 { y - 256 } else { y }, 32, 32, why);
+            // (Where the sprite is.)
+            problems.known(part.x, part.y, 32, 32, why);
         }
         queue.push(part);
         sprite_ends(&queue);
@@ -2867,8 +2865,8 @@ pub fn draw<'a>(
         list.insert_tagged(SPRITE_LAYER, 0, vec![part], tags.get(k).copied().flatten());
     }
     let _ = OK_SLOT;
-    crate::hud::keep_to(seat, Anchor::Center, (&mut *out_hud, &mut *out_names), list, text);
-    crate::hud::keep_to(seat, Anchor::Center, (&mut *scratch_hud, &mut *scratch_names), list, text);
+    crate::hud::keep_to(seat, Anchor::CENTER, (&mut *out_hud, &mut *out_names), list, text);
+    crate::hud::keep_to(seat, Anchor::CENTER, (&mut *scratch_hud, &mut *scratch_names), list, text);
 }
 
 #[cfg(test)]

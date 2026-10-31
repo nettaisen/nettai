@@ -8,7 +8,7 @@ use nettai_battle::input::keys;
 use nettai_frontend::driver::{InFight, LivePlayer, Opponent};
 use nettai_frontend::game::{Game, RomSource};
 use nettai_frontend::player::Player;
-use nettai_render::compose::{Anchor, BACKDROP_DEPTH, HEIGHT, WIDTH, Wide, depth_key};
+use nettai_render::compose::{Anchor, BACKDROP_DEPTH, HEIGHT, Size, WIDTH, depth_key};
 use nettai_render::textlayer::TextItem;
 use nettai_render::vfont::TextRenderer;
 use nettai_render::{Consoles, Frame, GraphicsMode};
@@ -59,9 +59,9 @@ fn play_to(player: &mut Player, tick: u32) {
 
 /// The frame now, `width` columns wide.
 fn frame_at(player: &mut Player, width: usize) -> Frame {
-    player.renderer().wide = Wide::new(width);
+    player.renderer().size = Size::new(width, HEIGHT);
     let frame = player.frame();
-    player.renderer().wide = Wide::ORIGINAL;
+    player.renderer().size = Size::ORIGINAL;
     frame
 }
 
@@ -97,7 +97,7 @@ fn pieces_placed(narrow: &Frame, wide: &Frame, pieces: &[Piece], label: &str) {
     let w = wide.width();
     for p in pieces {
         let [x0, y0, pw, ph] = p.rect;
-        let origin = p.anchor.origin(w) as usize;
+        let origin = p.anchor.origin(Size::new(w, HEIGHT)).0 as usize;
         let mut seen = 0;
         for y in y0..y0 + ph {
             for x in x0..x0 + pw {
@@ -122,12 +122,13 @@ fn items_placed(narrow: &Frame, wide: &Frame, expected: &[(&str, [i32; 4], Ancho
     assert_eq!(narrow.text.len(), wide.text.len(), "{label}: the text items");
     for (a, b) in narrow.text.iter().zip(&wide.text) {
         assert_eq!(a.text, b.text, "{label}");
-        assert_eq!(b.rect, a.rect.offset(b.anchor.origin(w), 0), "{label}: {:?} kept to {:?}", b.text, b.anchor);
+        let (dx, dy) = b.anchor.origin(Size::new(w, HEIGHT));
+        assert_eq!(b.rect, a.rect.offset(dx, dy), "{label}: {:?} kept to {:?}", b.text, b.anchor);
     }
     let found = |a: &TextItem, (words, [x, y, rw, rh]): (&str, [i32; 4])| a.text == words && (x..x + rw).contains(&a.rect.x) && (y..y + rh).contains(&a.rect.y);
     for &(words, rect, anchor) in expected {
         let k = narrow.text.iter().position(|a| found(a, (words, rect))).unwrap_or_else(|| panic!("{label}: no {words:?} in {rect:?}: {:?}", narrow.text.iter().map(|t| (&t.text, t.rect)).collect::<Vec<_>>()));
-        assert_eq!(wide.text[k].anchor, anchor, "{label}: {words:?}");
+        assert_eq!(wide.text[k].anchor.horizontal, anchor.horizontal, "{label}: {words:?}");
     }
 }
 
@@ -137,7 +138,7 @@ fn items_placed(narrow: &Frame, wide: &Frame, expected: &[(&str, [i32; 4], Ancho
 /// elsewhere leaves the stage in its place).
 fn field_centered(narrow: &Frame, wide: &Frame, [x0, y0, bw, bh]: [usize; 4], label: &str) {
     let w = wide.width();
-    let m = Anchor::Center.origin(w) as usize;
+    let m = Anchor::CENTER.origin(Size::new(w, HEIGHT)).0 as usize;
     let (mut same, mut all) = (0, 0);
     for y in y0..y0 + bh {
         for x in x0..x0 + bw {
@@ -208,7 +209,7 @@ fn original_stays(game: &Game, file: &str, tick: u32) {
 }
 
 /// The custom screen: its window docked to the left edge, the HP box and emotion window beside it.
-const CUSTOM: &[Piece] = &[Piece { what: "the custom window", rect: [0, 0, 120, 160], anchor: Anchor::Left }];
+const CUSTOM: &[Piece] = &[Piece { what: "the custom window", rect: [0, 0, 120, 160], anchor: Anchor::LEFT }];
 
 /// The field: beside the custom window, lowered with it; in a fight, between the HUD's top and bottom lines.
 const CUSTOM_FIELD: [usize; 4] = [128, 80, 112, 80];
@@ -221,15 +222,15 @@ fn exe6_pieces_keep_to_their_edges() {
     original_stays(&game, "m6.toml", 360);
     let mut p = player(&game, "m6.toml", GraphicsMode::Enhanced, Consoles::One);
     play_to(&mut p, 140);
-    let names = [("MegaMan", [120, 0, 120, 16], Anchor::Right)];
+    let names = [("MegaMan", [120, 0, 120, 16], Anchor::RIGHT)];
     check(&mut p, &Moment { label: "exe6 custom screen", pieces: CUSTOM, items: &names, field: Some(CUSTOM_FIELD) });
     play_to(&mut p, 360);
     let items = [
-        ("980", [0, 0, 48, 16], Anchor::Left),
-        ("CUSTOM", [48, 0, 144, 16], Anchor::Center),
-        ("Cannon", [0, 140, 120, 20], Anchor::Left),
-        ("AirShot", [120, 20, 120, 40], Anchor::Right),
-        ("1000", [120, 60, 120, 100], Anchor::Center),
+        ("980", [0, 0, 48, 16], Anchor::LEFT),
+        ("CUSTOM", [48, 0, 144, 16], Anchor::CENTER),
+        ("Cannon", [0, 140, 120, 20], Anchor::LEFT),
+        ("AirShot", [120, 20, 120, 40], Anchor::RIGHT),
+        ("1000", [120, 60, 120, 100], Anchor::CENTER),
     ];
     check(&mut p, &Moment { label: "exe6 fight", pieces: &[], items: &items, field: Some(FIGHT_FIELD) });
 }
@@ -242,13 +243,13 @@ fn exe5_pieces_keep_to_their_edges() {
     let mut p = player(&game, "m5.toml", GraphicsMode::Enhanced, Consoles::One);
     play_to(&mut p, 140);
     // (The name plate and the custom screen's time left against the right edge.)
-    let names = [("MegaMan", [120, 0, 120, 16], Anchor::Right), ("59", [200, 0, 40, 40], Anchor::Right)];
+    let names = [("MegaMan", [120, 0, 120, 16], Anchor::RIGHT), ("59", [200, 0, 40, 40], Anchor::RIGHT)];
     check(&mut p, &Moment { label: "exe5 custom screen", pieces: CUSTOM, items: &names, field: Some(CUSTOM_FIELD) });
     play_to(&mut p, 360);
     let items = [
-        ("1000", [0, 0, 48, 16], Anchor::Left),
-        ("Sword", [0, 140, 120, 20], Anchor::Left),
-        ("Boomer", [120, 20, 120, 40], Anchor::Right),
+        ("1000", [0, 0, 48, 16], Anchor::LEFT),
+        ("Sword", [0, 140, 120, 20], Anchor::LEFT),
+        ("Boomer", [120, 20, 120, 40], Anchor::RIGHT),
     ];
     check(&mut p, &Moment { label: "exe5 fight", pieces: &[], items: &items, field: Some(FIGHT_FIELD) });
 }
@@ -263,10 +264,10 @@ fn exe4_pieces_keep_to_their_edges() {
     check(&mut p, &Moment { label: "exe4 custom screen", pieces: CUSTOM, items: &[], field: Some(CUSTOM_FIELD) });
     // ("BUSY..." against the right edge while the other side chooses.)
     play_to(&mut p, 240);
-    let busy = [("BUSY...", [176, 32, 64, 16], Anchor::Right)];
+    let busy = [("BUSY...", [176, 32, 64, 16], Anchor::RIGHT)];
     check(&mut p, &Moment { label: "exe4 waiting", pieces: &[], items: &busy, field: Some(FIGHT_FIELD) });
     play_to(&mut p, 360);
-    let items = [("997", [0, 0, 48, 16], Anchor::Left), ("Sword", [0, 140, 120, 20], Anchor::Left)];
+    let items = [("997", [0, 0, 48, 16], Anchor::LEFT), ("Sword", [0, 140, 120, 20], Anchor::LEFT)];
     check(&mut p, &Moment { label: "exe4 fight", pieces: &[], items: &items, field: Some(FIGHT_FIELD) });
 }
 
@@ -279,15 +280,15 @@ fn both_sides_keep_to_their_edges() {
     let mut p = player(&game, "m6.toml", GraphicsMode::Enhanced, Consoles::Both);
     play_to(&mut p, 62);
     let windows = [
-        Piece { what: "the left custom window", rect: [0, 0, 120, 160], anchor: Anchor::Left },
-        Piece { what: "the right custom window", rect: [120, 0, 120, 160], anchor: Anchor::Right },
+        Piece { what: "the left custom window", rect: [0, 0, 120, 160], anchor: Anchor::LEFT },
+        Piece { what: "the right custom window", rect: [120, 0, 120, 160], anchor: Anchor::RIGHT },
     ];
     check(&mut p, &Moment { label: "both: both windows", pieces: &windows, items: &[], field: None });
     play_to(&mut p, 400);
     let items = [
-        ("1000", [192, 0, 48, 16], Anchor::Right),
-        ("Cannon", [0, 140, 120, 20], Anchor::Left),
-        ("AirShot", [120, 20, 120, 40], Anchor::Right),
+        ("1000", [192, 0, 48, 16], Anchor::RIGHT),
+        ("Cannon", [0, 140, 120, 20], Anchor::LEFT),
+        ("AirShot", [120, 20, 120, 40], Anchor::RIGHT),
     ];
     check(&mut p, &Moment { label: "both: the fight", pieces: &[], items: &items, field: Some(FIGHT_FIELD) });
 }

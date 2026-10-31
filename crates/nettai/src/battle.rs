@@ -520,7 +520,7 @@ impl Shell {
     /// into the buffer it is given, a frame as wide as it is given (the original's 240 columns but where
     /// `wide`, a battle's picture: the enhanced mode's as wide as the room), when `surface` is out of date (the
     /// screen sets `surface.stale` as its picture changes) or the room changed.
-    pub fn show_surface(&mut self, surface: &mut Surface, wide: bool, present: impl FnOnce(nettai_render::compose::Wide, &mut [u32], usize, usize)) {
+    pub fn show_surface(&mut self, surface: &mut Surface, wide: bool, present: impl FnOnce(nettai_render::compose::Size, &mut [u32], usize, usize)) {
         if !self.drawing {
             return;
         }
@@ -534,7 +534,7 @@ impl Shell {
     /// frame in the display's pixels, presented at the window's density as the picture is (`stage::fit`), as an
     /// image of its own, when `surface` is out of date or its size changed. Its image when there is a new one to
     /// show, and its size in the window's logical pixels; none in a frame the window doesn't draw.
-    pub fn show_inset(&mut self, surface: &mut Surface, multiple: u32, present: impl FnOnce(nettai_render::compose::Wide, &mut [u32], usize, usize)) -> Option<(Option<slint::Image>, f32, f32)> {
+    pub fn show_inset(&mut self, surface: &mut Surface, multiple: u32, present: impl FnOnce(nettai_render::compose::Size, &mut [u32], usize, usize)) -> Option<(Option<slint::Image>, f32, f32)> {
         if !self.drawing {
             return None;
         }

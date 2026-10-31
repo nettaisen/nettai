@@ -11,7 +11,7 @@ use nettai_frontend::driver::{Driver, InFight, LivePlayer, Opponent};
 use nettai_frontend::game::{Failed, Game, LoadError, RomSource, Sound};
 use nettai_frontend::player::Player;
 use nettai_frontend::session;
-use nettai_render::compose::Wide;
+use nettai_render::compose::{HEIGHT, Size, WIDTH};
 use nettai_render::{Consoles, GraphicsMode};
 use nettai_render::vfont::TextRenderer;
 use nettai_tools::headless;
@@ -53,8 +53,9 @@ struct Args {
     out: PathBuf,
     png_scale: usize,
     /// With --headless: the enhanced mode's frames this many columns wide
-    /// (none: the original's 240).
+    /// and rows tall (none: the original's 240 and 160).
     width: Option<usize>,
+    height: Option<usize>,
     mode: GraphicsMode,
     font: Option<PathBuf>,
     lang: String,
@@ -145,6 +146,10 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    wide at the frame's height shows it: the field in the
                    middle, the background on to both edges, each piece of
                    the HUD against the edge the original draws it against
+  --height N       with --headless, in the enhanced mode: each frame N rows
+                   tall (160 or more; default 160), as --width is wide: the
+                   field in the middle, the background on above and below,
+                   each piece of the HUD against the top or the bottom edge
   --time           with --headless: draw each of FRAMES at --png-scale and
                    write none, and say how long making and presenting a
                    frame took, and the drawings read and rasterized
@@ -226,6 +231,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         out: PathBuf::from("."),
         png_scale: 1,
         width: None,
+        height: None,
         mode: GraphicsMode::Enhanced,
         font: None,
         lang: nettai_assets::BASE_LANGUAGE.into(),
@@ -275,6 +281,10 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
             "--width" => {
                 let v = value("--width")?;
                 a.width = Some(number(v.clone(), "--width")?.try_into().ok().filter(|&n: &usize| n >= 240).ok_or_else(|| format!("bad --width {v:?} (240 or more)"))?);
+            }
+            "--height" => {
+                let v = value("--height")?;
+                a.height = Some(number(v.clone(), "--height")?.try_into().ok().filter(|&n: &usize| n >= 160).ok_or_else(|| format!("bad --height {v:?} (160 or more)"))?);
             }
             "--text" => a.mode = value("--text")?.parse()?,
             "--font" => a.font = Some(value("--font")?.into()),
@@ -352,12 +362,12 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
     if !a.traces.is_empty() && a.headless.is_none() && !a.audit {
         return Err("a trace is rendered (--headless F) or audited (--audit); no window watches one".into());
     }
-    let headless_only = a.objects || a.time || !a.marks.is_empty() || a.png_scale != 1 || a.width.is_some();
+    let headless_only = a.objects || a.time || !a.marks.is_empty() || a.png_scale != 1 || a.width.is_some() || a.height.is_some();
     if headless_only && a.headless.is_none() {
-        return Err("--objects, --time, --mark, --png-scale and --width go with --headless".into());
+        return Err("--objects, --time, --mark, --png-scale, --width and --height go with --headless".into());
     }
-    if a.width.is_some() && a.mode == GraphicsMode::Original {
-        return Err("--width draws the enhanced mode's frames wider; the original mode's are the original's 240x160".into());
+    if (a.width.is_some() || a.height.is_some()) && a.mode == GraphicsMode::Original {
+        return Err("--width and --height draw the enhanced mode's frames larger; the original mode's are the original's 240x160".into());
     }
     Ok(a)
 }
@@ -709,9 +719,7 @@ fn main() {
     let mut renderer = graphics.renderer(args.mode, font.clone());
     renderer.problems.marking = args.marks.iter().cloned().collect();
     renderer.consoles = args.consoles;
-    if let Some(width) = args.width {
-        renderer.wide = Wide::new(width);
-    }
+    renderer.size = Size::new(args.width.unwrap_or(WIDTH), args.height.unwrap_or(HEIGHT));
     if args.audit {
         let setup = headless::AuditSetup {
             graphics: renderer.graphics().clone(),
@@ -855,10 +863,13 @@ mod tests {
             (vec!["--replay", "r.nettaireplay", "--headless", "1", "--opponent", "still"], "--opponent plays the other side of a match file's set played headless (--match FILE --headless F)"),
             (vec!["--match", "m.toml", "--headless", "1", "--opponent", "ai"], "bad --opponent \"ai\" (still, moves or attacks)"),
             (vec!["a.jsonl", "b.jsonl", "--headless", "1"], "one trace at a time (several with --audit)"),
-            (vec!["--match", "m.toml", "--objects"], "--objects, --time, --mark, --png-scale and --width go with --headless"),
-            (vec!["--match", "m.toml", "--width", "284"], "--objects, --time, --mark, --png-scale and --width go with --headless"),
-            (vec!["--match", "m.toml", "--headless", "1", "--width", "284", "--text", "original"], "--width draws the enhanced mode's frames wider; the original mode's are the original's 240x160"),
+            (vec!["--match", "m.toml", "--objects"], "--objects, --time, --mark, --png-scale, --width and --height go with --headless"),
+            (vec!["--match", "m.toml", "--width", "284"], "--objects, --time, --mark, --png-scale, --width and --height go with --headless"),
+            (vec!["--match", "m.toml", "--height", "213"], "--objects, --time, --mark, --png-scale, --width and --height go with --headless"),
+            (vec!["--match", "m.toml", "--headless", "1", "--width", "284", "--text", "original"], "--width and --height draw the enhanced mode's frames larger; the original mode's are the original's 240x160"),
+            (vec!["--match", "m.toml", "--headless", "1", "--height", "213", "--text", "original"], "--width and --height draw the enhanced mode's frames larger; the original mode's are the original's 240x160"),
             (vec!["--match", "m.toml", "--headless", "1", "--width", "200"], "bad --width \"200\" (240 or more)"),
+            (vec!["--match", "m.toml", "--headless", "1", "--height", "150"], "bad --height \"150\" (160 or more)"),
             (vec!["--match", "m.toml", "--mp4", "o.mp4"], "--mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
             (vec!["--replay", "r.nettaireplay", "--mp4", "o.mp4", "--headless", "1"], "--mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
             (vec!["--replay", "r.nettaireplay", "--nut", "-"], "unknown option --nut (a window's options are nettai's)"),

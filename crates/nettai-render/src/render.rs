@@ -47,12 +47,14 @@ impl std::str::FromStr for GraphicsMode {
     }
 }
 
-/// A drawn frame: the picture (BGR555), 160 rows of the original's 240
-/// columns or more ([`Frame::width`], `Renderer::wide`), per pixel the
-/// depth key of what won it (`compose::depth_key`), and the text items to
-/// draw over it at the output's resolution (none in the original mode).
+/// A drawn frame: the picture (BGR555), the original's 240 by 160 or more
+/// ([`Frame::size`], `Renderer::size`), per pixel the depth key of what won
+/// it (`compose::depth_key`), and the text items to draw over it at the
+/// output's resolution (none in the original mode).
 #[derive(Clone, Debug, Default)]
 pub struct Frame {
+    /// Its columns and rows.
+    pub size: compose::Size,
     pub pixels: Vec<u16>,
     pub depth: Vec<u32>,
     pub text: Vec<TextItem>,
@@ -78,17 +80,25 @@ pub struct Frame {
 impl Frame {
     /// Its columns.
     pub fn width(&self) -> usize {
-        self.pixels.len() / compose::HEIGHT
+        self.size.width
+    }
+
+    /// Its rows.
+    pub fn height(&self) -> usize {
+        self.size.height
     }
 }
 
 /// A background between two of the frame's pixels: `present` draws the
-/// frame's background pixels from `pixels` ([`Glide::width`] by
-/// `Glide::HEIGHT`, from the frame's top left, faded as the frame's are)
-/// moved on by `sub` sixteenths of a pixel, at the output's resolution.
+/// frame's background pixels from `pixels` (`width` by [`Glide::height`],
+/// from the frame's top left, faded as the frame's are) moved on by `sub`
+/// sixteenths of a pixel, at the output's resolution.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Glide {
     pub pixels: Vec<u16>,
+    /// Its columns: a pixel more than the frame each way, for the part of
+    /// one past it.
+    pub width: usize,
     pub sub: (u8, u8),
     /// The background layer's depth key (`compose::layer_depth`): the
     /// frame's pixels it won, and the backdrop's, show the glide.
@@ -96,12 +106,9 @@ pub struct Glide {
 }
 
 impl Glide {
-    /// A pixel more than the frame each way, for the part of one past it.
-    pub const HEIGHT: usize = compose::HEIGHT + 1;
-
-    /// Its columns: the frame's and one.
-    pub fn width(&self) -> usize {
-        self.pixels.len() / Self::HEIGHT
+    /// Its rows: the frame's and one.
+    pub fn height(&self) -> usize {
+        self.pixels.len() / self.width.max(1)
     }
 }
 
@@ -189,10 +196,10 @@ pub struct Renderer {
     pub reduce_motion: bool,
     /// The drawings, gathered as they are set.
     drawings: Arc<Vec<nettai_assets::shapes::Drawing>>,
-    /// How wide the enhanced mode's frames are (the original's 240 columns,
-    /// the default, or as wide as a window shows them): the original mode's
-    /// are the original's, whatever this says.
-    pub wide: compose::Wide,
+    /// How large the enhanced mode's frames are (the original's 240 by 160,
+    /// the default, or as large as a window shows them): the original
+    /// mode's are the original's, whatever this says.
+    pub size: compose::Size,
 }
 
 impl Renderer {
@@ -233,7 +240,7 @@ impl Renderer {
             scenery: StageClock::default(),
             custom_gauge: true,
             reduce_motion: false,
-            wide: compose::Wide::ORIGINAL,
+            size: compose::Size::ORIGINAL,
         }
     }
 
@@ -284,12 +291,12 @@ impl Renderer {
         self.mode == GraphicsMode::Enhanced && !self.reduce_motion
     }
 
-    /// How wide the frames are: the enhanced mode's as `wide` says, the
+    /// How large the frames are: the enhanced mode's as `size` says, the
     /// original mode's the original's.
-    pub fn frame_wide(&self) -> compose::Wide {
+    pub fn frame_size(&self) -> compose::Size {
         match self.mode {
-            GraphicsMode::Enhanced => self.wide,
-            GraphicsMode::Original => compose::Wide::ORIGINAL,
+            GraphicsMode::Enhanced => self.size,
+            GraphicsMode::Original => compose::Size::ORIGINAL,
         }
     }
 
@@ -378,7 +385,7 @@ impl Renderer {
         Self::view_for(b, self.consoles).camera.1 & 0xFFFF
     }
 
-    /// Draw a battle as a frame (`Renderer::frame_wide`) with its text items.
+    /// Draw a battle as a frame (`Renderer::frame_size`) with its text items.
     pub fn render(&mut self, b: &Battle) -> Frame {
         // (The enhanced mode's motion: the frame, and where the camera is
         // between whole pixels, the frame again with the field a pixel up;
@@ -413,10 +420,11 @@ impl Renderer {
     fn draw(&mut self, b: &Battle, smooth: Smooth) -> Frame {
         self.problems.known.clear();
         self.problems.marks.clear();
-        // (Every layer as wide as the frame; what is drawn on the original's
-        // screen in the middle of it, the background on to both edges, the
-        // HUD's pieces each where it keeps to: `hud::draw`, `custom::draw`.)
-        let wide = self.frame_wide();
+        // (Every layer as large as the frame; what is drawn on the
+        // original's screen in the middle of it, the background on to all
+        // four edges, the HUD's pieces each where it keeps to: `hud::draw`,
+        // `custom::draw`.)
+        let size = self.frame_size();
         let layers = [
             &mut self.background,
             &mut self.field,
@@ -429,8 +437,8 @@ impl Renderer {
             &mut self.scratch_names,
         ];
         for layer in layers {
-            layer.set_width(wide.width);
-            layer.keep_to(compose::Anchor::Center);
+            layer.set_size(size);
+            layer.keep_to(compose::Anchor::CENTER);
         }
         // (The graphics for this frame: the layers and the problems are the
         // renderer's own fields, written while these are read.)
@@ -558,7 +566,7 @@ impl Renderer {
             let sprite_fade = if flash == Some(1) { Fade::White(16) } else { crate::custom::sprite_fade(b, seat.side).unwrap_or_default() };
             // (Kept to its part of a screen of both, where not all of it:
             // `Seat::clip`.)
-            let clip = seat.clip(b, &seats, wide);
+            let clip = seat.clip(b, &seats, size);
             list.clip = clip;
             crate::custom::draw(b, own_game, &graphics, emblem, *emblem_palette, (seat, sprite_fade), (&mut *hud, &mut *names), scratch, &mut list, &mut text, &mut self.problems);
             crate::hud::draw(b, own_game, &graphics, hud_of(seat), &shared[k], (seat, &view), self.custom_gauge, smooth, (&mut *hud, &mut self.scratch), &mut list, &mut text, &mut self.problems);
@@ -566,11 +574,12 @@ impl Renderer {
             if let Some([x0, x1]) = clip {
                 hud.keep_columns(x0 as i32..x1 as i32);
                 names.keep_columns(x0 as i32..x1 as i32);
-                // (The frame's columns, on the original's screen where each
-                // item is laid out.)
-                let kept = Rect::new(x0 as i32, 0, (x1 - x0) as i32, compose::HEIGHT as i32);
+                // (The frame's columns, all its rows, on the original's
+                // screen where each item is laid out.)
+                let kept = Rect::new(x0 as i32, 0, (x1 - x0) as i32, size.height as i32);
                 for (_, item) in text.since(mark) {
-                    item.clip = item.clip.intersect(kept.offset(-wide.origin(item.anchor), 0));
+                    let (ox, oy) = size.origin(item.anchor);
+                    item.clip = item.clip.intersect(kept.offset(-ox, -oy));
                 }
             }
             // (The right one's own HUD layer and BG0.)
@@ -589,7 +598,9 @@ impl Renderer {
         if seats.iter().all(|s| s.shows == Shows::Half) {
             crate::hud::time_between(b, own_game, &mut self.hud, &mut text, &mut self.problems);
         }
+        // (The chatbox with the field, both ways.)
         if let Some(c) = chatbox.as_ref().filter(|_| draw) {
+            (list.anchor, text.anchor) = (compose::Anchor::CENTER, compose::Anchor::CENTER);
             crate::chatbox::draw(c, own_game, &mut self.dialogue, &mut list, &mut text);
         }
         let Some(stage) = stage else {
@@ -673,18 +684,18 @@ impl Renderer {
             true => parts
                 .iter()
                 .enumerate()
-                .filter_map(|(i, p)| Some((i, Overlay::of(p, wide, compose::sprite_depth(p.priority, i), [p.fade.unwrap_or(fades.sprites), fades.screen], fines[i])?)))
+                .filter_map(|(i, p)| Some((i, Overlay::of(p, size, compose::sprite_depth(p.priority, i), [p.fade.unwrap_or(fades.sprites), fades.screen], fines[i])?)))
                 .collect(),
             false => Vec::new(),
         };
         let (pixels, depth) = if overlays.is_empty() {
-            compose::compose_wide(wide, backdrop, &layers, &parts, fades)
+            compose::compose_sized(size, backdrop, &layers, &parts, fades)
         } else {
             let mut kept = parts.clone();
             for &(i, _) in &overlays {
                 kept[i] = SpritePart { height: 0, ..kept[i].clone() };
             }
-            compose::compose_wide(wide, backdrop, &layers, &kept, fades)
+            compose::compose_sized(size, backdrop, &layers, &kept, fades)
         };
         let overlays = overlays.into_iter().map(|(_, o)| o).collect();
         // Each item's depth and fades: its layer's (the HUD layer's moved
@@ -717,7 +728,7 @@ impl Renderer {
                 };
                 item.depth = depth;
                 item.fades = [fade, fades.screen];
-                Some(item.placed(wide.width))
+                Some(item.placed(size))
             })
             .collect();
         // (The background between the whole pixels the frame shows, for the
@@ -725,11 +736,13 @@ impl Renderer {
         // a step every few frames otherwise.)
         let glide = (self.motion() && scene.background_sub() != (0, 0)).then(|| {
             let color = |c: u16| compose::apply_fade(compose::apply_fade(c, fades.stage), fades.screen);
-            let pixels = scene.draw_background_wide(-self.background.origin(), wide.width + 1, Glide::HEIGHT, backdrop, color);
-            Glide { pixels, sub: scene.background_sub(), depth: compose::layer_depth(&self.background) }
+            let (ox, oy) = self.background.origin();
+            let width = size.width + 1;
+            let pixels = scene.draw_background_wide((-ox, -oy), (width, size.height + 1), backdrop, color);
+            Glide { pixels, width, sub: scene.background_sub(), depth: compose::layer_depth(&self.background) }
         });
         let drawings = (!Vec::is_empty(&text)).then(|| self.drawings.clone());
-        let mut frame = Frame { pixels, depth, text, glide, nudge: None, lift: None, overlays, drawings };
+        let mut frame = Frame { size, pixels, depth, text, glide, nudge: None, lift: None, overlays, drawings };
         if let Some(p) = self.stand_in.as_ref().filter(|_| stand_in) {
             p.borrow_mut().draw(&mut frame);
         }

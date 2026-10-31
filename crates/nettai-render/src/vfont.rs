@@ -1070,7 +1070,7 @@ impl TextRenderer {
         // The frame pixel each output column and row of the picture shows.
         let columns: Vec<i32> = (0..place.width).map(|dx| place.frame_pixel(place.x + dx, place.y).map_or(0, |p| p.0)).collect();
         let rows: Vec<i32> = (0..place.height).map(|dy| place.frame_pixel(place.x, place.y + dy).map_or(0, |p| p.1)).collect();
-        let frame = FrameMap { x: place.x, y: place.y, width: place.columns, columns: &columns, rows: &rows, cover };
+        let frame = FrameMap { x: place.x, y: place.y, width: place.columns, height: place.rows, columns: &columns, rows: &rows, cover };
         // Back to front by depth, so one item in front of another covers it as the frame's own pixels do (the custom
         // screen's window drawn as shapes over an HP number under it); items of one depth in the order given.
         let mut order: Vec<&TextItem> = items.iter().collect();
@@ -1116,7 +1116,7 @@ impl TextRenderer {
             Some(i) => i,
             None => {
                 let local = TextItem { rect: Rect::new(0, 0, item.rect.w, item.rect.h), fine: (0, 0), clip: Rect::new(0, 0, item.rect.w, item.rect.h), ..item.clone() };
-                let lp = Placement { x: 0, y: 0, width: place.width, height: place.height, scale: s, columns: place.columns };
+                let lp = Placement { x: 0, y: 0, width: place.width, height: place.height, scale: s, columns: place.columns, rows: place.rows };
                 let i = std::sync::Arc::new(self.paint_text(&local, &layout, &lp).map(crate::rasters::Image::from).unwrap_or_default());
                 self.images.put(key, i.clone());
                 i
@@ -1867,8 +1867,9 @@ fn letter_glyphs(shaper: &mut ShapeContext, font: FontRef, letter: char, size: f
 struct FrameMap<'f> {
     x: i32,
     y: i32,
-    /// The frame's columns.
+    /// The frame's columns and rows.
     width: i32,
+    height: i32,
     columns: &'f [i32],
     rows: &'f [i32],
     /// The overlays' depth keys on the output's pixels (none: no overlays).
@@ -1878,7 +1879,7 @@ struct FrameMap<'f> {
 impl FrameMap<'_> {
     /// The whole frame, in frame pixels.
     fn rect(&self) -> Rect {
-        Rect::new(0, 0, self.width, HEIGHT as i32)
+        Rect::new(0, 0, self.width, self.height)
     }
 }
 
@@ -1939,7 +1940,7 @@ impl Target<'_> {
         if self.depth.get(fy as usize * self.frame.width as usize + fx as usize).is_some_and(|&d| d < self.key) {
             return;
         }
-        debug_assert!((fy as usize) < HEIGHT);
+        debug_assert!(fy < self.frame.height);
         let i = y as usize * self.out_w + x as usize;
         if self.frame.cover.and_then(|c| c.get(i)).is_some_and(|&d| d < self.key) {
             return;

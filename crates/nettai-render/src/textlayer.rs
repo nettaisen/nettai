@@ -23,7 +23,7 @@
 //! the numbers in the numbers' font (`numbers`); and the frames drawn as
 //! shapes in their pictures' place (`shapes`).
 
-use crate::compose::{Anchor, Fade, HEIGHT, WIDTH};
+use crate::compose::{Anchor, Fade, HEIGHT, Size, WIDTH};
 pub use crate::render::GraphicsMode;
 use crate::vfont::{Role, VectorFont};
 
@@ -124,7 +124,7 @@ pub struct TextItem {
     /// A lettering's slant, its rows leaning right going up: hundredths of
     /// a pixel across for each pixel up from its box's bottom (0: upright).
     pub slant: i16,
-    /// Where it keeps to in a frame wider than the original's (the
+    /// Where it keeps to in a frame larger than the original's (the
     /// sink's, as it is pushed: `TextSink::anchor`).
     pub anchor: Anchor,
 }
@@ -149,7 +149,7 @@ impl TextItem {
             fine: (0, 0),
             fitted: None,
             slant: 0,
-            anchor: Anchor::Center,
+            anchor: Anchor::CENTER,
         }
     }
 
@@ -161,16 +161,16 @@ impl TextItem {
         TextItem { fitted: Some(number), ..TextItem::new(text, Role::Cell, rect, face, None) }
     }
 
-    /// The item laid out on the original's screen put in a frame `width`
-    /// columns wide where what keeps to its anchor goes: its box and its
-    /// clip moved there, the whole screen's clip the whole frame's.
-    pub fn placed(self, width: usize) -> TextItem {
-        let origin = self.anchor.origin(width);
+    /// The item laid out on the original's screen put in a frame of `size`
+    /// where what keeps to its anchor goes: its box and its clip moved
+    /// there, the whole screen's clip the whole frame's.
+    pub fn placed(self, size: Size) -> TextItem {
+        let (ox, oy) = self.anchor.origin(size);
         let clip = match self.clip == Rect::SCREEN {
-            true => Rect::new(0, 0, width as i32, HEIGHT as i32),
-            false => self.clip.offset(origin, 0),
+            true => Rect::new(0, 0, size.width as i32, size.height as i32),
+            false => self.clip.offset(ox, oy),
         };
-        TextItem { rect: self.rect.offset(origin, 0), clip, ..self }
+        TextItem { rect: self.rect.offset(ox, oy), clip, ..self }
     }
 }
 
@@ -258,7 +258,7 @@ pub struct TextSink<'f> {
     /// The game-style lettering goes to the text layer too (the enhanced
     /// mode's: [`TextSink::takes_lettering`]).
     lettering: bool,
-    /// Where the items pushed keep to in a frame wider than the original's
+    /// Where the items pushed keep to in a frame larger than the original's
     /// (`TextItem::anchor`).
     pub anchor: Anchor,
 }
@@ -266,7 +266,7 @@ pub struct TextSink<'f> {
 impl<'f> TextSink<'f> {
     pub fn new(mode: GraphicsMode, font: Option<&'f VectorFont>) -> TextSink<'f> {
         let lettering = mode == GraphicsMode::Enhanced && font.is_some();
-        TextSink { mode, font, measure: None, pixels: None, items: Vec::new(), next_tag: 0, strings: Default::default(), lettering, anchor: Anchor::Center }
+        TextSink { mode, font, measure: None, pixels: None, items: Vec::new(), next_tag: 0, strings: Default::default(), lettering, anchor: Anchor::CENTER }
     }
 
     /// With the game-style lettering left to the pictures however the
@@ -445,7 +445,7 @@ pub fn describe(frame: &crate::render::Frame) -> Vec<String> {
         .text
         .iter()
         .map(|t| {
-            let area = t.rect.intersect(t.clip).intersect(Rect::new(0, 0, width as i32, HEIGHT as i32));
+            let area = t.rect.intersect(t.clip).intersect(Rect::new(0, 0, width as i32, frame.height() as i32));
             let mut covered = 0;
             for y in area.y..area.y + area.h {
                 for x in area.x..area.x + area.w {

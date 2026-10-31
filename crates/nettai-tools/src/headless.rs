@@ -117,9 +117,9 @@ pub fn render_frames(
 /// and at most, and the drawings' files read and rasterized (in all, and
 /// from the second frame on: none while it plays).
 pub fn time_frames(player: &mut Player, wanted: &BTreeSet<u32>, scale: usize, keys: &KeyScript, log: &mut dyn FnMut(&str)) {
-    use nettai_render::compose::HEIGHT;
     let scale = scale.max(1);
-    let (w, h) = (player.renderer().frame_wide().width * scale, HEIGHT * scale);
+    let size = player.renderer().frame_size();
+    let (w, h) = (size.width * scale, size.height * scale);
     let mut out = vec![0u32; w * h];
     let last = wanted.iter().next_back().copied().unwrap_or(0);
     let (mut made, mut shown, mut most, mut n) = (0f64, 0f64, 0f64, 0u32);

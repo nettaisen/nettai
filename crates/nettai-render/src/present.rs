@@ -9,13 +9,13 @@
 //! output smaller than the frame gets a fractional (shrunk) picture. Text
 //! is drawn at the same placement and scale.
 
-use crate::compose::{HEIGHT, to_rgb};
+use crate::compose::to_rgb;
 use crate::render::Frame;
 use crate::vfont::TextRenderer;
 use std::path::Path;
 
 /// Where the frame lands in the output: its top left, its size and the
-/// output pixels a frame pixel takes; and the frame's columns.
+/// output pixels a frame pixel takes; and the frame's columns and rows.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Placement {
     pub x: i32,
@@ -24,20 +24,22 @@ pub struct Placement {
     pub height: i32,
     pub scale: f32,
     pub columns: i32,
+    pub rows: i32,
 }
 
 impl Placement {
-    /// A frame `columns` wide (and 160 tall) in an output of `w` by `h`
+    /// A frame `columns` wide and `rows` tall in an output of `w` by `h`
     /// pixels, by the policy above.
-    pub fn fit(columns: usize, w: usize, h: usize) -> Placement {
-        let k = (w / columns).min(h / HEIGHT);
+    pub fn fit(columns: usize, rows: usize, w: usize, h: usize) -> Placement {
+        let k = (w / columns).min(h / rows);
         let (width, height, scale) = if k >= 1 {
-            (columns * k, HEIGHT * k, k as f32)
+            (columns * k, rows * k, k as f32)
         } else {
-            let s = (w as f32 / columns as f32).min(h as f32 / HEIGHT as f32);
-            (((columns as f32 * s) as usize).max(1), ((HEIGHT as f32 * s) as usize).max(1), s)
+            let s = (w as f32 / columns as f32).min(h as f32 / rows as f32);
+            (((columns as f32 * s) as usize).max(1), ((rows as f32 * s) as usize).max(1), s)
         };
-        Placement { x: (w - width.min(w)) as i32 / 2, y: (h - height.min(h)) as i32 / 2, width: width as i32, height: height as i32, scale, columns: columns as i32 }
+        let (x, y) = ((w - width.min(w)) as i32 / 2, (h - height.min(h)) as i32 / 2);
+        Placement { x, y, width: width as i32, height: height as i32, scale, columns: columns as i32, rows: rows as i32 }
     }
 
     /// The frame pixel an output pixel shows, if it shows one.
@@ -46,7 +48,7 @@ impl Placement {
         if dx < 0 || dy < 0 || dx >= self.width || dy >= self.height {
             return None;
         }
-        Some((dx * self.columns / self.width, dy * HEIGHT as i32 / self.height))
+        Some((dx * self.columns / self.width, dy * self.rows / self.height))
     }
 }
 
@@ -54,7 +56,7 @@ impl Placement {
 /// as [`Placement::fit`] places it, black around it, and with `text` its
 /// text items over it.
 pub fn present(frame: &Frame, text: Option<&mut TextRenderer>, out: &mut [u32], w: usize, h: usize) -> Placement {
-    let place = Placement::fit(frame.width(), w, h);
+    let place = Placement::fit(frame.width(), frame.height(), w, h);
     clear_around(&place, out, w, h);
     draw_picture(frame, &place, out, w);
     // (The overlays' depth keys on the output pixels they draw, for the text
@@ -113,7 +115,6 @@ fn sixteenths(d: i32, size: usize, span: i32, sub: u8) -> usize {
 /// row copied.)
 fn draw_picture(frame: &Frame, place: &Placement, out: &mut [u32], w: usize) {
     use crate::compose::BACKDROP_DEPTH;
-    use crate::render::Glide;
     use crate::smooth::{lifted_row, nudged_column};
     let width = place.width as usize;
     let frame_width = frame.width();
@@ -125,19 +126,19 @@ fn draw_picture(frame: &Frame, place: &Placement, out: &mut [u32], w: usize) {
         None => Vec::new(),
     };
     let glided: Vec<usize> = match &frame.glide {
-        Some(g) => (0..place.width).map(|dx| sixteenths(dx, frame_width, place.width, g.sub.0).min(g.width() - 1)).collect(),
+        Some(g) => (0..place.width).map(|dx| sixteenths(dx, frame_width, place.width, g.sub.0).min(g.width - 1)).collect(),
         None => Vec::new(),
     };
     // A frame row's colors and the nudged frame's, the glide's row's, and
     // where each frame shows the glide.
-    let glide_width = frame.glide.as_ref().map_or(0, Glide::width);
+    let glide_width = frame.glide.as_ref().map_or(0, |g| g.width);
     let (mut colors, mut moved, mut background) = (vec![0u32; frame_width], vec![0u32; frame_width], vec![0u32; glide_width]);
     let (mut shows, mut moved_shows) = (vec![false; frame_width], vec![false; frame_width]);
     let mut above = None;
     for dy in 0..place.height {
-        let fy = (dy * HEIGHT as i32 / place.height) as usize;
+        let fy = (dy * place.rows / place.height) as usize;
         let lifted = frame.lift.as_ref().filter(|l| lifted_row(l, dy, place));
-        let gy = frame.glide.as_ref().map(|g| sixteenths(dy, HEIGHT, place.height, g.sub.1).min(Glide::HEIGHT - 1));
+        let gy = frame.glide.as_ref().map(|g| sixteenths(dy, frame.height(), place.height, g.sub.1).min(g.height() - 1));
         let at = (place.y + dy) as usize * w + place.x as usize;
         let shown = (fy, lifted.is_some(), gy);
         if above == Some(shown) {
@@ -204,7 +205,7 @@ fn draw_picture(frame: &Frame, place: &Placement, out: &mut [u32], w: usize) {
 /// text items drawn at that scale by `text` ([`present`]).
 pub fn write_png(path: &Path, frame: &Frame, scale: usize, text: Option<&mut TextRenderer>) -> std::io::Result<()> {
     let scale = scale.max(1);
-    let (w, h) = (frame.width() * scale, HEIGHT * scale);
+    let (w, h) = (frame.width() * scale, frame.height() * scale);
     let mut out = vec![0u32; w * h];
     present(frame, text, &mut out, w, h);
     write_rgb_png(path, &out, w, h)
@@ -225,13 +226,13 @@ pub fn write_rgb_png(path: &Path, out: &[u32], w: usize, h: usize) -> std::io::R
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compose::WIDTH;
+    use crate::compose::{HEIGHT, WIDTH};
 
     #[test]
     fn whole_multiples_centered_and_shrunk_only_below_one() {
-        assert_eq!(Placement::fit(WIDTH, 960, 640), Placement { x: 0, y: 0, width: 960, height: 640, scale: 4.0, columns: 240 });
+        assert_eq!(Placement::fit(WIDTH, HEIGHT, 960, 640), Placement { x: 0, y: 0, width: 960, height: 640, scale: 4.0, columns: 240, rows: 160 });
         // A window between multiples: the largest that fits, centered.
-        let p = Placement::fit(WIDTH, 1000, 700);
+        let p = Placement::fit(WIDTH, HEIGHT, 1000, 700);
         assert_eq!((p.x, p.y, p.width, p.height, p.scale), (20, 30, 960, 640, 4.0));
         assert_eq!(p.frame_pixel(20, 30), Some((0, 0)));
         assert_eq!(p.frame_pixel(23, 33), Some((0, 0)));
@@ -239,7 +240,7 @@ mod tests {
         assert_eq!(p.frame_pixel(19, 30), None);
         assert_eq!(p.frame_pixel(980, 30), None);
         // Smaller than the frame: shrunk to fit.
-        let p = Placement::fit(WIDTH, 120, 100);
+        let p = Placement::fit(WIDTH, HEIGHT, 120, 100);
         assert_eq!((p.x, p.y, p.width, p.height, p.scale), (0, 10, 120, 80, 0.5));
         assert_eq!(p.frame_pixel(119, 89), Some((238, 158)));
     }
@@ -275,7 +276,7 @@ mod tests {
         pixels[3] = 0x7FFF;
         depth[3] = depth_key(0, 0, 1);
         depth[4] = BACKDROP_DEPTH;
-        let glide = Glide { pixels: (0..(WIDTH + 1) * Glide::HEIGHT).map(|i| (i % (WIDTH + 1)) as u16).collect(), sub: (8, 0), depth: bg_depth };
+        let glide = Glide { pixels: (0..(WIDTH + 1) * (HEIGHT + 1)).map(|i| (i % (WIDTH + 1)) as u16).collect(), width: WIDTH + 1, sub: (8, 0), depth: bg_depth };
         let mut frame = Frame { pixels, depth, text: Vec::new(), glide: None, ..Frame::default() };
         let (w, h) = (2 * WIDTH, 2 * HEIGHT);
         let mut still = vec![0; w * h];
@@ -296,8 +297,7 @@ mod tests {
     /// [`draw_picture`] to it.
     fn picture_one_pixel_at_a_time(frame: &Frame, out: &mut [u32], w: usize, h: usize) {
         use crate::compose::BACKDROP_DEPTH;
-        use crate::render::Glide;
-        let place = Placement::fit(WIDTH, w, h);
+        let place = Placement::fit(WIDTH, HEIGHT, w, h);
         out[..w * h].fill(0);
         let columns: Vec<usize> = (0..place.width).map(|dx| (dx * WIDTH as i32 / place.width) as usize).collect();
         let nudged: Vec<bool> = match &frame.nudge {
@@ -327,7 +327,7 @@ mod tests {
             let Some(g) = &frame.glide else { continue };
             let depth = &depth[fy * WIDTH..(fy + 1) * WIDTH];
             let sixteenths = |d: i32, size: usize, span: i32, sub: u8| ((d as i64 * 16 * size as i64 / span as i64) as usize + sub as usize) / 16;
-            let gy = sixteenths(dy, HEIGHT, place.height, g.sub.1).min(Glide::HEIGHT - 1);
+            let gy = sixteenths(dy, HEIGHT, place.height, g.sub.1).min(HEIGHT);
             let moved = nudge.map(|n| &n.depth[fy * WIDTH..(fy + 1) * WIDTH]);
             let source = &g.pixels[gy * (WIDTH + 1)..(gy + 1) * (WIDTH + 1)];
             for (dx, o) in line.iter_mut().enumerate() {
@@ -365,7 +365,7 @@ mod tests {
         let sizes = [(240, 160), (480, 320), (720, 480), (960, 640), (1440, 960), (1000, 700), (963, 641), (500, 333), (120, 100), (200, 150), (239, 159)];
         for case in 0..32u32 {
             let mut pixels = |n: usize| (0..n).map(|_| (random() & 0x7FFF) as u16).collect::<Vec<u16>>();
-            let (frame_pixels, glide_pixels, nudge_pixels, lift_pixels) = (pixels(WIDTH * HEIGHT), pixels((WIDTH + 1) * Glide::HEIGHT), pixels(WIDTH * HEIGHT), pixels(WIDTH * HEIGHT));
+            let (frame_pixels, glide_pixels, nudge_pixels, lift_pixels) = (pixels(WIDTH * HEIGHT), pixels((WIDTH + 1) * (HEIGHT + 1)), pixels(WIDTH * HEIGHT), pixels(WIDTH * HEIGHT));
             let mut depth = || (0..WIDTH * HEIGHT).map(|_| keys[(random() % 4) as usize]).collect::<Vec<u32>>();
             let (frame_depth, nudge_depth, lift_depth) = (depth(), depth(), depth());
             let mut sub = |n: u64| (random() % n) as u8;
@@ -374,7 +374,7 @@ mod tests {
             let frame = Frame {
                 pixels: frame_pixels,
                 depth: frame_depth,
-                glide: (case % 2 == 0).then(|| Glide { pixels: glide_pixels, sub: glide_sub, depth: background }),
+                glide: (case % 2 == 0).then(|| Glide { pixels: glide_pixels, width: WIDTH + 1, sub: glide_sub, depth: background }),
                 nudge: (case % 4 < 2).then(|| Nudge { pixels: nudge_pixels, depth: nudge_depth, sub: nudge_sub }),
                 lift: (case % 8 < 4).then(|| Lift { pixels: lift_pixels, depth: lift_depth, sub: lift_sub }),
                 ..Frame::default()
@@ -399,7 +399,7 @@ mod tests {
         use crate::smooth::{Lift, lifted_row};
         let lift = Lift { pixels: Vec::new(), depth: Vec::new(), sub: 0x8000 };
         for (scale, rows) in [(2, vec![false, true]), (3, vec![false, true, true]), (4, vec![false, false, true, true])] {
-            let place = Placement::fit(WIDTH, scale * WIDTH, scale * HEIGHT);
+            let place = Placement::fit(WIDTH, HEIGHT, scale * WIDTH, scale * HEIGHT);
             let seen: Vec<bool> = (0..scale as i32).map(|dy| lifted_row(&lift, 30 * scale as i32 + dy, &place)).collect();
             assert_eq!(seen, rows, "at {scale} times");
         }

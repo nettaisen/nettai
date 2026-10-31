@@ -18,24 +18,25 @@ pub const PIXELS: usize = WIDTH * HEIGHT;
 /// A transparent pixel in a layer (colors use 15 bits).
 pub const CLEAR: u16 = 0x8000;
 
-/// A frame as wide as its window shows it (the enhanced mode's widescreen,
-/// docs/frontend.md §3): `width` columns, never fewer than the original's
-/// 240, which sit in its middle (`margin` columns from its left edge, an
-/// odd column left over on their right). Every piece is laid out on the
-/// original's screen and put in the frame by where it keeps to
-/// ([`Anchor`]); the background is drawn across the whole width, and the
-/// battle's sprites wherever they fall in it (the original draws them past
-/// its screen's edges too, where its screen leaves them out).
+/// A frame as large as its window shows it (the enhanced mode's wide and
+/// tall frames, docs/frontend.md §3): `width` columns of `height` rows,
+/// never fewer than the original's 240 by 160, which sit in its middle
+/// (`columns_left` columns from its left edge, an odd column left over on
+/// their right; `rows_above` rows from its top, an odd row left over under
+/// them). Every piece is laid out on the original's screen and put in the
+/// frame by where it keeps to ([`Anchor`]); the background is drawn across
+/// the whole frame, and the battle's sprites wherever they fall in it (the
+/// original draws them past its screen's edges too, where its screen leaves
+/// them out).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct Wide {
+pub struct Size {
     pub width: usize,
+    pub height: usize,
 }
 
-/// Where a piece of the frame keeps to in a frame wider than the original's
-/// ([`Wide`]): with the field in the middle, or against an edge, as the
-/// original draws it against that edge of its screen.
+/// Where a piece keeps to across a frame wider than the original's.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Anchor {
+pub enum Horizontal {
     /// Against the left edge.
     Left,
     /// In the middle, with the field: the field and the battle's objects,
@@ -46,72 +47,151 @@ pub enum Anchor {
     Right,
 }
 
+/// Where a piece keeps to down a frame taller than the original's.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Vertical {
+    /// Against the top edge.
+    Top,
+    /// In the middle, with the field (as [`Horizontal::Center`]).
+    #[default]
+    Middle,
+    /// Against the bottom edge, as far from it as on the original's screen.
+    Bottom,
+}
+
+/// Where a piece of the frame keeps to in a frame larger than the
+/// original's ([`Size`]), each way: with the field in the middle, or
+/// against an edge or a corner, as the original draws it against that edge
+/// of its screen.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Anchor {
+    pub horizontal: Horizontal,
+    pub vertical: Vertical,
+}
+
 impl Anchor {
-    /// The column of a frame `width` columns wide the original's column 0
-    /// is at for a piece kept to it.
-    pub fn origin(self, width: usize) -> i32 {
-        let more = width.saturating_sub(WIDTH) as i32;
-        match self {
-            Anchor::Left => 0,
-            Anchor::Center => more / 2,
-            Anchor::Right => more,
-        }
+    pub const TOP_LEFT: Anchor = Anchor::new(Horizontal::Left, Vertical::Top);
+    pub const TOP: Anchor = Anchor::new(Horizontal::Center, Vertical::Top);
+    pub const TOP_RIGHT: Anchor = Anchor::new(Horizontal::Right, Vertical::Top);
+    pub const LEFT: Anchor = Anchor::new(Horizontal::Left, Vertical::Middle);
+    /// With the field, both ways.
+    pub const CENTER: Anchor = Anchor::new(Horizontal::Center, Vertical::Middle);
+    pub const RIGHT: Anchor = Anchor::new(Horizontal::Right, Vertical::Middle);
+    pub const BOTTOM_LEFT: Anchor = Anchor::new(Horizontal::Left, Vertical::Bottom);
+    pub const BOTTOM: Anchor = Anchor::new(Horizontal::Center, Vertical::Bottom);
+    pub const BOTTOM_RIGHT: Anchor = Anchor::new(Horizontal::Right, Vertical::Bottom);
+
+    pub const fn new(horizontal: Horizontal, vertical: Vertical) -> Anchor {
+        Anchor { horizontal, vertical }
     }
 
-    /// Where a piece mirrored across the screen keeps to: the other edge.
+    /// The frame's column and row the original's top left is at for a
+    /// piece kept to it, in a frame of `size`.
+    pub fn origin(self, size: Size) -> (i32, i32) {
+        let (more_x, more_y) = (size.width.saturating_sub(WIDTH) as i32, size.height.saturating_sub(HEIGHT) as i32);
+        let x = match self.horizontal {
+            Horizontal::Left => 0,
+            Horizontal::Center => more_x / 2,
+            Horizontal::Right => more_x,
+        };
+        let y = match self.vertical {
+            Vertical::Top => 0,
+            Vertical::Middle => more_y / 2,
+            Vertical::Bottom => more_y,
+        };
+        (x, y)
+    }
+
+    /// Where a piece mirrored across the screen keeps to: the other side
+    /// edge, as high.
     pub fn mirrored(self) -> Anchor {
-        match self {
-            Anchor::Left => Anchor::Right,
-            Anchor::Right => Anchor::Left,
-            a => a,
-        }
+        let horizontal = match self.horizontal {
+            Horizontal::Left => Horizontal::Right,
+            Horizontal::Right => Horizontal::Left,
+            Horizontal::Center => Horizontal::Center,
+        };
+        Anchor { horizontal, ..self }
     }
 }
 
-impl Wide {
-    /// The original's 240 columns.
-    pub const ORIGINAL: Wide = Wide { width: WIDTH };
+impl Size {
+    /// The original's 240 by 160.
+    pub const ORIGINAL: Size = Size { width: WIDTH, height: HEIGHT };
 
-    /// A frame `width` columns wide (240 at least).
-    pub fn new(width: usize) -> Wide {
-        Wide { width: width.max(WIDTH) }
+    /// A frame `width` by `height` (240 by 160 at least).
+    pub fn new(width: usize, height: usize) -> Size {
+        Size { width: width.max(WIDTH), height: height.max(HEIGHT) }
     }
 
     /// The columns left of the original's 240.
-    pub fn margin(self) -> i32 {
+    pub fn columns_left(self) -> i32 {
         (self.width - WIDTH) as i32 / 2
     }
 
-    /// The frame column the original's column 0 is at for a piece kept to
-    /// `anchor`.
-    pub fn origin(self, anchor: Anchor) -> i32 {
-        anchor.origin(self.width)
+    /// The rows above the original's 160.
+    pub fn rows_above(self) -> i32 {
+        (self.height - HEIGHT) as i32 / 2
+    }
+
+    /// The frame's column and row the original's top left is at for a
+    /// piece kept to `anchor`.
+    pub fn origin(self, anchor: Anchor) -> (i32, i32) {
+        anchor.origin(self)
     }
 
     /// The column between the frame's halves: the original's middle's.
     pub fn middle(self) -> i32 {
-        self.margin() + WIDTH as i32 / 2
+        self.columns_left() + WIDTH as i32 / 2
     }
 
     pub fn pixels(self) -> usize {
-        self.width * HEIGHT
+        self.width * self.height
     }
 }
 
-/// A sprite part's X on the original's screen, `span` columns wide, as
-/// `wide` draws it: the original's 240 columns read its coordinate as the
-/// hardware does (9 bits: a part that reaches past 512 wraps to the left of
-/// the screen); a wider frame draws it where it is, its coordinate
+impl Default for Size {
+    fn default() -> Size {
+        Size::ORIGINAL
+    }
+}
+
+/// A sprite part's X on the original's screen, `span` columns wide, as a
+/// frame of `size` draws it: the original's 240 columns read its coordinate
+/// as the hardware does (9 bits: a part that reaches past 512 wraps to the
+/// left of the screen); a wider frame draws it where it is, its coordinate
 /// unwrapped, as no 512 columns hold all that frame shows.
-pub fn sprite_x(x: i32, span: i32, wide: Wide) -> i32 {
-    if wide.width > WIDTH {
+pub fn sprite_x(x: i32, span: i32, size: Size) -> i32 {
+    if size.width > WIDTH {
         return x;
     }
     let x = x & 0x1FF;
     if x + span > 0x200 { x - 0x200 } else { x }
 }
 
-/// A layer of tiles as wide as the frame (the field, the background, the
+/// A sprite part's Y on the original's screen, `span` rows high, as a frame
+/// of `size` draws the part whole (an overlay's box, `smooth::Overlay`):
+/// the original's 160 rows read its coordinate as the hardware does (8
+/// bits: a part that reaches past 256 wraps to the top of the screen); a
+/// taller frame draws it where it is, its coordinate unwrapped.
+pub fn sprite_y(y: i32, span: i32, size: Size) -> i32 {
+    if size.height > HEIGHT {
+        return y;
+    }
+    let y = y & 0xFF;
+    if y + span > 0x100 { y - 0x100 } else { y }
+}
+
+/// The row of the original's screen that row `row` of a sprite part at `y`
+/// is on, as a frame of `size` draws it: on the original's 160 rows each of
+/// the part's rows wraps at 256 on its own, as the hardware's scanlines
+/// find it (a part over 96 rows high may show at the screen's bottom and
+/// its top at once: a doubled affine box); a taller frame draws it where it
+/// is.
+fn sprite_row(y: i32, row: i32, size: Size) -> i32 {
+    if size.height > HEIGHT { y + row } else { (y + row) & 0xFF }
+}
+
+/// A layer of tiles as large as the frame (the field, the background, the
 /// HUD). Pieces are drawn into it on the original's screen, each put where
 /// what keeps to its anchor goes ([`Layer::keep_to`]).
 #[derive(Clone)]
@@ -122,12 +202,13 @@ pub struct Layer {
     pub order: u8,
     /// The palettes it draws with (which fades reach it).
     pub palettes: Palettes,
-    /// Its columns: the frame's.
+    /// Its columns and rows: the frame's.
     pub width: usize,
-    /// Where the piece drawn next keeps to, and the column the original's
-    /// column 0 is drawn at for it.
+    pub height: usize,
+    /// Where the piece drawn next keeps to, and the column and row the
+    /// original's top left is drawn at for it.
     pub(crate) anchor: Anchor,
-    pub(crate) origin: i32,
+    pub(crate) origin: (i32, i32),
     pub pixels: Vec<u16>,
     /// What each pixel's piece keeps to (a drawn pixel's), for what moves
     /// pieces about on the original's screen (`seat::Mirror::layer`).
@@ -144,42 +225,48 @@ pub struct Layer {
 }
 
 impl Layer {
-    /// A layer of the original's 240 columns.
+    /// A layer of the original's 240 by 160.
     pub fn new(priority: u8, order: u8) -> Layer {
         Layer {
             priority,
             order,
             palettes: Palettes::Stage,
             width: WIDTH,
-            anchor: Anchor::Center,
-            origin: 0,
+            height: HEIGHT,
+            anchor: Anchor::CENTER,
+            origin: (0, 0),
             pixels: vec![CLEAR; PIXELS],
-            anchors: vec![Anchor::Center; PIXELS],
+            anchors: vec![Anchor::CENTER; PIXELS],
             past_ranged: vec![false; PIXELS],
             drawn: true,
         }
     }
 
-    /// Make it `width` columns wide, cleared if that is a change.
-    pub fn set_width(&mut self, width: usize) {
-        if width != self.width {
-            self.width = width;
-            self.pixels = vec![CLEAR; width * HEIGHT];
-            self.anchors = vec![Anchor::Center; width * HEIGHT];
-            self.past_ranged = vec![false; width * HEIGHT];
-            self.origin = self.anchor.origin(width);
+    /// Its columns and rows.
+    pub fn size(&self) -> Size {
+        Size { width: self.width, height: self.height }
+    }
+
+    /// Make it `size`, cleared if that is a change.
+    pub fn set_size(&mut self, size: Size) {
+        if size != self.size() {
+            (self.width, self.height) = (size.width, size.height);
+            self.pixels = vec![CLEAR; size.pixels()];
+            self.anchors = vec![Anchor::CENTER; size.pixels()];
+            self.past_ranged = vec![false; size.pixels()];
+            self.origin = self.anchor.origin(size);
         }
     }
 
     /// Draw what follows kept to `anchor`.
     pub fn keep_to(&mut self, anchor: Anchor) {
         self.anchor = anchor;
-        self.origin = anchor.origin(self.width);
+        self.origin = anchor.origin(self.size());
     }
 
-    /// The column of the layer the original's column 0 is at for what is
-    /// drawn now.
-    pub fn origin(&self) -> i32 {
+    /// The column and row of the layer the original's top left is at for
+    /// what is drawn now.
+    pub fn origin(&self) -> (i32, i32) {
         self.origin
     }
 
@@ -193,8 +280,8 @@ impl Layer {
     /// The pixel at (x, y) of the original's screen, where it is in the
     /// layer.
     fn at(&self, x: i32, y: i32) -> Option<usize> {
-        let x = x + self.origin;
-        ((0..self.width as i32).contains(&x) && (0..HEIGHT as i32).contains(&y)).then(|| y as usize * self.width + x as usize)
+        let (x, y) = (x + self.origin.0, y + self.origin.1);
+        ((0..self.width as i32).contains(&x) && (0..self.height as i32).contains(&y)).then(|| y as usize * self.width + x as usize)
     }
 
     /// Clear the pixel at (x, y) of the original's screen.
@@ -205,7 +292,8 @@ impl Layer {
         }
     }
 
-    /// Put a pixel at column `x` of the layer, its piece kept to `anchor`.
+    /// Put a pixel at column `x` and row `y` of the layer, its piece kept to
+    /// `anchor`.
     pub fn put_pixel(&mut self, x: usize, y: usize, (color, past_ranged, anchor): (u16, bool, Anchor)) {
         let i = y * self.width + x;
         self.pixels[i] = color;
@@ -218,7 +306,7 @@ impl Layer {
         if !self.drawn {
             return;
         }
-        for y in 0..HEIGHT {
+        for y in 0..self.height {
             for x in (0..self.width).filter(|&x| !kept.contains(&(x as i32))) {
                 self.pixels[y * self.width + x] = CLEAR;
                 self.past_ranged[y * self.width + x] = false;
@@ -232,13 +320,13 @@ impl Layer {
         if (dx, dy) == (0, 0) {
             return;
         }
-        let w = self.width;
-        let old = std::mem::replace(&mut self.pixels, vec![CLEAR; w * HEIGHT]);
-        let old_past = std::mem::replace(&mut self.past_ranged, vec![false; w * HEIGHT]);
+        let (w, h) = (self.width, self.height);
+        let old = std::mem::replace(&mut self.pixels, vec![CLEAR; w * h]);
+        let old_past = std::mem::replace(&mut self.past_ranged, vec![false; w * h]);
         let old_anchors = self.anchors.clone();
-        for y in 0..HEIGHT as i32 {
+        for y in 0..h as i32 {
             let sy = y - dy;
-            if !(0..HEIGHT as i32).contains(&sy) {
+            if !(0..h as i32).contains(&sy) {
                 continue;
             }
             for x in 0..w as i32 {
@@ -253,16 +341,16 @@ impl Layer {
         }
     }
 
-    /// Put what is drawn in `from` (a layer as wide) here, `dx` pixels right
-    /// (a piece laid out elsewhere first, then put in its place), over what
-    /// is here.
+    /// Put what is drawn in `from` (a layer as large) here, `dx` pixels
+    /// right (a piece laid out elsewhere first, then put in its place), over
+    /// what is here.
     pub fn put_moved(&mut self, from: &Layer, dx: i32) {
         if !self.drawn {
             return;
         }
-        debug_assert_eq!(from.width, self.width);
+        debug_assert_eq!(from.size(), self.size());
         let w = self.width;
-        for y in 0..HEIGHT {
+        for y in 0..self.height {
             for x in 0..w {
                 let i = y * w + x;
                 let to = x as i32 + dx;
@@ -290,10 +378,10 @@ impl Layer {
         if !self.drawn {
             return;
         }
-        let (w, x) = (self.width, x + self.origin);
+        let (w, x, y) = (self.width, x + self.origin.0, y + self.origin.1);
         for ty in 0..8 {
             let sy = y + ty;
-            if !(0..HEIGHT as i32).contains(&sy) {
+            if !(0..self.height as i32).contains(&sy) {
                 continue;
             }
             let row = if vflip { 7 - ty } else { ty } as usize;
@@ -318,11 +406,12 @@ impl Layer {
 /// One sprite part as the original's hardware would draw it.
 #[derive(Clone)]
 pub struct SpritePart<'a> {
-    /// Its column on the original's screen, not wrapped ([`sprite_x`]: the
-    /// original's 240 columns wrap it at 512 as the hardware does), and its
-    /// row, wrapped as the hardware's (0..256).
+    /// Its column and row on the original's screen, not wrapped
+    /// ([`sprite_x`], [`sprite_y`]: the original's 240 columns wrap the
+    /// column at 512 and its 160 rows the row at 256, as the hardware
+    /// does).
     pub x: i32,
-    pub y: u8,
+    pub y: i32,
     pub width: u8,
     pub height: u8,
     pub tiles: &'a Tiles,
@@ -350,18 +439,19 @@ pub struct SpritePart<'a> {
     /// where not all: on a screen of both, a console's pieces kept to its
     /// part of the screen.
     pub clip: Option<[i16; 2]>,
-    /// Where it keeps to in a frame wider than the original's.
+    /// Where it keeps to in a frame larger than the original's.
     pub anchor: Anchor,
 }
 
 impl SpritePart<'_> {
-    /// The frame columns it is drawn in, in `wide` (the first, one past the
-    /// last), and the frame column of the original's column 0 for it.
-    pub(crate) fn placed(&self, wide: Wide) -> ([i32; 2], i32) {
-        let origin = wide.origin(self.anchor);
+    /// The frame columns it is drawn in, in a frame of `size` (the first,
+    /// one past the last), and the frame's column and row of the original's
+    /// top left for it.
+    pub(crate) fn placed(&self, size: Size) -> ([i32; 2], (i32, i32)) {
+        let origin = size.origin(self.anchor);
         let [c0, c1] = match self.clip {
-            Some([a, b]) => [(a as i32).max(0), (b as i32).min(wide.width as i32)],
-            None => [0, wide.width as i32],
+            Some([a, b]) => [(a as i32).max(0), (b as i32).min(size.width as i32)],
+            None => [0, size.width as i32],
         };
         ([c0, c1], origin)
     }
@@ -471,24 +561,24 @@ pub const BACKDROP_DEPTH: u32 = 5 << 24;
 /// [`compose`], and per pixel the depth key of what won it (the frontmost
 /// opaque thing; a semi-transparent sprite counts as in front).
 pub fn compose_with_depth(backdrop: u16, layers: &[&Layer], parts: &[SpritePart], fades: Fades) -> (Vec<u16>, Vec<u32>) {
-    compose_wide(Wide::ORIGINAL, backdrop, layers, parts, fades)
+    compose_sized(Size::ORIGINAL, backdrop, layers, parts, fades)
 }
 
-/// [`compose_with_depth`] into a frame of `wide`'s width, its layers as
-/// wide: each sprite part where `wide` puts what keeps to its anchor.
-pub fn compose_wide(wide: Wide, backdrop: u16, layers: &[&Layer], parts: &[SpritePart], fades: Fades) -> (Vec<u16>, Vec<u32>) {
-    let pixels = wide.pixels();
+/// [`compose_with_depth`] into a frame of `size`, its layers as large: each
+/// sprite part where `size` puts what keeps to its anchor.
+pub fn compose_sized(size: Size, backdrop: u16, layers: &[&Layer], parts: &[SpritePart], fades: Fades) -> (Vec<u16>, Vec<u32>) {
+    let pixels = size.pixels();
     let backdrop = apply_fade(backdrop, fades.stage);
     // The sprite layer: per pixel the frontmost sprite's color.
     let mut obj = SpriteBuffers {
-        width: wide.width,
+        width: size.width,
         color: vec![CLEAR; pixels],
         priority: vec![UNWRITTEN; pixels],
         alpha: vec![0xFFu8; pixels],
         index: vec![0u16; pixels],
     };
     for (k, p) in parts.iter().enumerate() {
-        draw_part(p, wide, k as u16, &mut obj);
+        draw_part(p, size, k as u16, &mut obj);
     }
     // Each layer's place among what is in front (its priority, then its
     // rank, as one number: priority × 256 + rank, smaller in front), its
@@ -508,7 +598,7 @@ pub fn compose_wide(wide: Wide, backdrop: u16, layers: &[&Layer], parts: &[Sprit
         .map(|l| {
             let (past_fade, fade) = l.palettes.fades(&fades);
             let place = (l.priority as u16) << 8 | (1 + l.order) as u16;
-            debug_assert_eq!(l.width, wide.width);
+            debug_assert_eq!(l.size(), size);
             Plane { pixels: &l.pixels[..pixels], past_ranged: &l.past_ranged[..pixels], place, depth: layer_depth(l), fade, past_fade }
         })
         .collect();
@@ -572,26 +662,27 @@ impl SpriteBuffers {
     }
 }
 
-/// A part into the sprite layer, where `wide` puts it. (Laid out on the
-/// original's screen: its mosaic's blocks are that screen's.)
-fn draw_part(p: &SpritePart, wide: Wide, k: u16, obj: &mut SpriteBuffers) {
+/// A part into the sprite layer, where a frame of `size` puts it. (Laid out
+/// on the original's screen: its mosaic's blocks are that screen's.)
+fn draw_part(p: &SpritePart, size: Size, k: u16, obj: &mut SpriteBuffers) {
     if let Some(m) = p.affine {
-        draw_affine(p, m, wide, k, obj);
+        draw_affine(p, m, size, k, obj);
         return;
     }
     let (w, h) = (p.width as i32, p.height as i32);
     let tiles_per_row = (p.width / 8) as usize;
     let mosaic = p.mosaic.map(|m| m as i32 + 1).filter(|&n| n > 1);
-    let ([c0, c1], origin) = p.placed(wide);
+    let ([c0, c1], (origin, top)) = p.placed(size);
     for row in 0..h {
-        let sy = (p.y as i32 + row) & 0xFF;
-        if sy >= HEIGHT as i32 {
+        let sy = sprite_row(p.y, row, size);
+        let fy = sy + top;
+        if !(0..size.height as i32).contains(&fy) {
             continue;
         }
         // Mosaic samples the row at the top of its screen block, clamped
         // to the sprite (as mGBA does).
         let row = match mosaic {
-            Some(n) => (row - sy % n).clamp(0, h - 1),
+            Some(n) => (row - sy.rem_euclid(n)).clamp(0, h - 1),
             None => row,
         };
         let row = match p.vscale {
@@ -606,7 +697,7 @@ fn draw_part(p: &SpritePart, wide: Wide, k: u16, obj: &mut SpriteBuffers) {
         };
         // Horizontal mosaic samples the column at the start of each screen
         // block; the sprite's span extends to the end of its last block.
-        let x0 = sprite_x(p.x, w, wide);
+        let x0 = sprite_x(p.x, w, size);
         let span = match mosaic {
             Some(n) => (x0 + w + n - 1).div_euclid(n) * n - x0,
             None => w,
@@ -617,7 +708,7 @@ fn draw_part(p: &SpritePart, wide: Wide, k: u16, obj: &mut SpriteBuffers) {
             if !(c0..c1).contains(&fx) {
                 continue;
             }
-            let i = sy as usize * obj.width + fx as usize;
+            let i = fy as usize * obj.width + fx as usize;
             if obj.priority[i] <= p.priority {
                 continue;
             }
@@ -641,15 +732,15 @@ fn draw_part(p: &SpritePart, wide: Wide, k: u16, obj: &mut SpriteBuffers) {
 
 /// An affine part (as mGBA draws it): the box, its pixels read through
 /// the matrix about the centers.
-fn draw_affine(p: &SpritePart, m: Affine, wide: Wide, k: u16, obj: &mut SpriteBuffers) {
+fn draw_affine(p: &SpritePart, m: Affine, size: Size, k: u16, obj: &mut SpriteBuffers) {
     let (w, h) = (p.width as i32, p.height as i32);
     let (bw, bh) = if m.double { (2 * w, 2 * h) } else { (w, h) };
     let tiles_per_row = (p.width / 8) as usize;
-    let ([c0, c1], origin) = p.placed(wide);
-    let x0 = sprite_x(p.x, bw, wide);
+    let ([c0, c1], (origin, top)) = p.placed(size);
+    let x0 = sprite_x(p.x, bw, size);
     for by in 0..bh {
-        let sy = (p.y as i32 + by) & 0xFF;
-        if sy >= HEIGHT as i32 {
+        let fy = sprite_row(p.y, by, size) + top;
+        if !(0..size.height as i32).contains(&fy) {
             continue;
         }
         let dy = by - bh / 2;
@@ -664,7 +755,7 @@ fn draw_affine(p: &SpritePart, m: Affine, wide: Wide, k: u16, obj: &mut SpriteBu
             if !(0..w).contains(&tx) || !(0..h).contains(&ty) {
                 continue;
             }
-            let i = sy as usize * obj.width + fx as usize;
+            let i = fy as usize * obj.width + fx as usize;
             if obj.priority[i] <= p.priority {
                 continue;
             }
@@ -742,76 +833,100 @@ pub fn to_rgb(c: u16) -> u32 {
 mod tests {
     use super::*;
 
-    /// The original's 240 columns sit in the middle of a wider frame, an
-    /// odd column left over on their right; a piece kept to an edge stays
-    /// as far from it as on the original's screen, and one mirrored keeps to
-    /// the other edge.
+    /// The original's 240 by 160 sit in the middle of a larger frame, an
+    /// odd column left over on their right and an odd row under them; a
+    /// piece kept to an edge stays as far from it as on the original's
+    /// screen, each way, and one mirrored keeps to the other side edge, as
+    /// high.
     #[test]
-    fn a_wide_frame_puts_each_piece_by_its_anchor() {
-        let wide = Wide::new(285);
-        assert_eq!((wide.margin(), wide.origin(Anchor::Center), wide.middle()), (22, 22, 142));
-        assert_eq!((wide.origin(Anchor::Left), wide.origin(Anchor::Right)), (0, 45));
-        assert_eq!(Wide::new(200).width, WIDTH);
-        assert_eq!([Anchor::Left, Anchor::Center, Anchor::Right].map(|a| a.origin(WIDTH)), [0; 3]);
-        assert_eq!([Anchor::Left, Anchor::Center, Anchor::Right].map(Anchor::mirrored), [Anchor::Right, Anchor::Center, Anchor::Left]);
+    fn a_large_frame_puts_each_piece_by_its_anchor() {
+        let size = Size::new(285, 203);
+        assert_eq!((size.columns_left(), size.rows_above(), size.origin(Anchor::CENTER), size.middle()), (22, 21, (22, 21), 142));
+        assert_eq!((size.origin(Anchor::TOP_LEFT), size.origin(Anchor::RIGHT), size.origin(Anchor::BOTTOM)), ((0, 0), (45, 21), (22, 43)));
+        assert_eq!(Size::new(200, 100), Size::ORIGINAL);
+        let all = [Anchor::TOP_LEFT, Anchor::TOP, Anchor::TOP_RIGHT, Anchor::LEFT, Anchor::CENTER, Anchor::RIGHT, Anchor::BOTTOM_LEFT, Anchor::BOTTOM, Anchor::BOTTOM_RIGHT];
+        assert_eq!(all.map(|a| a.origin(Size::ORIGINAL)), [(0, 0); 9]);
+        assert_eq!([Anchor::TOP_LEFT, Anchor::CENTER, Anchor::BOTTOM_RIGHT].map(Anchor::mirrored), [Anchor::TOP_RIGHT, Anchor::CENTER, Anchor::BOTTOM_LEFT]);
         // (A layer draws each piece where its anchor puts it, and keeps what
         // each pixel's piece keeps to.)
         let mut layer = Layer::new(1, 3);
-        layer.set_width(285);
+        layer.set_size(size);
         let tile = [1u8; 64];
         let white = [0x7FFF; 16];
-        layer.keep_to(Anchor::Left);
+        layer.keep_to(Anchor::TOP_LEFT);
         layer.draw_tile(&tile, &white, 0, 0, false, false);
-        layer.keep_to(Anchor::Right);
-        layer.draw_tile(&tile, &white, 232, 0, false, false);
-        assert_eq!((layer.pixels[0], layer.pixels[284], layer.pixels[283 - 8]), (0x7FFF, 0x7FFF, CLEAR));
-        assert_eq!((layer.anchors[0], layer.anchors[284]), (Anchor::Left, Anchor::Right));
+        layer.keep_to(Anchor::BOTTOM_RIGHT);
+        layer.draw_tile(&tile, &white, 232, 152, false, false);
+        let at = |x: usize, y: usize| y * 285 + x;
+        assert_eq!((layer.pixels[at(0, 0)], layer.pixels[at(284, 202)], layer.pixels[at(283 - 8, 202)], layer.pixels[at(284, 202 - 8)]), (0x7FFF, 0x7FFF, CLEAR, CLEAR));
+        assert_eq!((layer.anchors[at(0, 0)], layer.anchors[at(284, 202)]), (Anchor::TOP_LEFT, Anchor::BOTTOM_RIGHT));
     }
 
-    /// On the original's screen a part's coordinate reads as the hardware
-    /// reads it, wrapped at 512; a wider frame draws it where it is, however
-    /// wide (one of 1374 columns shows 567 left of the original's screen).
+    /// On the original's screen a part's coordinates read as the hardware
+    /// reads them, the column wrapped at 512 and the row at 256; a larger
+    /// frame draws it where it is, however large (one of 1374 columns shows
+    /// 567 left of the original's screen).
     #[test]
     fn a_part_reads_as_the_hardware_reads_it_on_the_original_screen() {
         for w in [8, 16, 32, 64, 128] {
             for x in 0..0x200 {
                 let hardware = if x + w > 0x200 { x - 0x200 } else { x };
                 for unwrapped in [x - 0x400, x - 0x200, x, x + 0x200] {
-                    assert_eq!(sprite_x(unwrapped, w, Wide::ORIGINAL), hardware, "x {unwrapped}, {w} wide");
+                    assert_eq!(sprite_x(unwrapped, w, Size::ORIGINAL), hardware, "x {unwrapped}, {w} wide");
+                }
+            }
+            for y in 0..0x100 {
+                let hardware = if y + w > 0x100 { y - 0x100 } else { y };
+                for unwrapped in [y - 0x200, y - 0x100, y, y + 0x100] {
+                    assert_eq!(sprite_y(unwrapped, w, Size::ORIGINAL), hardware, "y {unwrapped}, {w} high");
+                    // (Row by row, each wrapped on its own.)
+                    assert_eq!(sprite_row(unwrapped, w - 1, Size::ORIGINAL), (y + w - 1) & 0xFF);
                 }
             }
         }
-        for wide in [Wide::new(284), Wide::new(568), Wide::new(1374)] {
-            assert_eq!([-300, -16, 180, 300, 496].map(|x| sprite_x(x, 16, wide)), [-300, -16, 180, 300, 496]);
+        for size in [Size::new(284, 160), Size::new(568, 160), Size::new(1374, 160)] {
+            assert_eq!([-300, -16, 180, 300, 496].map(|x| sprite_x(x, 16, size)), [-300, -16, 180, 300, 496]);
+            assert_eq!(sprite_y(-16, 16, size), 240, "only the width is past the original's");
+        }
+        for size in [Size::new(240, 213), Size::new(284, 320), Size::new(240, 600)] {
+            assert_eq!([-300, -16, 180, 300].map(|y| sprite_y(y, 16, size)), [-300, -16, 180, 300]);
+            assert_eq!([-300, -16, 180, 300].map(|y| sprite_row(y, 3, size)), [-297, -13, 183, 303]);
         }
     }
 
-    /// The battle's sprites past the old edges show in a wider frame, each
+    /// The battle's sprites past the old edges show in a larger frame, each
     /// where it falls; the background layer covers the frame and the fades
     /// reach all of it.
     #[test]
     fn sprites_past_the_old_edges_show() {
         let t = solid_tiles(1, 1);
         // (A shot 4 columns past the right edge, one 6 left of the left
-        // edge, and a piece kept to the right edge past the original's
-        // right edge.)
+        // edge, a piece kept to the right edge past the original's right
+        // edge; one 12 rows above the top, one 3 under the bottom, and one
+        // kept to the bottom edge past the original's bottom.)
         let parts = [
             part(&t, 244, 0, 2, 0x001F),
             part(&t, -6, 10, 2, 0x03E0),
-            SpritePart { anchor: Anchor::Right, ..part(&t, 236, 20, 2, 0x7C00) },
+            SpritePart { anchor: Anchor::RIGHT, ..part(&t, 236, 20, 2, 0x7C00) },
+            part(&t, 100, -12, 2, 0x0011),
+            part(&t, 120, 163, 2, 0x0012),
+            SpritePart { anchor: Anchor::BOTTOM, ..part(&t, 140, 156, 2, 0x0013) },
         ];
+        let size = Size::new(284, 213);
         let mut background = Layer::new(3, 1);
-        background.set_width(284);
+        background.set_size(size);
         background.pixels.fill(0x0421);
-        let wide = Wide::new(284);
         let fades = Fades { stage: Fade::Black(16), ..Fades::default() };
-        let (out, _) = compose_wide(wide, 0, &[&background], &parts, fades);
-        let at = |x: i32, y: usize| out[y * 284 + x as usize];
-        assert_eq!((at(22 + 244, 0), at(22 - 6, 10)), (0x001F, 0x03E0));
-        assert_eq!((at(44 + 236, 20), at(283, 20), at(44 + 235, 20)), (0x7C00, 0x7C00, 0));
-        // (The background, faded, in both margins.)
-        assert_eq!((at(0, 100), at(283, 100)), (0, 0));
-        assert_eq!(at(22 + 239, 0), 0, "the original's last column");
+        let (out, _) = compose_sized(size, 0, &[&background], &parts, fades);
+        let at = |x: i32, y: i32| out[y as usize * 284 + x as usize];
+        // (The original's top left at (22, 26).)
+        assert_eq!((at(22 + 244, 26), at(22 - 6, 26 + 10)), (0x001F, 0x03E0));
+        assert_eq!((at(44 + 236, 26 + 20), at(283, 26 + 20), at(44 + 235, 26 + 20)), (0x7C00, 0x7C00, 0));
+        assert_eq!((at(22 + 100, 26 - 12), at(22 + 120, 26 + 170), at(22 + 120, 26 + 171)), (0x0011, 0x0012, 0));
+        assert_eq!((at(22 + 140, 212), at(22 + 140, 212 - 8), at(22 + 140, 26 + 159)), (0x0013, 0, 0));
+        // (The background, faded, in all four margins.)
+        assert_eq!((at(0, 100), at(283, 100), at(100, 0), at(100, 212)), (0, 0, 0, 0));
+        assert_eq!(at(22 + 239, 26), 0, "the original's last column");
     }
 
     /// A part kept to some columns draws in those alone.
@@ -830,7 +945,7 @@ mod tests {
         Tiles { pixels: vec![index; n * Tiles::TILE] }
     }
 
-    fn part(tiles: &Tiles, x: i32, y: u8, prio: u8, color: u16) -> SpritePart<'_> {
+    fn part(tiles: &Tiles, x: i32, y: i32, prio: u8, color: u16) -> SpritePart<'_> {
         let mut palette = [0u16; 16];
         palette[1] = color;
         SpritePart {
@@ -850,7 +965,7 @@ mod tests {
             affine: None,
             fade: None,
             clip: None,
-            anchor: Anchor::Center,
+            anchor: Anchor::CENTER,
         }
     }
 
@@ -1035,7 +1150,7 @@ mod tests {
         let backdrop = apply_fade(backdrop, fades.stage);
         let mut obj = SpriteBuffers { width: WIDTH, color: vec![CLEAR; PIXELS], priority: vec![UNWRITTEN; PIXELS], alpha: vec![0xFFu8; PIXELS], index: vec![0u16; PIXELS] };
         for (k, p) in parts.iter().enumerate() {
-            draw_part(p, Wide::ORIGINAL, k as u16, &mut obj);
+            draw_part(p, Size::ORIGINAL, k as u16, &mut obj);
         }
         let mut out = vec![0u16; PIXELS];
         let mut depth = vec![BACKDROP_DEPTH; PIXELS];
@@ -1120,7 +1235,7 @@ mod tests {
             let layers: Vec<&Layer> = layers.iter().collect();
             let parts: Vec<SpritePart> = (0..12)
                 .map(|_| {
-                    let mut p = part(&tiles, (random() % 260) as i32, (random() % 170) as u8, (random() % 4) as u8, (random() & 0x7FFF) as u16);
+                    let mut p = part(&tiles, (random() % 260) as i32, (random() % 170) as i32, (random() % 4) as u8, (random() & 0x7FFF) as u16);
                     (p.width, p.height) = (16, 16);
                     p.first_tile = (random() % 8) as usize;
                     p.palette = std::array::from_fn(|_| (random() & 0x7FFF) as u16);

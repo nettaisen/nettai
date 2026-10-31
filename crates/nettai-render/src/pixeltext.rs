@@ -313,7 +313,7 @@ impl PixelText {
             }
         }
         let width = frame.width();
-        let clip = item.clip.intersect(Rect::new(0, 0, width as i32, crate::compose::HEIGHT as i32));
+        let clip = item.clip.intersect(Rect::new(0, 0, width as i32, frame.height() as i32));
         let fade = |c: u16| apply_fade(apply_fade(c, item.fades[0]), item.fades[1]);
         let colors = [0, fade(item.face), item.shadow.map_or(0, fade)];
         let mut put = |x: i32, y: i32, v: u8| {

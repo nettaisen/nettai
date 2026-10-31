@@ -12,7 +12,7 @@
 //! of the window is presented.
 
 use nettai_frontend::player::Player;
-use nettai_render::compose::{HEIGHT, WIDTH, Wide};
+use nettai_render::compose::{HEIGHT, Size, WIDTH};
 use slint::{Image, Rgba8Pixel, SharedPixelBuffer};
 use std::time::Duration;
 use web_time::Instant;
@@ -21,7 +21,7 @@ use web_time::Instant;
 /// (`scale`), the pixels a frame pixel takes in the picture presented
 /// (`density`, which divides `scale`), and the frame's columns (`columns`:
 /// the original's 240, or in the enhanced mode as many as the space has at
-/// the scale, `nettai_render::compose::Wide`).
+/// the scale, `nettai_render::compose::Size`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Fit {
     pub scale: u32,
@@ -37,8 +37,8 @@ impl Fit {
     }
 
     /// The frame it is a picture of.
-    pub fn wide(self) -> Wide {
-        Wide::new(self.columns as usize)
+    pub fn wide(self) -> Size {
+        Size::new(self.columns as usize, HEIGHT)
     }
 
     /// The picture presented, in its pixels: the frame `density` times.
@@ -191,7 +191,7 @@ impl Surface {
     /// The picture for `fit`, if it changed since the last: `present` draws a frame as wide as it is given
     /// into a buffer of the width and height it is given, which becomes a new image (an image is what every
     /// renderer draws: docs/app.md §1), its pixels the next of the two kept. None when the picture didn't change.
-    pub fn picture(&mut self, fit: Fit, present: impl FnOnce(Wide, &mut [u32], usize, usize)) -> Option<Image> {
+    pub fn picture(&mut self, fit: Fit, present: impl FnOnce(Size, &mut [u32], usize, usize)) -> Option<Image> {
         if self.fit != Some(fit) {
             self.fit = Some(fit);
             self.stale = true;
@@ -345,7 +345,7 @@ impl Stage {
         let started = Instant::now();
         let player = &mut self.player;
         let shown = self.surface.picture(fit, |wide, buffer, w, h| {
-            player.renderer().wide = wide;
+            player.renderer().size = wide;
             player.present(buffer, w, h)
         });
         if shown.is_none() {

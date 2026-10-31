@@ -54,7 +54,7 @@ pub struct SpriteList<'a> {
     /// The columns the parts queued are kept to, while set
     /// (`SpritePart::clip`: a console's part of a screen of both).
     pub clip: Option<[i16; 2]>,
-    /// Where the parts queued keep to in a frame wider than the original's
+    /// Where the parts queued keep to in a frame larger than the original's
     /// (`SpritePart::anchor`): the battle's objects' with the field (the
     /// default), each of the HUD's pieces' where the original draws it.
     pub anchor: crate::compose::Anchor,
@@ -71,7 +71,7 @@ pub type Fine = (i32, i32);
 
 impl Default for SpriteList<'_> {
     fn default() -> Self {
-        SpriteList { layers: BUCKETS.map(|n| vec![Vec::new(); n]), count: 0, clip: None, anchor: crate::compose::Anchor::Center }
+        SpriteList { layers: BUCKETS.map(|n| vec![Vec::new(); n]), count: 0, clip: None, anchor: crate::compose::Anchor::CENTER }
     }
 }
 
@@ -590,7 +590,7 @@ pub fn queue_objects<'a>(
                 let base_y = if as_shadow && !under { p.ground } else { p.y };
                 let sprite = SpritePart {
                     x: p.x + dx,
-                    y: ((base_y & 0xFF) + dy) as u8,
+                    y: base_y + dy,
                     width: part.width,
                     height: part.height,
                     tiles,
@@ -605,7 +605,7 @@ pub fn queue_objects<'a>(
                     affine: None,
                     fade: None,
                     clip: None,
-                    anchor: crate::compose::Anchor::Center,
+                    anchor: crate::compose::Anchor::CENTER,
                 };
                 // Ground shadows go one layer back, in the first bucket.
                 // Where the rules count the sprite's priority into the
@@ -643,10 +643,8 @@ pub fn queue_objects<'a>(
 fn object_box(p: &Projected, group: &[(usize, i32, SpritePart, Fine)]) -> [i32; 4] {
     let mut rect = [p.x, p.y.min(p.ground), p.x, p.y.max(p.ground)];
     for (_, _, s, _) in group {
-        // (The hardware's rows wrap at 256.)
-        let x = s.x;
-        let y = if s.y >= 0xC0 { s.y as i32 - 0x100 } else { s.y as i32 };
-        rect = [rect[0].min(x), rect[1].min(y), rect[2].max(x + s.width as i32), rect[3].max(y + s.height as i32)];
+        // (Its place on the original's screen, unwrapped.)
+        rect = [rect[0].min(s.x), rect[1].min(s.y), rect[2].max(s.x + s.width as i32), rect[3].max(s.y + s.height as i32)];
     }
     rect
 }
@@ -726,7 +724,7 @@ mod tests {
             affine: None,
             fade: None,
             clip: None,
-            anchor: crate::compose::Anchor::Center,
+            anchor: crate::compose::Anchor::CENTER,
         };
         let mut list = SpriteList::default();
         list.insert_group(vec![(2, 100, part(1)), (2, 100, part(2))]);

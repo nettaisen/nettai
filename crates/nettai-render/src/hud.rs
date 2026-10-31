@@ -756,7 +756,7 @@ pub fn draw<'a>(
     // HP box, top left (moved right with the custom screen's window). On
     // the right of a screen of both, at the top right: the box flipped, its
     // digits in their cells' mirrored place.
-    keep_to(seat, Anchor::Left, (&mut *layer, &mut *scratch), list, text);
+    keep_to(seat, Anchor::TOP_LEFT, (&mut *layer, &mut *scratch), list, text);
     let shift = crate::custom::hud_shift(b, local);
     if let Some(r) = player.filter(|_| !hide_boxes && !b.hud_hidden.hp_box) {
         let shown = state.hp.map(|h| h.shown).unwrap_or(b.objects.get(r).hp);
@@ -792,7 +792,7 @@ pub fn draw<'a>(
 
     // Custom gauge, top center (one on a screen of both: the gauge is the
     // battle's).
-    keep_to(seat, Anchor::Center, (&mut *layer, &mut *scratch), list, text);
+    keep_to(seat, Anchor::TOP, (&mut *layer, &mut *scratch), list, text);
     if custom_gauge && seat.draws_shared() && gauge_shown(b, state, local) {
         let pal = &hud.gauge_palette;
         let color = |_: u8, c: u8| pal[c as usize & 15];
@@ -928,7 +928,7 @@ pub fn draw<'a>(
     // sides as they blink.
     if seat.draws_shared() && waiting_ticks(b, local).is_some_and(|n| (n / 32) % 2 == 0) {
         // (Up to the right edge: from column 22, eight columns in English.)
-        keep_to(seat, Anchor::Right, (&mut *layer, &mut *scratch), list, text);
+        keep_to(seat, Anchor::TOP_RIGHT, (&mut *layer, &mut *scratch), list, text);
         let columns = (hud.waiting.len() / 2).max(1);
         let x = seat.x(22 * 8, 8 * columns as i32);
         // In the enhanced mode its words in the lettering font, in its look.
@@ -961,7 +961,7 @@ pub fn draw<'a>(
     let marks_hidden = b.message.is_some() || b.hud_hidden.defensive_marks || result_started(b);
     if !open && !hide_boxes && !crate::custom::gauge_held(b, local) && !marks_hidden {
         let pal = &hud.hp_palettes[0];
-        for (side, column, anchor) in [(local, 6, Anchor::Left), (local ^ 1, 26, Anchor::Right)] {
+        for (side, column, anchor) in [(local, 6, Anchor::TOP_LEFT), (local ^ 1, 26, Anchor::TOP_RIGHT)] {
             if b.linked[side as usize & 1].chip.is_none() || (side != local && !seat.draws_other()) {
                 continue;
             }
@@ -990,7 +990,7 @@ pub fn draw<'a>(
     // banner's lookup is the banner's own, below.)
     // (The graphics say when: EXE4's only from the banner's hold, until its
     // release slides it out.)
-    keep_to(seat, Anchor::Center, (&mut *layer, &mut *scratch), list, text);
+    keep_to(seat, Anchor::CENTER, (&mut *layer, &mut *scratch), list, text);
     let step = b.banner_block_for(local).step;
     let judge_shown = if hud.layout.judge_from_hold { step == 4 } else { step < 8 };
     if seat.draws_shared() && b.banner_for(local).is_some_and(|id| crate::lookups::is_judge(graphics, &b.content, id)) && judge_shown {
@@ -1045,6 +1045,8 @@ pub fn draw<'a>(
     // "TIME UP!", at the top (`sub_801E398`: 8 glyphs from column 11),
     // while the fight runs.
     // "TIME UP!" stays for the judge's first second.
+    // (The timer and the message under the gauge keep to the top, with it.)
+    keep_to(seat, Anchor::TOP, (&mut *layer, &mut *scratch), list, text);
     let text_palette = &hud.hp_palettes[color.min(2)];
     let timed = match b.fight.state {
         fight::FIGHTING | fight::PAUSE => b.fight.turn_timer != TURN_TICKS,
@@ -1081,9 +1083,9 @@ pub fn draw<'a>(
     // `RoundSetup::custom_screen_limit`): the seconds left on the local
     // player's screen, the whole time it counts (`time_left`).
     if let Some(left) = b.custom_time_left(local) {
-        keep_to(seat, Anchor::Right, (&mut *layer, &mut *scratch), list, text);
+        keep_to(seat, Anchor::TOP_RIGHT, (&mut *layer, &mut *scratch), list, text);
         time_left(layer, text, hud, left, TimeAt::Corner(seat), problems);
-        keep_to(seat, Anchor::Center, (&mut *layer, &mut *scratch), list, text);
+        keep_to(seat, Anchor::TOP, (&mut *layer, &mut *scratch), list, text);
     }
     // The message under the gauge (`sub_801E270`: 17 glyphs from column 7;
     // the game's place), which every console shows.
@@ -1105,7 +1107,7 @@ pub fn draw<'a>(
             let bonus = nettai_battle::kinds::player::next_chip_bonus(b, r);
             let doubled = nettai_battle::kinds::player::next_chip_doubles(b, r);
             let pal = &hud.hp_palettes[color.min(2)];
-            keep_to(seat, Anchor::Left, (&mut *layer, &mut *scratch), list, text);
+            keep_to(seat, Anchor::BOTTOM_LEFT, (&mut *layer, &mut *scratch), list, text);
             // (On the right of a screen of both, at the bottom right: laid
             // out from the left in the scratch layer as its console lays it,
             // then put against the right edge.)
@@ -1134,7 +1136,7 @@ pub fn draw<'a>(
     // among the field's sprites, by depth bucket (an object low on the
     // screen covers them); the mugshot, the banner and the other player's
     // chip name in the front layer.
-    keep_to(seat, Anchor::Center, (&mut *layer, &mut *scratch), list, text);
+    keep_to(seat, Anchor::CENTER, (&mut *layer, &mut *scratch), list, text);
     if !state.was_over {
         // In a netbattle the other player's navi has no icons: its entry is
         // taken out as it is set up (`sub_80172F0`), and again whenever the
@@ -1235,7 +1237,7 @@ pub fn draw<'a>(
     let over = state.was_over && !window.running;
     let hidden = b.hud_hidden.emotion_window;
     if let Some(r) = player.filter(|_| !over && !hidden && !hide_mugshot && !matches!(flicker, 5 | 6)) {
-        keep_to(seat, Anchor::Left, (&mut *layer, &mut *scratch), list, text);
+        keep_to(seat, Anchor::TOP_LEFT, (&mut *layer, &mut *scratch), list, text);
         let mut group = Vec::new();
         let mut items = mugshot_parts(b, hud, graphics, state, r, (shift, seat), (shared, text), &mut group, problems);
         if window.flickers != 0 && (flicker + 1) & 2 != 0 {
@@ -1268,7 +1270,7 @@ pub fn draw<'a>(
     // The banner block's banner, where no telop lays on it. (The banner's
     // own game's HUD draws it, by its number there.) On a screen of both the
     // round's result's is each player's own, over its own half.
-    keep_to(seat, Anchor::Center, (&mut *layer, &mut *scratch), list, text);
+    keep_to(seat, Anchor::CENTER, (&mut *layer, &mut *scratch), list, text);
     let banner = banner_of(b, seat);
     let block = b.banner_block_for(seat.side);
     let telops = telops_of(b, seat);
@@ -1327,7 +1329,7 @@ pub fn draw<'a>(
     for (telop, block) in telops.into_iter().flatten() {
         // (Centered in its half of the screen: the viewer's left, the other
         // player's right.)
-        keep_to(seat, if telop.remote { Anchor::Right } else { Anchor::Left }, (&mut *layer, &mut *scratch), list, text);
+        keep_to(seat, if telop.remote { Anchor::TOP_RIGHT } else { Anchor::TOP_LEFT }, (&mut *layer, &mut *scratch), list, text);
         let mut group = Vec::new();
         let style = match (&hud.layout.telop, banner) {
             (Some(look), _) => Some(TelopStyle::own(hud, look, telop.remote)),
@@ -1349,7 +1351,7 @@ pub fn draw<'a>(
     if let Some(used) = b.used_chip_for(local) {
         // (On a screen of both the right console's at the left: its
         // mirrored place, `seat::mirror_run`.)
-        keep_to(seat, Anchor::Right, (&mut *layer, &mut *scratch), list, text);
+        keep_to(seat, Anchor::TOP_RIGHT, (&mut *layer, &mut *scratch), list, text);
         let mut group = Vec::new();
         // (In the place of the other player's telop: the game's own, or its
         // telop banner's.)
@@ -1378,7 +1380,7 @@ pub fn draw<'a>(
     // "PAUSE" in the middle while a player holds the battle (`sub_801C9E4`:
     // a 32x16 and an 8x16 sprite at its place, EXE6's (100, 63), in the
     // opponents' HP digits' palette).
-    keep_to(seat, Anchor::Center, (&mut *layer, &mut *scratch), list, text);
+    keep_to(seat, Anchor::CENTER, (&mut *layer, &mut *scratch), list, text);
     if seat.draws_shared() && b.round.mode == mode::FIGHTING && b.fight.state == fight::PAUSE {
         let (x, y) = (hud.layout.pause.0 as i32, hud.layout.pause.1 as i32);
         // In the enhanced mode its word in the lettering font, in its look,
@@ -1694,7 +1696,13 @@ fn time_left(layer: &mut Layer, text: &mut TextSink, hud: &Hud, left: u16, at: T
 pub fn time_between(b: &Battle, assets: &Bundle, layer: &mut Layer, text: &mut TextSink, problems: &mut Problems) {
     let hud = &assets.hud;
     if let Some(left) = [0, 1].into_iter().filter_map(|side| b.custom_time_left(side)).min() {
+        // (Kept to the top with the windows it is between.)
+        let kept = (layer.anchor, text.anchor);
+        layer.keep_to(Anchor::TOP);
+        text.anchor = Anchor::TOP;
         time_left(layer, text, hud, left, TimeAt::Between, problems);
+        layer.keep_to(kept.0);
+        text.anchor = kept.1;
     }
 }
 
@@ -1760,7 +1768,7 @@ fn line_under(glyphs: &[u16], over: &[u16], width: usize) -> Vec<u16> {
 fn glyph(tiles: &Tiles, k: usize, palette: Palette, x: i32, y: i32, priority: u8, vscale: Option<i32>) -> SpritePart<'_> {
     SpritePart {
         x,
-        y: y as u8,
+        y,
         width: 8,
         height: 16,
         tiles,
@@ -1775,7 +1783,7 @@ fn glyph(tiles: &Tiles, k: usize, palette: Palette, x: i32, y: i32, priority: u8
         affine: None,
         fade: None,
         clip: None,
-        anchor: crate::compose::Anchor::Center,
+        anchor: crate::compose::Anchor::CENTER,
     }
 }
 
@@ -3010,11 +3018,11 @@ mod tests {
             let whole = banner_scale(&b.banner) == 0x100;
             for part in &parts {
                 let (framed, _) = compose_with_depth(0, &[], std::slice::from_ref(part), Fades::default());
-                let overlay = Overlay::of(part, crate::compose::Wide::ORIGINAL, sprite_depth(0, 0), [Fade::None; 2], (0, 0)).expect("a squashed part is an overlay");
+                let overlay = Overlay::of(part, crate::compose::Size::ORIGINAL, sprite_depth(0, 0), [Fade::None; 2], (0, 0)).expect("a squashed part is an overlay");
                 for scale in [3, 5] {
                     let (w, h) = (scale * WIDTH, scale * HEIGHT);
                     let mut out = vec![UNDRAWN; w * h];
-                    draw_overlays(std::slice::from_ref(&overlay), &vec![BACKDROP_DEPTH; WIDTH * HEIGHT], None, None, &Placement::fit(WIDTH, w, h), &mut out, w);
+                    draw_overlays(std::slice::from_ref(&overlay), &vec![BACKDROP_DEPTH; WIDTH * HEIGHT], None, None, &Placement::fit(WIDTH, HEIGHT, w, h), &mut out, w);
                     for fy in 0..HEIGHT {
                         for fx in 0..WIDTH {
                             let color = framed[fy * WIDTH + fx];
