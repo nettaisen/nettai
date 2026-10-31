@@ -3,11 +3,12 @@
 # its feed the installed app's updater reads from the GitHub release: nettai-<version>-<channel>-full.nupkg,
 # releases.<channel>.json, assets.<channel>.json, RELEASES-<channel>).
 #
-#   pwsh packaging\windows\package.ps1 [-Arch x64|arm64] [-Version <version>] [-Icon <nettai.ico>] [-Ffmpeg <ffmpeg.exe>]
+#   pwsh packaging\windows\package.ps1 [-Arch x64|arm64] [-Version <version>] [-Icon <nettai.ico>]
+#       [-Ffmpeg <ffmpeg.exe>]
 #
-# Each architecture is its own package on its own Velopack channel, named as Velopack names the runtime (`vpk pack
-# --runtime`), as a Mac's are, so that each one's files and feed sit beside the other's in one release. Each is built
-# natively, on a machine of its architecture:
+# Each architecture is its own package on its own Velopack channel, named for the system and the architecture as
+# every system's is (which is also Velopack's runtime, `vpk pack --runtime`), so that each one's files and feed sit
+# beside the other's in one release. Each is built natively, on a machine of its architecture:
 #
 #   x64      win-x64      nettai-win-x64-Setup.exe, nettai-win-x64-Portable.zip
 #   arm64    win-arm64    nettai-win-arm64-Setup.exe, nettai-win-arm64-Portable.zip
@@ -15,8 +16,8 @@
 # x64's app is packed a second time, the same folder on the channel `win`, the only one up to 0.19.0
 # (nettai-win-Setup.exe, nettai-win-Portable.zip, nettai-<version>-full.nupkg, releases.win.json, assets.win.json,
 # RELEASES): the bridge, so that the apps installed from that channel, which ask it alone, find the update, and move to
-# win-x64 at the one after (docs/app.md §19, "Updates"), as the Mac's universal channel osx was kept for its apps up to
-# 0.18.1. It goes when the user says.
+# win-x64 at the one after (docs/app.md §19, "Updates"), as a Mac's apps do from theirs (packaging/macos). It goes when
+# the user says.
 #
 # The app: nettai.exe, ffmpeg.exe, LICENSE.txt, THIRD-PARTY-NOTICES.txt, ffmpeg-NOTICE.txt. No content, no ROM and no
 # extracted asset is in it: the app downloads each game's content (docs/design/content-deployment.md §5) and extracts
@@ -122,7 +123,8 @@ Copy-Item (Get-FfmpegFile 'ffmpeg-NOTICE.txt') "$app\ffmpeg-NOTICE.txt"
 $vpk = if ($env:VPK) { $env:VPK } else { 'vpk' }
 foreach ($on in @($package.Channel) + $package.Bridges) {
     $pack = @('pack', '--packId', 'nettai', '--packVersion', $Version, '--packTitle', 'nettai', '--packAuthors', 'nettai',
-        '--packDir', $app, '--mainExe', 'nettai.exe', '--channel', $on, '--runtime', $package.Channel, '--outputDir', "$out\releases")
+        '--packDir', $app, '--mainExe', 'nettai.exe', '--channel', $on, '--runtime', $package.Channel,
+        '--outputDir', "$out\releases")
     if ($Icon) { $pack += @('--icon', (Resolve-Path $Icon).Path) }
     if ($env:WINDOWS_CERTIFICATE_PATH) {
         $pack += @('--signParams', "/f `"$env:WINDOWS_CERTIFICATE_PATH`" /p `"$env:WINDOWS_CERTIFICATE_PASSWORD`" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256")

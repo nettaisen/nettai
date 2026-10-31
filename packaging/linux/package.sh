@@ -6,9 +6,9 @@
 #
 #   NETTAI_LINUX_ARCH=arm64 packaging/linux/package.sh
 #
-# Each architecture is its own package on its own Velopack channel, named as Velopack names the runtime (`vpk pack
-# --runtime`), as a Mac's are, so that each one's files and feed sit beside the other's in one release. Each is built
-# natively, on a machine of its architecture:
+# Each architecture is its own package on its own Velopack channel, named for the system and the architecture as
+# every system's is (which is also Velopack's runtime, `vpk pack --runtime`), so that each one's files and feed sit
+# beside the other's in one release. Each is built natively, on a machine of its architecture:
 #
 #   x86_64     linux-x64      nettai-linux-x64.AppImage
 #   arm64      linux-arm64    nettai-linux-arm64.AppImage
@@ -16,8 +16,8 @@
 # x86_64's app is packed a second time, the same folder on the channel `linux`, the only one up to 0.19.0
 # (nettai.AppImage, nettai-<version>-linux-full.nupkg, releases.linux.json, assets.linux.json, RELEASES-linux): the
 # bridge, so that the apps installed from that channel, which ask it alone, find the update, and move to linux-x64 at
-# the one after (docs/app.md §19, "Updates"), as the Mac's universal channel osx was kept for its apps up to 0.18.1.
-# It goes when the user says.
+# the one after (docs/app.md §19, "Updates"), as a Mac's apps do from theirs (packaging/macos). It goes when the user
+# says.
 #
 # The app's folder, which vpk makes the AppImage of: nettai and ffmpeg (beside the program, where the app looks for
 # it), and LICENSE, THIRD-PARTY-NOTICES.txt and ffmpeg-NOTICE.txt. vpk writes the AppImage's entry, its desktop file
@@ -80,8 +80,8 @@ cp "$fetched" "$app/ffmpeg-NOTICE.txt"
 
 # The release (Velopack's: docs/app.md §19), on the architecture's channel, and on the bridge's.
 for on in $channel $bridge; do
-    "${VPK:-vpk}" pack --packId nettai --packVersion "$version" --packTitle nettai --packAuthors nettai --packDir "$app" \
-        --mainExe nettai --channel "$on" --runtime "$channel" --icon "$icons/png/256x256.png" \
+    "${VPK:-vpk}" pack --packId nettai --packVersion "$version" --packTitle nettai --packAuthors nettai \
+        --packDir "$app" --mainExe nettai --channel "$on" --runtime "$channel" --icon "$icons/png/256x256.png" \
         --categories "Game;ActionGame;" --outputDir "$out/releases"
 done
 

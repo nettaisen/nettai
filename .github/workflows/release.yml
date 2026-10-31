@@ -1,8 +1,8 @@
 # The app's releases (packaging/; docs/app.md §19, "Packaging"): Velopack's, for each system and architecture on a
-# channel of its own (win-x64, win-arm64; osx-arm64, osx-x64; linux-x64, linux-arm64): a Windows installer, the macOS
-# app zipped and a Linux AppImage, each with the update package and feed the installed app's updater reads
-# (crates/nettai's updates.rs), and x86_64's Windows and Linux apps again on the bridge (win, linux: below, at the
-# upload); and the phones' packages: Android's APK, `nettai-android.apk`, signed
+# channel of its own (win-x64, win-arm64; macos-arm64, macos-x64; linux-x64, linux-arm64): a Windows installer, the
+# macOS app zipped and a Linux AppImage, each with the update package and feed the installed app's updater reads
+# (crates/nettai's updates.rs), and again on the bridge, the channels before (win, osx-arm64, osx-x64, linux: below, at
+# the upload); and the phones' packages: Android's APK, `nettai-android.apk`, signed
 # with the release key (the Android job says how), and iOS's IPA, `nettai-ios.ipa`, unsigned, which the player's
 # sideloading tool signs as it installs it, with its AltStore source, `altstore.json` (AltStore and SideStore read
 # the latest release's: https://github.com/nettaisen/nettai/releases/latest/download/altstore.json).
@@ -129,8 +129,8 @@ jobs:
           if-no-files-found: error
 
   # Each Mac architecture's app, built and packaged in a job of its own (packaging/macos/package.sh), on its own
-  # channel (osx-arm64, osx-x64), with its own Rust cache. (Up to 0.18.1 a universal app went up too, on the channel
-  # osx: docs/app.md §19.)
+  # channel (macos-arm64, macos-x64; and on the bridge osx-arm64, osx-x64, the channels up to 0.19.0), with its own Rust
+  # cache. (Up to 0.18.1 a universal app went up too, on the channel osx: docs/app.md §19.)
   macos:
     name: macOS app (${{ matrix.arch }})
     needs: icons
@@ -396,21 +396,21 @@ jobs:
           dotnet tool install vpk --version $env:VPK_VERSION --tool-path (Join-Path $env:RUNNER_TEMP 'vpk')
           if ($LASTEXITCODE -ne 0) { throw "installing vpk failed" }
           Add-Content $env:GITHUB_PATH (Join-Path $env:RUNNER_TEMP 'vpk')
-      # Each package's channel (win-x64, win-arm64; osx-arm64, osx-x64; linux-x64, linux-arm64) goes up into the one
+      # Each package's channel (win-x64, win-arm64; macos-arm64, macos-x64; linux-x64, linux-arm64) goes up into the one
       # release, a draft until all are in (a run again merges into it); then it is published, the latest, and the
       # installed apps see it. (vpk uploads a channel's files alone, as its feed names them: the phones' packages in the
-      # same folder go up after.) And the bridge, win and linux, x86_64's only channels up to 0.19.0: the same apps
-      # packed again on them, so that the apps installed from them, which ask them alone, find the update and move to
-      # their architecture's channel at the next (docs/app.md §19, "Updates"), as the Mac's universal osx was kept up to
-      # 0.18.1; with it, the download addresses of those packages (nettai-win-Setup.exe, nettai.AppImage) stay. It goes
-      # when the user says.
+      # same folder go up after.) And the bridge, the channels up to 0.19.0 (win, osx-arm64, osx-x64, linux; Windows'
+      # and Linux's x86_64 alone): the same apps packed again on them, so that the apps installed from them, which ask
+      # them alone, find the update and move to their architecture's channel at the next (docs/app.md §19, "Updates"),
+      # as the Mac's universal osx was kept up to 0.18.1; with it, the download addresses of those packages
+      # (nettai-win-Setup.exe, nettai-osx-arm64-Portable.zip, nettai.AppImage, ...) stay. It goes when the user says.
       - name: Upload
         env:
           VPK_TOKEN: ${{ github.token }}
           TAG: ${{ steps.tag.outputs.tag }}
           VERSION: ${{ steps.tag.outputs.version }}
         run: |
-          for channel in win-x64 win-arm64 osx-arm64 osx-x64 linux-x64 linux-arm64 win linux; do
+          for channel in win-x64 win-arm64 macos-arm64 macos-x64 linux-x64 linux-arm64 win osx-arm64 osx-x64 linux; do
             vpk upload github --outputDir releases --channel "$channel" --repoUrl "https://github.com/$GITHUB_REPOSITORY" \
               --tag "$TAG" --releaseName "nettai $VERSION" --merge
           done

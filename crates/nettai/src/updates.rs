@@ -59,14 +59,15 @@ fn manager() -> Option<UpdateManager> {
 
 /// The channel the app asks for its updates on, whatever channel its package was made on (`vpk pack --channel`,
 /// which Velopack's manager asks otherwise): the system's and the architecture's, as the program was built for them
-/// (`osx-arm64`, `osx-x64`, `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`: packaging/), so that an app from a
-/// package of the channels before them takes its architecture's at its next update: a Mac's universal package (`osx`,
-/// a Mac's only one up to 0.12.0, made up to 0.18.1), the slice it runs choosing; Windows' `win` and Linux's `linux`,
-/// x86_64's only ones up to 0.19.0, made since as the bridge (docs/app.md §19, "Updates").
+/// (`macos-arm64`, `macos-x64`, `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`: packaging/), so that an app from
+/// a package on a channel before them takes its own at its next update: the channels up to 0.19.0, a Mac's
+/// `osx-arm64` and `osx-x64`, Windows' `win` and Linux's `linux` (x86_64's alone), made since as the bridge; and a
+/// Mac's universal `osx` (its only one up to 0.12.0, made up to 0.18.1), the slice it runs choosing (docs/app.md §19,
+/// "Updates").
 fn options(os: &str, arch: &str) -> UpdateOptions {
     let channel = match (os, arch) {
-        ("macos", "aarch64") => Some("osx-arm64"),
-        ("macos", "x86_64") => Some("osx-x64"),
+        ("macos", "aarch64") => Some("macos-arm64"),
+        ("macos", "x86_64") => Some("macos-x64"),
         ("windows", "x86_64") => Some("win-x64"),
         ("windows", "aarch64") => Some("win-arm64"),
         ("linux", "x86_64") => Some("linux-x64"),
@@ -260,73 +261,62 @@ mod tests {
 
     const APPLE_SILICON: (&str, &str) = ("macos", "aarch64");
     const INTEL_MAC: (&str, &str) = ("macos", "x86_64");
-
-    /// A release with the universal package beside the architectures' (as up to 0.18.1).
-    const RELEASE: &[(&str, &[&str])] = &[("osx", &["0.14.0"]), ("osx-arm64", &["0.14.0"]), ("osx-x64", &["0.14.0"])];
-
-    #[test]
-    fn a_universal_app_takes_its_architectures_package() {
-        assert_eq!(update_to("0.13.0", "osx", APPLE_SILICON, RELEASE), full("0.14.0", "osx-arm64"));
-        assert_eq!(update_to("0.13.0", "osx", INTEL_MAC, RELEASE), full("0.14.0", "osx-x64"));
-    }
-
-    #[test]
-    fn a_universal_app_waits_for_a_newer_version() {
-        // (The same version on its architecture's channel is no update: it moves at the next one.)
-        let same = &[("osx", &["0.13.0"][..]), ("osx-arm64", &["0.13.0"][..])];
-        assert_eq!(update_to("0.13.0", "osx", APPLE_SILICON, same), None);
-    }
-
-    #[test]
-    fn an_architectures_app_stays_on_its_channel() {
-        let newer = &[("osx-arm64", &["0.15.0"][..]), ("osx-x64", &["0.15.0"][..])];
-        assert_eq!(update_to("0.14.0", "osx-arm64", APPLE_SILICON, newer), full("0.15.0", "osx-arm64"));
-        assert_eq!(update_to("0.14.0", "osx-x64", INTEL_MAC, newer), full("0.15.0", "osx-x64"));
-    }
-
     const WINDOWS_X64: (&str, &str) = ("windows", "x86_64");
     const WINDOWS_ARM64: (&str, &str) = ("windows", "aarch64");
     const LINUX_X64: (&str, &str) = ("linux", "x86_64");
     const LINUX_ARM64: (&str, &str) = ("linux", "aarch64");
 
-    /// A release with the bridge (`win`, `linux`: x86_64's channels up to 0.19.0) beside the architectures'.
-    const BRIDGED: &[(&str, &[&str])] = &[
-        ("win", &["0.20.0"]),
-        ("win-x64", &["0.20.0"]),
-        ("win-arm64", &["0.20.0"]),
-        ("linux", &["0.20.0"]),
-        ("linux-x64", &["0.20.0"]),
-        ("linux-arm64", &["0.20.0"]),
+    /// Each system and architecture's channel, and an app's system.
+    const CHANNELS: [(&str, (&str, &str)); 6] = [
+        ("macos-arm64", APPLE_SILICON),
+        ("macos-x64", INTEL_MAC),
+        ("win-x64", WINDOWS_X64),
+        ("win-arm64", WINDOWS_ARM64),
+        ("linux-x64", LINUX_X64),
+        ("linux-arm64", LINUX_ARM64),
     ];
 
-    #[test]
-    fn a_bridged_app_takes_its_architectures_package() {
-        assert_eq!(update_to("0.19.0", "win", WINDOWS_X64, BRIDGED), full("0.20.0", "win-x64"));
-        assert_eq!(update_to("0.19.0", "linux", LINUX_X64, BRIDGED), full("0.20.0", "linux-x64"));
+    /// The bridge: the channels up to 0.19.0, on which each release since has its apps again.
+    const BRIDGE: [&str; 4] = ["osx-arm64", "osx-x64", "win", "linux"];
+
+    /// The channels before, with an app's system and the channel it is to take: the bridge's, and the Mac's universal
+    /// one (made up to 0.18.1), the slice it runs choosing.
+    const BEFORE: [(&str, (&str, &str), &str); 6] = [
+        ("osx-arm64", APPLE_SILICON, "macos-arm64"),
+        ("osx-x64", INTEL_MAC, "macos-x64"),
+        ("win", WINDOWS_X64, "win-x64"),
+        ("linux", LINUX_X64, "linux-x64"),
+        ("osx", APPLE_SILICON, "macos-arm64"),
+        ("osx", INTEL_MAC, "macos-x64"),
+    ];
+
+    /// A release of `versions` on every channel and the bridge's.
+    fn release(versions: &'static [&'static str]) -> Vec<(&'static str, &'static [&'static str])> {
+        CHANNELS.iter().map(|(channel, _)| *channel).chain(BRIDGE).map(|channel| (channel, versions)).collect()
     }
 
     #[test]
-    fn a_bridged_app_waits_for_a_newer_version() {
-        // (An app the bridge updated to 0.20.0 asks its architecture's channel, whose 0.20.0 is no update.)
-        let same = &[("win", &["0.20.0"][..]), ("win-x64", &["0.20.0"][..])];
-        assert_eq!(update_to("0.20.0", "win", WINDOWS_X64, same), None);
-        let same = &[("linux", &["0.20.0"][..]), ("linux-x64", &["0.20.0"][..])];
-        assert_eq!(update_to("0.20.0", "linux", LINUX_X64, same), None);
+    fn an_app_on_a_channel_before_takes_its_architectures_package() {
+        for (before, system, channel) in BEFORE {
+            let update = update_to("0.19.0", before, system, &release(&["0.20.0"]));
+            assert_eq!(update, full("0.20.0", channel), "{before}, {system:?}");
+        }
     }
 
     #[test]
-    fn windows_and_linux_apps_stay_on_their_channels() {
-        let newer = &[
-            ("win", &["0.21.0"][..]),
-            ("win-x64", &["0.21.0"][..]),
-            ("win-arm64", &["0.21.0"][..]),
-            ("linux", &["0.21.0"][..]),
-            ("linux-x64", &["0.21.0"][..]),
-            ("linux-arm64", &["0.21.0"][..]),
-        ];
-        assert_eq!(update_to("0.20.0", "win-x64", WINDOWS_X64, newer), full("0.21.0", "win-x64"));
-        assert_eq!(update_to("0.20.0", "win-arm64", WINDOWS_ARM64, newer), full("0.21.0", "win-arm64"));
-        assert_eq!(update_to("0.20.0", "linux-x64", LINUX_X64, newer), full("0.21.0", "linux-x64"));
-        assert_eq!(update_to("0.20.0", "linux-arm64", LINUX_ARM64, newer), full("0.21.0", "linux-arm64"));
+    fn an_app_on_a_channel_before_waits_for_a_newer_version() {
+        // (The same version on its architecture's channel is no update: an app the bridge updated moves at the next
+        // one.)
+        for (before, system, _) in BEFORE {
+            assert_eq!(update_to("0.20.0", before, system, &release(&["0.20.0"])), None, "{before}, {system:?}");
+        }
+    }
+
+    #[test]
+    fn an_architectures_app_stays_on_its_channel() {
+        for (channel, system) in CHANNELS {
+            let update = update_to("0.20.0", channel, system, &release(&["0.21.0"]));
+            assert_eq!(update, full("0.21.0", channel), "{channel}");
+        }
     }
 }

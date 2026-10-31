@@ -7,14 +7,19 @@
 #
 #   NETTAI_MACOS_ARCH=aarch64 packaging/macos/package.sh
 #
-# Each architecture is its own package on its own Velopack channel, named as Velopack names the runtime (`vpk pack
-# --runtime`), so that each one's files and feed sit beside the other's in one release:
+# Each architecture is its own package on its own Velopack channel, named for the system and the architecture, as
+# every system's is, so that each one's files and feed sit beside the other's in one release; its Velopack runtime
+# (`vpk pack --runtime`) is osx-arm64 or osx-x64:
 #
-#   aarch64     Apple silicon      osx-arm64
-#   x86_64      Intel              osx-x64
+#   aarch64     Apple silicon      macos-arm64     nettai-macos-arm64-Portable.zip
+#   x86_64      Intel              macos-x64       nettai-macos-x64-Portable.zip
 #
-# (The universal app, both programs joined by lipo on the channel osx, a Mac's only package up to 0.12.0, was made
-# up to 0.18.1: docs/app.md §19.)
+# Each app is packed a second time, the same bundle on the architecture's channel up to 0.19.0, osx-arm64 or osx-x64
+# (nettai-osx-arm64-Portable.zip, nettai-<version>-osx-arm64-full.nupkg, releases.osx-arm64.json, ...): the bridge,
+# so that the apps that ask that channel (every Mac app from 0.13.0 to 0.19.0, whichever package it came from) find
+# the update, and move to macos-arm64 or macos-x64 at the one after (docs/app.md §19, "Updates"), as the universal
+# channel osx was kept for its apps up to 0.18.1. It goes when the user says. (The universal app, both programs
+# joined by lipo on the channel osx, a Mac's only package up to 0.12.0, was made up to 0.18.1, and isn't again.)
 #
 # The bundle: Contents/MacOS/{nettai, ffmpeg}, Contents/Resources/{nettai.icns, LICENSE, THIRD-PARTY-NOTICES.txt,
 # ffmpeg-NOTICE.txt}. No content, no ROM and no extracted asset is in it: the app downloads each game's content
@@ -37,12 +42,14 @@ source "$(dirname "$0")/../build.sh"
 
 host=$(uname -m)
 arch=${NETTAI_MACOS_ARCH:-${host/arm64/aarch64}}
-# The channel, which is also Velopack's runtime (Rust's target, <arch>-apple-darwin, names the architecture).
+# The channel; Velopack's runtime, which is also the bridge's channel (Rust's target, <arch>-apple-darwin, names the
+# architecture).
 case $arch in
-    aarch64) channel=osx-arm64 ;;
-    x86_64) channel=osx-x64 ;;
+    aarch64) channel=macos-arm64 runtime=osx-arm64 ;;
+    x86_64) channel=macos-x64 runtime=osx-x64 ;;
     *) echo "NETTAI_MACOS_ARCH is aarch64 or x86_64, not $arch" >&2; exit 1 ;;
 esac
+bridge=$runtime
 
 out=$root/target/package/macos/$arch
 rm -rf "$out"
@@ -80,11 +87,11 @@ chmod 755 "$ffmpeg"
 fetch_ffmpeg ffmpeg-NOTICE.txt
 cp "$fetched" "$app/Contents/Resources/ffmpeg-NOTICE.txt"
 
-# The release (Velopack's: docs/app.md §19). With an identity vpk signs the bundle itself, everything in it with the
-# hardened runtime, as notarizing asks; without one it is signed ad hoc here (an Apple silicon Mac runs nothing
-# unsigned; Gatekeeper still asks the player to allow it once).
+# The release (Velopack's: docs/app.md §19), on the architecture's channel and on the bridge's. With an identity vpk
+# signs the bundle itself, everything in it with the hardened runtime, as notarizing asks; without one it is signed ad
+# hoc here (an Apple silicon Mac runs nothing unsigned; Gatekeeper still asks the player to allow it once).
 pack=(pack --packId nettai --packVersion "$version" --packTitle nettai --packAuthors nettai --packDir "$app" --mainExe nettai
-    --channel "$channel" --runtime "$channel" --icon "$app/Contents/Resources/nettai.icns" --noInst --outputDir "$out/releases")
+    --runtime "$runtime" --icon "$app/Contents/Resources/nettai.icns" --noInst --outputDir "$out/releases")
 if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then
     pack+=(--signAppIdentity "$MACOS_SIGN_IDENTITY")
     [ -n "${MACOS_NOTARY_PROFILE:-}" ] && pack+=(--notaryProfile "$MACOS_NOTARY_PROFILE")
@@ -93,6 +100,8 @@ else
     codesign --force --sign - "$ffmpeg"
     codesign --force --sign - "$app"
 fi
-"${VPK:-vpk}" "${pack[@]}"
+for on in $channel $bridge; do
+    "${VPK:-vpk}" "${pack[@]}" --channel "$on"
+done
 
 echo "$out/releases"
