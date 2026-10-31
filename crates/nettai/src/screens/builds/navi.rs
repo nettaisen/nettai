@@ -29,6 +29,10 @@
 //!
 //! Choosing a navi is `Draft::choose_navi` (nettai-match's `Builds::set_navi`, with what is the game's own
 //! navi's alone kept aside in the build's file); a choice's preset is `Builds::take_preset`.
+//!
+//! On a phone the grid is a sheet from the bottom (`NaviOverlay`), which the navi's card on the tab opens
+//! (`navi-pick`): a navi chosen in it, a tap on the shade or Back shuts it, the focus back on the card. The selector's
+//! rows are one to a row there too, their names whole, scrolling in the room the panel has.
 
 use crate::screens::builds::editor::{self, Draft, Tab};
 use crate::shell::Shell;
@@ -80,6 +84,10 @@ fn about(problem: &Problem, fact: &str, chosen: &[FormHandle], form: FormHandle)
     }
 }
 
+/// The phone's sheet of the navis: its controls' prefix, and its cards' name.
+const SHEET: &str = "sheet.";
+const SHEET_NAVI: &str = "sheet.navi";
+
 impl Navi {
     /// The navi's fact, by its setup field's name.
     fn navi_fact(content: &Content) -> Vec<String> {
@@ -106,6 +114,23 @@ impl Navi {
         };
         let problems = if of_form.is_empty() { draft.pane_problems(&Navi::navi_fact(content), true) } else { of_form };
         shell.ui().global::<NaviView>().set_fault(draft.line(shell, problems).into());
+    }
+
+    /// The phone's sheet of the navis opens, the focus on the build's navi's card.
+    fn open_sheet(&mut self, shell: &mut Shell, draft: &Draft) {
+        let at = self.navis.iter().position(|&n| n == draft.side().navi(draft.content())).unwrap_or(0);
+        shell.ui().global::<NaviView>().set_sheet(true);
+        shell.nav.open(SHEET, crate::nav::Key::new(SHEET_NAVI, at as i32));
+    }
+
+    /// The sheet shuts (if it is open), the focus back where it was under it: on the navi's card.
+    fn close_sheet(&mut self, shell: &mut Shell) {
+        let ui = shell.ui();
+        let view = ui.global::<NaviView>();
+        if view.get_sheet() {
+            view.set_sheet(false);
+            shell.nav.close(SHEET);
+        }
     }
 }
 
@@ -179,8 +204,8 @@ impl Tab for Navi {
         // problem is about it, and "Not allowed" at the end of one the ruleset holds back.
         let choices = kit.builds.form_choices(&content, draft.side());
         self.forms = choices.iter().flat_map(|c| c.forms.iter().map(|&f| (c.fact.clone(), f))).collect();
-        // (One column of rows on a desktop, two on a phone.)
-        let columns = if shell.scale.phone { 2 } else { 1 };
+        // (One column of rows, a phone's too: two to a row there cut the names.)
+        let phone = shell.scale.phone;
         let mut sets: Vec<(String, Vec<FormHandle>)> = Vec::new();
         let groups: Vec<NaviFormGroup> = draft.with_words(shell, |words| {
             let mut at = 0;
@@ -191,11 +216,11 @@ impl Tab for Navi {
                     let problems: Vec<&Problem> = draft.checked.problems.iter().filter(|p| draft.facts_of(p).contains(&c.fact)).collect();
                     // (Grouped by version, in the groups' order, the battle's within each, as `form_choices` sorts
                     // them, those of none last: each group headed by its version's name, its rows from a row of
-                    // their own, in the columns the panel has. Where each of two versions has one form, as EXE6's
-                    // Beast form's GBeast and FBeast, the two groups are side by side, a column each, one row under
-                    // their heads.)
+                    // their own. Where each of two versions has one form, as EXE6's Beast form's GBeast and FBeast,
+                    // a desktop has the two groups side by side, a column each, one row under their heads; a phone
+                    // one over the other, as half its width cuts their names.)
                     let versions: Vec<Option<String>> = c.forms.iter().map(|f| content.defs.forms.get(f.index()).and_then(|d| d.record.version.clone())).collect();
-                    let side_by_side = versions.len() == 2 && versions[0].is_some() && versions[1].is_some() && versions[0] != versions[1];
+                    let side_by_side = !phone && versions.len() == 2 && versions[0].is_some() && versions[1].is_some() && versions[0] != versions[1];
                     // (A list's ALL and NONE: on each version's head where its forms are grouped by version, a group of
                     // none's too, else on the fact's heading; whether each would do anything, ALL where the list has
                     // room for one of them it lacks that the ruleset allows, NONE where it has one. A fact of one form has
@@ -231,7 +256,7 @@ impl Tab for Navi {
                             place = 0;
                         }
                         last = Some(version);
-                        let (column, row) = if side_by_side { (n as i32, 0) } else { (place % columns, first_row + place / columns) };
+                        let (column, row) = if side_by_side { (n as i32, 0) } else { (0, first_row + place) };
                         if side_by_side {
                             heads = 1;
                         }
@@ -247,7 +272,7 @@ impl Tab for Navi {
                             flagged: problems.iter().any(|p| about(p, &c.fact, &chosen, f)),
                             banned: !draft.allows(&c.fact, f.0),
                             set,
-                            span: if side_by_side { 1 } else { columns },
+                            span: 1,
                             all,
                             none,
                         });
@@ -255,7 +280,7 @@ impl Tab for Navi {
                     }
                     let name = words.names.text(nettai_match::ruleset::TEXT_TABLE, &format!("category.{}", c.fact)).unwrap_or_else(|| c.fact.clone());
                     let count = if c.one { String::new() } else { format!("{}/{}", chosen.len(), c.room) };
-                    let columns = if side_by_side { 2 } else { columns };
+                    let columns = if side_by_side { 2 } else { 1 };
                     let group = NaviFormGroup {
                         name: name.into(),
                         count: count.into(),
@@ -281,17 +306,21 @@ impl Tab for Navi {
         view.set_ruleset_missing(missing);
         view.set_face(face);
         view.set_element(kit.pictures.element(family(&content, content.navi(chosen).element)));
-        // (The focus starts on the build's navi's card.)
-        if shell.nav.focused().is_none_or(|k| !["navi", "form", "forms-all", "forms-none", "choice", "tab", "ruleset", "ruleset-edit", "practice"].contains(&k.id.as_str()))
-            && let Some(at) = self.navis.iter().position(|&n| n == chosen)
-        {
-            shell.nav.focus("navi", at as i32);
+        // (The focus starts on the build's navi's card: in the grid, or on a phone the one that opens its sheet.)
+        let known = ["navi", "navi-pick", "form", "forms-all", "forms-none", "choice", "tab", "ruleset", "ruleset-edit", "practice"];
+        if shell.nav.focused().is_none_or(|k| !known.contains(&k.id.as_str()) && !k.id.starts_with(SHEET)) {
+            if phone {
+                shell.nav.focus("navi-pick", 0);
+            } else if let Some(at) = self.navis.iter().position(|&n| n == chosen) {
+                shell.nav.focus("navi", at as i32);
+            }
         }
         self.show_fault(shell, draft);
     }
 
-    fn hide(&mut self, _shell: &mut Shell, _draft: &mut Draft) {
+    fn hide(&mut self, shell: &mut Shell, _draft: &mut Draft) {
         self.hovered = None;
+        self.close_sheet(shell);
     }
 
     /// The pointer came onto a form's row, or left it: the fault's line says the form's problems while the pointer is
@@ -313,17 +342,22 @@ impl Tab for Navi {
 
     fn activate(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
         match id {
-            // (A navi the build's ruleset doesn't allow is refused: docs/design/app-ui.md §2.68.)
-            "navi" => {
+            // (A navi the build's ruleset doesn't allow is refused: docs/design/app-ui.md §2.68. A phone's sheet stays
+            // open for another; one chosen shuts it.)
+            "navi" | SHEET_NAVI => {
                 let Some(&navi) = self.navis.get(index.max(0) as usize) else { return };
                 let navi_fact = Navi::navi_fact(draft.content());
                 if navi != draft.side().navi(draft.content()) && navi_fact.first().is_some_and(|f| !draft.allows(f, navi.0)) {
                     return shell.sound.play(crate::sound::Cue::Refused);
                 }
+                self.close_sheet(shell);
                 if draft.choose_navi(navi) {
                     self.show(shell, draft);
                 }
             }
+            // (A phone: the navi's card opens the grid's sheet; a tap on the shade shuts it.)
+            "navi-pick" => self.open_sheet(shell, draft),
+            "sheet.close" => self.close_sheet(shell),
             // (A form of the selector: chosen, or in a list taken out. One the ruleset doesn't allow is refused where it
             // would go in; one the build has can be taken out.)
             "form" => {
@@ -387,6 +421,15 @@ impl Tab for Navi {
         if id == "choice" {
             take(self, shell, draft, index, choice);
         }
+    }
+
+    /// Back on a phone's sheet of the navis shuts it.
+    fn back(&mut self, shell: &mut Shell, _draft: &mut Draft) -> bool {
+        if !shell.ui().global::<NaviView>().get_sheet() {
+            return false;
+        }
+        self.close_sheet(shell);
+        true
     }
 }
 

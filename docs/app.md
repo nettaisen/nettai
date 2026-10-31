@@ -1651,7 +1651,7 @@ back by `resolve_side`):
   battle's order, both versions' (`facts::offered_forms`: the navi that changes form's sets hold them under the
   fact's name, or for the engine's form list every set's list; sorted by the groups, each version's under a head of
   its name in its color, those of none last: the app places each row, `column`, `row` and `heads`), each a row of the editor's
-  lists (`Theme.list-row`, 26 tall, a phone's 40; one column, a phone's two): a check mark where the build has it,
+  lists (`Theme.list-row`, 26 tall, a phone's 40; one column, a phone's too, where two cut the names): a check mark where the build has it,
   its face, its name (the locales' `[forms]`: the ROMs' names, EXE6's Beast forms GBeast and FBeast by their
   NameIDs), and at the right its version's mark (`VersionMark`, in build.slint: `Kit::version_tag_of`). EXE6's Beast
   form is at the head, one always chosen, for every navi (MstrCros plays its version's Crosses); the lists are the
@@ -1769,7 +1769,7 @@ MegaMan). The lobby's settings carry the bans by key with the others. Open setup
   for (and what a lobby starts on where no build says).
 - **The build editor's ruleset** is the build's: at the tab bar's right end, RULESET, its select (`ruleset`: the
   presets, then the player's own; `Select.note` says "(missing)" after one no longer there) and EDIT
-  (`ruleset-edit`); on a phone a row at the top of the Navi tab, between the navi's panel and the grid. Picking one
+  (`ruleset-edit`); on a phone a row of the Navi tab, under the navi's panel. Picking one
   makes the build for it, kept at once (`Editor::make_for`); a copy made on its page (DUPLICATE) or its rename is
   the build's too; deleted, the build still names it, missing (`Draft::find_ruleset`). The build is checked under it
   (`Draft::ruleset` is a `MadeFor`; `Draft::checked` is `Checked::under`), so what it doesn't
@@ -2365,7 +2365,7 @@ shorter and scrolled as a whole (the user: "i don't like having the whole thing 
 makes some screens awkward just for the phone layout that isn't really used"; design §2.98). Each screen lays out
 in the room its body has: the build editor's panes run down to 18 over the tab's foot (482 tall at the reference
 window, taller in a taller one), and its lists scroll inside themselves (`ListView`; a `ScrollPage` for a list of other
-shapes, such as the Navi tab's grid and the Auto battle tab's places). A `ScrollPage` holds a page that is a list or
+shapes, such as the Navi tab's grid and a phone's forms, and the Auto battle tab's places). A `ScrollPage` holds a page that is a list or
 is longer than any window: Settings, About, the practice menu's rows, the ruleset's items, the shell's picture grid,
 the viewer's two builds.
 
@@ -2375,7 +2375,7 @@ its width, and `Theme.phone` is set, which the theme's metrics and the screens r
 its list, a label on two lines where it needs them and each note under its control; a select's choices as a sheet
 from the bottom; a menu's buttons one over the other; the battle's pad under the picture). Held sideways, a phone
 has the desktop's layout. A screen isn't scrolled to fit a short phone either: where it doesn't fit, its lists take
-the height that is left (the NaviCust's programs, the Navi tab's grid), cramped on the smallest.
+the height that is left (the NaviCust's programs, the Navi tab's forms), cramped on the smallest.
 
 On a phone the battle's picture has the window's whole width, at its top, with no gutter (`BattleScreen`), and
 so has Practice's arena: the picture is a whole multiple of the game's 240 (§1), and the gutters' 32 can be the
@@ -2791,7 +2791,7 @@ locked screen draws no frames, and the practice battle never starts (`practice.t
 Play's builds with none and with three (one named in Japanese, one with a name too long for its row), a new build's
 dialog with the focus a control on, a file that is no save dropped on the list, EDIT and ⋯ a focus move apart,
 the build's menu open (`builds-menu`) and the question before a build is deleted, chosen from the
-menu (the same steps on a phone, whose page has the same buttons), the editor opened by EDIT: the Navi tab with the focus a card on, with another navi chosen and with the
+menu (the same steps on a phone, whose page has the same buttons), the editor opened by EDIT: the Navi tab with the focus a card on (a phone's in the navis' sheet), with another navi chosen and with the
 other preset of the game's choice, and the Folder tab (an entry, the library, its controls a focus move apart,
 the library by MB so that what can't go in says why, a chip the rules refuse asked for, a chip put in, a search,
 the Regular chip and two tag chips marked, a mark the rules refuse with its reason, a chip taken out

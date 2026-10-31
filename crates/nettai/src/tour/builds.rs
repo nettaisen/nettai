@@ -194,24 +194,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     fn there(app: &App, id: &str, index: i32) -> bool {
         app.shell.nav.registry().borrow().rect(&crate::nav::Key::new(id, index)).is_some()
     }
-    fn focus_if(id: &'static str, index: i32) -> Step {
-        Box::new(move |_, app, _| {
-            let mut app = app.borrow_mut();
-            if there(&app, id, index) {
-                app.shell.nav.focus(id, index);
-            }
-        })
-    }
-    fn press_if(id: &'static str, index: i32, action: Action) -> Step {
-        Box::new(move |_, app, _| {
-            let mut app = app.borrow_mut();
-            if there(&app, id, index) {
-                app.shell.nav.focus(id, index);
-                app.act(action);
-            }
-        })
-    }
-    /// As `press_if`, on a setting: taken (Enter), stepped by the arrow, and let go (Enter).
+    /// A setting where it is: taken (Enter), stepped by the arrow, and let go (Enter).
     fn step_if(id: &'static str, index: i32, action: Action) -> Step {
         Box::new(move |_, app, _| {
             let mut app = app.borrow_mut();
@@ -223,18 +206,43 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
             }
         })
     }
+    // (On a phone the navis are a sheet, which the navi's card opens and a navi chosen shuts: `navis` opens it, and
+    // `card` focuses a card, or chooses it, where it is.)
+    fn navis() -> Step {
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            if app.shell.scale.phone && !app.shell.nav.is_open("sheet.") {
+                app.shell.nav.focus("navi-pick", 0);
+                app.act(Action::Confirm);
+            }
+        })
+    }
+    fn card(index: i32, choose: bool) -> Step {
+        Box::new(move |_, app, _| {
+            let mut app = app.borrow_mut();
+            let id = if app.shell.scale.phone { "sheet.navi" } else { "navi" };
+            if there(&app, id, index) {
+                app.shell.nav.focus(id, index);
+                if choose {
+                    app.act(Action::Confirm);
+                }
+            }
+        })
+    }
     // The game's navis, the focus a card on; another navi chosen (the tabs that are the game's own navi's
     // greyed), and the first again.
     add(SETTLE, press("tab", 0));
-    add(SETTLE, focus("navi", 0));
+    add(SETTLE, navis());
+    add(SETTLE, card(0, false));
     shot(add, "builds-navi", Pair::First);
     add(90, on_tab(EditorTab::Navi, "Navi"));
-    add(SETTLE, focus_if("navi", 1));
+    add(SETTLE, card(1, false));
     shot(add, "builds-navi-focus", Pair::Second);
-    add(SETTLE, press_if("navi", 1, Action::Confirm));
+    add(SETTLE, card(1, true));
     shot(add, "builds-navi-other", Pair::None);
     add(90, on_tab(EditorTab::Navi, "Navi"));
-    add(SETTLE, press("navi", 0));
+    add(SETTLE, navis());
+    add(SETTLE, card(0, true));
     // In a game whose builds have a choice (Light or Dark): its other preset, with the face the round then
     // starts the navi with; and the first again.
     add(SETTLE, step_if("choice", 0, Action::Right));

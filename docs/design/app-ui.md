@@ -1756,6 +1756,14 @@ Each is settled unless the user changes it.
        column, where it runs past the frame; the list scrolls with the focus), About's license (beside the list, or
        its sheet on a phone). Else the list or the page the focus is in, where it can scroll; else the list or page
        under what is open (a dialog, a menu) with the most to scroll. Over a battle that has the keys nothing scrolls.
+102. **The upright phone's fixes** (2026-10-31). The user found the phone's layout wanting ("kind of sucks") and chose
+     what to fix of it. Held sideways is another matter, not this.
+     - *The Navi tab:* the panel stacked the navi's card, LIGHT/DARK, the forms two to a row with their names cut
+       ("Prot…"), the ruleset and PRACTICE, and only then the grid, so choosing a navi meant scrolling past all of it.
+       Now the grid is a sheet from the bottom, as the folder's library and the pickers are, which the navi's card
+       opens (an arrow at its name's end, as a select's); a navi chosen shuts it. The forms are one to a row, their
+       names whole in English and Japanese (EXE6's two Beast forms one over the other too), scrolling inside the panel
+       where they don't fit; the ruleset's select and EDIT and PRACTICE stay under it. A desktop is as it was.
 
 ## 3. Chosen where the user gave no answer
 
@@ -2185,7 +2193,7 @@ DUPLICATE and DELETE.
   and its part's that are about no item. The item's name is red on its row. Each is the problem's mark and the error
   red's words, the first and " · +n more", in a place that is there when it says nothing. The ruleset's select and the
   panes' headers say nothing of them (the select is **the build's RULESET** at the tab bar's right end, "RULESET",
-  the select, EDIT; a phone's between the Navi tab's panel and grid: the ruleset the build is made for, which
+  the select, EDIT; a phone's under the Navi tab's panel: the ruleset the build is made for, which
   picking another changes, kept at once, and which the build is checked and marked under; one no longer there by its
   name, "(missing)" muted after it, the build checked under the game's first preset; §2.73); a phone, which has no strip, says the game's rules' in its panes' headers (the
   Navi tab's fault line as a desktop's). No version's tag: a build has none (§2.60). Its tabs
@@ -2212,9 +2220,12 @@ DUPLICATE and DELETE.
   +n more"). A list of forms (Crosses, souls; not the Beast Out, one always chosen) has ALL and NONE at the right end
   of each version's head, or of its heading where it shows no versions (§2.69): ALL puts that group's forms in, in
   order, while the list has room, and refuses the rest; NONE takes them out; each one change, dim where it would do
-  nothing. The grid scrolls where it has more rows than its room. On a phone the panel is over the grid, as tall as
-  what it shows, the grid in the room left under it, the selector's rows two to a row, the
-  fault line as a desktop's, and the ruleset's select between the panel and the grid.
+  nothing. The grid scrolls where it has more rows than its room. On a phone (§2.102) the panel is the tab's width, as
+  tall as what it shows up to the room the ruleset's select and EDIT and PRACTICE leave under it; the selector's rows
+  are one to a row, their names whole (EXE6's GBeast and FBeast one over the other), and scroll in the panel where
+  they don't fit; the fault line is a desktop's. The grid is a sheet from the bottom, the cards three to a row under
+  NAVI, which the navi's card (its face and facts, an arrow at its name's end as a select has) opens; a navi chosen,
+  a tap on the shade or Back shuts it.
 - **Folder** (§2.11 to §2.14): a strip across the top describes the chip under the cursor from either pane (its
   art, name and code, the game's description, element, class, MB, attack, how many are in the folder). Below, left:
   the framed folder, its header its title and Chips 30/30, Mega, Giga, Reg and Tag memory (on a line under the title
@@ -2413,7 +2424,7 @@ files beside it in a panel, scrolling (§2.25). On a phone the list is the page 
 the bottom.
 
 ### On a phone
-One column; pickers and the chip library open as sheets from the bottom; everything tapped is at least 44 tall; no
+One column; pickers, the chip library and the navis open as sheets from the bottom; everything tapped is at least 44 tall; no
 key hints, and the cursor only with a pad or keyboard connected; in battle the pad is drawn under the picture and
 START and MENU open the same menus. Held sideways, a phone uses the desktop layout. Where a screen doesn't fit a
 short phone, its lists take the height that is left: nothing scrolls the whole screen (§2.98).
