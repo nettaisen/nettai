@@ -4368,32 +4368,50 @@ it: the app downloads each game's (§20). No ROM and no extracted asset is in
 any of them, ever: the app extracts each game's assets from the player's own Legacy Collection as the game loads,
 in memory (§17). Each platform's script is in `packaging/`, runs on that platform alone, stages the app, and makes
 **Velopack's release** of it with `vpk pack` (`$VPK`, else `vpk` on the PATH; version 1.3.39-g8d2844f, the one
-crates/nettai's `velopack` is) into `target/package/<platform>/releases/` (on macOS,
-`target/package/macos/<arch>/releases/`): the platform's installer, the app alone, and the update package and its
-feed the installed app's updater reads from the GitHub release (below, "Updates").
+crates/nettai's `velopack` is) into `target/package/<platform>/<arch>/releases/`: the platform's installer, the app
+alone, and the update package and its feed the installed app's updater reads from the GitHub release (below,
+"Updates"). Each desktop architecture is its own package on its own Velopack channel, the system and the
+architecture in its name: `win-x64`, `win-arm64`, `macos-arm64`, `macos-x64`, `linux-x64`, `linux-arm64` (the
+user: "the linux and windows channels with their architecture in the name always", and "rename the osx channel to
+macos"), so that each one's files (`nettai-<version>-<channel>-full.nupkg`, `releases.<channel>.json`,
+`assets.<channel>.json`, `RELEASES-<channel>`) sit beside the others' in one release; and each is packed a second
+time on the channel it had up to 0.19.0, the bridge (below, "Channels").
 The user: "yes do that", of Velopack with GitHub releases, which replaced the Inno Setup installer, the disk image
 and appimagetool.
 
-- **Windows** (`packaging/windows/package.ps1`): `nettai-win-Setup.exe`, for the player alone
-  (`%LOCALAPPDATA%\nettai`, no administrator), with a Start menu and a desktop shortcut and an uninstaller that
-  leaves the data folder; and `nettai-win-Portable.zip`. vpk signs every program in it (the app's, ffmpeg,
-  Velopack's installer and updater) with the certificate `$env:WINDOWS_CERTIFICATE_PATH` names, if one does.
+- **Windows** (`packaging/windows/package.ps1`): an installer for the player alone (`%LOCALAPPDATA%\nettai`, no
+  administrator), with a Start menu and a desktop shortcut and an uninstaller that leaves the data folder; and the
+  app zipped. One per architecture, built natively on a machine of it (`-Arch x64` or `arm64`, else the machine's
+  own; another is refused), each with the release's ffmpeg for it: x64's `nettai-win-x64-Setup.exe` and
+  `nettai-win-x64-Portable.zip` (channel `win-x64`), and Windows on Arm's `nettai-win-arm64-Setup.exe` and
+  `nettai-win-arm64-Portable.zip` (`win-arm64`), each packed with the channel as its Velopack runtime (`--runtime`:
+  Velopack's installer, updater and launcher for that architecture). x64's goes up on the bridge `win` too
+  (`nettai-win-Setup.exe`, `nettai-win-Portable.zip`). vpk signs every program in it (the app's, ffmpeg, Velopack's
+  installer and updater) with the certificate `$env:WINDOWS_CERTIFICATE_PATH` names, if one does. Building for
+  Windows on Arm needs LLVM's `clang` and `clang-cl` on the PATH besides MSVC (ring and aws-lc-sys compile their C
+  and assembly for arm64 with them).
 - **macOS** (`packaging/macos/package.sh`, `Info.plist`): `nettai.app` (bundle id `net.n1gp.nettai`;
   the content in `Contents/Resources/`, where the content lookup finds it), zipped, one per architecture, so that a
   player downloads half of what the universal app was (v0.12.0's: 168 MB, against about 85 MB for Windows and
-  Linux): Apple silicon's `nettai-osx-arm64-Portable.zip` and Intel's `nettai-osx-x64-Portable.zip`. Each is its own
-  Velopack package on its own channel, `osx-arm64` and `osx-x64`, named as Velopack names the runtime (`--runtime`),
-  whose files (`nettai-<version>-<channel>-full.nupkg`, `releases.<channel>.json`) sit side by side in one release.
-  `NETTAI_MACOS_ARCH` picks one (`aarch64`, `x86_64`; else the Mac's own), and the script builds its program
-  (`<arch>-apple-darwin`) and packages it. Up to 0.18.1 a universal app went up too, the two programs joined by lipo,
-  `nettai-osx-Portable.zip` on Velopack's default channel `osx` (below, "A Mac's channel"). The player unzips it where they like
+  Linux): Apple silicon's `nettai-macos-arm64-Portable.zip` and Intel's `nettai-macos-x64-Portable.zip`, on the
+  channels `macos-arm64` and `macos-x64`, packed with Velopack's runtimes `osx-arm64` and `osx-x64`; each goes up on
+  the bridge too, the channel up to 0.19.0 that names that runtime (`nettai-osx-arm64-Portable.zip`,
+  `nettai-osx-x64-Portable.zip`). `NETTAI_MACOS_ARCH` picks one (`aarch64`, `x86_64`; else the Mac's own), and the
+  script builds its program (`<arch>-apple-darwin`) and packages it. Up to 0.18.1 a universal app went up too, the
+  two programs joined by lipo, `nettai-osx-Portable.zip` on Velopack's default channel `osx` (below, "Channels"). The
+  player unzips it where they like
   (/Applications, or anywhere) and it updates itself there. No installer package (`--noInst`; the user: "i don't
   want to ship a pkg file for mac"). Signed ad hoc unless `MACOS_SIGN_IDENTITY` names a
   Developer ID Application identity, which vpk signs the bundle with (the hardened runtime, everything in it), and
   with `MACOS_NOTARY_PROFILE` (a notarytool keychain profile) notarizes; `MACOS_KEYCHAIN`, the keychain those are
   in.
-- **Linux** (`packaging/linux/package.sh`): `nettai.AppImage`, vpk's, with its entry, desktop file and icon. The
-  program needs the glibc it was built against or a later one, so it is built on an old distribution.
+- **Linux** (`packaging/linux/package.sh`): an AppImage, vpk's (with squashfs-tools' `mksquashfs`), with its entry,
+  desktop file and icon. One per architecture, built natively on a machine of it (`NETTAI_LINUX_ARCH`, `x86_64` or
+  `arm64`, else the machine's own; another is refused), each with the release's ffmpeg for it: x86_64's
+  `nettai-linux-x64.AppImage` (channel `linux-x64`) and arm64's `nettai-linux-arm64.AppImage` (`linux-arm64`),
+  each packed with the channel as its Velopack runtime. x86_64's goes up on the bridge `linux` too
+  (`nettai.AppImage`). The program needs the glibc it was built against or a later one, so it is built on an old
+  distribution.
 - **iOS** (`packaging/ios/package.sh`, `Info.plist`): `nettai.app`, for the Simulator (`NETTAI_IOS=simulator`,
   aarch64-apple-ios-sim, signed ad hoc), zipped (`nettai-ios-simulator.zip`), or for a device (`device`,
   aarch64-apple-ios) as an IPA (`nettai-ios.ipa`: the bundle in `Payload/`, zipped), unsigned, which a sideloading tool
@@ -4429,8 +4447,11 @@ and publishes a release `ffmpeg-<version>-<revision>`. ffmpeg-9.0.2-3 (2026-10-3
 raw H.264 and ADTS (nettai-video reads its codecs' own output on every platform: §16): the `h264` and `adts`
 muxers in place of the MP4 one, and no `scale`, `format` or `setparams`, as the frames come as NV12; 9.0.2-2 had
 the MP4 muxer alone (the export before, released to 0.17.0). Its macOS arm64 build ran nettai-video's tests
-(`NETTAI_FFMPEG`, the end-to-end export among them). `packaging/ffmpeg.sha256` pins the release a
-package takes by its tag and each file by its SHA-256; the scripts download them once into
+(`NETTAI_FFMPEG`, the end-to-end export among them). Its revision 4 (`ffmpeg-9.0.2-4`, the same program) adds the
+arm64 packages' two: `ffmpeg-linux-arm64`, built on `ubuntu-22.04-arm` and linked statically as x86_64's is, and
+`ffmpeg-windows-arm64.exe`, cross-compiled on Linux with llvm-mingw against the UCRT (Windows' own since Windows
+10) and smoke-tested on `windows-11-arm`; the arm64 packages take theirs from the release the pin names, so they
+need it pinned. `packaging/ffmpeg.sha256` pins the release a package takes by its tag and each file by its SHA-256; the scripts download them once into
 `target/package/ffmpeg/<tag>/` and check them (or bundle the ffmpeg `NETTAI_BUNDLE_FFMPEG`, `-Ffmpeg` on Windows,
 names). Where it goes: `ffmpeg.exe` beside `nettai.exe` (the installer and the .zip), `Contents/MacOS/ffmpeg` in
 the app (the release's program for the app's architecture; signed before the app, as the app is), beside the program
@@ -4454,18 +4475,20 @@ A package's build sets `NETTAI_PACKAGED`: it then has no development content dir
 only the content it downloads into its store (§20). The app builds without the content submodules, and the
 workflow's build jobs check none out. The version is `$NETTAI_VERSION` (`-Version` on Windows), else the app crate's.
 
-Besides Rust, a build needs CMake, for SDL. (nettai-rtc's WebRTC is str0m, pure Rust: it needed CMake and libclang
-too while it was libdatachannel's.)
+Besides Rust, a build needs CMake, for SDL; on Windows on Arm, LLVM's `clang` and `clang-cl` too (above). (nettai-rtc's
+WebRTC is str0m, pure Rust: it needed CMake and libclang too while it was libdatachannel's.)
 
 The workflow (`.github/workflows/release.yml`) is run by hand on main (`gh workflow run release.yml --ref main`), after
-the version in Cargo.toml is bumped and pushed. The icons are made once, on Linux; then Windows (`windows-latest`),
-macOS (`macos-latest`: Apple silicon's and Intel's apps at once, a job and a Rust cache each, each signed and
-notarized), Linux (`ubuntu-22.04`), Android (`ubuntu-24.04`, §7) and iOS (`macos-latest`, the IPA) each package and
-upload theirs as the run's artifacts (`nettai-<platform>`, the Mac's `nettai-macos-<arch>`, so that the release job's
-download puts all the files in one folder), the version Cargo.toml's. The desktop's install .NET 8 and vpk
-(`VPK_VERSION`). With `publish` on (the default), the workflow tags the commit `v<version>` (a tag of that name on
-another commit stops it), `vpk upload github --merge` puts each package's channel (win; osx-arm64, osx-x64; linux) into
-one release, `gh release upload` the phones' `nettai-android.apk` and `nettai-ios.ipa` beside them with the IPA's
+the version in Cargo.toml is bumped and pushed. The icons are made once, on Linux; then Windows (x64 on
+`windows-latest`, arm64 on `windows-11-arm`), macOS (`macos-latest`: Apple silicon's and Intel's apps at once, each
+signed and notarized), Linux (x86_64 on `ubuntu-22.04`, arm64 on `ubuntu-22.04-arm`), each desktop architecture in a
+job and with a Rust cache of its own, built natively but for the Mac's Intel app, Android (`ubuntu-24.04`, §7) and iOS
+(`macos-latest`, the IPA) each package and upload theirs as the run's artifacts (`nettai-windows-<arch>`,
+`nettai-macos-<arch>`, `nettai-linux-<arch>`, `nettai-android`, `nettai-ios`, so that the release job's download puts
+all the files in one folder), the version Cargo.toml's. The desktop's install .NET 8 and vpk (`VPK_VERSION`). With
+`publish` on (the default), the workflow tags the commit `v<version>` (a tag of that name on another commit stops
+it), `vpk upload github --merge` puts each package's channel (win-x64, win-arm64; macos-arm64, macos-x64; linux-x64,
+linux-arm64; and the bridge's: win, osx-arm64, osx-x64, linux) into one release, `gh release upload` the phones' `nettai-android.apk` and `nettai-ios.ipa` beside them with the IPA's
 `altstore.json`, and the release is published, the latest, so the installed apps see it at once (the user: "you should just publish the release instead of drafting it"). It runs on main
 rather than on a tag so that its Rust caches (`Swatinem/rust-cache`) are main's, which every later run restores: a cache
 saved on a tag is that tag's alone, and every release had built from nothing (the user: "it looks like rust cache
@@ -4477,8 +4500,9 @@ profile in the job's keychain).
 **Updates** (`updates.rs`). The user asked for an updater, then for Velopack with GitHub releases. Velopack's hook runs
 first in `main` (`updates::startup`: run by the installer or the updater, it does its part and the process ends). An
 installed app asks `https://github.com/nettaisen/nettai`'s published releases at start, on a thread, whether a newer one
-is out on its channel (`velopack::sources::GithubSource`; unauthenticated, one request a start; the channel its package
-was made on, but on a Mac: below); a build run from the repository isn't installed and asks nothing, and neither does
+is out on its channel (`velopack::sources::GithubSource`; unauthenticated, one request a start; its system's and
+architecture's channel, whatever its package was made on: below); a build run from the repository isn't installed and
+asks nothing, and neither does
 the screenshot pass. Settings → General → Check for updates (`check_updates`, on by default) turns it off; turned on,
 the app checks at its next start. Nothing is asked of the player: the loading screen waits for the answer (five seconds
 at most, `CHECK_WAIT`: releases that don't answer by then are let go, and asked again next start; the game loads behind
@@ -4490,21 +4514,38 @@ footer, and the app goes on as it is. `velopack` is 1.3.39-g8d2844f from crates.
 workflow packs with: the first release that asks for zip 9 (the ones before asked for zip 8, all of whose versions are
 yanked, so it was taken from Velopack's repository until then).
 
-**A Mac's channel.** Up to 0.12.0 a Mac had the universal package alone, on Velopack's default channel `osx`, and an
-app asks the channel its package was made on, so those installs ask `osx` for good: every release up to 0.18.1 kept the
-universal package there for them. The apps built since ask their architecture's channel instead (`updates::options`:
-Velopack's `UpdateOptions::ExplicitChannel`, `osx-arm64` or `osx-x64` for the slice that runs, so a universal app
-opened with Rosetta asks Intel's; elsewhere none, its package's own), and a universal app's next update installs its
-architecture's package, whose channel is then its own. A 0.12.0 install so takes two updates: to the universal app of
-the first release with the switch, and from it, at the release after, to its architecture's (the same version on
-another channel is no update: Velopack moves only to a newer one). The tests (`updates.rs`) run Velopack's own check
-on such feeds.
+**Channels.** Velopack's app asks the channel its package was made on unless it is told another, so an install keeps
+asking the channel it came from for good. The app tells it (`updates::options`: Velopack's
+`UpdateOptions::ExplicitChannel`) the channel of the system and architecture its program was built for, whatever
+package it came from: `macos-arm64` or `macos-x64` (the slice that runs, so a universal app opened with Rosetta asks
+Intel's), `win-x64` or `win-arm64`, `linux-x64` or `linux-arm64`; elsewhere none. An app from a package on another
+channel so installs its architecture's package at its next update, whose channel is then its own. The channels before:
+
+- Up to 0.12.0 a Mac had the universal package alone, on Velopack's default channel `osx`; from 0.13.0 to 0.19.0 its
+  apps asked `osx-arm64` or `osx-x64`, the architectures' packages up to 0.19.0 (and the universal one, made up to
+  0.18.1, below).
+- Up to 0.19.0 Windows and Linux had x86_64's package alone, on Velopack's defaults `win` and `linux`, which its
+  apps ask.
+
+So that those apps find an update at all, each release after 0.19.0 has **the bridge**: each architecture's app
+packed a second time, the same folder, on the channel its apps had up to 0.19.0 (`win`, `linux`, `osx-arm64`,
+`osx-x64`; packaging/), and uploaded with the rest. An app of 0.19.0 or before so takes two updates: to the bridge's
+package of the first release with the new channels, which is the new app and asks its architecture's channel, and
+from it, at the release after, to its architecture's package (the same version on another channel is no update:
+Velopack moves only to a newer one), as the universal package was kept on `osx` up to 0.18.1 for the Macs of 0.12.0
+and before. The bridge also keeps the download addresses of those packages (`nettai-win-Setup.exe`,
+`nettai-win-Portable.zip`, `nettai-osx-arm64-Portable.zip`, `nettai-osx-x64-Portable.zip`, `nettai.AppImage`). It is
+dropped when the user says; an install that hasn't updated by then, once the last release with it is out of the ten
+newest, finds nothing (below), and its player downloads the app again. The tests (`updates.rs`) run Velopack's own
+check on such feeds: an app on each channel before takes its architecture's package, waits when the version there is
+its own, and an app on each new channel stays on it.
 
 **The universal package stopped** after 0.18.1 (the user: "get rid of the universal binary"). An install of 0.12.0
 or before finds 0.18.1, the last universal release, updates to it and on to its architecture's, as long as 0.18.1 is
 among the ten newest published (Velopack's `GithubSource` reads ten); one not opened until ten more are out finds
 nothing, and its player downloads their architecture's app again. A universal app of 0.13.0 or later asks its
-architecture's channel already. The site's macOS downloads are the two architectures' zips.
+architecture's channel already (`osx-arm64`, `osx-x64`, now the bridge). The site's macOS downloads are the two
+architectures' zips.
 
 ## 20. The games' content
 
