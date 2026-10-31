@@ -1419,6 +1419,13 @@ run in the emulator (below, "Android"). What builds: the whole app, for iOS (typ
   window keeps the screen on (`FLAG_KEEP_SCREEN_ON`, set on the activity's thread by the app's
   `NettaiAwake.kt`: android-activity's own `set_window_flags` waits forever when called from the app's loop, as it
   takes for writing the lock its loop holds for reading).
+- **Haptics** (`haptics.rs`): a finger that comes down on a button of the on-screen pad, or slides onto another, is
+  a light tap felt (`App::touched`, from what each finger holds: `TouchPad::under`), upright and sideways alike. iOS
+  plays a light impact (`UIImpactFeedbackGenerator`, made once on the main thread, where the touches come, and kept
+  prepared); Android's window's view performs a keyboard tap (`HapticFeedbackConstants.KEYBOARD_TAP`), posted to the
+  activity's thread by the app's `NettaiHaptics.kt`. Neither is waited on, and each system plays nothing where its
+  player turned such feedback off (iOS's System Haptics; Android's Touch feedback, which a view's feedback follows).
+  The mouse on the pad, the desktop and a browser have none. Not felt yet: neither runs on a device.
 - **Sound:** cpal plays through CoreAudio on iOS and AAudio on Android. On iOS the audio session is the system's
   default: the silent switch mutes the game, as it does most games (the user's choice), and other apps' sound
   stops while it plays. A phone stops the sound's device while the app is away or a call has the sound:
@@ -1531,7 +1538,7 @@ what goes in, in `target/package/android`:
 then runs Gradle in packaging/android on them (their paths as `-P` properties): `gradlew`, the wrapper, fetches
 Gradle 9.8.1 and checks its zip's SHA-256; `build.gradle.kts` is AGP 9.5.0 with its own Kotlin (2.2.10), on a
 JDK 17 (`JAVA_HOME`). Gradle
-- compiles every crate's `android/**/*.kt` (the app's `NettaiActivity` and `NettaiAwake`, nettai-gamepad's
+- compiles every crate's `android/**/*.kt` (the app's `NettaiActivity`, `NettaiAwake` and `NettaiHaptics`, nettai-gamepad's
   `NettaiGamepads`, nettai-dialogs' `NettaiFiles`);
 - adds GameActivity (`androidx.games:games-activity:4.4.0`), AppCompat (`androidx.appcompat:appcompat:1.7.1`,
   GameActivity's base class) and the verifier's AAR;
@@ -2683,7 +2690,8 @@ anywhere in their square the direction is the one the finger is farthest toward 
 needn't land on a key, and in the very middle it holds none. A finger that comes down anywhere else is Slint's,
 as a pointer (MENU, a dialog). The mouse still comes through the buttons' `TouchArea`, one pointer. Unit tests
 hold it to that, and the screenshot pass puts two fingers down at once on a phone's battle (Left and A: both
-held and drawn held, then one lifted).
+held and drawn held, then one lifted). A finger newly on a button (come down on it, or slid onto it) is a light tap
+felt on a phone (§7, "Haptics").
 
 Upright, the pad is under the picture (`TouchPad`, battle.slint), its buttons a quarter larger than the first
 pad's (since 2026-10-31: design §2.102): the directions' keys 70 (their square 210), A and B 95 across, L and R 132

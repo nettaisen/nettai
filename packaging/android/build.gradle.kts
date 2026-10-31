@@ -9,10 +9,10 @@
 //   nettai.keystore     the keystore to sign with, nettai.keystorePassword its password and nettai.keyAlias the key's
 //   nettai.debuggable   1: the APK says it is debuggable (`adb shell run-as` reads and writes its files)
 //
-// The Kotlin is every crate's android/ folder's (the app's NettaiActivity and NettaiAwake, nettai-dialogs' NettaiFiles,
-// nettai-gamepad's NettaiGamepads), compiled by AGP's own Kotlin; R8 shrinks it with the libraries' and takes out
-// what nothing uses (the Kotlin standard library's most of all), keeping what the native code calls by name
-// (proguard-rules.pro).
+// The Kotlin is every crate's android/ folder's (the app's NettaiActivity, NettaiAwake and NettaiHaptics,
+// nettai-dialogs' NettaiFiles, nettai-gamepad's NettaiGamepads), compiled by AGP's own Kotlin; R8 shrinks it with the
+// libraries' and takes out what nothing uses (the Kotlin standard library's most of all), keeping what the native code
+// calls by name (proguard-rules.pro).
 plugins {
     id("com.android.application") version "9.5.0"
 }

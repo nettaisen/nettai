@@ -820,6 +820,11 @@ impl TouchPad {
         }
     }
 
+    /// The button a finger holds: none where it is off the pad, between two, or not one of the pad's.
+    pub fn under(&self, finger: u64) -> Option<u8> {
+        self.fingers.iter().find(|(f, _)| *f == finger).and_then(|(_, b)| *b)
+    }
+
     /// A finger lifted. True if it was one of the pad's.
     pub fn up(&mut self, finger: u64) -> bool {
         let before = self.fingers.len();
@@ -939,6 +944,24 @@ mod tests {
         assert_eq!(pad.held(), 0);
         assert!(pad.moved(1, 330.0, 590.0));
         assert_eq!(pad.held(), keys::A);
+    }
+
+    /// What each finger holds, which the app taps the phone for as it changes to a button (`App::touched`): one
+    /// finger's slide, another's press, a lift.
+    #[test]
+    fn each_finger_holds_its_own_button() {
+        let mut pad = pad();
+        assert_eq!(pad.under(1), None);
+        assert!(pad.down(1, 40.0, 640.0));
+        assert_eq!(pad.under(1), Some(5));
+        assert!(pad.moved(1, 120.0, 700.0));
+        assert_eq!(pad.under(1), Some(7));
+        assert!(pad.moved(1, 120.0, 625.0));
+        assert_eq!(pad.under(1), None);
+        assert!(pad.down(2, 330.0, 590.0));
+        assert_eq!((pad.under(1), pad.under(2)), (None, Some(0)));
+        assert!(pad.up(2));
+        assert_eq!(pad.under(2), None);
     }
 
     /// A finger that comes down off the pad isn't the pad's (the picture, MENU): it goes on to the UI, and

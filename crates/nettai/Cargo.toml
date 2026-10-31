@@ -94,7 +94,8 @@ slint = { version = "1.18", default-features = false, features = ["unstable-wini
 i-slint-backend-winit = { version = "=1.18.1", default-features = false, features = ["renderer-femtovg"] }
 winit = { version = "0.30", default-features = false, features = ["rwh_06", "android-game-activity"] }
 # The app's calls into Java and Java's into it (`activity.rs`: the safe area; `lifecycle.rs`: the window's screen
-# kept on, by android/nettai/lifecycle/NettaiAwake.kt), through JNI on the activity android-activity hands over.
+# kept on, by android/nettai/lifecycle/NettaiAwake.kt; `haptics.rs`: the pad's taps, by
+# android/nettai/haptics/NettaiHaptics.kt), through JNI on the activity android-activity hands over.
 # (The Kotlin is the APK's: its Gradle build compiles every crate's android/ folder in.)
 jni = "0.22"
 # The context the crates' JNI is on (their pickers, nearby, the clipboard: they call an `android.app.Activity`'s
@@ -110,13 +111,13 @@ rustls-platform-verifier = "0.7"
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSProcessInfo", "NSString"] }
 
-# iOS: the idle timer (`lifecycle::Awake`); the app made active and its sound given back (`lifecycle::resumed`). (In
-# the tree already, for the window.)
+# iOS: the idle timer (`lifecycle::Awake`); the app made active and its sound given back (`lifecycle::resumed`); the
+# pad's taps (`haptics.rs`: an impact feedback generator). (In the tree already, for the window.)
 [target.'cfg(target_os = "ios")'.dependencies]
 objc2 = "0.6"
 block2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "block2", "NSNotification", "NSObject", "NSOperation", "NSString"] }
-objc2-ui-kit = { version = "0.3", default-features = false, features = ["std", "UIApplication", "UIResponder"] }
+objc2-ui-kit = { version = "0.3", default-features = false, features = ["std", "UIApplication", "UIFeedbackGenerator", "UIImpactFeedbackGenerator", "UIResponder"] }
 objc2-avf-audio = { version = "0.3", default-features = false, features = ["std", "AVAudioSessionTypes"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

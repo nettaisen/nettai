@@ -1767,6 +1767,8 @@ Each is settled unless the user changes it.
      - *The battle's pad* had a wide empty band between MENU and L and R. Its buttons are a quarter larger (the
        directions' keys 70, A and B 95, L and R 56 tall, SELECT and START 44), laid out low where the thumbs rest,
        the room to spare above them; a shorter phone has them smaller in proportion (docs/app.md §11).
+     - *A tap felt* as a finger presses a pad's button, upright or sideways (iOS's light impact, Android's keyboard
+       tap), which the system leaves out where its player turned touch feedback off (docs/app.md §7).
 
 ## 3. Chosen where the user gave no answer
 

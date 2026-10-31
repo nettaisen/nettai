@@ -1673,7 +1673,7 @@ impl App {
         }
         let unit = (self.shell.scale.os * self.shell.scale.unit).max(0.01);
         let (x, y) = (x as f32 / unit, y as f32 / unit);
-        let before = self.shell.touch.held();
+        let (before, was_under) = (self.shell.touch.held(), self.shell.touch.under(finger));
         let taken = match phase {
             TouchPhase::Started => self.shell.touch.down(finger, x, y),
             TouchPhase::Moved => self.shell.touch.moved(finger, x, y),
@@ -1683,6 +1683,11 @@ impl App {
         if self.shell.touch.held() & !before != 0 {
             self.shell.keys.pressed.push(Instant::now());
             self.shell.nav.used_pointer();
+        }
+        // (The finger came down on a button, or slid onto another: a light tap felt, on a phone.)
+        let under = self.shell.touch.under(finger);
+        if under.is_some() && under != was_under {
+            crate::haptics::tap();
         }
         self.shell.show_pad();
         taken

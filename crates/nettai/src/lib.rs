@@ -19,6 +19,7 @@ mod builds;
 mod contents;
 mod errors;
 mod games;
+mod haptics;
 mod http;
 mod input;
 mod lang;
