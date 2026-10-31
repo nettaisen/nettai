@@ -11,7 +11,7 @@
 //! docs/frontend.md §3.
 
 use crate::audit::{Lookup, Problems};
-use crate::compose::{Layer, SpritePart};
+use crate::compose::{Anchor, Layer, SpritePart, WIDTH};
 use crate::fonts;
 use crate::objects::SpriteList;
 use crate::textlayer::{Plane, Rect, TextItem, TextSink};
@@ -47,6 +47,20 @@ const PORTRAIT_AT: (i32, i32) = (0x19, 0x80);
 const LAYER: usize = 0;
 const TEXT_BUCKET: usize = 3;
 const FRONT_BUCKET: usize = 4;
+
+/// The map's column where its right half starts: in a frame wider than the
+/// original's the box is as wide as the frame, its left half kept to the
+/// left edge, its right half to the right edge, this column carried across
+/// the columns between (the box opens up and down, so every row of it is
+/// plain there; EXE4's and EXE5's name tab is on its left, EXE6's on its
+/// right).
+const MIDDLE_COLUMN: i32 = 15;
+
+/// The edge a piece of the chatbox at column `x` of the original's screen
+/// keeps to in a frame wider than it: the half of the box it is on.
+fn edge_of(x: i32) -> Anchor {
+    if x < 8 * MIDDLE_COLUMN { Anchor::Left } else { Anchor::Right }
+}
 
 /// The box kinds (`Chatbox::boxes`).
 const MESSAGE_BOX: usize = 0;
@@ -242,9 +256,14 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
     let g = &assets.hud.chatbox;
     let c = &shown.chatbox;
     let (text_x, text_y) = text_at(&assets.hud);
+    let kept = (names_layer.anchor, list.anchor, sink.anchor);
     if let Some(step) = c.box_step() {
         draw_box(g, &assets.hud.shapes.chatbox, shown.kind, step, names_layer, sink);
     }
+    // (The text and the portrait are on the box's left, kept to the left
+    // edge with it.)
+    list.anchor = Anchor::Left;
+    sink.anchor = Anchor::Left;
     // chatbox_804021C: the text, when the box is open; the line buffer's
     // last row of sprites first.
     if c.shows_contents() {
@@ -287,9 +306,12 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
     }
     // chatbox_804082C: the arrow; chatbox_8040B8C: the portrait in front.
     if let Some(frame) = c.look().arrow {
-        // (Its place by the box: the game's, EXE6's `byte_8045DCC`.)
+        // (Its place by the box: the game's, EXE6's `byte_8045DCC`; kept
+        // to the edge of the box's half it is on.)
         let (x, y) = assets.hud.layout.chatbox_arrows[shown.kind.min(1)];
         let at = (x as i32, y as i32);
+        list.anchor = edge_of(at.0 + 8);
+        sink.anchor = list.anchor;
         let arrow = part(&g.arrow, 4 * frame as usize, at, (16, 16), g.text_palette);
         // (Drawn as shapes in the enhanced mode where the game's graphics have its
         // frame's drawing, as deep as the part, which stands blank.)
@@ -304,8 +326,11 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
         }
     }
     if let Some((sheet, look, frame)) = shown.portrait {
+        list.anchor = Anchor::Left;
         list.insert_at(LAYER, FRONT_BUCKET, portrait_parts(sheet, look, frame));
     }
+    names_layer.keep_to(kept.0);
+    (list.anchor, sink.anchor) = (kept.1, kept.2);
 }
 
 /// The room a line of text has in an open box of `kind`, in pixels from
@@ -340,10 +365,18 @@ pub fn text_at(hud: &nettai_assets::Hud) -> (i32, i32) {
 
 /// The box's map at an opening step (`chatbox_CopyBackgroundTiles_8040344`);
 /// in the enhanced mode the cells the game's graphics have drawings of drawn as shapes
-/// (`nettai_assets::shapes`), in the box's palette, the rest as tiles.
+/// (`nettai_assets::shapes`), in the box's palette, the rest as tiles. In a
+/// frame wider than the original's, as wide as the frame
+/// ([`MIDDLE_COLUMN`]).
 fn draw_box(g: &Graphics, shapes: &[Option<nettai_assets::shapes::MapDrawing>], kind: usize, step: u8, layer: &mut Layer, sink: &mut TextSink) {
     let Some(map) = g.boxes.get(kind).and_then(|steps| steps.get(step as usize)) else { return };
     let drawing = shapes.get(kind * 4 + step as usize).and_then(Option::as_ref).filter(|_| sink.draws_shapes());
+    // (The columns the frame has past the original's, and the copies of
+    // the middle column that fill them, from the middle column on, kept to
+    // the left edge; the right half, drawn after, covers what the last
+    // copy has past them.)
+    let copies = layer.width.saturating_sub(WIDTH).div_ceil(8) as i32;
+    let top = 8 * BOX_ROW;
     // (Each cell a drawing stands in for: the pixels the drawing covers, to
     // be in front of what the box hides, drawn as tiles under it.)
     let mut covered: Vec<Option<(usize, std::sync::Arc<Vec<bool>>)>> = vec![None; map.len()];
@@ -356,29 +389,69 @@ fn draw_box(g: &Graphics, shapes: &[Option<nettai_assets::shapes::MapDrawing>], 
                     *d = Some((part.drawing.size[0] as usize, coverage.clone()));
                 }
             }
-            let mut d = crate::shapes::drawn(&part.drawing, |_, c| g.palette[c as usize & 15], (false, false), None);
-            d.cells = Some(part.cells.clone());
-            sink.push(Plane::Bg0, crate::shapes::item(d, (0, 8 * BOX_ROW), (w, h)));
+            let d = crate::shapes::drawn(&part.drawing, |_, c| g.palette[c as usize & 15], (false, false), None);
+            let cells = |keep: &dyn Fn(i32) -> bool| part.cells.iter().copied().filter(|&[c, _]| keep(c as i32)).collect::<Vec<_>>();
+            let halves = [(Anchor::Left, cells(&|c| c < MIDDLE_COLUMN)), (Anchor::Right, cells(&|c| c >= MIDDLE_COLUMN))];
+            let middle = cells(&|c| c == MIDDLE_COLUMN);
+            let [left, right] = halves.map(|(anchor, cells)| (anchor, crate::shapes::item(crate::textlayer::Drawn { cells: Some(cells), ..d.clone() }, (0, top), (w, h))));
+            sink.anchor = left.0;
+            if !halves_empty(&left.1) {
+                sink.push(Plane::Bg0, left.1);
+            }
+            // (Each copy the drawing moved on a column, shown in the middle
+            // column's cells, which it then covers.)
+            for k in (0..copies).filter(|_| !middle.is_empty()) {
+                let moved = crate::textlayer::Drawn { cells: Some(middle.clone()), ..d.clone() };
+                let item = crate::shapes::item(moved, (8 * k, top), (w, h));
+                sink.push(Plane::Bg0, TextItem { clip: Rect::new(8 * (MIDDLE_COLUMN + k), top, 8, h), ..item });
+            }
+            sink.anchor = right.0;
+            if !halves_empty(&right.1) {
+                sink.push(Plane::Bg0, right.1);
+            }
         }
     }
-    for (i, e) in map.iter().enumerate() {
-        let (col, row) = ((i % Graphics::COLUMNS) as i32, (i / Graphics::COLUMNS) as i32);
-        let Some(t) = g.tiles.get(e.tile as usize) else { continue };
+    let tile_at = |layer: &mut Layer, i: usize, x: i32, y: i32| {
+        let e = &map[i];
+        let Some(t) = g.tiles.get(e.tile as usize) else { return };
         match &covered[i] {
             Some((w, coverage)) => {
+                let (col, row) = (i % Graphics::COLUMNS, i / Graphics::COLUMNS);
                 let mut tile = [0u8; 64];
                 for (k, p) in tile.iter_mut().enumerate() {
                     let (x, y) = (if e.hflip { 7 - k % 8 } else { k % 8 }, if e.vflip { 7 - k / 8 } else { k / 8 });
-                    let at = (8 * row as usize + k / 8) * w + 8 * col as usize + k % 8;
+                    let at = (8 * row + k / 8) * w + 8 * col + k % 8;
                     if coverage.get(at) == Some(&true) {
                         *p = t[8 * y + x];
                     }
                 }
-                layer.draw_tile(&tile, &g.palette, 8 * col, 8 * (BOX_ROW + row), false, false);
+                layer.draw_tile(&tile, &g.palette, x, y, false, false);
             }
-            None => layer.draw_tile(t, &g.palette, 8 * col, 8 * (BOX_ROW + row), e.hflip, e.vflip),
+            None => layer.draw_tile(t, &g.palette, x, y, e.hflip, e.vflip),
+        }
+    };
+    let rows = map.len() / Graphics::COLUMNS;
+    for anchor in [Anchor::Left, Anchor::Right] {
+        layer.keep_to(anchor);
+        for row in 0..rows {
+            for col in 0..Graphics::COLUMNS {
+                if edge_of(8 * col as i32) == anchor {
+                    tile_at(layer, row * Graphics::COLUMNS + col, 8 * col as i32, 8 * (BOX_ROW + row as i32));
+                }
+            }
+            if anchor == Anchor::Left {
+                for k in 0..copies {
+                    tile_at(layer, row * Graphics::COLUMNS + MIDDLE_COLUMN as usize, 8 * (MIDDLE_COLUMN + k), 8 * (BOX_ROW + row as i32));
+                }
+            }
         }
     }
+}
+
+/// Whether a drawing's item draws in no cell (a half of the box with none
+/// of the drawing's).
+fn halves_empty(item: &TextItem) -> bool {
+    item.drawn.as_ref().and_then(|d| d.cells.as_ref()).is_some_and(Vec::is_empty)
 }
 
 /// The portrait's parts at frame `k` of its animation (where the
@@ -445,7 +518,7 @@ fn tint(c: u16, t: u16) -> u16 {
 
 fn part(tiles: &Tiles, first_tile: usize, (x, y): (i32, i32), (width, height): (u8, u8), palette: Palette) -> SpritePart<'_> {
     SpritePart {
-        x: (x & 0x1FF) as u16,
+        x,
         y: (y & 0xFF) as u8,
         width,
         height,
@@ -557,6 +630,30 @@ mod tests {
         assert_eq!(text_room(&g, at, DESCRIPTION_BOX), 212 - 1 - 51);
         // No graphics: the line buffer.
         assert_eq!(text_room(&Graphics::default(), at, DESCRIPTION_BOX), TEXT_WIDTH as i32);
+    }
+
+    /// In a frame wider than the original's the box is as wide as the
+    /// frame: its left half at the left edge, its right half (its right
+    /// frame with it) at the right edge, its middle column between.
+    #[test]
+    fn the_box_is_as_wide_as_the_frame() {
+        use crate::compose::CLEAR;
+        let g = Graphics { palette: std::array::from_fn(|i| i as u16), ..exe6_like_boxes() };
+        let row = 8 * BOX_ROW as usize + 4;
+        for width in [WIDTH, 301, 1374] {
+            let mut layer = Layer::new(0, 0);
+            layer.set_width(width);
+            let sink = TextSink::original();
+            draw_box(&g, &[], DESCRIPTION_BOX, 3, &mut layer, &mut { sink });
+            let at = |x: usize| layer.pixels[row * width + x];
+            let more = width - WIDTH;
+            // (The frame's outline is a pixel in from each end of the box:
+            // its right end the 27th column's tile, flipped.)
+            let right = 8 * 26 + more;
+            assert_eq!((at(0), at(1), at(right + 6), at(right + 7)), (CLEAR, 11, 11, CLEAR), "{width} wide");
+            assert!((4..right + 4).all(|x| at(x) == 1), "{width} wide: the inside is the ground's");
+            assert!((right + 8..width).all(|x| at(x) == CLEAR), "{width} wide: nothing past the box");
+        }
     }
 
     /// Every line the chatbox shows, in both languages (the chips' and the
