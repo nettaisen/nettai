@@ -1,6 +1,8 @@
-# The app's releases (packaging/; docs/app.md §19, "Packaging"): Velopack's, a Windows installer, the macOS app
-# zipped (Apple silicon's and Intel's) and a Linux AppImage, each with the update package and feed the installed app's
-# updater reads (crates/nettai's updates.rs); and the phones' packages: Android's APK, `nettai-android.apk`, signed
+# The app's releases (packaging/; docs/app.md §19, "Packaging"): Velopack's, for each system and architecture on a
+# channel of its own (win-x64, win-arm64; osx-arm64, osx-x64; linux-x64, linux-arm64): a Windows installer, the macOS
+# app zipped and a Linux AppImage, each with the update package and feed the installed app's updater reads
+# (crates/nettai's updates.rs), and x86_64's Windows and Linux apps again on the bridge (win, linux: below, at the
+# upload); and the phones' packages: Android's APK, `nettai-android.apk`, signed
 # with the release key (the Android job says how), and iOS's IPA, `nettai-ios.ipa`, unsigned, which the player's
 # sideloading tool signs as it installs it, with its AltStore source, `altstore.json` (AltStore and SideStore read
 # the latest release's: https://github.com/nettaisen/nettai/releases/latest/download/altstore.json).
@@ -52,10 +54,21 @@ jobs:
           path: ${{ runner.temp }}/icons
           if-no-files-found: error
 
+  # Each Windows architecture's installer, built and packaged natively in a job of its own (packaging/windows/
+  # package.ps1), on its own channel (win-x64, win-arm64; x64's on the bridge win too), with its own Rust cache.
   windows:
-    name: Windows installer
+    name: Windows installer (${{ matrix.arch }})
     needs: icons
-    runs-on: windows-latest
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      # (One architecture failing leaves the other's job to finish: the release waits for both either way.)
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x64
+            runner: windows-latest
+          - arch: arm64
+            runner: windows-11-arm
     env:
       WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
     steps:
@@ -66,7 +79,22 @@ jobs:
           path: ${{ runner.temp }}/icons
       - name: Rust
         run: rustup toolchain install stable --profile minimal --no-self-update && rustup default stable
+      # (Windows on Arm: ring and aws-lc-sys compile their C and assembly for arm64 with LLVM's clang and clang-cl,
+      # which the image has; on the PATH for the build.)
+      - name: LLVM
+        if: matrix.arch == 'arm64'
+        shell: pwsh
+        run: |
+          $llvm = 'C:\Program Files\LLVM\bin'
+          if (-not (Test-Path "$llvm\clang-cl.exe")) {
+            choco install llvm --yes --no-progress
+            if ($LASTEXITCODE -ne 0) { throw "installing LLVM failed" }
+          }
+          Add-Content $env:GITHUB_PATH $llvm
+          & "$llvm\clang-cl.exe" --version
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: ${{ matrix.arch }}
       # (crates/nettai/build.rs lists the packages offline: every one is fetched first.)
       - name: Fetch the crates
         run: cargo fetch --locked
@@ -93,11 +121,11 @@ jobs:
         shell: pwsh
         env:
           WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
-        run: packaging\windows\package.ps1 -Icon "$env:RUNNER_TEMP\icons\nettai.ico"
+        run: packaging\windows\package.ps1 -Arch ${{ matrix.arch }} -Icon "$env:RUNNER_TEMP\icons\nettai.ico"
       - uses: actions/upload-artifact@v7
         with:
-          name: nettai-windows
-          path: target/package/windows/releases/*
+          name: nettai-windows-${{ matrix.arch }}
+          path: target/package/windows/${{ matrix.arch }}/releases/*
           if-no-files-found: error
 
   # Each Mac architecture's app, built and packaged in a job of its own (packaging/macos/package.sh), on its own
@@ -179,25 +207,38 @@ jobs:
           path: target/package/macos/${{ matrix.arch }}/releases/*
           if-no-files-found: error
 
+  # Each Linux architecture's AppImage, built and packaged natively in a job of its own (packaging/linux/package.sh),
+  # on its own channel (linux-x64, linux-arm64; x86_64's on the bridge linux too), with its own Rust cache.
   linux:
-    name: Linux AppImage
+    name: Linux AppImage (${{ matrix.arch }})
     needs: icons
-    # (The oldest image GitHub has: the program needs the glibc it was built against, or a later one.)
-    runs-on: ubuntu-22.04
+    # (The oldest images GitHub has: the program needs the glibc it was built against, or a later one.)
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-22.04
+          - arch: arm64
+            runner: ubuntu-22.04-arm
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
         with:
           name: icons
           path: ${{ runner.temp }}/icons
-      # ALSA (cpal), fontconfig (Slint's text), udev (SDL's gamepads), Wayland and xkbcommon (the window).
+      # ALSA (cpal), fontconfig (Slint's text), udev (SDL's gamepads), Wayland and xkbcommon (the window); squashfs-tools
+      # for vpk's AppImage.
       - name: Libraries
         run: |
           sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends cmake pkg-config libasound2-dev libfontconfig1-dev libudev-dev libwayland-dev libxkbcommon-dev
+          sudo apt-get install --yes --no-install-recommends cmake pkg-config libasound2-dev libfontconfig1-dev libudev-dev libwayland-dev libxkbcommon-dev squashfs-tools
       - name: Rust
         run: rustup toolchain install stable --profile minimal --no-self-update && rustup default stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          key: ${{ matrix.arch }}
       - name: Fetch the crates
         run: cargo fetch --locked
       - uses: actions/setup-dotnet@v4
@@ -213,11 +254,12 @@ jobs:
       - name: Package
         env:
           NETTAI_ICONS: ${{ runner.temp }}/icons
+          NETTAI_LINUX_ARCH: ${{ matrix.arch }}
         run: packaging/linux/package.sh
       - uses: actions/upload-artifact@v7
         with:
-          name: nettai-linux
-          path: target/package/linux/releases/*
+          name: nettai-linux-${{ matrix.arch }}
+          path: target/package/linux/${{ matrix.arch }}/releases/*
           if-no-files-found: error
 
   # The APK for Android phones on arm64 (packaging/android/package.sh; docs/app.md §7), with the runner's SDK and
@@ -354,16 +396,21 @@ jobs:
           dotnet tool install vpk --version $env:VPK_VERSION --tool-path (Join-Path $env:RUNNER_TEMP 'vpk')
           if ($LASTEXITCODE -ne 0) { throw "installing vpk failed" }
           Add-Content $env:GITHUB_PATH (Join-Path $env:RUNNER_TEMP 'vpk')
-      # Each package's channel (win; osx-arm64, osx-x64; linux) goes up into the one release, a draft until all are
-      # in (a run again merges into it); then it is published, the latest, and the installed apps see it. (vpk uploads
-      # a channel's files alone, as its feed names them: the phones' packages in the same folder go up after.)
+      # Each package's channel (win-x64, win-arm64; osx-arm64, osx-x64; linux-x64, linux-arm64) goes up into the one
+      # release, a draft until all are in (a run again merges into it); then it is published, the latest, and the
+      # installed apps see it. (vpk uploads a channel's files alone, as its feed names them: the phones' packages in the
+      # same folder go up after.) And the bridge, win and linux, x86_64's only channels up to 0.19.0: the same apps
+      # packed again on them, so that the apps installed from them, which ask them alone, find the update and move to
+      # their architecture's channel at the next (docs/app.md §19, "Updates"), as the Mac's universal osx was kept up to
+      # 0.18.1; with it, the download addresses of those packages (nettai-win-Setup.exe, nettai.AppImage) stay. It goes
+      # when the user says.
       - name: Upload
         env:
           VPK_TOKEN: ${{ github.token }}
           TAG: ${{ steps.tag.outputs.tag }}
           VERSION: ${{ steps.tag.outputs.version }}
         run: |
-          for channel in win osx-arm64 osx-x64 linux; do
+          for channel in win-x64 win-arm64 osx-arm64 osx-x64 linux-x64 linux-arm64 win linux; do
             vpk upload github --outputDir releases --channel "$channel" --repoUrl "https://github.com/$GITHUB_REPOSITORY" \
               --tag "$TAG" --releaseName "nettai $VERSION" --merge
           done

@@ -57,14 +57,20 @@ fn manager() -> Option<UpdateManager> {
     UpdateManager::new(GithubSource::new(REPO, None, false), Some(options), None).ok()
 }
 
-/// The channel the app asks for its updates on, when it isn't the one its package was made on (`vpk pack
-/// --channel`, which Velopack's manager asks otherwise): on a Mac, the architecture's (`osx-arm64`, `osx-x64`:
-/// packaging/macos), so that an app from the universal package (`osx`, a Mac's only one up to 0.12.0, made up to
-/// 0.18.1) takes its own at its next update, the slice it runs choosing (docs/app.md §19, "Updates").
+/// The channel the app asks for its updates on, whatever channel its package was made on (`vpk pack --channel`,
+/// which Velopack's manager asks otherwise): the system's and the architecture's, as the program was built for them
+/// (`osx-arm64`, `osx-x64`, `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`: packaging/), so that an app from a
+/// package of the channels before them takes its architecture's at its next update: a Mac's universal package (`osx`,
+/// a Mac's only one up to 0.12.0, made up to 0.18.1), the slice it runs choosing; Windows' `win` and Linux's `linux`,
+/// x86_64's only ones up to 0.19.0, made since as the bridge (docs/app.md §19, "Updates").
 fn options(os: &str, arch: &str) -> UpdateOptions {
     let channel = match (os, arch) {
         ("macos", "aarch64") => Some("osx-arm64"),
         ("macos", "x86_64") => Some("osx-x64"),
+        ("windows", "x86_64") => Some("win-x64"),
+        ("windows", "aarch64") => Some("win-arm64"),
+        ("linux", "x86_64") => Some("linux-x64"),
+        ("linux", "aarch64") => Some("linux-arm64"),
         _ => None,
     };
     UpdateOptions { ExplicitChannel: channel.map(str::to_owned), ..UpdateOptions::default() }
@@ -278,10 +284,49 @@ mod tests {
         assert_eq!(update_to("0.14.0", "osx-x64", INTEL_MAC, newer), full("0.15.0", "osx-x64"));
     }
 
+    const WINDOWS_X64: (&str, &str) = ("windows", "x86_64");
+    const WINDOWS_ARM64: (&str, &str) = ("windows", "aarch64");
+    const LINUX_X64: (&str, &str) = ("linux", "x86_64");
+    const LINUX_ARM64: (&str, &str) = ("linux", "aarch64");
+
+    /// A release with the bridge (`win`, `linux`: x86_64's channels up to 0.19.0) beside the architectures'.
+    const BRIDGED: &[(&str, &[&str])] = &[
+        ("win", &["0.20.0"]),
+        ("win-x64", &["0.20.0"]),
+        ("win-arm64", &["0.20.0"]),
+        ("linux", &["0.20.0"]),
+        ("linux-x64", &["0.20.0"]),
+        ("linux-arm64", &["0.20.0"]),
+    ];
+
     #[test]
-    fn other_systems_ask_their_packages_channel() {
-        let release = &[("win", &["0.14.0"][..]), ("linux", &["0.14.0"][..])];
-        assert_eq!(update_to("0.13.0", "win", ("windows", "x86_64"), release), full("0.14.0", "win"));
-        assert_eq!(update_to("0.13.0", "linux", ("linux", "x86_64"), release), full("0.14.0", "linux"));
+    fn a_bridged_app_takes_its_architectures_package() {
+        assert_eq!(update_to("0.19.0", "win", WINDOWS_X64, BRIDGED), full("0.20.0", "win-x64"));
+        assert_eq!(update_to("0.19.0", "linux", LINUX_X64, BRIDGED), full("0.20.0", "linux-x64"));
+    }
+
+    #[test]
+    fn a_bridged_app_waits_for_a_newer_version() {
+        // (An app the bridge updated to 0.20.0 asks its architecture's channel, whose 0.20.0 is no update.)
+        let same = &[("win", &["0.20.0"][..]), ("win-x64", &["0.20.0"][..])];
+        assert_eq!(update_to("0.20.0", "win", WINDOWS_X64, same), None);
+        let same = &[("linux", &["0.20.0"][..]), ("linux-x64", &["0.20.0"][..])];
+        assert_eq!(update_to("0.20.0", "linux", LINUX_X64, same), None);
+    }
+
+    #[test]
+    fn windows_and_linux_apps_stay_on_their_channels() {
+        let newer = &[
+            ("win", &["0.21.0"][..]),
+            ("win-x64", &["0.21.0"][..]),
+            ("win-arm64", &["0.21.0"][..]),
+            ("linux", &["0.21.0"][..]),
+            ("linux-x64", &["0.21.0"][..]),
+            ("linux-arm64", &["0.21.0"][..]),
+        ];
+        assert_eq!(update_to("0.20.0", "win-x64", WINDOWS_X64, newer), full("0.21.0", "win-x64"));
+        assert_eq!(update_to("0.20.0", "win-arm64", WINDOWS_ARM64, newer), full("0.21.0", "win-arm64"));
+        assert_eq!(update_to("0.20.0", "linux-x64", LINUX_X64, newer), full("0.21.0", "linux-x64"));
+        assert_eq!(update_to("0.20.0", "linux-arm64", LINUX_ARM64, newer), full("0.21.0", "linux-arm64"));
     }
 }
