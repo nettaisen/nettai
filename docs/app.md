@@ -2678,8 +2678,15 @@ four, since its letter depends on the pad's maker. They go through the shell's p
 `Shell::show_bindings` sets), so a screen's hints say confirm and back by what does them; the Controls in
 Settings say "A · Pad confirms" and "B · Pad goes back".
 
-**The mouse and touch**: a click or a tap focuses and activates in one; everything tapped on a phone is at least
-44 tall.
+**The mouse and touch**: a click or a tap focuses and activates in one. On an upright phone what is tapped is 44 by
+44 at least: a control drawn smaller takes a tap past its box (`Reach`, widgets.slint: a press there is a press on
+the control, whose own `Focusable` keeps the box and the cursor's place), so nothing is drawn larger or moved for it.
+So the header's Back (32 by 30), the steppers' arrows (32 by 36: the header's game, Settings' Input delay, the
+lobby's and the practice menu's), the buttons, selects, fields, segmented controls, sliders and bindings' boxes (36
+or 40 tall), the replays' square buttons (40 across) and seek bar (24 tall), and a library's sort direction (40
+square). Short of 44 still: the lists' rows (40, 42 apart: a list is a column of them, so a tap anywhere in it is
+one's), the tab bar's tabs (40 tall, side by side; the bar clips what is past it), and the small words on a line
+(ALL and NONE, CLEAR: 28 tall), which rows and bars sit close around (design §2.102).
 
 **The on-screen pad** (a phone, in battle: `input::TouchPad`). Slint's `TouchArea` follows one pointer, and a
 battle needs a direction and a button held together, so the pad takes the window's touch events itself, before

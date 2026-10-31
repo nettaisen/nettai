@@ -160,7 +160,8 @@ export global Theme {
     in property <bool> phone-app;
 
     // Metrics. `phone` is the upright-phone layout (the app sets it when the window is taller than wide): one
-    // column, no footer, everything tapped at least 44 tall.
+    // column, no footer, what is tapped 44 by 44 at least (a control drawn smaller takes a tap past its box:
+    // `Reach`).
     in property <bool> phone;
     out property <length> margin: phone ? 16px : 32px;
     out property <length> header: phone ? 56px : 64px;

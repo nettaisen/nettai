@@ -6,7 +6,7 @@
 import { Theme, Audit, I18n } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, FaceButton } from "../shell.slint";
-import { Label, Note, Mono, Button, ButtonKind, Field, Select, Seg, Slider, Stepper, Row, Marker, GroupTitle, ScrollPage } from "../widgets.slint";
+import { Label, Note, Mono, Button, ButtonKind, Field, Select, Seg, Slider, Stepper, Row, Marker, GroupTitle, ScrollPage, Reach } from "../widgets.slint";
 import { Arrive } from "../motion.slint";
 import { AboutPage, AboutOverlay } from "settings/about.slint";
 
@@ -126,6 +126,14 @@ export component BindBox inherits Rectangle {
     FaceButton {
         visible: !root.asking && root.face != PadButton.none;
         button: root.face;
+    }
+
+    // (A phone's tap reaches past it to 44 tall.)
+    Reach {
+        box-width: root.width;
+        box-height: root.height;
+        nav: root.nav;
+        nav-index: root.nav-index;
     }
 
     hit := Focusable {

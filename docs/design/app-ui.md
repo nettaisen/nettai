@@ -1769,6 +1769,13 @@ Each is settled unless the user changes it.
        the room to spare above them; a shorter phone has them smaller in proportion (docs/app.md §11).
      - *A tap felt* as a finger presses a pad's button, upright or sideways (iOS's light impact, Android's keyboard
        tap), which the system leaves out where its player turned touch feedback off (docs/app.md §7).
+     - *Taps 44 by 44:* the header's Back was 32 by 30 and the steppers' arrows 32 by 36. Every control drawn smaller
+       than 44 by 44 now takes a tap past its box to that size, so nothing is drawn larger or moved: Back, the
+       arrows (the header's game, Input delay, the lobby's and the practice menu's), the buttons, selects, fields,
+       segmented controls, sliders and bindings' boxes (36 or 40 tall), the replays' square buttons and seek bar, a
+       library's sort direction (docs/app.md §11). The lists' rows (40, 42 apart), the tab bar's tabs (40) and the
+       small words on a line (ALL and NONE, CLEAR: 28) are short of it still: making them 44 moves what is around
+       them, which is the user's to choose.
 
 ## 3. Chosen where the user gave no answer
 
@@ -2429,10 +2436,11 @@ files beside it in a panel, scrolling (§2.25). On a phone the list is the page 
 the bottom.
 
 ### On a phone
-One column; pickers, the chip library and the navis open as sheets from the bottom; everything tapped is at least 44 tall; no
-key hints, and the cursor only with a pad or keyboard connected; in battle the pad is drawn under the picture and
-START and MENU open the same menus. Held sideways, a phone uses the desktop layout. Where a screen doesn't fit a
-short phone, its lists take the height that is left: nothing scrolls the whole screen (§2.98).
+One column; pickers, the chip library and the navis open as sheets from the bottom; what is tapped is 44 by 44 at
+least (a control drawn smaller takes a tap past its box: §2.102), but a list's rows, the tabs and the small words on
+a line; no key hints, and the cursor only with a pad or keyboard connected; in battle the pad is drawn under the
+picture and START and MENU open the same menus. Held sideways, a phone uses the desktop layout. Where a screen
+doesn't fit a short phone, its lists take the height that is left: nothing scrolls the whole screen (§2.98).
 
 ## 7. Errors the player can see
 

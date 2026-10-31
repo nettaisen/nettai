@@ -280,6 +280,34 @@ export component Pill inherits Rectangle {
 
 // ---- Controls -------------------------------------------------------------------------------------------
 
+// A control's touch past its drawn box on a phone, so that what is tapped is 44 by 44 at least (docs/design/app-ui.md
+// §2.102), where growing the box would move what is around it: a press in it is a press on the control `nav`, as on
+// its `Focusable` (the focus goes there; a click is Enter on it). Given the box's size, it is around it, past each side
+// as far as takes it to 44 where it is short (none on a desktop); placed before the control's `Focusable`, which keeps
+// the box's own presses and the cursor's place. (A leaf, shared by its uses: docs/app.md §14.)
+export component Reach inherits TouchArea {
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <length> box-width;
+    in property <length> box-height;
+    property <length> reach-x: Theme.phone ? max(0px, (44px - root.box-width) / 2) : 0px;
+    property <length> reach-y: Theme.phone ? max(0px, (44px - root.box-height) / 2) : 0px;
+    x: -root.reach-x;
+    y: -root.reach-y;
+    width: root.box-width + 2 * root.reach-x;
+    height: root.box-height + 2 * root.reach-y;
+    pointer-event(e) => {
+        if e.kind == PointerEventKind.down && root.nav != "" {
+            Nav.point(root.nav, root.nav-index);
+        }
+    }
+    clicked => {
+        if root.nav != "" {
+            Nav.activate(root.nav, root.nav-index);
+        }
+    }
+}
+
 export enum ButtonKind {
     normal,
     // The main action: amber.
@@ -324,7 +352,7 @@ export component Button inherits Rectangle {
     // A press: the pointer going down on it, or Enter while the cursor is on it.
     property <int> presses;
     property <int> key-press: Nav.press-seq;
-    property <bool> down: hit.pressed;
+    property <bool> down: hit.pressed || reach.pressed;
     property <length> dip: press.v > 0.4 ? 1px : 0px;
     // The main action's sheen: a band of light across it every few seconds.
     property <float> sheen: Theme.motion && root.kind == ButtonKind.main && root.enabled ? clamp(mod(animation-tick(), 3.6s) / 0.9s, 0, 1) : 0;
@@ -378,6 +406,15 @@ export component Button inherits Rectangle {
         horizontal-alignment: center;
         vertical-alignment: center;
         overflow: elide;
+    }
+
+    // (A phone's tap reaches past it to 44 by 44.)
+    reach := Reach {
+        box-width: root.width;
+        box-height: root.height;
+        enabled: root.enabled;
+        nav: root.nav;
+        nav-index: root.nav-index;
     }
 
     hit := Focusable {
@@ -545,6 +582,8 @@ export component Stepper inherits Rectangle {
     // (The value before, as it was drawn: it slides out so.)
     property <length> old-size: root.face;
     property <bool> old-two-lines;
+    // (How far a phone's arrows take a tap past them, up and down: to 44 tall.)
+    property <length> reach: Theme.phone ? max(0px, (44px - root.height) / 2) : 0px;
     height: 36px;
     width: root.value-width + 72px;
     horizontal-stretch: 0;
@@ -601,7 +640,12 @@ export component Stepper inherits Rectangle {
         background: left.pressed ? Theme.line : left.has-hover ? Theme.tint : transparent;
         ArrowLeft { }
 
+        // (A phone's reaches past the arrow's box to 44 by 44: 8 out, 4 into the gap by the value.)
         left := TouchArea {
+            x: Theme.phone ? -8px : 0px;
+            y: -root.reach;
+            width: Theme.phone ? 44px : parent.width;
+            height: parent.height + 2 * root.reach;
             enabled: root.enabled;
             clicked => {
                 Nav.point(root.nav, root.nav-index);
@@ -657,6 +701,10 @@ export component Stepper inherits Rectangle {
         ArrowRight { }
 
         right := TouchArea {
+            x: Theme.phone ? -4px : 0px;
+            y: -root.reach;
+            width: Theme.phone ? 44px : parent.width;
+            height: parent.height + 2 * root.reach;
             enabled: root.enabled;
             clicked => {
                 Nav.point(root.nav, root.nav-index);
@@ -708,6 +756,8 @@ export component Seg inherits Rectangle {
     property <length> first-width: max(44px, a.preferred-width + 24px);
     property <length> second-width: max(44px, b.preferred-width + 24px);
     property <length> third-width: root.third == "" ? 0px : max(44px, c.preferred-width + 24px) + 1px;
+    // (How far a phone's tap on a part reaches past it, up and down: to 44 tall.)
+    property <length> reach: Theme.phone ? max(0px, (44px - root.height) / 2) : 0px;
     height: 36px;
     width: root.first-width + root.second-width + 1px + root.third-width;
     horizontal-stretch: 0;
@@ -758,7 +808,9 @@ export component Seg inherits Rectangle {
 
     TouchArea {
         x: 0;
+        y: -root.reach;
         width: root.first-width;
+        height: root.height + 2 * root.reach;
         enabled: root.enabled;
         clicked => {
             Nav.point(root.nav, root.nav-index);
@@ -790,7 +842,9 @@ export component Seg inherits Rectangle {
 
     TouchArea {
         x: root.first-width + 1px;
+        y: -root.reach;
         width: root.second-width;
+        height: root.height + 2 * root.reach;
         enabled: root.enabled;
         clicked => {
             Nav.point(root.nav, root.nav-index);
@@ -823,7 +877,9 @@ export component Seg inherits Rectangle {
 
     if root.third != "": TouchArea {
         x: root.first-width + root.second-width + 2px;
+        y: -root.reach;
         width: root.third-width - 1px;
+        height: root.height + 2 * root.reach;
         enabled: root.enabled;
         clicked => {
             Nav.point(root.nav, root.nav-index);
@@ -882,9 +938,12 @@ export component Slider inherits Rectangle {
         horizontal-alignment: right;
     }
 
+    // (A phone's reaches past the track's 40 to 44 tall.)
     drag := TouchArea {
         x: 0;
+        y: Theme.phone ? -2px : 0px;
         width: root.track;
+        height: root.height + (Theme.phone ? 4px : 0px);
         function set() {
             Nav.choose(root.nav, root.nav-index, round(clamp(self.mouse-x / self.width, 0, 1) * root.maximum));
         }
@@ -986,6 +1045,15 @@ export component Select inherits Rectangle {
         x: parent.width - 20px;
     }
 
+    // (A phone's tap reaches past it to 44 tall.)
+    Reach {
+        box-width: root.width;
+        box-height: root.height;
+        enabled: root.enabled && root.focusable;
+        nav: root.focusable ? root.nav : "";
+        nav-index: root.nav-index;
+    }
+
     hit := Focusable {
         nav: root.focusable ? root.nav : "";
         nav-index: root.nav-index;
@@ -1027,6 +1095,15 @@ export component Field inherits Rectangle {
         border-color: root.editing ? Theme.cursor : root.error ? Theme.bad : hit.has-hover ? Theme.muted : Theme.line;
         drop-shadow-blur: root.editing ? 10px : 0px;
         drop-shadow-color: root.editing ? Theme.glow : transparent;
+    }
+
+    // (A phone's tap reaches past it to 44 tall.)
+    Reach {
+        box-width: root.width;
+        box-height: root.height;
+        enabled: root.enabled;
+        nav: root.nav;
+        nav-index: root.nav-index;
     }
 
     hit := Focusable {

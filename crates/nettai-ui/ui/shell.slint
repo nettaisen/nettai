@@ -4,7 +4,7 @@
 
 import { Theme, Audit, Look, PatternKind, I18n } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
-import { Cut, Label, Note, Value, Mono, Bar, Button, ButtonKind, Stepper, Field, Chevron, ArrowLeft, ArrowRight, RowBack, RowTouch, ListView, ScrollPage, Pill } from "widgets.slint";
+import { Cut, Label, Note, Value, Mono, Bar, Button, ButtonKind, Stepper, Field, Chevron, ArrowLeft, ArrowRight, RowBack, RowTouch, ListView, ScrollPage, Pill, Reach } from "widgets.slint";
 import { Tween, Pulse, Shake } from "motion.slint";
 import { VersionTag } from "build.slint";
 
@@ -1144,7 +1144,7 @@ export component Header inherits Rectangle {
         visible: !root.logo;
         border-width: 1px;
         border-color: Theme.line;
-        background: back-hit.pressed ? Theme.line : (back-hit.has-hover ? Theme.tint : transparent);
+        background: back-hit.pressed || back-reach.pressed ? Theme.line : (back-hit.has-hover ? Theme.tint : transparent);
         Chevron {
             x: Theme.phone ? 13px : 12px;
         }
@@ -1159,6 +1159,14 @@ export component Header inherits Rectangle {
             font-weight: Theme.display-bold;
             letter-spacing: Theme.cjk ? 0.3px : 1px;
             vertical-alignment: center;
+        }
+
+        // (A phone's tap reaches past the box, 44 square.)
+        back-reach := Reach {
+            box-width: parent.width;
+            box-height: parent.height;
+            enabled: !root.logo;
+            nav: root.logo ? "" : "back";
         }
 
         back-hit := Focusable {

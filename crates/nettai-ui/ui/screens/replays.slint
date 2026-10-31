@@ -8,7 +8,7 @@
 import { Theme, I18n } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Picture, PartyHud } from "../shell.slint";
-import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Field, Select, Seg, ListView, RowBack, RowTouch, PanelBack, Bar, ScrollPage, TabBar } from "../widgets.slint";
+import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Field, Select, Seg, ListView, RowBack, RowTouch, PanelBack, Bar, ScrollPage, TabBar, Reach } from "../widgets.slint";
 import { Arrive, Tween, Pulse } from "../motion.slint";
 import { BuildSheet, BuildOverview } from "../build.slint";
 import { InputDisplay } from "../inputs.slint";
@@ -342,7 +342,7 @@ component IconButton inherits Rectangle {
     in property <string> badge;
     property <int> presses;
     property <int> key-press: Nav.press-seq;
-    property <bool> down: hit.pressed;
+    property <bool> down: hit.pressed || reach.pressed;
     property <length> dip: press.v > 0.4 ? 1px : 0px;
     width: 40px;
     height: Theme.phone ? 44px : 40px;
@@ -391,6 +391,14 @@ component IconButton inherits Rectangle {
             horizontal-alignment: center;
             vertical-alignment: center;
         }
+    }
+
+    // (A phone's tap reaches past its 40 across to 44.)
+    reach := Reach {
+        box-width: root.width;
+        box-height: root.height;
+        enabled: root.enabled;
+        nav: root.nav;
     }
 
     hit := Focusable {
@@ -1052,7 +1060,10 @@ component SeekBar inherits Rectangle {
         viewbox-height: 28;
     }
 
+    // (A phone's reaches 10 over and under the bar: 44 tall.)
     drag := TouchArea {
+        y: Theme.phone ? -10px : 0px;
+        height: root.height + (Theme.phone ? 20px : 0px);
         // (The handle the pointer is on: within 8 of one, the nearer; two at one place, by the side it is on.)
         property <length> to-start: abs(self.mouse-x - root.from);
         property <length> to-end: abs(self.mouse-x - root.to);

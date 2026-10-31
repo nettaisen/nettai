@@ -11,7 +11,7 @@
 import { Theme, Audit, I18n } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ArrowDown, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
+import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ArrowDown, Refusal, ProblemNote, WordButton, Reach } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { ChipCell, ChipKind, ChipRow, VersionTag, VersionMark } from "../../build.slint";
 
@@ -440,7 +440,7 @@ component DirectionButton inherits Rectangle {
     height: 40px;
     Cut {
         cut: 7px;
-        background: hit.pressed ? Theme.line : (hit.has-hover ? Theme.raised-hover : Theme.raised);
+        background: hit.pressed || reach.pressed ? Theme.line : (hit.has-hover ? Theme.raised-hover : Theme.raised);
     }
 
     Path {
@@ -449,6 +449,13 @@ component DirectionButton inherits Rectangle {
         stroke: Theme.text;
         stroke-width: 1.5px;
         commands: root.descending ? "M 5 0 L 5 11 M 1 7 L 5 11 L 9 7" : "M 5 12 L 5 1 M 1 5 L 5 1 L 9 5";
+    }
+
+    // (A phone's tap reaches past it to 44 square.)
+    reach := Reach {
+        box-width: root.width;
+        box-height: root.height;
+        nav: "lib.direction";
     }
 
     hit := Focusable {
