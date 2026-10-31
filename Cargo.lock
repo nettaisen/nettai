@@ -3780,6 +3780,7 @@ dependencies = [
  "js-sys",
  "libc 0.2.190",
  "log",
+ "ndk-context",
  "nettai-audio",
  "nettai-battle",
  "nettai-content",

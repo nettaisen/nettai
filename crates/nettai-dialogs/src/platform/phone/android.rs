@@ -83,14 +83,14 @@ pub fn copy(text: &str) {
 }
 
 /// `call` run with Java's environment (this thread attached to the VM, for as long as it lives) and the activity (an
-/// `android.app.Activity`, which is a `Context`): ndk-context's, which android-activity sets as the app starts. What
-/// Java threw, or what went wrong, is the error, said.
+/// `android.app.Activity`, which is a `Context`): ndk-context's, which the app sets as it starts (its
+/// `android_main`). What Java threw, or what went wrong, is the error, said.
 fn java<T>(call: impl FnOnce(&mut Env, &JObject) -> jni::errors::Result<T>) -> Result<T, String> {
     let context = ndk_context::android_context();
     // SAFETY: the process's VM, valid for its life.
     let vm = unsafe { jni::JavaVM::from_raw(context.vm().cast()) };
     vm.attach_current_thread(|env| {
-        // SAFETY: android-activity holds the activity as a global reference for the app's life.
+        // SAFETY: GameActivity holds the activity as a global reference for the app's life.
         let activity = unsafe { JObject::from_raw(env, context.context().cast()) };
         call(env, &activity)
     })

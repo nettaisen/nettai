@@ -1277,7 +1277,9 @@ with threads must be.
   nettai-android's and nettai-android-app's until they folded in, 2026-10-30). Each crate (and each of those modules) has its systems' code in modules of their own under
   `platform/`, `desktop`, `web`, `ios`, `android` or one several share (`native`: the desktop's and a phone's;
   `phone`; `none`: nothing to do), chosen in one place (`platform.rs`), as nettai-video's are. Android's crates
-  reach Java through ndk-context's VM and activity, which android-activity sets. A dialog answers
+  reach Java through ndk-context's VM and activity, which the app sets as `android_main` begins (android-activity
+  0.6.1 sets the Application there, on which the Kotlin's Activity calls fail: up to 0.18.2 the pickers, the
+  clipboard and nearby did nothing). A dialog answers
   through a callback, after the call on both (the browser's later), and the screen shown hears the files
   (`Screen::chosen`). In the browser a file chosen or dropped is read into the app's files; a folder chosen is
   read as far as the app names its files (the collection's archives: `nettai_extract::source::ARCHIVES`); a file

@@ -43,9 +43,20 @@ thread_local! {
 
 /// The app, under tokio as the desktop's `main` runs it (main.rs), on this thread, which runs the activity's event
 /// loop (winit's, through Slint) till the activity is gone. First the activity is kept (the window's loop is made on
-/// it, and the app's calls into Java go through it), and the certificate verifier given it.
+/// it, and the app's calls into Java go through it), made ndk-context's context, and the certificate verifier given
+/// it.
 #[unsafe(no_mangle)]
 fn android_main(activity: AndroidApp) {
+    // The crates' JNI (nettai-dialogs' pickers and clipboard, nettai-nearby, nettai-files) is on ndk-context's
+    // context, and their Kotlin takes it as an `android.app.Activity`: android-activity 0.6.1 sets the Application
+    // there (0.6.0 set the activity), on which the Kotlin's calls of an Activity's methods do nothing (a debuggable
+    // app's JNI checks stop it at the first; a release build's pickers opened nothing).
+    // SAFETY: android-activity set ndk-context before this thread began, and no other thread of the app's reads it
+    // yet; the VM is the process's, and the activity a global reference GameActivity holds for the activity's life.
+    unsafe {
+        ndk_context::release_android_context();
+        ndk_context::initialize_android_context(activity.vm_as_ptr(), activity.activity_as_ptr());
+    }
     let _ = ACTIVITY.set(activity);
     let verifier = java(|env, activity| {
         let context = env.new_local_ref(activity)?;

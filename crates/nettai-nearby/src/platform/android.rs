@@ -30,14 +30,14 @@ fn tell(seen: Seen) {
     }
 }
 
-/// `call` run with Java's environment (this thread attached to the VM) and the activity: ndk-context's, which
-/// android-activity sets as the app starts. What Java threw, or what went wrong, is the error, said.
+/// `call` run with Java's environment (this thread attached to the VM) and the activity: ndk-context's, which the
+/// app sets as it starts (its `android_main`). What Java threw, or what went wrong, is the error, said.
 fn java<T>(call: impl FnOnce(&mut Env, &JObject) -> jni::errors::Result<T>) -> Result<T, String> {
     let context = ndk_context::android_context();
     // SAFETY: the process's VM, which android-activity hands ndk-context as the app starts.
     let vm = unsafe { jni::JavaVM::from_raw(context.vm().cast()) };
     vm.attach_current_thread(|env| {
-        // SAFETY: the activity, which android-activity holds as a global reference for the app's life.
+        // SAFETY: the activity, which GameActivity holds as a global reference for the app's life.
         let activity = unsafe { JObject::from_raw(env, context.context().cast()) };
         call(env, &activity)
     })

@@ -1,5 +1,5 @@
 //! Android's folders: the app's files and cache folders (`Context.getFilesDir`, `getCacheDir`), asked of the
-//! activity through JNI (ndk-context's, which android-activity sets as the app starts); what goes wrong is logged.
+//! activity through JNI (ndk-context's, which the app sets as it starts: its `android_main`); what goes wrong is logged.
 
 use jni::objects::{JObject, JString};
 use jni::{jni_sig, jni_str};
@@ -19,7 +19,7 @@ fn folder(name: &'static str) -> Result<PathBuf, jni::errors::Error> {
     // SAFETY: the process's VM, which android-activity hands ndk-context as the app starts.
     let vm = unsafe { jni::JavaVM::from_raw(context.vm().cast()) };
     vm.attach_current_thread(|env| {
-        // SAFETY: the activity, which android-activity holds as a global reference for the app's life.
+        // SAFETY: the activity, which GameActivity holds as a global reference for the app's life.
         let activity = unsafe { JObject::from_raw(env, context.context().cast()) };
         let method = jni::strings::JNIString::from(name);
         let file = env.call_method(&activity, &method, jni_sig!("()Ljava/io/File;"), &[])?.l()?;
