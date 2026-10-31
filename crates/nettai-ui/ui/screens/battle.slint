@@ -680,75 +680,103 @@ component TouchPad inherits Rectangle {
         }
     }
 
+    // The GBA's buttons, a quarter larger than the first pad's (the directions' keys were 56, A and B 76), laid out
+    // low in the room under MENU (and the party's row) where the thumbs rest: SELECT and START at the foot, 44 tall;
+    // 12 over them the directions' square at the left and A and B at the right; 12 over those L and R. A phone too
+    // short for them at that size has them smaller, all but SELECT and START, in proportion (`scale`), so none is
+    // over another; what the room has to spare is between them and MENU.
+    property <length> top: menu.height + 12px + (Shell.party.shown ? 64px + 12px : 0px);
+    property <length> foot: 44px;
+    property <float> scale: clamp((root.height - root.top - root.foot - 24px) / 266px, 0.5, 1);
+    property <length> key: 70px * root.scale;
+    property <length> square: 3 * root.key;
+    property <length> face: 95px * root.scale;
+    property <length> shoulder: 56px * root.scale;
+    property <length> square-y: root.height - root.foot - 12px - root.square;
+    property <length> middle: root.square-y + root.square / 2;
+    // A at the right edge; B left of it as far as the GBA's (nine tenths of a button), but 12 clear of the
+    // directions' square, whose touch reaches past it; and under A as far as keeps the two 4 apart (a third of a
+    // button at least), the pair centered on the square's middle.
+    property <length> a-x: root.width - root.face;
+    property <length> b-x: max(root.square + 12px, root.a-x - 0.9 * root.face);
+    property <float> apart: (root.a-x - root.b-x) / 1px;
+    property <float> reach: (root.face + 4px) / 1px;
+    property <length> drop: max(root.face / 3, sqrt(max(0, root.reach * root.reach - root.apart * root.apart)) * 1px);
     PadKey {
         x: 0;
-        y: parent.height - 300px;
-        width: 120px;
-        height: 48px;
+        y: root.square-y - 12px - self.height;
+        width: 132px;
+        height: root.shoulder;
         text: "L";
         button: 9;
     }
 
     PadKey {
-        x: parent.width - 120px;
-        y: parent.height - 300px;
-        width: 120px;
-        height: 48px;
+        x: parent.width - self.width;
+        y: root.square-y - 12px - self.height;
+        width: 132px;
+        height: root.shoulder;
         text: "R";
         button: 8;
     }
 
     PadKey {
-        x: 56px;
-        y: parent.height - 228px;
-        width: 56px;
-        height: 56px;
+        x: root.key;
+        y: root.square-y;
+        width: root.key;
+        height: root.key;
+        glyph: 18px * root.scale;
         shape: "M 7 1 L 13 12 L 1 12 Z";
         button: 6;
     }
 
     PadKey {
         x: 0;
-        y: parent.height - 172px;
-        width: 56px;
-        height: 56px;
+        y: root.square-y + root.key;
+        width: root.key;
+        height: root.key;
+        glyph: 18px * root.scale;
         shape: "M 1 7 L 12 1 L 12 13 Z";
         button: 5;
     }
 
     PadKey {
-        x: 112px;
-        y: parent.height - 172px;
-        width: 56px;
-        height: 56px;
+        x: 2 * root.key;
+        y: root.square-y + root.key;
+        width: root.key;
+        height: root.key;
+        glyph: 18px * root.scale;
         shape: "M 13 7 L 2 1 L 2 13 Z";
         button: 4;
     }
 
     PadKey {
-        x: 56px;
-        y: parent.height - 116px;
-        width: 56px;
-        height: 56px;
+        x: root.key;
+        y: root.square-y + 2 * root.key;
+        width: root.key;
+        height: root.key;
+        glyph: 18px * root.scale;
         shape: "M 7 13 L 13 2 L 1 2 Z";
         button: 7;
     }
 
     PadKey {
-        x: parent.width - 76px;
-        y: parent.height - 228px;
-        width: 76px;
-        height: 76px;
+        x: root.a-x;
+        y: root.middle - root.drop / 2 - root.face / 2;
+        width: root.face;
+        height: root.face;
+        font-size: 20px * root.scale;
         text: "A";
         button: 0;
         round: true;
     }
 
     PadKey {
-        x: parent.width - 164px;
-        y: parent.height - 154px;
-        width: 76px;
-        height: 76px;
+        x: root.b-x;
+        y: root.middle + root.drop / 2 - root.face / 2;
+        width: root.face;
+        height: root.face;
+        font-size: 20px * root.scale;
         text: "B";
         button: 1;
         round: true;
@@ -756,18 +784,18 @@ component TouchPad inherits Rectangle {
 
     PadKey {
         x: parent.width / 2 - 104px;
-        y: parent.height - 36px;
+        y: parent.height - self.height;
         width: 96px;
-        height: 36px;
+        height: root.foot;
         text: "SELECT";
         button: 2;
     }
 
     PadKey {
         x: parent.width / 2 + 8px;
-        y: parent.height - 36px;
+        y: parent.height - self.height;
         width: 96px;
-        height: 36px;
+        height: root.foot;
         text: "START";
         button: 3;
     }

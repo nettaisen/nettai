@@ -858,19 +858,22 @@ mod tests {
     use super::*;
     use std::time::Duration;
 
-    /// The pad as the UI lays it out on a 390-wide phone (battle.slint): the directions in a plus at the left,
-    /// A and B at the right, L and R over them.
+    /// The pad as the UI lays it out on a phone 390 by 800 (battle.slint's `TouchPad`, at its full size): the
+    /// directions in a plus at the left (their square 16 to 226 across, 518 to 728 down), A and B at the right, A
+    /// over and right of B, L and R over them, SELECT and START at the foot.
     fn pad() -> TouchPad {
         let mut pad = TouchPad::default();
         let at = |x: f32, y: f32, w: f32, h: f32| Rect { x, y, w, h };
-        pad.place(6, at(72.0, 556.0, 56.0, 56.0));
-        pad.place(5, at(16.0, 612.0, 56.0, 56.0));
-        pad.place(4, at(128.0, 612.0, 56.0, 56.0));
-        pad.place(7, at(72.0, 668.0, 56.0, 56.0));
-        pad.place(0, at(298.0, 556.0, 76.0, 76.0));
-        pad.place(1, at(210.0, 630.0, 76.0, 76.0));
-        pad.place(9, at(16.0, 484.0, 120.0, 48.0));
-        pad.place(8, at(254.0, 484.0, 120.0, 48.0));
+        pad.place(6, at(86.0, 518.0, 70.0, 70.0));
+        pad.place(5, at(16.0, 588.0, 70.0, 70.0));
+        pad.place(4, at(156.0, 588.0, 70.0, 70.0));
+        pad.place(7, at(86.0, 658.0, 70.0, 70.0));
+        pad.place(0, at(279.0, 530.0, 95.0, 95.0));
+        pad.place(1, at(238.0, 621.0, 95.0, 95.0));
+        pad.place(9, at(16.0, 450.0, 132.0, 56.0));
+        pad.place(8, at(242.0, 450.0, 132.0, 56.0));
+        pad.place(2, at(91.0, 740.0, 96.0, 44.0));
+        pad.place(3, at(203.0, 740.0, 96.0, 44.0));
         pad
     }
 
@@ -921,16 +924,16 @@ mod tests {
         let mut pad = pad();
         assert!(pad.down(1, 40.0, 640.0));
         assert_eq!(pad.held(), keys::LEFT);
-        assert!(pad.moved(1, 100.0, 700.0));
+        assert!(pad.moved(1, 120.0, 700.0));
         assert_eq!(pad.held(), keys::DOWN);
-        assert!(pad.moved(1, 100.0, 640.0));
+        assert!(pad.moved(1, 120.0, 625.0));
         assert_eq!(pad.held(), 0);
-        assert!(pad.moved(1, 160.0, 640.0));
+        assert!(pad.moved(1, 190.0, 625.0));
         assert_eq!(pad.held(), keys::RIGHT);
         // (The corner between Up and Right, on neither key: the direction it is farther toward.)
-        assert!(pad.moved(1, 150.0, 600.0));
+        assert!(pad.moved(1, 185.0, 570.0));
         assert_eq!(pad.held(), keys::RIGHT);
-        assert!(pad.moved(1, 100.0, 552.0));
+        assert!(pad.moved(1, 120.0, 514.0));
         assert_eq!(pad.held(), keys::UP);
         assert!(pad.moved(1, 200.0, 400.0));
         assert_eq!(pad.held(), 0);

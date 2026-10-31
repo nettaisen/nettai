@@ -2685,6 +2685,17 @@ as a pointer (MENU, a dialog). The mouse still comes through the buttons' `Touch
 hold it to that, and the screenshot pass puts two fingers down at once on a phone's battle (Left and A: both
 held and drawn held, then one lifted).
 
+Upright, the pad is under the picture (`TouchPad`, battle.slint), its buttons a quarter larger than the first
+pad's (since 2026-10-31: design §2.102): the directions' keys 70 (their square 210), A and B 95 across, L and R 132
+by 56, SELECT and START 96 by 44. They sit low, where the thumbs rest: SELECT and START at the foot, 12 over them the
+directions' square at the left and A and B at the right, 12 over those L and R; what the room has to spare is
+between them and MENU (and a party battle's row of switches under it). A and B are as the GBA's, A over and right
+of B, but the square's 210 leave them 136 across, so B is as far left as stays 12 clear of the square's touch and
+drops under A as far as keeps them apart (a steeper slope than the GBA's). A phone too short for the full size
+(under about 680 units tall, a party battle's under about 755: an iPhone SE's 673 is 98%) has every button but
+SELECT and START smaller in proportion (`scale`, at least half), so none is over another. Held sideways the pad is
+over the picture's edges (`TouchOverlay`), as before.
+
 ## 12. Errors and the log
 
 docs/design/app-ui.md §7. No string from a library's error is ever shown. What a player can be told is one of

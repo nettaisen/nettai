@@ -1764,6 +1764,9 @@ Each is settled unless the user changes it.
        opens (an arrow at its name's end, as a select's); a navi chosen shuts it. The forms are one to a row, their
        names whole in English and Japanese (EXE6's two Beast forms one over the other too), scrolling inside the panel
        where they don't fit; the ruleset's select and EDIT and PRACTICE stay under it. A desktop is as it was.
+     - *The battle's pad* had a wide empty band between MENU and L and R. Its buttons are a quarter larger (the
+       directions' keys 70, A and B 95, L and R 56 tall, SELECT and START 44), laid out low where the thumbs rest,
+       the room to spare above them; a shorter phone has them smaller in proportion (docs/app.md §11).
 
 ## 3. Chosen where the user gave no answer
 
