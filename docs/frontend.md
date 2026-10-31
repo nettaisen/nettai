@@ -1502,12 +1502,6 @@ and every trace replay see what they always have.
   every part 512 columns left of its place.) The original's culling stays
   as it is (an object's anchor 64 pixels left of the old left edge to
   column 305), so what it culls shows in no frame.
-- The chatbox is as wide as the frame: its box's left half kept to the
-  left edge, its right half (the right frame, EXE6's name tab) to the
-  right edge, and the box's middle column (`chatbox::MIDDLE_COLUMN`, the
-  plain inside in every game, the boxes opening up and down) carried
-  across between, tiles and drawings alike. Its text and portrait keep to
-  the left edge, its arrow to the edge of its half.
 - On a screen of both (`Consoles::Both`) the right console's pieces are
   mirrored as before, and what keeps to an edge on its console keeps to
   the other edge (`Seat::edge`): its HP box and emotion window to the top
@@ -1542,9 +1536,7 @@ unless named):
 | The custom screen's name plate (the enemies' names) | top right, against the right edge | Right |
 | The custom screen's time left (nettai's own) | under the name plate, ending at the right edge | Right |
 | The time left between two windows on a screen of both (C1) | where the windows meet | Center |
-| The chatbox's box (a description, a message) | the bottom of the screen, its whole width | Both: as wide as the frame (its halves to their edges, the middle carried across) |
-| The chatbox's text and portrait | the box's left | Left |
-| The chatbox's arrow | the box's bottom right | Right |
+| The chatbox (a description, a message), its portrait and arrow | the bottom of the screen, its whole width | Center (spans the original's screen: kept with the field) |
 
 nettai-tool draws them with `--headless F --width N` (the enhanced mode
 only). nettai-tools' tests/widescreen.rs holds them to this on the ROMs
