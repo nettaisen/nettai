@@ -1582,10 +1582,12 @@ moving the menus' focus and the chip cursor and opening Settings, its stick movi
 it. 2026-10-31 (after a player's report on 0.18.2's APK): FROM A SAVE FILE… opening Android's picker, a save picked
 from Downloads made a build (an EXE4 save; another game's said so); Gboard's letters composed into a field, space,
 backspace past what it composed, Done; Chinese text committed by Gboard (its clipboard: the emulator's Gboard pinyin
-gives no candidates in any app) typed into a build's name, and the build made. A debuggable APK's JNI checks stop
-the app at a call that passes Java the wrong object (as nettai-nearby's did at start up to 0.18.2): build one
-when changing the JNI. Not run: a phone, a real gamepad, the folder picker and the share sheet, video export,
-netplay, pinyin's candidates.
+gives no candidates in any app) typed into a build's name, and the build made; on a first start, CHOOSE FOLDER
+on the collection's `exe` folder pushed to Documents (its seven archives read in, the 12 ROMs kept, the games
+loaded; up to 0.18.2 the app crashed there, and the folder's listing joined its paths' names with spaces, so
+nothing in it was wanted). A debuggable APK's JNI checks stop the app at a call that passes Java the wrong object
+(as nettai-nearby's did at start up to 0.18.2): build one when changing the JNI. Not run: a phone, a real
+gamepad, the share sheet, video export, netplay, pinyin's candidates.
 
 ## 8. Builds
 

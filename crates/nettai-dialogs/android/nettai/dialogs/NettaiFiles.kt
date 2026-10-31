@@ -122,8 +122,9 @@ class NettaiFiles : Fragment() {
         /** A name as a line holds it: no tab, line break or folder separator. */
         private fun clean(name: String?): String = (name ?: "").replace('\t', ' ').replace('\n', ' ').replace('/', ' ')
 
-        private fun line(out: StringBuilder, name: String, uri: Uri) {
-            out.append(clean(name)).append('\t').append(uri.toString()).append('\n')
+        /** A line of a listing: [path], its names each [clean] already (its `/`s are the folders'), and [uri]. */
+        private fun line(out: StringBuilder, path: String, uri: Uri) {
+            out.append(path).append('\t').append(uri.toString()).append('\n')
         }
 
         private fun pipe(input: InputStream, output: OutputStream) {
@@ -182,9 +183,9 @@ class NettaiFiles : Fragment() {
                 val out = StringBuilder()
                 val many = data.clipData
                 if (many != null) {
-                    for (i in 0 until many.itemCount) line(out, nameOf(activity, many.getItemAt(i).uri), many.getItemAt(i).uri)
+                    for (i in 0 until many.itemCount) line(out, clean(nameOf(activity, many.getItemAt(i).uri)), many.getItemAt(i).uri)
                 } else if (chosen != null) {
-                    line(out, nameOf(activity, chosen), chosen)
+                    line(out, clean(nameOf(activity, chosen)), chosen)
                 }
                 picked(request, out.toString())
             }
