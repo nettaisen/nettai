@@ -1,0 +1,24 @@
+{
+  "name": "nettai",
+  "subtitle": "Play Battle Network netbattles online.",
+  "description": "nettai is rollback netplay for Mega Man Battle Network 4, 5 and 6.",
+  "iconURL": "https://nettai.n1gp.net/assets/icon.png",
+  "website": "https://nettai.n1gp.net",
+  "tintColor": "#286EFF",
+  "nsfw": false,
+  "apps": [
+    {
+      "name": "nettai",
+      "bundleIdentifier": "net.n1gp.nettai",
+      "developerName": "nettaisen",
+      "subtitle": "Play Battle Network netbattles online.",
+      "localizedDescription": "nettai is rollback netplay for Mega Man Battle Network 4, 5 and 6. Make a build, then play a friend online, practice, or watch your old matches.\n\nYou'll need Mega Man Battle Network Legacy Collection Vol. 2 on Steam. nettai uses the graphics and sound from it: a computer running nettai on the same network sends it to your phone.",
+      "iconURL": "https://nettai.n1gp.net/assets/icon.png",
+      "tintColor": "#286EFF",
+      "category": "games",
+      "versions": [],
+      "appPermissions": {}
+    }
+  ],
+  "news": []
+}

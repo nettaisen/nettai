@@ -1,8 +1,9 @@
 # The app's releases (packaging/; docs/app.md §19, "Packaging"): Velopack's, a Windows installer, the macOS app
-# zipped (Apple silicon's, Intel's, and the universal one the installs of 0.12.0 and before update through) and a Linux
-# AppImage, each with the update package and feed the installed app's updater reads (crates/nettai's updates.rs); and
-# the phones' packages, unsigned (the user: "i don't have a signing key, just produce unsigned packages"): Android's
-# APK, `nettai.apk`, and iOS's IPA, `nettai.ipa`, which the player signs as they install them.
+# zipped (Apple silicon's and Intel's) and a Linux AppImage, each with the update package and feed the installed app's
+# updater reads (crates/nettai's updates.rs); and the phones' packages: Android's APK, `nettai-android.apk`, signed
+# with the release key (the Android job says how), and iOS's IPA, `nettai-ios.ipa`, unsigned, which the player's
+# sideloading tool signs as it installs it, with its AltStore source, `altstore.json` (AltStore and SideStore read
+# the latest release's: https://github.com/nettaisen/nettai/releases/latest/download/altstore.json).
 # Run by hand on main (Actions → Release → Run workflow, or `gh workflow run release.yml --ref main`):
 # it packages the version Cargo.toml says, tags that commit `v<version>` and publishes the release, which the installed
 # apps see at once (the user: "you should just publish the release instead of drafting it"); with `publish` off, the
@@ -99,16 +100,24 @@ jobs:
           path: target/package/windows/releases/*
           if-no-files-found: error
 
-  # Each Mac architecture's program, built at once in a job of its own (packaging/macos/slice.sh); the next job
-  # packages the apps of them. Each has its own Rust cache.
-  macos-slices:
-    name: macOS program (${{ matrix.arch }})
+  # Each Mac architecture's app, built and packaged in a job of its own (packaging/macos/package.sh), on its own
+  # channel (osx-arm64, osx-x64), with its own Rust cache. (Up to 0.18.1 a universal app went up too, on the channel
+  # osx: docs/app.md §19.)
+  macos:
+    name: macOS app (${{ matrix.arch }})
+    needs: icons
     runs-on: macos-latest
     strategy:
       matrix:
         arch: [aarch64, x86_64]
+    env:
+      MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          name: icons
+          path: ${{ runner.temp }}/icons
       - name: Rust
         run: |
           rustup toolchain install stable --profile minimal --no-self-update
@@ -119,38 +128,6 @@ jobs:
           key: ${{ matrix.arch }}
       - name: Fetch the crates
         run: cargo fetch --locked
-      - name: Build
-        env:
-          NETTAI_MACOS_ARCH: ${{ matrix.arch }}
-        run: packaging/macos/slice.sh
-      # (Named apart from the packages, which the release job takes by `nettai-*`.)
-      - uses: actions/upload-artifact@v7
-        with:
-          name: slice-macos-${{ matrix.arch }}
-          path: target/package/macos/slices/${{ matrix.arch }}
-          if-no-files-found: error
-
-  macos:
-    name: macOS apps
-    needs: [icons, macos-slices]
-    runs-on: macos-latest
-    env:
-      MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/download-artifact@v8
-        with:
-          name: icons
-          path: ${{ runner.temp }}/icons
-      # (Where packaging/macos/slice.sh puts them: package.sh packages them from there.)
-      - uses: actions/download-artifact@v8
-        with:
-          name: slice-macos-aarch64
-          path: target/package/macos/slices/aarch64
-      - uses: actions/download-artifact@v8
-        with:
-          name: slice-macos-x86_64
-          path: target/package/macos/slices/x86_64
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
@@ -191,32 +168,15 @@ jobs:
             xcrun notarytool store-credentials nettai --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --keychain "$keychain"
             echo "MACOS_NOTARY_PROFILE=nettai" >> "$GITHUB_ENV"
           fi
-      # Each architecture's package on its channel (osx-arm64, osx-x64), then the universal one (osx), whose program
-      # and ffmpeg are the two architectures' joined: all of the slices built above, nothing compiled here. Each
-      # package is signed and notarized, with the secrets above.
       - name: Package
         env:
           NETTAI_ICONS: ${{ runner.temp }}/icons
-        run: |
-          for arch in aarch64 x86_64 universal; do
-            NETTAI_MACOS_ARCH=$arch packaging/macos/package.sh
-          done
-      # (An artifact each, so that the release job's download puts their files in one folder: one artifact of the
-      # three folders would keep them apart.)
+          NETTAI_MACOS_ARCH: ${{ matrix.arch }}
+        run: packaging/macos/package.sh
       - uses: actions/upload-artifact@v7
         with:
-          name: nettai-macos-aarch64
-          path: target/package/macos/aarch64/releases/*
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v7
-        with:
-          name: nettai-macos-x86_64
-          path: target/package/macos/x86_64/releases/*
-          if-no-files-found: error
-      - uses: actions/upload-artifact@v7
-        with:
-          name: nettai-macos-universal
-          path: target/package/macos/universal/releases/*
+          name: nettai-macos-${{ matrix.arch }}
+          path: target/package/macos/${{ matrix.arch }}/releases/*
           if-no-files-found: error
 
   linux:
@@ -261,8 +221,9 @@ jobs:
           if-no-files-found: error
 
   # The APK for Android phones on arm64 (packaging/android/package.sh; docs/app.md §7), with the runner's SDK and
-  # NDK, unsigned: Android installs no APK unsigned, so the player signs it first (any key of their own, kept for the
-  # next one: an APK signed with one key doesn't install over one signed with another).
+  # NDK, signed with the release key from the secrets: ANDROID_KEYSTORE (the keystore, base64),
+  # ANDROID_KEYSTORE_PASSWORD and ANDROID_KEY_ALIAS. Every release's APK is signed with that one key, as Android
+  # installs an update only over an app signed with the same key.
   android:
     name: Android APK
     needs: icons
@@ -294,55 +255,52 @@ jobs:
       # (crates/nettai/build.rs lists the packages offline: every one is fetched first.)
       - name: Fetch the crates
         run: cargo fetch --locked
+      - name: Signing key
+        env:
+          ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+        run: |
+          [ -n "$ANDROID_KEYSTORE" ] || { echo "::error::no ANDROID_KEYSTORE secret: the APK is signed with the release key"; exit 1; }
+          base64 --decode <<<"$ANDROID_KEYSTORE" > "$RUNNER_TEMP/nettai.keystore"
+          echo "NETTAI_ANDROID_KEYSTORE=$RUNNER_TEMP/nettai.keystore" >> "$GITHUB_ENV"
       - name: Package
         env:
           NETTAI_ICONS: ${{ runner.temp }}/icons
-          NETTAI_ANDROID_UNSIGNED: "1"
+          NETTAI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          NETTAI_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
         run: packaging/android/package.sh
       - uses: actions/upload-artifact@v7
         with:
-          name: android-apk
-          path: target/package/android/nettai-*.apk
+          name: nettai-android
+          path: target/package/android/nettai-android.apk
           if-no-files-found: error
 
-  # iOS's app (packaging/ios/package.sh): a device's, the IPA, unsigned, which goes up with the release (a
-  # sideloading tool, AltStore, SideStore or Sideloadly, signs it with the player's own Apple ID as it installs it);
-  # and the Simulator's, zipped, the run's artifact alone (it runs on a Mac with Xcode). Named apart from the
-  # packages, which the release job takes by `nettai-*`.
+  # iOS's app (packaging/ios/package.sh), the IPA, unsigned: a sideloading tool (AltStore, SideStore, Sideloadly)
+  # signs it with the player's own Apple ID as it installs it.
   ios:
-    name: iOS app (${{ matrix.kind }})
+    name: iOS app
     runs-on: macos-latest
-    strategy:
-      matrix:
-        include:
-          - kind: simulator
-            target: aarch64-apple-ios-sim
-            file: nettai-ios-simulator.zip
-          - kind: device
-            target: aarch64-apple-ios
-            file: nettai.ipa
     steps:
       - uses: actions/checkout@v7
       - name: Rust
         run: |
           rustup toolchain install stable --profile minimal --no-self-update
           rustup default stable
-          rustup target add ${{ matrix.target }}
+          rustup target add aarch64-apple-ios
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
-          key: ios-${{ matrix.kind }}
+          key: ios-device
       - name: Fetch the crates
         run: cargo fetch --locked
       - name: librsvg (the icons)
         run: brew install librsvg
       - name: Package
         env:
-          NETTAI_IOS: ${{ matrix.kind }}
+          NETTAI_IOS: device
         run: packaging/ios/package.sh
       - uses: actions/upload-artifact@v7
         with:
-          name: ios-${{ matrix.kind }}
-          path: target/package/ios/${{ matrix.kind }}/${{ matrix.file }}
+          name: nettai-ios
+          path: target/package/ios/device/nettai-ios.ipa
           if-no-files-found: error
 
   release:
@@ -392,36 +350,31 @@ jobs:
           dotnet tool install vpk --version $env:VPK_VERSION --tool-path (Join-Path $env:RUNNER_TEMP 'vpk')
           if ($LASTEXITCODE -ne 0) { throw "installing vpk failed" }
           Add-Content $env:GITHUB_PATH (Join-Path $env:RUNNER_TEMP 'vpk')
-      # Each package's channel (win; osx-arm64, osx-x64 and the universal osx; linux) goes up into the one release, a
-      # draft until all are in (a run again merges into it); then it is published, the latest, and the installed apps
-      # see it.
+      # Each package's channel (win; osx-arm64, osx-x64; linux) goes up into the one release, a draft until all are
+      # in (a run again merges into it); then it is published, the latest, and the installed apps see it. (vpk uploads
+      # a channel's files alone, as its feed names them: the phones' packages in the same folder go up after.)
       - name: Upload
         env:
           VPK_TOKEN: ${{ github.token }}
           TAG: ${{ steps.tag.outputs.tag }}
           VERSION: ${{ steps.tag.outputs.version }}
         run: |
-          for channel in win osx-arm64 osx-x64 osx linux; do
+          for channel in win osx-arm64 osx-x64 linux; do
             vpk upload github --outputDir releases --channel "$channel" --repoUrl "https://github.com/$GITHUB_REPOSITORY" \
               --tag "$TAG" --releaseName "nettai $VERSION" --merge
           done
-      # The phones' packages, unsigned: the APK and the IPA, named without the version as the desktop's are, so that
-      # the latest release's are always at the same address.
-      - uses: actions/download-artifact@v8
-        with:
-          name: android-apk
-          path: android
-      - uses: actions/download-artifact@v8
-        with:
-          name: ios-device
-          path: ios
-      - name: Upload the APK and the IPA
+      # The phones' packages, named without the version as the desktop's are, so that the latest release's are always
+      # at the same address; and the AltStore source of the IPA (packaging/ios/altstore.py), which names this
+      # release's IPA by its tag.
+      - name: Upload the APK, the IPA and its AltStore source
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.tag.outputs.tag }}
         run: |
-          mv android/nettai-*.apk android/nettai.apk
-          gh release upload "$TAG" android/nettai.apk ios/nettai.ipa --repo "$GITHUB_REPOSITORY" --clobber
+          python3 -I packaging/ios/altstore.py releases/nettai-ios.ipa \
+            "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/nettai-ios.ipa" > releases/altstore.json
+          gh release upload "$TAG" releases/nettai-android.apk releases/nettai-ios.ipa releases/altstore.json \
+            --repo "$GITHUB_REPOSITORY" --clobber
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}

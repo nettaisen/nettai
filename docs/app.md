@@ -1518,7 +1518,7 @@ what goes in, in `target/package/android`:
 - the build's notices and the license as assets, the launcher icon (packaging/icons.sh's 256 px);
 - rustls-platform-verifier's Android component, its AAR (pinned by hash in `verifier.sha256`, the version
   Cargo.lock has, downloaded from the crate's Maven archive);
-- a debug key when `NETTAI_ANDROID_KEYSTORE` names none (and none at all with `NETTAI_ANDROID_UNSIGNED=1`),
+- a debug key when `NETTAI_ANDROID_KEYSTORE` names none,
 
 then runs Gradle in packaging/android on them (their paths as `-P` properties): `gradlew`, the wrapper, fetches
 Gradle 9.8.1 and checks its zip's SHA-256; `build.gradle.kts` is AGP 9.5.0 with its own Kotlin (2.2.10), on a
@@ -1535,17 +1535,19 @@ JDK 17 (`JAVA_HOME`). Gradle
   GameActivity needs; the verifier's network security config);
 - stores the library uncompressed (Android maps it from the APK), aligned for 16 KB pages, and signs the APK with
   `NETTAI_ANDROID_KEYSTORE` (its password and key alias in `NETTAI_ANDROID_KEYSTORE_PASSWORD`,
-  `NETTAI_ANDROID_KEY_ALIAS`), else the debug key; with `NETTAI_ANDROID_UNSIGNED=1` it signs nothing
-  (`nettai-release-unsigned.apk`: Android installs no APK unsigned, so whoever installs it signs it first).
-  `NETTAI_ANDROID_DEBUGGABLE=1` marks it debuggable (`adb shell run-as`).
+  `NETTAI_ANDROID_KEY_ALIAS`), else the debug key. `NETTAI_ANDROID_DEBUGGABLE=1` marks it debuggable (`adb shell
+  run-as`). It is `target/package/android/nettai-android.apk`.
 
 0.17.0's APK is 96.5 MB (the hand-built one with a NativeActivity was 96 MB), the library 94 MB of it.
 
 The release workflow's Android job builds it on Ubuntu with the runner's SDK and NDK (`sdkmanager` adds android-36
 and build-tools 36) and Temurin's JDK 17 (`actions/setup-java`, which also keeps Gradle's downloads between runs,
-keyed by the build's files), unsigned (`NETTAI_ANDROID_UNSIGNED=1`; the user: "i don't have a signing key, just
-produce unsigned packages"), and it goes up with the release as `nettai.apk`, the iOS job's IPA beside it as
-`nettai.ipa` (§19).
+keyed by the build's files), signed with the release key, and it goes up with the release as `nettai-android.apk`,
+the iOS job's IPA beside it as `nettai-ios.ipa` (§19). The release key (RSA 4096, alias `nettai`, valid to 2126, made
+2026-10-30) is in the repository's secrets `ANDROID_KEYSTORE` (the PKCS12 keystore, base64), `ANDROID_KEYSTORE_PASSWORD`
+and `ANDROID_KEY_ALIAS`, and with the user: the job stops without it. Every release's APK is signed with that one key,
+as Android installs an update only over an app signed with the same key (the user had none; "sure do that", of making
+one).
 
 **The emulator** (Apple silicon; the system image is 4.3 GB, an emulator 1.2 GB):
 
@@ -1554,7 +1556,7 @@ produce unsigned packages"), and it goes up with the release as `nettai.apk`, th
     emulator -avd nettai -no-window -no-audio -no-snapshot -no-boot-anim -gpu swiftshader_indirect &
     export JAVA_HOME=$(/usr/libexec/java_home -v 17)
     NETTAI_ANDROID_DEBUGGABLE=1 packaging/android/package.sh
-    adb install -r target/package/android/nettai-<version>.apk
+    adb install -r target/package/android/nettai-android.apk
     adb shell am start -n net.n1gp.nettai/nettai.app.NettaiActivity
 
 The Legacy Collection's ROMs go in as the app keeps them, its data folder's `.stowed/roms/<code>.zip` (copied in with
@@ -4302,15 +4304,12 @@ and appimagetool.
 - **macOS** (`packaging/macos/package.sh`, `Info.plist`): `nettai.app` (bundle id `net.n1gp.nettai`;
   the content in `Contents/Resources/`, where the content lookup finds it), zipped, one per architecture, so that a
   player downloads half of what the universal app was (v0.12.0's: 168 MB, against about 85 MB for Windows and
-  Linux): Apple silicon's `nettai-osx-arm64-Portable.zip`, Intel's `nettai-osx-x64-Portable.zip`, and for now the
-  universal one, the two programs joined by lipo, `nettai-osx-Portable.zip`. Each is its own Velopack package on its
-  own channel, `osx-arm64`, `osx-x64` and `osx` (Velopack's default, a Mac's only one up to 0.12.0; below,
-  "Updates"): channels named as Velopack names the runtime (`--runtime`, which the universal app has none of), whose
-  files (`nettai-<version>-<channel>-full.nupkg`, `releases.<channel>.json`) sit side by side in one release.
-  `NETTAI_MACOS_ARCH` picks one (`aarch64`, `x86_64`, `universal`; else the Mac's own). The program is built a slice
-  at a time first (`packaging/macos/slice.sh`, into `target/package/macos/slices/<arch>/`, with its build's
-  third-party notices), and package.sh compiles nothing: it packages the slice, or for the universal app joins both
-  (their notices as one where they are the same, else both). The player unzips it where they like
+  Linux): Apple silicon's `nettai-osx-arm64-Portable.zip` and Intel's `nettai-osx-x64-Portable.zip`. Each is its own
+  Velopack package on its own channel, `osx-arm64` and `osx-x64`, named as Velopack names the runtime (`--runtime`),
+  whose files (`nettai-<version>-<channel>-full.nupkg`, `releases.<channel>.json`) sit side by side in one release.
+  `NETTAI_MACOS_ARCH` picks one (`aarch64`, `x86_64`; else the Mac's own), and the script builds its program
+  (`<arch>-apple-darwin`) and packages it. Up to 0.18.1 a universal app went up too, the two programs joined by lipo,
+  `nettai-osx-Portable.zip` on Velopack's default channel `osx` (below, "A Mac's channel"). The player unzips it where they like
   (/Applications, or anywhere) and it updates itself there. No installer package (`--noInst`; the user: "i don't
   want to ship a pkg file for mac"). Signed ad hoc unless `MACOS_SIGN_IDENTITY` names a
   Developer ID Application identity, which vpk signs the bundle with (the hardened runtime, everything in it), and
@@ -4320,16 +4319,25 @@ and appimagetool.
   program needs the glibc it was built against or a later one, so it is built on an old distribution.
 - **iOS** (`packaging/ios/package.sh`, `Info.plist`): `nettai.app`, for the Simulator (`NETTAI_IOS=simulator`,
   aarch64-apple-ios-sim, signed ad hoc), zipped (`nettai-ios-simulator.zip`), or for a device (`device`,
-  aarch64-apple-ios) as an IPA (`nettai.ipa`: the bundle in `Payload/`, zipped), unsigned, which a sideloading tool
+  aarch64-apple-ios) as an IPA (`nettai-ios.ipa`: the bundle in `Payload/`, zipped), unsigned, which a sideloading tool
   (AltStore, SideStore, Sideloadly) signs with the player's own Apple ID as it installs it; signed instead when
   `IOS_SIGN_IDENTITY` and `IOS_PROVISIONING_PROFILE` name an Apple Developer account's identity and profile, with
   the profile's entitlements. The program, Info.plist (bundle id `net.n1gp.nettai`;
   iOS 15 at least; full screen by `UILaunchScreen`; every orientation; the UIScene life cycle's manifest, iOS 27's
   SDK's requirement; the extended gamepad profile), the icons drawn full bleed from the logo at the sizes it names,
   LICENSE and THIRD-PARTY-NOTICES.txt. No ffmpeg (iOS exports with VideoToolbox) and no content (downloaded, as
-  every package's is). No Xcode project: the bundle is the program and its files. The release workflow makes both:
-  the IPA goes up with the release, the Simulator's zip is the run's artifact alone.
-- **Android** (`packaging/android/package.sh`; §7): `nettai.apk` in the release, unsigned.
+  every package's is). No Xcode project: the bundle is the program and its files. The release workflow makes the
+  IPA alone, which goes up with the release; the Simulator's is for running it on a Mac (§7).
+- **The AltStore source** (`packaging/ios/altstore.py`, `altstore.json`): `altstore.json` in each release, which
+  AltStore and SideStore read at the latest release's address,
+  `https://github.com/nettaisen/nettai/releases/latest/download/altstore.json` (the site's iOS download adds it to
+  AltStore with `altstore://source?url=…`). The script fills the committed `packaging/ios/altstore.json` (what the
+  source and the app say of themselves; the icon is the site's `assets/icon.png`) with the release's IPA: its
+  version and build (Info.plist's `CFBundleShortVersionString`, `CFBundleVersion`), size, SHA-256, oldest iOS, its
+  download address by the release's tag, and its privacy permissions (each `NS…UsageDescription`, which AltStore
+  refuses an app without the source declaring). No entitlements: the IPA is unsigned, and the tool that signs it adds
+  its own.
+- **Android** (`packaging/android/package.sh`; §7): `nettai-android.apk`, signed with the release key.
 
 **The bundled ffmpeg.** The user: "i think you also need like the equivalent of
 https://github.com/tangobattle/ffmpeg-build for encoding and bundle ffmpeg with it. it should support whatever
@@ -4348,8 +4356,8 @@ the MP4 muxer alone (the export before, released to 0.17.0). Its macOS arm64 bui
 package takes by its tag and each file by its SHA-256; the scripts download them once into
 `target/package/ffmpeg/<tag>/` and check them (or bundle the ffmpeg `NETTAI_BUNDLE_FFMPEG`, `-Ffmpeg` on Windows,
 names). Where it goes: `ffmpeg.exe` beside `nettai.exe` (the installer and the .zip), `Contents/MacOS/ffmpeg` in
-the app (the release's program for the app's architecture, its arm64 and x86_64 ones joined by lipo for the
-universal app; signed before the app, as the app is), beside the program in the AppImage. The app looks beside itself
+the app (the release's program for the app's architecture; signed before the app, as the app is), beside the program
+in the AppImage. The app looks beside itself
 first (§16).
 
 The binary is GPL: FFmpeg built with `--enable-gpl` and linked with x264 (GPL-2.0-or-later) is licensed
@@ -4374,14 +4382,14 @@ too while it was libdatachannel's.)
 
 The workflow (`.github/workflows/release.yml`) is run by hand on main (`gh workflow run release.yml --ref main`), after
 the version in Cargo.toml is bumped and pushed. The icons are made once, on Linux; then Windows (`windows-latest`),
-macOS (`macos-latest`: the two slices built at once, a job and a Rust cache each, then one job that packages Apple
-silicon's, Intel's and the universal app of them, each signed and notarized) and Linux (`ubuntu-22.04`) each package and
-upload theirs as the run's
-artifacts (the Mac's an artifact a package, so that the release job's download puts all the files in one folder), the
-version Cargo.toml's. Each installs .NET 8 and vpk (`VPK_VERSION`). With `publish` on (the default), the workflow tags
-the commit `v<version>` (a tag of that name on another commit stops it), `vpk upload github --merge` puts each package's
-channel (win; osx-arm64, osx-x64, osx; linux) into one release, and the release is published, the latest, so the
-installed apps see it at once (the user: "you should just publish the release instead of drafting it"). It runs on main
+macOS (`macos-latest`: Apple silicon's and Intel's apps at once, a job and a Rust cache each, each signed and
+notarized), Linux (`ubuntu-22.04`), Android (`ubuntu-24.04`, §7) and iOS (`macos-latest`, the IPA) each package and
+upload theirs as the run's artifacts (`nettai-<platform>`, the Mac's `nettai-macos-<arch>`, so that the release job's
+download puts all the files in one folder), the version Cargo.toml's. The desktop's install .NET 8 and vpk
+(`VPK_VERSION`). With `publish` on (the default), the workflow tags the commit `v<version>` (a tag of that name on
+another commit stops it), `vpk upload github --merge` puts each package's channel (win; osx-arm64, osx-x64; linux) into
+one release, `gh release upload` the phones' `nettai-android.apk` and `nettai-ios.ipa` beside them with the IPA's
+`altstore.json`, and the release is published, the latest, so the installed apps see it at once (the user: "you should just publish the release instead of drafting it"). It runs on main
 rather than on a tag so that its Rust caches (`Swatinem/rust-cache`) are main's, which every later run restores: a cache
 saved on a tag is that tag's alone, and every release had built from nothing (the user: "it looks like rust cache
 doesn't actually ever work"). Signing is optional and skipped without its secrets: `WINDOWS_CERTIFICATE` (a .pfx,
@@ -4406,8 +4414,8 @@ workflow packs with: the first release that asks for zip 9 (the ones before aske
 yanked, so it was taken from Velopack's repository until then).
 
 **A Mac's channel.** Up to 0.12.0 a Mac had the universal package alone, on Velopack's default channel `osx`, and an
-app asks the channel its package was made on, so those installs ask `osx` for good: every release keeps the universal
-package there for them, for now. The apps built since ask their architecture's channel instead (`updates::options`:
+app asks the channel its package was made on, so those installs ask `osx` for good: every release up to 0.18.1 kept the
+universal package there for them. The apps built since ask their architecture's channel instead (`updates::options`:
 Velopack's `UpdateOptions::ExplicitChannel`, `osx-arm64` or `osx-x64` for the slice that runs, so a universal app
 opened with Rosetta asks Intel's; elsewhere none, its package's own), and a universal app's next update installs its
 architecture's package, whose channel is then its own. A 0.12.0 install so takes two updates: to the universal app of
@@ -4415,15 +4423,11 @@ the first release with the switch, and from it, at the release after, to its arc
 another channel is no update: Velopack moves only to a newer one). The tests (`updates.rs`) run Velopack's own check
 on such feeds.
 
-**When the universal package can stop.** Any release after the first with the switch can leave it out: an install
-of 0.12.0 or before then finds the last universal release, updates to it and on to its architecture's, as long as
-that release is among the ten newest published (Velopack's `GithubSource` reads ten). One not opened until ten more
-are out finds nothing, and its player downloads their architecture's app again. So it stops once the installs still
-on 0.12.0 or before don't matter: at the pace releases have come (fifteen in eleven days up to 0.12.0), a few weeks
-after the first release with the switch. Then `universal` leaves the workflow's loop and its artifact, `osx` the
-release's channels, and `universal` package.sh. The site's macOS download (nettaisen.github.io:
-`nettai-osx-Portable.zip`) moves to the two architectures' zips before that, once the first release with them is
-out.
+**The universal package stopped** after 0.18.1 (the user: "get rid of the universal binary"). An install of 0.12.0
+or before finds 0.18.1, the last universal release, updates to it and on to its architecture's, as long as 0.18.1 is
+among the ten newest published (Velopack's `GithubSource` reads ten); one not opened until ten more are out finds
+nothing, and its player downloads their architecture's app again. A universal app of 0.13.0 or later asks its
+architecture's channel already. The site's macOS downloads are the two architectures' zips.
 
 ## 20. The games' content
 

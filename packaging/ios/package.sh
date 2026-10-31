@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # nettai.app for iOS: for the Simulator on a Mac (aarch64-apple-ios-sim), zipped,
 # target/package/ios/simulator/nettai-ios-simulator.zip; or for a device (aarch64-apple-ios), an IPA,
-# target/package/ios/device/nettai.ipa (the bundle in Payload/, zipped), which a sideloading tool (AltStore, SideStore,
+# target/package/ios/device/nettai-ios.ipa (the bundle in Payload/, zipped), which a sideloading tool (AltStore, SideStore,
 # Sideloadly) signs with the player's own Apple ID as it installs it.
 #
 #   NETTAI_IOS=simulator packaging/ios/package.sh
@@ -78,6 +78,6 @@ if [ "$kind" = simulator ]; then
 else
     mkdir "$out/Payload"
     mv "$app" "$out/Payload/"
-    (cd "$out" && zip -qrX nettai.ipa Payload)
-    echo "$out/nettai.ipa"
+    (cd "$out" && zip -qrX nettai-ios.ipa Payload)
+    echo "$out/nettai-ios.ipa"
 fi

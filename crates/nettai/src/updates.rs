@@ -59,8 +59,8 @@ fn manager() -> Option<UpdateManager> {
 
 /// The channel the app asks for its updates on, when it isn't the one its package was made on (`vpk pack
 /// --channel`, which Velopack's manager asks otherwise): on a Mac, the architecture's (`osx-arm64`, `osx-x64`:
-/// packaging/macos), so that an app from the universal package (`osx`, a Mac's only one up to 0.12.0) takes its
-/// own at its next update, the slice it runs choosing (docs/app.md §19, "Updates").
+/// packaging/macos), so that an app from the universal package (`osx`, a Mac's only one up to 0.12.0, made up to
+/// 0.18.1) takes its own at its next update, the slice it runs choosing (docs/app.md §19, "Updates").
 fn options(os: &str, arch: &str) -> UpdateOptions {
     let channel = match (os, arch) {
         ("macos", "aarch64") => Some("osx-arm64"),
@@ -255,7 +255,7 @@ mod tests {
     const APPLE_SILICON: (&str, &str) = ("macos", "aarch64");
     const INTEL_MAC: (&str, &str) = ("macos", "x86_64");
 
-    /// A release with the universal package beside the architectures' (the macOS job's three).
+    /// A release with the universal package beside the architectures' (as up to 0.18.1).
     const RELEASE: &[(&str, &[&str])] = &[("osx", &["0.14.0"]), ("osx-arm64", &["0.14.0"]), ("osx-x64", &["0.14.0"])];
 
     #[test]
