@@ -99,7 +99,8 @@ export component Chevron inherits Path {
 
 // A label: 11, capitals (its text is set so: `I18n.upper`), tracked.
 export component Label inherits Text {
-    property <bool> over: Theme.audit && self.preferred-width > self.width + 0.5px;
+    // (A label hidden isn't cut, whatever room it is left: a phone's Patch cards tab hides its title in none.)
+    property <bool> over: Theme.audit && self.visible && self.preferred-width > self.width + 0.5px;
     color: Theme.muted;
     font-family: Theme.display;
     font-size: 11px;
