@@ -777,8 +777,8 @@ impl Watching {
         let (stale, began) = (surface.stale, Instant::now());
         // (The other console's picture is of the same tick: out of date when this one is.)
         inset.stale |= stale;
-        shell.show_surface(surface, true, |wide, buffer, width, height| {
-            viewer.renderer().size = wide;
+        shell.show_surface(surface, true, |size, buffer, width, height| {
+            viewer.renderer().size = size;
             viewer.present(buffer, width, height)
         });
         if self.overlays.inset {
@@ -807,8 +807,8 @@ impl Watching {
         let other = self.viewer.view() ^ 1;
         let viewer = &mut self.viewer;
         // (The original's 240 columns: the shown console's frame is drawn as wide again after it.)
-        let Some((image, width, height)) = shell.show_inset(&mut self.inset, multiple, |wide, buffer, w, h| {
-            let shown = std::mem::replace(&mut viewer.renderer().size, wide);
+        let Some((image, width, height)) = shell.show_inset(&mut self.inset, multiple, |size, buffer, w, h| {
+            let shown = std::mem::replace(&mut viewer.renderer().size, size);
             viewer.present_view(other, buffer, w, h);
             viewer.renderer().size = shown;
         }) else {

@@ -512,7 +512,7 @@ impl Player {
 
     // ---- The picture and the sound ---------------------------------------
 
-    /// The battle's picture now, with nothing over it: 160 rows of the renderer's columns (`Renderer::frame_wide`).
+    /// The battle's picture now, with nothing over it: the renderer's frame size (`Renderer::frame_size`).
     pub fn frame(&mut self) -> Frame {
         self.renderer.render(&self.session.battle)
     }

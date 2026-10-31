@@ -1,8 +1,9 @@
-//! The enhanced mode's wide frames (docs/frontend.md §3, "Wider than the original") in each game, played from its
-//! match file beside this test (tests/widescreen): at 240 columns a frame is the one the renderer drew before it
-//! had a width, and the original mode's frames are 240 columns whatever the width; at two wider widths each
-//! piece is where its anchor puts it (the HUD's against its edge, the field and its sprites in the middle, the
-//! background across), in a fight, on the custom screen and on a screen of both.
+//! The enhanced mode's wide and tall frames (docs/frontend.md §3, "Larger than the original") in each game, played
+//! from its match file beside this test (tests/widescreen): at 240 by 160 a frame is the one the renderer drew
+//! before it had a size, and the original mode's frames are 240 by 160 whatever the size; at wider and taller
+//! sizes each piece is where its two anchors put it (the HUD's against its edges, the field and its sprites in the
+//! middle, the background across), in a fight, on the custom screen (its window at the top left), with the
+//! chatbox up and on a screen of both.
 
 use nettai_battle::input::keys;
 use nettai_frontend::driver::{InFight, LivePlayer, Opponent};
@@ -10,17 +11,22 @@ use nettai_frontend::game::{Game, RomSource};
 use nettai_frontend::player::Player;
 use nettai_render::compose::{Anchor, BACKDROP_DEPTH, HEIGHT, Size, WIDTH, depth_key};
 use nettai_render::textlayer::TextItem;
-use nettai_render::vfont::TextRenderer;
+use nettai_render::vfont::{Role, TextRenderer};
 use nettai_render::{Consoles, Frame, GraphicsMode};
 use std::path::{Path, PathBuf};
 
-/// The widths the placement is checked at: 16:9 at the frame's height, a phone held sideways (an odd column
-/// left over), and a short window on a wide screen (more columns than a sprite's 9-bit X spans).
-const WIDTHS: [usize; 3] = [284, 347, 1374];
+/// The sizes the placement is checked at: 16:9 at the frame's height, a phone held sideways (an odd column left
+/// over), and a short window on a wide screen (more columns than a sprite's 9-bit X spans); a frame taller than
+/// the original's (an odd row left over), one taller and wider, and one held upright (taller than a sprite's
+/// 8-bit Y spans).
+const SIZES: [(usize, usize); 6] = [(284, 160), (347, 160), (1374, 160), (240, 213), (347, 199), (240, 427)];
 
 /// The keys each match is played with: a chip picked and sent on the first custom screen, then moves and
 /// attacks in the fight (the opponent attacks at random).
 const KEYS: &[(u32, u16)] = &[(120, keys::A), (200, keys::START), (215, keys::A), (470, keys::UP), (520, keys::A), (640, keys::DOWN), (700, keys::A), (800, keys::A)];
+
+/// The keys that open a chip's description on the first custom screen (the chatbox).
+const CHAT_KEYS: &[(u32, u16)] = &[(100, keys::R), (180, keys::R), (190, keys::A), (260, keys::START)];
 
 fn here() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf()
@@ -50,16 +56,21 @@ fn player(game: &Game, file: &str, mode: GraphicsMode, consoles: Consoles) -> Pl
 
 /// Play on to tick `tick` (the keys as `KEYS` holds them, a tick each).
 fn play_to(player: &mut Player, tick: u32) {
+    play_keys_to(player, KEYS, tick);
+}
+
+/// Play on to tick `tick`, `keys` held a tick each.
+fn play_keys_to(player: &mut Player, keys: &[(u32, u16)], tick: u32) {
     while (player.ticks() as u32) < tick {
         let next = player.ticks() as u32 + 1;
-        let held = KEYS.iter().filter(|(at, _)| *at == next).fold(0, |k, (_, b)| k | b);
+        let held = keys.iter().filter(|(at, _)| *at == next).fold(0, |k, (_, b)| k | b);
         assert!(player.tick(held), "the battle stopped before tick {tick}");
     }
 }
 
-/// The frame now, `width` columns wide.
-fn frame_at(player: &mut Player, width: usize) -> Frame {
-    player.renderer().size = Size::new(width, HEIGHT);
+/// The frame now, at `size`.
+fn frame_at(player: &mut Player, size: Size) -> Frame {
+    player.renderer().size = size;
     let frame = player.frame();
     player.renderer().size = Size::ORIGINAL;
     frame
@@ -74,10 +85,15 @@ enum Won {
     Hud,
 }
 
+/// The background layer's depth key.
+fn background_key() -> u32 {
+    depth_key(3, 2, 0)
+}
+
 fn won(depth: u32) -> Won {
-    let (field, background) = (depth_key(2, 3, 0), depth_key(3, 2, 0));
+    let field = depth_key(2, 3, 0);
     match depth {
-        d if d == field || d == background || d == BACKDROP_DEPTH => Won::Stage,
+        d if d == field || d == background_key() || d == BACKDROP_DEPTH => Won::Stage,
         d if (d >> 16) & 0xFF == 0 => Won::Sprite,
         _ => Won::Hud,
     }
@@ -91,13 +107,13 @@ struct Piece {
     anchor: Anchor,
 }
 
-/// Each of `pieces`' HUD layer pixels in the 240-column frame `narrow` is the wide frame's where its anchor puts
-/// it, color and depth key; and each piece has some.
-fn pieces_placed(narrow: &Frame, wide: &Frame, pieces: &[Piece], label: &str) {
-    let w = wide.width();
+/// Each of `pieces`' HUD layer pixels in the 240 by 160 frame `narrow` is the large frame's where its anchor
+/// puts it, color and depth key; and each piece has some.
+fn pieces_placed(narrow: &Frame, large: &Frame, pieces: &[Piece], label: &str) {
+    let w = large.width();
     for p in pieces {
         let [x0, y0, pw, ph] = p.rect;
-        let origin = p.anchor.origin(Size::new(w, HEIGHT)).0 as usize;
+        let (ox, oy) = p.anchor.origin(large.size);
         let mut seen = 0;
         for y in y0..y0 + ph {
             for x in x0..x0 + pw {
@@ -106,71 +122,83 @@ fn pieces_placed(narrow: &Frame, wide: &Frame, pieces: &[Piece], label: &str) {
                     continue;
                 }
                 seen += 1;
-                let j = y * w + x + origin;
-                assert_eq!((wide.pixels[j], wide.depth[j]), (narrow.pixels[i], narrow.depth[i]), "{label}: {} at ({x}, {y}), {w} wide", p.what);
+                let j = (y + oy as usize) * w + x + ox as usize;
+                assert_eq!((large.pixels[j], large.depth[j]), (narrow.pixels[i], narrow.depth[i]), "{label}: {} at ({x}, {y})", p.what);
             }
         }
         assert!(seen > 0, "{label}: no pixel of {} in its box", p.what);
     }
 }
 
-/// The wide frame's text items are the 240-column frame's, in order, each moved where its anchor puts it; and
+/// The large frame's text items are the 240 by 160 frame's, in order, each moved where its anchor puts it; and
 /// the items `expected` names (by their words, and a box of the original's screen their box's top left is in)
 /// keep to the anchors it says.
-fn items_placed(narrow: &Frame, wide: &Frame, expected: &[(&str, [i32; 4], Anchor)], label: &str) {
-    let w = wide.width();
-    assert_eq!(narrow.text.len(), wide.text.len(), "{label}: the text items");
-    for (a, b) in narrow.text.iter().zip(&wide.text) {
+fn items_placed(narrow: &Frame, large: &Frame, expected: &[(&str, [i32; 4], Anchor)], label: &str) {
+    assert_eq!(narrow.text.len(), large.text.len(), "{label}: the text items");
+    for (a, b) in narrow.text.iter().zip(&large.text) {
         assert_eq!(a.text, b.text, "{label}");
-        let (dx, dy) = b.anchor.origin(Size::new(w, HEIGHT));
-        assert_eq!(b.rect, a.rect.offset(dx, dy), "{label}: {:?} kept to {:?}", b.text, b.anchor);
+        let (ox, oy) = b.anchor.origin(large.size);
+        assert_eq!(b.rect, a.rect.offset(ox, oy), "{label}: {:?} kept to {:?}", b.text, b.anchor);
     }
     let found = |a: &TextItem, (words, [x, y, rw, rh]): (&str, [i32; 4])| a.text == words && (x..x + rw).contains(&a.rect.x) && (y..y + rh).contains(&a.rect.y);
     for &(words, rect, anchor) in expected {
         let k = narrow.text.iter().position(|a| found(a, (words, rect))).unwrap_or_else(|| panic!("{label}: no {words:?} in {rect:?}: {:?}", narrow.text.iter().map(|t| (&t.text, t.rect)).collect::<Vec<_>>()));
-        assert_eq!(wide.text[k].anchor.horizontal, anchor.horizontal, "{label}: {words:?}");
+        assert_eq!(large.text[k].anchor, anchor, "{label}: {words:?}");
     }
 }
 
-/// The field and the sprites on it are the 240-column frame's moved to the middle: of the stage's and the
-/// sprites' pixels in a box of the original's screen (x, y, w, h), where the wide frame shows no HUD at the
+/// The field and the sprites on it are the 240 by 160 frame's moved to the middle: of the stage's and the
+/// sprites' pixels in a box of the original's screen (x, y, w, h), where the large frame shows no HUD at the
 /// moved place, nearly all match (what a HUD piece kept to an edge uncovers or covers differs; a sprite drawn
 /// elsewhere leaves the stage in its place).
-fn field_centered(narrow: &Frame, wide: &Frame, [x0, y0, bw, bh]: [usize; 4], label: &str) {
-    let w = wide.width();
-    let m = Anchor::CENTER.origin(Size::new(w, HEIGHT)).0 as usize;
+fn field_centered(narrow: &Frame, large: &Frame, [x0, y0, bw, bh]: [usize; 4], label: &str) {
+    let w = large.width();
+    let (mx, my) = Anchor::CENTER.origin(large.size);
     let (mut same, mut all) = (0, 0);
     for y in y0..y0 + bh {
         for x in x0..x0 + bw {
-            let (i, j) = (y * WIDTH + x, y * w + x + m);
-            if won(narrow.depth[i]) == Won::Hud || won(wide.depth[j]) == Won::Hud {
+            let (i, j) = (y * WIDTH + x, (y + my as usize) * w + x + mx as usize);
+            if won(narrow.depth[i]) == Won::Hud || won(large.depth[j]) == Won::Hud {
                 continue;
             }
             all += 1;
-            same += (narrow.pixels[i] == wide.pixels[j]) as usize;
+            same += (narrow.pixels[i] == large.pixels[j]) as usize;
         }
     }
     assert!(all > 1000 && same * 100 >= all * 99, "{label}: {same} of {all} of the field's pixels where they were, moved to the middle");
 }
 
-/// The background reaches both edges of a wide frame: where the 240-column frame's first or last column shows
-/// the stage, so does the wide frame's; and somewhere it does.
-fn background_across(narrow: &Frame, wide: &Frame, label: &str) {
-    let w = wide.width();
+/// The background reaches all four edges of a large frame: where the 240 by 160 frame's first or last column
+/// shows the stage, so does the large frame's on that row, but where a piece kept to the top or the bottom
+/// covers it there; the background layer wins pixels of its first and last rows and columns wherever the 240 by
+/// 160 frame's do; and somewhere it does.
+fn background_across(narrow: &Frame, large: &Frame, label: &str) {
+    let (w, h) = (large.width(), large.height());
+    let my = Anchor::CENTER.origin(large.size).1 as usize;
     let mut seen = 0;
     for y in 0..HEIGHT {
         for (x, wx) in [(0, 0), (WIDTH - 1, w - 1)] {
-            if won(narrow.depth[y * WIDTH + x]) == Won::Stage {
+            let at = (y + my) * w + wx;
+            if won(narrow.depth[y * WIDTH + x]) == Won::Stage && (h == HEIGHT || won(large.depth[at]) != Won::Hud) {
                 seen += 1;
-                assert_eq!(won(wide.depth[y * w + wx]), Won::Stage, "{label}: column {wx}, row {y}");
+                assert_eq!(won(large.depth[at]), Won::Stage, "{label}: column {wx}, row {}", y + my);
             }
         }
     }
     assert!(seen > 0, "{label}: no stage at the edges");
+    if h == HEIGHT || !narrow.depth.contains(&background_key()) {
+        return;
+    }
+    // (Over the rows above the original's and those under them: a row of a background may be clear, the backdrop
+    // under it.)
+    let background = |rows: std::ops::Range<usize>| (rows.start * w..rows.end * w).filter(|&i| large.depth[i] == background_key()).count();
+    for (edge, rows) in [("top", 0..my), ("bottom", my + HEIGHT..h)] {
+        assert!(background(rows) > 0, "{label}: no background at the {edge} edge");
+    }
 }
 
-/// The checks of one moment of a game: the frame at 240 columns is the renderer's without a width; the original
-/// mode's has 240 columns whatever the width; at each of `WIDTHS` the pieces, the items, the field and the
+/// The checks of one moment of a game: the frame at 240 by 160 is the renderer's without a size; the original
+/// mode's is 240 by 160 whatever the size; at each of `SIZES` the pieces, the items, the field and the
 /// background are where they go.
 struct Moment<'a> {
     label: &'a str,
@@ -182,54 +210,78 @@ struct Moment<'a> {
 
 fn check(player: &mut Player, m: &Moment) {
     let narrow = player.frame();
-    let at_240 = frame_at(player, WIDTH);
-    assert!(at_240.pixels == narrow.pixels && at_240.depth == narrow.depth && at_240.text == narrow.text, "{}: at 240 columns", m.label);
-    assert_eq!(narrow.width(), WIDTH);
-    for width in WIDTHS {
-        let wide = frame_at(player, width);
-        assert_eq!((wide.width(), wide.pixels.len()), (width, width * HEIGHT), "{}", m.label);
-        let label = format!("{} at {width}", m.label);
-        pieces_placed(&narrow, &wide, m.pieces, &label);
-        items_placed(&narrow, &wide, m.items, &label);
+    let at_240 = frame_at(player, Size::ORIGINAL);
+    assert!(at_240.pixels == narrow.pixels && at_240.depth == narrow.depth && at_240.text == narrow.text, "{}: at 240 by 160", m.label);
+    assert_eq!(narrow.size, Size::ORIGINAL);
+    for (width, height) in SIZES {
+        let large = frame_at(player, Size::new(width, height));
+        assert_eq!((large.width(), large.height(), large.pixels.len()), (width, height, width * height), "{}", m.label);
+        let label = format!("{} at {width}x{height}", m.label);
+        pieces_placed(&narrow, &large, m.pieces, &label);
+        items_placed(&narrow, &large, m.items, &label);
         if let Some(field) = m.field {
-            field_centered(&narrow, &wide, field, &label);
+            field_centered(&narrow, &large, field, &label);
         }
-        background_across(&narrow, &wide, &label);
+        background_across(&narrow, &large, &label);
     }
 }
 
-/// The original mode draws the original's 240 columns, whatever width the renderer is given.
+/// The original mode draws the original's 240 by 160, whatever size the renderer is given.
 fn original_stays(game: &Game, file: &str, tick: u32) {
     let mut p = player(game, file, GraphicsMode::Original, Consoles::One);
     play_to(&mut p, tick);
     let narrow = p.frame();
-    let wide = frame_at(&mut p, WIDTHS[1]);
-    assert_eq!(wide.width(), WIDTH);
-    assert!(narrow.pixels == wide.pixels && narrow.depth == wide.depth, "{file}: the original mode at tick {tick}");
+    let large = frame_at(&mut p, Size::new(SIZES[4].0, SIZES[4].1));
+    assert_eq!(large.size, Size::ORIGINAL);
+    assert!(narrow.pixels == large.pixels && narrow.depth == large.depth, "{file}: the original mode at tick {tick}");
 }
 
-/// The custom screen: its window docked to the left edge, the HP box and emotion window beside it.
-const CUSTOM: &[Piece] = &[Piece { what: "the custom window", rect: [0, 0, 120, 160], anchor: Anchor::LEFT }];
+/// The custom screen: its window docked to the left edge at the top (its 160 rows, not stretched), the HP box
+/// and emotion window beside it.
+const CUSTOM: &[Piece] = &[Piece { what: "the custom window", rect: [0, 0, 120, 160], anchor: Anchor::TOP_LEFT }];
 
 /// The field: beside the custom window, lowered with it; in a fight, between the HUD's top and bottom lines.
 const CUSTOM_FIELD: [usize; 4] = [128, 80, 112, 80];
 const FIGHT_FIELD: [usize; 4] = [0, 70, 240, 70];
+
+/// With a chip's description up, its chatbox's lines keep to the middle with the field, both ways: the first
+/// frame its first line has printed some of.
+fn chatbox_with_the_field(game: &Game, file: &str, label: &str) {
+    let mut p = player(game, file, GraphicsMode::Enhanced, Consoles::One);
+    let printed = |frame: &Frame| frame.text.iter().any(|t| t.role == Role::Dialogue && t.shown.is_some_and(|n| n > 0));
+    let mut narrow = p.frame();
+    while !printed(&narrow) {
+        assert!(p.ticks() < 300, "{label}: no chatbox by tick 300");
+        let next = p.ticks() as u32 + 1;
+        play_keys_to(&mut p, CHAT_KEYS, next);
+        narrow = p.frame();
+    }
+    for (width, height) in SIZES {
+        let large = frame_at(&mut p, Size::new(width, height));
+        let label = format!("{label} at {width}x{height}");
+        items_placed(&narrow, &large, &[], &label);
+        for t in large.text.iter().filter(|t| t.role == Role::Dialogue) {
+            assert_eq!(t.anchor, Anchor::CENTER, "{label}: {:?}", t.text);
+        }
+    }
+}
 
 #[test]
 #[ignore = "requires the original ROMs: $NETTAI_ROMS, else the Legacy Collection installed through Steam"]
 fn exe6_pieces_keep_to_their_edges() {
     let game = game("exe6");
     original_stays(&game, "m6.toml", 360);
+    chatbox_with_the_field(&game, "m6.toml", "exe6 chatbox");
     let mut p = player(&game, "m6.toml", GraphicsMode::Enhanced, Consoles::One);
     play_to(&mut p, 140);
-    let names = [("MegaMan", [120, 0, 120, 16], Anchor::RIGHT)];
+    let names = [("MegaMan", [120, 0, 120, 16], Anchor::TOP_RIGHT)];
     check(&mut p, &Moment { label: "exe6 custom screen", pieces: CUSTOM, items: &names, field: Some(CUSTOM_FIELD) });
     play_to(&mut p, 360);
     let items = [
-        ("980", [0, 0, 48, 16], Anchor::LEFT),
-        ("CUSTOM", [48, 0, 144, 16], Anchor::CENTER),
-        ("Cannon", [0, 140, 120, 20], Anchor::LEFT),
-        ("AirShot", [120, 20, 120, 40], Anchor::RIGHT),
+        ("980", [0, 0, 48, 16], Anchor::TOP_LEFT),
+        ("CUSTOM", [48, 0, 144, 16], Anchor::TOP),
+        ("Cannon", [0, 140, 120, 20], Anchor::BOTTOM_LEFT),
+        ("AirShot", [120, 20, 120, 40], Anchor::TOP_RIGHT),
         ("1000", [120, 60, 120, 100], Anchor::CENTER),
     ];
     check(&mut p, &Moment { label: "exe6 fight", pieces: &[], items: &items, field: Some(FIGHT_FIELD) });
@@ -240,16 +292,17 @@ fn exe6_pieces_keep_to_their_edges() {
 fn exe5_pieces_keep_to_their_edges() {
     let game = game("exe5");
     original_stays(&game, "m5.toml", 360);
+    chatbox_with_the_field(&game, "m5.toml", "exe5 chatbox");
     let mut p = player(&game, "m5.toml", GraphicsMode::Enhanced, Consoles::One);
     play_to(&mut p, 140);
-    // (The name plate and the custom screen's time left against the right edge.)
-    let names = [("MegaMan", [120, 0, 120, 16], Anchor::RIGHT), ("59", [200, 0, 40, 40], Anchor::RIGHT)];
+    // (The name plate and the custom screen's time left against the top right corner.)
+    let names = [("MegaMan", [120, 0, 120, 16], Anchor::TOP_RIGHT), ("59", [200, 0, 40, 40], Anchor::TOP_RIGHT)];
     check(&mut p, &Moment { label: "exe5 custom screen", pieces: CUSTOM, items: &names, field: Some(CUSTOM_FIELD) });
     play_to(&mut p, 360);
     let items = [
-        ("1000", [0, 0, 48, 16], Anchor::LEFT),
-        ("Sword", [0, 140, 120, 20], Anchor::LEFT),
-        ("Boomer", [120, 20, 120, 40], Anchor::RIGHT),
+        ("1000", [0, 0, 48, 16], Anchor::TOP_LEFT),
+        ("Sword", [0, 140, 120, 20], Anchor::BOTTOM_LEFT),
+        ("Boomer", [120, 20, 120, 40], Anchor::TOP_RIGHT),
     ];
     check(&mut p, &Moment { label: "exe5 fight", pieces: &[], items: &items, field: Some(FIGHT_FIELD) });
 }
@@ -259,20 +312,21 @@ fn exe5_pieces_keep_to_their_edges() {
 fn exe4_pieces_keep_to_their_edges() {
     let game = game("exe4");
     original_stays(&game, "m4.toml", 360);
+    chatbox_with_the_field(&game, "m4.toml", "exe4 chatbox");
     let mut p = player(&game, "m4.toml", GraphicsMode::Enhanced, Consoles::One);
     play_to(&mut p, 140);
     check(&mut p, &Moment { label: "exe4 custom screen", pieces: CUSTOM, items: &[], field: Some(CUSTOM_FIELD) });
-    // ("BUSY..." against the right edge while the other side chooses.)
+    // ("BUSY..." against the top right corner while the other side chooses.)
     play_to(&mut p, 240);
-    let busy = [("BUSY...", [176, 32, 64, 16], Anchor::RIGHT)];
+    let busy = [("BUSY...", [176, 32, 64, 16], Anchor::TOP_RIGHT)];
     check(&mut p, &Moment { label: "exe4 waiting", pieces: &[], items: &busy, field: Some(FIGHT_FIELD) });
     play_to(&mut p, 360);
-    let items = [("997", [0, 0, 48, 16], Anchor::LEFT), ("Sword", [0, 140, 120, 20], Anchor::LEFT)];
+    let items = [("997", [0, 0, 48, 16], Anchor::TOP_LEFT), ("Sword", [0, 140, 120, 20], Anchor::BOTTOM_LEFT)];
     check(&mut p, &Moment { label: "exe4 fight", pieces: &[], items: &items, field: Some(FIGHT_FIELD) });
 }
 
-/// On a screen of both the right console's pieces keep to the right edge: both custom windows docked to their
-/// edges, both HP boxes and chip names in the corners.
+/// On a screen of both the right console's pieces keep to the right edge, as high as the left's: both custom
+/// windows docked to their edges at the top, both HP boxes in the top corners and chip names in the bottom ones.
 #[test]
 #[ignore = "requires the original ROMs: $NETTAI_ROMS, else the Legacy Collection installed through Steam"]
 fn both_sides_keep_to_their_edges() {
@@ -280,15 +334,15 @@ fn both_sides_keep_to_their_edges() {
     let mut p = player(&game, "m6.toml", GraphicsMode::Enhanced, Consoles::Both);
     play_to(&mut p, 62);
     let windows = [
-        Piece { what: "the left custom window", rect: [0, 0, 120, 160], anchor: Anchor::LEFT },
-        Piece { what: "the right custom window", rect: [120, 0, 120, 160], anchor: Anchor::RIGHT },
+        Piece { what: "the left custom window", rect: [0, 0, 120, 160], anchor: Anchor::TOP_LEFT },
+        Piece { what: "the right custom window", rect: [120, 0, 120, 160], anchor: Anchor::TOP_RIGHT },
     ];
     check(&mut p, &Moment { label: "both: both windows", pieces: &windows, items: &[], field: None });
     play_to(&mut p, 400);
     let items = [
-        ("1000", [192, 0, 48, 16], Anchor::RIGHT),
-        ("Cannon", [0, 140, 120, 20], Anchor::LEFT),
-        ("AirShot", [120, 20, 120, 40], Anchor::RIGHT),
+        ("1000", [192, 0, 48, 16], Anchor::TOP_RIGHT),
+        ("Cannon", [0, 140, 120, 20], Anchor::BOTTOM_LEFT),
+        ("AirShot", [120, 20, 120, 40], Anchor::TOP_RIGHT),
     ];
     check(&mut p, &Moment { label: "both: the fight", pieces: &[], items: &items, field: Some(FIGHT_FIELD) });
 }

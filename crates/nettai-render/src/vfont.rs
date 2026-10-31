@@ -25,7 +25,7 @@
 //! its shapes one over another.
 //! docs/design/text-rendering.md §12.
 
-use crate::compose::{Fade, HEIGHT, apply_fade, to_rgb};
+use crate::compose::{Fade, apply_fade, to_rgb};
 use crate::present::Placement;
 use crate::sdf::{Paint, RES, Sdf};
 use crate::textlayer::{Align, Rect, TextItem};
@@ -1964,7 +1964,7 @@ impl Target<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::compose::WIDTH;
+    use crate::compose::{HEIGHT, WIDTH};
 
     fn renderer() -> TextRenderer {
         TextRenderer::new(std::sync::Arc::new(VectorFont::bundled()))

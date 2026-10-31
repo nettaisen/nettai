@@ -37,7 +37,7 @@ impl Fit {
     }
 
     /// The frame it is a picture of.
-    pub fn wide(self) -> Size {
+    pub fn size(self) -> Size {
         Size::new(self.columns as usize, HEIGHT)
     }
 
@@ -202,7 +202,7 @@ impl Surface {
         self.stale = false;
         let (w, h) = fit.presented();
         self.buffer.resize(w * h, 0);
-        present(fit.wide(), &mut self.buffer, w, h);
+        present(fit.size(), &mut self.buffer, w, h);
         let pixels = &mut self.pixels[self.turn];
         self.turn ^= 1;
         if (pixels.width(), pixels.height()) != (w as u32, h as u32) {
@@ -344,8 +344,8 @@ impl Stage {
     pub fn picture(&mut self, fit: Fit) -> Option<Image> {
         let started = Instant::now();
         let player = &mut self.player;
-        let shown = self.surface.picture(fit, |wide, buffer, w, h| {
-            player.renderer().size = wide;
+        let shown = self.surface.picture(fit, |size, buffer, w, h| {
+            player.renderer().size = size;
             player.present(buffer, w, h)
         });
         if shown.is_none() {

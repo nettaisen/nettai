@@ -1461,91 +1461,109 @@ loads with the frontend's `Options::default()`. Off: `Renderer::new` and
 trace replays and the identity checks use; and every frame in the original
 mode, byte for byte as before the mode had motion.
 
-### Wider than the original
+### Larger than the original
 
 In the enhanced mode a frame may be wider than the original's 240 columns
-(`Renderer::wide`, `compose::Wide`; the widescreen mockups the user chose,
-layout B, are nettai-verify's docs/nettai-ui/widescreen): 160 rows of `W`
-columns (`Frame::width`), shown at a whole multiple as any frame is
-(`present::Placement::fit`). The original mode's frames are the original's
-240x160 whatever it says (`Renderer::frame_wide`), so the frame comparisons
-and every trace replay see what they always have.
+and taller than its 160 rows (`Renderer::size`, `compose::Size`; the
+widescreen mockups the user chose, layout B, are nettai-verify's
+docs/nettai-ui/widescreen, and the user had the bars above and below taken
+away the same way): `W` columns of `H` rows (`Frame::size`), shown at a
+whole multiple as any frame is (`present::Placement::fit`). The original
+mode's frames are the original's 240x160 whatever it says
+(`Renderer::frame_size`), so the frame comparisons and every trace replay
+see what they always have.
 
 - Every piece is laid out on the original's screen as before and put in
-  the frame by where it keeps to (`compose::Anchor`): `Center`, with the
-  field, the original's columns in the middle, `m = (W - 240) / 2` columns
-  from the left edge (an odd column left over on their right); `Left`, as
-  far from the left edge as on the original's screen; `Right`, as far from
-  the right edge. The layers are as wide as the frame (`Layer::width`); a
-  piece is drawn into one where its anchor puts it (`Layer::keep_to`), and
-  each pixel keeps its piece's anchor (`Layer::anchors`) for what moves
-  pieces about on the original's screen (`seat::Mirror::layer`). A sprite
+  the frame by where it keeps to each way (`compose::Anchor`: a
+  `Horizontal` and a `Vertical` edge). Across: `Center`, with the field,
+  the original's columns in the middle, `(W - 240) / 2` columns from the
+  left edge (an odd column left over on their right); `Left`, as far from
+  the left edge as on the original's screen; `Right`, as far from the
+  right edge. Down, alike: `Middle`, with the field, the original's rows
+  in the middle, `(H - 160) / 2` rows from the top (an odd row left over
+  under them); `Top`; `Bottom`. The layers are as large as the frame
+  (`Layer::size`); a piece is drawn into one where its anchor puts it
+  (`Layer::keep_to`), and each pixel keeps its piece's anchor
+  (`Layer::anchors`) for what moves pieces about on the original's screen
+  (`seat::Mirror::layer`, which moves them across, never down). A sprite
   part and a text item carry their anchors (`SpritePart::anchor`,
   `TextItem::anchor`), stamped as they are queued and pushed
   (`SpriteList::anchor`, `TextSink::anchor`): the HUD sets all of them
   before each piece (`hud::keep_to`).
-- The background is drawn across the whole width, on from the original's
-  columns as the same scroll has it (it wraps: `Stage::draw_background`;
-  the glide's picture too, `Stage::draw_background_wide`). The fades,
-  flashes and dimmings reach all of it, as they reach the background
-  layer and the backdrop in the original's columns. The custom screen's
-  drop (the field and its sprites 15 pixels lower, `custom::camera_y`) is
-  as the original has it.
+- The background is drawn across the whole frame, on from the original's
+  screen as the same scroll has it, to all four edges (it wraps both ways:
+  `Stage::draw_background`; the glide's picture too,
+  `Stage::draw_background_wide`). The fades, flashes, dimmings and the
+  cut-ins' blackouts reach all of it, as they reach the background layer
+  and the backdrop on the original's screen. The custom screen's drop
+  (the field and its sprites 15 pixels lower, `custom::camera_y`) is as
+  the original has it.
+- The custom screen's window is not stretched: its 160 rows keep to the
+  top left (and what goes with it, the HP box and emotion window beside it,
+  the name plate and the time left, to the top), and under it in a taller
+  frame is the background and what the field shows there.
 - The battle's sprites show wherever they fall in the frame, past the old
   edges too (a shot flying off the field, an effect half off the screen,
   a navi's back at the field's edge: the user's pick over cutting them at
-  the old edges). A sprite part's X is its column on the original's
-  screen, never wrapped (`SpritePart::x`): the original's 240 columns
-  wrap it at 512 as the hardware does, and a wider frame draws it where
-  it is (`compose::sprite_x`). (Read from 9 bits, a frame over about 450
-  columns wide would show some parts at two places and one over 512 had
-  every part 512 columns left of its place.) The original's culling stays
-  as it is (an object's anchor 64 pixels left of the old left edge to
-  column 305), so what it culls shows in no frame.
+  the old edges). A sprite part's X and Y are its column and row on the
+  original's screen, never wrapped (`SpritePart::x`, `SpritePart::y`):
+  the original's 240 columns wrap the column at 512 and its 160 rows the
+  row at 256 as the hardware does (each of a part's rows on its own, as
+  the scanlines find it: a doubled affine box over 96 rows may show at the
+  bottom and the top at once), and a larger frame draws it where it is
+  (`compose::sprite_x`, `compose::sprite_y`). (Read from 9 bits, a frame
+  over about 450 columns wide would show some parts at two places and one
+  over 512 had every part 512 columns left of its place; read from 8, a
+  frame over 160 rows would show what is above the screen under it.) The
+  original's culling stays as it is (an object's anchor 64 pixels left of
+  the old left edge to column 305, 32 rows above the old top to row 193),
+  so what it culls shows in no frame.
 - On a screen of both (`Consoles::Both`) the right console's pieces are
   mirrored as before, and what keeps to an edge on its console keeps to
-  the other edge (`Seat::edge`): its HP box and emotion window to the top
-  right, its chip name to the bottom right, its custom window docked to
-  the right edge. A seat's half is the frame's at the original's middle
-  (`Seat::clip`, in the frame's columns), and a window leaving over the
-  other console's screen keeps to its edge.
+  the other side edge (`Seat::edge`), as high: its HP box and emotion
+  window to the top right, its chip name to the bottom right, its custom
+  window docked to the right edge at the top. A seat's half is the frame's
+  at the original's middle (`Seat::clip`, in the frame's columns), and a
+  window leaving over the other console's screen keeps to its edge.
 
-Where each piece keeps to, by where the original draws it (all three games
-unless named):
+Where each piece keeps to, across and down, by where the original draws it
+(all three games unless named; "middle" is with the field both ways):
 
 | Piece | Where the original draws it | Keeps to |
 |---|---|---|
-| The HP box and its digits (EXE6's and EXE5's, EXE4's) | top left; beside the custom window while it is up (`custom::hud_shift`) | Left |
-| The emotion window, its count box, a link navi's face, EXE5 DS's navi's face | under the HP box, moving with it | Left |
-| "????" while the local side has a defensive chip set | beside the emotion window (column 6) | Left |
-| "????" while the other side has one | against the right edge (columns 26-29) | Right |
-| The next chip's name, damage, "+bonus", "x2" | bottom left | Left |
-| The custom gauge, its CUSTOM, "L or R", its warning marker | top center | Center |
-| "Cstmzing..." (EXE4's "BUSY...") | under the gauge from column 22 to the right edge | Right |
-| The turn timer, "TIME UP!" | top, from column 11 | Center |
-| "COUNTER HIT!" (the message line) | under the gauge, from column 7 | Center |
-| The judge's damage numbers and "VS" | under its banner, about the middle | Center |
-| The banners (the battle's number and START, TURN n START, FINAL TURN, ENEMY DELETED, YOU WIN, YOU LOSE, DRAW, HIT DAMAGE JUDGE, PROGRAM ADVANCE) | centered; on a screen of both a result's over its player's half of the field | Center |
-| A telop: the viewer's dimming chip's name and numbers | centered in the left half | Left |
-| A telop: the other player's (EXE6's own block, EXE4's own look's second place) | centered in the right half | Right |
-| The other player's chip just used (`used_chip_parts`) | in the other player's telop's place | Right |
-| The chip icons over the navis, the HP numbers under objects, the warning markers on the field | over and under what they belong to on the field | Center |
-| "PAUSE" | the middle | Center |
-| The custom screen's window and all in it: the chip window, the hand, OK and the buttons, the cursor, the emblem, the element icon, the Regular chip's frame, the form list (EXE6's Crosses and Beast Out, EXE5's souls, EXE4's), the Program Advance's names, the offered soul's and a capsule's flying icons, the chip held | docked to the left edge, sliding in and out from it | Left |
-| The turn-limit label (`look.turn_limit`) | beside the window | Left |
-| The custom screen's name plate (the enemies' names) | top right, against the right edge | Right |
-| The custom screen's time left (nettai's own) | under the name plate, ending at the right edge | Right |
-| The time left between two windows on a screen of both (C1) | where the windows meet | Center |
-| The chatbox (a description, a message), its portrait and arrow | the bottom of the screen, its whole width | Center (spans the original's screen: kept with the field) |
+| The HP box and its digits (EXE6's and EXE5's, EXE4's) | top left; beside the custom window while it is up (`custom::hud_shift`) | Top left |
+| The emotion window, its count box, a link navi's face, EXE5 DS's navi's face | under the HP box, moving with it | Top left |
+| "????" while the local side has a defensive chip set | beside the emotion window (column 6, rows 2-3) | Top left |
+| "????" while the other side has one | against the right edge (columns 26-29, rows 2-3) | Top right |
+| The next chip's name, damage, "+bonus", "x2" | bottom left | Bottom left |
+| The custom gauge, its CUSTOM, "L or R", its warning marker | top center | Top |
+| "Cstmzing..." (EXE4's "BUSY...") | under the gauge from column 22 to the right edge | Top right |
+| The turn timer, "TIME UP!" | top, from column 11 | Top |
+| "COUNTER HIT!" (the message line) | under the gauge, from column 7 | Top |
+| The judge's damage numbers and "VS" | under its banner, about the middle | Middle |
+| The banners (the battle's number and START, TURN n START, FINAL TURN, ENEMY DELETED, YOU WIN, YOU LOSE, DRAW, HIT DAMAGE JUDGE, PROGRAM ADVANCE) | centered; on a screen of both a result's over its player's half of the field | Middle |
+| A telop: the viewer's dimming chip's name and numbers | centered in the left half, under the emotion window (EXE6's from row 4) | Top left |
+| A telop: the other player's (EXE6's own block, EXE4's own look's second place) | centered in the right half, as high | Top right |
+| The other player's chip just used (`used_chip_parts`) | in the other player's telop's place | Top right |
+| The chip icons over the navis, the HP numbers under objects, the warning markers on the field | over and under what they belong to on the field | Middle |
+| "PAUSE" | the middle | Middle |
+| The custom screen's window and all in it: the chip window, the hand, OK and the buttons, the cursor, the emblem, the element icon, the Regular chip's frame, the form list (EXE6's Crosses and Beast Out, EXE5's souls, EXE4's), the Program Advance's names, the offered soul's and a capsule's flying icons, the chip held | docked to the left edge, sliding in and out from it, all 160 rows | Top left (its rows not stretched) |
+| The turn-limit label (`look.turn_limit`) | beside the window | Top left |
+| The custom screen's name plate (the enemies' names) | top right, against the right edge | Top right |
+| The custom screen's time left (nettai's own) | under the name plate, ending at the right edge | Top right |
+| The time left between two windows on a screen of both (C1) | where the windows meet, near their bottom (row 17) | Top (with the windows) |
+| The chatbox (a description, a message), its portrait and arrow | the bottom of the screen, its whole width | Middle (spans the original's screen: kept with the field) |
 
-nettai-tool draws them with `--headless F --width N` (the enhanced mode
-only). nettai-tools' tests/widescreen.rs holds them to this on the ROMs
-(`cargo test --release -p nettai-tools --test widescreen -- --ignored`):
-each game's match file beside it (tests/widescreen) played to a custom
-screen and a fight, and EXE6's on a screen of both, at 284 and 347
-columns: the HUD's pieces and text items where their anchors put them, the
-field moved to the middle, the background at both edges; the original
-mode's frames 240 columns whatever the width.
+nettai-tool draws them with `--headless F --width N --height N` (the
+enhanced mode only). nettai-tools' tests/widescreen.rs holds them to this
+on the ROMs (`cargo test --release -p nettai-tools --test widescreen --
+--ignored`): each game's match file beside it (tests/widescreen) played to
+a custom screen, a chip's description and a fight, and EXE6's on a screen
+of both, at sizes wider, taller and both (`SIZES`): the HUD's pieces and
+text items where both their anchors put them, the custom window at the top
+left, the chatbox's lines in the middle, the field and its sprites moved to
+the middle, the background at all four edges; the original mode's frames
+240x160 whatever the size.
 
 ### Both on one screen
 
