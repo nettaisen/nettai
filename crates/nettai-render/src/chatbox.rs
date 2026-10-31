@@ -445,7 +445,7 @@ fn tint(c: u16, t: u16) -> u16 {
 
 fn part(tiles: &Tiles, first_tile: usize, (x, y): (i32, i32), (width, height): (u8, u8), palette: Palette) -> SpritePart<'_> {
     SpritePart {
-        x: (x & 0x1FF) as u16,
+        x,
         y: (y & 0xFF) as u8,
         width,
         height,
