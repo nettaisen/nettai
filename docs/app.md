@@ -1497,13 +1497,19 @@ GameActivity's Java side takes first (below); what winit 0.30's Android input la
   and the bound buttons in a battle.
 - **Text:** a text field shows the soft keyboard (winit's `set_ime_allowed`: `showSoftInput`), over the app: the
   activity says `SOFT_INPUT_ADJUST_NOTHING`, since GameActivity's own (adjust resize) would shrink the window to
-  what the keyboard leaves and turn a phone's layout to the desktop's. The keyboard sends each key as a key event:
-  the activity's surface (`KeySurface`) gives the input method no input connection (its input type is
-  `TYPE_NULL`), and GameTextInput's key listener is taken off it, so a key reaches GameActivity's `onKeyDown` and
-  winit, as a NativeActivity's did. So there is no composition, and no suggestions or swipe typing: Latin letters,
-  digits and symbols type, Japanese or Chinese don't. GameTextInput's own connection has composition, but winit
-  0.30 doesn't read it (android-activity's text events are a TODO in its Android backend): with it, nothing typed
-  reached the app. Composition needs that in winit, or a text path of the app's own.
+  what the keyboard leaves and turn a phone's layout to the desktop's. Winit 0.30 reads none of GameTextInput's
+  text (android-activity's text events are a TODO in its Android backend), so the app has a text path of its own:
+  the activity's surface (`KeySurface`) tells the keyboard it is a text field (`TYPE_CLASS_TEXT`, Done, no
+  full-screen editor in landscape), and its input connection (`Typing`, a GameTextInput connection with no
+  listener) says each edit to native code (`NettaiActivity.typed`: letters erased before and after the cursor, and
+  text typed), which the app's thread dispatches to Slint as keys in the order they came (`activity.rs`: Backspace,
+  Delete, the text; a line break is Enter). What is being composed is typed into the field as it goes and typed
+  over as it changes; once nothing is, the keyboard's own text is emptied, so it sees an empty field and a delete
+  past it is the field's. So composing keyboards type (pinyin, kana, the clipboard's text, suggestions); a
+  hardware keyboard's keys stay winit's, GameTextInput's key listener taken off the surface. Up to 0.18.2 the
+  surface had no input connection (`TYPE_NULL`): each soft key was a key event, and Chinese and Japanese didn't
+  type (a player's report). The connection's base is told a text type too: told none, Android's fallback turns
+  its text back into keys, which looped through `Typing`.
 - **Gamepads:** a GameActivity's Java side sees input before native code (a NativeActivity's doesn't), so the
   activity's `dispatchKeyEvent` and `dispatchGenericMotionEvent` give a gamepad's or a joystick's events (by their
   source) to nettai-gamepad first: its Kotlin (`crates/nettai-gamepad/android/nettai/gamepad/NettaiGamepads.kt`)
@@ -1573,7 +1579,13 @@ screen; the phone turned to landscape and back; the app sent home and brought ba
 battle where it was). With GameActivity: the soft keyboard's letters, Escape and Enter, the arrows in a battle;
 the on-screen pad's d-pad and A moving the chip cursor and choosing a chip; a gamepad's d-pad and buttons (adb's)
 moving the menus' focus and the chip cursor and opening Settings, its stick moving the focus with no touch made of
-it. Not run: a phone, a real gamepad, the pickers and the share sheet, video export, netplay.
+it. 2026-10-31 (after a player's report on 0.18.2's APK): FROM A SAVE FILE… opening Android's picker, a save picked
+from Downloads made a build (an EXE4 save; another game's said so); Gboard's letters composed into a field, space,
+backspace past what it composed, Done; Chinese text committed by Gboard (its clipboard: the emulator's Gboard pinyin
+gives no candidates in any app) typed into a build's name, and the build made. A debuggable APK's JNI checks stop
+the app at a call that passes Java the wrong object (as nettai-nearby's did at start up to 0.18.2): build one
+when changing the JNI. Not run: a phone, a real gamepad, the folder picker and the share sheet, video export,
+netplay, pinyin's candidates.
 
 ## 8. Builds
 

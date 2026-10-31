@@ -24,8 +24,9 @@ use i_slint_backend_winit::{CustomApplicationHandler, EventResult, SlintEvent};
 use nettai_ui::AppWindow;
 use slint::ComponentHandle;
 use jni::EnvUnowned;
-use jni::objects::JObject;
+use jni::objects::{JObject, JString};
 use jni::sys::jint;
+use slint::platform::{Key, WindowEvent};
 use std::cell::OnceCell;
 use std::sync::{Mutex, OnceLock};
 
@@ -35,6 +36,18 @@ static ACTIVITY: OnceLock<AndroidApp> = OnceLock::new();
 /// The safe area's insets in the window's pixels (left, top, right, bottom), as the activity last handed them over
 /// ([`safe_area`]): none till it first has.
 static SAFE_AREA: Mutex<Option<[i32; 4]>> = Mutex::new(None);
+
+/// What the soft keyboard typed (`NettaiActivity.typed`, on Android's main thread), in the order it came, till the
+/// app's thread takes it ([`type_in`]).
+static TYPED: Mutex<Vec<Typed>> = Mutex::new(Vec::new());
+
+/// An edit of the field being typed in: `before` letters before the cursor and `after` after it erased, then `text`
+/// typed.
+struct Typed {
+    before: u32,
+    after: u32,
+    text: String,
+}
 
 thread_local! {
     /// The app's window, once made.
@@ -136,6 +149,41 @@ pub(crate) fn safe_area(ui: &AppWindow) {
 #[unsafe(no_mangle)]
 extern "system" fn Java_nettai_app_NettaiActivity_safeArea<'local>(_env: EnvUnowned<'local>, _activity: JObject<'local>, left: jint, top: jint, right: jint, bottom: jint) {
     *SAFE_AREA.lock().unwrap_or_else(|e| e.into_inner()) = Some([left, top, right, bottom]);
+}
+
+/// `NettaiActivity.typed`: the soft keyboard's edit, kept for the app's thread, which this wakes.
+#[unsafe(no_mangle)]
+extern "system" fn Java_nettai_app_NettaiActivity_typed<'local>(mut env: EnvUnowned<'local>, _activity: JObject<'local>, before: jint, text: JString<'local>, after: jint) {
+    let text = env.with_env(|env| text.try_to_string(env)).resolve::<jni::errors::LogErrorAndDefault>();
+    let typed = Typed { before: before.max(0) as u32, after: after.max(0) as u32, text };
+    TYPED.lock().unwrap_or_else(|e| e.into_inner()).push(typed);
+    if let Err(why) = slint::invoke_from_event_loop(type_in) {
+        crate::errors::log("typing the soft keyboard's text", &why);
+    }
+}
+
+/// The soft keyboard's edits, in order, to the field being typed in, as Slint's keys: Backspace and Delete for the
+/// letters erased, then the text (Enter's is a line break). These aren't winit's keys, which the app's menus hear
+/// first (`App::key`): a field being edited takes the keys that type anyway, and an IME's text has no key.
+fn type_in() {
+    let edits = std::mem::take(&mut *TYPED.lock().unwrap_or_else(|e| e.into_inner()));
+    with_window(|ui| {
+        let press = |text: slint::SharedString| {
+            ui.window().dispatch_event(WindowEvent::KeyPressed { text: text.clone() });
+            ui.window().dispatch_event(WindowEvent::KeyReleased { text });
+        };
+        for edit in edits {
+            for _ in 0..edit.before {
+                press(Key::Backspace.into());
+            }
+            for _ in 0..edit.after {
+                press(Key::Delete.into());
+            }
+            if !edit.text.is_empty() {
+                press(edit.text.into());
+            }
+        }
+    });
 }
 
 fn with_window(f: impl FnOnce(&AppWindow)) {
