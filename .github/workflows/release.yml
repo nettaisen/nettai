@@ -1,7 +1,8 @@
 # The app's releases (packaging/; docs/app.md §19, "Packaging"): Velopack's, a Windows installer, the macOS app
 # zipped (Apple silicon's, Intel's, and the universal one the installs of 0.12.0 and before update through) and a Linux
 # AppImage, each with the update package and feed the installed app's updater reads (crates/nettai's updates.rs); and
-# Android's APK, which goes up only when it is signed with the release key (the job says how).
+# the phones' packages, unsigned (the user: "i don't have a signing key, just produce unsigned packages"): Android's
+# APK, `nettai.apk`, and iOS's IPA, `nettai.ipa`, which the player signs as they install them.
 # Run by hand on main (Actions → Release → Run workflow, or `gh workflow run release.yml --ref main`):
 # it packages the version Cargo.toml says, tags that commit `v<version>` and publishes the release, which the installed
 # apps see at once (the user: "you should just publish the release instead of drafting it"); with `publish` off, the
@@ -260,17 +261,12 @@ jobs:
           if-no-files-found: error
 
   # The APK for Android phones on arm64 (packaging/android/package.sh; docs/app.md §7), with the runner's SDK and
-  # NDK. Signed with the release key when the secrets hold one (ANDROID_KEYSTORE, the keystore's base64;
-  # ANDROID_KEYSTORE_PASSWORD; ANDROID_KEY_ALIAS), and then it goes up with the release; else with a debug key made
-  # here, as the run's artifact alone (an APK signed with one key doesn't install over one signed with another).
+  # NDK, unsigned: Android installs no APK unsigned, so the player signs it first (any key of their own, kept for the
+  # next one: an APK signed with one key doesn't install over one signed with another).
   android:
     name: Android APK
     needs: icons
     runs-on: ubuntu-24.04
-    outputs:
-      signed: ${{ steps.keystore.outputs.signed }}
-    env:
-      ANDROID_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
     steps:
       - uses: actions/checkout@v7
       - uses: actions/download-artifact@v8
@@ -298,28 +294,21 @@ jobs:
       # (crates/nettai/build.rs lists the packages offline: every one is fetched first.)
       - name: Fetch the crates
         run: cargo fetch --locked
-      - name: Signing key
-        id: keystore
-        if: env.ANDROID_KEYSTORE != ''
-        run: |
-          base64 --decode <<<"$ANDROID_KEYSTORE" > "$RUNNER_TEMP/nettai.keystore"
-          echo "NETTAI_ANDROID_KEYSTORE=$RUNNER_TEMP/nettai.keystore" >> "$GITHUB_ENV"
-          echo "signed=true" >> "$GITHUB_OUTPUT"
       - name: Package
         env:
           NETTAI_ICONS: ${{ runner.temp }}/icons
-          NETTAI_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          NETTAI_ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          NETTAI_ANDROID_UNSIGNED: "1"
         run: packaging/android/package.sh
       - uses: actions/upload-artifact@v7
         with:
           name: android-apk
           path: target/package/android/nettai-*.apk
+          if-no-files-found: error
 
-  # iOS's app (packaging/ios/package.sh): the Simulator's and a device's, as the run's artifacts alone. Neither goes
-  # into the release: the device build is unsigned (no Apple Developer account signs it yet), and nobody can install
-  # it as it is; the Simulator's runs on a Mac with Xcode. Named apart from the packages, which the release job
-  # takes by `nettai-*`.
+  # iOS's app (packaging/ios/package.sh): a device's, the IPA, unsigned, which goes up with the release (a
+  # sideloading tool, AltStore, SideStore or Sideloadly, signs it with the player's own Apple ID as it installs it);
+  # and the Simulator's, zipped, the run's artifact alone (it runs on a Mac with Xcode). Named apart from the
+  # packages, which the release job takes by `nettai-*`.
   ios:
     name: iOS app (${{ matrix.kind }})
     runs-on: macos-latest
@@ -328,8 +317,10 @@ jobs:
         include:
           - kind: simulator
             target: aarch64-apple-ios-sim
+            file: nettai-ios-simulator.zip
           - kind: device
             target: aarch64-apple-ios
+            file: nettai.ipa
     steps:
       - uses: actions/checkout@v7
       - name: Rust
@@ -351,13 +342,13 @@ jobs:
       - uses: actions/upload-artifact@v7
         with:
           name: ios-${{ matrix.kind }}
-          path: target/package/ios/${{ matrix.kind }}/nettai-ios-${{ matrix.kind }}.zip
+          path: target/package/ios/${{ matrix.kind }}/${{ matrix.file }}
           if-no-files-found: error
 
   release:
     name: Release
     if: inputs.publish && github.ref == 'refs/heads/main'
-    needs: [windows, macos, linux, android]
+    needs: [windows, macos, linux, android, ios]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -414,18 +405,23 @@ jobs:
             vpk upload github --outputDir releases --channel "$channel" --repoUrl "https://github.com/$GITHUB_REPOSITORY" \
               --tag "$TAG" --releaseName "nettai $VERSION" --merge
           done
-      # The APK, when it is signed with the release key.
+      # The phones' packages, unsigned: the APK and the IPA, named without the version as the desktop's are, so that
+      # the latest release's are always at the same address.
       - uses: actions/download-artifact@v8
-        if: needs.android.outputs.signed == 'true'
         with:
           name: android-apk
           path: android
-      - name: Upload the APK
-        if: needs.android.outputs.signed == 'true'
+      - uses: actions/download-artifact@v8
+        with:
+          name: ios-device
+          path: ios
+      - name: Upload the APK and the IPA
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ steps.tag.outputs.tag }}
-        run: gh release upload "$TAG" android/nettai-*.apk --repo "$GITHUB_REPOSITORY" --clobber
+        run: |
+          mv android/nettai-*.apk android/nettai.apk
+          gh release upload "$TAG" android/nettai.apk ios/nettai.ipa --repo "$GITHUB_REPOSITORY" --clobber
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}

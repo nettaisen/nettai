@@ -8,7 +8,7 @@
 # the license as assets; the launcher icon; the certificate verifier's component (rustls-platform-verifier's AAR,
 # pinned in verifier.sha256); then Gradle (the wrapper here: Gradle 9.8.1, its zip checked by its SHA-256; AGP 9.5.0,
 # build.gradle.kts) compiles the crates' Kotlin, adds GameActivity and AppCompat, shrinks the code (R8), packages it
-# all with the library stored uncompressed and aligned for 16 KB pages, and signs it.
+# all with the library stored uncompressed and aligned for 16 KB pages, and signs it (unless it is to be unsigned).
 #
 # ANDROID_HOME                the SDK, with platforms;android-36 and build-tools
 # ANDROID_NDK_HOME            the NDK, whose clang compiles the library's C (Luau, ring, GameActivity's) and links it
@@ -16,6 +16,8 @@
 # NETTAI_ANDROID_KEYSTORE     a keystore to sign with, its password in NETTAI_ANDROID_KEYSTORE_PASSWORD and the key's
 #                             alias in NETTAI_ANDROID_KEY_ALIAS; else a debug key made in target/package/android (an
 #                             APK signed with one key doesn't install over one signed with another)
+# NETTAI_ANDROID_UNSIGNED     1: the APK isn't signed at all, for whoever installs it to sign (the release's; Android
+#                             installs no APK unsigned)
 # NETTAI_ANDROID_DEBUGGABLE   1: the APK says it is debuggable (`adb shell run-as` reads and writes its files)
 # NETTAI_ICONS                a folder packaging/icons.sh made; else it is made here (needs librsvg and ImageMagick)
 # NETTAI_VERSION              the version, if set; else the workspace's
@@ -87,26 +89,31 @@ cp "$icons/png/256x256.png" "$out/res/mipmap-xxxhdpi/ic_launcher.png"
 IFS=. read -r major minor patch <<<"${version%%-*}"
 code=$((major * 1000000 + minor * 1000 + patch))
 
-# The keystore given, else a debug key made once.
-if [ -n "${NETTAI_ANDROID_KEYSTORE:-}" ]; then
-    keystore=$NETTAI_ANDROID_KEYSTORE
-    password=${NETTAI_ANDROID_KEYSTORE_PASSWORD:?set NETTAI_ANDROID_KEYSTORE_PASSWORD}
-    alias=${NETTAI_ANDROID_KEY_ALIAS:?set NETTAI_ANDROID_KEY_ALIAS}
+# Unsigned, or the keystore given, else a debug key made once.
+if [ -n "${NETTAI_ANDROID_UNSIGNED:-}" ]; then
+    signing=() built=nettai-release-unsigned.apk
 else
-    keystore=$out/debug.keystore password=android alias=nettai-debug
-    [ -f "$keystore" ] || "$JAVA_HOME/bin/keytool" -genkeypair -keystore "$keystore" -storepass "$password" \
-        -alias "$alias" -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=nettai debug" >/dev/null
+    if [ -n "${NETTAI_ANDROID_KEYSTORE:-}" ]; then
+        keystore=$NETTAI_ANDROID_KEYSTORE
+        password=${NETTAI_ANDROID_KEYSTORE_PASSWORD:?set NETTAI_ANDROID_KEYSTORE_PASSWORD}
+        alias=${NETTAI_ANDROID_KEY_ALIAS:?set NETTAI_ANDROID_KEY_ALIAS}
+    else
+        keystore=$out/debug.keystore password=android alias=nettai-debug
+        [ -f "$keystore" ] || "$JAVA_HOME/bin/keytool" -genkeypair -keystore "$keystore" -storepass "$password" \
+            -alias "$alias" -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=nettai debug" >/dev/null
+    fi
+    signing=(-Pnettai.keystore="$keystore" -Pnettai.keystorePassword="$password" -Pnettai.keyAlias="$alias")
+    built=nettai-release.apk
 fi
 
 # Gradle: its project cache and Kotlin's folder (sessions, error logs) with the rest of the build's, not in the
 # repository. Its last APK goes first: AGP otherwise writes the new one into it in place, which leaves the old
 # library's room behind and doubles the APK.
-rm -f "$out/gradle/outputs/apk/release/nettai-release.apk"
+rm -f "$out/gradle/outputs/apk/release/$built"
 "$root/packaging/android/gradlew" --project-dir "$root/packaging/android" --project-cache-dir "$out/gradle-cache" \
     --quiet assembleRelease -Pkotlin.project.persistent.dir="$out/kotlin" \
     -Pnettai.out="$out" -Pnettai.version="$version" -Pnettai.versionCode="$code" -Pnettai.verifier="$out/$aar" \
-    -Pnettai.keystore="$keystore" -Pnettai.keystorePassword="$password" -Pnettai.keyAlias="$alias" \
-    -Pnettai.debuggable="${NETTAI_ANDROID_DEBUGGABLE:-}"
+    ${signing[@]+"${signing[@]}"} -Pnettai.debuggable="${NETTAI_ANDROID_DEBUGGABLE:-}"
 apk=$out/nettai-$version.apk
-cp "$out/gradle/outputs/apk/release/nettai-release.apk" "$apk"
+cp "$out/gradle/outputs/apk/release/$built" "$apk"
 echo "$apk"

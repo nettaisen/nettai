@@ -1357,7 +1357,7 @@ with threads must be.
 
 ## 7. Android and iOS
 
-iOS isn't packaged yet (no Xcode project), and nothing has run on an iPhone or the simulator. Android has an APK,
+iOS is packaged by script (no Xcode project) and has run in the Simulator, not yet on an iPhone. Android has an APK,
 run in the emulator (below, "Android"). What builds: the whole app, for iOS (type-checked) and Android:
 
     cargo check --target aarch64-apple-ios -p nettai
@@ -1518,7 +1518,7 @@ what goes in, in `target/package/android`:
 - the build's notices and the license as assets, the launcher icon (packaging/icons.sh's 256 px);
 - rustls-platform-verifier's Android component, its AAR (pinned by hash in `verifier.sha256`, the version
   Cargo.lock has, downloaded from the crate's Maven archive);
-- a debug key when `NETTAI_ANDROID_KEYSTORE` names none,
+- a debug key when `NETTAI_ANDROID_KEYSTORE` names none (and none at all with `NETTAI_ANDROID_UNSIGNED=1`),
 
 then runs Gradle in packaging/android on them (their paths as `-P` properties): `gradlew`, the wrapper, fetches
 Gradle 9.8.1 and checks its zip's SHA-256; `build.gradle.kts` is AGP 9.5.0 with its own Kotlin (2.2.10), on a
@@ -1535,15 +1535,17 @@ JDK 17 (`JAVA_HOME`). Gradle
   GameActivity needs; the verifier's network security config);
 - stores the library uncompressed (Android maps it from the APK), aligned for 16 KB pages, and signs the APK with
   `NETTAI_ANDROID_KEYSTORE` (its password and key alias in `NETTAI_ANDROID_KEYSTORE_PASSWORD`,
-  `NETTAI_ANDROID_KEY_ALIAS`), else the debug key. `NETTAI_ANDROID_DEBUGGABLE=1` marks it debuggable (`adb shell
-  run-as`).
+  `NETTAI_ANDROID_KEY_ALIAS`), else the debug key; with `NETTAI_ANDROID_UNSIGNED=1` it signs nothing
+  (`nettai-release-unsigned.apk`: Android installs no APK unsigned, so whoever installs it signs it first).
+  `NETTAI_ANDROID_DEBUGGABLE=1` marks it debuggable (`adb shell run-as`).
 
 0.17.0's APK is 96.5 MB (the hand-built one with a NativeActivity was 96 MB), the library 94 MB of it.
 
 The release workflow's Android job builds it on Ubuntu with the runner's SDK and NDK (`sdkmanager` adds android-36
 and build-tools 36) and Temurin's JDK 17 (`actions/setup-java`, which also keeps Gradle's downloads between runs,
-keyed by the build's files): the APK is the run's artifact, and goes up with the release only when the secrets hold
-the release key (`ANDROID_KEYSTORE`, base64, with `ANDROID_KEYSTORE_PASSWORD` and `ANDROID_KEY_ALIAS`).
+keyed by the build's files), unsigned (`NETTAI_ANDROID_UNSIGNED=1`; the user: "i don't have a signing key, just
+produce unsigned packages"), and it goes up with the release as `nettai.apk`, the iOS job's IPA beside it as
+`nettai.ipa` (§19).
 
 **The emulator** (Apple silicon; the system image is 4.3 GB, an emulator 1.2 GB):
 
@@ -4316,15 +4318,18 @@ and appimagetool.
   in.
 - **Linux** (`packaging/linux/package.sh`): `nettai.AppImage`, vpk's, with its entry, desktop file and icon. The
   program needs the glibc it was built against or a later one, so it is built on an old distribution.
-- **iOS** (`packaging/ios/package.sh`, `Info.plist`): `nettai.app`, zipped (`nettai-ios-<kind>.zip`), for the
-  Simulator (`NETTAI_IOS=simulator`, aarch64-apple-ios-sim, signed ad hoc) or a device (`device`, aarch64-apple-ios:
-  unsigned, unless `IOS_SIGN_IDENTITY` and `IOS_PROVISIONING_PROFILE` name an Apple Developer account's identity and
-  profile, which sign it with the profile's entitlements). The program, Info.plist (bundle id `net.n1gp.nettai`;
+- **iOS** (`packaging/ios/package.sh`, `Info.plist`): `nettai.app`, for the Simulator (`NETTAI_IOS=simulator`,
+  aarch64-apple-ios-sim, signed ad hoc), zipped (`nettai-ios-simulator.zip`), or for a device (`device`,
+  aarch64-apple-ios) as an IPA (`nettai.ipa`: the bundle in `Payload/`, zipped), unsigned, which a sideloading tool
+  (AltStore, SideStore, Sideloadly) signs with the player's own Apple ID as it installs it; signed instead when
+  `IOS_SIGN_IDENTITY` and `IOS_PROVISIONING_PROFILE` name an Apple Developer account's identity and profile, with
+  the profile's entitlements. The program, Info.plist (bundle id `net.n1gp.nettai`;
   iOS 15 at least; full screen by `UILaunchScreen`; every orientation; the UIScene life cycle's manifest, iOS 27's
   SDK's requirement; the extended gamepad profile), the icons drawn full bleed from the logo at the sizes it names,
   LICENSE and THIRD-PARTY-NOTICES.txt. No ffmpeg (iOS exports with VideoToolbox) and no content (downloaded, as
-  every package's is). No Xcode project: the bundle is the program and its files. The release workflow makes both
-  as the run's artifacts, not the release's (§7).
+  every package's is). No Xcode project: the bundle is the program and its files. The release workflow makes both:
+  the IPA goes up with the release, the Simulator's zip is the run's artifact alone.
+- **Android** (`packaging/android/package.sh`; §7): `nettai.apk` in the release, unsigned.
 
 **The bundled ffmpeg.** The user: "i think you also need like the equivalent of
 https://github.com/tangobattle/ffmpeg-build for encoding and bundle ffmpeg with it. it should support whatever

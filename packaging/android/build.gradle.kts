@@ -6,7 +6,8 @@
 //   nettai.version      the version, and nettai.versionCode its number (0.17.0: 17000)
 //   nettai.verifier     rustls-platform-verifier's AAR (its Kotlin, which the certificate checks call through JNI,
 //                       and its network security config), pinned by package.sh
-//   nettai.keystore     the keystore to sign with, nettai.keystorePassword its password and nettai.keyAlias the key's
+//   nettai.keystore     the keystore to sign with, nettai.keystorePassword its password and nettai.keyAlias the key's;
+//                       none: the APK is unsigned (nettai-release-unsigned.apk), for whoever installs it to sign
 //   nettai.debuggable   1: the APK says it is debuggable (`adb shell run-as` reads and writes its files)
 //
 // The Kotlin is every crate's android/ folder's (the app's NettaiActivity and NettaiAwake, nettai-dialogs' NettaiFiles,
@@ -20,6 +21,7 @@ plugins {
 fun setting(name: String): String = providers.gradleProperty(name).orNull ?: error("package.sh gives -P$name")
 
 val out = file(setting("nettai.out"))
+val keystore = providers.gradleProperty("nettai.keystore").orNull
 val crates = rootDir.resolve("../../crates").canonicalFile
 
 layout.buildDirectory.set(out.resolve("gradle"))
@@ -46,11 +48,13 @@ android {
     }
 
     signingConfigs {
-        create("nettai") {
-            storeFile = file(setting("nettai.keystore"))
-            storePassword = setting("nettai.keystorePassword")
-            keyAlias = setting("nettai.keyAlias")
-            keyPassword = setting("nettai.keystorePassword")
+        if (keystore != null) {
+            create("nettai") {
+                storeFile = file(keystore)
+                storePassword = setting("nettai.keystorePassword")
+                keyAlias = setting("nettai.keyAlias")
+                keyPassword = setting("nettai.keystorePassword")
+            }
         }
     }
 
@@ -60,7 +64,9 @@ android {
             // (And the resources nothing uses: most of AppCompat's.)
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs["nettai"]
+            if (keystore != null) {
+                signingConfig = signingConfigs["nettai"]
+            }
             isDebuggable = providers.gradleProperty("nettai.debuggable").orNull == "1"
         }
     }
