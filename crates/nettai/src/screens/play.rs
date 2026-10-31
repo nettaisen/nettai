@@ -642,7 +642,7 @@ impl Play {
         }
         self.show_card(shell);
         self.show(shell);
-        if !shell.scale.phone {
+        if !shell.scale.handheld() {
             self.train(shell);
         }
     }
@@ -658,7 +658,7 @@ impl Play {
         // address) is the invite's place in the lobby to copy (the user: "the stop hosting button should be in the
         // place of the exit button on the regular practice menu. get rid of copy code"). Where the session fills the
         // window and covers the lobby, a phone, one row at the top stops it, back to the lobby.
-        let full = shell.scale.phone;
+        let full = shell.scale.handheld();
         let direct = self.session.as_ref().is_some_and(|s| s.way == Way::Host);
         let view = shell.ui();
         let view = view.global::<PlayView>();
@@ -989,7 +989,7 @@ impl Play {
         shell.sound.play(Cue::Pick);
         self.rules = RulesPage::open(shell, kit, shown, !host, &back);
         // (A page that didn't open gives the wait its practice battle back.)
-        if self.rules.is_none() && matches!(self.stage, Stage::Waiting) && !shell.scale.phone {
+        if self.rules.is_none() && matches!(self.stage, Stage::Waiting) && !shell.scale.handheld() {
             self.train(shell);
         }
     }
@@ -999,7 +999,7 @@ impl Play {
     fn close_rules(&mut self, shell: &mut Shell) {
         if let Some(page) = self.rules.take() {
             page.close(shell);
-            if matches!(self.stage, Stage::Waiting) && !shell.scale.phone {
+            if matches!(self.stage, Stage::Waiting) && !shell.scale.handheld() {
                 self.train(shell);
             }
         }
@@ -2168,7 +2168,7 @@ impl Screen for Play {
         let ui = shell.ui();
         let view = ui.global::<PlayView>();
         // (As the overview shows: a readable build chosen, on the builds with nothing open over them.)
-        let shown = self.part() == PlayPart::Builds && !shell.scale.phone && view.get_chosen() >= 0 && view.get_readable();
+        let shown = self.part() == PlayPart::Builds && !shell.scale.handheld() && view.get_chosen() >= 0 && view.get_readable();
         let over = self.naming.is_some() || self.direct.is_some() || self.boxes.is_some();
         if !shown || over || view.get_sheet_span() <= 0.5 {
             return None;

@@ -299,6 +299,108 @@ component BuildBox inherits Rectangle {
     }
 }
 
+// The chosen build on a phone held sideways (docs/design/app-ui.md §2.103), in the overview's place, which has no
+// room there: its face, its name over its navi with its choices' presets, its forms, and what it holds in two lines
+// (its HP, its folder's chips and the ruleset it is made for; its abilities). One that can't be read has its name and
+// why, in the error red. EDIT and ⋯ are the screen's, at its top right in the room `tools` keeps for them.
+component BuildCard inherits Rectangle {
+    in property <BuildEntry> build;
+    in property <BuildSheet> sheet;
+    in property <bool> usable;
+    in property <length> tools;
+    property <length> pad: 14px;
+    property <length> words-x: root.usable ? root.pad + 76px : root.pad;
+    property <string> hp: root.sheet.stats.length == 0 ? "" : "\{@tr("HP")} \{root.sheet.stats[0].value}";
+    property <string> chips: "\{@tr("Chips")} \{root.sheet.count}";
+    property <string> ruleset: root.build.ruleset == "" ? "" : root.build.ruleset-missing ? @tr("{} (missing)", root.build.ruleset) : root.build.ruleset;
+    PanelBack { }
+
+    Image {
+        x: root.pad;
+        y: root.pad + 2px;
+        width: 64px;
+        height: 32px;
+        visible: root.usable;
+        source: root.sheet.face;
+        image-rendering: pixelated;
+    }
+
+    Value {
+        x: root.words-x;
+        y: 12px;
+        width: max(0px, parent.width - self.x - root.tools - 12px);
+        height: 24px;
+        text: root.build.name;
+        font-size: 18px;
+        font-weight: 900;
+    }
+
+    Text {
+        x: root.words-x;
+        y: 36px;
+        width: max(0px, parent.width - self.x - root.tools - 12px);
+        height: 18px;
+        text: !root.usable ? root.build.status : root.sheet.presets == "" ? root.sheet.navi : @tr("{} · {}", root.sheet.navi, root.sheet.presets);
+        color: root.usable ? Theme.muted : Theme.bad;
+        font-family: Theme.body;
+        font-size: 12px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    // Its forms: their faces, each with its version's mark under it (as the overview's), as many as the row holds.
+    for form[i] in root.sheet.forms: Rectangle {
+        x: root.pad + i * 38px;
+        y: 62px;
+        width: 32px;
+        height: 20px;
+        visible: root.usable && self.x + 32px <= root.width - root.pad;
+        Image {
+            x: 0;
+            y: 0;
+            width: 32px;
+            height: 16px;
+            source: form.face;
+            image-rendering: pixelated;
+        }
+
+        Rectangle {
+            y: 18px;
+            height: 2px;
+            visible: form.version.text != "";
+            background: form.version.tone;
+        }
+    }
+
+    Text {
+        x: root.pad;
+        y: 88px;
+        width: parent.width - 2 * root.pad;
+        height: 18px;
+        visible: root.usable;
+        text: root.ruleset == "" ? @tr("{} · {}", root.hp, root.chips) : @tr("{} · {}", @tr("{} · {}", root.hp, root.chips), root.ruleset);
+        color: Theme.text;
+        font-family: Theme.body;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Text {
+        x: root.pad;
+        y: 110px;
+        width: parent.width - 2 * root.pad;
+        height: 18px;
+        visible: root.usable;
+        text: "\{@tr("Abilities")} \{root.sheet.abilities.length == 0 ? @tr("None") : I18n.join(root.sheet.abilities)}";
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
 // One of the code's six boxes, for a pad: Up and Down go through its characters, Left and Right to the boxes
 // beside it. (To the app's focus it is a list whose rows are all in one place, `count` of them: `Nav.index` is
 // the character it is on.)
@@ -415,7 +517,11 @@ component LobbyCard inherits Rectangle {
     in property <bool> ready;
     in property <int> ready-seq;
     in property <bool> marked: true;
-    property <length> pad: Theme.phone ? 16px : 24px;
+    property <length> pad: Theme.handheld ? 16px : 24px;
+    // (A phone held sideways has the two side by side, 94 tall: its lines closer.)
+    property <length> name-y: Theme.phone ? root.pad + 18px : Theme.sideways ? 22px : root.pad + 22px;
+    property <length> build-y: Theme.phone ? root.pad + 52px : Theme.sideways ? 50px : root.pad + 66px;
+    property <length> navi-y: Theme.phone ? root.pad + 78px : Theme.sideways ? 72px : root.pad + 95px;
     stamp := Pulse {
         seq: root.ready-seq;
         duration: Theme.settle;
@@ -428,7 +534,7 @@ component LobbyCard inherits Rectangle {
 
     Label {
         x: root.pad;
-        y: root.pad;
+        y: Theme.sideways ? 8px : root.pad;
         width: parent.width - 2 * root.pad;
         height: 14px;
         text: root.role;
@@ -436,31 +542,31 @@ component LobbyCard inherits Rectangle {
 
     Value {
         x: root.pad;
-        y: root.pad + (Theme.phone ? 18px : 22px);
+        y: root.name-y;
         width: parent.width - 2 * root.pad;
-        height: Theme.phone ? 28px : 36px;
+        height: Theme.handheld ? 28px : 36px;
         text: root.name;
-        font-size: Theme.phone ? 22px : 28px;
+        font-size: Theme.handheld ? 22px : 28px;
         font-weight: 900;
     }
 
     HorizontalLayout {
         x: root.pad;
-        y: root.pad + (Theme.phone ? 52px : 66px);
-        width: parent.width - 2 * root.pad - (Theme.phone ? mark.width + 12px : 0px);
+        y: root.build-y;
+        width: parent.width - 2 * root.pad - (Theme.handheld ? mark.width + 12px : 0px);
         height: 22px;
         spacing: 8px;
         alignment: start;
         Value {
             text: root.build.name;
-            font-size: Theme.phone ? 14px : 16px;
+            font-size: Theme.handheld ? 14px : 16px;
         }
     }
 
     Value {
         x: root.pad;
-        y: root.pad + (Theme.phone ? 78px : 95px);
-        width: parent.width - 2 * root.pad - (Theme.phone ? mark.width + 12px : 0px);
+        y: root.navi-y;
+        width: parent.width - 2 * root.pad - (Theme.handheld ? mark.width + 12px : 0px);
         height: 16px;
         text: root.build.navi;
         color: Theme.muted;
@@ -504,7 +610,9 @@ component LobbyCard inherits Rectangle {
 // it copies, and that they are waited for. (On a phone, in a card's 126: the words beside COPY, the line under
 // them left out.)
 component WaitCard inherits Rectangle {
-    property <length> pad: Theme.phone ? 16px : 24px;
+    property <length> pad: Theme.handheld ? 16px : 24px;
+    // (On a phone held sideways, in a card's 94: COPY at the top right, the words under the code.)
+    property <bool> short: Theme.sideways;
     PanelBack {
         side: 2;
         accent: false;
@@ -512,7 +620,7 @@ component WaitCard inherits Rectangle {
 
     Label {
         x: root.pad;
-        y: Theme.phone ? 12px : root.pad;
+        y: Theme.phone ? 12px : root.short ? 8px : root.pad;
         width: parent.width - 2 * root.pad;
         height: 14px;
         text: PlayView.invite-direct ? I18n.upper(@tr("Your address")) : I18n.upper(@tr("Invite code"));
@@ -520,17 +628,17 @@ component WaitCard inherits Rectangle {
 
     Mono {
         x: root.pad;
-        y: Theme.phone ? 28px : root.pad + 22px;
-        width: parent.width - 2 * root.pad;
-        height: Theme.phone ? 48px : 64px;
+        y: Theme.phone ? 28px : root.short ? 22px : root.pad + 22px;
+        width: parent.width - 2 * root.pad - (root.short ? copy.width + 12px : 0px);
+        height: Theme.phone ? 48px : root.short ? 40px : 64px;
         text: PlayView.invite;
-        font-size: PlayView.invite-direct ? (Theme.phone ? 22px : 28px) : (Theme.phone ? 40px : 56px);
+        font-size: PlayView.invite-direct ? (Theme.handheld ? 20px : 28px) : (Theme.phone ? 40px : root.short ? 32px : 56px);
         letter-spacing: PlayView.invite-direct ? 0px : 2.2px;
     }
 
     copy := Button {
-        x: root.pad;
-        y: Theme.phone ? 80px : root.pad + 98px;
+        x: root.short ? parent.width - root.pad - self.width : root.pad;
+        y: Theme.phone ? 80px : root.short ? 12px : root.pad + 98px;
         nav: "wait.copy";
         text: PlayView.invite-direct ? I18n.upper(@tr("Copy address")) : I18n.upper(@tr("Copy code"));
     }
@@ -549,14 +657,15 @@ component WaitCard inherits Rectangle {
         x: root.pad;
         y: root.pad + 162px;
         width: parent.width - 2 * root.pad;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
-    // That the other player is waited for: a slow pulse and its words (on a phone beside COPY).
+    // That the other player is waited for: a slow pulse and its words (on a phone beside COPY; held sideways under
+    // the code).
     property <length> waited-x: Theme.phone ? copy.x + copy.width + 16px : root.pad;
-    property <length> waited-y: Theme.phone ? copy.y + (copy.height - 20px) / 2 : root.pad + 182px;
+    property <length> waited-y: Theme.phone ? copy.y + (copy.height - 20px) / 2 : root.short ? 66px : root.pad + 182px;
     Rectangle {
         x: root.waited-x;
         y: root.waited-y + 5px;
@@ -580,7 +689,7 @@ component WaitCard inherits Rectangle {
         y: root.pad + 208px;
         width: parent.width - 2 * root.pad;
         height: 20px;
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         text: PlayView.invite-direct ? @tr("Send this address to your opponent.") : @tr("The lobby opens when they join.");
     }
 }
@@ -591,13 +700,15 @@ component WaitCard inherits Rectangle {
 // connection, is apart from them (`ConnectionFacts`).
 component MatchFacts inherits Rectangle {
     // The one row: each setting's name over its control, a cell as wide as the wider of the two, so the cells fit
-    // whatever the language. Where each cell starts, and the row's width.
-    property <length> gap: 41px;
-    property <length> x1: 24px;
+    // whatever the language. Where each cell starts, and the row's width. (On a phone held sideways closer, its
+    // steppers' values and the select narrower: the window's width holds it.)
+    property <length> gap: Theme.sideways ? 29px : 41px;
+    property <length> x1: Theme.sideways ? 14px : 24px;
+    property <length> value-width: Theme.sideways ? 52px : 84px;
     property <length> x2: self.x1 + max(first-to-label.width, first-to.width) + self.gap;
     property <length> x3: self.x2 + max(ruleset-label.width, ruleset.width + 8px + rules.width) + self.gap;
     property <length> x4: self.x3 + max(open-label.width, open.width) + self.gap;
-    out property <length> natural-width: self.x4 + max(custom-time-label.width, custom-time.width) + 24px;
+    out property <length> natural-width: self.x4 + max(custom-time-label.width, custom-time.width) + root.x1;
     // On a phone, a line each: the name, and the control at the right.
     property <length> line: 44px;
     // A name's place and a control's, in the row.
@@ -626,13 +737,13 @@ component MatchFacts inherits Rectangle {
         y: Theme.phone ? (root.line - self.height) / 2 : root.control-y + (root.control-height - self.height) / 2;
         nav: "lobby.first-to";
         value: @tr("first to" => "{}", PlayView.first-to);
-        value-width: 84px;
+        value-width: root.value-width;
         numeric: true;
         enabled: PlayView.host;
     }
 
     Rectangle {
-        x: root.x2 - 21px;
+        x: root.x2 - (root.gap + 1px) / 2;
         y: 14px;
         width: 1px;
         height: 50px;
@@ -654,7 +765,7 @@ component MatchFacts inherits Rectangle {
     ruleset := Select {
         x: Theme.phone ? parent.width - rules.width - 8px - self.width : root.x2;
         y: Theme.phone ? root.line + (root.line - self.height) / 2 : root.control-y;
-        width: 176px;
+        width: Theme.sideways ? 150px : 176px;
         height: 36px;
         nav: "lobby.ruleset";
         value: PlayView.ruleset;
@@ -673,7 +784,7 @@ component MatchFacts inherits Rectangle {
     }
 
     Rectangle {
-        x: root.x3 - 21px;
+        x: root.x3 - (root.gap + 1px) / 2;
         y: 14px;
         width: 1px;
         height: 50px;
@@ -702,7 +813,7 @@ component MatchFacts inherits Rectangle {
     }
 
     Rectangle {
-        x: root.x4 - 21px;
+        x: root.x4 - (root.gap + 1px) / 2;
         y: 14px;
         width: 1px;
         height: 50px;
@@ -725,7 +836,7 @@ component MatchFacts inherits Rectangle {
         y: Theme.phone ? 3 * root.line + (root.line - self.height) / 2 : root.control-y + (root.control-height - self.height) / 2;
         nav: "lobby.custom-time";
         value: PlayView.custom-time == 0 ? "∞" : @tr("custom timer" => "{}s", PlayView.custom-time);
-        value-width: 84px;
+        value-width: root.value-width;
         enabled: PlayView.host;
     }
 }
@@ -735,10 +846,10 @@ component MatchFacts inherits Rectangle {
 // things"): the input delay (the Settings' value, kept as it is changed; the other player never sees it) and the
 // connection's bars and round trip (nothing while nobody has come). As `MatchFacts`: a row, or a line each.
 component ConnectionFacts inherits Rectangle {
-    property <length> gap: 41px;
-    property <length> x1: 24px;
+    property <length> gap: Theme.sideways ? 29px : 41px;
+    property <length> x1: Theme.sideways ? 14px : 24px;
     property <length> x2: self.x1 + max(delay-label.width, delay.width) + self.gap;
-    out property <length> natural-width: self.x2 + max(ping-label.width, bars.width + 10px + ping.width) + 24px;
+    out property <length> natural-width: self.x2 + max(ping-label.width, bars.width + 10px + ping.width) + root.x1;
     property <length> line: 44px;
     property <length> name-y: 10px;
     property <length> name-height: 18px;
@@ -769,7 +880,7 @@ component ConnectionFacts inherits Rectangle {
     }
 
     Rectangle {
-        x: root.x2 - 21px;
+        x: root.x2 - (root.gap + 1px) / 2;
         y: 14px;
         width: 1px;
         height: 50px;
@@ -826,10 +937,19 @@ export component PlayScreen inherits Page {
     // over the list, the left column); the chosen build (its overview, the right column, with PRACTICE, EDIT and ⋯
     // in its header); and the ways to play it online, one row of controls under the overview (HOST, then JOIN's
     // field and JOIN, and DIRECT CONNECT at its right edge; the reserved line under them). On a phone one column
-    // in the same order.
-    property <length> list-width: 400px;
-    property <length> side-x: root.list-width + 24px;
+    // in the same order. On a phone held sideways (docs/design/app-ui.md §2.103) the list in a panel at the left; at
+    // the right the chosen build's card (`BuildCard`, the overview having no room), HOST 52 tall under it, the code
+    // and JOIN under that, and DIRECT CONNECT at the foot's right with the reserved line beside it.
+    property <length> list-width: Theme.sideways ? 290px : 400px;
+    property <length> side-x: root.list-width + (Theme.sideways ? 12px : 24px);
     property <length> side-width: self.body-width - root.side-x;
+    // (Sideways: the card's height, and where HOST's row, the code's and the foot's are.)
+    property <length> card-height: 140px;
+    property <length> host-y: Theme.sideways ? root.card-height + 12px : root.row-y;
+    property <length> code-y: root.host-y + 52px + 12px;
+    property <length> foot-y: root.code-y + 40px + 8px;
+    // (The reserved line: sideways beside DIRECT CONNECT, in the middle of the foot's 40.)
+    property <length> line-y: Theme.sideways ? root.foot-y + 11px : root.message-y;
     // The row (the controls' height) and the reserved line under it at the body's foot; the list and the
     // overview grow down to 16 over the row (564 at the reference window: the wide sheet's 540 at least).
     property <length> message-y: Theme.phone ? 356px : self.body-height - 18px;
@@ -840,15 +960,18 @@ export component PlayScreen inherits Page {
     property <bool> usable: PlayView.chosen >= 0 && !root.none && PlayView.readable;
     // The lobby (from the moment an invite is out): the two places, the settings, the buttons, the line. A
     // desktop's places are as tall as the wait's practice battle at twice the battle's size (480 by 320), 80
-    // apart (VS between them); a phone's are cards, one over the other.
-    property <length> place-width: Theme.phone ? self.body-width : 480px;
-    property <length> place-height: Theme.phone ? 126px : 320px;
-    property <length> lobby-top: Theme.phone ? 0px : (self.body-height - 548px) / 2;
-    property <length> lobby-left: (self.body-width - 2 * self.place-width - 80px) / 2;
-    property <length> their-x: Theme.phone ? 0px : self.lobby-left + self.place-width + 80px;
+    // apart (VS between them); a phone's are cards, one over the other. Held sideways (docs/design/app-ui.md §2.103)
+    // the cards are side by side, 94 tall, 54 apart (VS between them); the match's settings under them in one row; and
+    // at the foot this player's connection with the buttons beside it, 52 tall, the reserved line over them.
+    property <length> vs-width: Theme.sideways ? 54px : 80px;
+    property <length> place-width: Theme.phone ? self.body-width : Theme.sideways ? (self.body-width - self.vs-width) / 2 : 480px;
+    property <length> place-height: Theme.phone ? 126px : Theme.sideways ? 94px : 320px;
+    property <length> lobby-top: Theme.handheld ? 0px : (self.body-height - 548px) / 2;
+    property <length> lobby-left: (self.body-width - 2 * self.place-width - self.vs-width) / 2;
+    property <length> their-x: Theme.phone ? 0px : self.lobby-left + self.place-width + self.vs-width;
     property <length> their-y: Theme.phone ? self.place-height + 8px : self.lobby-top;
-    property <length> facts-top: Theme.phone ? 2 * self.place-height + 20px : self.lobby-top + self.place-height + 24px;
-    property <length> buttons-top: Theme.phone ? self.facts-top + 308px : self.facts-top + 124px;
+    property <length> facts-top: Theme.phone ? 2 * self.place-height + 20px : Theme.sideways ? self.place-height + 8px : self.lobby-top + self.place-height + 24px;
+    property <length> buttons-top: Theme.phone ? self.facts-top + 308px : Theme.sideways ? self.body-height - 52px : self.facts-top + 124px;
     title: PlayView.part == PlayPart.lobby ? I18n.upper(@tr("Lobby")) : I18n.upper(@tr("Play"));
     back: PlayView.part == PlayPart.builds ? I18n.upper(@tr("Menu")) : I18n.upper(@tr("Play"));
     hints: PlayView.part == PlayPart.lobby ? (PlayView.waiting ? root.hints-waiting : root.hints-lobby) : root.hints-builds;
@@ -868,9 +991,18 @@ export component PlayScreen inherits Page {
         // on a row opens its menu); on a phone the chosen one in a box, which opens them as a sheet.
         Arrive {
             order: 0;
-            Button {
+            PanelBack {
                 x: 0;
                 y: 0;
+                width: root.list-width;
+                height: root.body-height;
+                visible: Theme.sideways;
+                accent: false;
+            }
+
+            Button {
+                x: Theme.sideways ? 12px : 0px;
+                y: Theme.sideways ? 12px : 0px;
                 width: Theme.phone ? root.body-width : self.natural-width;
                 nav: "new";
                 text: I18n.upper(@tr("+ New build"));
@@ -878,10 +1010,10 @@ export component PlayScreen inherits Page {
             }
 
             list := ListView {
-                x: 0;
-                y: 52px;
-                width: root.list-width;
-                height: root.sheet-height - self.y;
+                x: Theme.sideways ? 4px : 0px;
+                y: Theme.sideways ? 64px : 52px;
+                width: root.list-width - (Theme.sideways ? 8px : 0px);
+                height: Theme.sideways ? root.body-height - self.y - 4px : root.sheet-height - self.y;
                 visible: !Theme.phone;
                 nav: "builds";
                 count: Theme.phone ? 0 : PlayView.builds.length;
@@ -924,16 +1056,16 @@ export component PlayScreen inherits Page {
                 y: 0;
                 width: root.side-width;
                 height: root.sheet-height;
-                visible: !Theme.phone && !root.none && !root.usable;
+                visible: !Theme.handheld && !root.none && !root.usable;
             }
 
             BuildOverview {
                 x: root.side-x;
                 y: 0;
                 // (On a phone it isn't shown, and is given the wide sheet's least width: its texts fit there.)
-                width: Theme.phone ? 620px : root.side-width;
-                height: Theme.phone ? self.sheet-height : root.sheet-height;
-                visible: !Theme.phone && root.usable && PlayView.sheet.name != "";
+                width: Theme.handheld ? 620px : root.side-width;
+                height: Theme.handheld ? self.sheet-height : root.sheet-height;
+                visible: !Theme.handheld && root.usable && PlayView.sheet.name != "";
                 build: PlayView.sheet;
                 tools: edit.width + 8px + root.more-width;
                 scroll <=> PlayView.sheet-y;
@@ -949,9 +1081,23 @@ export component PlayScreen inherits Page {
                 }
             }
 
+            BuildCard {
+                x: root.side-x;
+                y: 0;
+                width: root.side-width;
+                height: root.card-height;
+                visible: Theme.sideways && !root.none;
+                build: PlayView.build;
+                sheet: PlayView.sheet;
+                usable: root.usable && PlayView.sheet.name != "";
+                tools: root.body-width - edit.x;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+
             edit := Button {
                 x: Theme.phone ? 0px : more.x - 8px - self.width;
-                y: Theme.phone ? 136px : 24px;
+                y: Theme.phone ? 136px : Theme.sideways ? 12px : 24px;
                 width: Theme.phone ? root.body-width - 8px - root.more-width : self.natural-width;
                 visible: !root.none;
                 nav: "edit";
@@ -960,7 +1106,7 @@ export component PlayScreen inherits Page {
             }
 
             more := Button {
-                x: Theme.phone ? root.body-width - self.width : root.body-width - 16px - self.width;
+                x: Theme.phone ? root.body-width - self.width : root.body-width - (Theme.sideways ? 12px : 16px) - self.width;
                 y: edit.y;
                 width: root.more-width;
                 visible: !root.none;
@@ -1009,19 +1155,19 @@ export component PlayScreen inherits Page {
             order: 2;
             host := Button {
                 x: Theme.phone ? 0px : root.side-x;
-                y: root.row-y;
-                width: Theme.phone ? root.body-width : self.natural-width;
+                y: root.host-y;
+                width: Theme.phone ? root.body-width : Theme.sideways ? root.side-width : self.natural-width;
                 nav: "invite";
                 text: I18n.upper(@tr("Host"));
                 kind: root.none ? ButtonKind.normal : ButtonKind.main;
-                big: Theme.phone;
+                big: Theme.handheld;
             }
 
             code := Field {
-                x: Theme.phone ? 0px : host.x + host.width + 24px;
-                y: Theme.phone ? host.y + host.height + 12px : root.row-y;
+                x: Theme.phone ? 0px : Theme.sideways ? root.side-x : host.x + host.width + 24px;
+                y: Theme.phone ? host.y + host.height + 12px : Theme.sideways ? root.code-y : root.row-y;
                 // (A code's six characters in threes, in the code's type; on a phone what JOIN leaves.)
-                width: Theme.phone ? root.body-width - 8px - join.width : 208px;
+                width: Theme.phone ? root.body-width - 8px - join.width : Theme.sideways ? root.side-width - 8px - join.width : 208px;
                 nav: "code";
                 text: PlayView.code;
                 placeholder: @tr("Invite code");
@@ -1039,7 +1185,7 @@ export component PlayScreen inherits Page {
             // (A browser has no sockets of its own: links are WebRTC's alone, through the signaling server.)
             if !Theme.web: Button {
                 x: root.body-width - self.width;
-                y: Theme.phone ? code.y + code.height + 12px : root.row-y;
+                y: Theme.phone ? code.y + code.height + 12px : Theme.sideways ? root.foot-y : root.row-y;
                 width: Theme.phone ? root.body-width : self.natural-width;
                 nav: "direct";
                 // (Less than HOST and JOIN: the user, "direct connect should be deemphasized".)
@@ -1049,14 +1195,14 @@ export component PlayScreen inherits Page {
 
             ProblemMark {
                 x: Theme.phone ? 0px : root.side-x;
-                y: root.message-y + (Theme.phone ? 6px : 6.5px);
+                y: root.line-y + (Theme.phone ? 6px : 6.5px);
                 visible: PlayView.message-problem && PlayView.message != "";
             }
 
             Note {
                 x: (Theme.phone ? 0px : root.side-x) + (PlayView.message-problem ? 9px : 0px);
-                y: root.message-y;
-                width: (Theme.phone ? root.body-width : root.side-width) - (PlayView.message-problem ? 9px : 0px);
+                y: root.line-y;
+                width: (Theme.phone ? root.body-width : Theme.sideways ? root.side-width - 12px - 160px : root.side-width) - (PlayView.message-problem ? 9px : 0px);
                 height: Theme.phone ? 40px : 18px;
                 vertical-alignment: Theme.phone ? top : center;
                 text: PlayView.message;
@@ -1088,7 +1234,7 @@ export component PlayScreen inherits Page {
 
         Arrive {
             order: 0;
-            if !PlayView.waiting || Theme.phone: LobbyCard {
+            if !PlayView.waiting || Theme.handheld: LobbyCard {
                 x: Theme.phone ? 0px : root.lobby-left;
                 y: root.lobby-top;
                 width: root.place-width;
@@ -1103,7 +1249,7 @@ export component PlayScreen inherits Page {
             }
 
             // The wait's practice battle, at twice the battle's size, in this player's place.
-            if PlayView.waiting && !Theme.phone: Rectangle {
+            if PlayView.waiting && !Theme.handheld: Rectangle {
                 x: root.lobby-left;
                 y: root.lobby-top;
                 width: root.place-width;
@@ -1138,7 +1284,7 @@ export component PlayScreen inherits Page {
             Text {
                 x: root.lobby-left + root.place-width;
                 y: root.lobby-top;
-                width: 80px;
+                width: root.vs-width;
                 height: root.place-height;
                 visible: !Theme.phone;
                 text: @tr("VS");
@@ -1189,24 +1335,24 @@ export component PlayScreen inherits Page {
             }
 
             match-facts := MatchFacts {
-                x: Theme.phone ? 0px : (root.body-width - self.natural-width - 24px - connection.natural-width) / 2;
+                x: Theme.phone ? 0px : Theme.sideways ? 0px : (root.body-width - self.natural-width - 24px - connection.natural-width) / 2;
                 y: Theme.phone ? root.facts-top : root.facts-top + 22px;
-                width: Theme.phone ? root.body-width : self.natural-width;
+                width: Theme.phone ? root.body-width : Theme.sideways ? max(self.natural-width, root.body-width) : self.natural-width;
 
                 Rectangle { }  // (Copied in: docs/app.md §14.)
             }
 
             Label {
                 x: connection.x;
-                y: Theme.phone ? match-facts.y + match-facts.height + 12px : root.facts-top;
+                y: Theme.phone ? match-facts.y + match-facts.height + 12px : Theme.sideways ? match-facts.y + match-facts.height + 8px : root.facts-top;
                 width: Theme.phone ? root.body-width : connection.width;
                 height: 14px;
                 text: I18n.upper(@tr("Your connection"));
             }
 
             connection := ConnectionFacts {
-                x: Theme.phone ? 0px : match-facts.x + match-facts.width + 24px;
-                y: Theme.phone ? match-facts.y + match-facts.height + 32px : match-facts.y;
+                x: Theme.phone ? 0px : Theme.sideways ? 0px : match-facts.x + match-facts.width + 24px;
+                y: Theme.phone ? match-facts.y + match-facts.height + 32px : Theme.sideways ? root.body-height - self.height : match-facts.y;
                 width: Theme.phone ? root.body-width : self.natural-width;
 
                 Rectangle { }  // (Copied in: docs/app.md §14.)
@@ -1216,31 +1362,33 @@ export component PlayScreen inherits Page {
         Arrive {
             order: 2;
             // With the other player: READY, CHANGE BUILD and LEAVE. (On a phone READY the column's width, the
-            // other two half of it each under it.)
+            // other two half of it each under it; held sideways the three beside the connection, READY taking what
+            // the other two leave, each 52 tall.)
             ready := Button {
-                x: Theme.phone ? 0px : (root.body-width - self.width - change.width - leave.width - 24px) / 2;
+                x: Theme.phone ? 0px : Theme.sideways ? (connection.width + 14px) : (root.body-width - self.width - change.width - leave.width - 24px) / 2;
                 y: root.buttons-top;
-                width: Theme.phone ? root.body-width : 184px;
+                width: Theme.phone ? root.body-width : Theme.sideways ? root.body-width - (connection.width + 14px) - change.width - leave.width - 16px : 184px;
                 visible: !PlayView.waiting;
                 enabled: !PlayView.waiting;
                 nav: "lobby.ready";
                 text: PlayView.ready ? I18n.upper(@tr("Not ready")) : I18n.upper(@tr("Ready"));
                 kind: ButtonKind.main;
-                big: Theme.phone;
+                big: Theme.handheld;
             }
 
             change := Button {
-                x: Theme.phone ? 0px : ready.x + ready.width + 12px;
+                x: Theme.phone ? 0px : ready.x + ready.width + (Theme.sideways ? 8px : 12px);
                 y: Theme.phone ? root.buttons-top + 60px : root.buttons-top;
                 width: Theme.phone ? (root.body-width - 8px) / 2 : self.natural-width;
                 visible: !PlayView.waiting;
                 enabled: !PlayView.waiting;
                 nav: "lobby.change";
                 text: I18n.upper(@tr("Change build"));
+                big: Theme.sideways;
             }
 
             leave := Button {
-                x: Theme.phone ? change.width + 8px : change.x + change.width + 12px;
+                x: Theme.phone ? change.width + 8px : change.x + change.width + (Theme.sideways ? 8px : 12px);
                 y: change.y;
                 width: Theme.phone ? (root.body-width - 8px) / 2 : self.natural-width;
                 visible: !PlayView.waiting;
@@ -1248,24 +1396,26 @@ export component PlayScreen inherits Page {
                 nav: "lobby.leave";
                 text: I18n.upper(@tr("Leave"));
                 kind: ButtonKind.ghost;
+                big: Theme.sideways;
             }
 
             // While the host waits: the way out, CANCEL INVITE (STOP HOSTING), as the practice menu has it in
-            // EXIT's place; on a phone PRACTICE before it, which starts the practice battle filling the window.
-            Button {
-                x: 0;
+            // EXIT's place; on a phone PRACTICE before it, which starts the practice battle filling the window (held
+            // sideways the two in READY's row).
+            train := Button {
+                x: Theme.sideways ? (connection.width + 14px) : 0px;
                 y: root.buttons-top;
-                width: root.body-width;
-                visible: PlayView.waiting && Theme.phone;
-                enabled: PlayView.waiting && Theme.phone;
+                width: Theme.sideways ? root.body-width - (connection.width + 14px) - cancel.width - 8px : root.body-width;
+                visible: PlayView.waiting && Theme.handheld;
+                enabled: PlayView.waiting && Theme.handheld;
                 nav: "wait.train";
                 text: I18n.upper(@tr("Practice"));
                 kind: ButtonKind.main;
                 big: true;
             }
 
-            Button {
-                x: Theme.phone ? 0px : (root.body-width - self.width) / 2;
+            cancel := Button {
+                x: Theme.phone ? 0px : Theme.sideways ? root.body-width - self.width : (root.body-width - self.width) / 2;
                 y: Theme.phone ? root.buttons-top + 60px : root.buttons-top;
                 width: Theme.phone ? root.body-width : self.natural-width;
                 visible: PlayView.waiting;
@@ -1273,14 +1423,15 @@ export component PlayScreen inherits Page {
                 nav: "wait.cancel";
                 text: PlayView.wait-exit(PlayView.invite-direct);
                 kind: ButtonKind.ghost;
+                big: Theme.sideways;
             }
 
             // The reserved line: who is waited for, that the link is being made again, why the match before
             // ended, or what keeps this player's build from being played.
             Message {
-                x: 0;
-                y: root.buttons-top + (Theme.phone ? 112px : 64px);
-                width: root.body-width;
+                x: Theme.sideways ? (connection.width + 14px) : 0px;
+                y: Theme.sideways ? root.buttons-top - 26px : root.buttons-top + (Theme.phone ? 112px : 64px);
+                width: Theme.sideways ? root.body-width - (connection.width + 14px) : root.body-width;
                 text: PlayView.note == LobbyNote.reconnecting ? @tr("Reconnecting {} s", PlayView.note-seconds) : PlayView.note == LobbyNote.unusable ? PlayView.note-problem : PlayView.note-error != "" ? PlayView.note-error : PlayView.note == LobbyNote.you ? @tr("Waiting for you to ready up.") : PlayView.note == LobbyNote.them ? @tr("Waiting for your opponent to ready up.") : "";
                 tone: PlayView.note-error != "" || PlayView.note == LobbyNote.reconnecting || PlayView.note == LobbyNote.unusable ? Theme.bad : Theme.muted;
                 mark: PlayView.note == LobbyNote.unusable;
@@ -1820,12 +1971,16 @@ export component MatchResult inherits Rectangle {
 // other way to start one: FROM A SAVE FILE…, which opens the system's file dialog (the build is made of the save,
 // named for its file). (A build is renamed in the editor, its header's name a field: docs/design/app-ui.md §2.74.)
 component NameDialog inherits DialogFrame {
-    // (Its name, its version and the version's note, each under its label, then the buttons.)
+    // (Its name, its version and the version's note, each under its label, then the buttons. On a phone held
+    // sideways, too short for FROM A SAVE FILE… under a line, it is a little wider than the desktop's with that at
+    // the buttons' left.)
     property <length> version-y: 100px;
     property <length> note-y: root.version-y + Theme.control + 8px;
     property <length> buttons-y: root.note-y + 38px + 16px;
     title: I18n.upper(@tr("title" => "New build"));
-    content-height: root.buttons-y + 120px;
+    wide: true;
+    panel-width: Theme.sideways ? 600px : 540px;
+    content-height: root.buttons-y + (Theme.sideways ? 40px : 120px);
     Label {
         x: 0;
         y: 0;
@@ -1889,13 +2044,14 @@ component NameDialog inherits DialogFrame {
         x: 0;
         y: root.buttons-y + 64px;
         width: root.inner-width;
+        visible: !Theme.sideways;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Button {
         x: 0;
-        y: root.buttons-y + 80px;
+        y: root.buttons-y + (Theme.sideways ? 0px : 80px);
         nav: "name.save";
         text: I18n.upper(@tr("From a save file…"));
         kind: ButtonKind.ghost;
@@ -1913,9 +2069,11 @@ export component PlayOverlay inherits Rectangle {
 
     // A direct connection: host, with this machine's address to send; or join, by the host's address.
     if PlayView.direct: direct := DialogFrame {
-        // (On a phone each button is under its box: an address needs the dialog's width.)
+        // (On a phone each button is under its box: an address needs the dialog's width. Held sideways, too short
+        // for that, the desktop's.)
         property <length> under: Theme.phone ? 48px : 0px;
         title: @tr("Direct connection");
+        wide: true;
         content-height: 252px + 2 * self.under;
         Label {
             x: 0;
@@ -2034,8 +2192,8 @@ export component PlayOverlay inherits Rectangle {
 
     // The code a box a character, for a pad: Up and Down change a box's character, Enter goes to the next.
     if PlayView.boxes: boxes := DialogFrame {
-        property <length> box: Theme.phone ? 40px : 52px;
-        property <length> gap: Theme.phone ? 4px : 8px;
+        property <length> box: Theme.handheld ? 40px : 52px;
+        property <length> gap: Theme.handheld ? 4px : 8px;
         property <length> left: (self.inner-width - 6 * self.box - 5 * self.gap - 2 * self.gap) / 2;
         title: @tr("Invite code");
         panel-width: 460px;
@@ -2071,14 +2229,16 @@ export component PlayOverlay inherits Rectangle {
 
     // Another build for the lobby: the player's builds of the game.
     if PlayView.changing: change := DialogFrame {
+        // (Four rows shown on a phone held sideways, five elsewhere.)
+        property <length> list-height: Theme.sideways ? 216px : 268px;
         title: @tr("Change build");
         panel-width: 460px;
-        content-height: 322px;
+        content-height: self.list-height + 54px;
         list := ListView {
             x: 0;
             y: 0;
             width: change.inner-width;
-            height: 268px;
+            height: change.list-height;
             nav: "change.builds";
             count: PlayView.builds.length;
             row-height: 52px;
@@ -2097,7 +2257,7 @@ export component PlayOverlay inherits Rectangle {
 
         Button {
             x: change.inner-width - self.width;
-            y: 282px;
+            y: change.list-height + 14px;
             nav: "change.cancel";
             text: I18n.upper(@tr("Cancel"));
             kind: ButtonKind.ghost;

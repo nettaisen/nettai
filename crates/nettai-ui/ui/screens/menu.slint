@@ -1,6 +1,7 @@
 // The main menu (docs/design/app-ui.md §6): PLAY, REPLAYS, SETTINGS and EXIT (not in a phone's app, which the system
 // closes), each the word alone and large, as a fighting game's title screen has them; beside them the demo reel, a battle of the selected game playing itself
-// in a box that keeps its size. On a phone the reel is above the items.
+// in a box that keeps its size. On a phone the reel is above the items; held sideways the words are at the left at
+// the phone's size and the reel at the right as large as the body's height takes.
 
 import { Theme, I18n } from "../theme.slint";
 import { Shell, Page, PadButton, Picture } from "../shell.slint";
@@ -17,11 +18,11 @@ export global MenuView {
 
 export component MenuScreen inherits Page {
     // (The items' column and the reel are each centered in the body's height.)
-    property <length> column: Theme.phone ? self.body-width : 416px;
-    property <length> reel-width: Theme.phone ? self.body-width : 720px;
+    property <length> column: Theme.phone ? self.body-width : Theme.sideways ? 280px : 416px;
+    property <length> reel-width: Theme.phone ? self.body-width : Theme.sideways ? min(self.body-width - root.column - 22px, self.body-height * 3 / 2) : 720px;
     property <length> reel-height: self.reel-width * 2 / 3;
     // A word's row (`MenuItem`'s, big), and the step from one to the next.
-    property <length> item: Theme.phone ? 68px : 96px;
+    property <length> item: Theme.handheld ? 68px : 96px;
     property <length> step: self.item + 8px;
     // The words (three in a phone's app, without EXIT), 8 apart, centered: on a desktop about as tall as the reel
     // beside them.

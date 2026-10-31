@@ -66,11 +66,12 @@ export component AppWindow inherits Window {
     // (A phone keeps some of its screen for itself: a notch or an island, the home bar, rounded corners. The screens
     // and what opens over them are laid out in the rest, the safe area, which the app fits its units to
     // (`Shell::fit_window`); the backdrop, the cursor and what flies go across the whole window. Elsewhere the safe
-    // area is the window.)
+    // area is the window. A phone held sideways keeps 12 at least at its left and right, where its safe area keeps
+    // less: `Shell::sides`.)
     Rectangle {
-        x: root.safe-left;
+        x: Theme.sideways ? max(root.safe-left, 12px) : root.safe-left;
         y: root.safe-top;
-        width: root.width - root.safe-left - root.safe-right;
+        width: root.width - self.x - (Theme.sideways ? max(root.safe-right, 12px) : root.safe-right);
         height: root.height - root.safe-top - root.safe-bottom;
 
         // Each screen, and what it opens over itself (Practice has no page: its battle fills the window): one

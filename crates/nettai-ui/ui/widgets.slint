@@ -291,8 +291,8 @@ export component Reach inherits TouchArea {
     in property <int> nav-index;
     in property <length> box-width;
     in property <length> box-height;
-    property <length> reach-x: Theme.phone ? max(0px, (44px - root.box-width) / 2) : 0px;
-    property <length> reach-y: Theme.phone ? max(0px, (44px - root.box-height) / 2) : 0px;
+    property <length> reach-x: Theme.handheld ? max(0px, (44px - root.box-width) / 2) : 0px;
+    property <length> reach-y: Theme.handheld ? max(0px, (44px - root.box-height) / 2) : 0px;
     x: -root.reach-x;
     y: -root.reach-y;
     width: root.box-width + 2 * root.reach-x;
@@ -333,8 +333,8 @@ export component Button inherits Rectangle {
     // 52 tall (a phone's READY).
     in property <bool> big;
     // A tool inside a panel or a bar (a build's EDIT and ⋯, the editor's tab bar's): 32 tall and as wide as its
-    // words, on a desktop; a phone's is the standard 40, to be tapped. (docs/design/app-ui.md §2.87: three sizes,
-    // compact, standard and big.)
+    // words, on a desktop; an upright phone's is the standard 40, to be tapped (sideways it stays compact, its tap
+    // reaching to 44 as every control's). (docs/design/app-ui.md §2.87: three sizes, compact, standard and big.)
     in property <bool> compact;
     // Its right side square, uncut: the left half of a split button, whose arrow beside it has the cut (WATCH).
     in property <bool> square;
@@ -452,7 +452,7 @@ export component AllNone inherits Rectangle {
     in property <int> set: -1;
     in property <bool> all;
     in property <bool> none;
-    property <length> reach: Theme.phone ? 6px : 2px;
+    property <length> reach: Theme.handheld ? 6px : 2px;
     property <length> pad: 6px;
     height: 16px;
     width: all-word.preferred-width + none-word.preferred-width + 4 * root.pad + 1px;
@@ -518,7 +518,7 @@ export component WordButton inherits Rectangle {
     in property <int> nav-index;
     in property <bool> enabled: true;
     out property <length> pad: 6px;
-    property <length> reach: Theme.phone ? 6px : 2px;
+    property <length> reach: Theme.handheld ? 6px : 2px;
     height: 16px;
     width: word.preferred-width + 2 * root.pad;
     word := Text {
@@ -584,7 +584,7 @@ export component Stepper inherits Rectangle {
     property <length> old-size: root.face;
     property <bool> old-two-lines;
     // (How far a phone's arrows take a tap past them, up and down: to 44 tall.)
-    property <length> reach: Theme.phone ? max(0px, (44px - root.height) / 2) : 0px;
+    property <length> reach: Theme.handheld ? max(0px, (44px - root.height) / 2) : 0px;
     height: 36px;
     width: root.value-width + 72px;
     horizontal-stretch: 0;
@@ -643,9 +643,9 @@ export component Stepper inherits Rectangle {
 
         // (A phone's reaches past the arrow's box to 44 by 44: 8 out, 4 into the gap by the value.)
         left := TouchArea {
-            x: Theme.phone ? -8px : 0px;
+            x: Theme.handheld ? -8px : 0px;
             y: -root.reach;
-            width: Theme.phone ? 44px : parent.width;
+            width: Theme.handheld ? 44px : parent.width;
             height: parent.height + 2 * root.reach;
             enabled: root.enabled;
             clicked => {
@@ -702,9 +702,9 @@ export component Stepper inherits Rectangle {
         ArrowRight { }
 
         right := TouchArea {
-            x: Theme.phone ? -4px : 0px;
+            x: Theme.handheld ? -4px : 0px;
             y: -root.reach;
-            width: Theme.phone ? 44px : parent.width;
+            width: Theme.handheld ? 44px : parent.width;
             height: parent.height + 2 * root.reach;
             enabled: root.enabled;
             clicked => {
@@ -758,7 +758,7 @@ export component Seg inherits Rectangle {
     property <length> second-width: max(44px, b.preferred-width + 24px);
     property <length> third-width: root.third == "" ? 0px : max(44px, c.preferred-width + 24px) + 1px;
     // (How far a phone's tap on a part reaches past it, up and down: to 44 tall.)
-    property <length> reach: Theme.phone ? max(0px, (44px - root.height) / 2) : 0px;
+    property <length> reach: Theme.handheld ? max(0px, (44px - root.height) / 2) : 0px;
     height: 36px;
     width: root.first-width + root.second-width + 1px + root.third-width;
     horizontal-stretch: 0;
@@ -942,9 +942,9 @@ export component Slider inherits Rectangle {
     // (A phone's reaches past the track's 40 to 44 tall.)
     drag := TouchArea {
         x: 0;
-        y: Theme.phone ? -2px : 0px;
+        y: Theme.handheld ? -2px : 0px;
         width: root.track;
-        height: root.height + (Theme.phone ? 4px : 0px);
+        height: root.height + (Theme.handheld ? 4px : 0px);
         function set() {
             Nav.choose(root.nav, root.nav-index, round(clamp(self.mouse-x / self.width, 0, 1) * root.maximum));
         }
@@ -1086,9 +1086,9 @@ export component Field inherits Rectangle {
     property <int> seq: Nav.edit-seq;
     property <length> scroll;
     property <string> family: root.heading ? Theme.display : root.code ? Theme.mono : Theme.body;
-    property <length> face: root.heading ? (Theme.phone ? 16px : 20px) : root.code ? 16px : 14px;
+    property <length> face: root.heading ? (Theme.handheld ? 16px : 20px) : root.code ? 16px : 14px;
     property <int> weight: root.heading ? Theme.display-bold : root.code ? 700 : 400;
-    property <length> tracking: root.heading ? (Theme.phone ? min(1.2px, Theme.title-tracking) : Theme.title-tracking) : root.code ? 1.3px : 0px;
+    property <length> tracking: root.heading ? (Theme.handheld ? min(1.2px, Theme.title-tracking) : Theme.title-tracking) : root.code ? 1.3px : 0px;
     height: 40px;
     Rectangle {
         background: Theme.inset;
@@ -1326,7 +1326,7 @@ export component MenuItem inherits Rectangle {
     in property <bool> danger;
     out property <bool> on: Nav.shown ? hit.focused : hit.has-hover;
     property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
-    height: !root.big ? 48px : (Theme.phone ? 68px : 96px);
+    height: !root.big ? 48px : (Theme.handheld ? 68px : 96px);
     Rectangle {
         x: 0;
         width: root.on ? parent.width : 0px;
@@ -1350,7 +1350,7 @@ export component MenuItem inherits Rectangle {
     }
 
     label := Text {
-        x: root.big && !Theme.phone ? 24px : 16px;
+        x: root.big && !Theme.handheld ? 24px : 16px;
         width: parent.width - self.x - 8px;
         text: root.text;
         color: root.danger ? Theme.bad : (root.on || !root.big ? Theme.text : Theme.muted);
@@ -1418,14 +1418,14 @@ component TabItem inherits Rectangle {
     in property <bool> chosen;
     property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
     height: 40px;
-    width: label.preferred-width + (Theme.phone ? 20px : 32px);
+    width: label.preferred-width + (Theme.handheld ? 20px : 32px);
     label := Text {
         text: root.tab.text;
         color: !root.tab.enabled ? Theme.dim : (root.chosen ? Theme.text : Theme.muted);
         font-family: Theme.display;
-        font-size: Theme.phone ? 11px : 13px;
+        font-size: Theme.handheld ? 11px : 13px;
         font-weight: Theme.display-bold;
-        letter-spacing: Theme.cjk ? 0.3px : (Theme.phone ? 0.6px : 1px);
+        letter-spacing: Theme.cjk ? 0.3px : (Theme.handheld ? 0.6px : 1px);
         horizontal-alignment: center;
         vertical-alignment: center;
         animate color {
@@ -1435,7 +1435,7 @@ component TabItem inherits Rectangle {
 
     // (Something in the tab is wrong: the problem's mark at its word's upper right.)
     ProblemMark {
-        x: parent.width - (Theme.phone ? 9px : 13px);
+        x: parent.width - (Theme.handheld ? 9px : 13px);
         y: 9px;
         visible: root.tab.flagged && root.tab.enabled;
     }
@@ -1462,6 +1462,10 @@ export component TabBar inherits Rectangle {
     in property <string> nav;
     in property <[Tab]> tabs;
     in property <int> chosen;
+    // It is in the header's row (a phone held sideways): no line of its own under it (the header's is), and its ends
+    // fade into the header's bar.
+    in property <bool> headed;
+    property <color> fade: root.headed ? Theme.ground-top.mix(Theme.bar.with-alpha(1), 0.28) : Theme.ground-top;
     // Where the chosen tab is: the underline's place.
     property <length> under-x;
     property <length> under-width;
@@ -1474,6 +1478,7 @@ export component TabBar inherits Rectangle {
     Rectangle {
         y: parent.height - 1px;
         height: 1px;
+        visible: !root.headed;
         background: Theme.line;
     }
 
@@ -1488,7 +1493,7 @@ export component TabBar inherits Rectangle {
             }
             row := HorizontalLayout {
                 alignment: start;
-                spacing: Theme.phone ? 0px : 4px;
+                spacing: Theme.handheld ? 0px : 4px;
                 for tab[i] in root.tabs: TabItem {
                     property <int> picked: root.chosen;
                     function say() {
@@ -1539,7 +1544,7 @@ export component TabBar inherits Rectangle {
             height: parent.height - 1px;
             y: 0px;
             visible: root.shift > 0px;
-            background: @linear-gradient(90deg, Theme.ground-top 0%, Theme.ground-top.with-alpha(0) 100%);
+            background: @linear-gradient(90deg, root.fade 0%, root.fade.with-alpha(0) 100%);
         }
 
         Rectangle {
@@ -1548,7 +1553,7 @@ export component TabBar inherits Rectangle {
             height: parent.height - 1px;
             y: 0px;
             visible: root.shift < row.preferred-width - root.width;
-            background: @linear-gradient(90deg, Theme.ground-top.with-alpha(0) 0%, Theme.ground-top 100%);
+            background: @linear-gradient(90deg, root.fade.with-alpha(0) 0%, root.fade 100%);
         }
     }
 }

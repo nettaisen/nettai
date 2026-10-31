@@ -261,6 +261,9 @@ export global Shell {
     // (`Shell::fit_window`): what is laid out in the safe area is placed from it.
     in property <length> safe-left;
     in property <length> safe-top;
+    // (And the inset at its right: the header's bar goes past both sides to the window's edges on a phone held
+    // sideways.)
+    in property <length> safe-right;
     // The room the screen's `Picture` gives it: where it is in the safe area (as what is laid out over it is), and
     // its size.
     in-out property <length> picture-room-x;
@@ -1069,29 +1072,44 @@ export component Header inherits Rectangle {
     // The title is a name changed in place (the build editor's build's, the player's own ruleset's): a text field of
     // this name in the title's place, always drawn as one (docs/design/app-ui.md §2.74).
     in property <string> title-nav;
+    // The most the title (or its field) takes: on a phone held sideways a screen's tabs follow it in the header's one
+    // row (`Page.title-end`).
+    in property <length> title-most: 10000px;
     property <bool> field: root.title-nav != "" && !root.logo;
     property <length> pad: Theme.margin;
-    property <length> back-width: Theme.phone ? 32px : back-text.preferred-width + 37px;
-    property <length> title-x: root.pad + root.back-width + (Theme.phone ? 27px : 31px);
+    property <length> back-width: Theme.handheld ? 32px : back-text.preferred-width + 37px;
+    property <length> title-x: root.pad + root.back-width + (Theme.handheld ? 27px : 31px);
     property <length> tag-x: Theme.phone ? self.width - root.pad - tag-pill.width - (root.game ? game.width + 12px : 0px) : root.title-x + root.title-width + 16px;
     property <length> tag-width: tag-pill.width == 0 ? 0px : tag-pill.width + 16px;
     // The title's room: what the tag and the game leave of the header.
-    property <length> title-room: self.width - root.title-x - root.pad - (root.game ? game.width + 16px : 0px) - root.tag-width;
+    property <length> title-room: min(root.title-most, self.width - root.title-x - root.pad - (root.game ? game.width + 16px : 0px) - root.tag-width);
     property <length> title-width: min(title-text.preferred-width, root.title-room);
     // (The field takes the room up to 400 from just before the title's place, its text where the title's is; it
     // scrolls what it doesn't show.)
-    property <length> field-width: min(root.title-room + 8px, Theme.phone ? root.title-room + 8px : 400px);
+    property <length> field-width: min(root.title-room + 8px, Theme.handheld ? root.title-room + 8px : 400px);
+    // Where the title's room ends (its field's, where it is one), and where the game starts (the header's end without
+    // it): what a screen puts after the title in the header goes between them.
+    out property <length> title-end: root.field ? root.title-x - 8px + root.field-width : root.title-x + root.title-width;
+    out property <length> tools-x: root.game ? game.x : self.width - root.pad;
     property <bool> over: Theme.audit && !root.field && (title-text.preferred-width > root.title-room + 0.5px);
+    // (Sideways the bar goes across the whole window, past the safe area's sides, as upright it goes under the
+    // island.)
+    property <length> bar-x: Theme.sideways ? -Shell.safe-left : 0px;
+    property <length> bar-width: self.width + (Theme.sideways ? Shell.safe-left + Shell.safe-right : 0px);
     height: Theme.header;
     // As the screen arrives its title wipes in behind the cyan bar.
     arrive := Tween { }
 
     Rectangle {
+        x: root.bar-x;
+        width: root.bar-width;
         background: Theme.bar;
     }
 
     Rectangle {
+        x: root.bar-x;
         y: parent.height - 1px;
+        width: root.bar-width;
         height: 1px;
         background: Theme.line;
     }
@@ -1101,7 +1119,7 @@ export component Header inherits Rectangle {
     Image {
         x: root.pad;
         y: (parent.height - self.height) / 2;
-        width: Theme.phone ? 28px : 34px;
+        width: Theme.handheld ? 28px : 34px;
         height: self.width;
         visible: root.logo;
         source: @image-url("../../../docs/logo/nettai-icon.svg");
@@ -1110,18 +1128,18 @@ export component Header inherits Rectangle {
 
     // (The logotype: 熱帯 in the action's amber, as tall as nettai's t, then nettai.)
     HorizontalLayout {
-        x: root.pad + (Theme.phone ? 38px : 46px);
+        x: root.pad + (Theme.handheld ? 38px : 46px);
         width: self.preferred-width;
         height: parent.height;
         alignment: start;
-        spacing: Theme.phone ? 5px : 6px;
+        spacing: Theme.handheld ? 5px : 6px;
         visible: root.logo;
         opacity: arrive.t;
         Text {
             text: "熱帯";
             color: Theme.action;
             font-family: "Corporate Logo ver3";
-            font-size: Theme.phone ? 18px : 21px;
+            font-size: Theme.handheld ? 18px : 21px;
             font-weight: 700;
             vertical-alignment: center;
         }
@@ -1129,7 +1147,7 @@ export component Header inherits Rectangle {
             text: "nettai";
             color: Theme.text;
             font-family: "Chakra Petch";
-            font-size: Theme.phone ? 22px : 26px;
+            font-size: Theme.handheld ? 22px : 26px;
             font-weight: 700;
             letter-spacing: 1px;
             vertical-alignment: center;
@@ -1146,12 +1164,12 @@ export component Header inherits Rectangle {
         border-color: Theme.line;
         background: back-hit.pressed || back-reach.pressed ? Theme.line : (back-hit.has-hover ? Theme.tint : transparent);
         Chevron {
-            x: Theme.phone ? 13px : 12px;
+            x: Theme.handheld ? 13px : 12px;
         }
 
         back-text := Text {
             x: 25px;
-            visible: !Theme.phone;
+            visible: !Theme.handheld;
             text: root.back;
             color: Theme.muted;
             font-family: Theme.display;
@@ -1176,7 +1194,7 @@ export component Header inherits Rectangle {
 
     // The title.
     Rectangle {
-        x: root.pad + root.back-width + (Theme.phone ? 12px : 16px);
+        x: root.pad + root.back-width + (Theme.handheld ? 12px : 16px);
         width: 3px;
         height: 23px;
         visible: !root.logo;
@@ -1194,9 +1212,9 @@ export component Header inherits Rectangle {
             text: root.title;
             color: Theme.text;
             font-family: Theme.display;
-            font-size: Theme.phone ? 16px : 20px;
+            font-size: Theme.handheld ? 16px : 20px;
             font-weight: Theme.display-bold;
-            letter-spacing: Theme.phone ? min(1.2px, Theme.title-tracking) : Theme.title-tracking;
+            letter-spacing: Theme.handheld ? min(1.2px, Theme.title-tracking) : Theme.title-tracking;
             vertical-alignment: center;
             overflow: elide;
         }
@@ -1232,7 +1250,7 @@ export component Header inherits Rectangle {
     // The game.
     game := Stepper {
         x: parent.width - root.pad - self.width;
-        value-width: Theme.phone ? 56px : 84px;
+        value-width: Theme.handheld ? 56px : 84px;
         visible: root.game;
         nav: root.game ? "game" : "";
         value: Shell.game;
@@ -1396,10 +1414,10 @@ export component Footer inherits Rectangle {
     in property <[Hint]> hints;
     in property <string> status;
     // (The hints must leave the status its room.)
-    property <bool> over: Theme.audit && !Theme.phone && row.preferred-width > self.width - 280px - 24px;
+    property <bool> over: Theme.audit && !Theme.handheld && row.preferred-width > self.width - 280px - 24px;
     height: Theme.footer;
     Rectangle {
-        visible: !Theme.phone;
+        visible: !Theme.handheld;
         background: Theme.bar;
         Rectangle {
             y: 0;
@@ -1458,7 +1476,14 @@ export component Page inherits Rectangle {
     in property <string> status;
     out property <length> body-width: body.width;
     out property <length> body-height: body.height;
-    Header {
+    // On a phone held sideways a screen's tabs are in the header's row, after its title (docs/design/app-ui.md
+    // §2.103): the most the title takes, and in the body's units (where a screen places what it puts in the page)
+    // the header's top and the room it leaves between the title's end and the game.
+    in property <length> title-most: 10000px;
+    out property <length> header-top: -body.y;
+    out property <length> header-room-x: header.title-end + 12px - body.x;
+    out property <length> header-room-width: header.tools-x - 12px - header.title-end - 12px;
+    header := Header {
         y: 0;
         title: root.title;
         back: root.back;
@@ -1466,15 +1491,16 @@ export component Page inherits Rectangle {
         game: root.game;
         tag: root.tag;
         title-nav: root.title-nav;
+        title-most: root.title-most;
     }
 
     // (As the screen leaves, its body slides 16 and fades: to the left, or after Back to the right. What
     // arrives is the screen's own parts, each in an `Arrive`.)
     body := Rectangle {
         x: Theme.margin + (!Shell.leaving ? 0px : (Theme.back ? 16px : -16px));
-        y: Theme.header + (Theme.phone ? 16px : 24px);
+        y: Theme.header + (Theme.phone ? 16px : Theme.sideways ? 12px : 24px);
         width: parent.width - 2 * Theme.margin;
-        height: parent.height - Theme.header - Theme.footer - (Theme.phone ? 32px : 48px);
+        height: parent.height - Theme.header - Theme.footer - (Theme.phone ? 32px : Theme.sideways ? 24px : 48px);
         opacity: Shell.leaving ? 0 : 1;
         animate x, opacity {
             duration: Theme.leave;
@@ -1565,6 +1591,10 @@ export component DialogFrame inherits Rectangle {
     in property <length> panel-width: 540px;
     in property <length> content-height;
     in property <bool> shake;
+    // On a phone held sideways a dialog is the upright phone's width (358), in the middle; `wide` keeps the desktop's,
+    // for one whose upright arrangement is too tall for the window's 372 (a new build's, a direct connection's).
+    in property <bool> wide;
+    property <length> most: Theme.sideways && !root.wide ? 358px : root.panel-width;
     out property <length> inner-width: panel.width - 48px;
     // The title takes the lines it needs (a failure's is a sentence, and a phone's dialog is narrow): one line
     // is 26 tall.
@@ -1586,7 +1616,7 @@ export component DialogFrame inherits Rectangle {
 
     panel := Rectangle {
         x: (parent.width - self.width) / 2 + swing.dx;
-        width: min(parent.width - 32px, root.panel-width);
+        width: min(parent.width - 32px, root.panel-width, root.most);
         height: 24px + root.title-height + 12px + root.content-height + 24px;
         opacity: arrive.t;
         transform-scale: 0.96 + 0.04 * arrive.t;
@@ -1829,10 +1859,11 @@ component PlaceCell inherits Rectangle {
 // pictures (`Shell.picker-grid`) is the same, its rows of cells: a page whose cells are each focused, Up and Down
 // going a row, Left and Right a cell, the focused one scrolled into view. Its sizes are the app's
 // (`shell::GRID_*`): a cell `Shell.picker-cell` wide, its picture seven fifteenths of that tall and 34 under it for the
-// name, 8 apart (6 on a phone), in 8 of padding with the scrollbar's 12 at the right.
+// name, 8 apart (6 on a phone), in 8 of padding with the scrollbar's 12 at the right. A phone's sheet is the window's
+// width upright; sideways at most 480, in the middle (the app places and sizes it: `Shell::open_picker`).
 export component PickerLayer inherits Rectangle {
-    property <length> pad: Shell.picker-grid ? 8px : (Theme.phone ? 8px : 1px);
-    property <length> gap: Theme.phone ? 6px : 8px;
+    property <length> pad: Shell.picker-grid ? 8px : (Theme.handheld ? 8px : 1px);
+    property <length> gap: Theme.handheld ? 6px : 8px;
     property <length> cell-height: Shell.picker-cell * 7 / 15 + 34px;
     property <length> pitch: root.cell-height + root.gap;
     property <length> list-height: Shell.picker-grid ? Shell.picker-rows * root.pitch - root.gap + 2 * self.pad : Shell.picker-rows * Theme.row + 2 * self.pad;
@@ -1847,13 +1878,13 @@ export component PickerLayer inherits Rectangle {
     }
 
     Rectangle {
-        background: Theme.phone ? Theme.shade : transparent;
+        background: Theme.handheld ? Theme.shade : transparent;
         opacity: arrive.t;
     }
 
     Rectangle {
         x: Theme.phone ? 0px : Shell.picker-x;
-        y: (Theme.phone ? parent.height - self.height + (1 - arrive.t) * 24px : Shell.picker-y - (1 - arrive.t) * 6px);
+        y: (Theme.handheld ? parent.height - self.height + (1 - arrive.t) * 24px : Shell.picker-y - (1 - arrive.t) * 6px);
         width: Theme.phone ? parent.width : Shell.picker-width;
         height: root.list-height;
         opacity: arrive.t;

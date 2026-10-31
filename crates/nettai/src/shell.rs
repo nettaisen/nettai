@@ -71,6 +71,8 @@ const PICKER_ROW: f32 = 44.0;
 const MENU_WIDTH: f32 = 200.0;
 /// A menu with marks' (`Shell::pick_marked`): its words have a check's room besides.
 const MARKED_WIDTH: f32 = 264.0;
+/// The widest a sheet of choices is on a phone held sideways (upright it is the window's width).
+const SHEET_WIDTH: f32 = 480.0;
 
 /// A grid of pictures' sizes (`Shell::pick_grid`; the UI's `PickerLayer` lays it out by the same): its columns, a
 /// cell's width (on a phone, the sheet's width shared by its three), the gap between cells, the room under a
@@ -184,18 +186,45 @@ enum Ask {
 }
 
 /// How the window's layout is scaled (docs/design/app-ui.md §4, "Units"): the UI's lengths are units of a
-/// 1280 by 800 window, or of a phone 390 wide when the window is upright, and the window's scale is set so
-/// that one of Slint's `px` is one unit.
+/// 1280 by 800 window, of a phone 390 wide when the window is upright, or of a phone's safe area 734 by 372 held
+/// sideways, and the window's scale is set so that one of Slint's `px` is one unit.
 #[derive(Default)]
 pub struct Scale {
     /// The display's pixels to a point (the system's scale factor).
     pub os: f32,
     /// Points to a unit.
     pub unit: f32,
+    /// The upright phone's layout: one column, what is chosen from opened as sheets.
     pub phone: bool,
+    /// A phone's held sideways (docs/design/app-ui.md §2.103): the desktop's panes side by side at the upright
+    /// phone's sizes, what the upright phone opens as a sheet beside them as a pane.
+    pub sideways: bool,
     size: (u32, u32),
     /// The window in units, as the ground's patterns were last drawn for.
     ground: (i32, i32),
+}
+
+/// A phone's safe area held sideways that the sideways layout is drawn for, in units (an iPhone's, between its
+/// island and its home bar): a unit is a 734th of the safe area's width or a 372nd of its height, whichever is
+/// less.
+const SIDEWAYS_WIDTH: f32 = 734.0;
+const SIDEWAYS_HEIGHT: f32 = 372.0;
+/// The tallest safe area, in points, that a phone's app held sideways lays out sideways: a phone's. A tablet's
+/// (an iPad's 744 and up) keeps the desktop's layout.
+const SIDEWAYS_TALLEST: f32 = 520.0;
+/// The least room a phone held sideways keeps at its left and right, in units (`Shell::sides`).
+const SIDEWAYS_EDGE: f32 = 12.0;
+
+impl Scale {
+    /// A phone's layout, upright or sideways: the phone's sizes, no footer, no hover.
+    pub fn handheld(&self) -> bool {
+        self.phone || self.sideways
+    }
+
+    /// Which layout it is: the desktop's, the upright phone's, or a phone's sideways.
+    fn layout(&self) -> (bool, bool) {
+        (self.phone, self.sideways)
+    }
 }
 
 pub struct Shell {
@@ -813,8 +842,18 @@ impl Shell {
     pub fn room(&self) -> Rect {
         let ui = self.ui();
         let window = ui.window().size().to_logical(ui.window().scale_factor());
-        let (left, top) = (ui.get_safe_left(), ui.get_safe_top());
-        Rect { x: left, y: top, w: (window.width - left - ui.get_safe_right()).max(0.0), h: (window.height - top - ui.get_safe_bottom()).max(0.0) }
+        let ((left, right), top) = (self.sides(self.scale.sideways), ui.get_safe_top());
+        Rect { x: left, y: top, w: (window.width - left - right).max(0.0), h: (window.height - top - ui.get_safe_bottom()).max(0.0) }
+    }
+
+    /// The room kept at the window's left and right, in the UI's units as they are now: the safe area's insets, and
+    /// on a phone held sideways [`SIDEWAYS_EDGE`] at least at each (app.slint's box keeps the same), so that where
+    /// its safe area keeps less (an iPhone SE's, an Android phone's side without its camera) the panes don't run onto
+    /// the screen's edge.
+    fn sides(&self, sideways: bool) -> (f32, f32) {
+        let ui = self.ui();
+        let (left, right) = (ui.get_safe_left(), ui.get_safe_right());
+        if sideways { (left.max(SIDEWAYS_EDGE), right.max(SIDEWAYS_EDGE)) } else { (left, right) }
     }
 
     /// Open a select's choices as a grid of their pictures by it (Practice's Arena and Background; on a phone, a
@@ -834,9 +873,12 @@ impl Shell {
         // (In the room the screens have: the list is laid out in it, as they are.)
         let room = self.room();
         let (by, window) = (by.within(&room), slint::LogicalSize::new(room.w, room.h));
-        let grid = matches!(look, Look::Grid(_)).then(|| Grid::of(self.scale.phone, window.width));
-        // (A phone's sheet is at the window's foot, three fifths of it at the most.)
-        let (under, over) = if self.scale.phone { (window.height * 0.6, 0.0) } else { (window.height - by.bottom() - 8.0, by.y - 8.0) };
+        // (A phone's sheet is at the window's foot, three fifths of it at the most: upright the window's width,
+        // sideways at most [`SHEET_WIDTH`], in the middle.)
+        let sheet = self.scale.handheld();
+        let sheet_width = if self.scale.sideways { window.width.min(SHEET_WIDTH) } else { window.width };
+        let grid = matches!(look, Look::Grid(_)).then(|| Grid::of(sheet, sheet_width));
+        let (under, over) = if sheet { (window.height * 0.6, 0.0) } else { (window.height - by.bottom() - 8.0, by.y - 8.0) };
         let (rows, under, height) = match grid {
             Some(grid) => {
                 let (rows, under) = grid.rows(options.len(), under, over);
@@ -849,6 +891,7 @@ impl Shell {
         };
         let y = if under { by.bottom() + 4.0 } else { by.y - 4.0 - height };
         let (width, x) = match &look {
+            _ if sheet => (sheet_width, (window.width - sheet_width) / 2.0),
             Look::Select => (by.w, by.x),
             Look::Menu { under: true, width, .. } => (width.max(by.w), by.x),
             Look::Menu { width, .. } => (*width, by.right() - width),
@@ -946,8 +989,25 @@ impl Shell {
         let (across, down) = (inset(ui.get_safe_left(), ui.get_safe_right()), inset(ui.get_safe_top(), ui.get_safe_bottom()));
         let (width, height) = ((size.width as f32 / os - across).max(1.0), (size.height as f32 / os - down).max(1.0));
         let phone = width < 0.8 * height;
-        let unit = if phone { width / 390.0 } else { (width / 1280.0).min(height / 800.0) }.max(0.2);
-        Some(Scale { os, unit, phone, size: (size.width, size.height), ground: self.scale.ground })
+        // (Sideways: a phone's app, its window wider than tall and short. A desktop's window never is, however
+        // short: its layout scales down. Its sides keep a little room at least: `Shell::sides`.)
+        let sideways = cfg!(any(target_os = "ios", target_os = "android")) && !phone && height < SIDEWAYS_TALLEST;
+        let width = match sideways {
+            true => {
+                let (left, right) = self.sides(true);
+                (size.width as f32 / os - inset(left, right)).max(1.0)
+            }
+            false => width,
+        };
+        let unit = if phone {
+            width / 390.0
+        } else if sideways {
+            (width / SIDEWAYS_WIDTH).min(height / SIDEWAYS_HEIGHT)
+        } else {
+            (width / 1280.0).min(height / 800.0)
+        }
+        .max(0.2);
+        Some(Scale { os, unit, phone, sideways, size: (size.width, size.height), ground: self.scale.ground })
     }
 
     /// Whether `fit` differs from the layout's: another window size, or another scale for Slint.
@@ -958,20 +1018,21 @@ impl Shell {
 
     /// Whether the layout no longer fits the window (a phone's safe area changed, which no window event says).
     pub fn refit_wanted(&self) -> bool {
-        self.window_fit().is_some_and(|fit| self.unfitted(&fit) || fit.phone != self.scale.phone)
+        self.window_fit().is_some_and(|fit| self.unfitted(&fit) || fit.layout() != self.scale.layout())
     }
 
     /// Fit the layout to the window: one unit is a 1280th of its width or an 800th of its height, whichever is
-    /// less (upright, a 390th of its width), and the window's scale is set to that. A short window makes the whole
-    /// layout smaller: no screen is laid out shorter than the reference and scrolled. True if the layout turned
-    /// between the desktop's and the phone's.
+    /// less (upright, a 390th of its width; a phone's held sideways, a 734th of its width or a 372nd of its height),
+    /// and the window's scale is set to that. A short window makes the whole layout smaller: no screen is laid out
+    /// shorter than the reference and scrolled. True if the layout turned between the desktop's, the upright
+    /// phone's and the sideways one.
     fn fit_window(&mut self) -> bool {
         let Some(fit) = self.window_fit() else { return false };
         let ui = self.ui();
         let window = ui.window();
         let size = window.size();
-        let (phone, factor) = (fit.phone, fit.os * fit.unit);
-        let turned = phone != self.scale.phone;
+        let (phone, sideways, factor) = (fit.phone, fit.sideways, fit.os * fit.unit);
+        let turned = fit.layout() != self.scale.layout();
         if turned {
             self.touch.forget();
         }
@@ -983,9 +1044,12 @@ impl Shell {
             window.dispatch_event(slint::platform::WindowEvent::Resized { size: size.to_logical(factor) });
         }
         ui.global::<Theme>().set_phone(phone);
+        ui.global::<Theme>().set_sideways(sideways);
         let shell = ui.global::<nettai_ui::Shell>();
-        shell.set_safe_left(ui.get_safe_left());
+        let (left, right) = self.sides(sideways);
+        shell.set_safe_left(left);
         shell.set_safe_top(ui.get_safe_top());
+        shell.set_safe_right(right);
         // The ground's patterns, for the window in units.
         let units = ((size.width as f32 / factor).ceil() as i32, (size.height as f32 / factor).ceil() as i32);
         if units != self.scale.ground {
@@ -1515,7 +1579,7 @@ impl App {
             // (A phone has no hover: a tap's touch isn't one. A row that comes under a pointer left still, as the
             // keys scroll its list, isn't one the pointer went to: the keys were used last.)
             NavInput::Hover(id, index, on) => {
-                if !self.shell.scale.phone && (!on || self.shell.nav.pointing()) {
+                if !self.shell.scale.handheld() && (!on || self.shell.nav.pointing()) {
                     let hearer = self.hearer_of(&id);
                     self.call(hearer, |s, shell| s.hovered(shell, &id, index, on));
                 }
@@ -2296,7 +2360,7 @@ mod tests {
         assert_eq!(picker_rows(2, 100.0, 500.0), (2, true), "what fits under goes under");
         assert_eq!(picker_rows(0, 10.0, 5.0), (1, true));
         for options in 0..40 {
-            for (under, over) in [(700.0, 60.0), (60.0, 700.0), (380.0, 380.0), (150.0, 240.0), (800.0 * 0.6, 0.0)] {
+            for (under, over) in [(700.0, 60.0), (60.0, 700.0), (380.0, 380.0), (150.0, 240.0), (800.0 * 0.6, 0.0), (372.0 * 0.6, 0.0)] {
                 let (rows, is_under) = picker_rows(options, under, over);
                 let room: f32 = if is_under { under } else { over };
                 assert!((1..=PICKER_ROWS).contains(&rows) && rows <= options.max(1));

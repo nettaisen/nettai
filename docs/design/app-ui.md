@@ -1781,6 +1781,45 @@ Each is settled unless the user changes it.
        screens"). The list is a sheet now, as the folder's library is: PROGRAMS under the lines opens it, a program
        taken shuts it with the piece in hand over the board, and while one is in hand the button is PUT AWAY. The
        board's cells shrink on a phone too short for the rest under it.
+103. **A phone held sideways** (2026-10-31). Held sideways a phone had the desktop's layout fitted to its height: on an
+     iPhone (its safe area about 734 by 372 points) everything at about 0.48, its body text about 6 points. The user
+     had mockups drawn first (nettai-verify docs/nettai-ui/sideways: an iPhone 16 held sideways, in BN5's look) and
+     chose B of three for the screens with tabs: the tabs in the header (A put them down the left, C kept the upright
+     tab with its sheet docked beside it). The rest is as the mockups' "Screens without tabs" and "B: the other
+     screens" draw it.
+     - *When:* a phone's app (iOS, Android) whose window is wider than tall and whose safe area is under 520 points
+       tall. A tablet held sideways (an iPad's 744 and up) and every desktop window, however short, keep the desktop's
+       layout (the desktop scales down; it isn't bent for the phone). Turning the phone switches layouts as it is
+       held, as upright and the desktop's do (the pad's places forgotten, the focus kept).
+     - *The scale:* one unit is a 734th of the safe area's width or a 372nd of its height, whichever is less: an
+       iPhone SE (667 by 375, no insets) a little smaller, a larger phone wider. Its left and right keep 12 at least
+       where the safe area keeps less (an iPhone SE's, an Android phone's side without its camera). Nothing assumes
+       734: the panes take the room there is.
+     - *The sizes:* the upright phone's: a name's text 14, the lists' rows 40, labels 11, and everything tapped 44 by
+       44 at least (a control drawn smaller takes a tap past its box, §102); no footer, no key hints, no hover. A
+       compact button (a pane's EDIT) stays compact, its tap reaching to 44.
+     - *The header:* one row 44 tall, its bar across the whole window: Back, the title (a name's field where it is
+       one), the game at the right (its switcher where the desktop's has one). On a screen with tabs (a build's
+       editor, a ruleset's page) the tabs are in the same row after the name's box (the editor's `TabBar`, sliding to
+       keep the chosen one in view where they don't all fit, as upright).
+     - *The body:* the desktop's panes side by side, under the header 12 and 12 over the foot, to the safe area's
+       sides. A list scrolls inside itself; no screen scrolls as a whole (§98). What the upright phone opens as a sheet
+       from a tab (the library, the navis, the NaviCust's programs) is a pane, always shown.
+     - *The main menu:* PLAY, REPLAYS and SETTINGS at the left in the phone's size (32, rows 68), a column 280 wide,
+       and the reel at the right as large as the body's height and the width left take.
+     - *Play:* the builds' list in a panel at the left (290); at the right the chosen build's card in the overview's
+       place, which has no room there: its face, its name over its navi and presets, its forms, and two lines of what
+       it holds (HP, its folder's chips and its ruleset; its abilities), EDIT and ⋯ at its top right; HOST under it 52
+       tall, the code and JOIN under that, DIRECT CONNECT at the foot's right with the reserved line beside it. Waiting
+       and the lobby follow the same panes: the two players' cards side by side (94 tall, VS between them), the
+       invite's code in the other's while the host waits with COPY at its right; the match's settings in one row
+       under them, each named over its control; the player's connection at the foot's left, READY, CHANGE BUILD and
+       LEAVE (PRACTICE and CANCEL INVITE while waiting) beside it, 52 tall, the reserved line over them. The wait's
+       practice battle fills the window as upright (PRACTICE starts it): a battle's pad shows only there.
+     - *Dialogs* are centered at the upright phone's width (358). Two whose upright arrangement is taller than the
+       window are the desktop's arrangement and width: a new build's (600 wide, FROM A SAVE FILE… at the buttons' left
+       in place of under a line) and a direct connection's. The lobby's CHANGE BUILD shows four rows. *A select's
+       choices* open as a sheet from the bottom, at most 480 wide, in the middle.
 
 ## 3. Chosen where the user gave no answer
 
@@ -2448,9 +2487,12 @@ the bottom.
 One column; pickers, the chip library, the NaviCust's programs and the navis open as sheets from the bottom; what is
 tapped is 44 by 44 at least (a control drawn smaller takes a tap past its box: §2.102), but a list's rows, the tabs
 and the small words on a line; no key hints, and the cursor only with a pad or keyboard connected; in battle the pad
-is drawn under the picture and START and MENU open the same menus. Held sideways, a phone uses the desktop layout.
-Where a screen doesn't fit a short phone, its lists take the height that is left: nothing scrolls the whole screen
-(§2.98).
+is drawn under the picture and START and MENU open the same menus. Held sideways (§2.103), a phone has a layout of
+its own: the desktop's panes side by side at the upright phone's sizes, under a header of one row 44 tall that holds
+a screen's tabs after its title; what upright opens as a sheet from a tab is a pane; dialogs at the upright width and
+a select's choices a sheet at most 480 wide; the battle the see-through pad over the full-height picture. A tablet
+held sideways keeps the desktop layout. Where a screen doesn't fit a short phone, its lists take the height that is
+left: nothing scrolls the whole screen (§2.98).
 
 ## 7. Errors the player can see
 

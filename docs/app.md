@@ -1381,8 +1381,10 @@ run in the emulator (below, "Android"). What builds: the whole app, for iOS (typ
     `UIApplicationSceneManifest` names.
   - Android: winit too, which the app sets up itself (Slint's selector offers Android its android-activity backend
     alone), drawn by femtovg on OpenGL ES (below, "Android").
-- **The layout:** a window taller than wide is the phone's (§9), and every screen is laid out in the safe area
-  (§9, "The safe area").
+- **The layout:** a window taller than wide is the upright phone's (§9); one wider than tall whose safe area is
+  under 520 points tall is the phone's held sideways (§9, "A phone held sideways": the desktop's panes at the upright
+  phone's sizes, the tabs in the header); a taller one, a tablet's, the desktop's. Every screen is laid out in the
+  safe area (§9, "The safe area").
 - **The engine:** Luau's C++ builds with the platforms' clang (`cc`); nothing in the engine is platform-specific.
 - **The data folder** (`nettai_files::folders::app_data`): on iOS the app's own `Library/Application Support`
   in its container, hidden from the player (the user's choice over Documents: what goes in and out goes through the
@@ -2387,9 +2389,25 @@ the viewer's two builds.
 its width, and `Theme.phone` is set, which the theme's metrics and the screens read (the margins 16, the header
 56 with a smaller title, no footer and no key hints; the main menu in one column under the reel; Settings without
 its list, a label on two lines where it needs them and each note under its control; a select's choices as a sheet
-from the bottom; a menu's buttons one over the other; the battle's pad under the picture). Held sideways, a phone
-has the desktop's layout. A screen isn't scrolled to fit a short phone either: where it doesn't fit, its lists take
-the height that is left (the NaviCust's programs, the Navi tab's forms), cramped on the smallest.
+from the bottom; a menu's buttons one over the other; the battle's pad under the picture). A screen isn't scrolled to
+fit a short phone either: where it doesn't fit, its lists take the height that is left (the NaviCust's programs, the
+Navi tab's forms), cramped on the smallest.
+
+**A phone held sideways** (design §2.103): a phone's app (`Theme.phone-app`) whose window is wider than tall and whose
+safe area is under 520 points tall (`SIDEWAYS_TALLEST`: a tablet's keeps the desktop's layout, and a desktop window
+never takes it, however short) has `Theme.sideways`: a unit is a 734th of the safe area's width or a 372nd of its
+height, whichever is less (`SIDEWAYS_WIDTH`, `SIDEWAYS_HEIGHT`), and its left and right keep 12 units at least where
+the safe area keeps less (`Shell::sides`, and app.slint's box the same). `Theme.handheld` is either phone layout: the
+upright phone's sizes (a name's text 14, the lists' rows 40, `Reach`'s 44 taps), no footer and no hover. The
+screens lay out the desktop's panes side by side at those sizes: the header one row 44 tall (`Theme.header`), its bar
+across the whole window (`Shell.safe-left`, `Shell.safe-right`), a screen's tabs in it after its title (`Page`'s
+`title-most`, `header-room-x` and `header-room-width`, a `TabBar` `headed`); the body 12 under it and 12 over the
+foot, to the safe area's sides (`Theme.margin` 0); what upright opens as a sheet from a tab a pane beside the build's
+list. Dialogs are the upright phone's width (`DialogFrame`'s `wide` keeps the desktop's for the two too tall for it),
+and a select's choices a sheet from the bottom at most 480 wide (`SHEET_WIDTH`). The battle is as the desktop's
+layout had it sideways: the picture the window's height, the see-through pad over it (`TouchOverlay`). The app's
+`Scale::handheld` and `Scale::sideways` are the same for its Rust: a phone's sheets and its one column are
+`scale.phone`'s alone.
 
 On a phone the battle's picture has the window's whole width, at its top, with no gutter (`BattleScreen`), and
 so has Practice's arena: the picture is a whole multiple of the game's 240 (§1), and the gutters' 32 can be the
