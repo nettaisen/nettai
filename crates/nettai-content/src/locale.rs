@@ -55,12 +55,15 @@
 //! no-running message (the battle's screens); a Cross's description (R in
 //! the Cross window) and its name (a frontend's own text: live play's
 //! Crosses, the plain-text screen); a patch card's name is for its menu
-//! (and the frontend's `--cards`' messages). A chip's whole name
-//! (`long_name`: "High Cannon" for "HiCannon", "Cannon" for "Cannon"; the
-//! own language's gives every chip one) and a navi's (where the game cuts
-//! its name short to 8 letters) are for places with room; the battle shows
-//! the game's. Nothing shows another form's name or a weapon's, so a table
-//! has none.
+//! (and the frontend's `--cards`' messages). The whole names are for
+//! places with room; the battle shows the game's: a chip's, a navi's, a
+//! form's, a background's and a collection's entry's (`long_name`: "High
+//! Cannon" for "HiCannon", "Metal Soul" for "MetlSoul", "Cannon" for
+//! "Cannon"; the own language's gives every chip one, and English gives
+//! every name one), a navi's variant name's (`variant_long_name`: "Bass
+//! Cross MegaMan"), and a text table's line's (`{ text = "Ⓑ+←CurS",
+//! long_text = "Ⓑ+←: Cursed Shield" }`). Nothing shows another form's
+//! name or a weapon's, so a table has none.
 //!
 //! A game's text tables, key to text that no definition owns, are its
 //! top-level tables that are no collection of its root ([`text_tables`]),
@@ -278,6 +281,7 @@ pub fn check(s: &Strings, defs: &Defs, text_tables: &[String], own: bool) -> Vec
         text(format!("navis.{key}.name"), &n.name);
         text(format!("navis.{key}.long_name"), &n.long_name);
         text(format!("navis.{key}.variant_name"), &n.variant_name);
+        text(format!("navis.{key}.variant_long_name"), &n.variant_long_name);
         text(format!("navis.{key}.run_message"), &n.run_message);
     }
     for (key, f) in &s.forms {
@@ -285,6 +289,7 @@ pub fn check(s: &Strings, defs: &Defs, text_tables: &[String], own: bool) -> Vec
             unknown.push(format!("forms.{key}: no form has this key"));
         }
         text(format!("forms.{key}.name"), &f.name);
+        text(format!("forms.{key}.long_name"), &f.long_name);
         text(format!("forms.{key}.description"), &f.description);
     }
     // (The game's own tables: each a collection of its root, else a text
@@ -299,13 +304,15 @@ pub fn check(s: &Strings, defs: &Defs, text_tables: &[String], own: bool) -> Vec
                         unknown.push(format!("{name}.{id}: no entry of {name} has this id"));
                     }
                     text(format!("{name}.{id}.name"), &e.name);
+                    text(format!("{name}.{id}.long_name"), &e.long_name);
                     text(format!("{name}.{id}.description"), &e.description);
                 }
             }
             Table::Text(_) if collection => unknown.push(format!("{name}: a collection's table, whose entries are tables (`{{ name = ... }}`), not text")),
             Table::Text(lines) => {
                 for (key, line) in lines {
-                    text(format!("{name}.{key}"), &Some(line.clone()));
+                    text(format!("{name}.{key}"), &Some(line.text().to_string()));
+                    text(format!("{name}.{key}.long_text"), &line.long_text().map(str::to_string));
                 }
             }
             Table::Entries(_) => unknown.push(format!(
@@ -354,8 +361,10 @@ pub fn check_backgrounds(s: &Strings, backgrounds: &[&str], own: bool) -> Vec<St
         if !backgrounds.contains(&name.as_str()) {
             out.push(format!("backgrounds.{name}: the pack has no background of this name"));
         }
-        if let Some(c) = b.name.as_deref().and_then(|v| v.chars().find(|&c| matches!(c, '\u{0300}'..='\u{036F}' | '\u{3099}' | '\u{309A}'))) {
-            out.push(format!("backgrounds.{name}.name has a combining mark ({c:?}): write the composed character"));
+        for (field, v) in [("name", &b.name), ("long_name", &b.long_name)] {
+            if let Some(c) = v.as_deref().and_then(|v| v.chars().find(|&c| matches!(c, '\u{0300}'..='\u{036F}' | '\u{3099}' | '\u{309A}'))) {
+                out.push(format!("backgrounds.{name}.{field} has a combining mark ({c:?}): write the composed character"));
+            }
         }
     }
     if own {

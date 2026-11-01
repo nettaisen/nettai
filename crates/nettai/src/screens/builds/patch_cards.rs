@@ -976,13 +976,13 @@ mod tests {
 
     /// The Bass-Cross MegaMan card is one card of each game whose lines are the build's version's (the user: "it's
     /// actually just the same card, but with different effects depending on version of the game"): the effects of no
-    /// version's, and those of the build's. (EXE6's Falzar charge line is the Legacy Collection's, which writes the B
-    /// button's icon there, as the content's mark Ⓑ.)
+    /// version's, and those of the build's. (The charge lines are the Legacy Collection's, which writes the B button's
+    /// icon in EXE6's Falzar line and in both of EXE5's, as the content's mark Ⓑ.)
     #[test]
     fn bass_cross_megamans_lines_are_the_versions() {
         for (content, game, versions) in [
             (nettai_match::testing::exe6_content(), "exe6", [("gregar", ["HP+200", "NormBody", "MegFld-2", "SprArmr", "TriBustr", "B↓Sbustr"]), ("falzar", ["HP+20%", "NormBody", "MegFld-2", "FlotShoe", "TriBustr", "Ⓑ↓HelzR"])]),
-            (nettai_match::testing::exe5_content(), "exe5", [("protoman", ["HP+200", "NormBody", "MegFld-2", "SprArmr", "TriBustr", "B↓Sbustr"]), ("colonel", ["HP+20%", "NormBody", "MegFld-2", "FlotShoe", "TriBustr", "B↓HelzR"])]),
+            (nettai_match::testing::exe5_content(), "exe5", [("protoman", ["HP+200", "NormBody", "MegFld-2", "SprArmr", "TriBustr", "Ⓑ↓Sbustr"]), ("colonel", ["HP+20%", "NormBody", "MegFld-2", "FlotShoe", "TriBustr", "Ⓑ↓HelzR"])]),
         ] {
             let collection = collection_of(&content, FIELD).unwrap();
             let card = nettai_match::ids::entry(&content, game, &collection, "bass-cross-megaman").unwrap_or_else(|| panic!("{game}: one Bass-Cross MegaMan"));

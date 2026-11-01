@@ -43,9 +43,10 @@ pub struct ChipStrings {
 /// the enemy names show instead when its side's rules ask
 /// (`battle.set_hud("name_variant", ..)`: EXE5's Hub Style, "BCMegaMn"), and its
 /// no-running message (L), its lines apart by `\n`; and its whole name
-/// (`long_name`) where the game's own is cut short to fit its 8 letters
-/// ("MagnetMn": "MagnetMan"), which the app's menus show (the battle shows
-/// the game's).
+/// (`long_name`: "MagnetMan" for "MagnetMn", the name itself where the game's
+/// isn't cut short to fit its 8 letters) and its variant name's
+/// (`variant_long_name`: "Bass Cross MegaMan"), which the app's menus show
+/// (the battle shows the game's).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NaviStrings {
@@ -56,40 +57,51 @@ pub struct NaviStrings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub variant_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub variant_long_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub run_message: Option<String>,
 }
 
-/// A form's strings (a Cross's): its name (a frontend's own text: live
-/// play's Crosses, the plain-text screen's Cross window), and its
-/// description (R in the Cross window).
+/// A form's strings (a Cross's, a soul's): its name (a frontend's own text:
+/// live play's Crosses, the plain-text screen's Cross window), its whole
+/// name (`long_name`: "Metal Soul" for "MetlSoul"), and its description (R
+/// in the Cross window).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct FormStrings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub long_name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 }
 
 /// A background's strings, by its asset name: its name as a player sees it
 /// (a match's places: the app's arenas), the area of the game whose maps
-/// draw it as the game's menus name it.
+/// draw it as the game's menus name it, and its whole name (`long_name`:
+/// "Judge Tree Comp" for "JdgTreeComp").
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct BackgroundStrings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub long_name: Option<String>,
 }
 
 /// An entry's strings (of one of the game's collections: a patch card's, a
-/// NaviCust program's): its name, which a menu shows, and its description
-/// where the game has one (a NaviCust program's, as its screen's box shows
-/// it: `\n` its line breaks).
+/// NaviCust program's): its name, which a menu shows, its whole name
+/// (`long_name`: "Super Armor" for "SprArmr"), and its description where
+/// the game has one (a NaviCust program's, as its screen's box shows it:
+/// `\n` its line breaks).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct EntryStrings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub long_name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
 }
@@ -102,7 +114,41 @@ pub struct EntryStrings {
 #[serde(untagged)]
 pub enum Table {
     Entries(BTreeMap<String, EntryStrings>),
-    Text(BTreeMap<String, String>),
+    Text(BTreeMap<String, Line>),
+}
+
+/// A text table's line: its text, or its text with its whole form
+/// (`{ text = "B+←CurS", long_text = "B+←: Cursed Shield" }`: the line as
+/// the game would write it with room).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Line {
+    Text(String),
+    Long(LongLine),
+}
+
+/// A line with its whole form ([`Line::Long`]).
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LongLine {
+    pub text: String,
+    pub long_text: String,
+}
+
+impl Line {
+    pub fn text(&self) -> &str {
+        match self {
+            Line::Text(text) | Line::Long(LongLine { text, .. }) => text,
+        }
+    }
+
+    /// Its whole form, where it has one.
+    pub fn long_text(&self) -> Option<&str> {
+        match self {
+            Line::Text(_) => None,
+            Line::Long(l) => Some(&l.long_text),
+        }
+    }
 }
 
 /// One language's strings, by definition key: the core's sections' (chips,
@@ -186,8 +232,18 @@ impl Strings {
 
     /// Key `key` of the game's text table `table`.
     pub fn text(&self, table: &str, key: &str) -> Option<&str> {
+        self.line(table, key).map(Line::text)
+    }
+
+    /// Key `key`'s whole form in the game's text table `table`, where it has
+    /// one.
+    pub fn long_text(&self, table: &str, key: &str) -> Option<&str> {
+        self.line(table, key).and_then(Line::long_text)
+    }
+
+    fn line(&self, table: &str, key: &str) -> Option<&Line> {
         match self.tables.get(table)? {
-            Table::Text(lines) => lines.get(key).map(String::as_str),
+            Table::Text(lines) => lines.get(key),
             Table::Entries(_) => None,
         }
     }
@@ -230,6 +286,35 @@ pub fn talking(message: &str, rule: &super::custom::TalkingCharacters) -> [u32; 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The whole names: an entry's, a form's, a navi's variant name's, and a
+    /// text table's line's beside a plain one.
+    #[test]
+    fn whole_names_read_beside_the_names() {
+        let s: Strings = toml::from_str(
+            r#"
+            language = "en"
+            [navis]
+            megaman = { name = "MegaMan", long_name = "MegaMan", variant_name = "BCMegaMn", variant_long_name = "Bass Cross MegaMan" }
+            [forms]
+            metalsoul = { name = "MetlSoul", long_name = "Metal Soul" }
+            [patch_cards]
+            mettaur = { name = "Mettaur", long_name = "Mettaur" }
+            [patch_card_effects]
+            back_special = { text = "Ⓑ+←CurS", long_text = "Ⓑ+←: Cursed Shield" }
+            air_shoes = "AirShoe"
+            "#,
+        )
+        .unwrap();
+        assert_eq!(s.navi("megaman").and_then(|n| n.variant_long_name.as_deref()), Some("Bass Cross MegaMan"));
+        assert_eq!(s.form("metalsoul").and_then(|f| f.long_name.as_deref()), Some("Metal Soul"));
+        assert_eq!(s.entry("patch_cards", "mettaur").and_then(|e| e.long_name.as_deref()), Some("Mettaur"));
+        assert_eq!(s.text("patch_card_effects", "back_special"), Some("Ⓑ+←CurS"));
+        assert_eq!(s.long_text("patch_card_effects", "back_special"), Some("Ⓑ+←: Cursed Shield"));
+        assert_eq!((s.text("patch_card_effects", "air_shoes"), s.long_text("patch_card_effects", "air_shoes")), (Some("AirShoe"), None));
+        // A line's table takes no other field.
+        assert!(toml::from_str::<Strings>("language = \"en\"\n[effects]\nx = { text = \"a\", long = \"b\" }").is_err());
+    }
 
     #[test]
     fn the_strings_shape_the_timing() {

@@ -357,7 +357,11 @@ trade the original look for consistency in every frame, to fix a problem EXE6's 
   table in the content root that maps roles to fonts. No definition and no place in `Content`.
 - **Optionally a full name** beside the 8-character one, for places with room: a library or folder screen, a
   lobby, option B. Done as the locales' `long_name`: every chip's in the content's own language ("Gun del Sol 3"
-  for "GunDelS3", "Cannon" for "Cannon"), a navi's where the game cuts it short; nothing in a battle reads it.
+  for "GunDelS3", "Cannon" for "Cannon"). Since 2026-11-01 English gives every name one (the user: "add long
+  names for everything in the english locale"): navis', forms', backgrounds', NaviCust and PartyCust programs',
+  patch cards' (`long_name`), a navi's variant name's (`variant_long_name`), and the patch card effects' lines
+  (`{ text, long_text }`), spaced as the chips' ("Metal Soul", "Tomahawk Cross", "Attack +1"); the guesses and
+  their sources are nettai-verify's docs/long-names. Nothing in a battle reads them.
 
 ### 4.3 Translations must not change the content hash
 
