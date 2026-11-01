@@ -613,7 +613,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-extract"
-version = "0.19.1"
+version = "0.19.2"
 dependencies = [
  "log",
  "m4a",
