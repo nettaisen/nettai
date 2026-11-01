@@ -2,9 +2,11 @@
 # https://github.com/nettaisen/ffmpeg-build named here, and each of its files a package takes by its SHA-256
 # (as sha256sum writes them). packaging/build.sh and packaging/windows/package.ps1 download and check them; to
 # bundle another release, name its tag and copy its files' sums from its .sha256 files.
-# release: ffmpeg-9.0.2-3
+# release: ffmpeg-9.0.2-4
+5802480aeb49f3cd165b5eff6c4b7c3a499ba0bc527a5f42f880f35c3a1f831f  ffmpeg-linux-arm64
 06ce854994a3a843465cbfda32230cc4092669db92ce3a2b4314c9634c10e0e7  ffmpeg-linux-x86_64
 d80f922e08c63d94dacb7137f12477910c7852a5f8c93be08ce501ce17d7213e  ffmpeg-macos-arm64
 69063d92008f38e8e3c59b929a175f57d1da4da2e9a0ab9574fa85f2043e931b  ffmpeg-macos-x86_64
-47e1792850a762d87fd712510c5043394c9e3c9afca51646efcd8b673b4555bd  ffmpeg-NOTICE.txt
-ca3bdcfcb1da5d25327bf0979f4e96ef1ae960e038f2a9ea10b1db4b8387576b  ffmpeg-windows-x86_64.exe
+601933a8625dab248d968541d9565f14fcb229e4e4e5026526c16293e0828a53  ffmpeg-NOTICE.txt
+1afedf3631dac7efc3eb7c0a7cd2c75979d7c0db420633787f0eb76b3be37c6f  ffmpeg-windows-arm64.exe
+c4b05a9fec8527ca6035e76959cf83304559e291288eab694a3f66f132518649  ffmpeg-windows-x86_64.exe

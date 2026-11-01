@@ -4447,11 +4447,11 @@ and publishes a release `ffmpeg-<version>-<revision>`. ffmpeg-9.0.2-3 (2026-10-3
 raw H.264 and ADTS (nettai-video reads its codecs' own output on every platform: §16): the `h264` and `adts`
 muxers in place of the MP4 one, and no `scale`, `format` or `setparams`, as the frames come as NV12; 9.0.2-2 had
 the MP4 muxer alone (the export before, released to 0.17.0). Its macOS arm64 build ran nettai-video's tests
-(`NETTAI_FFMPEG`, the end-to-end export among them). Its revision 4 (`ffmpeg-9.0.2-4`, the same program) adds the
-arm64 packages' two: `ffmpeg-linux-arm64`, built on `ubuntu-22.04-arm` and linked statically as x86_64's is, and
-`ffmpeg-windows-arm64.exe`, cross-compiled on Linux with llvm-mingw against the UCRT (Windows' own since Windows
-10) and smoke-tested on `windows-11-arm`; the arm64 packages take theirs from the release the pin names, so they
-need it pinned. `packaging/ffmpeg.sha256` pins the release a package takes by its tag and each file by its SHA-256; the scripts download them once into
+(`NETTAI_FFMPEG`, the end-to-end export among them). Its revision 4 (`ffmpeg-9.0.2-4`, 2026-10-31, the same program), the
+one pinned, adds the arm64 packages' two: `ffmpeg-linux-arm64`, built on `ubuntu-22.04-arm` and linked statically as
+x86_64's is, and `ffmpeg-windows-arm64.exe`, cross-compiled on Linux with llvm-mingw against the UCRT (Windows' own
+since Windows 10) and smoke-tested on `windows-11-arm`. Its Linux and Mac programs are revision 3's byte for byte;
+Windows x86_64's, built again from the same sources by the same job, differs in its bytes alone. `packaging/ffmpeg.sha256` pins the release a package takes by its tag and each file by its SHA-256; the scripts download them once into
 `target/package/ffmpeg/<tag>/` and check them (or bundle the ffmpeg `NETTAI_BUNDLE_FFMPEG`, `-Ffmpeg` on Windows,
 names). Where it goes: `ffmpeg.exe` beside `nettai.exe` (the installer and the .zip), `Contents/MacOS/ffmpeg` in
 the app (the release's program for the app's architecture; signed before the app, as the app is), beside the program
