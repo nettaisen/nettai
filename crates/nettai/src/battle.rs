@@ -22,7 +22,6 @@ use crate::shell::Shell;
 use crate::stage::{self, Stage, Surface};
 use nettai_battle::BattleResult;
 use nettai_frontend::driver::{Driver, StopReason};
-use nettai_frontend::game::GraphicsMode;
 use nettai_frontend::preload::{Part, Preload};
 use nettai_frontend::replay::{Recorder, Replay};
 use nettai_frontend::viewer::Viewer;
@@ -213,11 +212,10 @@ impl Shell {
                 let size = ui.window().size();
                 let fit = self.fit(size.width as f32, size.height as f32);
                 let size = fit.presented();
-                let mode = self.settings.graphics();
+                let enhancements = self.settings.enhancements();
                 let graphics = ready.graphics(self.i18n.code);
-                let font = ready.loaded.font_in(self.i18n.code).filter(|_| mode == GraphicsMode::Enhanced);
-                let mut renderer = graphics.renderer(mode, font.clone());
-                renderer.reduce_motion = self.reduces_motion();
+                let font = ready.loaded.font_in(self.i18n.code).filter(|_| enhancements.wants_font());
+                let renderer = graphics.renderer(enhancements, font.clone());
                 // (The music the player picked, the battle's game's own or a theme, where the battle plays the pick:
                 // `crate::music`.)
                 let music = if loading.start.music == BattleMusic::Picked { self.battle_music() } else { crate::music::Music::GameOwn };
@@ -493,14 +491,15 @@ impl Shell {
     }
 
     /// How the picture fits a room of `width` by `height` display pixels: `stage::fit`, held to the settings'
-    /// picture size (the enhanced mode's frame as wide and as tall as the room at the multiple held to).
+    /// picture size (with the window filled, the frame as wide and as tall as the room at the multiple held to).
     pub fn fit(&self, width: f32, height: f32) -> stage::Fit {
-        let mut fit = stage::fit(width, height, self.scale.os, self.sharp, self.settings.enhanced);
+        let enhancements = self.settings.enhancements();
+        let mut fit = stage::fit(width, height, self.scale.os, self.sharp, enhancements);
         if self.settings.picture_size > 0 && fit.scale > self.settings.picture_size {
             fit.scale = self.settings.picture_size;
             fit.density = fit.density.min(fit.scale);
-            fit.columns = stage::columns(width, fit.scale, self.settings.enhanced);
-            fit.rows = stage::rows(height, fit.scale, self.settings.enhanced);
+            fit.columns = stage::columns(width, fit.scale, enhancements.fill);
+            fit.rows = stage::rows(height, fit.scale, enhancements.fill);
         }
         fit
     }
@@ -519,7 +518,7 @@ impl Shell {
 
     /// Show a picture of a screen's own in the room its `Picture` has (a replay's viewer): `present` draws it
     /// into the buffer it is given, a frame as large as it is given (the original's 240 by 160 but where
-    /// `large`, a battle's picture: the enhanced mode's as large as the room), when `surface` is out of date (the
+    /// `large`, a battle's picture: with the window filled as large as the room), when `surface` is out of date (the
     /// screen sets `surface.stale` as its picture changes) or the room changed.
     pub fn show_surface(&mut self, surface: &mut Surface, large: bool, present: impl FnOnce(nettai_render::compose::Size, &mut [u32], usize, usize)) {
         if !self.drawing {
@@ -541,7 +540,7 @@ impl Shell {
         }
         let factor = self.ui().window().scale_factor();
         let (width, height) = ((nettai_render::compose::WIDTH as u32 * multiple) as f32, (nettai_render::compose::HEIGHT as u32 * multiple) as f32);
-        let fit = stage::fit(width, height, self.scale.os, self.sharp, self.settings.enhanced).original();
+        let fit = stage::fit(width, height, self.scale.os, self.sharp, self.settings.enhancements()).original();
         let image = surface.picture(fit, present);
         Some((image, width / factor, height / factor))
     }
@@ -613,6 +612,7 @@ impl Shell {
 mod tests {
     use super::*;
     use nettai_frontend::driver::LivePlayer;
+    use nettai_frontend::game::Enhancements;
     use nettai_frontend::player::Player;
     use nettai_frontend::testing::{graphics, short_set};
 
@@ -624,7 +624,7 @@ mod tests {
         // (A set a shot decides: the dummy has 1 HP.)
         let m = short_set::of(&content, "exe6", 7);
         let driver = LivePlayer::new(Set::of(&content, &m, 7));
-        let player = Player::with(graphics(&content, 0x7FFF).renderer(GraphicsMode::Original, None), None, None, Box::new(driver));
+        let player = Player::with(graphics(&content, 0x7FFF).renderer(Enhancements::NONE, None), None, None, Box::new(driver));
         let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, kept: false, hold: Default::default(), link: Default::default(), party: Default::default() };
         let play_out = |b: &mut Battle| {
             while b.stage.player.tick(short_set::shooter(b.stage.player.battle(), 0, b.stage.player.ticks() as u32)) {
@@ -868,7 +868,7 @@ mod tests {
         let mut graphics = graphics(content, 0x7FFF);
         nettai_frontend::testing::scrolling_background(&mut graphics);
         let audio = nettai_frontend::testing::audio(content);
-        let player = Player::with(graphics.renderer(GraphicsMode::Original, None), None, Some(audio), Box::new(driver));
+        let player = Player::with(graphics.renderer(Enhancements::NONE, None), None, Some(audio), Box::new(driver));
         Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: content.game().into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, kept: false, hold: Default::default(), link: Default::default(), party: Default::default() }
     }
 

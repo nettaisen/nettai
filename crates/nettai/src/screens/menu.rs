@@ -11,7 +11,6 @@ use crate::screens::{Screen, ScreenId};
 use crate::shell::Shell;
 use crate::stage::Stage;
 use nettai_frontend::driver::{Driver, InFight, LivePlayer, OnCustomScreen, Opponent};
-use nettai_frontend::game::GraphicsMode;
 use nettai_frontend::player::Player;
 use nettai_frontend::replay::ReplayPlayer;
 use nettai_render::vfont::TextRenderer;
@@ -191,12 +190,10 @@ pub fn starter_match(content: &std::sync::Arc<nettai_battle::Content>, game: &st
 
 /// A silent player of `driver`, drawn as the settings say.
 fn player(shell: &Shell, ready: &Ready, driver: Box<dyn Driver>) -> Player {
-    let mode = shell.settings.graphics();
+    let enhancements = shell.settings.enhancements();
     let graphics = ready.graphics(shell.i18n.code);
-    let font = ready.loaded.font_in(shell.i18n.code).filter(|_| mode == GraphicsMode::Enhanced);
-    let mut renderer = graphics.renderer(mode, font.clone());
-    renderer.reduce_motion = shell.reduces_motion();
-    Player::with(renderer, font.map(TextRenderer::new), None, driver)
+    let font = ready.loaded.font_in(shell.i18n.code).filter(|_| enhancements.wants_font());
+    Player::with(graphics.renderer(enhancements, font.clone()), font.map(TextRenderer::new), None, driver)
 }
 
 /// A seed from the clock.

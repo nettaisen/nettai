@@ -47,7 +47,7 @@
 //! MP4's (`mp4`).
 //!
 //! **The picture is scaled here**, by whole multiples and the nearest
-//! pixel, and made 4:2:0 here: in the enhanced mode the battle's words are
+//! pixel, and made 4:2:0 here: with the sharp HUD the battle's words are
 //! drawn at the output's resolution over the scaled frame, so only a frame
 //! presented at its final size has them sharp. 4:2:0 is every player's: at
 //! an even multiple of the frame every game pixel covers whole color
@@ -62,7 +62,7 @@
 //! should be?"). The thread a video is made on plays the battle, a tick at
 //! a time in order, and draws each tick's frame at 240x160
 //! (`Viewer::frame_view`); the picture at the video's size, scaled with the
-//! enhanced mode's text over it and made NV12, is made on a few threads
+//! sharp text's text over it and made NV12, is made on a few threads
 //! beside it, a whole frame each, each with a text renderer of its own, and
 //! comes back in order (`presenters`); and the codecs code on their own (on
 //! the desktop ffmpeg is written from a thread of its own through a queue of

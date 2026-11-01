@@ -46,7 +46,6 @@ use crate::stage::Surface;
 use export::Export;
 use queue::Queue;
 use nettai_battle::{BattleResult, Content};
-use nettai_frontend::game::GraphicsMode;
 use nettai_frontend::player::time_of;
 use nettai_frontend::replay::{ENGINE, Info, MatchKind, Outcome};
 use nettai_render::Frame;
@@ -186,7 +185,7 @@ struct Still {
     surface: Surface,
     /// The frame, and whose it is.
     frame: Option<(PathBuf, Box<Frame>)>,
-    /// The enhanced mode's text over it.
+    /// The sharp text's text over it.
     text: Option<TextRenderer>,
     /// The replay whose still was asked for last.
     asked: Option<PathBuf>,
@@ -687,8 +686,9 @@ impl Replays {
             (Ok(s), Some((on, _))) if reason.is_none() => {
                 if !made && self.still.asked.as_ref() != Some(&entry.path) {
                     self.still.asked = Some(entry.path.clone());
-                    let mode = shell.settings.graphics();
-                    let look = Look { graphics: on.graphics(shell.i18n.code), mode, font: on.loaded.font_in(shell.i18n.code).filter(|_| mode == GraphicsMode::Enhanced) };
+                    let enhancements = shell.settings.enhancements();
+                    let font = on.loaded.font_in(shell.i18n.code).filter(|_| enhancements.wants_font());
+                    let look = Look { graphics: on.graphics(shell.i18n.code), enhancements, font };
                     self.library.still(&entry, s.info.side, on.content(), look);
                 }
                 view.set_still(made);
@@ -1303,7 +1303,7 @@ impl Screen for Replays {
         // The game or the language may have changed under it: the stills are drawn anew.
         self.still.frame = None;
         self.still.asked = None;
-        self.still.text = shell.ready().and_then(|(_, ready)| ready.loaded.font_in(shell.i18n.code).filter(|_| shell.settings.enhanced)).map(TextRenderer::new);
+        self.still.text = shell.ready().and_then(|(_, ready)| ready.loaded.font_in(shell.i18n.code).filter(|_| shell.settings.enhancements().wants_font())).map(TextRenderer::new);
         if let Some(w) = &mut self.watching {
             // (The viewer's keys are its own, `claim`'s: it shows no cursor but over its export mode and what opens
             // over it.)

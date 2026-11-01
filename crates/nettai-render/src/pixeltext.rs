@@ -1,4 +1,4 @@
-//! The original mode's strings where the graphics can't spell the language shown
+//! The original's strings where the graphics can't spell the language shown
 //! (Chinese, which no GBA ROM has a font for; every game's graphics have both
 //! releases' fonts, English's and Japanese's), drawn at their own size
 //! into the 240x160 frame in pixel fonts (docs/design/text-rendering.md
@@ -7,7 +7,7 @@
 //! letters are, and Fusion Pixel 12px for the chatbox's (fonts/muzai-pixel,
 //! fonts/fusion-pixel).
 //!
-//! The places that draw text lay the strings out as the enhanced mode does
+//! The places that draw text lay the strings out as the sharp text does
 //! (a [`TextSink`](crate::textlayer::TextSink) that measures with
 //! [`PixelText::width`], boxes as wide as the text); [`PixelText::draw`]
 //! then draws each item where it is, a pixel of a glyph a pixel of the
@@ -118,7 +118,7 @@ struct Own {
     dialogue: HashMap<char, Rc<Bitmap>>,
 }
 
-/// The original mode's pixel fonts in one language's cut, their glyphs
+/// The original's pixel fonts in one language's cut, their glyphs
 /// drawn as they are first wanted.
 pub struct PixelText {
     text: Face,
@@ -207,10 +207,12 @@ impl PixelText {
         ink.fold(None, |r, (a, b)| Some(r.map_or((a, b), |(x, y): (i32, i32)| (x.min(a), y.max(b))))).map(|(a, b)| (a as f32, b as f32))
     }
 
-    /// Draw the frame's text items into its pixels, back to front, and
-    /// leave it none.
+    /// Draw the frame's strings into its pixels, back to front, and leave
+    /// it only the sharp HUD's items.
     pub fn draw(&mut self, frame: &mut Frame) {
-        let mut items = std::mem::take(&mut frame.text);
+        // (The strings alone: the sharp HUD's items stay for the text layer.)
+        let (mut items, hud): (Vec<_>, Vec<_>) = std::mem::take(&mut frame.text).into_iter().partition(|item| item.is_string());
+        frame.text = hud;
         items.sort_by_key(|item| std::cmp::Reverse(item.depth));
         for item in &items {
             self.draw_item(item, frame);
@@ -325,6 +327,11 @@ impl PixelText {
                 return;
             }
             frame.pixels[i] = colors[v as usize];
+            // (Its depth too: what the output draws over the frame later, the
+            // sharp HUD's drawings, the background's glide, keeps off it.)
+            if let Some(d) = frame.depth.get_mut(i) {
+                *d = item.depth;
+            }
         };
         match item.vscale {
             // The squash: each of the box's rows shows the canvas's row the

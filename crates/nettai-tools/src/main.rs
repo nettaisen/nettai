@@ -12,7 +12,7 @@ use nettai_frontend::game::{Failed, Game, LoadError, RomSource, Sound};
 use nettai_frontend::player::Player;
 use nettai_frontend::session;
 use nettai_render::compose::{HEIGHT, Size, WIDTH};
-use nettai_render::{Consoles, GraphicsMode};
+use nettai_render::{Consoles, Enhancements};
 use nettai_render::vfont::TextRenderer;
 use nettai_tools::headless;
 use nettai_tools::trace::trace_rounds;
@@ -52,11 +52,11 @@ struct Args {
     marks: Vec<String>,
     out: PathBuf,
     png_scale: usize,
-    /// With --headless: the enhanced mode's frames this many columns wide
+    /// With --headless: the filled window's frames this many columns wide
     /// and rows tall (none: the original's 240 and 160).
     width: Option<usize>,
     height: Option<usize>,
-    mode: GraphicsMode,
+    enhancements: Enhancements,
     font: Option<PathBuf>,
     lang: String,
     /// Write a replay of the set played headless to this file.
@@ -128,7 +128,7 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    round a chapter ('Round N') and the sound titled with its
                    player's name; OUT is there only once it is whole
   --scale N        with --mp4: the picture N times the frame's
-                   240x160 (default 1; the enhanced mode's text is drawn at that
+                   240x160 (default 1; the sharp text and HUD are drawn at that
                    size)
   --ticks A-B      with --mp4: the frames A to B alone, as --headless
                    numbers them (the pictures after the set's ticks A to B)
@@ -141,12 +141,12 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    in --out (default .)
   --out DIR        where --headless writes
   --png-scale N    with --headless: each frame N times its size
-  --width N        with --headless, in the enhanced mode: each frame N
+  --width N        with --headless, with fill (--text): each frame N
                    columns wide (240 or more; default 240), as a window that
                    wide at the frame's height shows it: the field in the
                    middle, the background on to both edges, each piece of
                    the HUD against the edge the original draws it against
-  --height N       with --headless, in the enhanced mode: each frame N rows
+  --height N       with --headless, with fill (--text): each frame N rows
                    tall (160 or more; default 160), as --width is wide: the
                    field in the middle, the background on above and below,
                    each piece of the HUD against the top or the bottom edge
@@ -194,15 +194,18 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
   --lookups FILE   with --audit: write each trace's lookups to FILE (a line
                    each: the trace, a tab, the lookup), for the trace cover;
                    with --audit-content, its own (as the trace \"content\")
-  --text MODE      how the battle is drawn: enhanced (default; `font` says
-                   the same) draws the names, the telop, the chatbox and the
-                   HUD's lines with a vector font over the scaled frame,
-                   glides the background, fills the gauge smoothly and
-                   draws the banners' squash at the output's resolution
-                   (docs/frontend.md §3); original
-                   draws it all as the original does, the text in the game's
-                   own fonts into the frame (what the frame comparison uses)
-  --font PATH      the enhanced mode's font (a TrueType or OpenType file) instead
+  --text E         the graphics enhancements the battle is drawn with
+                   (docs/frontend.md §3): enhanced (default; `font` says the
+                   same) for all of them, original for none (the original's
+                   picture exactly, what the frame comparison uses), or some
+                   of these joined by commas: text (the names, the telop,
+                   the chatbox and the HUD's lines in a vector font over the
+                   scaled frame), hud (the pictures' words, the numbers and
+                   the frames redrawn at the output's resolution), motion
+                   (the background's glide, the gauge's smooth fill, the
+                   banners' squash and the custom screen's slide between
+                   whole pixels), fill (--width and --height)
+  --font PATH      the sharp text's font (a TrueType or OpenType file) instead
                    of the bundled one (Noto Sans CJK, its cut of the language)
   --lang LANG      the language of the battle's text: en (default, the
                    content's own) or ja (the content's locales/ja.toml, and
@@ -232,7 +235,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         png_scale: 1,
         width: None,
         height: None,
-        mode: GraphicsMode::Enhanced,
+        enhancements: Enhancements::ALL,
         font: None,
         lang: nettai_assets::BASE_LANGUAGE.into(),
         record: None,
@@ -286,7 +289,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
                 let v = value("--height")?;
                 a.height = Some(number(v.clone(), "--height")?.try_into().ok().filter(|&n: &usize| n >= 160).ok_or_else(|| format!("bad --height {v:?} (160 or more)"))?);
             }
-            "--text" => a.mode = value("--text")?.parse()?,
+            "--text" => a.enhancements = value("--text")?.parse()?,
             "--font" => a.font = Some(value("--font")?.into()),
             "--lang" => a.lang = value("--lang")?,
             "--record" => a.record = Some(value("--record")?.into()),
@@ -366,8 +369,8 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
     if headless_only && a.headless.is_none() {
         return Err("--objects, --time, --mark, --png-scale, --width and --height go with --headless".into());
     }
-    if (a.width.is_some() || a.height.is_some()) && a.mode == GraphicsMode::Original {
-        return Err("--width and --height draw the enhanced mode's frames larger; the original mode's are the original's 240x160".into());
+    if (a.width.is_some() || a.height.is_some()) && !a.enhancements.fill {
+        return Err("--width and --height draw the filled window's frames larger (--text with fill); without it they are the original's 240x160".into());
     }
     Ok(a)
 }
@@ -713,10 +716,10 @@ fn main() {
     let graphics = loaded.graphics(&args.lang).unwrap_or_else(|e| load_failed(e));
     show(&graphics.report);
     load_time("graphics", t);
-    // The enhanced mode's font, shared by the renderer (which strings it has)
-    // and the text layer's drawing.
-    let font = nettai_frontend::game::font(args.mode, args.font.as_deref(), &args.lang).unwrap_or_else(|e| load_failed(e));
-    let mut renderer = graphics.renderer(args.mode, font.clone());
+    // The sharp text's and HUD's font, shared by the renderer (which strings
+    // it has) and the text layer's drawing.
+    let font = nettai_frontend::game::font(args.enhancements, args.font.as_deref(), &args.lang).unwrap_or_else(|e| load_failed(e));
+    let mut renderer = graphics.renderer(args.enhancements, font.clone());
     renderer.problems.marking = args.marks.iter().cloned().collect();
     renderer.consoles = args.consoles;
     renderer.size = Size::new(args.width.unwrap_or(WIDTH), args.height.unwrap_or(HEIGHT));
@@ -724,7 +727,7 @@ fn main() {
         let setup = headless::AuditSetup {
             graphics: renderer.graphics().clone(),
             strings: graphics.strings.clone(),
-            mode: args.mode,
+            enhancements: args.enhancements,
             font,
             sound: (!args.mute).then(|| sound_of(&loaded).bank),
             draw: args.draw,
@@ -866,8 +869,8 @@ mod tests {
             (vec!["--match", "m.toml", "--objects"], "--objects, --time, --mark, --png-scale, --width and --height go with --headless"),
             (vec!["--match", "m.toml", "--width", "284"], "--objects, --time, --mark, --png-scale, --width and --height go with --headless"),
             (vec!["--match", "m.toml", "--height", "213"], "--objects, --time, --mark, --png-scale, --width and --height go with --headless"),
-            (vec!["--match", "m.toml", "--headless", "1", "--width", "284", "--text", "original"], "--width and --height draw the enhanced mode's frames larger; the original mode's are the original's 240x160"),
-            (vec!["--match", "m.toml", "--headless", "1", "--height", "213", "--text", "original"], "--width and --height draw the enhanced mode's frames larger; the original mode's are the original's 240x160"),
+            (vec!["--match", "m.toml", "--headless", "1", "--width", "284", "--text", "original"], "--width and --height draw the filled window's frames larger (--text with fill); without it they are the original's 240x160"),
+            (vec!["--match", "m.toml", "--headless", "1", "--height", "213", "--text", "original"], "--width and --height draw the filled window's frames larger (--text with fill); without it they are the original's 240x160"),
             (vec!["--match", "m.toml", "--headless", "1", "--width", "200"], "bad --width \"200\" (240 or more)"),
             (vec!["--match", "m.toml", "--headless", "1", "--height", "150"], "bad --height \"150\" (160 or more)"),
             (vec!["--match", "m.toml", "--mp4", "o.mp4"], "--mp4 OUT writes a replay as video (--replay FILE, no --headless)"),

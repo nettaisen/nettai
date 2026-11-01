@@ -58,7 +58,7 @@ pub struct Shown<'a> {
     chatbox: Chatbox,
     kind: usize,
     text: Tiles,
-    /// In the enhanced mode, the lines for the text layer (their sprites'
+    /// With the sharp text, the lines for the text layer (their sprites'
     /// tiles are blank): each line's text and the units of it printed.
     lines: Option<Vec<(String, usize)>>,
     /// The portrait's sheet, look, and the frame of its animation it is at.
@@ -115,7 +115,7 @@ pub fn prepare<'a>(b: &Battle, side: u8, assets: &'a Bundle, graphics: &crate::g
         Script::RunMessage { .. } => MESSAGE_BOX,
     };
     let string = said.map_or("", |s| s.text);
-    // (The dialogue font's glyphs, which the original mode draws: in
+    // (The dialogue font's glyphs, which the original draws: in
     // either mode the lookup.)
     let glyphs = match lookup {
         Some(l) => crate::lookups::dialogue(&assets.hud.dialogue_font, l, string, problems),
@@ -263,7 +263,7 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
         rows.reverse();
         let group = rows.into_iter().flatten().collect();
         match &shown.lines {
-            // In the enhanced mode the sprites are blank and the lines are text
+            // With the sharp text the sprites are blank and the lines are text
             // items as deep as them, cut where they end (the last row of
             // sprites is 8 rows high).
             Some(lines) => {
@@ -291,7 +291,7 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
         let (x, y) = assets.hud.layout.chatbox_arrows[shown.kind.min(1)];
         let at = (x as i32, y as i32);
         let arrow = part(&g.arrow, 4 * frame as usize, at, (16, 16), g.text_palette);
-        // (Drawn as shapes in the enhanced mode where the game's graphics have its
+        // (Drawn as shapes with the sharp HUD where the game's graphics have its
         // frame's drawing, as deep as the part, which stands blank.)
         match assets.hud.shapes.chatbox_arrow.get(frame as usize).filter(|_| sink.draws_shapes()) {
             Some(d) => {
@@ -339,7 +339,7 @@ pub fn text_at(hud: &nettai_assets::Hud) -> (i32, i32) {
 }
 
 /// The box's map at an opening step (`chatbox_CopyBackgroundTiles_8040344`);
-/// in the enhanced mode the cells the game's graphics have drawings of drawn as shapes
+/// with the sharp HUD the cells the game's graphics have drawings of drawn as shapes
 /// (`nettai_assets::shapes`), in the box's palette, the rest as tiles.
 fn draw_box(g: &Graphics, shapes: &[Option<nettai_assets::shapes::MapDrawing>], kind: usize, step: u8, layer: &mut Layer, sink: &mut TextSink) {
     let Some(map) = g.boxes.get(kind).and_then(|steps| steps.get(step as usize)) else { return };

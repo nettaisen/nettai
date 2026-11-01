@@ -832,9 +832,10 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   SETTINGS, LEAVE MATCH (design §2.83). CONTROLS is what is bound to each button, each box changed as the Settings
   screen's are (`screens::settings::Binding`, which both hold one of: Enter, then the key or the pad's button; the
   focus moving or the page left asks no more), and RESET CONTROLS; the match plays by them as they change.
-  SETTINGS: Language, Picture size, Full screen and Battle graphics, by the Settings screen's own functions
-  (`settings::set_language` and the rest; Battle graphics is `Shell::set_enhanced`, which switches the battle being
-  played from its next frame, `Player::set_mode`, its picture fitted again), the two levels of the sound, and the
+  SETTINGS: Language, Picture size, Full screen and the four graphics enhancements, by the Settings screen's own
+  functions (`settings::set_language` and the rest; an enhancement is `settings::set_enhancement`, then
+  `Shell::set_enhancements`, which switches the battle being played from its next frame,
+  `Player::set_enhancements`, its picture fitted again), the two levels of the sound, and the
   input delay, which changes at once (`Player::set_input_delay`). Both pages show the values by `SettingsView`
   (`settings::show_values`). Its footer (`MenuOverlay`'s `hints`, the menu screens' `Footer` along the window's
   bottom, the panel above it; a phone has none) is the match's own controls as the bindings have them
@@ -2361,7 +2362,8 @@ the patch cards' lines (`cards`), the auto battle data (`auto`), a list's edits 
 **The settings** are `settings.toml` in the data folder (`settings.rs`), written as each changes and read as the
 app starts: the player's name (their account's on this machine until they choose one), the language, the game
 last used, the picture's size (the largest that fits, or at most 1 to 8 times), full screen, Reduce motion (as
-the system asks until the player says), the battle's graphics (`enhanced`, else original: docs/frontend.md §3), the levels of the music and the
+the system asks until the player says), the graphics enhancements (`sharp_text`, `sharp_hud`, `smooth_motion`,
+`fill_window`, each on at first: docs/frontend.md §3), the levels of the music and the
 sound effects, the input delay (4), the folder the player chose the Legacy Collection in (`legacy_collection`,
 where Steam doesn't list it: §17), the keys and the pad's buttons bound (those that differ from the defaults),
 and what screens remember by their own keys (`remembered`: what a screen chose last, such as Practice's builds and
@@ -2574,10 +2576,10 @@ Four rules hold for all of it:
    Settings' Reduce motion (as the system asks, until the player says: macOS's and GNOME's settings are read),
    and the screenshot pass. The one thing Reduce motion keeps is the jack-in's short fade (a `Pulse` given
    `calm`), which the screenshot pass doesn't (`Theme.still`). A set piece a press settles (the result) is put at
-   its end by its clocks' `settled`. In the battle, with Battle graphics Enhanced, it also takes off the
-   background's glide, the gauge's smooth fill and the banners' squash at the window's resolution (the
-   renderer's `reduce_motion`, set as a battle, the menu's reel or a video starts; a replay's still never has
-   them), and keeps the sharp text (docs/frontend.md §3, "Enhanced and original").
+   its end by its clocks' `settled`. It leaves the battle's picture alone: the battle's smooth motion (the
+   background's glide, the gauge's smooth fill, the banners' squash) adds no motion the game doesn't have, and
+   has its own switch, Graphics enhancements' Smooth motion (docs/frontend.md §3, "Graphics enhancements"; a
+   replay's still never has it).
 
 **A row that is focused as a whole** (the design's rows are: the cursor is around the label and its control
 together) has a `Focusable` of its own under its control, named as the control is, and the control's own is

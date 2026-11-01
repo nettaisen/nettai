@@ -653,7 +653,7 @@ fn pack_look_colors(hud: &Hud, a: &CustomScreen, p: &mut Problems) {
 }
 
 /// The game's letters of everything its HUD and its custom screen draw in
-/// fonts in the enhanced mode (`letters`, which a frame looks up as it
+/// fonts with the sharp HUD (`letters`, which a frame looks up as it
 /// draws): its number sets and chip codes always, its lettered pictures
 /// where the content's strings (`text`) have their words, a lettered
 /// picture's lines as many as the words', its words all in the lettering

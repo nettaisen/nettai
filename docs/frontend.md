@@ -1272,15 +1272,28 @@ font (text-rendering.md §12, §14). The program holds Noto Sans CJK's files
 and the pixel fonts as WOFF2, and unpacks each once, the first time it is
 wanted (`bundled`, text-rendering.md §16).
 
-**Enhanced and original** (`GraphicsMode`, `Renderer::set_mode`). A
-renderer draws a battle in one of two modes. **Original** draws it exactly
+**Graphics enhancements** (`Enhancements`, `Renderer::set_enhancements`;
+the app's Settings group of that name). A renderer draws a battle with any
+of four enhancements, each on or off alone. With none of them
+(`Enhancements::NONE`, the library's default, "original") it draws exactly
 as the original does: the text in the game's own fonts into the frame and
-nothing moved that the game holds still. **Enhanced** draws the text with
-the vector font (above), the HUD's and the custom screen's frames, buttons
-and panels as the game's drawings at the output's resolution, in the palettes
-the pictures are drawn in at the moment (text-rendering.md §13), and, unless
-`Renderer::reduce_motion` says otherwise, draws smoothly what the original
-itself moves; its text and its frames stay either way. It smooths only motion the original has, over the same frames,
+nothing moved that the game holds still. With all of them
+(`Enhancements::ALL`, the app's default, "enhanced"):
+
+- **Sharp text** (`text`) draws the strings with the vector font (above).
+- **Sharp HUD** (`hud`) draws the pictures' words in the lettering fonts,
+  the numbers in the numbers' font, and the HUD's and the custom screen's
+  frames, buttons and panels as the game's drawings at the output's
+  resolution, in the palettes the pictures are drawn in at the moment
+  (text-rendering.md §13). Its fonts are the text font's cut, so the font is
+  loaded with either (`Enhancements::wants_font`).
+- **Smooth motion** (`motion`) draws smoothly what the original itself
+  moves (below). The app's Reduce motion doesn't touch it: it moves nothing
+  the game doesn't.
+- **Fill the window** (`fill`) draws the frame as large as
+  `Renderer::size` asks ("Larger than the original").
+
+The smooth motion smooths only motion the original has, over the same frames,
 and adds none: nothing comes in with an animation the game doesn't have.
 (The HUD's intro, which brought the HUD's pieces in at each round's start,
 is gone: the user, "don't animate extra slide ins that weren't present in
@@ -1408,13 +1421,13 @@ so it has no in-between places, and stays as the game draws it.
 
 **What moves in the battle's picture** (every game's, surveyed 2026-10-14
 for "what about banners and telops and stuff? can they be animated more
-smoothly?"). Enhanced changes only what the original draws coarser than
+smoothly?"). The smooth motion changes only what the original draws coarser than
 its own motion (a counter's or a position's part of a pixel, a scale or a
 turn the frame rounds to its rows or texels); what already moves in whole pixels or
 whole steps along its own path, and what steps through pictures or
 colors, it leaves as the game draws it.
 
-| What | How the original moves it | Its steps | Enhanced |
+| What | How the original moves it | Its steps | Smooth motion |
 |---|---|---|---|
 | Banners: the battle's number and START, TURN n START, FINAL TURN, ENEMY DELETED, YOU WIN, YOU LOSE, DRAW, HIT DAMAGE JUDGE, PROGRAM ADVANCE | five 32x16 sprites squashed and stretched about their middle: in from a third of their height to whole, held, out back to a third (`sub_801CE28`; EXE4's 0x08014994). EXE5's and EXE6's 5 ticks in (heights a third, 0.4, a half, two thirds, whole), a bounce to 1.23 and 1.14 times at the hold's first two ticks and its last two, 0x30 ticks held, 5 out; EXE4's 9 in (by 0x40 in the texture's step), 30 held, 9 out, no bounce | the hardware's affine scale is exact; the frame shows it as whole texture rows picked a screen row each (at a third of the height, five or six of sixteen rows) | the same scale on the same ticks, drawn at the window's resolution (`Overlay`) |
 | A telop: a dimming chip's name, damage, "+bonus" and "x2" (EXE5's and EXE6's own banners; EXE4's own look on the banner block, 0x0801650C) | as the banners, on the banner block or the other player's | as the banners | the name is the text layer's at the window's resolution already (its squash too); the numbers and signs as the banners |
@@ -1450,20 +1463,20 @@ left out of them for the output to draw, and the custom screen's slide
 lifted on its odd ticks).
 
 Where it is on: the app's battles (live, online, Practice, a replay
-watched) and its main menu's reel, with "Battle graphics: Enhanced" (the
-app's default; Reduce motion takes the motion off and keeps the text), and
-a replay's video the app exports (as its settings say; a replay's still in
-the list is drawn at rest); nettai-tools in its default mode (`--text
-enhanced`, or `font`: headless frames, `--mp4`); and a host that
-loads with the frontend's `Options::default()`. Off: `Renderer::new` and
-`Renderer::with_graphics` (Original until told otherwise), so the tests;
-`--text original`, which the frame comparisons against mGBA, the lab and
-trace replays and the identity checks use; and every frame in the original
-mode, byte for byte as before the mode had motion.
+watched) and its main menu's reel, with Settings' "Smooth motion" on (the
+app's default), and a replay's video the app exports (as its settings say;
+a replay's still in the list is drawn at rest); nettai-tools in its default
+(`--text enhanced`, or `font`, or a list with `motion`: headless frames,
+`--mp4`); and a host that loads with the frontend's `Options::default()`.
+Off: `Renderer::new` and `Renderer::with_graphics` (no enhancements until
+told otherwise), so the tests; `--text original`, which the frame
+comparisons against mGBA, the lab and trace replays and the identity checks
+use; and every frame without it, byte for byte as before the motion was
+drawn.
 
 ### Larger than the original
 
-In the enhanced mode a frame may be wider than the original's 240 columns
+With the window filled (`Enhancements::fill`) a frame may be wider than the original's 240 columns
 and taller than its 160 rows (`Renderer::size`, `compose::Size`; the
 widescreen mockups the user chose, layout B, are nettai-verify's
 docs/nettai-ui/widescreen, and the user had the bars above and below taken
@@ -1554,15 +1567,15 @@ Where each piece keeps to, across and down, by where the original draws it
 | The time left between two windows on a screen of both (C1) | where the windows meet, near their bottom (row 17) | Top (with the windows) |
 | The chatbox (a description, a message), its portrait and arrow | the bottom of the screen, its whole width | Middle (spans the original's screen: kept with the field) |
 
-nettai-tool draws them with `--headless F --width N --height N` (the
-enhanced mode only). nettai-tools' tests/widescreen.rs holds them to this
+nettai-tool draws them with `--headless F --width N --height N` (with
+fill only). nettai-tools' tests/widescreen.rs holds them to this
 on the ROMs (`cargo test --release -p nettai-tools --test widescreen --
 --ignored`): each game's match file beside it (tests/widescreen) played to
 a custom screen, a chip's description and a fight, and EXE6's on a screen
 of both, at sizes wider, taller and both (`SIZES`): the HUD's pieces and
 text items where both their anchors put them, the custom window at the top
 left, the chatbox's lines in the middle, the field and its sprites moved to
-the middle, the background at all four edges; the original mode's frames
+the middle, the background at all four edges; the original's frames
 240x160 whatever the size.
 
 ### Both on one screen

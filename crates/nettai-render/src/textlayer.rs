@@ -4,27 +4,27 @@
 //! output's resolution over the scaled frame (docs/design/text-rendering.md,
 //! "As built").
 //!
-//! In the original mode ([`GraphicsMode::Original`]) nothing changes: every
+//! Without the sharp text ([`Enhancements::text`]) nothing changes: every
 //! string is drawn into the 240x160 frame in the game's fonts, as the
 //! comparison with the original needs. (With graphics that have no lettering
-//! in the language shown, whose fonts are another language's, the original
-//! mode lays the strings out here and draws them into the frame in pixel
-//! fonts, at the frame's resolution: `pixeltext`, `Renderer::render`.) In
-//! the enhanced mode
-//! ([`GraphicsMode::Enhanced`]) the places that draw text ask a
+//! in the language shown, whose fonts are another language's, the strings
+//! are laid out here and drawn into the frame in pixel fonts, at the frame's
+//! resolution: `pixeltext`, `Renderer::render`.) With it the places that
+//! draw text ask a
 //! [`TextSink`] first: for a string the font can draw they leave the glyphs
 //! out of the frame and hand the sink a [`TextItem`] in the original's box
 //! instead; the renderer works out each item's depth and fades, and the
 //! window or the PNG writer draws the items after scaling (`present`,
 //! `vfont`). Chip codes, the Crosses' names, buttons and logos
-//! stay pixel art; the game-style lettering of the banners, the HUD's and
-//! the custom window's labels and the chip window's help pictures is drawn
-//! here too, in the lettering font ([`Role::Lettering`], `lettering`), and
-//! the numbers in the numbers' font (`numbers`); and the frames drawn as
-//! shapes in their pictures' place (`shapes`).
+//! stay pixel art. With the sharp HUD ([`Enhancements::hud`]) the game-style
+//! lettering of the banners, the HUD's and the custom window's labels and
+//! the chip window's help pictures is drawn here too, in the lettering font
+//! ([`Role::Lettering`], `lettering`), and the numbers in the numbers' font
+//! (`numbers`); and the frames drawn as shapes in their pictures' place
+//! (`shapes`).
 
 use crate::compose::{Anchor, Fade, HEIGHT, Size, WIDTH};
-pub use crate::render::GraphicsMode;
+pub use crate::render::Enhancements;
 use crate::vfont::{Role, VectorFont};
 
 /// A rectangle in frame pixels.
@@ -116,7 +116,7 @@ pub struct TextItem {
     pub drawn: Option<Drawn>,
     /// How far past its box the item truly is, 16.16 frame pixels right and
     /// down: a sprite's true place between the frame's pixels
-    /// (`objects::Fine`, the enhanced mode's motion).
+    /// (`objects::Fine`, the smooth motion).
     pub fine: (i32, i32),
     /// A number drawn in the numbers' font in place of the words, each
     /// character fitted to its game glyph's box (`numbers`).
@@ -130,6 +130,12 @@ pub struct TextItem {
 }
 
 impl TextItem {
+    /// Whether it is a string in a font's glyphs (a name, a line), not the
+    /// sharp HUD's: a lettering, a number in the numbers' font or a drawing.
+    pub fn is_string(&self) -> bool {
+        !matches!(self.role, Role::Lettering(_)) && self.drawn.is_none() && self.fitted.is_none()
+    }
+
     pub fn new(text: impl Into<String>, role: Role, rect: Rect, face: u16, shadow: Option<u16>) -> TextItem {
         TextItem {
             text: text.into(),
@@ -243,20 +249,22 @@ pub enum Plane {
 /// Collects the frame's text items while it is drawn, and gives the
 /// display text for content in the player's language (`strings`).
 pub struct TextSink<'f> {
-    pub mode: GraphicsMode,
+    /// The strings go to the text layer in the font (the sharp text).
+    sharp: bool,
+    /// The font of the sharp text, and whose cut the lettering fonts are.
     font: Option<&'f VectorFont>,
     measure: Option<&'f std::cell::RefCell<crate::vfont::TextRenderer>>,
-    /// The original mode's pixel fonts, where its graphics can't spell the
-    /// language shown: what takes the strings and measures them
-    /// (`pixeltext`).
+    /// The pixel fonts, where the frame has no sharp text and its graphics
+    /// can't spell the language shown: what takes the strings and measures
+    /// them (`pixeltext`).
     pixels: Option<&'f std::cell::RefCell<crate::pixeltext::PixelText>>,
     items: Vec<(Plane, TextItem)>,
     next_tag: u32,
     /// The display text the frame shows for content: the player's
     /// language's strings, else the content's own.
     pub strings: crate::strings::DisplayText<'f>,
-    /// The game-style lettering goes to the text layer too (the enhanced
-    /// mode's: [`TextSink::takes_lettering`]).
+    /// The game-style lettering goes to the text layer too (the sharp
+    /// HUD's: [`TextSink::takes_lettering`]).
     lettering: bool,
     /// Where the items pushed keep to in a frame larger than the original's
     /// (`TextItem::anchor`).
@@ -264,21 +272,22 @@ pub struct TextSink<'f> {
 }
 
 impl<'f> TextSink<'f> {
-    pub fn new(mode: GraphicsMode, font: Option<&'f VectorFont>) -> TextSink<'f> {
-        let lettering = mode == GraphicsMode::Enhanced && font.is_some();
-        TextSink { mode, font, measure: None, pixels: None, items: Vec::new(), next_tag: 0, strings: Default::default(), lettering, anchor: Anchor::CENTER }
+    /// A sink for a frame drawn with `enhancements`: the sharp text's and
+    /// the sharp HUD's, where there is a font.
+    pub fn new(enhancements: Enhancements, font: Option<&'f VectorFont>) -> TextSink<'f> {
+        let (sharp, lettering) = (enhancements.text && font.is_some(), enhancements.hud && font.is_some());
+        TextSink { sharp, font, measure: None, pixels: None, items: Vec::new(), next_tag: 0, strings: Default::default(), lettering, anchor: Anchor::CENTER }
     }
 
-    /// With the game-style lettering left to the pictures however the
-    /// strings are drawn (`on` false: the original mode's frame, whose
-    /// strings graphics without the language's lettering have drawn by the
-    /// vector font: `Renderer::render`).
-    pub fn with_lettering(self, on: bool) -> TextSink<'f> {
-        TextSink { lettering: on && self.lettering, ..self }
+    /// Whether the strings are laid out for the text layer (the sharp text,
+    /// or the pixel fonts where the graphics can't spell the language shown),
+    /// not drawn in the game's tiles.
+    pub fn lays_out_strings(&self) -> bool {
+        self.sharp || self.pixels.is_some()
     }
 
     /// Whether a picture's lettering that says `text` goes to the text
-    /// layer: in the enhanced mode, when the lettering font draws every
+    /// layer: with the sharp HUD, when the lettering font draws every
     /// character of it ([`crate::vfont::lettering_font_of`] the text font's
     /// cut); else the picture is drawn as the original draws it.
     pub fn takes_lettering(&self, text: &str) -> bool {
@@ -290,13 +299,14 @@ impl<'f> TextSink<'f> {
         crate::vfont::lettering_font_of(self.font.map(|f| f.cut()).unwrap_or_default())
     }
 
-    /// Whether `text` is drawn as lettering in `font` (the enhanced mode's,
+    /// Whether `text` is drawn as lettering in `font` (the sharp HUD's,
     /// where the font has every character).
     pub fn takes_lettering_in(&self, text: &str, font: crate::vfont::LetteringFont) -> bool {
         use crate::vfont::LetteringFont;
         match font {
             LetteringFont::Display => self.takes_lettering(text),
-            LetteringFont::Text => self.takes(text, Role::Cell),
+            // (The Crosses' names: the HUD's, in the text font.)
+            LetteringFont::Text => self.lettering && !text.is_empty() && self.font.is_some_and(|f| f.covers(text)),
             LetteringFont::Numbers => self.lettering && !text.is_empty() && crate::numbers::font().covers(text),
         }
     }
@@ -330,13 +340,13 @@ impl<'f> TextSink<'f> {
     }
 
     /// Whether the game's numbers are drawn in the numbers' font (the
-    /// enhanced mode's: `numbers`).
+    /// sharp HUD's: `numbers`).
     pub fn draws_numbers(&self) -> bool {
         self.lettering
     }
 
     /// Whether the frames the game's graphics have drawings of are drawn as shapes (the
-    /// enhanced mode's: `shapes`).
+    /// sharp HUD's: `shapes`).
     pub fn draws_shapes(&self) -> bool {
         self.lettering
     }
@@ -352,17 +362,17 @@ impl<'f> TextSink<'f> {
         TextSink { measure, ..self }
     }
 
-    /// With the original mode's pixel fonts taking and measuring the
-    /// strings (its graphics can't spell the language shown).
+    /// With pixel fonts taking and measuring the strings (no sharp text, and
+    /// the graphics can't spell the language shown).
     pub fn with_pixels(self, pixels: Option<&'f std::cell::RefCell<crate::pixeltext::PixelText>>) -> TextSink<'f> {
         TextSink { pixels, ..self }
     }
 
     /// How wide, in frame pixels, the text layer draws `text` in a box
     /// `room` wide (None without a measurer). The pixel fonts never narrow
-    /// a string: its own width.
+    /// a string: its own width. (A lettering is the font's alone.)
     pub fn fitted_width(&self, text: &str, role: Role, room: i32) -> Option<f32> {
-        if let Some(p) = self.pixels {
+        if let Some(p) = self.pixels.filter(|_| !matches!(role, Role::Lettering(_))) {
             return Some(p.borrow_mut().width(text, role) as f32);
         }
         self.measure.map(|m| m.borrow_mut().fitted_width(text, role, room))
@@ -372,24 +382,24 @@ impl<'f> TextSink<'f> {
     /// first glyph's pen (`TextRenderer::ink_extent`; None without a
     /// measurer, or no ink).
     pub fn ink_extent(&self, text: &str, role: Role, room: i32) -> Option<(f32, f32)> {
-        if let Some(p) = self.pixels {
+        if let Some(p) = self.pixels.filter(|_| !matches!(role, Role::Lettering(_))) {
             return p.borrow_mut().ink_extent(text, role);
         }
         self.measure.and_then(|m| m.borrow_mut().ink_extent(text, role, room))
     }
 
-    /// The original mode's: takes nothing.
+    /// The original's: takes nothing.
     pub fn original() -> TextSink<'static> {
-        TextSink::new(GraphicsMode::Original, None)
+        TextSink::new(Enhancements::NONE, None)
     }
 
-    /// Whether `text`, to be drawn in `role`, goes to the text layer: in the
-    /// enhanced mode, when the font (or the original mode's pixel font of
-    /// the role) has every character of it (else the whole string is drawn
-    /// in the game's font, as in the original mode: a string never mixes two
-    /// fonts).
+    /// Whether `text`, to be drawn in `role`, goes to the text layer: with
+    /// the sharp text, when the font has every character of it (without it,
+    /// when the pixel font of the role does); else the whole string is drawn
+    /// in the game's font, as the original draws it: a string never mixes
+    /// two fonts.
     pub fn takes(&self, text: &str, role: Role) -> bool {
-        self.mode == GraphicsMode::Enhanced && (self.font.is_some_and(|f| f.covers(text)) || self.pixels.is_some_and(|p| p.borrow().covers(text, role)))
+        (self.sharp && self.font.is_some_and(|f| f.covers(text))) || self.pixels.is_some_and(|p| p.borrow().covers(text, role))
     }
 
     /// A new tag for the sprite parts an item stands in for.
@@ -481,15 +491,34 @@ mod tests {
         let a = Rect::new(0, 0, 10, 10);
         assert_eq!(a.intersect(Rect::new(5, 5, 10, 10)), Rect::new(5, 5, 5, 5));
         assert!(a.intersect(Rect::new(20, 0, 5, 5)).is_empty());
-        assert_eq!("font".parse::<GraphicsMode>(), Ok(GraphicsMode::Enhanced));
-        assert!("pixel".parse::<GraphicsMode>().is_err());
     }
 
     #[test]
-    fn the_original_mode_takes_nothing() {
+    fn enhancements_by_name() {
+        assert_eq!("font".parse::<Enhancements>(), Ok(Enhancements::ALL));
+        assert_eq!("original".parse::<Enhancements>(), Ok(Enhancements::NONE));
+        assert_eq!("hud, fill".parse::<Enhancements>(), Ok(Enhancements { hud: true, fill: true, ..Enhancements::NONE }));
+        assert!("pixel".parse::<Enhancements>().is_err());
+        assert!("text,pixel".parse::<Enhancements>().is_err());
+    }
+
+    #[test]
+    fn the_original_takes_nothing() {
         let font = VectorFont::bundled();
         assert!(!TextSink::original().takes("Cannon", Role::FittedCell));
-        assert!(TextSink::new(GraphicsMode::Enhanced, Some(&font)).takes("Cannon", Role::FittedCell));
-        assert!(TextSink::new(GraphicsMode::Enhanced, Some(&font)).takes("ElecMan\u{E002}", Role::FittedCell));
+        assert!(TextSink::new(Enhancements::ALL, Some(&font)).takes("Cannon", Role::FittedCell));
+        assert!(TextSink::new(Enhancements::ALL, Some(&font)).takes("ElecMan\u{E002}", Role::FittedCell));
+    }
+
+    #[test]
+    fn each_switch_takes_its_own() {
+        use crate::vfont::LetteringFont;
+        let font = VectorFont::bundled();
+        let text = TextSink::new(Enhancements { text: true, ..Enhancements::NONE }, Some(&font));
+        assert!(text.takes("Cannon", Role::FittedCell));
+        assert!(!text.takes_lettering_in("PAUSE", LetteringFont::Display) && !text.draws_numbers() && !text.draws_shapes());
+        let hud = TextSink::new(Enhancements { hud: true, ..Enhancements::NONE }, Some(&font));
+        assert!(!hud.takes("Cannon", Role::FittedCell) && !hud.lays_out_strings());
+        assert!(hud.takes_lettering_in("PAUSE", LetteringFont::Display) && hud.takes_lettering_in("Cannon", LetteringFont::Text) && hud.draws_numbers() && hud.draws_shapes());
     }
 }

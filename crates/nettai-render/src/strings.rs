@@ -14,7 +14,7 @@ use std::cell::RefCell;
 use std::collections::BTreeSet;
 
 /// The game's text table of the words its pictures show (a banner's, a
-/// label's, a help picture's), by the picture: the enhanced mode draws them
+/// label's, a help picture's), by the picture: the sharp HUD draws them
 /// in the lettering font (docs/design/text-rendering.md §12).
 pub const LETTERING: &str = "lettering";
 
@@ -122,7 +122,7 @@ impl<'a> DisplayText<'a> {
         self.pick(given, own, || format!("navis.{key}.run_message"))
     }
 
-    /// A picture's words, which the enhanced mode draws in the lettering font
+    /// A picture's words, which the sharp HUD draws in the lettering font
     /// in its place (`lettering`), by the picture's key in the game's text
     /// table [`LETTERING`] (`banner.battle-start`, `pause`): the language's,
     /// else the content's own; none where neither has them (the picture

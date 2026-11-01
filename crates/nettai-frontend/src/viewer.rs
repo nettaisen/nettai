@@ -409,7 +409,7 @@ impl Viewer {
     }
 
     /// A viewer from its parts: the content the replay plays on, the
-    /// renderer, the enhanced mode's text renderer (none: the frames carry
+    /// renderer, the sharp text renderer (none: the frames carry
     /// their own text) and the sound (none: silent; it is copied for the
     /// other console). The other games' backgrounds its rounds are drawn on
     /// are extracted first, if they aren't (`GameGraphics::wait_backgrounds`:
@@ -852,7 +852,7 @@ impl Viewer {
     /// The picture into the host's pixels, as [`crate::Player::present`]:
     /// `buffer` holds `width` x `height` of them, 0x00RRGGBB each; the
     /// frame is scaled up by the largest whole factor that fits, and the
-    /// enhanced mode's text is drawn at the buffer's resolution.
+    /// sharp text's text is drawn at the buffer's resolution.
     pub fn present(&mut self, buffer: &mut [u32], width: usize, height: usize) {
         let frame = self.frame();
         nettai_render::present::present(&frame, self.text.as_mut(), buffer, width, height);

@@ -938,7 +938,7 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
         &[0, 30, 60, 100, 180],
         act(Action::Right),
     );
-    add(SETTLE, focus("set.graphics", 0));
+    add(SETTLE, focus("set.text", 0));
     add(SETTLE, act(Action::Confirm));
     burst(
         &mut add,

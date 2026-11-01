@@ -60,17 +60,32 @@ msgstr "フルスクリーン"
 msgid "Reduce motion"
 msgstr "動きを減らす"
 
-msgid "Battle graphics"
-msgstr "バトルの描画"
+msgid "Graphics enhancements"
+msgstr "グラフィック強化"
 
-msgid "Enhanced"
-msgstr "強化"
+msgid "Sharp text"
+msgstr "くっきりした文字"
 
-msgid "Original"
-msgstr "オリジナル"
+msgid "Chip names and messages drawn at full resolution."
+msgstr "チップ名やメッセージを高解像度で描きます。"
 
-msgid "Enhanced adds sharp text and smooth motion."
-msgstr "「強化」は文字をくっきり描き、動きをなめらかにします。"
+msgid "Sharp HUD"
+msgstr "くっきりしたHUD"
+
+msgid "Frames, banners and numbers redrawn at full resolution."
+msgstr "枠やバナー、数字を高解像度で描き直します。"
+
+msgid "Smooth motion"
+msgstr "なめらかな動き"
+
+msgid "Scrolling, gauges and banners move between the game's pixels."
+msgstr "スクロールやゲージ、バナーをドットの間までなめらかに動かします。"
+
+msgid "Fill the window"
+msgstr "ウィンドウいっぱいに表示"
+
+msgid "The stage reaches the window's edges, the HUD with it."
+msgstr "ステージをウィンドウの端まで広げ、HUDも端に寄せます。"
 
 msgid "Music"
 msgstr "BGM"

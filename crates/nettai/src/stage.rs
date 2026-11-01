@@ -6,11 +6,12 @@
 //! runs the ticks due and, if one ran (or the space changed), presents a
 //! new picture, which that same frame draws. The picture is the size of the
 //! frame's largest whole multiple that fits the space, in the display's
-//! pixels, and in the enhanced mode the frame as wide and as tall as the
+//! pixels, and with the window filled the frame as wide and as tall as the
 //! space at that multiple ([`fit`]): presented at the window's density (or
 //! the display's, sharper), drawn with the nearest pixel up to the
 //! display's. Nothing else of the window is presented.
 
+use nettai_frontend::game::Enhancements;
 use nettai_frontend::player::Player;
 use nettai_render::compose::{HEIGHT, Size, WIDTH};
 use slint::{Image, Rgba8Pixel, SharedPixelBuffer};
@@ -20,7 +21,7 @@ use web_time::Instant;
 /// How the picture fits a space: the display's pixels a frame pixel takes
 /// (`scale`), the pixels a frame pixel takes in the picture presented
 /// (`density`, which divides `scale`), and the frame's columns and rows
-/// (`columns`, `rows`: the original's 240 and 160, or in the enhanced mode
+/// (`columns`, `rows`: the original's 240 and 160, or with the window filled
 /// as many as the space has at the scale, `nettai_render::compose::Size`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Fit {
@@ -49,20 +50,20 @@ impl Fit {
 }
 
 /// The frame's columns in a space `width` display pixels wide at `scale`:
-/// in the enhanced mode as many whole ones as it has (240 at least), in the
-/// original mode the original's.
-pub fn columns(width: f32, scale: u32, enhanced: bool) -> u32 {
-    match enhanced {
+/// with the window filled (`fill`) as many whole ones as it has (240 at
+/// least), else the original's.
+pub fn columns(width: f32, scale: u32, fill: bool) -> u32 {
+    match fill {
         true => ((width / scale.max(1) as f32).floor() as u32).max(WIDTH as u32),
         false => WIDTH as u32,
     }
 }
 
 /// The frame's rows in a space `height` display pixels tall at `scale`: in
-/// the enhanced mode as many whole ones as it has (160 at least), in the
-/// original mode the original's.
-pub fn rows(height: f32, scale: u32, enhanced: bool) -> u32 {
-    match enhanced {
+/// the window filled (`fill`) as many whole ones as it has (160 at least),
+/// else the original's.
+pub fn rows(height: f32, scale: u32, fill: bool) -> u32 {
+    match fill {
         true => ((height / scale.max(1) as f32).floor() as u32).max(HEIGHT as u32),
         false => HEIGHT as u32,
     }
@@ -70,18 +71,19 @@ pub fn rows(height: f32, scale: u32, enhanced: bool) -> u32 {
 
 /// The picture in a space of `width` by `height` display pixels on a
 /// display of `factor` pixels a logical one: the largest whole multiple of
-/// the frame that fits, at least the frame, and in the enhanced mode the
+/// the frame that fits, at least the frame, and with the window filled the
 /// frame as wide and as tall as the space at that multiple ([`columns`],
 /// [`rows`]: what is left is less than a frame pixel each way); presented at
 /// the window's density (the scale over the factor, rounded up), or the
 /// display's when `sharp`.
 ///
 /// What is presented is drawn on the CPU and scaled the rest of the way by
-/// the window, with the nearest pixel. So the `enhanced` mode's density is
-/// held to [`MOST_DENSITY`] (a 1440x960 picture: on a 4K display it was 9
-/// to 13 times the frame, a picture 4 to 7 times the work, every frame), and
-/// the original mode's, which has nothing finer than the frame's pixels to
-/// draw, is 1: the window's scaling is the same picture.
+/// the window, with the nearest pixel. So the density of a picture with
+/// something finer than the frame's pixels to draw (the sharp text or HUD,
+/// the smooth motion: `Enhancements::fine`) is held to [`MOST_DENSITY`] (a
+/// 1440x960 picture: on a 4K display it was 9 to 13 times the frame, a
+/// picture 4 to 7 times the work, every frame), and one's with nothing finer
+/// is 1: the window's scaling is the same picture.
 ///
 /// The density needn't divide the scale: drawn with the nearest pixel at
 /// exactly `scale` display pixels a frame pixel, every frame pixel is a
@@ -89,10 +91,10 @@ pub fn rows(height: f32, scale: u32, enhanced: bool) -> u32 {
 /// pixel samples the presented pixel its center falls in, inside the frame
 /// pixel's square of `density` presented ones. Only the text layer, drawn at
 /// the density, is scaled by a fraction.
-pub fn fit(width: f32, height: f32, factor: f32, sharp: bool, enhanced: bool) -> Fit {
+pub fn fit(width: f32, height: f32, factor: f32, sharp: bool, enhancements: Enhancements) -> Fit {
     let scale = ((width / WIDTH as f32).min(height / HEIGHT as f32).floor() as u32).max(1);
-    let (columns, rows) = (columns(width, scale, enhanced), rows(height, scale, enhanced));
-    if !enhanced {
+    let (columns, rows) = (columns(width, scale, enhancements.fill), rows(height, scale, enhancements.fill));
+    if !enhancements.fine() {
         return Fit { scale, density: 1, columns, rows };
     }
     if sharp {
@@ -102,7 +104,7 @@ pub fn fit(width: f32, height: f32, factor: f32, sharp: bool, enhanced: bool) ->
     Fit { scale, density, columns, rows }
 }
 
-/// The densest the enhanced mode's picture is presented (but `sharp`): six
+/// The densest a picture with something finer than its pixels is presented (but `sharp`): six
 /// times the frame, 1440x960, about a 1080p display's picture (the user,
 /// on a 4K display's stutter: "do that", of holding it there and letting the
 /// window scale the rest).
@@ -439,7 +441,7 @@ mod tests {
     /// point, half the scale (each picture pixel drawn as four).
     #[test]
     fn the_picture_fits_by_whole_pixels() {
-        let enhanced = |w, h, factor, sharp| fit(w, h, factor, sharp, true);
+        let enhanced = |w, h, factor, sharp| fit(w, h, factor, sharp, Enhancements::ALL);
         let at = |scale, density| Fit { scale, density, columns: WIDTH as u32, rows: HEIGHT as u32 };
         assert_eq!(enhanced(1920.0, 1280.0, 2.0, false), at(8, 4));
         assert_eq!(enhanced(2200.0, 1500.0, 2.0, false), Fit { columns: 244, rows: 166, ..at(9, 5) }, "an odd scale: half of it, rounded up");
@@ -454,18 +456,22 @@ mod tests {
         assert_eq!(enhanced(3840.0, 2160.0, 1.5, false), Fit { columns: 295, rows: 166, ..at(13, MOST_DENSITY) });
         assert_eq!(enhanced(3840.0, 2160.0, 1.0, false), Fit { columns: 295, rows: 166, ..at(13, MOST_DENSITY) });
         assert_eq!(enhanced(3840.0, 2160.0, 1.0, true), Fit { columns: 295, rows: 166, ..at(13, 13) });
-        // The original mode: the frame's own pixels, the window scaling them, its 240 by 160.
-        assert_eq!(fit(3840.0, 2160.0, 1.5, false, false), at(13, 1));
-        assert_eq!(fit(1920.0, 1280.0, 2.0, true, false), at(8, 1));
+        // The original's: the frame's own pixels, the window scaling them, its 240 by 160.
+        assert_eq!(fit(3840.0, 2160.0, 1.5, false, Enhancements::NONE), at(13, 1));
+        assert_eq!(fit(1920.0, 1280.0, 2.0, true, Enhancements::NONE), at(8, 1));
+        // The window filled alone: as large as the space, but nothing finer than its pixels to draw.
+        assert_eq!(fit(1920.0, 1080.0, 1.0, false, Enhancements { fill: true, ..Enhancements::NONE }), Fit { scale: 6, density: 1, columns: 320, rows: 180 });
+        // Any of the others without it: the original's size, at the window's density.
+        assert_eq!(fit(1920.0, 1080.0, 1.0, false, Enhancements { hud: true, ..Enhancements::NONE }), Fit { scale: 6, density: 6, columns: 240, rows: 160 });
     }
 
-    /// The enhanced mode's frame is as wide and as tall as the space at the largest whole multiple that fits,
+    /// With the window filled, the frame is as wide and as tall as the space at the largest whole multiple that fits,
     /// what is left less than a frame pixel each way: a 16:9 window, a phone held sideways (19.5:9), an
     /// ultrawide one, a space taller than 3:2; a phone held upright, whose picture's room is a 3:2 box at the top
     /// of the screen over the pad (battle.slint), has what that box holds.
     #[test]
-    fn the_enhanced_frame_is_as_large_as_the_space() {
-        let enhanced = |w, h| fit(w, h, 1.0, true, true);
+    fn the_filled_frame_is_as_large_as_the_space() {
+        let enhanced = |w, h| fit(w, h, 1.0, true, Enhancements::ALL);
         assert_eq!(enhanced(1920.0, 1080.0), Fit { scale: 6, density: 6, columns: 320, rows: 180 });
         assert_eq!(enhanced(2532.0, 1170.0), Fit { scale: 7, density: 7, columns: 361, rows: 167 });
         assert_eq!(enhanced(3440.0, 1440.0), Fit { scale: 9, density: 9, columns: 382, rows: 160 });
@@ -474,8 +480,8 @@ mod tests {
         assert_eq!(enhanced(720.0, 480.0), Fit { scale: 3, density: 3, columns: 240, rows: 160 });
         assert_eq!(enhanced(1920.0, 1080.0).presented(), (1920, 1080));
         assert_eq!(enhanced(1920.0, 1080.0).original().presented(), (1440, 960));
-        // The original mode: the original's 240 by 160 whatever the space.
-        assert_eq!(fit(1920.0, 1080.0, 1.0, true, false), Fit { scale: 6, density: 1, columns: 240, rows: 160 });
+        // The original's: its 240 by 160 whatever the space.
+        assert_eq!(fit(1920.0, 1080.0, 1.0, true, Enhancements::NONE), Fit { scale: 6, density: 1, columns: 240, rows: 160 });
     }
 
     /// A surface's pictures are written into two buffers in turn: once the window let go of a picture's image,

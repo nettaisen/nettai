@@ -65,7 +65,7 @@ type Bucket<'a> = Vec<(SpritePart<'a>, Option<u32>, Fine)>;
 
 /// How far a part's true place is from where the frame draws it, in
 /// 16.16 pixels right and down: the part of a pixel the battle projection
-/// rounds off (`project`), which the enhanced mode's motion draws
+/// rounds off (`project`), which the smooth motion draws
 /// (`smooth::Overlay`). (0, 0) for a part at its true place.
 pub type Fine = (i32, i32);
 

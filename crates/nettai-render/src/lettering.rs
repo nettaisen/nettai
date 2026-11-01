@@ -1,4 +1,4 @@
-//! The game-style lettering of the battle's pictures, as the enhanced mode
+//! The game-style lettering of the battle's pictures, as the sharp HUD
 //! draws their words in the lettering font in their place
 //! (docs/design/text-rendering.md §12).
 //!

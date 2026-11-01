@@ -1,5 +1,5 @@
 //! A battle being played, for a host to show and hear: [`Player`] owns the
-//! session, the renderer, the text renderer (the enhanced mode's) and the
+//! session, the renderer, the text renderer (the sharp text's) and the
 //! battle's audio, and the host drives it.
 //!
 //! The host gives it the GBA buttons held (its own keys' business) and
@@ -34,7 +34,7 @@
 //! ```
 
 use crate::driver::{Driver, LivePlayer, NetStatus, Opponent, StopReason, Training};
-use crate::game::{Graphics, GraphicsMode, Loaded, VectorFont};
+use crate::game::{Enhancements, Graphics, Loaded, VectorFont};
 use crate::preload::Late;
 use crate::session::Session;
 use nettai_audio::BattleAudio;
@@ -180,7 +180,7 @@ impl Player {
     }
 
     /// A player of what `driver` plays, from its parts: the renderer, the
-    /// enhanced mode's text renderer (none: the frames carry their own text)
+    /// sharp text's text renderer (none: the frames carry their own text)
     /// and the audio (none: silent).
     pub fn with(renderer: Renderer, text: Option<TextRenderer>, audio: Option<BattleAudio>, driver: Box<dyn Driver>) -> Player {
         // (Counted from before the driver makes its first battle: a thread
@@ -519,8 +519,8 @@ impl Player {
 
     /// The picture into the host's pixels: `buffer` holds `width` x
     /// `height` of them, 0x00RRGGBB each, row by row. The frame is scaled
-    /// up by the largest whole factor that fits and centered, and the enhanced
-    /// mode's text (the game's own) is drawn at the buffer's resolution.
+    /// up by the largest whole factor that fits and centered, and the sharp
+    /// text and HUD (the game's own) are drawn at the buffer's resolution.
     /// Nothing else is drawn.
     pub fn present(&mut self, buffer: &mut [u32], width: usize, height: usize) {
         let frame = self.frame();
@@ -574,27 +574,25 @@ impl Player {
         self.renderer.set_strings(graphics.strings.clone());
     }
 
-    /// Draw the enhanced mode's text in `font` from the next frame (another
+    /// Draw the sharp text and HUD in `font` from the next frame (another
     /// language's: the bundled font's cut of it, `Loaded::font_in`), its text
-    /// renderer made again for it; nothing in the original mode.
+    /// renderer made again for it; nothing without either.
     pub fn set_font(&mut self, font: Option<Arc<VectorFont>>) {
-        let mode = self.renderer.mode();
-        if mode != GraphicsMode::Enhanced {
+        let enhancements = self.renderer.enhancements();
+        if !enhancements.wants_font() {
             return;
         }
-        self.renderer.set_mode(mode, font.clone());
+        self.renderer.set_enhancements(enhancements, font.clone());
         self.text = font.map(TextRenderer::new);
     }
 
-    /// Draw the battle in `mode` from the next frame (`font`: the enhanced
-    /// mode's, [`crate::game::font`]; none in the original's), its text
-    /// renderer made again for it. As with [`Player::set_language`], only the
-    /// drawing changes.
-    pub fn set_mode(&mut self, mode: GraphicsMode, font: Option<Arc<VectorFont>>) {
-        if self.renderer.mode() == mode {
-            return;
-        }
-        self.renderer.set_mode(mode, font.clone());
+    /// Draw the battle with `enhancements` from the next frame (`font`: the
+    /// sharp text's and HUD's, [`crate::game::font`]; none without either),
+    /// its text renderer made again for it. As with [`Player::set_language`],
+    /// only the drawing changes.
+    pub fn set_enhancements(&mut self, enhancements: Enhancements, font: Option<Arc<VectorFont>>) {
+        let font = font.filter(|_| enhancements.wants_font());
+        self.renderer.set_enhancements(enhancements, font.clone());
         self.text = font.map(TextRenderer::new);
     }
 
@@ -685,7 +683,7 @@ impl Player {
         &mut self.renderer
     }
 
-    /// The enhanced mode's text renderer, for drawing a frame's text items
+    /// The sharp text's text renderer, for drawing a frame's text items
     /// oneself (`nettai_render::present`).
     pub fn text(&mut self) -> Option<&mut TextRenderer> {
         self.text.as_mut()
@@ -696,7 +694,7 @@ impl Player {
 mod tests {
     use super::*;
     use crate::driver::{LivePlayer, Ran, Step, Stop, folder_of, live_setup};
-    use crate::game::GraphicsMode;
+    use crate::game::Enhancements;
     use nettai_battle::content::testing;
     use std::sync::Arc;
 
@@ -918,7 +916,7 @@ mod tests {
     #[test]
     fn the_language_changes_mid_battle() {
         let (red, green) = (graphics_of(0x001F), graphics_of(0x03E0));
-        let player = |g: &Graphics| Player::with(g.renderer(GraphicsMode::Original, None), None, None, live());
+        let player = |g: &Graphics| Player::with(g.renderer(Enhancements::NONE, None), None, None, live());
         let (mut first, mut second, mut swapped) = (player(&red), player(&green), player(&red));
         let mut differed = 0;
         for tick in 1..=240u32 {
@@ -980,12 +978,12 @@ mod tests {
         assert!(samples.is_empty());
     }
 
-    /// The enhanced mode's smooth motion (`nettai_render::smooth`): the gauge's fill shows between its whole
-    /// pixels (a nudge) without changing the frame's own pixels, and everything else, the custom screen's slide
-    /// among it, moves as the original's does (the same pixels as the original mode's, here with no font for the
-    /// text); every frame is the battle's alone: a renderer that draws a copy of the battle as it was at that tick, with the HUD's rolling state as
-    /// it was, draws the same frame (as a rollback or a seek draws a frame again). The original mode draws alike
-    /// with the motion reduced or not.
+    /// The smooth motion (`nettai_render::smooth`): the gauge's fill shows between its whole pixels (a nudge)
+    /// without changing the frame's own pixels, and everything else, the custom screen's slide among it, moves as
+    /// the original's does (the same pixels as the original's, here with no font for the text); every frame is
+    /// the battle's alone: a renderer that draws a copy of the battle as it was at that tick, with the HUD's
+    /// rolling state as it was, draws the same frame (as a rollback or a seek draws a frame again). Without it
+    /// the frame has none of the motion's parts.
     #[test]
     fn the_smooth_motion_is_the_battles_alone_and_moves_nothing_the_original_doesnt() {
         use crate::driver::bot_buttons;
@@ -1005,23 +1003,22 @@ mod tests {
         hud.hp_box = vec![entry(0x120); 12];
         hud.gauge_frame = vec![entry(0x200); 36];
         graphics.bundle = Arc::new(bundle);
-        let renderer = |mode: GraphicsMode, reduce: bool| {
+        let renderer = |enhancements: Enhancements| {
             let mut renderer = Renderer::with_graphics(graphics.game_graphics());
-            renderer.set_mode(mode, None);
-            renderer.reduce_motion = reduce;
+            renderer.set_enhancements(enhancements, None);
             renderer
         };
-        let player = |mode, reduce| Player::with(renderer(mode, reduce), None, None, live());
-        let (mut on, mut off) = (player(GraphicsMode::Enhanced, false), player(GraphicsMode::Enhanced, true));
-        let (mut original, mut original_reduced) = (player(GraphicsMode::Original, false), player(GraphicsMode::Original, true));
+        let player = |enhancements| Player::with(renderer(enhancements), None, None, live());
+        let (mut on, mut off) = (player(Enhancements::ALL), player(Enhancements { motion: false, ..Enhancements::ALL }));
+        let mut original = player(Enhancements::NONE);
         let (mut nudged_gauge, mut lifted, mut overlaid, mut fought) = (0, 0, 0, 0);
         for tick in 0..3000u32 {
             let k = bot_buttons(on.battle(), 0, tick);
-            assert!(on.tick(k) && off.tick(k) && original.tick(k) && original_reduced.tick(k));
+            assert!(on.tick(k) && off.tick(k) && original.tick(k));
             let frame = on.frame();
             let t = on.battle().round.ticks;
             let plain = off.frame();
-            assert!(plain.nudge.is_none() && plain.lift.is_none() && plain.overlays.is_empty() && plain.pixels == frame.pixels, "tick {t}: reduced motion's");
+            assert!(plain.nudge.is_none() && plain.lift.is_none() && plain.overlays.is_empty() && plain.pixels == frame.pixels, "tick {t}: without the motion");
             if let Some(n) = &frame.nudge {
                 assert!(n.sub > 0 && n.sub < 16);
                 nudged_gauge += 1;
@@ -1032,7 +1029,7 @@ mod tests {
                 lifted += 1;
             }
             // Drawn again from a copy of the battle at this tick.
-            let mut again = renderer(GraphicsMode::Enhanced, false);
+            let mut again = renderer(Enhancements::ALL);
             again.hud_state = on.renderer().hud_state.clone();
             let copy = on.battle().clone();
             let redrawn = again.render(&copy);
@@ -1041,11 +1038,8 @@ mod tests {
                 "tick {t}: drawn again"
             );
             let o = original.frame();
-            assert!(
-                o.pixels == original_reduced.frame().pixels && o.nudge.is_none() && o.lift.is_none() && o.overlays.is_empty(),
-                "tick {t}: the original's"
-            );
-            // The enhanced frame's own pixels are the original's but where the sprites it leaves to the output are
+            assert!(o.pixels == plain.pixels && o.nudge.is_none() && o.lift.is_none() && o.overlays.is_empty(), "tick {t}: the original's");
+            // The smooth frame's own pixels are the original's but where the sprites it leaves to the output are
             // (squashed, turned, or between whole pixels: overlays).
             for i in (0..o.pixels.len()).filter(|&i| o.pixels[i] != frame.pixels[i]) {
                 let (x, y) = ((i % 240) as i32, (i / 240) as i32);

@@ -1,6 +1,6 @@
-//! The enhanced mode's wide and tall frames (docs/frontend.md §3, "Larger than the original") in each game, played
+//! The filled window's wide and tall frames (docs/frontend.md §3, "Larger than the original") in each game, played
 //! from its match file beside this test (tests/widescreen): at 240 by 160 a frame is the one the renderer drew
-//! before it had a size, and the original mode's frames are 240 by 160 whatever the size; at wider and taller
+//! before it had a size, and frames without the window filled are 240 by 160 whatever the size; at wider and taller
 //! sizes each piece is where its two anchors put it (the HUD's against its edges, the field and its sprites in the
 //! middle, the background across), in a fight, on the custom screen (its window at the top left), with the
 //! chatbox up and on a screen of both.
@@ -12,7 +12,7 @@ use nettai_frontend::player::Player;
 use nettai_render::compose::{Anchor, BACKDROP_DEPTH, HEIGHT, Size, WIDTH, depth_key};
 use nettai_render::textlayer::TextItem;
 use nettai_render::vfont::{Role, TextRenderer};
-use nettai_render::{Consoles, Frame, GraphicsMode};
+use nettai_render::{Consoles, Frame, Enhancements};
 use std::path::{Path, PathBuf};
 
 /// The sizes the placement is checked at: 16:9 at the frame's height, a phone held sideways (an odd column left
@@ -38,8 +38,8 @@ fn game(name: &str) -> Game {
     Game::load(&roms, Some(&here().join("../../content")), name, &[]).unwrap_or_else(|e| panic!("{e}"))
 }
 
-/// The match file's set played live in `mode`, showing `consoles`.
-fn player(game: &Game, file: &str, mode: GraphicsMode, consoles: Consoles) -> Player {
+/// The match file's set played live with `mode`'s enhancements, showing `consoles`.
+fn player(game: &Game, file: &str, mode: Enhancements, consoles: Consoles) -> Player {
     let text = std::fs::read_to_string(here().join("tests/widescreen").join(file)).unwrap();
     let m = nettai_match::parse(&game.content, &text).unwrap_or_else(|p| panic!("{file}: {p:?}"));
     let mut live = LivePlayer::new(nettai_match::Set::of(&game.content, &m, m.seed.unwrap_or(1)));
@@ -226,14 +226,14 @@ fn check(player: &mut Player, m: &Moment) {
     }
 }
 
-/// The original mode draws the original's 240 by 160, whatever size the renderer is given.
+/// With no enhancements the renderer draws the original's 240 by 160, whatever size it is given.
 fn original_stays(game: &Game, file: &str, tick: u32) {
-    let mut p = player(game, file, GraphicsMode::Original, Consoles::One);
+    let mut p = player(game, file, Enhancements::NONE, Consoles::One);
     play_to(&mut p, tick);
     let narrow = p.frame();
     let large = frame_at(&mut p, Size::new(SIZES[4].0, SIZES[4].1));
     assert_eq!(large.size, Size::ORIGINAL);
-    assert!(narrow.pixels == large.pixels && narrow.depth == large.depth, "{file}: the original mode at tick {tick}");
+    assert!(narrow.pixels == large.pixels && narrow.depth == large.depth, "{file}: the original at tick {tick}");
 }
 
 /// The custom screen: its window docked to the left edge at the top (its 160 rows, not stretched), the HP box
@@ -247,7 +247,7 @@ const FIGHT_FIELD: [usize; 4] = [0, 70, 240, 70];
 /// With a chip's description up, its chatbox's lines keep to the middle with the field, both ways: the first
 /// frame its first line has printed some of.
 fn chatbox_with_the_field(game: &Game, file: &str, label: &str) {
-    let mut p = player(game, file, GraphicsMode::Enhanced, Consoles::One);
+    let mut p = player(game, file, Enhancements::ALL, Consoles::One);
     let printed = |frame: &Frame| frame.text.iter().any(|t| t.role == Role::Dialogue && t.shown.is_some_and(|n| n > 0));
     let mut narrow = p.frame();
     while !printed(&narrow) {
@@ -272,7 +272,7 @@ fn exe6_pieces_keep_to_their_edges() {
     let game = game("exe6");
     original_stays(&game, "m6.toml", 360);
     chatbox_with_the_field(&game, "m6.toml", "exe6 chatbox");
-    let mut p = player(&game, "m6.toml", GraphicsMode::Enhanced, Consoles::One);
+    let mut p = player(&game, "m6.toml", Enhancements::ALL, Consoles::One);
     play_to(&mut p, 140);
     let names = [("MegaMan", [120, 0, 120, 16], Anchor::TOP_RIGHT)];
     check(&mut p, &Moment { label: "exe6 custom screen", pieces: CUSTOM, items: &names, field: Some(CUSTOM_FIELD) });
@@ -293,7 +293,7 @@ fn exe5_pieces_keep_to_their_edges() {
     let game = game("exe5");
     original_stays(&game, "m5.toml", 360);
     chatbox_with_the_field(&game, "m5.toml", "exe5 chatbox");
-    let mut p = player(&game, "m5.toml", GraphicsMode::Enhanced, Consoles::One);
+    let mut p = player(&game, "m5.toml", Enhancements::ALL, Consoles::One);
     play_to(&mut p, 140);
     // (The name plate and the custom screen's time left against the top right corner.)
     let names = [("MegaMan", [120, 0, 120, 16], Anchor::TOP_RIGHT), ("59", [200, 0, 40, 40], Anchor::TOP_RIGHT)];
@@ -313,7 +313,7 @@ fn exe4_pieces_keep_to_their_edges() {
     let game = game("exe4");
     original_stays(&game, "m4.toml", 360);
     chatbox_with_the_field(&game, "m4.toml", "exe4 chatbox");
-    let mut p = player(&game, "m4.toml", GraphicsMode::Enhanced, Consoles::One);
+    let mut p = player(&game, "m4.toml", Enhancements::ALL, Consoles::One);
     play_to(&mut p, 140);
     check(&mut p, &Moment { label: "exe4 custom screen", pieces: CUSTOM, items: &[], field: Some(CUSTOM_FIELD) });
     // ("BUSY..." against the top right corner while the other side chooses.)
@@ -331,7 +331,7 @@ fn exe4_pieces_keep_to_their_edges() {
 #[ignore = "requires the original ROMs: $NETTAI_ROMS, else the Legacy Collection installed through Steam"]
 fn both_sides_keep_to_their_edges() {
     let game = game("exe6");
-    let mut p = player(&game, "m6.toml", GraphicsMode::Enhanced, Consoles::Both);
+    let mut p = player(&game, "m6.toml", Enhancements::ALL, Consoles::Both);
     play_to(&mut p, 62);
     let windows = [
         Piece { what: "the left custom window", rect: [0, 0, 120, 160], anchor: Anchor::TOP_LEFT },

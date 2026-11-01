@@ -13,6 +13,7 @@ use crate::screens::{Screen, ScreenId};
 use crate::settings::{MAX_INPUT_DELAY, clean_name};
 use crate::shell::Shell;
 use crate::sound::Cue;
+use nettai_frontend::game::Enhancements;
 use nettai_gamepad::Button;
 use nettai_ui::{PadBinding, PadButton, SettingsView};
 use i_slint_backend_winit::winit::keyboard::KeyCode;
@@ -24,7 +25,7 @@ pub(crate) use about::place_of;
 
 /// Each group's first control, and the room over it for what the group has above it (its title; in Controls the
 /// columns' heads, in About the version's row): where the list at the left jumps to.
-const GROUPS: [(&str, f32); 6] = [("set.name", 40.0), ("set.picture", 40.0), ("set.music", 40.0), ("set.delay", 40.0), ("set.key", 68.0), ("set.folder", 92.0)];
+const GROUPS: [(&str, f32); 7] = [("set.name", 40.0), ("set.picture", 40.0), ("set.text", 40.0), ("set.music", 40.0), ("set.delay", 40.0), ("set.key", 68.0), ("set.folder", 92.0)];
 
 /// The picture sizes offered besides the largest that fits: 1 to 8 times 240 by 160.
 const SIZES: u32 = 8;
@@ -33,13 +34,35 @@ const SIZES: u32 = 8;
 fn group_of(id: &str) -> Option<i32> {
     Some(match id {
         "set.name" | "set.language" | "set.updates" => 0,
-        "set.picture" | "set.fullscreen" | "set.motion" | "set.graphics" => 1,
-        "set.music" | "set.effects" => 2,
-        "set.delay" => 3,
-        "set.key" | "set.button" | "set.reset" => 4,
-        "set.folder" | "set.about" => 5,
+        "set.picture" | "set.fullscreen" | "set.motion" => 1,
+        "set.text" | "set.hud" | "set.smooth" | "set.fill" => 2,
+        "set.music" | "set.effects" => 3,
+        "set.delay" => 4,
+        "set.key" | "set.button" | "set.reset" => 5,
+        "set.folder" | "set.about" => 6,
         _ => return None,
     })
+}
+
+/// The graphics enhancement a switch is of, by its control's last part (`set.text`, `menu.set.fill`).
+fn enhancement<'a>(e: &'a mut Enhancements, id: &str) -> Option<&'a mut bool> {
+    Some(match id.rsplit_once('.').map_or(id, |(_, last)| last) {
+        "text" => &mut e.text,
+        "hud" => &mut e.hud,
+        "smooth" => &mut e.motion,
+        "fill" => &mut e.fill,
+        _ => return None,
+    })
+}
+
+/// Turn the graphics enhancement switch `id` is on or off (none: the other way, as Enter does), as the Settings
+/// screen and the match's menu do.
+pub fn set_enhancement(shell: &mut Shell, id: &str, on: Option<bool>) {
+    let mut e = shell.settings.enhancements();
+    if let Some(switch) = enhancement(&mut e, id) {
+        *switch = on.unwrap_or(!*switch);
+        shell.set_enhancements(e);
+    }
 }
 
 /// A picture size as the list of sizes says it (1 to [`SIZES`]).
@@ -58,7 +81,10 @@ pub fn show_values(shell: &Shell, binding: &Binding) {
     view.set_full_screen(s.full_screen);
     view.set_reduce_motion(shell.reduces_motion());
     view.set_check_updates(s.check_updates);
-    view.set_enhanced(s.enhanced);
+    view.set_sharp_text(s.sharp_text);
+    view.set_sharp_hud(s.sharp_hud);
+    view.set_smooth_motion(s.smooth_motion);
+    view.set_fill_window(s.fill_window);
     view.set_music(s.music as i32);
     view.set_effects(s.effects as i32);
     view.set_input_delay(s.input_delay as i32);
@@ -243,8 +269,8 @@ impl Settings {
         self.show(shell);
     }
 
-    fn set_enhanced(&mut self, shell: &mut Shell, enhanced: bool) {
-        shell.set_enhanced(enhanced);
+    fn set_enhancement(&mut self, shell: &mut Shell, id: &str, on: Option<bool>) {
+        set_enhancement(shell, id, on);
         self.show(shell);
     }
 
@@ -281,7 +307,7 @@ impl Screen for Settings {
             return self.about.activate(shell, id, index);
         }
         match id {
-            "group" => shell.nav.focus(GROUPS[index.clamp(0, 5) as usize].0, 0),
+            "group" => shell.nav.focus(GROUPS[index.clamp(0, GROUPS.len() as i32 - 1) as usize].0, 0),
             "set.language" => pick_language(shell, id),
             "set.picture" => pick_picture_size(shell, id),
             "set.fullscreen" => {
@@ -290,7 +316,7 @@ impl Screen for Settings {
             }
             "set.motion" => self.set_reduce_motion(shell, !shell.reduces_motion()),
             "set.updates" => self.set_check_updates(shell, !shell.settings.check_updates),
-            "set.graphics" => self.set_enhanced(shell, !shell.settings.enhanced),
+            "set.text" | "set.hud" | "set.smooth" | "set.fill" => self.set_enhancement(shell, id, None),
             "set.key" | "set.button" => self.binding.ask(shell, index, id == "set.button"),
             "set.reset" => self.binding.reset(shell),
             "set.folder" => show_folder(&crate::paths::data()),
@@ -312,8 +338,7 @@ impl Screen for Settings {
             }
             "set.motion" => self.set_reduce_motion(shell, by > 0),
             "set.updates" => self.set_check_updates(shell, by > 0),
-            // (Enhanced is the first of the two.)
-            "set.graphics" => self.set_enhanced(shell, by < 0),
+            "set.text" | "set.hud" | "set.smooth" | "set.fill" => self.set_enhancement(shell, id, Some(by > 0)),
             "set.music" => self.set_levels(shell, (shell.settings.music as i32 + 5 * by).clamp(0, 100) as u32, shell.settings.effects),
             "set.effects" => {
                 self.set_levels(shell, shell.settings.music, (shell.settings.effects as i32 + 5 * by).clamp(0, 100) as u32);
@@ -341,7 +366,7 @@ impl Screen for Settings {
             }
             "set.motion" => self.set_reduce_motion(shell, choice == 1),
             "set.updates" => self.set_check_updates(shell, choice == 1),
-            "set.graphics" => self.set_enhanced(shell, choice == 0),
+            "set.text" | "set.hud" | "set.smooth" | "set.fill" => self.set_enhancement(shell, id, Some(choice == 1)),
             "set.music" => self.set_levels(shell, choice.clamp(0, 100) as u32, shell.settings.effects),
             "set.effects" => self.set_levels(shell, shell.settings.music, choice.clamp(0, 100) as u32),
             _ => {}
@@ -369,7 +394,7 @@ impl Screen for Settings {
         if id == "group" {
             // The list's row under the cursor: its group comes to the page's top.
             view.set_group(index);
-            let (first, room) = GROUPS[index.clamp(0, 5) as usize];
+            let (first, room) = GROUPS[index.clamp(0, GROUPS.len() as i32 - 1) as usize];
             shell.nav.reveal_at_top(&ui, first, 0, room);
         } else if let Some(group) = group_of(id) {
             view.set_group(group);

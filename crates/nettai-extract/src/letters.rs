@@ -583,7 +583,7 @@ pub fn read(bundle: &mut Bundle) -> Vec<String> {
         .flat_map(|v| v.form_names.iter().flatten().map(|f| f.columns))
         .collect();
     c.letters.form_name_box = spans.iter().map(|s| s[0]).min().zip(spans.iter().map(|s| s[1]).max()).map(|(a, b)| [a, b]);
-    // (The blanks as the enhanced mode shows them: one base a picture.)
+    // (The blanks as the sharp HUD shows them: one base a picture.)
     let (notes, found) = settle(bundle);
     problems.extend(found);
     problems.extend(notes.into_iter().map(|n| format!("note: {n}")));
@@ -1157,7 +1157,7 @@ pub struct LayeredPicture {
     pub base: Tiles,
     pub base_file: Option<String>,
     pub letters: Vec<bool>,
-    /// Its pixels off its words that only the original mode shows, kept
+    /// Its pixels off its words that only the original shows, kept
     /// with its letters (where its own panel departs from the shared
     /// one).
     pub hidden: Vec<bool>,
@@ -1427,7 +1427,7 @@ pub struct FormNameLayers {
 /// A language's own of a version's form list names: its letters over the
 /// portraits and the bar (none off them), with the few pixels where its
 /// names show the bar otherwise (a streak ending a pixel sooner or later),
-/// which the original mode draws and the enhanced mode, drawing the shared
+/// which the original draws and the sharp HUD, drawing the shared
 /// bar, doesn't.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct NameLayers {

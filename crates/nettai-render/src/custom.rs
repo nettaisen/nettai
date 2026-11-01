@@ -691,7 +691,7 @@ struct Window {
     /// frame's colors by class (palette 9), the picture's (10) and the
     /// element's (11), and the damage's digits.
     record_mark: Option<String>,
-    /// In the enhanced mode, the strings whose tiles were left blank for
+    /// With the sharp text, the strings whose tiles were left blank for
     /// the text layer: the chip window's name, and the Program Advance
     /// animation's names by their place (each with the cells it has, and
     /// the pick's code).
@@ -699,19 +699,19 @@ struct Window {
     advance_names: Vec<Option<(String, usize, Option<String>)>>,
     /// The chip window's picture's key among the lettered pictures
     /// (`pictures.ok`, `pictures.redeal`), where it shows one; and in the
-    /// enhanced mode its words, each line where the picture's stands (from
+    /// sharp HUD its words, each line where the picture's stands (from
     /// its top left: `help_items`), its letters taken off its tiles.
     help: Option<(String, Option<HelpLetters>)>,
     help_lines: Vec<TextItem>,
-    /// The damage's digits' words, in the enhanced mode (their cells blank).
+    /// The damage's digits' words, with the sharp HUD (their cells blank).
     damage: Option<String>,
-    /// In the enhanced mode, the window's labels it shows (`letter_labels`):
+    /// With the sharp HUD, the window's labels it shows (`letter_labels`):
     /// each one's cells (their first column, row and how many columns) and
     /// its words from the cells' top left, the letters taken off the tiles.
     labels: Vec<(usize, usize, usize, TextItem)>,
     /// The chip codes the window shows (the chip window's, the slots'):
     /// each one's tiles (the first, how many), its letter, whether it is a
-    /// slot's and its glyph, for the enhanced mode to draw in the numbers'
+    /// slot's and its glyph, for the sharp HUD to draw in the numbers'
     /// font (`letter_codes`).
     codes: Vec<(u16, u16, char, bool, usize)>,
     /// The form list's names it shows: each one's first tile, its form and
@@ -719,28 +719,28 @@ struct Window {
     form_name_tiles: Vec<(u16, FormHandle, usize)>,
     /// Where the blocks go among the layer's tile numbers (the game's).
     layout: nettai_assets::CustomLayout,
-    /// In the enhanced mode, the frames drawn as shapes (`shape_frames`):
+    /// With the sharp HUD, the frames drawn as shapes (`shape_frames`):
     /// each one's cells (their first column, row and how many columns) and
     /// its item from the cells' top left; and the cells they stand in for,
     /// whose tiles aren't drawn.
     shapes: Vec<(usize, usize, usize, TextItem)>,
     drawn_cells: Vec<bool>,
     /// The cells (top left, as column and row) where an empty slot's box
-    /// was laid (the slots' and the picked column's), for the enhanced mode
+    /// was laid (the slots' and the picked column's), for the sharp HUD
     /// to draw as shapes (`shape_frames`).
     empty_icons: Vec<(usize, usize)>,
     /// The first tiles of the empty slots' code plates (no letter), for
-    /// the enhanced mode to draw as shapes as the others' are.
+    /// the sharp HUD to draw as shapes as the others' are.
     blank_plates: Vec<u16>,
     /// The buttons laid in the slots' run or at their places: each one's
     /// first tile, how many, its name and the set it shows, for the
-    /// enhanced mode to draw as shapes.
+    /// sharp HUD to draw as shapes.
     buttons_laid: Vec<(u16, usize, String, usize)>,
     /// Those buttons' tiles (the first, how many), for a mirrored window's
     /// blocks (`upright`).
     buttons: Vec<(u16, usize)>,
     /// The element whose icon was laid without its frame (its family), for
-    /// the enhanced mode to draw the frame under it as a shape.
+    /// the sharp HUD to draw the frame under it as a shape.
     element_framed: Option<usize>,
 }
 
@@ -886,7 +886,7 @@ impl Window {
         w
     }
 
-    /// In the enhanced mode, the frames the game's graphics have drawings of drawn as
+    /// With the sharp HUD, the frames the game's graphics have drawings of drawn as
     /// shapes (`nettai_assets::shapes`): the window's map's (the drawings
     /// of its cells, each where the cell is laid as the map says: a cell the
     /// screen laid otherwise is drawn as its tiles, a problem), and the
@@ -1034,7 +1034,7 @@ impl Window {
         }
     }
 
-    /// In the enhanced mode, the chip codes the window shows (`codes`) in a
+    /// With the sharp HUD, the chip codes the window shows (`codes`) in a
     /// font of the game's codes (the user: "also the chip letters", then "you
     /// should trace ABCDEFGHIJKLMNOPQRSTUVWXYZ* for the chip codes font like
     /// you did digits"): the chip window's in Nettai Chip Codes, the slots'
@@ -1087,7 +1087,7 @@ impl Window {
         }
     }
 
-    /// In the enhanced mode, the form list's names (`form_name_tiles`: EXE6's
+    /// With the sharp HUD, the form list's names (`form_name_tiles`: EXE6's
     /// Crosses' on their bars, the user: "also ... the text in the cross
     /// select screen") as text, where the strings have them (`crosses.FORM`,
     /// the ROMs' short names): their letters (the outlines the bar's own
@@ -1160,7 +1160,7 @@ impl Window {
         }
     }
 
-    /// In the enhanced mode, the window's labels its map shows (the game's
+    /// With the sharp HUD, the window's labels its map shows (the game's
     /// `labels`: BATTLE CHIP, CHIP SELECT...), where the strings have their
     /// words (`window.NAME`) and the lettering font draws them: their
     /// letters taken off the tiles (each letter pixel the window's own
@@ -1298,7 +1298,7 @@ impl Window {
     }
 
     /// A name (chip `chip`'s, and a pick's code in its last cell) into name
-    /// `k`'s tiles; in the enhanced mode blank tiles, and the words for the
+    /// `k`'s tiles; with the sharp HUD blank tiles, and the words for the
     /// text layer.
     #[allow(clippy::too_many_arguments)]
     fn put_advance_text(
@@ -1484,7 +1484,7 @@ impl Window {
         let family = data.family.0 as usize;
         if family < a.element_colors.len() {
             // (The frame with the icon over it, as the game's; in the
-            // enhanced mode, where the game's graphics draw the frame, the symbol on
+            // sharp HUD, where the game's graphics draw the frame, the symbol on
             // the frame's ground, the frame's drawing over it but for the
             // symbol: `shape_frames`. The ground fills the square round the
             // ring, as the window's own panel round it.)
@@ -1510,7 +1510,7 @@ impl Window {
             let damage = nettai_battle::hand::chip_damage(v.b, Some(c.id), v.side);
             damage.min(999).to_string().bytes().map(|d| (d - b'0') as usize).collect()
         };
-        // In the enhanced mode the digits in the lettering font (`damage_item`),
+        // With the sharp HUD the digits in the lettering font (`damage_item`),
         // their cells blank.
         let words: String = digits.iter().map(|&d| if d == DIGIT_UNKNOWN { '?' } else { char::from(b'0' + d as u8) }).collect();
         if !words.is_empty()
@@ -1993,7 +1993,7 @@ impl Window {
         }
     }
 
-    /// The chip window's name on the text layer (the enhanced mode): over the
+    /// The chip window's name on the text layer (the sharp text): over the
     /// name's cells where the window's map puts them, in their palette's
     /// colors from 8 (`NAME_SHIFT`), cut to the window's columns on the
     /// layer.
@@ -2043,7 +2043,7 @@ impl Window {
         Some(Block { col, row, w, h, palette })
     }
 
-    /// In the enhanced mode, the chip window's lettered picture's words
+    /// With the sharp HUD, the chip window's lettered picture's words
     /// (`help`), if the strings have them for its title and its words and
     /// the lettering font draws them: each line of the picture (`lettering::
     /// lines`) the words' line in its place and its color, the title's
@@ -2115,7 +2115,7 @@ impl Window {
         }
     }
 
-    /// The damage's digits in the numbers' font (the enhanced mode's:
+    /// The damage's digits in the numbers' font (the sharp HUD's:
     /// `damage`), in their glyphs' look, laid as every number is
     /// (`numbers::laid`), ending where the original's last digit does.
     fn damage_item(&self, v: &View, text: &mut TextSink, place: Placement) {
@@ -2388,7 +2388,7 @@ fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<
 /// in, so the sprite limit counts theirs.
 static BLANK_TILES: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Tiles { pixels: vec![0; 16 * Tiles::TILE] });
 
-/// In the enhanced mode, parts that have a drawing (`drawings`, by the
+/// With the sharp HUD, parts that have a drawing (`drawings`, by the
 /// part's first tile over `per`, the tiles a drawing is) drawn as shapes:
 /// each part blank in its place,
 /// its drawing flipped as it is and in its palette on the text layer as
@@ -2530,7 +2530,7 @@ fn element_part<'a>(v: &View, a: &'a CustomScreen, place: Placement) -> Option<S
 
 /// The element sprite's parts with their tags (`tags`, as `drawn_parts`):
 /// the frame with the icon in front of it, as the game's sprite; in the
-/// enhanced mode, where the game's graphics draw the frame, the icon alone with the
+/// sharp HUD, where the game's graphics draw the frame, the icon alone with the
 /// frame drawn over it as a shape as deep as it, kept off the symbol's
 /// pixels inside its ring, the window's panel showing round the ring.
 fn framed_element<'a>(part: SpritePart<'a>, a: &'a CustomScreen, text: &mut TextSink, tags: &mut Vec<Option<u32>>, at: usize) -> Vec<SpritePart<'a>> {
@@ -2615,7 +2615,7 @@ fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
 /// on the HUD layer, the enemy names on the names layer (BG0), the sprites
 /// into `list`. `emblem` holds the emblem sprite's tiles (`emblem_sprite`)
 /// and `emblem_palette` the emblem's palette (`lookups::emblem`); the
-/// enhanced mode's strings go to `text`. Where the seat mirrors (the right
+/// strings and lettering go to `text`. Where the seat mirrors (the right
 /// of a screen of both), it is drawn in the `scratch` layers as its console
 /// draws it and put in the right half by a `seat::Mirror`: the frame
 /// mirrored, the parts that read moved whole (`Window::upright`, the
@@ -2719,7 +2719,7 @@ pub fn draw<'a>(
             let e = MapEntry { tile: first + i, hflip: false, vflip: false, palette };
             w.cell(hud_layer, e, col + (i / 2) as i32, row + (i % 2) as i32, place.scroll);
         }
-        // In the enhanced mode, the name and the code on the text layer.
+        // With the sharp HUD, the name and the code on the text layer.
         if let Some(Some((name, cells, code))) = w.advance_names.get(k) {
             let colors = &w.palettes[palette as usize & 15];
             let at = |c: i32, n: usize| Rect::new(layer_x(col + c, place.scroll), 8 * row, 8 * n as i32, 16);
@@ -2736,7 +2736,7 @@ pub fn draw<'a>(
     // window is beside it, none of it shows.)
     if screen.look.turn_limit && place.to == COLUMNS && matches!(seat.shows, crate::seat::Shows::Screen | crate::seat::Shows::Half) {
         // sub_8029D34: 7x2 at column 15, row 4, in the layout's palette. In
-        // the enhanced mode its words in the lettering font, in its look,
+        // the sharp HUD its words in the lettering font, in its look,
         // and its cells with the letters taken off (its own ground).
         upright.push(crate::seat::Block::whole(Rect::new(layer_x(15, place.scroll), 4 * 8, 7 * 8, 16)));
         let palette = w.palettes[w.layout.turn_limit_palette as usize & 15];
@@ -2766,7 +2766,7 @@ pub fn draw<'a>(
     // one before).
     let drawn = screen.look.drawn;
     let mut queue: Vec<SpritePart<'a>> = Vec::new();
-    // (Parts drawn as shapes in the enhanced mode, each queued with its
+    // (Parts drawn as shapes with the sharp HUD, each queued with its
     // tag: `drawn_parts`.)
     let mut tags: Vec<Option<u32>> = Vec::new();
     // (Each sprite's parts, for the mirror to place as one.)

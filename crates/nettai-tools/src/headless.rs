@@ -109,7 +109,7 @@ pub fn render_frames(
 /// (`objects::describe`) and text items (`textlayer::describe`) go to the
 /// log as the renderer sees them; `keys` are the local player's buttons,
 /// by tick (live play's). The frames are the player's own
-/// (`Player::frame`: what a host shows), the enhanced mode's text items drawn
+/// (`Player::frame`: what a host shows), the sharp text items drawn
 /// by its text renderer.
 #[allow(clippy::too_many_arguments)]
 /// Make and present each of `wanted` (the first round's) at `scale` times
@@ -334,7 +334,7 @@ pub struct TraceAudit {
 pub struct AuditSetup {
     pub graphics: nettai_render::graphics::GameGraphics,
     pub strings: Option<std::sync::Arc<nettai_content::locale::Strings>>,
-    pub mode: nettai_render::GraphicsMode,
+    pub enhancements: nettai_render::Enhancements,
     pub font: Option<std::sync::Arc<nettai_render::vfont::VectorFont>>,
     /// The game's sound (none: cues aren't checked).
     pub sound: Option<std::sync::Arc<m4a::SoundBank>>,
@@ -361,7 +361,7 @@ pub fn audit_traces(
         let sessions: Vec<Session> = rounds.into_iter().map(|(_, r)| Session::new(r)).collect();
         let mut renderer = Renderer::with_graphics(setup.graphics.clone());
         renderer.set_strings(setup.strings.clone());
-        renderer.set_mode(setup.mode, setup.font.clone());
+        renderer.set_enhancements(setup.enhancements, setup.font.clone());
         Ok(audit(&mut renderer, sessions, setup.sound.clone(), setup.draw))
     };
     std::thread::scope(|s| {

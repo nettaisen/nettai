@@ -130,7 +130,7 @@ fn check(c: &Content, graphics: &Graphics, text: &DisplayText, lettered: bool, b
     lookups::chatbox_graphics(hud, p);
     lookups::custom_graphics(a, p);
     lookups::warning(hud, p);
-    // (The letters the enhanced mode draws its words and numbers by.)
+    // (The letters the sharp HUD draws its words and numbers by.)
     lookups::pack_letters(c, hud, a, text, p);
     for line in (hud::TEXT_TIME_UP..=hud::TEXT_TIME_UP + 10).chain([hud::TEXT_COUNTER_HIT]) {
         lookups::text_line(hud, line, p);

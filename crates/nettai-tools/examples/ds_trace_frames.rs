@@ -14,7 +14,7 @@
 
 use exe5_compat::trace;
 use nettai_frontend::game::{Options, load};
-use nettai_render::GraphicsMode;
+use nettai_render::Enhancements;
 use std::path::PathBuf;
 
 fn main() {
@@ -30,7 +30,7 @@ fn main() {
         (0, u32::MAX)
     };
     std::fs::create_dir_all(&out).unwrap();
-    let options = Options { mode: GraphicsMode::Original, sound: false, ..Options::default() };
+    let options = Options { enhancements: Enhancements::NONE, sound: false, ..Options::default() };
     let loaded = load("exe5", &options).unwrap_or_else(|e| panic!("exe5: {e:?}"));
     let content = loaded.game.content.clone();
     let mut renderer = loaded.renderer();

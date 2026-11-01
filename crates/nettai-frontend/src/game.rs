@@ -29,7 +29,7 @@ pub use nettai_extract::RomSource;
 use nettai_extract::{Extraction, Recipe};
 use nettai_render::Renderer;
 use nettai_render::graphics::{GameGraphics, OtherBackgrounds, OtherGame};
-pub use nettai_render::textlayer::GraphicsMode;
+pub use nettai_render::textlayer::Enhancements;
 pub use nettai_render::vfont::VectorFont;
 use std::collections::BTreeMap;
 use std::fmt;
@@ -269,9 +269,9 @@ impl Game {
     /// Graphics that have no lettering in `lang` (Chinese: every game's
     /// have English's and Japanese's) are drawn in their own language:
     /// their pictures with words are the ones they have, and the strings
-    /// are still `lang`'s, which the renderer draws with the vector font in
-    /// the enhanced mode and pixel fonts in the original
-    /// (`Renderer::set_mode`, `pixeltext`). With them, the background
+    /// are still `lang`'s, which the renderer draws with the vector font
+    /// with the sharp text and pixel fonts without it
+    /// (`Renderer::set_enhancements`, `pixeltext`). With them, the background
     /// pool's others ([`Game::others`]).
     pub fn graphics(&self, lang: &str) -> Result<Graphics, LoadError> {
         let report = Report::default();
@@ -318,12 +318,12 @@ impl Graphics {
         GameGraphics::new(self.bundle.clone()).with_others(self.others.clone()).with_numbers(self.numbers.clone())
     }
 
-    /// A renderer of these graphics, its text drawn in `text` mode
-    /// (`font`: the enhanced mode's, [`font`]).
-    pub fn renderer(&self, mode: GraphicsMode, font: Option<Arc<VectorFont>>) -> Renderer {
+    /// A renderer of these graphics, drawing with `enhancements` (`font`:
+    /// the sharp text's and the sharp HUD's, [`font`]).
+    pub fn renderer(&self, enhancements: Enhancements, font: Option<Arc<VectorFont>>) -> Renderer {
         let mut renderer = Renderer::with_graphics(self.game_graphics());
         renderer.set_strings(self.strings.clone());
-        renderer.set_mode(mode, font);
+        renderer.set_enhancements(enhancements, font);
         renderer
     }
 }
@@ -350,11 +350,12 @@ impl Sound {
     }
 }
 
-/// The font the `text` mode draws with: the file at `path`, else the one
-/// the library comes with, its cut of `lang` (Noto Sans CJK's: `vfont::Cut`);
-/// none in the original mode, which draws the game's own fonts.
-pub fn font(mode: GraphicsMode, path: Option<&Path>, lang: &str) -> Result<Option<Arc<VectorFont>>, LoadError> {
-    if mode != GraphicsMode::Enhanced {
+/// The font the sharp text draws with (and whose cut the sharp HUD's
+/// lettering fonts are): the file at `path`, else the one the library comes
+/// with, its cut of `lang` (Noto Sans CJK's: `vfont::Cut`); none without
+/// either, which draws the game's own fonts.
+pub fn font(enhancements: Enhancements, path: Option<&Path>, lang: &str) -> Result<Option<Arc<VectorFont>>, LoadError> {
+    if !enhancements.wants_font() {
         return Ok(None);
     }
     match path {
@@ -379,22 +380,20 @@ pub struct Options {
     pub pool: Vec<(String, PathBuf)>,
     /// The language shown.
     pub lang: String,
-    /// How the battle is drawn, and the enhanced mode's font file (none: the
-    /// library's own).
-    pub mode: GraphicsMode,
+    /// The enhancements the battle is drawn with, and the font file of its
+    /// sharp text (none: the library's own).
+    pub enhancements: Enhancements,
     pub font: Option<PathBuf>,
-    /// The enhanced mode without its motion (`Renderer::reduce_motion`).
-    pub reduce_motion: bool,
     /// Load the sound too (a host that plays none needn't).
     pub sound: bool,
 }
 
 impl Default for Options {
     /// The ROMs the tools read ([`RomSource::from_env`]), the content the
-    /// program comes with, in its own language, the enhanced mode with the
+    /// program comes with, in its own language, every enhancement with the
     /// library's font, with sound.
     fn default() -> Options {
-        Options { roms: None, content: None, pool: Vec::new(), lang: locale::OWN.to_string(), mode: GraphicsMode::Enhanced, font: None, reduce_motion: false, sound: true }
+        Options { roms: None, content: None, pool: Vec::new(), lang: locale::OWN.to_string(), enhancements: Enhancements::ALL, font: None, sound: true }
     }
 }
 
@@ -402,15 +401,13 @@ impl Default for Options {
 pub struct Loaded {
     pub game: Game,
     pub graphics: Graphics,
-    pub mode: GraphicsMode,
-    /// The enhanced mode without its motion (`Renderer::reduce_motion`).
-    pub reduce_motion: bool,
+    pub enhancements: Enhancements,
     pub font: Option<Arc<VectorFont>>,
     pub sound: Option<Sound>,
 }
 
 impl Loaded {
-    /// The enhanced mode's font for text in `lang`: the bundled font's cut of
+    /// The sharp text's font for text in `lang`: the bundled font's cut of
     /// it (Noto Sans CJK's: the Chinese have their own hanzi), or a font file
     /// of the player's as it is; none where none was loaded.
     pub fn font_in(&self, lang: &str) -> Option<Arc<VectorFont>> {
@@ -420,9 +417,7 @@ impl Loaded {
 
     /// A renderer of the game's graphics, the text as it was asked for.
     pub fn renderer(&self) -> Renderer {
-        let mut renderer = self.graphics.renderer(self.mode, self.font.clone());
-        renderer.reduce_motion = self.reduce_motion;
-        renderer
+        self.graphics.renderer(self.enhancements, self.font.clone())
     }
 
     /// The game's battle themes (its rules' `battle_themes`), by their songs'
@@ -593,7 +588,7 @@ impl Loading {
                 let graphics = game.graphics(&self.options.lang).map_err(|e| after(&reports, e))?;
                 self.graphics = Some(graphics);
             }
-            Part::Font => self.font = font(self.options.mode, self.options.font.as_deref(), &self.options.lang).map_err(|e| after(&reports, e))?,
+            Part::Font => self.font = font(self.options.enhancements, self.options.font.as_deref(), &self.options.lang).map_err(|e| after(&reports, e))?,
             Part::Sound => {
                 let Some(game) = &self.game else { loaded("assets") };
                 let sound = game.sound().map_err(|e| after(&reports, e))?;
@@ -609,7 +604,7 @@ impl Loading {
         if self.next().is_some() {
             return None;
         }
-        Some(Loaded { game: self.game?, graphics: self.graphics?, mode: self.options.mode, reduce_motion: self.options.reduce_motion, font: self.font, sound: self.sound })
+        Some(Loaded { game: self.game?, graphics: self.graphics?, enhancements: self.options.enhancements, font: self.font, sound: self.sound })
     }
 }
 
@@ -668,8 +663,8 @@ mod tests {
         assert_eq!(e.what, Failed::Content { game: "exe9".into() });
         // A font file that isn't there.
         let dir = tempfile::tempdir().unwrap();
-        let Err(e) = font(GraphicsMode::Enhanced, Some(&dir.path().join("no.ttf")), "en") else { panic!("read a font that isn't there") };
+        let Err(e) = font(Enhancements::ALL, Some(&dir.path().join("no.ttf")), "en") else { panic!("read a font that isn't there") };
         assert!(matches!(&e.what, Failed::Font(why) if why.starts_with("can't read the font")), "{e}");
-        assert!(font(GraphicsMode::Original, Some(&dir.path().join("no.ttf")), "en").unwrap().is_none());
+        assert!(font(Enhancements::NONE, Some(&dir.path().join("no.ttf")), "en").unwrap().is_none());
     }
 }

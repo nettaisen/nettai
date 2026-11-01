@@ -85,7 +85,7 @@ pub struct Stage<'a> {
     scroll: (i32, i32),
     /// The part of a pixel past `scroll`, in sixteenths, of a scroll by
     /// sixteenths of a pixel a frame (the game's scroll counters keep it:
-    /// the screen shows the whole pixels; the enhanced mode's glide shows
+    /// the screen shows the whole pixels; the smooth motion's glide shows
     /// it, `Stage::draw_background_wide`).
     sub: (u8, u8),
     /// Whether the game's field draws each panel type and highlight.

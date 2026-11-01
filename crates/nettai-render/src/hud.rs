@@ -11,7 +11,7 @@ use crate::fonts;
 use crate::seat::{At, Seat, Shows};
 use crate::objects::{SpriteList, View, project_hud, project_hud_fine};
 use crate::smooth::Smooth;
-use crate::textlayer::{Align, Plane, Rect, TextItem, GraphicsMode, TextSink};
+use crate::textlayer::{Align, Plane, Rect, TextItem, TextSink};
 use crate::vfont::{LetteringFont, Lettering, Role};
 use nettai_assets::letters::Digits;
 use nettai_assets::{Bundle, Hud, MapEntry, Palette, TelopLook, TelopTiles, Tiles};
@@ -306,11 +306,11 @@ pub fn shared_glyphs<'a>(
     }
     // A telop's '×' and '2' (either place's: one 16x16 sprite at `signs`,
     // the '×' its left column, 0x08015522) where a banner loaded over them.
-    // (The enhanced mode's telops keep their glyphs: their names are the text
-    // layer's.)
+    // (With the strings laid out, the telops keep their glyphs: their names
+    // are the text layer's.)
     let telop_shown = b.used_chip_for(local).is_some() || telops.iter().any(Option::is_some);
     if telop_shown
-        && text.mode == GraphicsMode::Original
+        && !text.lays_out_strings()
         && let Load::Banner(id) = s.signs
         && let Some((_, layout, _)) = crate::lookups::banner(graphics, &b.content, id, problems)
     {
@@ -664,7 +664,7 @@ const GAUGE_UNITS_A_PIXEL: u32 = (FULL as u32) / (16 * 8);
 /// of a pixel (0: on a whole pixel, full, or not drawn). The original draws
 /// the fill to the counter's whole pixels, a cell's tile by eighths, so it
 /// grows a pixel every 2, 4 or 8 ticks (the counter's 0x40, 0x20 or 0x10 a
-/// tick: 128 a pixel); the enhanced mode's motion shows the counter's part
+/// tick: 128 a pixel); the smooth motion shows the counter's part
 /// of a pixel at the output's resolution (`Frame::nudge`). The local
 /// console's (`state` its HUD's).
 pub fn gauge_sub(b: &Battle, state: &HudState, custom_gauge: bool) -> u8 {
@@ -717,7 +717,7 @@ fn transform_hides(b: &Battle, state: &HudState, local: u8) -> (bool, bool) {
 /// the game's assets or the content doesn't have (a chip's icon, a character of its
 /// name, a banner's glyphs) goes to `problems`. Without
 /// `custom_gauge`, the custom gauge (`Renderer::custom_gauge`). `smooth`
-/// is the enhanced mode's motion: the gauge's fill drawn between whole
+/// is the smooth motion: the gauge's fill drawn between whole
 /// pixels. `scratch` is a layer to lay a piece out in before it is put in
 /// its place (the right seat's chip name, right-aligned).
 #[allow(clippy::too_many_arguments)]
@@ -762,7 +762,7 @@ pub fn draw<'a>(
         let shown = state.hp.map(|h| h.shown).unwrap_or(b.objects.get(r).hp);
         let pal = &hud.hp_palettes[color.min(2)];
         let digits_x = seat.x(shift + 8, 32);
-        // In the enhanced mode the HP in the numbers' font over the cells
+        // With the sharp HUD the HP in the numbers' font over the cells
         // left blank (the box's glyph 10), and the box drawn as shapes where
         // the game's graphics have its drawing.
         let lettered = hp_box_number(hud, pal, shown, (digits_x, 0), text, problems);
@@ -796,7 +796,7 @@ pub fn draw<'a>(
     if custom_gauge && seat.draws_shared() && gauge_shown(b, state, local) {
         let pal = &hud.gauge_palette;
         let color = |_: u8, c: u8| pal[c as usize & 15];
-        // In the enhanced mode the frame's word in the lettering font, in
+        // With the sharp HUD the frame's word in the lettering font, in
         // its look, its cells with their letters taken off (their plate);
         // and the frame and its cells drawn as shapes where the game's graphics have
         // their drawings (`shapes`), the word over them.
@@ -840,7 +840,7 @@ pub fn draw<'a>(
             .flatten();
         // The cells drawn as shapes (the game's, where each cell filling by
         // eighths is its filled cell cut short): the fill's end where the
-        // counter is, between the pixels in the enhanced mode's motion.
+        // counter is, between the pixels in the smooth motion.
         let cells_drawn = hud.shapes.gauge_cells.as_ref().filter(|c| text.draws_shapes() && c.cut && (g < FULL || l_or_r.is_some()));
         if let Some(c) = cells_drawn {
             let at = |i: usize| ((Hud::GAUGE_FILL_COLUMN + i) as f32 * 8.0, Hud::GAUGE_FILL_ROW as f32 * 8.0);
@@ -891,7 +891,7 @@ pub fn draw<'a>(
         }
         if g >= FULL {
             let first = g0 + GAUGE_L_OR_R + 4 * full_frame as u16;
-            // In the enhanced mode the cells with their letters taken off
+            // With the sharp HUD the cells with their letters taken off
             // (the gauge's own ground, or its drawing), and the words in the
             // lettering font in this frame's look.
             match l_or_r {
@@ -931,7 +931,7 @@ pub fn draw<'a>(
         keep_to(seat, Anchor::TOP_RIGHT, (&mut *layer, &mut *scratch), list, text);
         let columns = (hud.waiting.len() / 2).max(1);
         let x = seat.x(22 * 8, 8 * columns as i32);
-        // In the enhanced mode its words in the lettering font, in its look.
+        // With the sharp HUD its words in the lettering font, in its look.
         let words = lettered_word(b, text, "waiting", hud.letters.words.waiting.as_ref(), &hud.waiting_palette, Lettering::display, problems);
         let lettered = words.is_some();
         if let Some((words, look)) = words {
@@ -967,7 +967,7 @@ pub fn draw<'a>(
             }
             keep_to(seat, anchor, (&mut *layer, &mut *scratch), list, text);
             let x = seat.x(8 * column, 32);
-            // In the enhanced mode the marks as a telop draws a hidden chip's
+            // With the sharp text the marks as a telop draws a hidden chip's
             // name: the text layer's cell role in the palette's face and
             // shadow (the user: "the ???? trap font should use the telop
             // font").
@@ -1010,7 +1010,7 @@ pub fn draw<'a>(
             }
         };
         let (left, right) = (left.min(9999).to_string(), right.min(9999).to_string());
-        // In the enhanced mode the numbers in the numbers' font, in the
+        // With the sharp HUD the numbers in the numbers' font, in the
         // digits' look (`numbers::laid`): the left one ending where the
         // original's does, the right one starting where it does.
         let set = text
@@ -1062,10 +1062,10 @@ pub fn draw<'a>(
     // message's first frame the timer's row reads the message's first
     // eight glyphs, and from the next the message's row starts with the
     // timer's ("    1    HIT!", "TIME UP! HIT!"). (The original's tiles:
-    // the enhanced mode's lines stay whole.)
+    // laid-out strings' lines stay whole.)
     let timer_line = TEXT_TIME_UP + (b.fight.turn_timer / 60) as usize;
     let late = b.late_turns() && b.round.mode == mode::FIGHTING;
-    let one_line = late && text.mode == GraphicsMode::Original;
+    let one_line = late && !text.lays_out_strings();
     let message = b.message.map(|m| {
         let line = match m.message {
             nettai_battle::hud::Message::CounterHit => TEXT_COUNTER_HIT,
@@ -1196,7 +1196,7 @@ pub fn draw<'a>(
             .collect();
         let x = x + seat.ink_shift(&shown, x, 32);
         let fine = project_hud_fine((o.pos.x, o.pos.y, o.pos.z), view);
-        // In the enhanced mode the number (the HP, or the damage taken) in
+        // With the sharp HUD the number (the HP, or the damage taken) in
         // the numbers' font, in the digits' look (`numbers::laid`): centered
         // where the original's is, or the damage taken from where it starts,
         // with blank parts in their places.
@@ -1222,7 +1222,7 @@ pub fn draw<'a>(
         list.insert_placed(FIELD_LAYER, HP_BUCKET, group, tag, (fine.x, fine.y));
         for item in lettered.into_iter().flatten() {
             // (Its true place between the frame's pixels, where the
-            // enhanced mode's motion draws the digits there.)
+            // smooth motion draws the digits there.)
             let item = if smooth.on { TextItem { fine: (item.fine.0 + fine.x, item.fine.1 + fine.y), ..item } } else { item };
             text.push(Plane::Sprite(tag.unwrap_or_default()), item);
         }
@@ -1278,7 +1278,7 @@ pub fn draw<'a>(
         let mut group = Vec::new();
         let mut words = Vec::new();
         if let Some((h, layout, number)) = crate::lookups::banner(graphics, &b.content, id, problems) {
-            // In the enhanced mode its words in the lettering font over its
+            // With the sharp HUD its words in the lettering font over its
             // bar, where the strings have them; blank parts stand in for
             // its glyphs. (Not where a telop's load changed its glyphs or
             // its palette: `TelopTiles`, EXE4's.)
@@ -1383,7 +1383,7 @@ pub fn draw<'a>(
     keep_to(seat, Anchor::CENTER, (&mut *layer, &mut *scratch), list, text);
     if seat.draws_shared() && b.round.mode == mode::FIGHTING && b.fight.state == fight::PAUSE {
         let (x, y) = (hud.layout.pause.0 as i32, hud.layout.pause.1 as i32);
-        // In the enhanced mode its word in the lettering font, in its look,
+        // With the sharp HUD its word in the lettering font, in its look,
         // with blank parts in its glyphs' places.
         let word = lettered_word(b, text, "pause", hud.letters.pause.as_ref(), &hud.enemy_palette, Lettering::display, problems)
             .map(|(words, look)| look.in_place(words, (x, y), 16));
@@ -1566,7 +1566,7 @@ fn draw_chip_name(
     let cells = if text.takes(words, Role::FittedCell) { fonts::box_cells(text, words, name.len(), Role::FittedCell) } else { name.len() };
     fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, cells, pal, (0, 18 * 8), (Role::FittedCell, Align::Left));
     // The damage follows the name: after the cells its glyphs take, or in
-    // the enhanced mode after the name as the text layer draws it.
+    // the sharp text after the name as the text layer draws it.
     let mut x = 8 * cells as i32;
     let mut words_end = None;
     if text.takes(words, Role::FittedCell)
@@ -1581,7 +1581,7 @@ fn draw_chip_name(
     }
     let i = hand.cursor as usize;
     let damage = hand.damage.get(i).copied().unwrap_or(0);
-    // In the enhanced mode the numbers in the numbers' font, in their
+    // With the sharp HUD the numbers in the numbers' font, in their
     // glyphs' looks, a word's space after the name's words.
     if let Some(looks) = NumberSets::of(hud_number_letters(hud), pal, text) {
         let from = words_end.unwrap_or(x as f32);
@@ -1646,7 +1646,7 @@ const EMOTION_WINDOW_Y: i32 = 18;
 /// is (`custom::draw_names`: its cells ending at the screen's right edge, the
 /// text layer's words from their left), on the emotion window's row: under
 /// the opponent's name, level with the local player's emotion window. In
-/// the enhanced mode, where the numbers' font draws it (the user: "for the
+/// the sharp HUD, where the numbers' font draws it (the user: "for the
 /// custom timer you should use the number font"), in that font in the
 /// place of the HP box's digits, a cell a digit, the last ending at the
 /// screen's right edge, in the plain text's colors.
@@ -1862,7 +1862,7 @@ fn mugshot_parts<'a>(
     // without one. A game whose faces bring their boxes has no box
     // without a count: a face that brings none (EXE5's souls') shows its
     // side's count (`window_count`). (Each box's drawing where the game's graphics have
-    // one, for the enhanced mode.)
+    // one, for the sharp HUD.)
     let own_drawing = picture.and_then(|m| face_hud.shapes.mugshot_boxes.get(m as usize)).and_then(Option::as_ref);
     let (tiles, count) = match picture.and_then(|m| face_hud.mugshot_box(m)) {
         Some(own) => (Some(own), None),
@@ -1876,7 +1876,7 @@ fn mugshot_parts<'a>(
         }
         None => (Some(&hud.count_box), None),
     };
-    // In the enhanced mode a count in the numbers' font on the empty box
+    // With the sharp HUD a count in the numbers' font on the empty box
     // (the counts' own box, their digits taken off: `count_blank`; the HUD's
     // box without a count is another picture).
     let number = count.and_then(|(h, n)| count_number(&h.letters.counts, n, &pal, (at.1, EMOTION_WINDOW_Y), flip, text));
@@ -2206,7 +2206,7 @@ const OWN_ICON_PRIORITY: u8 = 1;
 /// The banner's five 32x16 sprites (as 8x16 glyphs) with its vertical
 /// squash: grow over 5 frames, hold, shrink (`sub_801CE28`).
 /// `layout` is banner `id`'s (its number in `hud`'s game's graphics).
-/// `blank`: blank parts in the glyphs' places, as many (the enhanced mode's
+/// `blank`: blank parts in the glyphs' places, as many (the sharp text's
 /// lettering draws the words: `lettered_banner`).
 fn banner_parts<'a>(b: &Battle, block: &Banner, hud: &'a Hud, layout: &'a nettai_assets::BannerLayout, id: u8, blank: bool, out: &mut Vec<SpritePart<'a>>) {
     let vscale = Some(banner_scale(block));
@@ -2229,7 +2229,7 @@ fn banner_parts<'a>(b: &Battle, block: &Banner, hud: &'a Hud, layout: &'a nettai
 /// The HP box's blank cell: glyph 10 of its digits' (`digits4`'s blank).
 const HP_BLANK: usize = Hud::HP_BLANK;
 
-/// The HP box's number in the enhanced mode, if the lettering font draws
+/// The HP box's number with the sharp HUD, if the lettering font draws
 /// it: right-aligned in the box's four cells from (x, y), ending where the
 /// original's last digit does (`numbers::laid`), in the numbers' font in
 /// the look of the box's digits (glyphs 0 to 9 of the HUD layer's tiles, on
@@ -2245,7 +2245,7 @@ fn hp_box_number(hud: &Hud, palette: &Palette, shown: u16, (x, y): (i32, i32), t
     crate::numbers::laid(text, &[(words, &set)], y, crate::numbers::Anchor::Right(end)).map(|l| l.0)
 }
 
-/// The custom gauge's frame's word in the enhanced mode, if the strings and
+/// The custom gauge's frame's word with the sharp HUD, if the strings and
 /// a font have it: the cells of the frame's top row that draw it (the game's
 /// `GaugeWord`), their tiles with the letters taken off (their plate's
 /// color), and the word laid out as text where the cells' letters are, in
@@ -2291,7 +2291,7 @@ fn ringed(look: crate::lettering::Look, words: &str) -> crate::lettering::Look {
     crate::lettering::Look { role: Role::Lettering(Lettering { top, cap, ..l }), ..look }
 }
 
-/// A lettered picture's words and their look, where the enhanced mode draws
+/// A lettered picture's words and their look, where the sharp HUD draws
 /// them in its place: the strings' words for it (`lettering`'s `key`) where
 /// the lettering font draws them, and the look of the picture's letters
 /// (the game's `letters`; none is a problem) in `palette`.
@@ -2318,7 +2318,7 @@ fn banner_number(b: &Battle, id: u8) -> usize {
     (if id == 0x0C { b.round.turn } else { b.round.round }) as usize
 }
 
-/// A banner as the enhanced mode draws it, if the content's strings have
+/// A banner as the sharp HUD draws it, if the content's strings have
 /// its words (`lettering`'s `banner.NAME`, the number where the words
 /// say `{n}`) and the lettering font draws them: the words in the lettering
 /// font, centered on the picture's letters (and its number), in the
@@ -2540,7 +2540,7 @@ static BLANK_GLYPH: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Til
 /// A chip's name (its words and the font's glyphs for them) with its
 /// numbers (damage, bonus, doubled) as `sub_801E95C` lays them out from a
 /// telop's place (`style`): centered as fifteen glyphs are; the other
-/// player's (`remote`) moves over for the "x2". In the enhanced mode the name
+/// player's (`remote`) moves over for the "x2". With the sharp text the name
 /// is a text item in the cells its glyphs take, returned (`Laid`), and
 /// blank parts stand in for the glyphs.
 #[allow(clippy::too_many_arguments)]
@@ -2587,7 +2587,7 @@ fn name_parts<'a>(
         x += 8;
     }
     x = after;
-    // In the enhanced mode the numbers in the numbers' font, in their
+    // With the sharp HUD the numbers in the numbers' font, in their
     // glyphs' looks, with blank parts in their glyphs' places. With the
     // name on the text layer they follow it a pixel after its words, as the
     // hand window's do, and the two are centered where the original's name
@@ -2630,8 +2630,8 @@ fn name_parts<'a>(
 
 /// The looks of a chip's damage, its bonus's '+' and the "x2" of a doubled
 /// chip, from the glyphs that draw them in the original (the HUD layer's,
-/// a telop's own: `numbers::NumberSet`), for the enhanced mode's numbers:
-/// none in the original mode, or where the glyphs have no ink.
+/// a telop's own: `numbers::NumberSet`), for the sharp HUD's numbers:
+/// none with no enhancements, or where the glyphs have no ink.
 pub(crate) struct NumberSets {
     digits: crate::numbers::NumberSet,
     plus: crate::numbers::NumberSet,
@@ -2675,8 +2675,8 @@ impl NumberSets {
 const NAME_GAP: f32 = 0.25;
 
 /// A telop as `name_parts` laid it out: the text layer's item for its name
-/// (the enhanced mode's), how many of its parts, from the first, are the
-/// name's glyphs (none in the enhanced mode), and where among them the '×' of
+/// (the sharp text's), how many of its parts, from the first, are the
+/// name's glyphs (none with the sharp text), and where among them the '×' of
 /// a doubled chip is (the '2' after it).
 #[derive(Default)]
 struct Laid {
@@ -2919,7 +2919,7 @@ mod tests {
             Some(Telop { side: 0, chip: Some(chip), damage: 120, doubled: true, bonus: 10, hidden: TelopHidden::No });
         let hud = hud();
         let font = crate::vfont::VectorFont::bundled();
-        let text = TextSink::new(crate::textlayer::GraphicsMode::Enhanced, Some(&font));
+        let text = TextSink::new(crate::textlayer::Enhancements::ALL, Some(&font));
         let mut problems = Problems::default();
         let mut parts = Vec::new();
         let item = telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &text, &mut problems).name.into_iter().next().unwrap();
@@ -2933,7 +2933,7 @@ mod tests {
         assert_eq!((item.text.as_str(), item.rect), ("SunGun3", Rect::new(8, 32, 56, 16)));
         assert_eq!((item.align, item.vscale), (Align::Center, parts[0].vscale));
         assert_eq!((item.face, item.shadow), (hud.hp_palettes[0][1], Some(hud.hp_palettes[0][2])));
-        // In the original mode there is none.
+        // With no enhancements there is none.
         let mut parts = Vec::new();
         assert!(telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &TextSink::original(), &mut problems).name.is_empty());
     }

@@ -9,7 +9,7 @@
 //! - The dialogue font ([`dialogue_text`]): proportional 16x12 glyphs,
 //!   the chatbox's descriptions and messages.
 //!
-//! In the enhanced mode the same places hand their strings to the text
+//! With the sharp text the same places hand their strings to the text
 //! layer instead ([`layer_text`], [`layer_line`]; the telop, the custom
 //! screen's names and the chatbox ask the `TextSink` themselves), in the
 //! box the original's glyphs take.
@@ -75,7 +75,7 @@ pub fn box_cells(sink: &TextSink, text: &str, glyphs: usize, role: Role) -> usiz
 }
 
 /// A string of the 8x16 font on a tile layer: as [`draw_cell_text`] draws
-/// its glyphs (`cells` cells from (x, y)); in the enhanced mode, when the
+/// its glyphs (`cells` cells from (x, y)); with the sharp text, when the
 /// font has the string, a text item of `role` (one of the 8x16 font's) in
 /// the glyphs' box instead, in the palette's face and shadow colors.
 #[allow(clippy::too_many_arguments)]
@@ -101,7 +101,7 @@ pub fn layer_text(
 }
 
 /// A line of the game's HUD text (glyph numbers, `Hud::texts`) on a tile
-/// layer, a cell a glyph from (x, y); in the enhanced mode its words without
+/// layer, a cell a glyph from (x, y); with the sharp HUD its words without
 /// the spaces that pad it, in the cells they take.
 pub fn layer_line(sink: &mut TextSink, plane: Plane, layer: &mut Layer, hud: &Hud, glyphs: &[u16], palette: &Palette, (x, y): (i32, i32)) {
     let words: Vec<&str> = glyphs.iter().map(|&g| hud.font_chars.get(g as usize).map_or("", String::as_str)).collect();
@@ -171,7 +171,7 @@ mod tests {
     #[test]
     fn a_hud_line_goes_to_the_text_layer_without_its_padding() {
         use crate::compose::CLEAR;
-        use crate::textlayer::GraphicsMode;
+        use crate::textlayer::Enhancements;
         // Glyph 0 (space) blank, glyphs 1 and 2 ("U", "P") all color 1.
         let mut font = Tiles { pixels: vec![0; 6 * Tiles::TILE] };
         font.pixels[2 * Tiles::TILE..].fill(1);
@@ -180,7 +180,7 @@ mod tests {
         (palette[1], palette[2]) = (0x7FFF, 0x2108);
         let line = [0, 0, 1, 2, 0];
         let vf = crate::vfont::VectorFont::bundled();
-        let mut sink = TextSink::new(GraphicsMode::Enhanced, Some(&vf));
+        let mut sink = TextSink::new(Enhancements::ALL, Some(&vf));
         let mut layer = Layer::new(1, 3);
         layer_line(&mut sink, Plane::Hud, &mut layer, &hud, &line, &palette, (8, 16));
         assert!(layer.pixels.iter().all(|&p| p == CLEAR), "nothing drawn into the frame");
@@ -189,7 +189,7 @@ mod tests {
         let (plane, item) = &items[0];
         assert_eq!((*plane, item.text.as_str(), item.rect), (Plane::Hud, "UP", Rect::new(24, 16, 16, 16)));
         assert_eq!((item.face, item.shadow), (0x7FFF, Some(0x2108)));
-        // The original mode draws the glyphs where they were.
+        // The original draws the glyphs where they were.
         let mut sink = TextSink::original();
         layer_line(&mut sink, Plane::Hud, &mut layer, &hud, &line, &palette, (8, 16));
         assert!(sink.into_items().is_empty());

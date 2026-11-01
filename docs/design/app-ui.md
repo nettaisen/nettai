@@ -502,6 +502,10 @@ Each is settled unless the user changes it.
       Enhanced is the sharp text and the background's glide; Reduce motion takes the motion off and keeps the
       text.
       There is no row of its own for the motion.
+    - *Graphics enhancements* (2026-11-01). The user: "decompose enhanced graphics into settings ("graphics
+      enhancements"), all on by default". Battle graphics became a group of its own with four switches, each
+      Off / On: **Sharp text**, **Sharp HUD**, **Smooth motion** and **Fill the window**. All off is the old
+      Original. Reduce motion no longer touches the battle's smooth motion, which has its own switch now.
     - *The HUD's intro is gone.* Looking at frame strips of it, the user: "the custom screen should slide
       smoothly too. why does the custom bar do a weird animation like that?" (the custom gauge's light sweeping
       its bar read as the empty gauge filling and vanishing), then "don't animate extra slide ins that weren't
@@ -1364,9 +1368,9 @@ Each is settled unless the user changes it.
       (desktop; a phone has none): Move (the four directions' keys, the D-pad), A, B, L and R (one hint, the
       shoulders, where the pad's are them), Show builds (Tab, Select), Menu (Esc and the key bound to START, Start).
       Not the menu's own keys.
-    - *Settings* has the Settings screen's Language, Picture size, Full screen and Battle graphics beside Input
-      delay, Music and Sound effects, each changing at once; Battle graphics switches the match being played from
-      its next frame. *Controls* changes the bindings as the Settings screen's do (Enter on a box, then the key or
+    - *Settings* has the Settings screen's Language, Picture size, Full screen and the four graphics enhancements
+      beside Input delay, Music and Sound effects, each changing at once; an enhancement switches the match being
+      played from its next frame. *Controls* changes the bindings as the Settings screen's do (Enter on a box, then the key or
       the button; RESET CONTROLS), the match going on under it by them as they change. No connection panel: the
       connection's corner says it.
 
@@ -1992,11 +1996,11 @@ What moves:
 | a dialog, a menu | the scrim fades (120) as the panel grows from 96% (160); the practice and match menus slide in from the left |
 | loading | a bar fills smoothly under a moving highlight; before a battle the two cards slide in from their sides and "VS" stamps |
 | entering a battle (the jack-in, §2.49) | when both bars are full the battle begins under the set piece (480): the ground covers it and the field rushes, then a swipe takes the ground off from the left in eight strips, each a little after the one above, each strip's edge lit with a band of the cursor's color trailing it; the game's own encounter sound plays. With Reduce motion the ground fades (160) |
-| the battle's background (§2.55) | with Battle graphics Enhanced, a background that drifts by parts of a pixel a frame glides at the window's resolution instead of stepping a whole pixel every few frames. With Reduce motion, or Original, it steps as the game's does |
-| the banners and telops, in the battle (§2.55) | with Battle graphics Enhanced, their squash and stretch (and the custom screen's emblem as it spins) is drawn at the window's resolution, the game's own scale on each tick, instead of whole rows of the frame. With Reduce motion, or Original, as the game draws them |
-| the custom screen's slide, in the battle (§2.55) | with Battle graphics Enhanced, the field and the sprites on it, which move down 1.5 pixels a tick with the window, are drawn where they truly are at the window's resolution instead of in steps of 2, 1, 2, 1 pixels; the window itself slides as the game's. With Reduce motion, or Original, they step as the game's do |
-| what moves on the field, in the battle (§2.55) | with Battle graphics Enhanced, a sprite whose place is between whole pixels (a thrown bomb's arc) is drawn there at the window's resolution instead of in uneven whole-pixel steps; its pixel art is the game's. With Reduce motion, or Original, it steps as the game's does |
-| the custom gauge's fill, in the battle (§2.55) | with Battle graphics Enhanced, the fill's end is where the gauge's counter is, at the window's resolution, instead of stepping a pixel every 2, 4 or 8 ticks. With Reduce motion, or Original, it steps as the game's does |
+| the battle's background (§2.55) | with Smooth motion on, a background that drifts by parts of a pixel a frame glides at the window's resolution instead of stepping a whole pixel every few frames. With it off, it steps as the game's does |
+| the banners and telops, in the battle (§2.55) | with Smooth motion on, their squash and stretch (and the custom screen's emblem as it spins) is drawn at the window's resolution, the game's own scale on each tick, instead of whole rows of the frame. With it off, as the game draws them |
+| the custom screen's slide, in the battle (§2.55) | with Smooth motion on, the field and the sprites on it, which move down 1.5 pixels a tick with the window, are drawn where they truly are at the window's resolution instead of in steps of 2, 1, 2, 1 pixels; the window itself slides as the game's. With it off, they step as the game's do |
+| what moves on the field, in the battle (§2.55) | with Smooth motion on, a sprite whose place is between whole pixels (a thrown bomb's arc) is drawn there at the window's resolution instead of in uneven whole-pixel steps; its pixel art is the game's. With it off, it steps as the game's does |
+| the custom gauge's fill, in the battle (§2.55) | with Smooth motion on, the fill's end is where the gauge's counter is, at the window's resolution, instead of stepping a pixel every 2, 4 or 8 ticks. With it off, it steps as the game's does |
 | a match's result (§2.49) | over the picture, the winner's half floods with their side's color from its edge (200), WIN or LOSE stamps in on the player's half, then the rounds' score and the match's time count up one after another, the cursor's sound at each tick and the confirm sound at the last, all within the set piece's 480; a press settles it |
 | the lobby | the opponent's card slides in as they join; READY stamps with a flash |
 | an error | a field's message fades in; a failure's dialog shakes once |
@@ -2507,7 +2511,8 @@ DUPLICATE and DELETE.
 - **The match menu** (Start or Esc; the game's own pause never appears): BACK TO MATCH, CONTROLS, SETTINGS, LEAVE
   MATCH. "The match keeps running", and it does. Its footer is the match's own controls as the player's bindings
   have them: Move, A, B, L and R, Show builds (Tab), Menu (Esc). SETTINGS has Language, Picture size, Full screen,
-  Battle graphics, Music, Sound effects and Input delay; CONTROLS changes the bindings as Settings does (§2.83).
+  Sharp text, Sharp HUD, Smooth motion, Fill the window, Music, Sound effects and Input delay; CONTROLS changes the
+  bindings as Settings does (§2.83).
 
 ### After a match
 The mockups show no screen for this; it is decided here.
@@ -2525,7 +2530,8 @@ The mockups show no screen for this; it is decided here.
 
 ### Settings
 One scrolling page, a list at the left jumping to a group: General (Name, "Shown to your opponent."; Language),
-Video (Picture size, Full screen, Battle graphics: enhanced or original, Reduce motion), Audio (Music, Sound effects), Online (Input
+Video (Picture size, Full screen, Reduce motion), Graphics enhancements (Sharp text, Sharp HUD, Smooth motion, Fill
+the window, each Off / On, all on at first), Audio (Music, Sound effects), Online (Input
 delay, "In frames. Lower feels faster; higher rolls back less."), Controls (every action with its key and its pad
 button, each rebindable), About (Version; Your files, SHOW FOLDER; Made with, SHOW LICENSES, which opens About).
 

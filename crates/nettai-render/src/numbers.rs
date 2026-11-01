@@ -1,4 +1,4 @@
-//! The game's numbers in the enhanced mode: each digit (and the '+', the
+//! The game's numbers with the sharp HUD: each digit (and the '+', the
 //! "x" of "x2", the '?' marks) drawn in a font made of the game's own
 //! digits: Nettai Digits (fonts/nettai-digits: the HP box's digits, the
 //! HUD's '?', '+' and the times sign '×', traced from their pixels with
@@ -349,7 +349,7 @@ pub fn picture_span(set: &NumberSet, x: i32, n: usize) -> (f32, f32) {
 /// its part's set's face box tall, never squeezed; placed by `anchor`. An
 /// item for each part (each glyph's box its face's: where the font's 6-pixel
 /// face is in its cell), and where the run's ink starts and ends. None where
-/// the text layer draws no numbers (the original mode), or a font lacks a
+/// the text layer draws no numbers (the original), or a font lacks a
 /// character.
 pub fn laid(text: &TextSink, parts: &[(String, &NumberSet)], y: i32, anchor: Anchor) -> Option<(Vec<TextItem>, (f32, f32))> {
     if !text.draws_numbers() || parts.iter().any(|(chars, set)| !set.font.font().covers(chars)) {
@@ -507,7 +507,7 @@ mod tests {
     fn a_laid_numbers_faces_are_the_pictures() {
         let palette: Palette = std::array::from_fn(|i| i as u16 * 0x421);
         let set = NumberSet::of(&Digits { face: [1, 3, 6, 10], fill: vec![1; 10], rim: None, shadow: None }, &palette);
-        let text = TextSink::new(crate::textlayer::GraphicsMode::Enhanced, Some(font().as_ref()));
+        let text = TextSink::new(crate::textlayer::Enhancements::ALL, Some(font().as_ref()));
         let (a, b) = picture_span(&set, 16, 4);
         let (items, _) = laid(&text, &[("1234".to_string(), &set)], 0, Anchor::Right(b)).unwrap();
         let f = items[0].fitted.as_ref().unwrap();

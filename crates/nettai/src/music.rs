@@ -159,7 +159,7 @@ mod tests {
     }
 
     use nettai_battle::Content;
-    use nettai_frontend::game::{Game, Loaded, Sound, GraphicsMode};
+    use nettai_frontend::game::{Game, Loaded, Sound, Enhancements};
     use std::sync::Arc;
 
     /// Game `content` as it is read (content/'s, its assets made up: each numbered by its handle): its sound a
@@ -194,8 +194,7 @@ mod tests {
                 report: Default::default(),
             },
             graphics: nettai_frontend::testing::graphics(&content, 0x7FFF),
-            mode: GraphicsMode::Original,
-            reduce_motion: false,
+            enhancements: Enhancements::NONE,
             font: None,
             sound: Some(Sound { bank, songs, report: Default::default() }),
         }
@@ -274,7 +273,7 @@ mod tests {
             let folders = [0, 1].map(|side| m.sides[side].folder(&content).saved().unwrap());
             let set = nettai_match::Set::new(content.clone(), m.round(&content, 11), folders);
             let driver = nettai_frontend::driver::LivePlayer::against(set, Default::default(), 11);
-            let renderer = nettai_frontend::testing::graphics(&content, 0x7FFF).renderer(GraphicsMode::Original, None);
+            let renderer = nettai_frontend::testing::graphics(&content, 0x7FFF).renderer(Enhancements::NONE, None);
             let mut player = nettai_frontend::Player::with(renderer, None, Some(nettai_audio::BattleAudio::with_banks(banks, songs)), Box::new(driver));
             for _ in 0..30 {
                 player.tick(0);
@@ -322,7 +321,7 @@ mod tests {
             let folders = [0, 1].map(|side| m.sides[side].folder(&content).saved().unwrap());
             let set = nettai_match::Set::new(content.clone(), m.round(&content, 11), folders);
             let driver = nettai_frontend::driver::LivePlayer::against(set, Default::default(), 11);
-            let renderer = nettai_frontend::testing::graphics(&content, 0x7FFF).renderer(GraphicsMode::Original, None);
+            let renderer = nettai_frontend::testing::graphics(&content, 0x7FFF).renderer(Enhancements::NONE, None);
             nettai_frontend::Player::with(renderer, None, Some(nettai_audio::BattleAudio::with_banks(banks, songs)), Box::new(driver))
         };
         let playing = |p: &nettai_frontend::Player| -> Vec<Option<SongId>> {

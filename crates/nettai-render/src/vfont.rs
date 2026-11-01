@@ -304,7 +304,7 @@ impl Role {
     }
 
     /// Its baseline, in frame pixels down from its box's top: its capitals
-    /// end on the row above it (where the original mode's pixel fonts end
+    /// end on the row above it (where the original's pixel fonts end
     /// their hanzi: `pixeltext`).
     pub fn baseline(self) -> f32 {
         self.style().baseline

@@ -12,7 +12,7 @@
 //!
 //! Each picture is laid here as the screen lays it (a map's tiles as its
 //! entries place and flip them, the cells something else is laid in a hole,
-//! the pictures with letters off where the enhanced mode draws their
+//! the pictures with letters off where the sharp HUD draws their
 //! words), and its drawing checked: its size is the picture's, its colors
 //! are entries the picture uses, and filled at the picture's pixels'
 //! centers it gives about the picture's colors (each drawing's share of

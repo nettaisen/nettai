@@ -10,7 +10,7 @@
 use nettai_assets::{Palette, Tiles};
 
 /// The original's screen: what every piece is laid out on, and the frame's
-/// size in the original mode.
+/// size without the window filled.
 pub const WIDTH: usize = 240;
 pub const HEIGHT: usize = 160;
 pub const PIXELS: usize = WIDTH * HEIGHT;
@@ -18,7 +18,7 @@ pub const PIXELS: usize = WIDTH * HEIGHT;
 /// A transparent pixel in a layer (colors use 15 bits).
 pub const CLEAR: u16 = 0x8000;
 
-/// A frame as large as its window shows it (the enhanced mode's wide and
+/// A frame as large as its window shows it (the filled window's wide and
 /// tall frames, docs/frontend.md §3): `width` columns of `height` rows,
 /// never fewer than the original's 240 by 160, which sit in its middle
 /// (`columns_left` columns from its left edge, an odd column left over on

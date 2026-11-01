@@ -18,39 +18,86 @@ use nettai_battle::content::PaletteFlashOrder;
 use nettai_battle::transform::{SequencerState, TransformPhase};
 use std::sync::Arc;
 
-/// How a battle is drawn: as the original draws it, or enhanced (the
-/// app's "Battle graphics").
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum GraphicsMode {
-    /// Exactly as the original draws it: the game's own fonts into the
-    /// frame, and nothing moved that the game doesn't move. The reference
-    /// the frame comparison and the tests use. (Where the game's graphics have no fonts
-    /// of the language shown, the vector font into the frame.)
-    #[default]
-    Original,
-    /// Enhanced: the text in a vector font at the output's resolution, on a
-    /// layer over the scaled frame (docs/design/text-rendering.md).
-    Enhanced,
+/// Which of the graphics enhancements a battle is drawn with (the app's
+/// "Graphics enhancements"). Each draws something the original draws more
+/// finely, and each can be on or off alone; with none of them
+/// ([`Enhancements::NONE`], the default) the frame is exactly the
+/// original's: the reference the frame comparison and the tests use.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Enhancements {
+    /// Sharp text: the strings (chip names, the telops, the chatbox's
+    /// descriptions and messages, the enemy names) in a vector font at the
+    /// output's resolution, on a layer over the scaled frame
+    /// (docs/design/text-rendering.md). Off, the game's own fonts draw them
+    /// into the frame (where the game's graphics have no fonts of the
+    /// language shown, pixel fonts: `pixeltext`).
+    pub text: bool,
+    /// Sharp HUD: the pictures' words in the lettering fonts (`lettering`),
+    /// the numbers in the numbers' font (`numbers`), and the frames the
+    /// game's graphics have drawings of drawn as shapes (`shapes`), at the
+    /// output's resolution.
+    pub hud: bool,
+    /// Smooth motion: what the original moves in whole pixels or coarse
+    /// steps drawn between them at the output's resolution (`smooth`, the
+    /// background's glide: `Frame::glide`).
+    pub motion: bool,
+    /// Fill the window: the frame as large as `Renderer::size` asks, the
+    /// HUD's pieces kept to its edges; off, the original's 240 by 160.
+    pub fill: bool,
 }
 
-impl std::str::FromStr for GraphicsMode {
+impl Enhancements {
+    /// The original's picture exactly.
+    pub const NONE: Enhancements = Enhancements { text: false, hud: false, motion: false, fill: false };
+    /// Every enhancement.
+    pub const ALL: Enhancements = Enhancements { text: true, hud: true, motion: true, fill: true };
+    /// The enhancements by name, as `FromStr` reads them.
+    pub const NAMES: [&str; 4] = ["text", "hud", "motion", "fill"];
+
+    /// Whether the frame has anything finer than its own pixels to draw
+    /// (text, shapes, motion between them), so is worth presenting at more
+    /// than one output pixel a frame pixel.
+    pub fn fine(self) -> bool {
+        self.text || self.hud || self.motion
+    }
+
+    /// Whether the vector font is wanted: for the text, and for the HUD's
+    /// lettering (its fonts are the text font's cut's).
+    pub fn wants_font(self) -> bool {
+        self.text || self.hud
+    }
+}
+
+impl std::str::FromStr for Enhancements {
     type Err = String;
 
-    /// "original", or "enhanced" ("font" too: the tools' `--text` named it
-    /// so first).
-    fn from_str(s: &str) -> Result<GraphicsMode, String> {
+    /// "original" (none), "enhanced" (all; "font" too: the tools' `--text`
+    /// named it so first), or some of `NAMES` joined by commas
+    /// ("text,hud").
+    fn from_str(s: &str) -> Result<Enhancements, String> {
         match s {
-            "original" => Ok(GraphicsMode::Original),
-            "enhanced" | "font" => Ok(GraphicsMode::Enhanced),
-            _ => Err(format!("no graphics mode {s:?} (enhanced or original)")),
+            "original" | "none" => return Ok(Enhancements::NONE),
+            "enhanced" | "font" | "all" => return Ok(Enhancements::ALL),
+            _ => {}
         }
+        let mut e = Enhancements::NONE;
+        for name in s.split(',').map(str::trim) {
+            match name {
+                "text" => e.text = true,
+                "hud" => e.hud = true,
+                "motion" => e.motion = true,
+                "fill" => e.fill = true,
+                _ => return Err(format!("no graphics enhancement {name:?} (original, enhanced, or some of {} joined by commas)", Enhancements::NAMES.join(", "))),
+            }
+        }
+        Ok(e)
     }
 }
 
 /// A drawn frame: the picture (BGR555), the original's 240 by 160 or more
 /// ([`Frame::size`], `Renderer::size`), per pixel the depth key of what won
 /// it (`compose::depth_key`), and the text items to draw over it at the
-/// output's resolution (none in the original mode).
+/// output's resolution (none without the sharp text or HUD).
 #[derive(Clone, Debug, Default)]
 pub struct Frame {
     /// Its columns and rows.
@@ -59,17 +106,17 @@ pub struct Frame {
     pub depth: Vec<u32>,
     pub text: Vec<TextItem>,
     /// The background at the part of a pixel it has scrolled past the
-    /// frame's whole pixels (the enhanced mode's motion): `present` shows
+    /// frame's whole pixels (the smooth motion): `present` shows
     /// it where the frame shows the background.
     pub glide: Option<Glide>,
     /// The frame drawn again with the custom gauge's fill a pixel longer
-    /// (the enhanced mode's motion), for `present` to show between the two.
+    /// (the smooth motion), for `present` to show between the two.
     pub nudge: Option<crate::smooth::Nudge>,
     /// The frame drawn again with the field layer a pixel up, where the
-    /// camera's Y is between whole pixels (the enhanced mode's motion: the
+    /// camera's Y is between whole pixels (the smooth motion: the
     /// custom screen's slide), for `present` to show between the two.
     pub lift: Option<crate::smooth::Lift>,
-    /// The squashed and turned sprites the enhanced mode's motion draws at
+    /// The squashed and turned sprites the smooth motion draws at
     /// the output's resolution (left out of `pixels`), front first.
     pub overlays: Vec<crate::smooth::Overlay>,
     /// The drawings (`Bundle::drawings`), for the text layer to have
@@ -158,13 +205,14 @@ pub struct Renderer {
     /// version the console's player brought, or the game's base version
     /// (`custom::console_version`).
     pub console_version: Option<&'static str>,
-    /// How the battle is drawn, and the font of the enhanced mode's text.
-    mode: GraphicsMode,
+    /// The enhancements the battle is drawn with, and the font of the sharp
+    /// text and the sharp HUD's lettering.
+    enhancements: Enhancements,
     font: Option<Arc<VectorFont>>,
-    /// The enhanced mode's layouts, for what the frame places after a string
-    /// (a chip's damage after its name).
+    /// The font's layouts, for what the frame places after a string (a
+    /// chip's damage after its name) and where a lettering's ink is.
     measure: Option<std::cell::RefCell<crate::vfont::TextRenderer>>,
-    /// What the original mode draws strings with where the game's graphics have no
+    /// What the frame draws strings with without the sharp text where the game's graphics have no
     /// lettering in the language shown (`render`): the pixel fonts in that
     /// language's cut, made when first needed.
     stand_in: Option<std::cell::RefCell<crate::pixeltext::PixelText>>,
@@ -187,28 +235,21 @@ pub struct Renderer {
     /// changes: a host's picture of a fight no one plays (Practice's
     /// arena preview).
     pub custom_gauge: bool,
-    /// The enhanced mode without its motion (the app's Reduce motion): the
-    /// background's glide (`present`) and the smooth motion (`smooth`: the
-    /// gauge's fill, the squashed and turned sprites at the output's
-    /// resolution, the field and its sprites between whole pixels) are left
-    /// out, the text stays. The original mode has
-    /// none of them, whatever this says.
-    pub reduce_motion: bool,
     /// The drawings, gathered as they are set.
     drawings: Arc<Vec<nettai_assets::shapes::Drawing>>,
-    /// How large the enhanced mode's frames are (the original's 240 by 160,
-    /// the default, or as large as a window shows them): the original
-    /// mode's are the original's, whatever this says.
+    /// How large the frames are with the window filled (the original's 240
+    /// by 160, the default, or as large as a window shows them): without it
+    /// the original's, whatever this says.
     pub size: compose::Size,
 }
 
 impl Renderer {
-    /// A renderer of a game's graphics `assets` alone, in the original mode.
+    /// A renderer of a game's graphics `assets` alone, with no enhancements.
     pub fn new(assets: Arc<Bundle>) -> Renderer {
         Renderer::with_graphics(GameGraphics::new(assets))
     }
 
-    /// A renderer of a game's graphics, in the original mode.
+    /// A renderer of a game's graphics, with no enhancements.
     pub fn with_graphics(graphics: GameGraphics) -> Renderer {
         let drawings = graphics.drawings();
         Renderer {
@@ -231,7 +272,7 @@ impl Renderer {
             problems: Problems::default(),
             sprite_drawn: objects::SpriteDrawn::default(),
             console_version: None,
-            mode: GraphicsMode::Original,
+            enhancements: Enhancements::NONE,
             font: None,
             measure: None,
             stand_in: None,
@@ -239,7 +280,6 @@ impl Renderer {
             lookups_only: false,
             scenery: StageClock::default(),
             custom_gauge: true,
-            reduce_motion: false,
             size: compose::Size::ORIGINAL,
         }
     }
@@ -256,7 +296,7 @@ impl Renderer {
     /// own.
     pub fn set_strings(&mut self, strings: Option<Arc<nettai_content::locale::Strings>>) {
         self.strings = strings;
-        // (The original mode's pixel fonts are the language's cut: made again for the new one.)
+        // (The pixel fonts are the language's cut: made again for the new one.)
         self.stand_in = None;
         self.problems.recheck();
     }
@@ -267,41 +307,39 @@ impl Renderer {
         self.strings.as_ref()
     }
 
-    /// Draw in `mode`; the enhanced mode hands the strings `font` has to
-    /// the text layer (without a font it draws them as the original does). The
-    /// original mode draws every string into the frame in the game's graphics'
-    /// fonts, and with graphics that have no lettering in the language shown
-    /// (its fonts are another language's) in the pixel fonts, at the
-    /// frame's resolution (`render`, `pixeltext`).
-    pub fn set_mode(&mut self, mode: GraphicsMode, font: Option<Arc<VectorFont>>) {
-        self.mode = mode;
+    /// Draw with `enhancements` from now on. With the sharp text, the
+    /// strings `font` has go to the text layer (without a font they are drawn
+    /// as the original draws them); with the sharp HUD, the pictures' words
+    /// the lettering fonts (`font`'s cut's) have, the numbers and the frames
+    /// with drawings. Without the sharp text every string is drawn into the
+    /// frame in the game's graphics' fonts, and with graphics that have no
+    /// lettering in the language shown (their fonts are another language's)
+    /// in the pixel fonts, at the frame's resolution (`render`, `pixeltext`).
+    pub fn set_enhancements(&mut self, enhancements: Enhancements, font: Option<Arc<VectorFont>>) {
+        self.enhancements = enhancements;
         self.measure = font.clone().map(|f| std::cell::RefCell::new(crate::vfont::TextRenderer::new(f)));
         self.font = font;
         self.stand_in = None;
     }
 
-    pub fn mode(&self) -> GraphicsMode {
-        self.mode
+    pub fn enhancements(&self) -> Enhancements {
+        self.enhancements
     }
 
     /// Whether the frames draw what the original moves between its whole
-    /// pixels and steps: the enhanced mode's motion, unless reduced
-    /// (`reduce_motion`).
+    /// pixels and steps (the smooth motion).
     pub fn motion(&self) -> bool {
-        self.mode == GraphicsMode::Enhanced && !self.reduce_motion
+        self.enhancements.motion
     }
 
-    /// How large the frames are: the enhanced mode's as `size` says, the
-    /// original mode's the original's.
+    /// How large the frames are: with the window filled as `size` says,
+    /// else the original's.
     pub fn frame_size(&self) -> compose::Size {
-        match self.mode {
-            GraphicsMode::Enhanced => self.size,
-            GraphicsMode::Original => compose::Size::ORIGINAL,
-        }
+        if self.enhancements.fill { self.size } else { compose::Size::ORIGINAL }
     }
 
     /// The strings the frames drawn so far had to lay out to place what
-    /// follows them (the enhanced mode's: a chip's damage after its name), each
+    /// follows them (the sharp text's: a chip's damage after its name), each
     /// the first time it was met.
     pub fn layouts_made(&self) -> u64 {
         self.measure.as_ref().map_or(0, |m| m.borrow().made().layouts)
@@ -343,7 +381,7 @@ impl Renderer {
     /// A frame of a battle held where it stands (a host's menu over it: no
     /// tick steps it): the stage's scenery moves on a frame as the battle's
     /// tick would have moved it, the background's animation and its scroll
-    /// (the enhanced mode's glide with it) and the panels' own animations,
+    /// (the smooth motion's glide with it) and the panels' own animations,
     /// as the game's own pause shows them; nothing else of the frame moves.
     /// Drawing alone: `b` is read for where its round is, never changed.
     pub fn scenery_frame(&mut self, b: &Battle) {
@@ -387,7 +425,7 @@ impl Renderer {
 
     /// Draw a battle as a frame (`Renderer::frame_size`) with its text items.
     pub fn render(&mut self, b: &Battle) -> Frame {
-        // (The enhanced mode's motion: the frame, and where the camera is
+        // (The smooth motion: the frame, and where the camera is
         // between whole pixels, the frame again with the field a pixel up;
         // where the gauge's fill ends between whole pixels, the frame again
         // with it a pixel longer. The later drawings' problems and sprite
@@ -506,12 +544,13 @@ impl Renderer {
         // pack has English's and Japanese's) is drawn in its own
         // (`Bundle::for_language`): its pictures with words are that
         // language's, and so are its fonts, which lack most of the shown
-        // language's characters. The original mode then lays the strings
-        // out as the enhanced mode does, in boxes as wide as the text, and
-        // draws them into the frame in pixel fonts (`pixeltext`): the frame
-        // still carries all its text.
+        // language's characters. Without the sharp text the frame then lays
+        // the strings out as the sharp text does, in boxes as wide as the
+        // text, and draws them into the frame in pixel fonts (`pixeltext`):
+        // the frame still carries all its text.
         let shown = self.strings.as_ref().map_or(nettai_content::locale::OWN, |s| s.language.as_str());
-        let stand_in = self.mode == GraphicsMode::Original && own_game.hud.language() != shown;
+        let e = self.enhancements;
+        let stand_in = !e.text && own_game.hud.language() != shown;
         if stand_in && self.stand_in.is_none() {
             self.stand_in = crate::pixeltext::PixelText::new(crate::vfont::Cut::of(shown)).map(std::cell::RefCell::new);
         }
@@ -519,14 +558,9 @@ impl Renderer {
         if let Some(p) = pixels {
             p.borrow_mut().use_pack(&own_game.hud);
         }
-        let (mode, font, measure) = match pixels {
-            Some(_) => (GraphicsMode::Enhanced, None, None),
-            None => (self.mode, self.font.as_deref(), self.measure.as_ref()),
-        };
-        // (The game-style lettering only in the enhanced mode: the original
-        // mode draws its pictures whatever draws its strings.)
-        let lettering = self.mode == GraphicsMode::Enhanced;
-        let mut text = TextSink::new(mode, font).measuring(measure).with_pixels(pixels).with_language(self.strings.as_deref()).with_lettering(lettering);
+        // (The font goes with the sharp HUD too, whose lettering fonts are
+        // its cut's; it takes strings only with the sharp text.)
+        let mut text = TextSink::new(e, self.font.as_deref()).measuring(self.measure.as_ref()).with_pixels(pixels).with_language(self.strings.as_deref());
         // (The consoles whose pieces the frame draws, each with its HUD's
         // state: the local one's, and on a screen of both the other's.)
         let seats = Seat::of(self.consoles, b);
@@ -678,7 +712,7 @@ impl Renderer {
         };
         // (The squashed and turned sprites, and those whose true places
         // are between the frame's pixels, at the output's resolution, in
-        // the enhanced mode's motion: left out of the frame, their places
+        // the smooth motion: left out of the frame, their places
         // in the order kept.)
         let overlays: Vec<(usize, Overlay)> = match smooth.on {
             true => parts

@@ -1,4 +1,4 @@
-//! The enhanced mode's smooth motion (`Renderer::motion`): what the original
+//! The smooth motion (`Renderer::motion`): what the original
 //! itself moves, in whole frame pixels or in coarse steps, drawn between
 //! them at the output's resolution, over the same frames. Nothing moves
 //! that the original holds still, and nothing comes in that the original
@@ -38,8 +38,8 @@
 use crate::compose::{Affine, Fade, SpritePart, apply_fade, to_rgb};
 use crate::present::Placement;
 
-/// The enhanced mode's motion in a drawing of the frame: on or off (the
-/// original mode, Reduce motion), and whether this drawing is the nudged
+/// The smooth motion in a drawing of the frame: on or off
+/// (`Enhancements::motion`), and whether this drawing is the nudged
 /// one (the gauge's fill a pixel longer) or the lifted one (the field
 /// layer a pixel up: [`Lift`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -104,7 +104,7 @@ pub enum Reading {
     Turned(Affine),
 }
 
-/// A sprite part the enhanced mode's motion draws at the output's
+/// A sprite part the smooth motion draws at the output's
 /// resolution instead of into the frame: one the original squashes or
 /// turns, whose rows or texels the frame's pixels would pick coarsely, or
 /// one whose true place is between the frame's pixels (its `fine`). Its

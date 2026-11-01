@@ -17,7 +17,7 @@ use crate::screens::{self, Screen, ScreenId};
 use crate::settings::Settings;
 use crate::sound::{Cue, Sound};
 use nettai_battle::input::keys;
-use nettai_frontend::game::GraphicsMode;
+use nettai_frontend::game::Enhancements;
 use nettai_dialogs::Filter;
 use crate::page::text_entry::Entry;
 use nettai_ui::{AppWindow, ButtonKind, DialogButton, Theme};
@@ -551,18 +551,17 @@ impl Shell {
         self.show_language();
     }
 
-    /// Battle graphics, enhanced or the original's, kept in the settings: a battle being played is drawn so from its
-    /// next frame (its text by the game's font, or the frames' own), its picture fitted again (the density is the
-    /// mode's: `stage::fit`); one being made ready is made in it.
-    pub fn set_enhanced(&mut self, enhanced: bool) {
-        self.settings.enhanced = enhanced;
+    /// The graphics enhancements, kept in the settings: a battle being played is drawn with them from its next
+    /// frame (its text by the game's font, or the frames' own), its picture fitted again (its size and density
+    /// are theirs: `stage::fit`); one being made ready is made with them.
+    pub fn set_enhancements(&mut self, enhancements: Enhancements) {
+        self.settings.set_enhancements(enhancements);
         self.save_settings();
-        let mode = self.settings.graphics();
         if let Some(b) = &mut self.battle
             && let Some(ready) = self.games.ready(&b.game)
         {
-            let font = ready.loaded.font_in(self.i18n.code).filter(|_| mode == GraphicsMode::Enhanced);
-            b.stage.player.set_mode(mode, font);
+            let font = ready.loaded.font_in(self.i18n.code).filter(|_| enhancements.wants_font());
+            b.stage.player.set_enhancements(enhancements, font);
             b.stage.surface.stale = true;
         }
     }

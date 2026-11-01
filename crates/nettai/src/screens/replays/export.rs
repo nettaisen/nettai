@@ -18,7 +18,7 @@ use super::{clock, name, played};
 use crate::errors::UserError;
 use crate::replays::Summary;
 use crate::shell::Shell;
-use nettai_frontend::game::{GraphicsMode, Loaded, Sound};
+use nettai_frontend::game::{Loaded, Sound};
 use nettai_frontend::player::time_of;
 use nettai_ui::{ExportState, ReplaysView};
 use nettai_dialogs::{Filter, Stream};
@@ -170,16 +170,15 @@ fn shown(path: &Path, phone: bool) -> String {
     chars[..head].iter().chain(['…'].iter()).chain(chars[chars.len() - tail..].iter()).collect()
 }
 
-/// The game as the window shows it (the language, the graphics mode, the text as the settings have it), for a thread
+/// The game as the window shows it (the language, the graphics enhancements, the text as the settings have it), for a thread
 /// of its own to play a replay on: the export's with the game's own sound, the bar's previews' with none.
 pub fn game_for_thread(shell: &Shell, ready: &crate::games::Ready, sound: bool) -> Loaded {
-    let mode = shell.settings.graphics();
+    let enhancements = shell.settings.enhancements();
     Loaded {
         game: ready.loaded.game.clone(),
         graphics: ready.graphics(shell.i18n.code),
-        mode,
-        reduce_motion: shell.reduces_motion(),
-        font: ready.loaded.font_in(shell.i18n.code).filter(|_| mode == GraphicsMode::Enhanced),
+        enhancements,
+        font: ready.loaded.font_in(shell.i18n.code).filter(|_| enhancements.wants_font()),
         // (With the game's own music, as the replay plays in the viewer: the pick is Practice's alone.)
         sound: if sound {
             ready.loaded.sound.as_ref().map(|s| Sound { bank: s.bank.clone(), songs: s.songs.clone(), report: Default::default() })

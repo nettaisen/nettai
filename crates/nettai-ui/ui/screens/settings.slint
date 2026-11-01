@@ -26,7 +26,11 @@ export global SettingsView {
     in property <bool> full-screen;
     in property <bool> reduce-motion;
     in property <bool> check-updates;
-    in property <bool> enhanced;
+    // The graphics enhancements, each on or off.
+    in property <bool> sharp-text;
+    in property <bool> sharp-hud;
+    in property <bool> smooth-motion;
+    in property <bool> fill-window;
     in property <int> music;
     in property <int> effects;
     in property <int> input-delay;
@@ -143,7 +147,7 @@ export component BindBox inherits Rectangle {
 }
 
 component SettingsPage inherits Page {
-    property <[string]> groups: [@tr("General"), @tr("Video"), @tr("Audio"), @tr("Online"), @tr("Controls"), @tr("About")];
+    property <[string]> groups: [@tr("General"), @tr("Video"), @tr("Graphics enhancements"), @tr("Audio"), @tr("Online"), @tr("Controls"), @tr("About")];
     // (A pad's A and B are the menus' confirm and back too: they say so. The keyboard's are Enter and Esc.)
     property <[string]> actions: [@tr("Up"), @tr("Down"), @tr("Left"), @tr("Right"), @tr("A · Pad confirms"), @tr("B · Pad goes back"), "L", "R", "START", "SELECT", @tr("Navi change left"), @tr("Navi change right")];
     // (A phone has the page alone.)
@@ -319,11 +323,15 @@ component SettingsPage inherits Page {
                     }
                 }
 
+                GroupTitle {
+                    text: I18n.upper(@tr("Graphics enhancements"));
+                }
+
                 Rectangle {
                     height: row5.height;
                     row5 := SettingLabel {
-                        label: @tr("Battle graphics");
-                        note: @tr("Enhanced adds sharp text and smooth motion.");
+                        label: @tr("Sharp text");
+                        note: @tr("Chip names and messages drawn at full resolution.");
                         control-x: root.control-x;
                         control-width: root.control-width;
                     }
@@ -331,10 +339,67 @@ component SettingsPage inherits Page {
                     Seg {
                         x: root.control-x;
                         y: 6px;
-                        nav: "set.graphics";
-                        first: I18n.upper(@tr("Enhanced"));
-                        second: I18n.upper(@tr("Original"));
-                        chosen: SettingsView.enhanced ? 0 : 1;
+                        nav: "set.text";
+                        first: I18n.upper(@tr("Off"));
+                        second: I18n.upper(@tr("On"));
+                        chosen: SettingsView.sharp-text ? 1 : 0;
+                    }
+                }
+
+                Rectangle {
+                    height: row17.height;
+                    row17 := SettingLabel {
+                        label: @tr("Sharp HUD");
+                        note: @tr("Frames, banners and numbers redrawn at full resolution.");
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Seg {
+                        x: root.control-x;
+                        y: 6px;
+                        nav: "set.hud";
+                        first: I18n.upper(@tr("Off"));
+                        second: I18n.upper(@tr("On"));
+                        chosen: SettingsView.sharp-hud ? 1 : 0;
+                    }
+                }
+
+                Rectangle {
+                    height: row18.height;
+                    row18 := SettingLabel {
+                        label: @tr("Smooth motion");
+                        note: @tr("Scrolling, gauges and banners move between the game's pixels.");
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Seg {
+                        x: root.control-x;
+                        y: 6px;
+                        nav: "set.smooth";
+                        first: I18n.upper(@tr("Off"));
+                        second: I18n.upper(@tr("On"));
+                        chosen: SettingsView.smooth-motion ? 1 : 0;
+                    }
+                }
+
+                Rectangle {
+                    height: row19.height;
+                    row19 := SettingLabel {
+                        label: @tr("Fill the window");
+                        note: @tr("The stage reaches the window's edges, the HUD with it.");
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Seg {
+                        x: root.control-x;
+                        y: 6px;
+                        nav: "set.fill";
+                        first: I18n.upper(@tr("Off"));
+                        second: I18n.upper(@tr("On"));
+                        chosen: SettingsView.fill-window ? 1 : 0;
                     }
                 }
 

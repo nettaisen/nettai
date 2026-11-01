@@ -1,4 +1,4 @@
-//! The battle's frames drawn as shapes in the enhanced mode
+//! The battle's frames drawn as shapes with the sharp HUD
 //! (docs/design/text-rendering.md §13): the game's drawings
 //! (`nettai_assets::shapes`, drawn by hand and checked as the graphics are extracted)
 //! put in the palette the picture they stand in for is drawn in at the

@@ -29,9 +29,16 @@ pub struct Settings {
     pub reduce_motion: Option<bool>,
     /// An installed app asks nettai's GitHub releases at start whether a newer one is out (`updates.rs`).
     pub check_updates: bool,
-    /// The battle drawn enhanced (its text at the window's resolution, the background's glide, the gauge's smooth
-    /// fill, the banners' squash at the window's resolution), else as the game draws it: `GraphicsMode`.
-    pub enhanced: bool,
+    /// The graphics enhancements battles are drawn with (`Enhancements`), each on or off; all off, as the game
+    /// draws them. Sharp text: the strings in a font at the window's resolution.
+    pub sharp_text: bool,
+    /// Sharp HUD: the HUD's and the custom screen's frames, words and numbers redrawn at the window's resolution.
+    pub sharp_hud: bool,
+    /// Smooth motion: what the game moves in whole pixels drawn between them (the background's glide, the gauge's
+    /// fill, the banners' squash, the custom screen's slide).
+    pub smooth_motion: bool,
+    /// Fill the window: the picture as wide and as tall as the window at its multiple, the HUD to its edges.
+    pub fill_window: bool,
     /// 0 to 100.
     pub music: u32,
     pub effects: u32,
@@ -58,7 +65,10 @@ impl Default for Settings {
             full_screen: false,
             reduce_motion: None,
             check_updates: true,
-            enhanced: true,
+            sharp_text: true,
+            sharp_hud: true,
+            smooth_motion: true,
+            fill_window: true,
             music: 80,
             effects: 100,
             input_delay: nettai_frontend::netplay::DEFAULT_INPUT_DELAY,
@@ -71,10 +81,13 @@ impl Default for Settings {
 }
 
 impl Settings {
-    /// How battles are drawn: enhanced, or as the game draws them.
-    pub fn graphics(&self) -> nettai_frontend::game::GraphicsMode {
-        use nettai_frontend::game::GraphicsMode;
-        if self.enhanced { GraphicsMode::Enhanced } else { GraphicsMode::Original }
+    /// The graphics enhancements battles are drawn with.
+    pub fn enhancements(&self) -> nettai_frontend::game::Enhancements {
+        nettai_frontend::game::Enhancements { text: self.sharp_text, hud: self.sharp_hud, motion: self.smooth_motion, fill: self.fill_window }
+    }
+
+    pub fn set_enhancements(&mut self, e: nettai_frontend::game::Enhancements) {
+        (self.sharp_text, self.sharp_hud, self.smooth_motion, self.fill_window) = (e.text, e.hud, e.motion, e.fill);
     }
 }
 

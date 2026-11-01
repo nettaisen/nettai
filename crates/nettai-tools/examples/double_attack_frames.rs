@@ -24,7 +24,7 @@ use nettai_battle::battle::{fight, mode};
 use nettai_battle::input::{PlayerTick, keys};
 use nettai_battle::Battle;
 use nettai_frontend::game::{Options, load};
-use nettai_render::GraphicsMode;
+use nettai_render::Enhancements;
 use std::io::Write;
 use std::path::PathBuf;
 
@@ -50,7 +50,7 @@ fn main() {
     let partners: Vec<&str> = main[2..].iter().map(String::as_str).collect();
     std::fs::create_dir_all(&out).unwrap();
 
-    let options = Options { mode: GraphicsMode::Original, sound: false, ..Options::default() };
+    let options = Options { enhancements: Enhancements::NONE, sound: false, ..Options::default() };
     let loaded = load("exe5", &options).unwrap_or_else(|e| panic!("exe5: {e:?}"));
     let content = loaded.game.content.clone();
     let mut renderer = loaded.renderer();

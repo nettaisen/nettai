@@ -61,17 +61,32 @@ msgstr "全螢幕"
 msgid "Reduce motion"
 msgstr "減少動態效果"
 
-msgid "Battle graphics"
-msgstr "戰鬥畫面"
+msgid "Graphics enhancements"
+msgstr "畫面增強"
 
-msgid "Enhanced"
-msgstr "增強"
+msgid "Sharp text"
+msgstr "清晰文字"
 
-msgid "Original"
-msgstr "原版"
+msgid "Chip names and messages drawn at full resolution."
+msgstr "以高解析度繪製晶片名稱和訊息。"
 
-msgid "Enhanced adds sharp text and smooth motion."
-msgstr "「增強」會讓文字更清晰、動作更流暢。"
+msgid "Sharp HUD"
+msgstr "清晰 HUD"
+
+msgid "Frames, banners and numbers redrawn at full resolution."
+msgstr "以高解析度重繪邊框、橫幅和數字。"
+
+msgid "Smooth motion"
+msgstr "流暢動作"
+
+msgid "Scrolling, gauges and banners move between the game's pixels."
+msgstr "捲動、計量表和橫幅在遊戲像素之間平滑移動。"
+
+msgid "Fill the window"
+msgstr "填滿視窗"
+
+msgid "The stage reaches the window's edges, the HUD with it."
+msgstr "舞台延伸到視窗邊緣，HUD 也隨之靠邊。"
 
 msgid "Music"
 msgstr "音樂"

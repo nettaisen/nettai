@@ -1,6 +1,6 @@
 use super::*;
 use crate::Player;
-use crate::game::GraphicsMode;
+use crate::game::Enhancements;
 use crate::player::FRAME_RATE;
 use crate::testing::{audio, graphics, recorded};
 
@@ -18,7 +18,7 @@ struct Straight {
 
 fn straight(content: &Arc<Content>, replay: &Replay, view: u8) -> Straight {
     let driver = ReplayPlayer::new(content, replay, Some(view)).unwrap();
-    let renderer = graphics(content, 0x001F).renderer(GraphicsMode::Original, None);
+    let renderer = graphics(content, 0x001F).renderer(Enhancements::NONE, None);
     let mut p = Player::with(renderer, None, Some(audio(content)), Box::new(driver));
     let mut s = Straight { digests: Vec::new(), pictures: Vec::new(), huds: Vec::new(), sounds: Vec::new(), result: None };
     loop {
@@ -38,7 +38,7 @@ fn straight(content: &Arc<Content>, replay: &Replay, view: u8) -> Straight {
 }
 
 fn viewer(content: &Arc<Content>, replay: &Replay, view: u8) -> Viewer {
-    let renderer = graphics(content, 0x001F).renderer(GraphicsMode::Original, None);
+    let renderer = graphics(content, 0x001F).renderer(Enhancements::NONE, None);
     Viewer::with(content, replay, Some(view), renderer, None, Some(audio(content))).unwrap()
 }
 
@@ -386,7 +386,7 @@ fn the_transport_goes_where_it_says() {
     assert!(!v.step_forward());
     assert_eq!((v.position(), v.at_end(), v.result(), v.stopped()), (second + 50, true, None, None));
     let five = nettai_match::testing::exe5_content();
-    let renderer = graphics(&five, 0x001F).renderer(GraphicsMode::Original, None);
+    let renderer = graphics(&five, 0x001F).renderer(Enhancements::NONE, None);
     let refused = Viewer::with(&five, &replay, None, renderer, None, None).err().unwrap();
     assert_eq!(refused, Refused::OtherGame { replay: "exe6".into(), here: "exe5".into() });
 }
@@ -428,7 +428,7 @@ fn indexing_ahead_leaves_the_viewer_as_it_was() {
     }
     assert_eq!(v.diverged(), None);
     // Without sound a viewer seeks the same, and gives none.
-    let renderer = graphics(&content, 0x001F).renderer(GraphicsMode::Original, None);
+    let renderer = graphics(&content, 0x001F).renderer(Enhancements::NONE, None);
     let mut silent = Viewer::with(&content, &replay, Some(0), renderer, None, None).unwrap();
     silent.seek(length / 2);
     same(&mut silent, &s, length / 2, "a silent viewer");
@@ -564,7 +564,7 @@ fn an_index_made_on_threads_is_the_one_made_on_one() {
         }
         drop((send, gets));
         scope.spawn(move || {
-            let renderer = graphics(on, 0x001F).renderer(GraphicsMode::Original, None);
+            let renderer = graphics(on, 0x001F).renderer(Enhancements::NONE, None);
             let mut silent = Viewer::with(on, of, Some(1), renderer, None, None).unwrap();
             // (Parts of another length than the other's, from the other side: the states are the same.)
             loop {
@@ -691,7 +691,7 @@ fn a_recorded_start_asks_a_viewer_for_nothing() {
     assert!(pressed.len() >= 6 && pressed.iter().all(|&t| replay.ticks[t as usize].inputs[0] & u32::from(keys::START) != 0), "{pressed:?}");
     // A player playing it straight is asked again, once a press.
     let driver = ReplayPlayer::new(&content, &replay, Some(0)).unwrap();
-    let mut p = Player::with(graphics(&content, 0x001F).renderer(GraphicsMode::Original, None), None, None, Box::new(driver));
+    let mut p = Player::with(graphics(&content, 0x001F).renderer(Enhancements::NONE, None), None, None, Box::new(driver));
     let mut asked = Vec::new();
     while p.tick(0) {
         match p.take_pause_requests() {
@@ -731,7 +731,7 @@ fn a_preloaded_viewer_is_the_viewer() {
     let content = nettai_match::testing::exe6_content();
     let (replay, ticks) = recorded(&content, "exe6", 7);
     let set = crate::replay::set_of(&content, &replay).unwrap();
-    let renderer = graphics(&content, 0x001F).renderer(GraphicsMode::Original, None);
+    let renderer = graphics(&content, 0x001F).renderer(Enhancements::NONE, None);
     let mut preload = crate::preload::Preload::with(renderer, None, None, &set, 1, (240, 160));
     while preload.step() {}
     assert_eq!(preload.stopped(), None);

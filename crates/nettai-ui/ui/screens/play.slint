@@ -1577,7 +1577,7 @@ export component MatchMenu inherits MenuOverlay {
     }
 
     // The settings a player may want in a match, as the Settings screen has them: the language, the picture's size,
-    // full screen, the battle graphics, the sound's two levels and their input delay. Each changes at once, the
+    // full screen, the graphics enhancements, the sound's two levels and their input delay. Each changes at once, the
     // match's picture and sound with it. On a phone each label is over its control.
     if PlayView.page == MatchPage.settings: settings-page := Rectangle {
         x: 0;
@@ -1598,8 +1598,8 @@ export component MatchMenu inherits MenuOverlay {
             width: root.inner-width + 12px;
             height: max(0px, root.inner-height - 52px);
             nav: "menu.set.";
-            content-height: 7 * settings-page.pitch;
-            for label[i] in [@tr("Language"), @tr("Picture size"), @tr("Full screen"), @tr("Battle graphics"), @tr("Music"), @tr("Sound effects"), @tr("Input delay")]: Value {
+            content-height: 10 * settings-page.pitch;
+            for label[i] in [@tr("Language"), @tr("Picture size"), @tr("Full screen"), @tr("Sharp text"), @tr("Sharp HUD"), @tr("Smooth motion"), @tr("Fill the window"), @tr("Music"), @tr("Sound effects"), @tr("Input delay")]: Value {
                 x: 0;
                 y: i * settings-page.pitch;
                 width: settings-page.label-width;
@@ -1635,15 +1635,42 @@ export component MatchMenu inherits MenuOverlay {
             Seg {
                 x: settings-page.control-x;
                 y: 3 * settings-page.pitch + settings-page.below + 4px;
-                nav: "menu.set.graphics";
-                first: I18n.upper(@tr("Enhanced"));
-                second: I18n.upper(@tr("Original"));
-                chosen: SettingsView.enhanced ? 0 : 1;
+                nav: "menu.set.text";
+                first: I18n.upper(@tr("Off"));
+                second: I18n.upper(@tr("On"));
+                chosen: SettingsView.sharp-text ? 1 : 0;
+            }
+
+            Seg {
+                x: settings-page.control-x;
+                y: 4 * settings-page.pitch + settings-page.below + 4px;
+                nav: "menu.set.hud";
+                first: I18n.upper(@tr("Off"));
+                second: I18n.upper(@tr("On"));
+                chosen: SettingsView.sharp-hud ? 1 : 0;
+            }
+
+            Seg {
+                x: settings-page.control-x;
+                y: 5 * settings-page.pitch + settings-page.below + 4px;
+                nav: "menu.set.smooth";
+                first: I18n.upper(@tr("Off"));
+                second: I18n.upper(@tr("On"));
+                chosen: SettingsView.smooth-motion ? 1 : 0;
+            }
+
+            Seg {
+                x: settings-page.control-x;
+                y: 6 * settings-page.pitch + settings-page.below + 4px;
+                nav: "menu.set.fill";
+                first: I18n.upper(@tr("Off"));
+                second: I18n.upper(@tr("On"));
+                chosen: SettingsView.fill-window ? 1 : 0;
             }
 
             Slider {
                 x: settings-page.control-x;
-                y: 4 * settings-page.pitch + settings-page.below + 2px;
+                y: 7 * settings-page.pitch + settings-page.below + 2px;
                 width: settings-page.control-width;
                 nav: "menu.set.music";
                 value: PlayView.music;
@@ -1651,7 +1678,7 @@ export component MatchMenu inherits MenuOverlay {
 
             Slider {
                 x: settings-page.control-x;
-                y: 5 * settings-page.pitch + settings-page.below + 2px;
+                y: 8 * settings-page.pitch + settings-page.below + 2px;
                 width: settings-page.control-width;
                 nav: "menu.set.effects";
                 value: PlayView.effects;
@@ -1659,7 +1686,7 @@ export component MatchMenu inherits MenuOverlay {
 
             Stepper {
                 x: Theme.phone ? 0px : root.inner-width - self.width;
-                y: 6 * settings-page.pitch + settings-page.below + 4px;
+                y: 9 * settings-page.pitch + settings-page.below + 4px;
                 nav: "menu.set.delay";
                 value: PlayView.input-delay;
                 value-width: 48px;

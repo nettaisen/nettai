@@ -960,7 +960,7 @@ const _: () = assert!(TICK_SECONDS.0 == 4389 && nettai_audio::SAMPLE_RATE == 327
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nettai_frontend::game::GraphicsMode;
+    use nettai_frontend::game::Enhancements;
     use nettai_frontend::testing::{graphics, recorded};
 
     /// No seek the player asks for goes past what is indexed: a click, five seconds on, the next round and a drag
@@ -970,7 +970,7 @@ mod tests {
     fn no_seek_goes_past_the_index() {
         let content = nettai_match::testing::exe6_content();
         let (replay, _) = recorded(&content, "exe6", 7);
-        let renderer = graphics(&content, 0x001F).renderer(GraphicsMode::Original, None);
+        let renderer = graphics(&content, 0x001F).renderer(Enhancements::NONE, None);
         let viewer = Viewer::with(&content, &replay, None, renderer, None, None).unwrap();
         let mut w = Watching::new(Box::new(viewer), PathBuf::new(), None, Overlays::default(), None);
         let length = w.length();
@@ -1016,7 +1016,7 @@ mod tests {
         let content = nettai_match::testing::exe6_content();
         let (replay, _) = recorded(&content, "exe6", 7);
         let open = || {
-            let renderer = graphics(&content, 0x001F).renderer(GraphicsMode::Original, None);
+            let renderer = graphics(&content, 0x001F).renderer(Enhancements::NONE, None);
             Viewer::with(&content, &replay, None, renderer, None, None).unwrap()
         };
         let mut w = Watching::new(Box::new(open()), PathBuf::new(), None, Overlays::default(), None);
