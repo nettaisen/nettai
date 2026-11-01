@@ -111,11 +111,19 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
   keeps to the top-left anchor in every Fill size, so the boxes are the original's 240x160 places shifted by the
   slide and a shake. The app maps a pointer through the picture's fit (`stage::fit`, `place_picture`).
 - **The picture takes pointers**: a `TouchArea` over the battle's picture, as the replay viewer has over its own.
-- **Gestures**: a click or tap on a chip, OK or a button sends its action and moves the cursor there; a click on a
-  Cross list entry chooses it; hovering moves the cursor (and the chip window) with no action; right-click is
-  `take_back`. R's description, L's run message and SELECT's hide have no place on the screen to click: §10.
-- **Phones held sideways**: the see-through pad's directions sit over the custom window's left edge and take any
-  finger near them first; while the screen is open, a tap on a slot has to win over the pad (§10).
+- **The mouse**: hovering moves the cursor (and the chip window) with no action; a click on a chip, OK or a button
+  sends its action; a click on a Cross list entry chooses it; a click on the last picked chip in the column takes it
+  back (`take_back`, as B); right-click shows the description of what is under the pointer (R). L's run message and
+  SELECT's hide have no pointer gesture: L isn't used in battle, and SELECT stays a key.
+- **Touch**: a finger down moves the cursor (the chip window shows the chip), and lifting it on the same target sends
+  the action (sliding off cancels, as a button does); a long press shows the description; a tap on the last picked
+  chip takes it back.
+- **Phones held sideways**: the see-through pad's directions sit over the custom window's left edge. While the
+  custom screen is open the d-pad is hidden and taps on the window are the screen's; A, B and START stay. A slot's
+  cell is 16 by 24 frame pixels, edge to edge, so the whole cell is its target: about 6 by 9 mm at a sideways phone's
+  multiple (7 display pixels a frame pixel on a 1170-row iPhone), an iPhone keyboard key's width.
+- **Phones held upright**: the pad is under the picture, not over it, and stays. The picture is about 4 times the
+  frame there, a slot about 3.5 by 5 mm: taps work, but the pad is the way to play.
 
 ## 6. The content API
 
@@ -172,12 +180,12 @@ The screen's Luau API is written in cursor terms today, and changes:
 4. **Training**: the new observation and actions, then retraining.
 5. **0.21**: content republished for the line (the content API changed), then the app.
 
-## 10. Questions for the user
+## 10. The user's answers (2026-11-01)
 
-1. **Replays keep showing both cursors** by recording each side's layer (§3)? Recommended: yes; without it a replay
-   shows picks appearing with no cursor moving.
-2. **Hover moves the cursor** (and the chip window shows the chip under the mouse)? Recommended: yes.
-3. **R's description, L's run message and SELECT's hide for a mouse or a finger**: hovering a chip long enough
-   shows its description, and the run message and the hide stay keys only? Or small buttons beside the window?
-4. **Phones held sideways**: while the custom screen is open, taps on the window go to the screen and the pad's
-   directions step aside there? Or the pad keeps its place and taps work only where it isn't?
+1. **Replays keep showing both cursors**, by recording each side's layer (§3): "yes".
+2. **Hover moves the cursor** and the chip window: "yes".
+3. **R's description by right-click**; L and SELECT get no pointer gesture: "right click to show description. L
+   doens't get used in battle anyway, no need to bind select". So `take_back` by pointer is a click on the last
+   picked chip (§5).
+4. **Phones held sideways**: taps on the window are the screen's, and the d-pad hides while the screen is open:
+   "yes and also i guess hide the d pad? or are the chip icons too small to be clicked on phone" (the sizes: §5).
