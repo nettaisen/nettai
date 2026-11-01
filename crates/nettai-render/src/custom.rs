@@ -1280,8 +1280,7 @@ impl Window {
         }
         if matches!(anim.step, S::Result) && anim.timer >= 0x10 {
             let k = pa.start as usize;
-            let name = text.strings.chip_name(&v.b.content, pa.chip);
-            self.put_advance_text(v, k, pa.chip, name, None, text, problems);
+            self.put_advance_text(v, k, pa.chip, None, text, problems);
             out.push((k, row(k), 10));
         }
         if let Some(c) = v.assets.advance_name_colors.get(v.screen.look.pa_palette as usize) {
@@ -1294,24 +1293,23 @@ impl Window {
     /// the code off a chip numbered 0x160 or more, `sub_802B80C`, EXE5's
     /// 0x08027BC6: no recipe of either game names one.)
     fn put_advance_name(&mut self, v: &View, k: usize, c: FolderChip, text: &TextSink, problems: &mut Problems) {
-        self.put_advance_text(v, k, c.id, text.strings.chip_name(&v.b.content, c.id), Some(c.code.0), text, problems);
+        self.put_advance_text(v, k, c.id, Some(c.code.0), text, problems);
     }
 
     /// A name (chip `chip`'s, and a pick's code in its last cell) into name
-    /// `k`'s tiles; with the sharp HUD blank tiles, and the words for the
+    /// `k`'s tiles; with the sharp text blank tiles, and the words for the
     /// text layer.
-    #[allow(clippy::too_many_arguments)]
     fn put_advance_text(
         &mut self,
         v: &View,
         k: usize,
         chip: ChipHandle,
-        name: &str,
         code: Option<u8>,
         text: &TextSink,
         problems: &mut Problems,
     ) {
-        let mut glyphs = crate::lookups::advance_name(v.hud, chip, name, problems);
+        let name = text.chip_name(&v.b.content, chip);
+        let mut glyphs = crate::lookups::advance_name(v.hud, chip, text.strings.chip_name(&v.b.content, chip), problems);
         let letter = code.map(|code| if code < 26 { char::from(b'A' + code).to_string() } else { "*".to_string() });
         let at = self.layout.art + (2 * ADVANCE_NAME_CELLS * k) as u16;
         if text.takes(name, Role::Cell) && letter.as_deref().is_none_or(|l| text.takes(l, Role::Cell)) {
@@ -1544,8 +1542,8 @@ impl Window {
     fn chip_name_and_art(&mut self, v: &View, chip: ChipHandle, text: &TextSink, problems: &mut Problems) {
         let c = chip;
         let data = v.b.content.chip(c);
-        let name = text.strings.chip_name(&v.b.content, c);
-        let glyphs = crate::lookups::chip_name(v.hud, &v.b.content, c, name, problems);
+        let name = text.chip_name(&v.b.content, c);
+        let glyphs = crate::lookups::chip_name(v.hud, &v.b.content, c, text.strings.chip_name(&v.b.content, c), problems);
         if text.takes(name, Role::FittedCell) {
             // The name's cells in the window's color, the words on the
             // text layer in all eight of them (nothing follows the name).
@@ -2214,8 +2212,8 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
     // (Its variant name when its side's rules ask: EXE5's Hub Style in a link
     // battle, 0x0801AE3A's NameID 0xEA.)
     let variant = if v.b.looks[side].name_variant { text.strings.navi_variant_name(&v.b.content, other) } else { None };
-    let name = variant.unwrap_or_else(|| text.strings.navi_name(&v.b.content, other));
-    let glyphs = crate::lookups::navi_name(v.hud, other, variant.is_some(), name, problems);
+    let name = variant.unwrap_or_else(|| text.navi_name(&v.b.content, other));
+    let glyphs = crate::lookups::navi_name(v.hud, other, variant.is_some(), variant.unwrap_or_else(|| text.strings.navi_name(&v.b.content, other)), problems);
     // (On the text layer as wide as the name is, which still ends at column
     // 30: right-aligned in its cells.)
     let len = if text.takes(name, Role::FittedCell) { fonts::box_cells(text, name, glyphs.len(), Role::FittedCell) } else { glyphs.len() };

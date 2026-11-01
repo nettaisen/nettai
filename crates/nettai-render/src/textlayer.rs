@@ -266,6 +266,9 @@ pub struct TextSink<'f> {
     /// The game-style lettering goes to the text layer too (the sharp
     /// HUD's: [`TextSink::takes_lettering`]).
     lettering: bool,
+    /// Names are shown whole where the text layer takes them (the long
+    /// names: [`TextSink::chip_name`]).
+    long_names: bool,
     /// Where the items pushed keep to in a frame larger than the original's
     /// (`TextItem::anchor`).
     pub anchor: Anchor,
@@ -276,7 +279,44 @@ impl<'f> TextSink<'f> {
     /// the sharp HUD's, where there is a font.
     pub fn new(enhancements: Enhancements, font: Option<&'f VectorFont>) -> TextSink<'f> {
         let (sharp, lettering) = (enhancements.text && font.is_some(), enhancements.hud && font.is_some());
-        TextSink { sharp, font, measure: None, pixels: None, items: Vec::new(), next_tag: 0, strings: Default::default(), lettering, anchor: Anchor::CENTER }
+        TextSink { sharp, font, measure: None, pixels: None, items: Vec::new(), next_tag: 0, strings: Default::default(), lettering, long_names: enhancements.long_names, anchor: Anchor::CENTER }
+    }
+
+    /// A chip's name as the frame shows it: with the long names, its whole
+    /// name where the sharp text takes it; else its name. (What the game's
+    /// glyphs are looked up for stays its name: `strings.chip_name`.)
+    pub fn chip_name<'b>(&self, content: &'b nettai_battle::Content, chip: nettai_content_api::ChipHandle) -> &'b str
+    where
+        'f: 'b,
+    {
+        self.whole(self.strings.chip_long_name(content, chip)).unwrap_or_else(|| self.strings.chip_name(content, chip))
+    }
+
+    /// A navi's name as the frame shows it, as [`TextSink::chip_name`].
+    pub fn navi_name<'b>(&self, content: &'b nettai_battle::Content, navi: nettai_content_api::NaviHandle) -> &'b str
+    where
+        'f: 'b,
+    {
+        self.whole(self.strings.navi_long_name(content, navi)).unwrap_or_else(|| self.strings.navi_name(content, navi))
+    }
+
+    /// The space a name's numbers keep after it besides their own gap, in
+    /// frame pixels: with the long names, a word space of the font in
+    /// `role` (the user: "put a space between the damage number and the
+    /// chip name in long name mode"); else none, as the game's.
+    pub fn name_space(&self, role: Role) -> f32 {
+        if !(self.long_names && self.sharp) {
+            return 0.0;
+        }
+        match (self.fitted_width("n n", role, i32::MAX), self.fitted_width("nn", role, i32::MAX)) {
+            (Some(spaced), Some(close)) => (spaced - close).max(0.0),
+            _ => 0.0,
+        }
+    }
+
+    /// A whole name, where the frame shows them and the sharp text takes it.
+    fn whole<'b>(&self, name: Option<&'b str>) -> Option<&'b str> {
+        name.filter(|n| self.long_names && self.sharp && !n.is_empty() && self.font.is_some_and(|f| f.covers(n)))
     }
 
     /// Whether the strings are laid out for the text layer (the sharp text,
@@ -508,6 +548,29 @@ mod tests {
         assert!(!TextSink::original().takes("Cannon", Role::FittedCell));
         assert!(TextSink::new(Enhancements::ALL, Some(&font)).takes("Cannon", Role::FittedCell));
         assert!(TextSink::new(Enhancements::ALL, Some(&font)).takes("ElecMan\u{E002}", Role::FittedCell));
+    }
+
+    /// A chip's whole name shows with the long names and the sharp text both,
+    /// from the table its name comes from: a language's own names without
+    /// whole ones stay as they are (the Japanese aren't cut short).
+    #[test]
+    fn whole_names_with_the_sharp_text_from_the_names_table() {
+        use nettai_battle::content::strings::{ChipStrings, Strings};
+        let mut content = (*nettai_battle::content::testing::content()).clone();
+        let chip = nettai_content_api::ChipHandle(1);
+        let key = content.defs.chip(chip).key.clone();
+        let own = ChipStrings { name: Some("HiCannon".into()), long_name: Some("High Cannon".into()), ..Default::default() };
+        content.strings.chips.insert(key.clone(), own);
+        let font = VectorFont::bundled();
+        let long = Enhancements { text: true, long_names: true, ..Enhancements::NONE };
+        assert_eq!(TextSink::new(long, Some(&font)).chip_name(&content, chip), "High Cannon");
+        assert_eq!(TextSink::new(Enhancements { long_names: false, ..long }, Some(&font)).chip_name(&content, chip), "HiCannon");
+        assert_eq!(TextSink::new(Enhancements { text: false, ..long }, Some(&font)).chip_name(&content, chip), "HiCannon", "not without the sharp text");
+        let mut ja = Strings::default();
+        ja.chips.insert(key, ChipStrings { name: Some("ハイキャノン".into()), ..Default::default() });
+        assert_eq!(TextSink::new(long, Some(&font)).with_language(Some(&ja)).chip_name(&content, chip), "ハイキャノン");
+        let other = Strings::default();
+        assert_eq!(TextSink::new(long, Some(&font)).with_language(Some(&other)).chip_name(&content, chip), "High Cannon", "the own table's, as its name");
     }
 
     #[test]

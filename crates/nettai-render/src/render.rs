@@ -44,15 +44,20 @@ pub struct Enhancements {
     /// Fill the window: the frame as large as `Renderer::size` asks, the
     /// HUD's pieces kept to its edges; off, the original's 240 by 160.
     pub fill: bool,
+    /// Long names: a chip's and a navi's whole name (the strings'
+    /// `long_name`: "High Cannon" for "HiCannon", which the content's own
+    /// language has) where the game cuts it to 8 letters. With the sharp
+    /// text alone: the game's fonts have room for the 8.
+    pub long_names: bool,
 }
 
 impl Enhancements {
     /// The original's picture exactly.
-    pub const NONE: Enhancements = Enhancements { text: false, hud: false, motion: false, fill: false };
+    pub const NONE: Enhancements = Enhancements { text: false, hud: false, motion: false, fill: false, long_names: false };
     /// Every enhancement.
-    pub const ALL: Enhancements = Enhancements { text: true, hud: true, motion: true, fill: true };
+    pub const ALL: Enhancements = Enhancements { text: true, hud: true, motion: true, fill: true, long_names: true };
     /// The enhancements by name, as `FromStr` reads them.
-    pub const NAMES: [&str; 4] = ["text", "hud", "motion", "fill"];
+    pub const NAMES: [&str; 5] = ["text", "hud", "motion", "fill", "long-names"];
 
     /// Whether the frame has anything finer than its own pixels to draw
     /// (text, shapes, motion between them), so is worth presenting at more
@@ -87,6 +92,7 @@ impl std::str::FromStr for Enhancements {
                 "hud" => e.hud = true,
                 "motion" => e.motion = true,
                 "fill" => e.fill = true,
+                "long-names" => e.long_names = true,
                 _ => return Err(format!("no graphics enhancement {name:?} (original, enhanced, or some of {} joined by commas)", Enhancements::NAMES.join(", "))),
             }
         }

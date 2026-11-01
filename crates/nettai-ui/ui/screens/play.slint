@@ -1598,8 +1598,8 @@ export component MatchMenu inherits MenuOverlay {
             width: root.inner-width + 12px;
             height: max(0px, root.inner-height - 52px);
             nav: "menu.set.";
-            content-height: 10 * settings-page.pitch;
-            for label[i] in [@tr("Language"), @tr("Picture size"), @tr("Full screen"), @tr("Sharp text"), @tr("Sharp HUD"), @tr("Smooth motion"), @tr("Fill the window"), @tr("Music"), @tr("Sound effects"), @tr("Input delay")]: Value {
+            content-height: 11 * settings-page.pitch;
+            for label[i] in [@tr("Language"), @tr("Picture size"), @tr("Full screen"), @tr("Sharp text"), @tr("Sharp HUD"), @tr("Smooth motion"), @tr("Fill the window"), @tr("Long names"), @tr("Music"), @tr("Sound effects"), @tr("Input delay")]: Value {
                 x: 0;
                 y: i * settings-page.pitch;
                 width: settings-page.label-width;
@@ -1668,9 +1668,19 @@ export component MatchMenu inherits MenuOverlay {
                 chosen: SettingsView.fill-window ? 1 : 0;
             }
 
+            Seg {
+                x: settings-page.control-x;
+                y: 7 * settings-page.pitch + settings-page.below + 4px;
+                nav: "menu.set.names";
+                first: I18n.upper(@tr("Off"));
+                second: I18n.upper(@tr("On"));
+                chosen: SettingsView.long-names ? 1 : 0;
+                enabled: SettingsView.sharp-text;
+            }
+
             Slider {
                 x: settings-page.control-x;
-                y: 7 * settings-page.pitch + settings-page.below + 2px;
+                y: 8 * settings-page.pitch + settings-page.below + 2px;
                 width: settings-page.control-width;
                 nav: "menu.set.music";
                 value: PlayView.music;
@@ -1678,7 +1688,7 @@ export component MatchMenu inherits MenuOverlay {
 
             Slider {
                 x: settings-page.control-x;
-                y: 8 * settings-page.pitch + settings-page.below + 2px;
+                y: 9 * settings-page.pitch + settings-page.below + 2px;
                 width: settings-page.control-width;
                 nav: "menu.set.effects";
                 value: PlayView.effects;
@@ -1686,7 +1696,7 @@ export component MatchMenu inherits MenuOverlay {
 
             Stepper {
                 x: Theme.phone ? 0px : root.inner-width - self.width;
-                y: 9 * settings-page.pitch + settings-page.below + 4px;
+                y: 10 * settings-page.pitch + settings-page.below + 4px;
                 nav: "menu.set.delay";
                 value: PlayView.input-delay;
                 value-width: 48px;

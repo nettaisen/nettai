@@ -506,6 +506,9 @@ Each is settled unless the user changes it.
       enhancements"), all on by default". Battle graphics became a group of its own with four switches, each
       Off / On: **Sharp text**, **Sharp HUD**, **Smooth motion** and **Fill the window**. All off is the old
       Original. Reduce motion no longer touches the battle's smooth motion, which has its own switch now.
+      The same day, the user: "add an additional setting to show long names in english under graphics
+      enhancements", and "long names can't really be used without sharp text": **Long names** (chips' and navis'
+      whole names where the game cuts them to 8 letters), its switch dimmed while Sharp text is off.
     - *The HUD's intro is gone.* Looking at frame strips of it, the user: "the custom screen should slide
       smoothly too. why does the custom bar do a weird animation like that?" (the custom gauge's light sweeping
       its bar read as the empty gauge filling and vanishing), then "don't animate extra slide ins that weren't
@@ -1368,7 +1371,7 @@ Each is settled unless the user changes it.
       (desktop; a phone has none): Move (the four directions' keys, the D-pad), A, B, L and R (one hint, the
       shoulders, where the pad's are them), Show builds (Tab, Select), Menu (Esc and the key bound to START, Start).
       Not the menu's own keys.
-    - *Settings* has the Settings screen's Language, Picture size, Full screen and the four graphics enhancements
+    - *Settings* has the Settings screen's Language, Picture size, Full screen and the graphics enhancements
       beside Input delay, Music and Sound effects, each changing at once; an enhancement switches the match being
       played from its next frame. *Controls* changes the bindings as the Settings screen's do (Enter on a box, then the key or
       the button; RESET CONTROLS), the match going on under it by them as they change. No connection panel: the
@@ -2511,8 +2514,8 @@ DUPLICATE and DELETE.
 - **The match menu** (Start or Esc; the game's own pause never appears): BACK TO MATCH, CONTROLS, SETTINGS, LEAVE
   MATCH. "The match keeps running", and it does. Its footer is the match's own controls as the player's bindings
   have them: Move, A, B, L and R, Show builds (Tab), Menu (Esc). SETTINGS has Language, Picture size, Full screen,
-  Sharp text, Sharp HUD, Smooth motion, Fill the window, Music, Sound effects and Input delay; CONTROLS changes the
-  bindings as Settings does (§2.83).
+  Sharp text, Sharp HUD, Smooth motion, Fill the window, Long names, Music, Sound effects and Input delay; CONTROLS
+  changes the bindings as Settings does (§2.83).
 
 ### After a match
 The mockups show no screen for this; it is decided here.
@@ -2531,7 +2534,7 @@ The mockups show no screen for this; it is decided here.
 ### Settings
 One scrolling page, a list at the left jumping to a group: General (Name, "Shown to your opponent."; Language),
 Video (Picture size, Full screen, Reduce motion), Graphics enhancements (Sharp text, Sharp HUD, Smooth motion, Fill
-the window, each Off / On, all on at first), Audio (Music, Sound effects), Online (Input
+the window, Long names, each Off / On, all on at first; Long names dimmed without Sharp text), Audio (Music, Sound effects), Online (Input
 delay, "In frames. Lower feels faster; higher rolls back less."), Controls (every action with its key and its pad
 button, each rebindable), About (Version; Your files, SHOW FOLDER; Made with, SHOW LICENSES, which opens About).
 

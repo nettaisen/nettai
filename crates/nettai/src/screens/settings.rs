@@ -35,7 +35,7 @@ fn group_of(id: &str) -> Option<i32> {
     Some(match id {
         "set.name" | "set.language" | "set.updates" => 0,
         "set.picture" | "set.fullscreen" | "set.motion" => 1,
-        "set.text" | "set.hud" | "set.smooth" | "set.fill" => 2,
+        "set.text" | "set.hud" | "set.smooth" | "set.fill" | "set.names" => 2,
         "set.music" | "set.effects" => 3,
         "set.delay" => 4,
         "set.key" | "set.button" | "set.reset" => 5,
@@ -51,6 +51,8 @@ fn enhancement<'a>(e: &'a mut Enhancements, id: &str) -> Option<&'a mut bool> {
         "hud" => &mut e.hud,
         "smooth" => &mut e.motion,
         "fill" => &mut e.fill,
+        // (With the sharp text alone: its switch is dimmed without it.)
+        "names" if e.text => &mut e.long_names,
         _ => return None,
     })
 }
@@ -85,6 +87,7 @@ pub fn show_values(shell: &Shell, binding: &Binding) {
     view.set_sharp_hud(s.sharp_hud);
     view.set_smooth_motion(s.smooth_motion);
     view.set_fill_window(s.fill_window);
+    view.set_long_names(s.long_names);
     view.set_music(s.music as i32);
     view.set_effects(s.effects as i32);
     view.set_input_delay(s.input_delay as i32);
@@ -316,7 +319,7 @@ impl Screen for Settings {
             }
             "set.motion" => self.set_reduce_motion(shell, !shell.reduces_motion()),
             "set.updates" => self.set_check_updates(shell, !shell.settings.check_updates),
-            "set.text" | "set.hud" | "set.smooth" | "set.fill" => self.set_enhancement(shell, id, None),
+            "set.text" | "set.hud" | "set.smooth" | "set.fill" | "set.names" => self.set_enhancement(shell, id, None),
             "set.key" | "set.button" => self.binding.ask(shell, index, id == "set.button"),
             "set.reset" => self.binding.reset(shell),
             "set.folder" => show_folder(&crate::paths::data()),
@@ -338,7 +341,7 @@ impl Screen for Settings {
             }
             "set.motion" => self.set_reduce_motion(shell, by > 0),
             "set.updates" => self.set_check_updates(shell, by > 0),
-            "set.text" | "set.hud" | "set.smooth" | "set.fill" => self.set_enhancement(shell, id, Some(by > 0)),
+            "set.text" | "set.hud" | "set.smooth" | "set.fill" | "set.names" => self.set_enhancement(shell, id, Some(by > 0)),
             "set.music" => self.set_levels(shell, (shell.settings.music as i32 + 5 * by).clamp(0, 100) as u32, shell.settings.effects),
             "set.effects" => {
                 self.set_levels(shell, shell.settings.music, (shell.settings.effects as i32 + 5 * by).clamp(0, 100) as u32);
@@ -366,7 +369,7 @@ impl Screen for Settings {
             }
             "set.motion" => self.set_reduce_motion(shell, choice == 1),
             "set.updates" => self.set_check_updates(shell, choice == 1),
-            "set.text" | "set.hud" | "set.smooth" | "set.fill" => self.set_enhancement(shell, id, Some(choice == 1)),
+            "set.text" | "set.hud" | "set.smooth" | "set.fill" | "set.names" => self.set_enhancement(shell, id, Some(choice == 1)),
             "set.music" => self.set_levels(shell, choice.clamp(0, 100) as u32, shell.settings.effects),
             "set.effects" => self.set_levels(shell, shell.settings.music, choice.clamp(0, 100) as u32),
             _ => {}

@@ -65,6 +65,19 @@ impl<'a> DisplayText<'a> {
         self.pick(given, own, || format!("chips.{key}.name")).map_or(key.as_str(), |s| s.text)
     }
 
+    /// A chip's whole name (`long_name`), if the table its name is from
+    /// has one.
+    pub fn chip_long_name<'b>(&self, content: &'b Content, chip: ChipHandle) -> Option<&'b str>
+    where
+        'a: 'b,
+    {
+        let key = &content.defs.chip(chip).key;
+        match self.language.and_then(|s| s.chip(key)).filter(|c| c.name.is_some()) {
+            Some(given) => given.long_name.as_deref(),
+            None => content.strings.chip(key).and_then(|c| c.long_name.as_deref()),
+        }
+    }
+
     /// A chip's description, if it has one.
     pub fn chip_description<'b>(&self, content: &'b Content, chip: ChipHandle) -> Option<Said<'b>>
     where
@@ -97,6 +110,19 @@ impl<'a> DisplayText<'a> {
         let given = self.language.and_then(|s| s.navi(key)).and_then(|n| n.name.as_deref());
         let own = content.strings.navi(key).and_then(|n| n.name.as_deref());
         self.pick(given, own, || format!("navis.{key}.name")).map_or(key.as_str(), |s| s.text)
+    }
+
+    /// A navi's whole name (`long_name`, where the game cuts its name
+    /// short), if the table its name is from has one.
+    pub fn navi_long_name<'b>(&self, content: &'b Content, navi: NaviHandle) -> Option<&'b str>
+    where
+        'a: 'b,
+    {
+        let key = &content.defs.navi(navi).key;
+        match self.language.and_then(|s| s.navi(key)).filter(|n| n.name.is_some()) {
+            Some(given) => given.long_name.as_deref(),
+            None => content.strings.navi(key).and_then(|n| n.long_name.as_deref()),
+        }
     }
 
     /// A navi's variant name (the enemy names' when its side's rules ask:
