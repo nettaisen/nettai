@@ -357,8 +357,7 @@ trade the original look for consistency in every frame, to fix a problem EXE6's 
   table in the content root that maps roles to fonts. No definition and no place in `Content`.
 - **Optionally a full name** beside the 8-character one, for places with room: a library or folder screen, a
   lobby, option B. Done as the locales' `long_name`: every chip's in the content's own language ("Gun del Sol 3"
-  for "GunDelS3", "Cannon" for "Cannon"), a navi's where the game cuts it short; a battle shows it with the Long
-  names enhancement and the sharp text (docs/frontend.md §3, "Graphics enhancements").
+  for "GunDelS3", "Cannon" for "Cannon"), a navi's where the game cuts it short; nothing in a battle reads it.
 
 ### 4.3 Translations must not change the content hash
 

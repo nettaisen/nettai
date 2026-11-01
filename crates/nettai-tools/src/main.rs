@@ -204,9 +204,7 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    the frames redrawn at the output's resolution), motion
                    (the background's glide, the gauge's smooth fill, the
                    banners' squash and the custom screen's slide between
-                   whole pixels), fill (--width and --height), long-names
-                   (chips' and navis' whole names where the game cuts them
-                   to 8 letters; with text alone)
+                   whole pixels), fill (--width and --height)
   --font PATH      the sharp text's font (a TrueType or OpenType file) instead
                    of the bundled one (Noto Sans CJK, its cut of the language)
   --lang LANG      the language of the battle's text: en (default, the

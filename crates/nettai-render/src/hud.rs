@@ -271,12 +271,12 @@ pub fn shared_glyphs<'a>(
     let banner_palette = matches!(s.palette, Load::Banner(_)) || s.palette == Load::Pause && t.pause_loads_banner_palette;
     out.telop_palette = banner_palette.then_some(hud.banner_palette);
     out.banner_palette = matches!(s.palette, Load::Telop(_)).then_some(look.palette);
-    // A telop's name glyphs, as its start renders them (none with the sharp
-    // text, whose name is the text layer's).
+    // A telop's name glyphs, as its start renders them (none in the enhanced
+    // mode, whose name is the text layer's).
     let name_tiles = |name: TelopName, problems: &mut Problems| -> Option<Vec<(&'a Tiles, usize)>> {
         let codes = match name {
             TelopName::Chip(chip) => {
-                let words = text.chip_name(&b.content, chip);
+                let words = text.strings.chip_name(&b.content, chip);
                 if text.takes(words, Role::Cell) {
                     return None;
                 }
@@ -1560,8 +1560,8 @@ fn draw_chip_name(
     (bonus, doubled): (u16, bool),
     problems: &mut Problems,
 ) -> i32 {
-    let words = text.chip_name(&b.content, chip);
-    let name = name_glyphs(b, hud, text.strings.chip_name(&b.content, chip), chip, problems);
+    let words = text.strings.chip_name(&b.content, chip);
+    let name = name_glyphs(b, hud, words, chip, problems);
     // (The text layer's box: the name's own width.)
     let cells = if text.takes(words, Role::FittedCell) { fonts::box_cells(text, words, name.len(), Role::FittedCell) } else { name.len() };
     fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, cells, pal, (0, 18 * 8), (Role::FittedCell, Align::Left));
@@ -1591,11 +1591,6 @@ fn draw_chip_name(
             }
             return end.ceil() as i32;
         }
-    }
-    // (The game's digits after the text layer's name: with the long names a
-    // word space after it.)
-    if words_end.is_some() {
-        x += text.name_space(Role::FittedCell).ceil() as i32;
     }
     let number = |layer: &mut Layer, v: u16, x: &mut i32| {
         for c in v.to_string().bytes() {
@@ -2507,7 +2502,10 @@ fn telop_parts<'a>(
 ) -> Laid {
     let hud = style.hud;
     let name = match telop.name {
-        TelopName::Chip(chip) => (text.chip_name(&b.content, chip), name_glyphs(b, hud, text.strings.chip_name(&b.content, chip), chip, problems)),
+        TelopName::Chip(chip) => {
+            let words = text.strings.chip_name(&b.content, chip);
+            (words, name_glyphs(b, hud, words, chip, problems))
+        }
         TelopName::Hidden => ("????", fonts::cell_glyphs(hud, "????").0),
         TelopName::Unknown => {
             crate::lookups::telop_unknown(problems);
@@ -2530,7 +2528,8 @@ fn used_chip_parts<'a>(
     text: &TextSink,
     problems: &mut Problems,
 ) -> Laid {
-    let name = (text.chip_name(&b.content, used.chip), name_glyphs(b, style.hud, text.strings.chip_name(&b.content, used.chip), used.chip, problems));
+    let words = text.strings.chip_name(&b.content, used.chip);
+    let name = (words, name_glyphs(b, style.hud, words, used.chip, problems));
     name_parts(style, name, (used.damage, used.bonus, used.doubled), true, None, out, text)
 }
 
@@ -2562,15 +2561,7 @@ fn name_parts<'a>(
         d => (digits(d), if bonus_value != 0 { std::iter::once(style.plus).chain(digits(bonus_value)).collect() } else { Vec::new() }, doubled),
     };
     let font = !words.is_empty() && text.takes(words, Role::Cell);
-    // (On the text layer the words take their own width, within the fifteen
-    // cells but its numbers': a whole name wider than that is narrowed to
-    // them, never past the game's own name's cells.)
-    let room = 15usize.saturating_sub(damage.len() + bonus.len()).max(name.len());
-    // (The game's digits after the words, with the long names, a word space
-    // after them: the box that much wider, the words at its left.)
-    let spaced = font && !damage.is_empty() && !text.draws_numbers() && text.name_space(Role::Cell) > 0.0;
-    let spaced_cells = spaced.then(|| text.fitted_width(words, Role::Cell, i32::MAX)).flatten().map(|w| ((w + text.name_space(Role::Cell)) / 8.0).ceil() as usize);
-    let cells = if font { spaced_cells.unwrap_or_else(|| fonts::box_cells(text, words, name.len(), Role::Cell)).min(room) } else { name.len() };
+    let cells = if font { fonts::box_cells(text, words, name.len(), Role::Cell) } else { name.len() };
     let width = (cells + damage.len() + bonus.len()) as i32;
     let mut x = (style.at.0 as i32 + (15 - width) * 4) & 0xFF;
     if remote && doubled {
@@ -2581,19 +2572,16 @@ fn name_parts<'a>(
     let mut items: Vec<TextItem> = font
         .then(|| {
             let item = TextItem::new(words, Role::Cell, Rect::new(x, y, 8 * cells as i32, 16), pal[1], Some(pal[2]));
-            TextItem { align: if spaced { Align::Left } else { Align::Center }, vscale, ..item }
+            TextItem { align: Align::Center, vscale, ..item }
         })
         .into_iter()
         .collect();
     let after = x + 8 * cells as i32;
     let glyphs = if font { 0 } else { name.len() };
-    // (With the words on the text layer, blank parts in the cells they take,
-    // as many as the game's name has glyphs at most (a whole name's: the
-    // game's 8 letters'): the group has parts, and so its items their
-    // depth, however few of the words the game's font has glyphs for, none
-    // of a Chinese name's.)
-    let blanks = if name.is_empty() { cells } else { cells.min(name.len()) };
-    let parts: Vec<(&Tiles, usize)> = if font { vec![(&*BLANK_GLYPH, 0); blanks] } else { name.iter().map(|&c| fonts::cell_glyph(hud, c)).collect() };
+    // (With the words on the text layer, blank parts in the cells they take:
+    // the group has parts, and so its items their depth, however few of
+    // the words the game's font has glyphs for, none of a Chinese name's.)
+    let parts: Vec<(&Tiles, usize)> = if font { vec![(&*BLANK_GLYPH, 0); cells] } else { name.iter().map(|&c| fonts::cell_glyph(hud, c)).collect() };
     for (tiles, first) in parts {
         out.push(SpritePart { first_tile: first, ..glyph(tiles, 0, pal, x, y, 0, vscale) });
         x += 8;
@@ -2675,9 +2663,8 @@ impl NumberSets {
         if doubled {
             parts.push((format!("{}2", crate::numbers::times()), &self.times));
         }
-        // (Ink to ink, so neither font's sidebearings add to the gap; with
-        // the long names a word space more.)
-        let from = x + NAME_GAP * role.cap() + text.name_space(role);
+        // (Ink to ink, so neither font's sidebearings add to the gap.)
+        let from = x + NAME_GAP * role.cap();
         let (items, (_, end)) = crate::numbers::laid(text, &parts, y, crate::numbers::Anchor::LeftInk(from))?;
         Some((items, end))
     }

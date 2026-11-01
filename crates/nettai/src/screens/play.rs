@@ -1843,7 +1843,7 @@ impl Screen for Play {
             "menu.set.language" => settings::pick_language(shell, id),
             "menu.set.picture" => settings::pick_picture_size(shell, id),
             "menu.set.fullscreen" => self.set_full_screen(shell, !shell.settings.full_screen),
-            "menu.set.text" | "menu.set.hud" | "menu.set.smooth" | "menu.set.fill" | "menu.set.names" => self.set_enhancement(shell, id, None),
+            "menu.set.text" | "menu.set.hud" | "menu.set.smooth" | "menu.set.fill" => self.set_enhancement(shell, id, None),
             "menu.keys.key" | "menu.keys.button" => self.binding.ask(shell, index, id == "menu.keys.button"),
             "menu.reset" => {
                 self.binding.reset(shell);
@@ -1886,7 +1886,7 @@ impl Screen for Play {
             }
             "menu.set.fullscreen" => self.set_full_screen(shell, by > 0),
             // (Enhanced is the first of the two.)
-            "menu.set.text" | "menu.set.hud" | "menu.set.smooth" | "menu.set.fill" | "menu.set.names" => self.set_enhancement(shell, id, Some(by > 0)),
+            "menu.set.text" | "menu.set.hud" | "menu.set.smooth" | "menu.set.fill" => self.set_enhancement(shell, id, Some(by > 0)),
             "name.version" => self.step_version(shell, by),
             _ => {}
         }
@@ -1913,7 +1913,7 @@ impl Screen for Play {
                 self.show_match(shell);
             }
             "menu.set.fullscreen" => self.set_full_screen(shell, choice == 1),
-            "menu.set.text" | "menu.set.hud" | "menu.set.smooth" | "menu.set.fill" | "menu.set.names" => self.set_enhancement(shell, id, Some(choice == 1)),
+            "menu.set.text" | "menu.set.hud" | "menu.set.smooth" | "menu.set.fill" => self.set_enhancement(shell, id, Some(choice == 1)),
             _ => {}
         }
     }

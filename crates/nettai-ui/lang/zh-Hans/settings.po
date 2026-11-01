@@ -88,12 +88,6 @@ msgstr "填满窗口"
 msgid "The stage reaches the window's edges, the HUD with it."
 msgstr "场景延伸到窗口边缘，HUD 也随之靠边。"
 
-msgid "Long names"
-msgstr "完整名称"
-
-msgid "Chip and navi names in full, not cut to 8 letters. With sharp text."
-msgstr "芯片和领航员的名称完整显示，不截短为 8 个字母。需开启清晰文字。"
-
 msgid "Music"
 msgstr "音乐"
 

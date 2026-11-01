@@ -1274,7 +1274,7 @@ wanted (`bundled`, text-rendering.md §16).
 
 **Graphics enhancements** (`Enhancements`, `Renderer::set_enhancements`;
 Video's part of that name in the app's Settings). A renderer draws a battle with any
-of five enhancements, each on or off alone. With none of them
+of four enhancements, each on or off alone. With none of them
 (`Enhancements::NONE`, the library's default, "original") it draws exactly
 as the original does: the text in the game's own fonts into the frame and
 nothing moved that the game holds still. With all of them
@@ -1292,14 +1292,6 @@ nothing moved that the game holds still. With all of them
   the game doesn't.
 - **Fill the window** (`fill`) draws the frame as large as
   `Renderer::size` asks ("Larger than the original").
-- **Long names** (`long_names`) shows a chip's and a navi's whole name
-  (the strings' `long_name`: "High Cannon" for "HiCannon"; the content's
-  own language, English, has them, the Japanese names aren't cut short)
-  where the sharp text takes it, so with the sharp text alone: the game's
-  fonts have 8 cells (`TextSink::chip_name`). The game's glyphs are still
-  looked up for its own name, so the audits and the sprite parts a telop's
-  name holds are the game's; a box the game sizes (the chip window's, a
-  telop's 15 cells but its numbers') narrows a whole name to fit.
 
 The smooth motion smooths only motion the original has, over the same frames,
 and adds none: nothing comes in with an animation the game doesn't have.

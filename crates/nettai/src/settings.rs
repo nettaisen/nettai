@@ -39,9 +39,6 @@ pub struct Settings {
     pub smooth_motion: bool,
     /// Fill the window: the picture as wide and as tall as the window at its multiple, the HUD to its edges.
     pub fill_window: bool,
-    /// Long names: chips' and navis' whole names where the game cuts them to 8 letters (English's), with the sharp
-    /// text.
-    pub long_names: bool,
     /// 0 to 100.
     pub music: u32,
     pub effects: u32,
@@ -72,7 +69,6 @@ impl Default for Settings {
             sharp_hud: true,
             smooth_motion: true,
             fill_window: true,
-            long_names: true,
             music: 80,
             effects: 100,
             input_delay: nettai_frontend::netplay::DEFAULT_INPUT_DELAY,
@@ -87,17 +83,11 @@ impl Default for Settings {
 impl Settings {
     /// The graphics enhancements battles are drawn with.
     pub fn enhancements(&self) -> nettai_frontend::game::Enhancements {
-        nettai_frontend::game::Enhancements {
-            text: self.sharp_text,
-            hud: self.sharp_hud,
-            motion: self.smooth_motion,
-            fill: self.fill_window,
-            long_names: self.long_names,
-        }
+        nettai_frontend::game::Enhancements { text: self.sharp_text, hud: self.sharp_hud, motion: self.smooth_motion, fill: self.fill_window }
     }
 
     pub fn set_enhancements(&mut self, e: nettai_frontend::game::Enhancements) {
-        (self.sharp_text, self.sharp_hud, self.smooth_motion, self.fill_window, self.long_names) = (e.text, e.hud, e.motion, e.fill, e.long_names);
+        (self.sharp_text, self.sharp_hud, self.smooth_motion, self.fill_window) = (e.text, e.hud, e.motion, e.fill);
     }
 }
 

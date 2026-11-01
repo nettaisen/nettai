@@ -87,12 +87,6 @@ msgstr "ウィンドウいっぱいに表示"
 msgid "The stage reaches the window's edges, the HUD with it."
 msgstr "ステージをウィンドウの端まで広げ、HUDも端に寄せます。"
 
-msgid "Long names"
-msgstr "長い名前"
-
-msgid "Chip and navi names in full, not cut to 8 letters. With sharp text."
-msgstr "チップやナビの名前を8文字に縮めずに表示します（くっきりした文字のときのみ）。"
-
 msgid "Music"
 msgstr "BGM"
 

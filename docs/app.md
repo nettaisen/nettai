@@ -832,7 +832,7 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   SETTINGS, LEAVE MATCH (design §2.83). CONTROLS is what is bound to each button, each box changed as the Settings
   screen's are (`screens::settings::Binding`, which both hold one of: Enter, then the key or the pad's button; the
   focus moving or the page left asks no more), and RESET CONTROLS; the match plays by them as they change.
-  SETTINGS: Language, Picture size, Full screen and the five graphics enhancements, by the Settings screen's own
+  SETTINGS: Language, Picture size, Full screen and the four graphics enhancements, by the Settings screen's own
   functions (`settings::set_language` and the rest; an enhancement is `settings::set_enhancement`, then
   `Shell::set_enhancements`, which switches the battle being played from its next frame,
   `Player::set_enhancements`, its picture fitted again), the two levels of the sound, and the
@@ -2363,7 +2363,7 @@ the patch cards' lines (`cards`), the auto battle data (`auto`), a list's edits 
 app starts: the player's name (their account's on this machine until they choose one), the language, the game
 last used, the picture's size (the largest that fits, or at most 1 to 8 times), full screen, Reduce motion (as
 the system asks until the player says), the graphics enhancements (`sharp_text`, `sharp_hud`, `smooth_motion`,
-`fill_window`, `long_names`, each on at first: docs/frontend.md §3), the levels of the music and the
+`fill_window`, each on at first: docs/frontend.md §3), the levels of the music and the
 sound effects, the input delay (4), the folder the player chose the Legacy Collection in (`legacy_collection`,
 where Steam doesn't list it: §17), the keys and the pad's buttons bound (those that differ from the defaults),
 and what screens remember by their own keys (`remembered`: what a screen chose last, such as Practice's builds and

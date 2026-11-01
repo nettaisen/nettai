@@ -342,8 +342,7 @@ impl Preload {
     /// A navi's own in the game's graphics: its face (a navi that changes form shows
     /// its forms'), its emblem, its name and variant name.
     fn look_up_navi(&mut self, navi: NaviHandle) {
-        let e = self.renderer.enhancements();
-        let (sharp, whole) = (e.text, e.text && e.long_names);
+        let sharp = self.renderer.enhancements().text;
         let (c, graphics) = (&*self.content, self.renderer.graphics().clone());
         let view = graphics.view();
         let strings = self.renderer.strings().cloned();
@@ -362,8 +361,7 @@ impl Preload {
         }
         // The sharp text's glyphs of its names, on their bar.
         if let Some(t) = self.text.as_mut().filter(|_| sharp) {
-            let long = text.navi_long_name(c, navi).filter(|_| whole);
-            for name in [Some(text.navi_name(c, navi)), text.navi_variant_name(c, navi), long].into_iter().flatten() {
+            for name in [Some(text.navi_name(c, navi)), text.navi_variant_name(c, navi)].into_iter().flatten() {
                 t.prepare(name, Role::FittedCell);
             }
         }
@@ -397,8 +395,7 @@ impl Preload {
     /// its button's), its name, the chip window's colors in its code, and
     /// its description.
     fn look_up_chip(&mut self, chip: ChipHandle, code: ChipCode) {
-        let e = self.renderer.enhancements();
-        let (sharp, whole) = (e.text, e.text && e.long_names);
+        let sharp = self.renderer.enhancements().text;
         let (c, graphics) = (&*self.content, self.renderer.graphics().clone());
         let view = graphics.view();
         let strings = self.renderer.strings().cloned();
@@ -419,8 +416,7 @@ impl Preload {
         // The sharp text's glyphs of its name (in the chip window and
         // the hand, and as a telop) and of its description.
         if let Some(t) = self.text.as_mut().filter(|_| sharp) {
-            // (The whole name in its place, with the long names.)
-            let name = text.chip_long_name(c, chip).filter(|_| whole).unwrap_or_else(|| text.chip_name(c, chip));
+            let name = text.chip_name(c, chip);
             t.prepare(name, Role::FittedCell);
             t.prepare(name, Role::Cell);
             if let Some(said) = text.chip_description(c, chip) {

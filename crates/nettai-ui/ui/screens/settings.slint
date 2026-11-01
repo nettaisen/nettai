@@ -31,7 +31,6 @@ export global SettingsView {
     in property <bool> sharp-hud;
     in property <bool> smooth-motion;
     in property <bool> fill-window;
-    in property <bool> long-names;
     in property <int> music;
     in property <int> effects;
     in property <int> input-delay;
@@ -416,27 +415,6 @@ component SettingsPage inherits Page {
                         first: I18n.upper(@tr("Off"));
                         second: I18n.upper(@tr("On"));
                         chosen: SettingsView.fill-window ? 1 : 0;
-                    }
-                }
-
-                Rectangle {
-                    height: row20.height;
-                    row20 := SettingLabel {
-                        label: @tr("Long names");
-                        note: @tr("Chip and navi names in full, not cut to 8 letters. With sharp text.");
-                        control-x: root.control-x;
-                        control-width: root.control-width;
-                    }
-
-                    // (Only with the sharp text: the game's fonts have room for 8 letters.)
-                    Seg {
-                        x: root.control-x;
-                        y: 6px;
-                        nav: "set.names";
-                        first: I18n.upper(@tr("Off"));
-                        second: I18n.upper(@tr("On"));
-                        chosen: SettingsView.long-names ? 1 : 0;
-                        enabled: SettingsView.sharp-text;
                     }
                 }
 
