@@ -508,7 +508,9 @@ Each is settled unless the user changes it.
       Original. Reduce motion no longer touches the battle's smooth motion, which has its own switch now.
       The same day, the user: "add an additional setting to show long names in english under graphics
       enhancements", and "long names can't really be used without sharp text": **Long names** (chips' and navis'
-      whole names where the game cuts them to 8 letters), its switch dimmed while Sharp text is off.
+      whole names where the game cuts them to 8 letters), its switch dimmed while Sharp text is off. Then the
+      user: "the graphics enhancements are in a weird section by itself, it should really be under video
+      somehow": they are Video's last rows, under a smaller title of their own with no rule.
     - *The HUD's intro is gone.* Looking at frame strips of it, the user: "the custom screen should slide
       smoothly too. why does the custom bar do a weird animation like that?" (the custom gauge's light sweeping
       its bar read as the empty gauge filling and vanishing), then "don't animate extra slide ins that weren't
@@ -2533,8 +2535,9 @@ The mockups show no screen for this; it is decided here.
 
 ### Settings
 One scrolling page, a list at the left jumping to a group: General (Name, "Shown to your opponent."; Language),
-Video (Picture size, Full screen, Reduce motion), Graphics enhancements (Sharp text, Sharp HUD, Smooth motion, Fill
-the window, Long names, each Off / On, all on at first; Long names dimmed without Sharp text), Audio (Music, Sound effects), Online (Input
+Video (Picture size, Full screen, Reduce motion, then under a smaller title, Graphics enhancements: Sharp text, Sharp
+HUD, Smooth motion, Fill the window, Long names, each Off / On, all on at first; Long names dimmed without Sharp
+text), Audio (Music, Sound effects), Online (Input
 delay, "In frames. Lower feels faster; higher rolls back less."), Controls (every action with its key and its pad
 button, each rebindable), About (Version; Your files, SHOW FOLDER; Made with, SHOW LICENSES, which opens About).
 

@@ -102,6 +102,20 @@ component SettingLabel inherits Rectangle {
     }
 }
 
+// A part of a group, under a title smaller than the group's and with no rule (Video's graphics enhancements).
+component SubTitle inherits Rectangle {
+    in property <string> text;
+    height: 30px;
+    Label {
+        x: 0;
+        y: 10px;
+        width: parent.width;
+        height: 20px;
+        text: root.text;
+        font-size: 12px;
+    }
+}
+
 // A key's or a pad button's box in the controls: Enter, then the key to bind.
 export component BindBox inherits Rectangle {
     in property <string> nav;
@@ -148,7 +162,7 @@ export component BindBox inherits Rectangle {
 }
 
 component SettingsPage inherits Page {
-    property <[string]> groups: [@tr("General"), @tr("Video"), @tr("Graphics enhancements"), @tr("Audio"), @tr("Online"), @tr("Controls"), @tr("About")];
+    property <[string]> groups: [@tr("General"), @tr("Video"), @tr("Audio"), @tr("Online"), @tr("Controls"), @tr("About")];
     // (A pad's A and B are the menus' confirm and back too: they say so. The keyboard's are Enter and Esc.)
     property <[string]> actions: [@tr("Up"), @tr("Down"), @tr("Left"), @tr("Right"), @tr("A · Pad confirms"), @tr("B · Pad goes back"), "L", "R", "START", "SELECT", @tr("Navi change left"), @tr("Navi change right")];
     // (A phone has the page alone.)
@@ -324,8 +338,9 @@ component SettingsPage inherits Page {
                     }
                 }
 
-                GroupTitle {
-                    text: I18n.upper(@tr("Graphics enhancements"));
+                // (Video's graphics enhancements: a part of the group, under a title of their own.)
+                SubTitle {
+                    text: @tr("Graphics enhancements");
                 }
 
                 Rectangle {

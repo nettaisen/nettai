@@ -25,7 +25,7 @@ pub(crate) use about::place_of;
 
 /// Each group's first control, and the room over it for what the group has above it (its title; in Controls the
 /// columns' heads, in About the version's row): where the list at the left jumps to.
-const GROUPS: [(&str, f32); 7] = [("set.name", 40.0), ("set.picture", 40.0), ("set.text", 40.0), ("set.music", 40.0), ("set.delay", 40.0), ("set.key", 68.0), ("set.folder", 92.0)];
+const GROUPS: [(&str, f32); 6] = [("set.name", 40.0), ("set.picture", 40.0), ("set.music", 40.0), ("set.delay", 40.0), ("set.key", 68.0), ("set.folder", 92.0)];
 
 /// The picture sizes offered besides the largest that fits: 1 to 8 times 240 by 160.
 const SIZES: u32 = 8;
@@ -34,12 +34,11 @@ const SIZES: u32 = 8;
 fn group_of(id: &str) -> Option<i32> {
     Some(match id {
         "set.name" | "set.language" | "set.updates" => 0,
-        "set.picture" | "set.fullscreen" | "set.motion" => 1,
-        "set.text" | "set.hud" | "set.smooth" | "set.fill" | "set.names" => 2,
-        "set.music" | "set.effects" => 3,
-        "set.delay" => 4,
-        "set.key" | "set.button" | "set.reset" => 5,
-        "set.folder" | "set.about" => 6,
+        "set.picture" | "set.fullscreen" | "set.motion" | "set.text" | "set.hud" | "set.smooth" | "set.fill" | "set.names" => 1,
+        "set.music" | "set.effects" => 2,
+        "set.delay" => 3,
+        "set.key" | "set.button" | "set.reset" => 4,
+        "set.folder" | "set.about" => 5,
         _ => return None,
     })
 }

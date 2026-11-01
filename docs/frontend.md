@@ -1273,7 +1273,7 @@ and the pixel fonts as WOFF2, and unpacks each once, the first time it is
 wanted (`bundled`, text-rendering.md §16).
 
 **Graphics enhancements** (`Enhancements`, `Renderer::set_enhancements`;
-the app's Settings group of that name). A renderer draws a battle with any
+Video's part of that name in the app's Settings). A renderer draws a battle with any
 of five enhancements, each on or off alone. With none of them
 (`Enhancements::NONE`, the library's default, "original") it draws exactly
 as the original does: the text in the game's own fonts into the frame and
