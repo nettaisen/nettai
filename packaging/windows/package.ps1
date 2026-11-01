@@ -13,11 +13,8 @@
 #   x64      win-x64      nettai-win-x64-Setup.exe, nettai-win-x64-Portable.zip
 #   arm64    win-arm64    nettai-win-arm64-Setup.exe, nettai-win-arm64-Portable.zip
 #
-# x64's app is packed a second time, the same folder on the channel `win`, the only one up to 0.19.0
-# (nettai-win-Setup.exe, nettai-win-Portable.zip, nettai-<version>-full.nupkg, releases.win.json, assets.win.json,
-# RELEASES): the bridge, so that the apps installed from that channel, which ask it alone, find the update, and move to
-# win-x64 at the one after (docs/app.md §19, "Updates"), as a Mac's apps do from theirs (packaging/macos). It goes when
-# the user says.
+# (Up to 0.19.1 x64's app was packed a second time on the channel `win`, the only one up to 0.19.0: the bridge,
+# docs/app.md §19, "Updates".)
 #
 # The app: nettai.exe, ffmpeg.exe, LICENSE.txt, THIRD-PARTY-NOTICES.txt, ffmpeg-NOTICE.txt. No content, no ROM and no
 # extracted asset is in it: the app downloads each game's content (docs/design/content-deployment.md §5) and extracts
@@ -53,11 +50,10 @@ $machine = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchit
 }
 if (-not $Arch) { $Arch = $machine }
 if ($Arch -ne $machine) { throw "the $Arch package is built on $Arch Windows, not on this $machine machine" }
-# The architecture's channel, which is also Velopack's runtime; the bridges, the channels the same app goes up on
-# besides; and the ffmpeg release's program for the architecture.
+# The architecture's channel, which is also Velopack's runtime; and the ffmpeg release's program for the architecture.
 $package = @{
-    'x64' = @{ Channel = 'win-x64'; Bridges = @('win'); Ffmpeg = 'ffmpeg-windows-x86_64.exe' }
-    'arm64' = @{ Channel = 'win-arm64'; Bridges = @(); Ffmpeg = 'ffmpeg-windows-arm64.exe' }
+    'x64' = @{ Channel = 'win-x64'; Ffmpeg = 'ffmpeg-windows-x86_64.exe' }
+    'arm64' = @{ Channel = 'win-arm64'; Ffmpeg = 'ffmpeg-windows-arm64.exe' }
 }[$Arch]
 
 $root = (Resolve-Path "$PSScriptRoot\..\..").Path
@@ -118,19 +114,17 @@ Copy-Item "$root\LICENSE" "$app\LICENSE.txt"
 Copy-Item $notices "$app\THIRD-PARTY-NOTICES.txt"
 Copy-Item (Get-FfmpegFile 'ffmpeg-NOTICE.txt') "$app\ffmpeg-NOTICE.txt"
 
-# The release (Velopack's: docs/app.md §19), on the architecture's channel and on the bridge's, every program in it
-# signed where there is a certificate.
+# The release (Velopack's: docs/app.md §19), on the architecture's channel, every program in it signed where there is
+# a certificate.
 $vpk = if ($env:VPK) { $env:VPK } else { 'vpk' }
-foreach ($on in @($package.Channel) + $package.Bridges) {
-    $pack = @('pack', '--packId', 'nettai', '--packVersion', $Version, '--packTitle', 'nettai', '--packAuthors', 'nettai',
-        '--packDir', $app, '--mainExe', 'nettai.exe', '--channel', $on, '--runtime', $package.Channel,
-        '--outputDir', "$out\releases")
-    if ($Icon) { $pack += @('--icon', (Resolve-Path $Icon).Path) }
-    if ($env:WINDOWS_CERTIFICATE_PATH) {
-        $pack += @('--signParams', "/f `"$env:WINDOWS_CERTIFICATE_PATH`" /p `"$env:WINDOWS_CERTIFICATE_PASSWORD`" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256")
-    }
-    & $vpk @pack
-    if ($LASTEXITCODE -ne 0) { throw "vpk pack ($on) failed" }
+$pack = @('pack', '--packId', 'nettai', '--packVersion', $Version, '--packTitle', 'nettai', '--packAuthors', 'nettai',
+    '--packDir', $app, '--mainExe', 'nettai.exe', '--channel', $package.Channel, '--runtime', $package.Channel,
+    '--outputDir', "$out\releases")
+if ($Icon) { $pack += @('--icon', (Resolve-Path $Icon).Path) }
+if ($env:WINDOWS_CERTIFICATE_PATH) {
+    $pack += @('--signParams', "/f `"$env:WINDOWS_CERTIFICATE_PATH`" /p `"$env:WINDOWS_CERTIFICATE_PASSWORD`" /fd SHA256 /tr http://timestamp.digicert.com /td SHA256")
 }
+& $vpk @pack
+if ($LASTEXITCODE -ne 0) { throw "vpk pack failed" }
 
 Write-Output "$out\releases"

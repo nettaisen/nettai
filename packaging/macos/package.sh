@@ -14,12 +14,9 @@
 #   aarch64     Apple silicon      macos-arm64     nettai-macos-arm64-Portable.zip
 #   x86_64      Intel              macos-x64       nettai-macos-x64-Portable.zip
 #
-# Each app is packed a second time, the same bundle on the architecture's channel up to 0.19.0, osx-arm64 or osx-x64
-# (nettai-osx-arm64-Portable.zip, nettai-<version>-osx-arm64-full.nupkg, releases.osx-arm64.json, ...): the bridge,
-# so that the apps that ask that channel (every Mac app from 0.13.0 to 0.19.0, whichever package it came from) find
-# the update, and move to macos-arm64 or macos-x64 at the one after (docs/app.md §19, "Updates"), as the universal
-# channel osx was kept for its apps up to 0.18.1. It goes when the user says. (The universal app, both programs
-# joined by lipo on the channel osx, a Mac's only package up to 0.12.0, was made up to 0.18.1, and isn't again.)
+# (Up to 0.19.1 each app was packed a second time on the architecture's channel up to 0.19.0, osx-arm64 or osx-x64:
+# the bridge, docs/app.md §19, "Updates". The universal app, both programs joined by lipo on the channel osx, a Mac's
+# only package up to 0.12.0, was made up to 0.18.1.)
 #
 # The bundle: Contents/MacOS/{nettai, ffmpeg}, Contents/Resources/{nettai.icns, LICENSE, THIRD-PARTY-NOTICES.txt,
 # ffmpeg-NOTICE.txt}. No content, no ROM and no extracted asset is in it: the app downloads each game's content
@@ -42,14 +39,12 @@ source "$(dirname "$0")/../build.sh"
 
 host=$(uname -m)
 arch=${NETTAI_MACOS_ARCH:-${host/arm64/aarch64}}
-# The channel; Velopack's runtime, which is also the bridge's channel (Rust's target, <arch>-apple-darwin, names the
-# architecture).
+# The channel; and Velopack's runtime (Rust's target, <arch>-apple-darwin, names the architecture).
 case $arch in
     aarch64) channel=macos-arm64 runtime=osx-arm64 ;;
     x86_64) channel=macos-x64 runtime=osx-x64 ;;
     *) echo "NETTAI_MACOS_ARCH is aarch64 or x86_64, not $arch" >&2; exit 1 ;;
 esac
-bridge=$runtime
 
 out=$root/target/package/macos/$arch
 rm -rf "$out"
@@ -87,7 +82,7 @@ chmod 755 "$ffmpeg"
 fetch_ffmpeg ffmpeg-NOTICE.txt
 cp "$fetched" "$app/Contents/Resources/ffmpeg-NOTICE.txt"
 
-# The release (Velopack's: docs/app.md §19), on the architecture's channel and on the bridge's. With an identity vpk
+# The release (Velopack's: docs/app.md §19), on the architecture's channel. With an identity vpk
 # signs the bundle itself, everything in it with the hardened runtime, as notarizing asks; without one it is signed ad
 # hoc here (an Apple silicon Mac runs nothing unsigned; Gatekeeper still asks the player to allow it once).
 pack=(pack --packId nettai --packVersion "$version" --packTitle nettai --packAuthors nettai --packDir "$app" --mainExe nettai
@@ -100,8 +95,6 @@ else
     codesign --force --sign - "$ffmpeg"
     codesign --force --sign - "$app"
 fi
-for on in $channel $bridge; do
-    "${VPK:-vpk}" "${pack[@]}" --channel "$on"
-done
+"${VPK:-vpk}" "${pack[@]}" --channel "$channel"
 
 echo "$out/releases"

@@ -1,8 +1,7 @@
 # The app's releases (packaging/; docs/app.md §19, "Packaging"): Velopack's, for each system and architecture on a
 # channel of its own (win-x64, win-arm64; macos-arm64, macos-x64; linux-x64, linux-arm64): a Windows installer, the
 # macOS app zipped and a Linux AppImage, each with the update package and feed the installed app's updater reads
-# (crates/nettai's updates.rs), and again on the bridge, the channels before (win, osx-arm64, osx-x64, linux: below, at
-# the upload); and the phones' packages: Android's APK, `nettai-android.apk`, signed
+# (crates/nettai's updates.rs); and the phones' packages: Android's APK, `nettai-android.apk`, signed
 # with the release key (the Android job says how), and iOS's IPA, `nettai-ios.ipa`, unsigned, which the player's
 # sideloading tool signs as it installs it, with its AltStore source, `altstore.json` (AltStore and SideStore read
 # the latest release's: https://github.com/nettaisen/nettai/releases/latest/download/altstore.json).
@@ -55,7 +54,7 @@ jobs:
           if-no-files-found: error
 
   # Each Windows architecture's installer, built and packaged natively in a job of its own (packaging/windows/
-  # package.ps1), on its own channel (win-x64, win-arm64; x64's on the bridge win too), with its own Rust cache.
+  # package.ps1), on its own channel (win-x64, win-arm64), with its own Rust cache.
   windows:
     name: Windows installer (${{ matrix.arch }})
     needs: icons
@@ -129,8 +128,8 @@ jobs:
           if-no-files-found: error
 
   # Each Mac architecture's app, built and packaged in a job of its own (packaging/macos/package.sh), on its own
-  # channel (macos-arm64, macos-x64; and on the bridge osx-arm64, osx-x64, the channels up to 0.19.0), with its own Rust
-  # cache. (Up to 0.18.1 a universal app went up too, on the channel osx: docs/app.md §19.)
+  # channel (macos-arm64, macos-x64), with its own Rust cache. (Up to 0.18.1 a universal app went up too, on the channel
+  # osx: docs/app.md §19.)
   macos:
     name: macOS app (${{ matrix.arch }})
     needs: icons
@@ -208,7 +207,7 @@ jobs:
           if-no-files-found: error
 
   # Each Linux architecture's AppImage, built and packaged natively in a job of its own (packaging/linux/package.sh),
-  # on its own channel (linux-x64, linux-arm64; x86_64's on the bridge linux too), with its own Rust cache.
+  # on its own channel (linux-x64, linux-arm64), with its own Rust cache.
   linux:
     name: Linux AppImage (${{ matrix.arch }})
     needs: icons
@@ -399,18 +398,15 @@ jobs:
       # Each package's channel (win-x64, win-arm64; macos-arm64, macos-x64; linux-x64, linux-arm64) goes up into the one
       # release, a draft until all are in (a run again merges into it); then it is published, the latest, and the
       # installed apps see it. (vpk uploads a channel's files alone, as its feed names them: the phones' packages in the
-      # same folder go up after.) And the bridge, the channels up to 0.19.0 (win, osx-arm64, osx-x64, linux; Windows'
-      # and Linux's x86_64 alone): the same apps packed again on them, so that the apps installed from them, which ask
-      # them alone, find the update and move to their architecture's channel at the next (docs/app.md §19, "Updates"),
-      # as the Mac's universal osx was kept up to 0.18.1; with it, the download addresses of those packages
-      # (nettai-win-Setup.exe, nettai-osx-arm64-Portable.zip, nettai.AppImage, ...) stay. It goes when the user says.
+      # same folder go up after.) (Up to 0.19.1 the same apps went up again on the channels before, win, osx-arm64,
+      # osx-x64 and linux: the bridge, docs/app.md §19, "Updates".)
       - name: Upload
         env:
           VPK_TOKEN: ${{ github.token }}
           TAG: ${{ steps.tag.outputs.tag }}
           VERSION: ${{ steps.tag.outputs.version }}
         run: |
-          for channel in win-x64 win-arm64 macos-arm64 macos-x64 linux-x64 linux-arm64 win osx-arm64 osx-x64 linux; do
+          for channel in win-x64 win-arm64 macos-arm64 macos-x64 linux-x64 linux-arm64; do
             vpk upload github --outputDir releases --channel "$channel" --repoUrl "https://github.com/$GITHUB_REPOSITORY" \
               --tag "$TAG" --releaseName "nettai $VERSION" --merge
           done

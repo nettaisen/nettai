@@ -61,9 +61,9 @@ fn manager() -> Option<UpdateManager> {
 /// which Velopack's manager asks otherwise): the system's and the architecture's, as the program was built for them
 /// (`macos-arm64`, `macos-x64`, `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`: packaging/), so that an app from
 /// a package on a channel before them takes its own at its next update: the channels up to 0.19.0, a Mac's
-/// `osx-arm64` and `osx-x64`, Windows' `win` and Linux's `linux` (x86_64's alone), made since as the bridge; and a
-/// Mac's universal `osx` (its only one up to 0.12.0, made up to 0.18.1), the slice it runs choosing (docs/app.md §19,
-/// "Updates").
+/// `osx-arm64` and `osx-x64`, Windows' `win` and Linux's `linux` (x86_64's alone), made again in 0.19.1 as the bridge;
+/// and a Mac's universal `osx` (its only one up to 0.12.0, made up to 0.18.1), the slice it runs choosing
+/// (docs/app.md §19, "Updates").
 fn options(os: &str, arch: &str) -> UpdateOptions {
     let channel = match (os, arch) {
         ("macos", "aarch64") => Some("macos-arm64"),
@@ -276,11 +276,9 @@ mod tests {
         ("linux-arm64", LINUX_ARM64),
     ];
 
-    /// The bridge: the channels up to 0.19.0, on which each release since has its apps again.
-    const BRIDGE: [&str; 4] = ["osx-arm64", "osx-x64", "win", "linux"];
-
-    /// The channels before, with an app's system and the channel it is to take: the bridge's, and the Mac's universal
-    /// one (made up to 0.18.1), the slice it runs choosing.
+    /// The channels before, with an app's system and the channel it is to take: the bridge's (up to 0.19.0 the only
+    /// ones, made again in 0.19.1), and the Mac's universal one (made up to 0.18.1), the slice it runs choosing. An app
+    /// installed from a package made on one asks its architecture's channel, where the releases since are alone.
     const BEFORE: [(&str, (&str, &str), &str); 6] = [
         ("osx-arm64", APPLE_SILICON, "macos-arm64"),
         ("osx-x64", INTEL_MAC, "macos-x64"),
@@ -290,15 +288,15 @@ mod tests {
         ("osx", INTEL_MAC, "macos-x64"),
     ];
 
-    /// A release of `versions` on every channel and the bridge's.
+    /// A release of `versions` on every architecture's channel, and on none before.
     fn release(versions: &'static [&'static str]) -> Vec<(&'static str, &'static [&'static str])> {
-        CHANNELS.iter().map(|(channel, _)| *channel).chain(BRIDGE).map(|channel| (channel, versions)).collect()
+        CHANNELS.iter().map(|(channel, _)| (*channel, versions)).collect()
     }
 
     #[test]
     fn an_app_on_a_channel_before_takes_its_architectures_package() {
         for (before, system, channel) in BEFORE {
-            let update = update_to("0.19.0", before, system, &release(&["0.20.0"]));
+            let update = update_to("0.19.1", before, system, &release(&["0.20.0"]));
             assert_eq!(update, full("0.20.0", channel), "{before}, {system:?}");
         }
     }
@@ -306,7 +304,7 @@ mod tests {
     #[test]
     fn an_app_on_a_channel_before_waits_for_a_newer_version() {
         // (The same version on its architecture's channel is no update: an app the bridge updated moves at the next
-        // one.)
+        // one, whichever channel its package was made on.)
         for (before, system, _) in BEFORE {
             assert_eq!(update_to("0.20.0", before, system, &release(&["0.20.0"])), None, "{before}, {system:?}");
         }

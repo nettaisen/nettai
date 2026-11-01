@@ -4377,8 +4377,8 @@ alone, and the update package and its feed the installed app's updater reads fro
 architecture in its name: `win-x64`, `win-arm64`, `macos-arm64`, `macos-x64`, `linux-x64`, `linux-arm64` (the
 user: "the linux and windows channels with their architecture in the name always", and "rename the osx channel to
 macos"), so that each one's files (`nettai-<version>-<channel>-full.nupkg`, `releases.<channel>.json`,
-`assets.<channel>.json`, `RELEASES-<channel>`) sit beside the others' in one release; and each is packed a second
-time on the channel it had up to 0.19.0, the bridge (below, "Channels").
+`assets.<channel>.json`, `RELEASES-<channel>`) sit beside the others' in one release. (0.19.1 packed each a second
+time on the channel it had up to 0.19.0, the bridge: below, "Channels".)
 The user: "yes do that", of Velopack with GitHub releases, which replaced the Inno Setup installer, the disk image
 and appimagetool.
 
@@ -4388,8 +4388,7 @@ and appimagetool.
   own; another is refused), each with the release's ffmpeg for it: x64's `nettai-win-x64-Setup.exe` and
   `nettai-win-x64-Portable.zip` (channel `win-x64`), and Windows on Arm's `nettai-win-arm64-Setup.exe` and
   `nettai-win-arm64-Portable.zip` (`win-arm64`), each packed with the channel as its Velopack runtime (`--runtime`:
-  Velopack's installer, updater and launcher for that architecture). x64's goes up on the bridge `win` too
-  (`nettai-win-Setup.exe`, `nettai-win-Portable.zip`). vpk signs every program in it (the app's, ffmpeg, Velopack's
+  Velopack's installer, updater and launcher for that architecture). vpk signs every program in it (the app's, ffmpeg, Velopack's
   installer and updater) with the certificate `$env:WINDOWS_CERTIFICATE_PATH` names, if one does. Building for
   Windows on Arm needs LLVM's `clang` and `clang-cl` on the PATH besides MSVC (ring and aws-lc-sys compile their C
   and assembly for arm64 with them).
@@ -4397,9 +4396,8 @@ and appimagetool.
   the content in `Contents/Resources/`, where the content lookup finds it), zipped, one per architecture, so that a
   player downloads half of what the universal app was (v0.12.0's: 168 MB, against about 85 MB for Windows and
   Linux): Apple silicon's `nettai-macos-arm64-Portable.zip` and Intel's `nettai-macos-x64-Portable.zip`, on the
-  channels `macos-arm64` and `macos-x64`, packed with Velopack's runtimes `osx-arm64` and `osx-x64`; each goes up on
-  the bridge too, the channel up to 0.19.0 that names that runtime (`nettai-osx-arm64-Portable.zip`,
-  `nettai-osx-x64-Portable.zip`). `NETTAI_MACOS_ARCH` picks one (`aarch64`, `x86_64`; else the Mac's own), and the
+  channels `macos-arm64` and `macos-x64`, packed with Velopack's runtimes `osx-arm64` and `osx-x64`.
+  `NETTAI_MACOS_ARCH` picks one (`aarch64`, `x86_64`; else the Mac's own), and the
   script builds its program (`<arch>-apple-darwin`) and packages it. Up to 0.18.1 a universal app went up too, the
   two programs joined by lipo, `nettai-osx-Portable.zip` on Velopack's default channel `osx` (below, "Channels"). The
   player unzips it where they like
@@ -4412,8 +4410,7 @@ and appimagetool.
   desktop file and icon. One per architecture, built natively on a machine of it (`NETTAI_LINUX_ARCH`, `x86_64` or
   `arm64`, else the machine's own; another is refused), each with the release's ffmpeg for it: x86_64's
   `nettai-linux-x64.AppImage` (channel `linux-x64`) and arm64's `nettai-linux-arm64.AppImage` (`linux-arm64`),
-  each packed with the channel as its Velopack runtime. x86_64's goes up on the bridge `linux` too
-  (`nettai.AppImage`). The program needs the glibc it was built against or a later one, so it is built on an old
+  each packed with the channel as its Velopack runtime. The program needs the glibc it was built against or a later one, so it is built on an old
   distribution.
 - **iOS** (`packaging/ios/package.sh`, `Info.plist`): `nettai.app`, for the Simulator (`NETTAI_IOS=simulator`,
   aarch64-apple-ios-sim, signed ad hoc), zipped (`nettai-ios-simulator.zip`), or for a device (`device`,
@@ -4491,7 +4488,7 @@ job and with a Rust cache of its own, built natively but for the Mac's Intel app
 all the files in one folder), the version Cargo.toml's. The desktop's install .NET 8 and vpk (`VPK_VERSION`). With
 `publish` on (the default), the workflow tags the commit `v<version>` (a tag of that name on another commit stops
 it), `vpk upload github --merge` puts each package's channel (win-x64, win-arm64; macos-arm64, macos-x64; linux-x64,
-linux-arm64; and the bridge's: win, osx-arm64, osx-x64, linux) into one release, `gh release upload` the phones' `nettai-android.apk` and `nettai-ios.ipa` beside them with the IPA's
+linux-arm64) into one release, `gh release upload` the phones' `nettai-android.apk` and `nettai-ios.ipa` beside them with the IPA's
 `altstore.json`, and the release is published, the latest, so the installed apps see it at once (the user: "you should just publish the release instead of drafting it"). It runs on main
 rather than on a tag so that its Rust caches (`Swatinem/rust-cache`) are main's, which every later run restores: a cache
 saved on a tag is that tag's alone, and every release had built from nothing (the user: "it looks like rust cache
@@ -4530,25 +4527,25 @@ channel so installs its architecture's package at its next update, whose channel
 - Up to 0.19.0 Windows and Linux had x86_64's package alone, on Velopack's defaults `win` and `linux`, which its
   apps ask.
 
-So that those apps find an update at all, each release after 0.19.0 has **the bridge**: each architecture's app
-packed a second time, the same folder, on the channel its apps had up to 0.19.0 (`win`, `linux`, `osx-arm64`,
-`osx-x64`; packaging/), and uploaded with the rest. An app of 0.19.0 or before so takes two updates: to the bridge's
-package of the first release with the new channels, which is the new app and asks its architecture's channel, and
-from it, at the release after, to its architecture's package (the same version on another channel is no update:
-Velopack moves only to a newer one), as the universal package was kept on `osx` up to 0.18.1 for the Macs of 0.12.0
-and before. The bridge also keeps the download addresses of those packages (`nettai-win-Setup.exe`,
-`nettai-win-Portable.zip`, `nettai-osx-arm64-Portable.zip`, `nettai-osx-x64-Portable.zip`, `nettai.AppImage`). It is
-dropped when the user says; an install that hasn't updated by then, once the last release with it is out of the ten
-newest, finds nothing (below), and its player downloads the app again. The tests (`updates.rs`) run Velopack's own
-check on such feeds: an app on each channel before takes its architecture's package, waits when the version there is
-its own, and an app on each new channel stays on it.
+So that those apps found an update at all, 0.19.1 had **the bridge**: each architecture's app packed a second time,
+the same folder, on the channel its apps had up to 0.19.0 (`win`, `linux`, `osx-arm64`, `osx-x64`), and uploaded with
+the rest, under those packages' names before (`nettai-win-Setup.exe`, `nettai-win-Portable.zip`,
+`nettai-osx-arm64-Portable.zip`, `nettai-osx-x64-Portable.zip`, `nettai.AppImage`). An app of 0.19.0 or before takes
+two updates: to 0.19.1's bridge package, which is the new app and asks its architecture's channel, and from it to
+the newest on that channel (the same version on another channel is no update: Velopack moves only to a newer one).
+The bridge stopped after 0.19.1 (the user, 2026-11-01: "you can remove the bridge channels as well now right?"), and
+the site's downloads moved to the new names first. An install of 0.19.0 or before finds 0.19.1 as long as it is among
+the ten newest published (Velopack's `GithubSource` reads ten, below); one not opened until ten more are out finds
+nothing, and its player downloads the app again. The tests (`updates.rs`) run Velopack's own check on such feeds: an
+app installed from a package on each channel before takes its architecture's package, waits when the version there
+is its own, and an app on each new channel stays on it.
 
 **The universal package stopped** after 0.18.1 (the user: "get rid of the universal binary"). An install of 0.12.0
 or before finds 0.18.1, the last universal release, updates to it and on to its architecture's, as long as 0.18.1 is
 among the ten newest published (Velopack's `GithubSource` reads ten); one not opened until ten more are out finds
 nothing, and its player downloads their architecture's app again. A universal app of 0.13.0 or later asks its
-architecture's channel already (`osx-arm64`, `osx-x64`, now the bridge). The site's macOS downloads are the two
-architectures' zips.
+architecture's channel already (`osx-arm64`, `osx-x64`, which 0.19.1's bridge served). The site's macOS downloads are
+the two architectures' zips.
 
 ## 20. The games' content
 
