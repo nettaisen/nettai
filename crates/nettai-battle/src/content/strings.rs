@@ -23,12 +23,17 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// A chip's strings.
+/// A chip's strings: its name, and its whole name (`long_name`: "High
+/// Cannon" for "HiCannon", the name itself where the game's isn't cut short
+/// to fit its 8 letters), which the content's own language gives every
+/// chip (the battle shows the game's).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ChipStrings {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub long_name: Option<String>,
     /// What R shows on the custom screen, its lines apart by `\n`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,

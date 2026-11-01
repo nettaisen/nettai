@@ -355,9 +355,9 @@ trade the original look for consistency in every frame, to fix a problem EXE6's 
   dialogue. EXE6's pack offers its extracted fonts for both; another pack names font files. This is the
   frontend's data, never the engine's, like `compat/`: a `fonts` section of the pack's asset index and a small
   table in the content root that maps roles to fonts. No definition and no place in `Content`.
-- **Optionally a full name** beside the 8-character one (`full_name = "GunDelSol 3"`), for places with room: a
-  library or folder screen, a lobby, option B. Nothing in a battle needs it today, so it should wait for a
-  consumer.
+- **Optionally a full name** beside the 8-character one, for places with room: a library or folder screen, a
+  lobby, option B. Done as the locales' `long_name`: every chip's in the content's own language ("Gun del Sol 3"
+  for "GunDelS3", "Cannon" for "Cannon"), a navi's where the game cuts it short; nothing in a battle reads it.
 
 ### 4.3 Translations must not change the content hash
 

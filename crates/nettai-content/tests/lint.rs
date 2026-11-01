@@ -147,10 +147,19 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
     // The own strings' shape is in the records: MagPanel's one line.
     let magpanl = c.defs.chip_by_key("magpanl").expect("magpanl");
     assert_eq!(c.chip(magpanl).description_lines, 1);
+    // Every chip has its whole name in the own language.
+    assert_eq!(c.strings.chip("hicannon").and_then(|s| s.long_name.as_deref()), Some("High Cannon"));
+    let mut short = c.strings.clone();
+    short.chips.get_mut("cannon").unwrap().long_name = None;
+    assert_eq!(
+        nettai_content::locale::check(&short, &c.defs, &nettai_content::locale::text_tables([&short], &c.defs), true),
+        ["chips.cannon: the content's own language gives every chip its whole name (long_name)"]
+    );
     // Other text of the same shape: the same content.
     let mut renamed = base.strings.clone();
     for s in renamed.chips.values_mut() {
         s.name = Some("Renamed".into());
+        s.long_name = Some("Renamed".into());
     }
     assert_eq!(define(renamed).hash(), c.hash());
     // Another shape: another content.

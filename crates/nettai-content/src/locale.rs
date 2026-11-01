@@ -55,8 +55,12 @@
 //! no-running message (the battle's screens); a Cross's description (R in
 //! the Cross window) and its name (a frontend's own text: live play's
 //! Crosses, the plain-text screen); a patch card's name is for its menu
-//! (and the frontend's `--cards`' messages). Nothing shows another form's name or a weapon's, so a table has
-//! none.
+//! (and the frontend's `--cards`' messages). A chip's whole name
+//! (`long_name`: "High Cannon" for "HiCannon", "Cannon" for "Cannon"; the
+//! own language's gives every chip one) and a navi's (where the game cuts
+//! its name short to 8 letters) are for places with room; the battle shows
+//! the game's. Nothing shows another form's name or a weapon's, so a table
+//! has none.
 //!
 //! A game's text tables, key to text that no definition owns, are its
 //! top-level tables that are no collection of its root ([`text_tables`]),
@@ -243,7 +247,8 @@ pub fn text_tables<'a>(tables: impl IntoIterator<Item = &'a Strings>, defs: &Def
 /// an id no definition has, a collection's table of text or a text table of
 /// entries, a string with a combining mark (write the composed character);
 /// and in the own language's (`own`), a chip or navi without a name, which
-/// a frontend would show by its id, and a text table the game's other
+/// a frontend would show by its id, a chip without its whole name
+/// (`long_name`), and a text table the game's other
 /// languages have and it hasn't. (Which forms' strings something shows is a
 /// game's: EXE6's Crosses', which nettai-match's EXE6 tests check.) (A
 /// string may be empty: the invalid chip's name is, and the Japanese games
@@ -263,6 +268,7 @@ pub fn check(s: &Strings, defs: &Defs, text_tables: &[String], own: bool) -> Vec
             unknown.push(format!("chips.{key}: no chip has this key"));
         }
         text(format!("chips.{key}.name"), &c.name);
+        text(format!("chips.{key}.long_name"), &c.long_name);
         text(format!("chips.{key}.description"), &c.description);
     }
     for (key, n) in &s.navis {
@@ -270,6 +276,7 @@ pub fn check(s: &Strings, defs: &Defs, text_tables: &[String], own: bool) -> Vec
             unknown.push(format!("navis.{key}: no navi has this key"));
         }
         text(format!("navis.{key}.name"), &n.name);
+        text(format!("navis.{key}.long_name"), &n.long_name);
         text(format!("navis.{key}.variant_name"), &n.variant_name);
         text(format!("navis.{key}.run_message"), &n.run_message);
     }
@@ -311,6 +318,9 @@ pub fn check(s: &Strings, defs: &Defs, text_tables: &[String], own: bool) -> Vec
         for d in &defs.chips {
             if !named(s.chip(&d.key).map(|c| &c.name)) {
                 unknown.push(format!("chips.{}: the content's own language names every chip", d.key));
+            }
+            if !named(s.chip(&d.key).map(|c| &c.long_name)) {
+                unknown.push(format!("chips.{}: the content's own language gives every chip its whole name (long_name)", d.key));
             }
         }
         for d in &defs.navis {
