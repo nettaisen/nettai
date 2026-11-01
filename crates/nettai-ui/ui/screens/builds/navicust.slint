@@ -13,10 +13,11 @@
 // The piece in hand is drawn over the board where the cursor holds it: lifted (a little larger, with a shadow), and
 // it turns a quarter at a time and drops with a pulse along its cells. On a phone the board has the tab's width, the
 // effects and the bugs a line each under it, and under them PROGRAMS, which opens the list as a sheet from the bottom
-// (`NavicustOverlay`); with a piece in hand it is PUT AWAY. Held sideways (docs/design/app-ui.md §2.103) there is no
-// strip: the board, framed, as large as the tab's height takes, with a column beside it in the frame (the key, the
-// effects and the bugs, the notice's line), and the programs beside the frame. Its Rust half is
-// src/screens/builds/navicust.rs.
+// (`NavicustOverlay`); with a piece in hand it is PUT AWAY, and the buttons that turn the piece and compress it come
+// before it in its row. Held sideways (docs/design/app-ui.md §2.103) there is no strip: the board, framed, as large as
+// the tab's height takes, with a column beside it in the frame (the key, the effects and the bugs, the notice's line;
+// with a piece in hand, its buttons where the effects and the bugs were), and the programs beside the frame. Its Rust
+// half is src/screens/builds/navicust.rs.
 
 import { Theme, Audit, I18n } from "../../theme.slint";
 import { Nav, Focusable } from "../../nav.slint";
@@ -943,6 +944,51 @@ component ProgramsPane inherits Rectangle {
     }
 }
 
+// A quarter turn's mark, drawn (no font has to have it): three quarters of a circle and the arrow's head, clockwise
+// or back.
+component TurnMark inherits Rectangle {
+    in property <bool> clockwise;
+    width: 18px;
+    height: 17px;
+    if root.clockwise: Path {
+        width: 100%;
+        height: 100%;
+        viewbox-width: 18;
+        viewbox-height: 17;
+        stroke: Theme.text;
+        stroke-width: 1.75px;
+        commands: "M 15 10 A 6 6 0 1 1 9 4";
+    }
+
+    if root.clockwise: Path {
+        width: 100%;
+        height: 100%;
+        viewbox-width: 18;
+        viewbox-height: 17;
+        fill: Theme.text;
+        commands: "M 13.5 4 L 8.5 0.5 L 8.5 7.5 Z";
+    }
+
+    if !root.clockwise: Path {
+        width: 100%;
+        height: 100%;
+        viewbox-width: 18;
+        viewbox-height: 17;
+        stroke: Theme.text;
+        stroke-width: 1.75px;
+        commands: "M 3 10 A 6 6 0 1 0 9 4";
+    }
+
+    if !root.clockwise: Path {
+        width: 100%;
+        height: 100%;
+        viewbox-width: 18;
+        viewbox-height: 17;
+        fill: Theme.text;
+        commands: "M 4.5 4 L 9.5 0.5 L 9.5 7.5 Z";
+    }
+}
+
 export component NavicustTab inherits Rectangle {
     // The board's frame: its cells, the room for the command line's arrows at its sides, and its height.
     property <length> gap: 3px;
@@ -1506,12 +1552,77 @@ export component NavicustTab inherits Rectangle {
     }
 
     Button {
-        x: 0;
+        x: root.put-away-x;
         y: root.list-y;
-        width: root.width;
+        width: root.width - root.put-away-x;
         visible: Theme.phone;
         nav: Theme.phone ? "open-programs" : "";
         text: NavicustView.holding ? I18n.upper(@tr("Put away")) : I18n.upper(@tr("Programs"));
+    }
+
+    // ---- The piece in hand turned a quarter either way, and compressed where it has two shapes, by taps: a touch
+    // screen has no wheel, keys or shoulders. On a phone alone: upright at the start of PUT AWAY's row, sideways in the
+    // column beside the board, in the place of the effects and the bugs while a piece is in hand. Each is there only
+    // while a piece is in hand, so the cursor never rests on one that does nothing.
+    property <bool> tools: Theme.handheld && NavicustView.holding && NavicustView.board;
+    property <length> turn-width: Theme.sideways ? (root.column-width - 12px - 8px) / 2 : 44px;
+    property <length> compress-width: Theme.sideways ? root.column-width - 12px : max(120px, compress-word.preferred-width + 32px);
+    property <length> tools-x: Theme.sideways ? root.column-x : 0px;
+    property <length> tools-y: Theme.sideways ? root.facts-y : root.list-y;
+    property <length> put-away-x: root.tools && Theme.phone ? 2 * (root.turn-width + 8px) + (NavicustView.held-compresses ? root.compress-width + 8px : 0px) : 0px;
+    // (COMPRESS's words as an upright phone's button sets them, measured: it is as wide as they ask, PUT AWAY the
+    // rest.)
+    compress-word := Text {
+        visible: false;
+        text: NavicustView.held-compressed ? I18n.upper(@tr("Uncompress")) : I18n.upper(@tr("Compress"));
+        font-family: Theme.display;
+        font-size: 13px;
+        font-weight: Theme.display-semibold;
+        letter-spacing: Theme.button-tracking;
+    }
+
+    // (A tap between them misses them alone: it doesn't put the piece back, as one off the board does.)
+    if root.tools: TouchArea {
+        x: root.tools-x;
+        y: root.tools-y;
+        width: Theme.sideways ? root.column-width - 12px : root.put-away-x;
+        height: Theme.sideways ? 32px + 12px + 32px : 40px;
+    }
+
+    if root.tools: Button {
+        x: root.tools-x;
+        y: root.tools-y;
+        width: root.turn-width;
+        compact: true;
+        nav: "turn-back";
+        TurnMark {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            clockwise: false;
+        }
+    }
+
+    if root.tools: Button {
+        x: root.tools-x + root.turn-width + 8px;
+        y: root.tools-y;
+        width: root.turn-width;
+        compact: true;
+        nav: "turn";
+        TurnMark {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            clockwise: true;
+        }
+    }
+
+    if root.tools && NavicustView.held-compresses: Button {
+        x: Theme.sideways ? root.tools-x : 2 * (root.turn-width + 8px);
+        // (Sideways a row under the turns, the two rows' taps meeting at 44 each.)
+        y: Theme.sideways ? root.tools-y + 32px + 12px : root.tools-y;
+        width: root.compress-width;
+        compact: true;
+        nav: "compress";
+        text: compress-word.text;
     }
 
     // CLEAR (docs/design/app-ui.md §2.71; the user: "you should add clear for navicust/folder/patch cards/abd"): every
@@ -1568,7 +1679,8 @@ export component NavicustTab inherits Rectangle {
             y: Theme.sideways ? root.facts-y + i * root.fact-pitch : root.lines-y + i * 22px;
             width: Theme.sideways ? root.column-width - 12px : root.width;
             height: Theme.sideways ? root.fact-pitch - 6px : 16px;
-            visible: !Theme.sideways || NavicustView.board;
+            // (Sideways a piece in hand's buttons take their place.)
+            visible: !Theme.sideways || (NavicustView.board && !root.tools);
             Text {
                 x: 0;
                 y: 0;

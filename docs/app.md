@@ -2342,7 +2342,10 @@ wasn't put down (else what the game's rules have against the NaviCust), the effe
 PROGRAMS, the tab's width, which opens the programs (their title and those problems, the search, the list) as a
 sheet from the bottom (`NavicustOverlay`, its controls' names `programs…`); a program taken shuts it, the piece in
 hand over the board, and with a piece in hand the button is PUT AWAY (it puts the piece away into the list, as a
-click on the list does). The board's cells are as large as the width takes (41 on EXE6's seven columns, 58 on a
+click on the list does), after a quarter turn back, one clockwise and, where the piece has two shapes, COMPRESS
+(`turn-back`, `turn`, `compress`: L, R and C's, as a touch screen has none of them; there only while a piece is in
+hand; sideways in the column beside the board, in the effects' and the bugs' place: docs/design/app-ui.md §2.104).
+The board's cells are as large as the width takes (41 on EXE6's seven columns, 58 on a
 5x5), or on a phone too short for all that (a tab under about 540 units: an iPhone SE's is about that) as large as
 leaves it room (on seven columns 40 at 533 units, 36 at 508; a 5x5's 52 to 58, by its key's lines). The patch cards'
 counts, their cards and Together, with the library as a sheet from the bottom (`PatchCardsOverlay`, with UP, DOWN

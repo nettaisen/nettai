@@ -1859,6 +1859,19 @@ Each is settled unless the user changes it.
        window are the desktop's arrangement and width: a new build's (600 wide, FROM A SAVE FILE… at the buttons' left
        in place of under a line) and a direct connection's. The lobby's CHANGE BUILD shows four rows. *A select's
        choices* open as a sheet from the bottom, at most 480 wide, in the middle.
+104. **Turning a NaviCust piece by touch** (2026-11-01). The user asked whether a piece could be turned on a phone: it
+     couldn't. The wheel, L and R (the pad's shoulders) turn the piece in hand and C (the pad's north button)
+     compresses it, and a phone with only its screen has none of them, nor the key hints that name them. Agreed without
+     a mockup, as a small change: on a phone (upright and sideways), while a piece is in hand, buttons for them.
+     - *Upright:* in PUT AWAY's row, before it: a quarter turn back and one clockwise (44 wide, each a circle's three
+       quarters with its arrow's head, drawn), then COMPRESS (UNCOMPRESS while compressed) as wide as its words, where
+       the piece has two shapes; PUT AWAY the rest of the row.
+     - *Sideways:* in the column beside the board, where the effects and the bugs are, which give them the room while
+       a piece is in hand: the two turns side by side, COMPRESS under them the column's width (compact, 32 tall, the
+       rows' taps meeting at 44).
+     - They are there only while a piece is in hand, so the cursor never rests on one that does nothing; a tap between
+       them is no tap off the board (which puts the piece back). The desktop's layout has none: its wheel and keys
+       turn the piece.
 
 ## 3. Chosen where the user gave no answer
 
@@ -2371,7 +2384,9 @@ DUPLICATE and DELETE.
   board puts it back where it was; a right click puts it away, or takes off the piece under the pointer. On a phone
   (§2.102) the board, its key, the line of why a piece wasn't put down and the effects' and bugs' lines keep the tab
   (its cells smaller on a phone too short for all of them), and under them PROGRAMS opens the list as a sheet from the
-  bottom: a program taken shuts it, the piece in hand over the board; with a piece in hand the button is PUT AWAY.
+  bottom: a program taken shuts it, the piece in hand over the board; with a piece in hand the button is PUT AWAY,
+  and the buttons that turn the piece and compress it come before it in its row (§2.104; sideways in the column beside
+  the board).
 - **Patch cards** (§2.19, §2.20, §2.64): the folder's shape. EXE5 and EXE6: the installed cards in order in the
   framed panel, rows as the folder's (number, name, its version's mark, MB), Cards and MB used in its header (a phone's
   with what the game's rules have against the cards after them) and CLEAR at its right end, which takes every card

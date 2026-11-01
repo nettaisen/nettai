@@ -56,6 +56,10 @@
 //! held to them while it is open (its controls' names begin with `programs`). A program taken from it shuts it, the
 //! piece in hand over the board, which taps put down as before; a tap on the shade or Back shuts it with nothing
 //! taken. With a piece in hand PROGRAMS is PUT AWAY, which puts it away into the list, as a click on the list does.
+//!
+//! **A phone's buttons turn and compress the piece in hand** (a touch screen has no wheel, keys or shoulders): while
+//! one is in hand, two turns (`turn-back`, `turn`) and COMPRESS where it has two shapes (`compress`), upright before
+//! PUT AWAY, sideways in the column beside the board where the effects and the bugs were. They do what L, R and C do.
 
 use crate::builds::grid::{self, Edit, GridData, Held, tone};
 use crate::builds::overview;
@@ -101,6 +105,11 @@ const SEARCH_LENGTH: usize = 24;
 /// `programs.search`), and the tab's button that opens it.
 const SHEET: &str = "programs";
 const OPEN: &str = "open-programs";
+
+/// A phone's buttons for the piece in hand: a quarter turn back and one clockwise, and compressing it.
+const TURN_BACK: &str = "turn-back";
+const TURN: &str = "turn";
+const COMPRESS: &str = "compress";
 
 #[derive(Default)]
 pub struct Navicust {
@@ -1040,6 +1049,10 @@ impl Tab for Navicust {
             // it.)
             OPEN if self.held.is_some() => self.put_away(shell, draft),
             OPEN => self.open_sheet(shell),
+            // (A phone's buttons for the piece in hand, there only while one is: L, R and C's.)
+            TURN_BACK if self.held.is_some() => self.turn(shell, draft, false),
+            TURN if self.held.is_some() => self.turn(shell, draft, true),
+            COMPRESS if self.held.is_some() => self.compress(shell, draft),
             "programs.close" => {
                 self.close_sheet(shell);
             }
