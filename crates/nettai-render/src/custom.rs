@@ -1036,7 +1036,7 @@ impl Window {
         };
         if let (Some(Some(m)), Some(map)) = (drawing, map) {
             for part in &m.parts {
-                let cells: Vec<[u8; 2]> = part
+                let mut cells: Vec<[u8; 2]> = part
                     .cells
                     .iter()
                     .copied()
@@ -1049,6 +1049,15 @@ impl Window {
                         same
                     })
                     .collect();
+                // (And its holes the screen lays plain in the color the
+                // drawing paints there: the chip window's box under a name
+                // on the text layer, its corner round across them.)
+                cells.extend(part.plain.iter().filter_map(|&([c, r], [p, k])| {
+                    let i = r as usize * COLUMNS + c as usize;
+                    let e = self.map.get(i)?;
+                    let plain = e.palette & 15 == p && self.tiles.tile(e.tile).iter().all(|&px| px == k);
+                    (plain && !self.drawn_cells[i]).then_some([c, r])
+                }));
                 if cells.is_empty() {
                     continue;
                 }

@@ -594,7 +594,7 @@ pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (Hud
             }
             cells.push([col as u8, row as u8]);
         }
-        s.gauge_frame = sh.drawing("hud/gauge-frame", c.grid()).map(|drawing| MapDrawing { parts: vec![nettai_assets::shapes::MapPart { name: "gauge-frame".into(), drawing, cells }] });
+        s.gauge_frame = sh.drawing("hud/gauge-frame", c.grid()).map(|drawing| MapDrawing { parts: vec![nettai_assets::shapes::MapPart { name: "gauge-frame".into(), drawing, cells, plain: Vec::new() }] });
     }
     s.gauge_cells = gauge_cells(h, &gauge_base, sh, say);
     // The emotion window's boxes beside the face.
@@ -1091,6 +1091,32 @@ fn map_drawings(maps: &[NamedMap], sh: &mut Shaper) -> Vec<Option<MapDrawing>> {
                 let more = if missed.len() > 12 { format!(" and {} more", missed.len() - 12) } else { String::new() };
                 sh.notes.push(format!("{name}: {missing} cells no drawing draws stay pictures: {}{more}", missed.iter().take(12).cloned().collect::<Vec<_>>().join(" ")));
             }
+            // (Its holes a part's drawing paints one color over, at its
+            // pixels' centers, but where it rounds or cuts an edge (at
+            // least the share a drawing must give a picture): where the
+            // screen lays that plain color there (the chip window's box with
+            // no name in it), the drawing stands in for the cell, so a
+            // corner it rounds across the cell is whole. Each with the first
+            // of the parts' drawings in the order above that does.)
+            let mut plain: Vec<(usize, ([u8; 2], [u8; 2]))> = Vec::new();
+            for cy in 0..grid.h / 8 {
+                for cx in 0..grid.w / 8 {
+                    let at = |i: usize| (8 * cy + i / 8) * grid.w + 8 * cx + i % 8;
+                    if !(0..64).all(|i| grid.cells[at(i)] == Label::Hole) {
+                        continue;
+                    }
+                    let found = order.iter().copied().filter(|&o| parts.iter().any(|p| p.0 == o)).find_map(|o| {
+                        let (_, raster) = drawn[o].as_ref()?;
+                        let colors: Vec<[u8; 2]> = (0..64).filter_map(|i| match raster[at(i)] { Label::Color(p, c) => Some([p, c]), _ => None }).collect();
+                        let most = colors.iter().copied().max_by_key(|&k| (colors.iter().filter(|&&c| c == k).count(), std::cmp::Reverse(k)))?;
+                        let share = colors.iter().filter(|&&c| c == most).count() as f32 / 64.0;
+                        (share >= MATCH).then_some((o, most))
+                    });
+                    if let Some((o, color)) = found {
+                        plain.push((o, ([cx as u8, cy as u8], color)));
+                    }
+                }
+            }
             let parts: Vec<nettai_assets::shapes::MapPart> = parts
                 .into_iter()
                 .filter_map(|(o, cells)| {
@@ -1098,7 +1124,8 @@ fn map_drawings(maps: &[NamedMap], sh: &mut Shaper) -> Vec<Option<MapDrawing>> {
                     let share = matching_in(grid, d, &cells);
                     let line = format!("{name}: {} for {} cells: {:.1}% of their pixels", maps[o].0, cells.len(), 100.0 * share);
                     sh.notes.push(if share < MATCH { format!("{line}, far from the picture") } else { format!("note: {line}") });
-                    Some(nettai_assets::shapes::MapPart { name: maps[o].0.trim_start_matches("custom/").trim_start_matches("hud/").to_string(), drawing: d.clone(), cells })
+                    let plain = plain.iter().filter(|(q, _)| *q == o).map(|&(_, c)| c).collect();
+                    Some(nettai_assets::shapes::MapPart { name: maps[o].0.trim_start_matches("custom/").trim_start_matches("hud/").to_string(), drawing: d.clone(), cells, plain })
                 })
                 .collect();
             if sh.sources.is_some() {

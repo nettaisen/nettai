@@ -71,12 +71,17 @@ pub struct MapDrawing {
 }
 
 /// A drawing of a map's ([`MapDrawing`]): its name (its file's: the map
-/// it was drawn for), the drawing, the cells it stands in for.
+/// it was drawn for), the drawing, the cells it stands in for, and the
+/// holes it stands in for where the screen lays them plain: each cell
+/// with the palette row and color the drawing paints over it (but where
+/// it rounds an edge), which every pixel of the tile laid there must be
+/// (the chip window's box under a name the sharp text draws).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct MapPart {
     pub name: String,
     pub drawing: Drawing,
     pub cells: Vec<[u8; 2]>,
+    pub plain: Vec<([u8; 2], [u8; 2])>,
 }
 
 impl MapDrawing {
