@@ -1894,7 +1894,7 @@ export type SchemaList = { __list: boolean, of: SchemaField, max: number }
 -- A role's declaration (`schema.role(name, T)`): a field of type `T` the
 -- engine knows by the role `name` (a player's setup field it reads:
 -- "form_list", the forms a form list window offers; a state field a view
--- shows: "form_list.cursor").
+-- shows: "form_list.count").
 export type SchemaRole = { __role: boolean, role: string, of: SchemaField }
 
 -- What a state's or a setup's declaration takes beside type names, lists of
@@ -1944,19 +1944,20 @@ export type Kind = KindSpec
 -- "chip_picture", its picture in the chip window is also the picture of the
 -- chip the rules' role `button_chip` names.
 export type ButtonView = "form_offer" | "chip_picture"
--- What a frontend draws while a window is up (§4.8). A list of forms to
--- choose from, in its four windows: "form_list_opening", "form_list",
--- "form_list_closing" and "form_chosen" (the rules' state keeps the fields
--- of the roles `form_list.offered`, a u8 array of the places offered,
--- `form_list.count`, `form_list.marked`, a bool array, `form_list.cursor`,
--- `form_list.chosen`, a bool, and `form_list.chosen_place`).
+-- What a frontend draws while a window is up (§4.8). "form_chosen": a form
+-- of the rules' form list chosen (`custom.choose_form`; the rules' state
+-- keeps the fields of the roles `form_list.offered`, a u8 array of the
+-- places offered, `form_list.count`, `form_list.marked`, a bool array,
+-- `form_list.chosen`, a bool, and `form_list.chosen_place`, which each
+-- player's own layer shows the list from: its window, its cursor and a
+-- form's description are the layer's, by the custom screen's `form_list`).
 -- "offer_flight": the form a "form_offer" button offers flies to the picked
 -- column as its icon (`offer_flight.step` and `offer_flight.count`).
 -- "chip_flight": the chip a button shows flies there (`chip_flight.button`,
 -- which of the screen's buttons that show a chip, from 1,
 -- `chip_flight.step` and `chip_flight.count`). The engine finds each by its
 -- role (`schema.role(role, T)`), never by a field's name.
-export type WindowView = "form_list_opening" | "form_list" | "form_list_closing" | "form_chosen" | "offer_flight" | "chip_flight"
+export type WindowView = "form_chosen" | "offer_flight" | "chip_flight"
 -- A custom-screen button of the rules (docs/design/rules-in-luau.md §4.4).
 export type ButtonSpec = {
     -- Its first slot, and how many it takes (1 or 2).
@@ -2080,10 +2081,12 @@ export type RulesSpec = {
         -- A chip of the hand picked, or its pick taken back.
         chip_picked: ((side: number, chip: Chip) -> ())?,
         chip_taken_back: ((side: number, chip: Chip) -> ())?,
-        -- Choosing chips, a tick with keys (`custom.pressed`,
-        -- `custom.repeated`), before the screen's own: whether the rules
-        -- took them.
-        keys: ((side: number) -> boolean)?,
+        -- Choosing chips, the player chose entry `entry` (from 0) of the
+        -- rules' form list (the fields of the roles `form_list.*`), which
+        -- their own layer showed them: the rules check it (a refusal's
+        -- `custom.refuse`) and take it. The list's browsing (its window, its
+        -- cursor, a form's description) is the layer's.
+        choose_form: ((side: number, entry: number) -> ())?,
         -- B with nothing picked: whether the rules took something back
         -- (none: B is refused).
         take_back: ((side: number) -> boolean)?,
@@ -3351,9 +3354,11 @@ declare new: {
 -- §5.3): only in a hook the framework calls (from modules under rules/,
 -- which the content check holds to).
 -- A side's custom screen, in the rules' custom hooks (§4.4): the
--- refusal sound; the shared machinery for the button under the cursor (the
--- picked chips scrapped, the chips not picked dealt again); whether the
--- last pick is a chip; the state of the button under the cursor.
+-- refusal sound; the shared machinery for the button pressed, in its
+-- `pressed` (the picked chips scrapped, the chips not picked dealt again);
+-- whether the last pick is a chip; the state of the button pressed. (Where
+-- the cursor is, and the keys, are the player's own layer's: the screen
+-- takes their choices.)
 export type FolderChip = { chip: Chip, code: string? }
 declare custom: {
     -- The side's battle folder as its screen has it: its 30 places in order,
@@ -3387,7 +3392,8 @@ declare custom: {
     redeal: (side: number) -> (),
     last_pick_is_chip: (side: number) -> boolean,
     cursor_state: (side: number) -> "selectable" | "unavailable" | "selected",
-    -- For the rules' buttons and windows: the slot under the cursor picked;
+    -- For the rules' buttons and windows: the button pressed picked (in its
+    -- `pressed`);
     -- a screen sound ("pick", "refused", "back", "cancel", "cursor",
     -- "description", "program_advance_part", "program_advance"), and a sound
     -- of the rules' own in the screen's order (`play_sound`); the last
@@ -3409,7 +3415,8 @@ declare custom: {
     -- navi's own), as the screen checked it; the rules' button in the last
     -- pick's place, first in the selection (B puts the chip back; at OK the
     -- chip leaves the folder where the button stands): false when the last
-    -- pick isn't a chip; whether the screen's fade is still running.
+    -- pick isn't a chip; whether the screen's fade (`fade`'s) is still
+    -- running.
     -- A button attached to the last pick (EXE5's capsules): the last pick, a
     -- chip with no button attached yet (`last_pick`'s `attached`), carries
     -- `modifiers` into the hand (its entry's marks, which the game's
@@ -3456,28 +3463,18 @@ declare custom: {
     form_taken: (side: number, by: string) -> boolean,
     full: (side: number) -> boolean,
     button_picked: (side: number, button: string) -> boolean,
-    -- The screen's cursor (its slot) and moving it; whether a key is
-    -- pressed this tick, or repeats.
-    cursor: (side: number) -> number,
-    set_cursor: (side: number, slot: number) -> (),
-    pressed: (side: number, key: Key) -> boolean,
-    repeated: (side: number, key: Key) -> boolean,
     -- The screen's drawing, for a window: the window's sprites (the
     -- emblem, the Regular chip's frame, the last turns' block), the Regular
-    -- chip's frame alone, the screen's cursor where it is, the icon of the
-    -- chip a button holds over that
-    -- button (`hold_last_pick`), the Cross window's cursor, the chip window
-    -- showing the slot under the cursor, and the window's Cross tab.
+    -- chip's frame alone, the screen's cursor where it is (the player's
+    -- layer's), the icon of the chip a button holds over that button
+    -- (`hold_last_pick`), the chip window showing the slot under the
+    -- cursor, and the window's form list tab.
     draw_window: (side: number) -> (),
     draw_regular: (side: number) -> (),
     draw_cursor: (side: number) -> (),
     draw_held: (side: number) -> (),
-    draw_form_list_cursor: (side: number) -> (),
     show_chip_window: (side: number) -> (),
     set_form_list_tab: (side: number, on: boolean) -> (),
-    -- R in the window up: the form's description (three lines without
-    -- one), back to the window when it closes.
-    describe: (side: number, form: FormDef?) -> (),
     -- The rules' buttons' states asked again.
     refresh_buttons: (side: number) -> (),
     player: (side: number) -> {
