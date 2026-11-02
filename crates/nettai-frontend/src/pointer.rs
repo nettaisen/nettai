@@ -11,9 +11,10 @@
 //! [`LONG_PRESS`] ticks, it describes it instead. A click or a tap on no
 //! target is still a click: it closes a description, as a key does. A hover
 //! is a gesture only as the target under the pointer changes (the mouse
-//! onto another, a finger down after it was lifted): each gesture goes in
-//! the player's tick, for a replay to show their cursor
-//! (docs/design/custom-screen-actions.md §3).
+//! onto another, a finger down after it was lifted); the mouse off the
+//! targets (onto none, or off the picture) is away, which takes a cursor on
+//! a pick back to its slot. Each gesture goes in the player's tick, for a
+//! replay to show their cursor (docs/design/custom-screen-actions.md §3).
 
 use nettai_battle::custom::layer::{Gesture, Target};
 
@@ -122,23 +123,23 @@ impl ScreenPointer {
                 None
             }
             (PointerKind::Left, _) => {
-                self.over = None;
                 if let Some(press) = &mut self.press {
                     press.off = true;
                 }
-                None
+                // (Off the picture from a target: away.)
+                self.over.take().map(|_| Gesture::Away)
             }
         }
     }
 
     /// The pointer over `under`: a hover there if it is another target than
-    /// the one it was over.
+    /// the one it was over; off the targets, away.
     fn hover(&mut self, under: Option<Target>) -> Option<Gesture> {
         if under == self.over {
             return None;
         }
         self.over = under;
-        under.map(Gesture::Hover)
+        Some(under.map_or(Gesture::Away, Gesture::Hover))
     }
 
     /// A tick of the battle's: a finger held still on a target long enough
@@ -203,6 +204,13 @@ mod tests {
         assert_eq!(p.event(m(PointerKind::Moved, 10.0, 10.0), at), Some(Gesture::Hover(CHIP)));
         // (Over the same target: nothing new.)
         assert_eq!(p.event(m(PointerKind::Moved, 20.0, 10.0), at), None);
+        assert_eq!(p.event(m(PointerKind::Moved, 120.0, 10.0), at), Some(Gesture::Hover(OK)));
+        // Off the targets: away, once; off the picture from one: away.
+        assert_eq!(p.event(m(PointerKind::Moved, 10.0, 90.0), at), Some(Gesture::Away));
+        assert_eq!(p.event(m(PointerKind::Moved, 11.0, 90.0), at), None);
+        assert_eq!(p.event(m(PointerKind::Moved, 120.0, 10.0), at), Some(Gesture::Hover(OK)));
+        assert_eq!(p.event(m(PointerKind::Left, 0.0, 0.0), at), Some(Gesture::Away));
+        assert_eq!(p.event(m(PointerKind::Left, 0.0, 0.0), at), None);
         assert_eq!(p.event(m(PointerKind::Moved, 120.0, 10.0), at), Some(Gesture::Hover(OK)));
         // (Pressed where it is over: no hover again.)
         assert_eq!(p.event(m(PointerKind::Down, 120.0, 10.0), at), None);

@@ -1349,14 +1349,17 @@ fn a_layer_given_the_ticks_gestures_shows_what_the_pointers_did() {
     for p in [&mut live, &mut again] {
         p.open();
     }
-    let script: [(u32, Option<Gesture>, u16); 12] = [
+    let script: [(u32, Option<Gesture>, u16); 15] = [
         (12, Some(Gesture::Hover(Target::Slot(3))), 0),
         (13, Some(Gesture::Hover(Target::Slot(1))), 0),
         (14, Some(Gesture::Click(Some(Target::Slot(0)))), 0),
         (16, None, keys::RIGHT),
         (20, Some(Gesture::Click(Some(Target::Slot(1)))), 0),
+        (21, Some(Gesture::Hover(Target::Pick(1))), 0),
         (22, Some(Gesture::Describe(Target::Pick(0))), 0),
         (40, Some(Gesture::Click(None)), 0),
+        (58, Some(Gesture::Hover(Target::Pick(0))), 0),
+        (59, Some(Gesture::Away), 0),
         (60, Some(Gesture::Hover(Target::Slot(4))), 0),
         (61, Some(Gesture::Click(Some(Target::Pick(0)))), 0),
         (70, Some(Gesture::Describe(Target::Slot(2))), 0),
@@ -1377,11 +1380,11 @@ fn a_layer_given_the_ticks_gestures_shows_what_the_pointers_did() {
         taken += given.gesture.is_some() as u32;
         let (_, replayed) = again.step_input(PlayerTick { gesture: given.gesture, ..PlayerTick::buttons(given.held) });
         assert_eq!(replayed, given, "tick {tick}");
-        let shown = |l: &Layer| (l.cursor, l.sub, l.list_cursor, l.chip_window, l.look, l.hover, l.calls().collect::<Vec<_>>());
+        let shown = |l: &Layer| (l.cursor, l.pick_cursor, l.sub, l.list_cursor, l.chip_window, l.look, l.hover, l.calls().collect::<Vec<_>>());
         assert_eq!(shown(&again.layer), shown(&live.layer), "tick {tick}");
         assert_eq!(again.screen().selection(), live.screen().selection(), "tick {tick}");
     }
-    assert_eq!(taken, 10);
+    assert_eq!(taken, 13);
     assert_ne!(live.phase(), Phase::Choosing, "OK sent the hand");
 }
 
@@ -1600,6 +1603,75 @@ fn unchoosing_nothing_chosen_is_refused() {
     choose(&mut p, ScreenChoice::Pick(0));
     choose(&mut p, ScreenChoice::Unchoose);
     assert_eq!((p.screen().selection(), p.sounds()), (&[0u8][..], vec![look::ScreenSound::Refused]));
+}
+
+/// The cursor on a pick (the user: "when mousing over the stack of chips you
+/// should show the cursor there too"): a hover on a pick puts it there, its
+/// slot kept, the chip window showing the pick's chip; a direction brings it
+/// back to its slot and moves it no further; A takes the pick back; R
+/// describes it; a hover on a slot, or the pointer away, brings it back.
+#[test]
+fn the_cursor_goes_on_a_pick_by_pointer_only() {
+    use super::layer::{Gesture, Target};
+    let mut p = Player::new(&[(SHOT, 0), (WAVE, 0), (SHOT, 1), (MEGA, 0), (MEGA, 1)]);
+    p.open();
+    p.wait(10);
+    p.step(0);
+    choose(&mut p, ScreenChoice::Pick(0));
+    choose(&mut p, ScreenChoice::Pick(1));
+    p.layer.point(Gesture::Hover(Target::Slot(3)));
+    p.step(0);
+    assert_eq!((p.layer.cursor, p.layer.pick_cursor), (3, None));
+    // Onto the second pick: the cursor there, the slot kept, WAVE in the
+    // chip window, the cursor's sound.
+    p.layer.point(Gesture::Hover(Target::Pick(1)));
+    p.step(0);
+    assert_eq!((p.layer.cursor, p.layer.pick_cursor), (3, Some(1)));
+    assert_eq!((p.layer.chip_window.slot, p.layer.chip_window.last_chip.map(|c| c.id)), (1, Some(ChipHandle(WAVE))));
+    assert!(p.sounds().contains(&look::ScreenSound::Cursor));
+    // A direction: back to slot 3, no further.
+    p.press(keys::RIGHT);
+    assert_eq!((p.layer.cursor, p.layer.pick_cursor), (3, None));
+    assert_eq!(p.layer.chip_window.slot, 3);
+    // Keys never go into the column: the next RIGHT moves on the slots.
+    p.press(keys::RIGHT);
+    assert_eq!((p.layer.cursor, p.layer.pick_cursor), (4, None));
+    // R on a pick describes its chip; A takes it back.
+    p.layer.point(Gesture::Hover(Target::Pick(0)));
+    p.step(0);
+    assert_eq!(p.layer.pick_cursor, Some(0));
+    p.press(keys::R);
+    assert!(matches!(p.layer.sub, Sub::Description { chip: Some(c), .. } if c == ChipHandle(SHOT)), "{:?}", p.layer.sub);
+    let closed = (1..200).find(|_| {
+        p.step(keys::B);
+        p.step(0);
+        p.up() == Up::Screen(Phase::Choosing)
+    });
+    assert!(closed.is_some());
+    p.wait(4);
+    assert_eq!(p.layer.pick_cursor, Some(0));
+    let (_, given) = p.step_input(PlayerTick::buttons(keys::A));
+    assert_eq!(given.choice, Some(ScreenChoice::Unpick(0)));
+    p.step(0);
+    // WAVE moved up under the cursor; B is the game's B.
+    assert_eq!((p.screen().selection(), p.layer.pick_cursor), (&[1u8][..], Some(0)));
+    assert_eq!(p.layer.chip_window.last_chip.map(|c| c.id), Some(ChipHandle(WAVE)));
+    let (_, given) = p.step_input(PlayerTick::buttons(keys::B));
+    assert_eq!(given.choice, Some(ScreenChoice::TakeBack));
+    p.step(0);
+    // The pick gone from under it: back on its slot.
+    assert_eq!((p.screen().selection(), p.layer.pick_cursor, p.layer.cursor), (&[][..], None, 4));
+    // The pointer away, or onto a slot: back on the slots.
+    choose(&mut p, ScreenChoice::Pick(0));
+    for (off, cursor) in [(Gesture::Away, 4), (Gesture::Hover(Target::Slot(2)), 2)] {
+        p.layer.point(Gesture::Hover(Target::Pick(0)));
+        p.step(0);
+        assert_eq!(p.layer.pick_cursor, Some(0));
+        p.layer.point(off);
+        p.step(0);
+        assert_eq!((p.layer.pick_cursor, p.layer.cursor), (None, cursor), "{off:?}");
+        assert!(p.sounds().contains(&look::ScreenSound::Cursor), "{off:?}");
+    }
 }
 
 /// The pointer on a button holding a chip releases it (no key does: A on it

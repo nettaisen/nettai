@@ -39,7 +39,7 @@
 //! ```text
 //! head & 1 == 0   a tick: head >> 1 = buttons (10 bits, in WIRE_ORDER) | switch << 10 (2 bits: the member
 //!                 + 1, 0 none) | microphone level << 12 (8 bits) | screen << 20 (12 bits: the gesture's
-//!                 `Gesture::code` + 74 × the choice's `ScreenChoice::code`, each 0 none: `PlayerTick::word`)
+//!                 `Gesture::code` + 75 × the choice's `ScreenChoice::code`, each 0 none: `PlayerTick::word`)
 //!                 | flags << 32
 //! head & 1 == 1   head >> 1: 0 the round's end, 1 the match's end, 2 + d the sender's present delay d (0-255)
 //! ```

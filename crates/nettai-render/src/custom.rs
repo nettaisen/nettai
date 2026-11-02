@@ -2467,9 +2467,25 @@ fn cursor_place(v: &View, a: &CustomScreen, slot: u8) -> (i32, i32, CursorShape,
     }
 }
 
+/// Where the cursor is drawn on pick `k` (the pointer's place, the layer's
+/// `pick_cursor`): a chip's cursor about the pick's icon in its column cell
+/// (the cell's frame on its left and right, the icon between).
+fn pick_cursor_place(a: &CustomScreen, k: u8) -> (i32, i32, CursorShape) {
+    let [left, _] = a.layout.column_columns.map(i32::from);
+    let row = a.layout.column_row as i32;
+    (8 * (left + 1), 8 * (row + 2 * k as i32), CHIP_CURSOR)
+}
+
 fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<'a>> {
     let slot = v.layer.map_or(0, |l| l.cursor);
-    let (x, y, shape, _) = cursor_place(v, a, slot);
+    let pick = v.layer.and_then(|l| l.pick_cursor).filter(|&k| (k as usize) < v.screen.selection().len());
+    let (x, y, shape) = match pick {
+        Some(k) => pick_cursor_place(a, k),
+        None => {
+            let (x, y, shape, _) = cursor_place(v, a, slot);
+            (x, y, shape)
+        }
+    };
     let palette = v.cursor_palette();
     // Queued last corner first (`sub_8028820`).
     shape.corners[frame as usize & 1]

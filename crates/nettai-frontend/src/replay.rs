@@ -586,12 +586,12 @@ pub(crate) mod tests {
         }
     }
 
-    /// What a layer shows, of a tick: the cursor, what is up over the chips
-    /// (a description, the form list, the hidden window), the form list's
-    /// cursor, the chip window, the window's look, the dark chip's hover,
-    /// and the sounds the tick asked for.
+    /// What a layer shows, of a tick: the cursor (on its slot, or on a
+    /// pick), what is up over the chips (a description, the form list, the
+    /// hidden window), the form list's cursor, the chip window, the window's
+    /// look, the dark chip's hover, and the sounds the tick asked for.
     fn shown(l: &Layer) -> impl PartialEq + std::fmt::Debug {
-        (l.cursor, l.sub, l.list_cursor, l.chip_window, l.look, l.hover, l.hover_fade_last, l.calls().collect::<Vec<_>>())
+        (l.cursor, l.pick_cursor, l.sub, l.list_cursor, l.chip_window, l.look, l.hover, l.hover_fade_last, l.calls().collect::<Vec<_>>())
     }
 
     /// Both sides' layers as a session's driver keeps them after a tick.

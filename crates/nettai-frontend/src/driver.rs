@@ -978,8 +978,9 @@ pub mod short_set {
 
     /// What a pointer does on side `side`'s custom screen while it chooses,
     /// every third tick, from a hash of `tick`: the mouse onto a slot, a
-    /// pick, the form list's tab, an entry or its exit; a click on one of
-    /// them or on nothing; a right-click on one; a click on OK now and then
+    /// pick, the form list's tab, an entry or its exit; the mouse off them;
+    /// a click on one of them or on nothing; a right-click on one; a click
+    /// on OK now and then
     /// once two chips are picked, so that the screen ends. (Many do nothing
     /// where they land: they are the player's gestures all the same.)
     pub fn pointing(b: &Battle, side: usize, tick: u32) -> Option<custom::layer::Gesture> {
@@ -1003,7 +1004,8 @@ pub mod short_set {
             0 => Gesture::Click(Some(ok)),
             1..=12 => Gesture::Hover(target),
             13..=21 => Gesture::Click(Some(target)),
-            22..=27 => Gesture::Describe(target),
+            22..=26 => Gesture::Describe(target),
+            27 => Gesture::Away,
             _ => Gesture::Click(None),
         })
         .map(|g| if g == Gesture::Click(Some(ok)) && screen.selection().len() < 2 { Gesture::Hover(ok) } else { g })

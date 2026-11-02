@@ -210,7 +210,7 @@ impl ScreenChoice {
 /// A tick's screen part, its choice and its gesture as one number in the
 /// word's bits 20 to 31: the gesture's number ([`Gesture::code`], 0 none)
 /// and [`Gesture::CODES`] times the choice's ([`ScreenChoice::code`], 0
-/// none), at most 3699 (a gesture alone, the more frequent, is below 128).
+/// none), at most 3749 (a gesture alone, the more frequent, is below 128).
 const fn screen_part(choice: Option<ScreenChoice>, gesture: Option<Gesture>) -> u32 {
     let choice = match choice {
         Some(c) => c.code(),
@@ -283,9 +283,9 @@ impl PlayerTick {
     /// low ten bits, the switch request in bits 10 and 11 (the member plus
     /// one, 0 none), the microphone's level in bits 12 to 19, and the
     /// screen's choice with the pointer's gesture as one number in bits 20
-    /// to 31: the gesture's number ([`Gesture::code`], 0 none) plus 74
+    /// to 31: the gesture's number ([`Gesture::code`], 0 none) plus 75
     /// ([`Gesture::CODES`]) times the choice's ([`ScreenChoice::code`], 0
-    /// none). (A choice and a gesture together take 50 times 74 numbers,
+    /// none). (A choice and a gesture together take 50 times 75 numbers,
     /// more than two fields of 12 bits hold.)
     pub const fn word(self) -> u32 {
         let switch = match self.switch_to {
@@ -437,6 +437,7 @@ mod tests {
             .chain(targets.iter().map(|&t| Gesture::Click(Some(t))))
             .chain([Gesture::Click(None)])
             .chain(targets.iter().map(|&t| Gesture::Describe(t)))
+            .chain([Gesture::Away])
             .collect();
         for (i, g) in all.iter().enumerate() {
             assert_eq!(Gesture::from_code(g.code()), Some(*g), "{g:?}");

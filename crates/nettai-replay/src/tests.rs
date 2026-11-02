@@ -9,8 +9,8 @@ fn info() -> Info {
 }
 
 /// OK's number in a word's screen part (bits 20 to 31): its choice's 25,
-/// times the 74 gestures' numbers (`PlayerTick::word`).
-const OK: u32 = 25 * 74;
+/// times the 75 gestures' numbers (`PlayerTick::word`).
+const OK: u32 = 25 * 75;
 
 /// A set of two rounds: input that changes now and then (a custom screen's
 /// choice now and then), side 1's screen delay changing once, a digest
@@ -241,7 +241,7 @@ fn a_head_reads_whatever_follows_it() {
 #[test]
 fn screen_delays_choices_and_gestures_read_back() {
     // (A held, the highest choice's number with the highest gesture's.)
-    let choice: u32 = 1 | (73 + 74 * 49) << 20;
+    let choice: u32 = 1 | (74 + 75 * 49) << 20;
     let ticks = [
         Tick { inputs: [0, 0], delays: [4, 0], ..Tick::default() },
         Tick { inputs: [choice, 0], delays: [4, 0], ..Tick::default() },

@@ -119,9 +119,9 @@ sends `unpick`, `unchoose` and `release`.
   the word's buttons. The battle never reads it. The word fills its 32 bits, so nothing masks its top any more
   (`TICK_WORD` and the replay's `INPUT_MASK` are gone). *As built (the pointer's take-backs, §2):* the choices
   number 49 (`ScreenChoice::CODES`, 50 with none: picks 1-12, presses 13-24, OK 25, B 26, the form list's entries
-  27-31, `unpick` 32-36, `unchoose` 37, `release` 38-49), more than five bits hold, and the gestures 73
-  (`Gesture::CODES`, 74 with none) need seven, so bits 20-31 hold the two as one number: the gesture's plus 74 times
-  the choice's (at most 3699 of 4096). `PlayerTick::word` and `from_word` alone know it; netplay's prediction drops
+  27-31, `unpick` 32-36, `unchoose` 37, `release` 38-49), more than five bits hold, and the gestures 74
+  (`Gesture::CODES`, 75 with none, `Away` among them) need seven, so bits 20-31 hold the two as one number: the
+  gesture's plus 75 times the choice's (at most 3749 of 4096). `PlayerTick::word` and `from_word` alone know it; netplay's prediction drops
   a choice and a gesture through `PlayerTick::carried_on`. A gesture alone stays under 128 (the word under 2^27), a
   choice is past it.
 - **The wire** (nettai-netplay `protocol.rs`): the event flags move up past the action; a tick with an action is a
@@ -207,7 +207,10 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
   last frame drawn and gives the local player's layer a gesture for its next tick (`Layer::point`; a few kept, one a
   tick, a hover replaced by what follows it):
   - the mouse over a target: `Hover`, the cursor goes there (its sound, the chip window, the dark chip's shade) with
-    no choice; in the form list, its cursor (until a form is chosen, as its keys);
+    no choice; in the form list, its cursor (until a form is chosen, as its keys); over a pick, the cursor goes on
+    the pick's icon in the column (below);
+  - the mouse off the targets (onto none, or off the picture): `Away`, which takes a cursor on a pick back to its
+    slot;
   - a click (down and up on the same target; off it, nothing): `Click`, what A on it would choose (a pick, a
     button's press, OK); on a button holding a chip, its `release` (§2; A on it is refused, as the game's); on a
     pick, its `unpick` (§2: that pick alone, the picks after it moving up; before, a take-back a tick down to it); on
@@ -218,7 +221,19 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
     run message or the hidden window is up is a key for it, as A (it closes the description);
   - right-click: `Describe`, R on what it is on: a slot's chip (the cursor goes there), a pick's chip (the cursor
     stays), a form list entry's form.
-  L's run message and SELECT's hide have no gesture (the keys keep them). A hover is a gesture only as the target
+  L's run message and SELECT's hide have no gesture (the keys keep them).
+- **The cursor on a pick** (the user: "when mousing over the stack of chips you should show the cursor there too.
+  or does that conflict with how the keyboard works?"). It doesn't conflict: the column is the pointer's place
+  alone. A hover on a pick puts the layer's cursor on it (`Layer::pick_cursor`) beside its slot (`Layer::cursor`
+  stays as it was), with a move's sound; the renderer draws the screen's chip cursor about the pick's icon (inside
+  the box `custom::targets` reports for `Pick(k)`), and the chip window shows the pick's chip as a hover on its slot
+  would (a button's pick, its picture); no dark chip's shade runs there. A hover on a slot moves the cursor there
+  as before; a hover on another target or `Away` brings it back to its slot, as a move. Keys while it is on a pick:
+  a direction only brings it back to its slot (that press moves it no further; held, it repeats on the slots as
+  any hold does); A does what a click there does (`unpick`, §2); R describes the pick; B is the game's B, START
+  goes to OK. No key moves the cursor into the column. A pick taken back from under it leaves it on the place,
+  over the pick that moved up there, or, with none, back on its slot. It is the layer's state, so replays show it
+  from the recorded gestures (`Gesture::Away` is one more gesture: 75 numbers, §3). A hover is a gesture only as the target
   under the pointer changes (B2): the mouse onto another target; pressed where it already hovers, none; a finger
   down after it was lifted (a lifted finger is over nothing). Each gesture the layer takes goes in the player's tick
   (§3).
@@ -250,7 +265,8 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
   long press describing (nettai-tools `tests/custom_pointer.rs`, which needs the ROMs). §2's take-backs: the
   screen's own (nettai-battle `custom::tests`: a pick anywhere with what it carries, `unpick` of the last as B, a
   trade's chip back where it fits or to the hand, a held chip kept through `unpick` and released, the pointer's
-  clicks sending them) and each game's (nettai-match `games::take_backs`: EXE5's soul, capsule and Arm Change,
+  clicks sending them; the cursor on a pick: its place and chip window, a direction back to its slot, A's `unpick`,
+  R, away and a slot's hover bringing it back; a layer given another's gestures shows it too) and each game's (nettai-match `games::take_backs`: EXE5's soul, capsule and Arm Change,
   EXE6's Beast Out, BeastOut chip and Cross, EXE4's offered dark chips and Double Soul, `unpick` of the last as B
   tick for tick). B2's: the gestures' numbers and the word (nettai-battle `input::tests`); a layer given
   another's ticks, buttons and gestures shows what it showed (`custom::tests`); a set played by pointer on both

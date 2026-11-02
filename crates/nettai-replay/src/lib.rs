@@ -41,7 +41,7 @@
 //! bits, the party switch request in bits 10 and 11 (the member + 1, 0
 //! none), the microphone's level in bits 12 to 19, and in bits 20 to 31
 //! the custom screen's choice with the pointer's gesture on it as one
-//! number (the gesture's `Gesture::code` + 74 × the choice's
+//! number (the gesture's `Gesture::code` + 75 × the choice's
 //! `ScreenChoice::code`, each 0 none). It is written
 //! when it changes: before the first tick nothing is held, and it carries
 //! across a round's end. A writer flushes each record as it is written, so

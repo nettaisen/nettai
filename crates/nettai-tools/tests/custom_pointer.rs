@@ -304,6 +304,55 @@ fn exe6_unchoosing_a_cross_keeps_the_picks() {
     assert_eq!(p.battle().form_list(0).and_then(|l| l.chosen), None);
 }
 
+/// The places two frames of the same battle differ: their pixels' (a pixel each) and their text items' (each one's
+/// box, in either frame and not the other).
+fn differences(a: &nettai_render::Frame, b: &nettai_render::Frame) -> Vec<Rect> {
+    let w = a.size.width;
+    let mut out: Vec<Rect> = (0..a.pixels.len())
+        .filter(|&i| a.pixels[i] != b.pixels[i])
+        .map(|i| Rect::new((i % w) as i32, (i / w) as i32, 1, 1))
+        .collect();
+    let only = |x: &nettai_render::Frame, y: &nettai_render::Frame| -> Vec<Rect> {
+        x.text.iter().filter(|t| !y.text.contains(t)).map(|t| t.rect).collect()
+    };
+    out.extend(only(a, b));
+    out.extend(only(b, a));
+    out
+}
+
+/// The cursor on a pick by pointer (the user: "when mousing over the stack of chips you should show the cursor
+/// there too"): drawn about the pick's icon, inside the pick's box, the slot's cursor gone; nothing else of the
+/// frame changes. Each game, at both sizes.
+#[test]
+#[ignore = "requires the original ROMs: $NETTAI_ROMS, else the Legacy Collection installed through Steam"]
+fn the_cursor_on_a_pick_is_drawn_there() {
+    for (name, file) in [("exe6", "custom_pointer/m6.toml"), ("exe5", "widescreen/m5.toml"), ("exe4", "widescreen/m4.toml")] {
+        let game = game(name);
+        for size in SIZES {
+            let label = format!("{name} at {}x{}", size.0, size.1);
+            let mut p = player(&game, file);
+            to_choosing(&mut p, size, &label);
+            click_on(&mut p, Target::Slot(0));
+            p.tick(0);
+            draw(&mut p, size);
+            let pick = box_of(&mut p, Target::Pick(0));
+            let cursor = p.layers()[0].unwrap().cursor;
+            let slot = box_of(&mut p, Target::Slot(cursor));
+            let on_slot = *p.layers()[0].unwrap();
+            let mut on_pick = on_slot;
+            on_pick.pick_cursor = Some(0);
+            let battle = p.battle().clone();
+            let a = p.renderer().render(&battle, [Some(&on_slot), None]);
+            let b = p.renderer().render(&battle, [Some(&on_pick), None]);
+            let near = |r: Rect, o: Rect| r.x < o.x + o.w + 4 && o.x - 4 < r.x + r.w && r.y < o.y + o.h + 4 && o.y - 4 < r.y + r.h;
+            let changed = differences(&a, &b);
+            assert!(changed.iter().any(|&r| near(r, pick)), "{label}: the cursor drawn at the pick {pick:?}");
+            let stray: Vec<Rect> = changed.into_iter().filter(|&r| !near(r, pick) && !near(r, slot)).collect();
+            assert!(stray.is_empty(), "{label}: only the cursor's places change, not {stray:?}");
+        }
+    }
+}
+
 /// A tap held still on a chip describes it; a gesture of the mouse's on the picture with no screen up does nothing.
 #[test]
 #[ignore = "requires the original ROMs: $NETTAI_ROMS, else the Legacy Collection installed through Steam"]

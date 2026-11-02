@@ -37,7 +37,8 @@ the picks kept (`Unchoose`), a button's held chip released (`Release(slot)`) (§
 choice of the tick while it chooses and reads no key (docs/design/custom-screen-actions.md).
 
 **The player's layer.** What only shows is each player's own, outside the simulation: their **layer**
-(`custom::layer::Layer`, one a side, a round long). It holds the cursor and its blink, where it starts (the first
+(`custom::layer::Layer`, one a side, a round long). It holds the cursor and its blink (on a slot, or by pointer
+on a pick in the column, `Layer::pick_cursor`: docs/design/custom-screen-actions.md §5), where it starts (the first
 dark chip), the chip window's chip, the dark chips' hover and its shade, R's description, L's run message,
 SELECT's hiding and the form list with its own cursor, and the joypad they read (`Layer::joypad`, with its
 console's repeat beat). Keys drive it by the code that drove the simulated cursor (§3: each game's slot
