@@ -1,4 +1,5 @@
-//! The app's own updates, from nettai's GitHub releases (docs/app.md §19, "Updates"), where the app has an updater:
+//! The app's own updates, from its GitHub releases (the app names them: [`Releases`]; docs/app.md §19, "Updates"),
+//! where the app has an updater:
 //! the desktop's installed app (a package Velopack made: packaging/; a build run from the repository isn't installed,
 //! and asks nothing), and Android's (the release's APK). A browser's page is new each time it is loaded, and iOS's app
 //! is its sideloading tool's: neither asks, and no update is found there.
@@ -18,6 +19,33 @@ mod platform;
 use platform::system;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
+
+/// Where an app's releases are published: a GitHub repository whose releases carry the desktop's Velopack packages
+/// (each system's and architecture's channel) and Android's APK. The app names its own ([`Updater::new`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Releases {
+    owner: String,
+    repo: String,
+}
+
+impl Releases {
+    /// The releases of the GitHub repository `owner`/`repo`.
+    pub fn github(owner: &str, repo: &str) -> Releases {
+        Releases { owner: owner.to_owned(), repo: repo.to_owned() }
+    }
+
+    /// The repository's address, as Velopack's GitHub source takes it.
+    #[cfg_attr(not(desktop), allow(dead_code))]
+    pub(crate) fn repository(&self) -> String {
+        format!("https://github.com/{}/{}", self.owner, self.repo)
+    }
+
+    /// GitHub's API for its newest published release.
+    #[cfg_attr(not(android), allow(dead_code))]
+    pub(crate) fn latest(&self) -> String {
+        format!("https://api.github.com/repos/{}/{}/releases/latest", self.owner, self.repo)
+    }
+}
 
 /// How long the releases are waited on for their answer.
 pub const CHECK_WAIT: Duration = Duration::from_secs(5);
@@ -62,6 +90,7 @@ pub(crate) enum Told {
 
 /// The app's update: one an app, asked as it starts.
 pub struct Updater {
+    releases: Releases,
     stage: Stage,
     tell: Sender<Told>,
     heard: Receiver<Told>,
@@ -80,16 +109,11 @@ enum Stage {
     Settled,
 }
 
-impl Default for Updater {
-    fn default() -> Self {
-        Updater::new()
-    }
-}
-
 impl Updater {
-    pub fn new() -> Updater {
+    /// The updater of an app published as `releases`.
+    pub fn new(releases: Releases) -> Updater {
         let (tell, heard) = mpsc::channel();
-        Updater { stage: Stage::Idle, tell, heard }
+        Updater { releases, stage: Stage::Idle, tell, heard }
     }
 
     /// Ask the releases whether a newer one is out: once, as the app starts. Where the system has no updater nothing
@@ -99,7 +123,7 @@ impl Updater {
             return;
         }
         // (Only a system with an updater asks, and keeps the time: a browser's `Instant` has none.)
-        self.stage = if system::check(self.tell.clone()) { Stage::Checking(Instant::now()) } else { Stage::Settled };
+        self.stage = if system::check(&self.releases, self.tell.clone()) { Stage::Checking(Instant::now()) } else { Stage::Settled };
     }
 
     /// Where the update stands, with what the system said since: an update found is downloaded, one downloaded
@@ -136,7 +160,7 @@ impl Updater {
                     log::info!("nettai {} is out: it is downloaded next start", found.version());
                     return false;
                 }
-                system::download(&found, self.tell.clone());
+                system::download(&self.releases, &found, self.tell.clone());
                 self.stage = Stage::Downloading(Box::new(found), 0.0);
                 false
             }
@@ -159,7 +183,7 @@ impl Updater {
                     return true;
                 }
                 self.stage = Stage::Installing(found.version().to_owned());
-                match system::install(*found, self.tell.clone()) {
+                match system::install(&self.releases, *found, self.tell.clone()) {
                     Ok(()) => false,
                     Err(why) => {
                         log::warn!("installing the update: {why}");

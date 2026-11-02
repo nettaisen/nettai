@@ -4509,7 +4509,8 @@ below). The user asked for an updater, then for Velopack with GitHub releases, t
 own ("move updater code into nettai-updater with platform modules like the other vertically split modules").
 Velopack's hook runs first in `main` (`nettai_updater::startup`: run by the installer or the updater, it does its part
 and the process ends). An
-installed app asks `https://github.com/nettaisen/nettai`'s published releases at start, on a thread, whether a newer one
+installed app asks `https://github.com/nettaisen/nettai`'s published releases (the app names them to nettai-updater:
+`Releases::github("nettaisen", "nettai")`, the shell's) at start, on a thread, whether a newer one
 is out on its channel (`velopack::sources::GithubSource`; unauthenticated, one request a start; its system's and
 architecture's channel, whatever its package was made on: below); a build run from the repository isn't installed and
 asks nothing, and neither does

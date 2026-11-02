@@ -1154,7 +1154,8 @@ impl App {
             still,
             probe_motion: false,
             stay_awake: false,
-            updates: Default::default(),
+            // (nettai's releases: GitHub's nettaisen/nettai, its desktop packages and its APK.)
+            updates: nettai_updater::Updater::new(nettai_updater::Releases::github("nettaisen", "nettai")),
             awake: None,
             drawing: true,
             chord: false,

@@ -1,17 +1,14 @@
-//! The desktop's updates: Velopack's, for an app installed from one of its packages (packaging/), from the project's
-//! GitHub releases (`velopack::sources::GithubSource`: the ten newest published, unauthenticated, one request a
-//! start), on its system's and architecture's channel ([`options`]). A build run from the repository isn't
+//! The desktop's updates: Velopack's, for an app installed from one of its packages (packaging/), from the app's
+//! GitHub releases ([`crate::Releases`]; `velopack::sources::GithubSource`: the ten newest published, unauthenticated,
+//! one request a start), on its system's and architecture's channel ([`options`]). A build run from the repository isn't
 //! installed: its manager can't be made, and it asks nothing. The update is downloaded into Velopack's packages
 //! folder, and Velopack's updater puts it in place once the app has ended, silently (no window of its own), and starts
 //! the app again.
 
-use crate::Told;
+use crate::{Releases, Told};
 use std::sync::mpsc::{self, Sender};
 use velopack::sources::GithubSource;
 use velopack::{UpdateCheck, UpdateInfo, UpdateManager, UpdateOptions};
-
-/// Where the releases are.
-const REPO: &str = "https://github.com/nettaisen/nettai";
 
 /// An update found: Velopack's.
 pub struct Found(UpdateInfo);
@@ -28,10 +25,10 @@ pub fn startup() {
     velopack::VelopackApp::build().run();
 }
 
-/// The installed app's update manager; none for an app that isn't installed.
-fn manager() -> Option<UpdateManager> {
+/// The installed app's update manager, of `releases`; none for an app that isn't installed.
+fn manager(releases: &Releases) -> Option<UpdateManager> {
     let options = options(std::env::consts::OS, std::env::consts::ARCH);
-    UpdateManager::new(GithubSource::new(REPO, None, false), Some(options), None).ok()
+    UpdateManager::new(GithubSource::new(&releases.repository(), None, false), Some(options), None).ok()
 }
 
 /// The channel the app asks for its updates on, whatever channel its package was made on (`vpk pack --channel`,
@@ -55,9 +52,10 @@ fn options(os: &str, arch: &str) -> UpdateOptions {
 }
 
 /// Ask the releases on a thread (always: whether the app is installed is the thread's to find out).
-pub fn check(tell: Sender<Told>) -> bool {
+pub fn check(releases: &Releases, tell: Sender<Told>) -> bool {
+    let releases = releases.clone();
     std::thread::spawn(move || {
-        let Some(manager) = manager() else { return drop(tell.send(Told::None)) };
+        let Some(manager) = manager(&releases) else { return drop(tell.send(Told::None)) };
         let told = match manager.check_for_updates() {
             Ok(UpdateCheck::UpdateAvailable(info)) => Told::Found(Found(*info)),
             Ok(_) => Told::None,
@@ -72,10 +70,10 @@ pub fn check(tell: Sender<Told>) -> bool {
 }
 
 /// Download `found`'s update on a thread, telling how far.
-pub fn download(found: &Found, tell: Sender<Told>) {
-    let info = found.0.clone();
+pub fn download(releases: &Releases, found: &Found, tell: Sender<Told>) {
+    let (releases, info) = (releases.clone(), found.0.clone());
     std::thread::spawn(move || {
-        let Some(manager) = manager() else { return drop(tell.send(Told::Downloaded(Err("the app isn't installed".into())))) };
+        let Some(manager) = manager(&releases) else { return drop(tell.send(Told::Downloaded(Err("the app isn't installed".into())))) };
         let (progress, heard) = mpsc::channel::<i16>();
         let forward = {
             let tell = tell.clone();
@@ -93,8 +91,8 @@ pub fn download(found: &Found, tell: Sender<Told>) {
 
 /// The updater waits for this process to end, then puts the update in place silently (no window of its own) and
 /// starts the app again. The process ends here (the app writes its settings as each changes).
-pub fn install(found: Found, _tell: Sender<Told>) -> Result<(), String> {
-    let manager = manager().ok_or("the app isn't installed")?;
+pub fn install(releases: &Releases, found: Found, _tell: Sender<Told>) -> Result<(), String> {
+    let manager = manager(releases).ok_or("the app isn't installed")?;
     match manager.wait_exit_then_apply_updates(&found.0.TargetFullRelease, true, true, Vec::<String>::new()) {
         Ok(()) => std::process::exit(0),
         Err(why) => Err(why.to_string()),

@@ -1,18 +1,19 @@
-//! Android's updates: the newest release's APK (`nettai-android.apk`, every release's signed with the one release key:
-//! packaging/android), asked of GitHub's API (`newer`) against the installed app's version (the APK's
-//! `versionName`, as Android says it), downloaded into the app's cache folder, checked by the SHA-256 GitHub says, and
-//! handed to the system's installer by `android/nettai/updater/NettaiUpdater.kt`: a session of Android's
-//! `PackageInstaller` that asks for no confirmation (`USER_ACTION_NOT_REQUIRED`: the app updates itself, with
-//! `UPDATE_PACKAGES_WITHOUT_USER_ACTION`, and targets API 33 or later). Android installs it without a word, and ends
-//! the app; the player opens it again. The first time, where the player hasn't let the app install apps (Settings'
-//! "Install unknown apps", which `REQUEST_INSTALL_PACKAGES` asks for), Android asks: its screen leads to the setting,
-//! then asks to update. Android checks the APK is signed with the installed app's key.
+//! Android's updates: the newest release's APK (the release's one `.apk`, every release's signed with the one release
+//! key: packaging/android), asked of GitHub's API for the app's releases ([`crate::Releases`], `newer`) against the
+//! installed app's version (the APK's `versionName`, as Android says it), downloaded into the app's cache folder,
+//! checked by the SHA-256 GitHub says, and handed to the system's installer by
+//! `android/nettai/updater/NettaiUpdater.kt`: a session of Android's `PackageInstaller` that asks for no confirmation
+//! (`USER_ACTION_NOT_REQUIRED`: the app updates itself, with `UPDATE_PACKAGES_WITHOUT_USER_ACTION`, and targets API 33
+//! or later). Android installs it without a word, and ends the app; the player opens it again. The first time, where
+//! the player hasn't let the app install apps (Settings' "Install unknown apps", which `REQUEST_INSTALL_PACKAGES` asks
+//! for), Android asks: its screen leads to the setting, then asks to update. Android checks the APK is signed with the
+//! installed app's key.
 //!
 //! The release and the APK come over reqwest (as the app's own files do: rustls with ring's provider, Android's
 //! certificate checks, which the app sets up as it starts), each on a thread of its own with a tokio runtime of its
 //! own. The installer's answer comes back through the native method registered here, on Java's main thread.
 
-use crate::Told;
+use crate::{Releases, Told};
 use jni::objects::{JClass, JObject, JString, JValue};
 use jni::sys::jint;
 use jni::{Env, EnvUnowned, NativeMethod, jni_sig, jni_str};
@@ -24,14 +25,8 @@ use std::sync::Mutex;
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 
-/// The newest published release, as GitHub's API says it.
-const LATEST: &str = "https://api.github.com/repos/nettaisen/nettai/releases/latest";
-
 /// The most of the release's JSON read (its assets and its notes: some tens of kilobytes).
 const MAX_RELEASE: u64 = 1 << 20;
-
-/// The APK each release carries, signed with the release key (packaging/android).
-const APK: &str = "nettai-android.apk";
 
 /// A newer release's APK.
 #[derive(Clone, Debug, PartialEq)]
@@ -67,8 +62,9 @@ struct Asset {
     digest: Option<String>,
 }
 
-/// The release's APK, if the release (GitHub's JSON for it) is newer than `installed`, the installed app's version; a
-/// release that has none, or doesn't say its SHA-256, is an error.
+/// The release's APK (its one asset whose name ends in `.apk`), if the release (GitHub's JSON for it) is newer than
+/// `installed`, the installed app's version; a release that has none, or more than one, or doesn't say its SHA-256, is
+/// an error.
 pub fn newer(json: &[u8], installed: &str) -> Result<Option<Found>, String> {
     let release: Release = serde_json::from_slice(json).map_err(|e| format!("the release's JSON: {e}"))?;
     let tag = release.tag_name;
@@ -79,9 +75,14 @@ pub fn newer(json: &[u8], installed: &str) -> Result<Option<Found>, String> {
     if out <= ours {
         return Ok(None);
     }
-    let apk = release.assets.into_iter().find(|a| a.name == APK).ok_or_else(|| format!("{tag} has no {APK}"))?;
+    // (The release's one APK, whatever its name: the release key signs each release's.)
+    let mut apks = release.assets.into_iter().filter(|a| a.name.to_ascii_lowercase().ends_with(".apk"));
+    let apk = apks.next().ok_or_else(|| format!("{tag} has no APK"))?;
+    if let Some(other) = apks.next() {
+        return Err(format!("{tag} has more than one APK ({} and {})", apk.name, other.name));
+    }
     let sha256 = apk.digest.as_deref().and_then(|d| d.strip_prefix("sha256:"));
-    let sha256 = sha256.ok_or_else(|| format!("{tag}'s {APK} has no SHA-256"))?.to_ascii_lowercase();
+    let sha256 = sha256.ok_or_else(|| format!("{tag}'s {} has no SHA-256", apk.name))?.to_ascii_lowercase();
     Ok(Some(Found { version: version.to_owned(), url: apk.browser_download_url, size: apk.size, sha256 }))
 }
 
@@ -106,9 +107,10 @@ static ANSWER: Mutex<Option<Sender<Told>>> = Mutex::new(None);
 pub fn startup() {}
 
 /// Ask GitHub's API for the newest release, on a thread.
-pub fn check(tell: Sender<Told>) -> bool {
+pub fn check(releases: &Releases, tell: Sender<Told>) -> bool {
+    let latest = releases.latest();
     let started = on_thread("nettai-updater: checking", async move {
-        let told = match ask().await {
+        let told = match ask(&latest).await {
             Ok(Some(found)) => Told::Found(found),
             Ok(None) => Told::None,
             Err(why) => {
@@ -124,10 +126,11 @@ pub fn check(tell: Sender<Told>) -> bool {
     started.is_ok()
 }
 
-async fn ask() -> Result<Option<Found>, String> {
+/// The release at `latest` (GitHub's API), against the installed app's version.
+async fn ask(latest: &str) -> Result<Option<Found>, String> {
     let installed = installed()?;
     let mut json = Vec::new();
-    get(LATEST, MAX_RELEASE, |piece, _| {
+    get(latest, MAX_RELEASE, |piece, _| {
         json.extend_from_slice(piece);
         Ok(())
     })
@@ -142,7 +145,7 @@ fn apk() -> Result<PathBuf, String> {
 }
 
 /// Download `found`'s APK on a thread, telling how far.
-pub fn download(found: &Found, tell: Sender<Told>) {
+pub fn download(_releases: &Releases, found: &Found, tell: Sender<Told>) {
     let found = found.clone();
     let failed = tell.clone();
     let started = on_thread("nettai-updater: downloading", async move {
@@ -190,7 +193,7 @@ async fn fetch(found: &Found, path: &Path, tell: &Sender<Told>) -> Result<(), St
 
 /// Hand the APK to the system's installer, on a thread (the APK is copied into its session): its answer comes back
 /// through `NettaiUpdater.ended`, unless the update is installed, which ends the app.
-pub fn install(found: Found, tell: Sender<Told>) -> Result<(), String> {
+pub fn install(_releases: &Releases, found: Found, tell: Sender<Told>) -> Result<(), String> {
     let path = apk()?;
     log::info!("installing nettai {}", found.version);
     *ANSWER.lock().unwrap_or_else(|e| e.into_inner()) = Some(tell.clone());
@@ -344,7 +347,7 @@ mod tests {
 
     fn with_apk(tag: &str) -> Vec<u8> {
         let digest = format!("sha256:{}", SUM.to_ascii_uppercase());
-        release(tag, &[("nettai-ios.ipa", Some("sha256:00")), (APK, Some(&digest)), ("altstore.json", None)])
+        release(tag, &[("nettai-ios.ipa", Some("sha256:00")), ("nettai-android.apk", Some(&digest)), ("altstore.json", None)])
     }
 
     #[test]
@@ -378,7 +381,18 @@ mod tests {
     #[test]
     fn a_newer_release_without_its_apk_or_its_sum_is_an_error() {
         assert!(newer(&release("v0.21.0", &[("nettai-ios.ipa", Some("sha256:00"))]), "0.20.0").is_err());
-        assert!(newer(&release("v0.21.0", &[(APK, None)]), "0.20.0").is_err());
+        assert!(newer(&release("v0.21.0", &[("nettai-android.apk", None)]), "0.20.0").is_err());
+    }
+
+    /// The APK is the release's one `.apk`, whatever it is called; two are an error, not a guess.
+    #[test]
+    fn the_apk_is_the_releases_one_apk() {
+        let digest = format!("sha256:{SUM}");
+        let other = release("v0.21.0", &[("altstore.json", None), ("Nettai-0.21.0.APK", Some(&digest))]);
+        let found = newer(&other, "0.20.0").unwrap().unwrap();
+        assert!(found.url.ends_with("/Nettai-0.21.0.APK"), "{}", found.url);
+        let two = release("v0.21.0", &[("a.apk", Some(&digest)), ("b.apk", Some(&digest))]);
+        assert!(newer(&two, "0.20.0").unwrap_err().contains("more than one APK"));
     }
 
     #[test]
