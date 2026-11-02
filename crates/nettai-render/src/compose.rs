@@ -375,9 +375,17 @@ impl Layer {
     /// (background palette 14 or 15: `past_ranged`) or not.
     #[allow(clippy::too_many_arguments)]
     pub fn draw_tile_past(&mut self, tile: &[u8], palette: &Palette, past_ranged: bool, x: i32, y: i32, hflip: bool, vflip: bool) {
+        self.draw_tile_where(tile, palette, past_ranged, x, y, hflip, vflip, |_, _| true);
+    }
+
+    /// [`draw_tile_past`](Self::draw_tile_past), only the pixels whose
+    /// places on the original's screen `keep` keeps.
+    #[allow(clippy::too_many_arguments)]
+    pub fn draw_tile_where(&mut self, tile: &[u8], palette: &Palette, past_ranged: bool, x: i32, y: i32, hflip: bool, vflip: bool, keep: impl Fn(i32, i32) -> bool) {
         if !self.drawn {
             return;
         }
+        let (ox, oy) = (x, y);
         let (w, x, y) = (self.width, x + self.origin.0, y + self.origin.1);
         for ty in 0..8 {
             let sy = y + ty;
@@ -387,7 +395,7 @@ impl Layer {
             let row = if vflip { 7 - ty } else { ty } as usize;
             for tx in 0..8 {
                 let sx = x + tx;
-                if !(0..w as i32).contains(&sx) {
+                if !(0..w as i32).contains(&sx) || !keep(ox + tx, oy + ty) {
                     continue;
                 }
                 let col = if hflip { 7 - tx } else { tx } as usize;

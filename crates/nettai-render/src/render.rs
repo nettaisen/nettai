@@ -633,7 +633,7 @@ impl Renderer {
             // `Seat::clip`.)
             let clip = seat.clip(b, screen_layers, &seats, size);
             list.clip = clip;
-            let found = crate::custom::draw(b, screen_layer, own_game, &graphics, emblem, *emblem_palette, (seat, sprite_fade), (&mut *hud, &mut *names), scratch, &mut list, &mut text, &mut self.problems);
+            let found = crate::custom::draw(b, screen_layer, own_game, &graphics, emblem, *emblem_palette, (seat, sprite_fade), smooth, (&mut *hud, &mut *names), scratch, &mut list, &mut text, &mut self.problems);
             targets.extend(found.into_iter().map(|(t, r)| (seat.side, t, r)));
             crate::hud::draw(b, own_game, &graphics, hud_of(seat), &shared[k], (seat, &view, screen_layer), self.custom_gauge, smooth, (&mut *hud, &mut self.scratch), &mut list, &mut text, &mut self.problems);
             list.clip = None;

@@ -772,6 +772,8 @@ struct Window {
     /// The element whose icon was laid without its frame (its family), for
     /// the sharp HUD to draw the frame under it as a shape.
     element_framed: Option<usize>,
+    /// The form list window's map it lays (`form_list_map`), if it lays one.
+    form_list: Option<usize>,
 }
 
 /// A slot's state as the original's byte holds it.
@@ -820,6 +822,10 @@ pub fn form_list_stage(b: &Battle, s: &Screen, layer: Option<&ScreenLayer>) -> O
     }
 }
 
+/// The ticks each of the form list window's opening maps holds
+/// (`sub_8027834`).
+const FORM_LIST_STEP_TICKS: u16 = 3;
+
 /// The form list window's map the screen shows, if it shows one: its
 /// opening steps every 3 ticks (`sub_8027834`), then the window with its
 /// forms, until it closes (`sub_802790C`, 5 ticks) or the form chosen is
@@ -829,15 +835,108 @@ fn form_list_map(v: &View) -> Option<usize> {
     let count = v.b.form_list(v.side).map_or(0, |w| w.count);
     let full = FORM_LIST_OPENING_MAPS + count.max(1) as usize - 1;
     match stage {
-        FormListStage::Opening(tick) if tick >= 3 => Some(tick as usize / 3 - 1),
+        FormListStage::Opening(tick) if tick >= FORM_LIST_STEP_TICKS => Some((tick / FORM_LIST_STEP_TICKS) as usize - 1),
         FormListStage::Up | FormListStage::Closing(_) => Some(full),
         FormListStage::Chosen(tick) if tick < FORM_PUT_ON_TICK => Some(full),
         _ => None,
     }
 }
 
+/// The form list window's panel as it opens, drawn between the original's
+/// steps (the smooth motion). The original's opening maps are one panel
+/// (EXE6's Cross window: its CROSSSELECT header, its bars) laid higher
+/// each step: from the tab's row (CROSSSELECT under the chip window), its
+/// header at rows 7, 3, then the window's top, every 3 ticks. The smooth
+/// motion moves it there at whole pixels every tick: on each step's first
+/// tick where the original lays it (the same picture as the original's
+/// map; on a mirrored seat its bars read upright, as the last step's do),
+/// between them as far on as the tick is. It is always at or above the
+/// original's panel, so what the original shows above that is what it
+/// rises over.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Rise {
+    /// How far down the panel's top is: the last opening map, which lays
+    /// it at the window's top, is drawn that far down.
+    top: i32,
+    /// Where it shows: the tab's columns, from `top` to the foot of the
+    /// tab's row (the panel goes on under the window's CHIP SELECT row).
+    rect: Rect,
+}
+
+impl Rise {
+    fn holds(&self, x: i32, y: i32) -> bool {
+        (self.rect.x..self.rect.x + self.rect.w).contains(&x) && (self.rect.y..self.rect.y + self.rect.h).contains(&y)
+    }
+
+    /// The parts of `r` the panel doesn't cover: above, below, left and
+    /// right of it (all of `r` where they don't meet).
+    fn outside(&self, r: Rect) -> Vec<Rect> {
+        let c = self.rect;
+        if r.intersect(c).is_empty() {
+            return vec![r];
+        }
+        let (top, foot) = (c.y.max(r.y), (c.y + c.h).min(r.y + r.h));
+        [
+            Rect::new(r.x, r.y, r.w, c.y - r.y),
+            Rect::new(r.x, c.y + c.h, r.w, r.y + r.h - (c.y + c.h)),
+            Rect::new(r.x, top, c.x - r.x, foot - top),
+            Rect::new(c.x + c.w, top, r.x + r.w - (c.x + c.w), foot - top),
+        ]
+        .into_iter()
+        .map(|p| p.intersect(r))
+        .filter(|p| !p.is_empty())
+        .collect()
+    }
+}
+
+/// Where the form list window's panel is on this tick of its opening,
+/// with the smooth motion (`Rise`): none before it moves or once the last
+/// step lays it at the window's top, nor for a game without the tab.
+fn form_list_rise(v: &View, place: Placement) -> Option<Rise> {
+    let FormListStage::Opening(tick) = form_list_stage(v.b, v.screen, v.layer)? else { return None };
+    let a = v.assets;
+    // The tab: the cells the window's map with it lays otherwise than the
+    // one without, in the first row they differ (CROSSSELECT's).
+    let (without, with) = (a.window_maps.first()?, a.window_maps.get(1)?);
+    let differs = |r: usize, c: usize| without.get(r * COLUMNS + c) != with.get(r * COLUMNS + c);
+    let tab_row = (0..ROWS).find(|&r| (0..COLUMNS).any(|c| differs(r, c)))?;
+    let c0 = (0..COLUMNS).find(|&c| differs(tab_row, c))?;
+    let c1 = (0..COLUMNS).rfind(|&c| differs(tab_row, c))? + 1;
+    // Each opening map's panel top: the row that lays the last map's top
+    // row in the tab's columns.
+    let last = a.form_list_maps.get(FORM_LIST_OPENING_MAPS - 1)?;
+    let top_row = |m: &[MapEntry]| (0..ROWS).find(|&r| (c0..c1).all(|c| m.get(r * COLUMNS + c).is_some_and(|e| Some(e) == last.get(c))));
+    // Where it is on each step's first tick: the tab's row before the first.
+    let mut steps = vec![(0, 8 * tab_row as i32)];
+    for k in 0..FORM_LIST_OPENING_MAPS {
+        steps.push((((k + 1) as u16 * FORM_LIST_STEP_TICKS) as i32, 8 * top_row(a.form_list_maps.get(k)?)? as i32));
+    }
+    let top = rise_top(&steps, tick as i32)?;
+    let (x, _) = Window::columns_at_place(c0, c1 - c0, place)?;
+    let foot = 8 * (tab_row as i32 + 1);
+    Some(Rise { top, rect: Rect::new(x, top, 8 * (c1 - c0) as i32, foot - top) })
+}
+
+/// Where a panel laid at `steps` (each a tick and its top on that tick, the
+/// ticks in order) is on tick `t`: as far on from one to the next as the
+/// tick is, to the nearest pixel; none before the first step's tick or
+/// from the last's.
+fn rise_top(steps: &[(i32, i32)], t: i32) -> Option<i32> {
+    if t >= steps.last()?.0 {
+        return None;
+    }
+    let &[(t0, y0), (t1, y1)] = steps.windows(2).find(|s| s[0].0 < t && t <= s[1].0)? else { return None };
+    Some((2 * (y0 * (t1 - t) + y1 * (t - t0)) + (t1 - t0)).div_euclid(2 * (t1 - t0)))
+}
+
 impl Window {
     fn build(v: &View, text: &TextSink, problems: &mut Problems) -> Window {
+        Window::build_as(v, form_list_map(v), text, problems)
+    }
+
+    /// The window as the screen shows it, but with the form list window's
+    /// map `form_list` (none: the chips' window).
+    fn build_as(v: &View, form_list: Option<usize>, text: &TextSink, problems: &mut Problems) -> Window {
         let a = v.assets;
         let mut w = Window {
             map: [MapEntry::default(); COLUMNS * ROWS],
@@ -862,10 +961,10 @@ impl Window {
             buttons_laid: Vec::new(),
             buttons: Vec::new(),
             element_framed: None,
+            form_list,
         };
         // sub_8026840: the window's map, with the form list's tab (EXE6's
         // Cross tab) or without; or the form list window's.
-        let form_list = form_list_map(v);
         let (map, patches) = match form_list {
             Some(i) => (a.form_list_maps.get(i), &a.form_list_patches),
             // (A game without the tab has one map: EXE5.)
@@ -1786,7 +1885,7 @@ impl Window {
             let r = rect(cells);
             crate::seat::Block::whole(self.ink(cells).map_or(r, |[a, b]| Rect::new(r.x + a, r.y, b - a, r.h)))
         };
-        if form_list_map(v).is_some() {
+        if self.form_list.is_some() {
             let [x0, y0] = l.form_names_at.map(usize::from);
             let bars = [x0, y0, x0 + CustomScreen::FORM_NAME_COLUMNS, y0 + 2 * nettai_battle::custom::screen::FORM_LIST_ENTRIES];
             out.push(inked(bars));
@@ -1897,6 +1996,12 @@ impl Window {
     /// Draw window columns `from..to` on the layer, scrolled (but the cells
     /// drawn as shapes: `shape_frames`).
     fn draw(&self, layer: &mut Layer, place: Placement) {
+        self.draw_where(layer, place, 0, |_, _| true);
+    }
+
+    /// [`draw`](Self::draw) `dy` pixels down, only the pixels whose places
+    /// on the screen `keep` keeps.
+    fn draw_where(&self, layer: &mut Layer, place: Placement, dy: i32, keep: impl Fn(i32, i32) -> bool) {
         for y in 0..ROWS {
             for x in place.from..place.to {
                 if self.drawn_cells[y * COLUMNS + x] {
@@ -1905,7 +2010,7 @@ impl Window {
                 let e = self.map[y * COLUMNS + x];
                 let Some(px) = screen_x(x as i32, place.scroll) else { continue };
                 let past_ranged = e.palette & 15 >= 14;
-                layer.draw_tile_past(self.tiles.tile(e.tile), &self.palettes[e.palette as usize & 15], past_ranged, px, 8 * y as i32, e.hflip, e.vflip);
+                layer.draw_tile_where(self.tiles.tile(e.tile), &self.palettes[e.palette as usize & 15], past_ranged, px, 8 * y as i32 + dy, e.hflip, e.vflip, &keep);
             }
         }
     }
@@ -2057,6 +2162,11 @@ impl Window {
     /// first's place (sliding in, past the screen's left edge, which the
     /// layer wraps to its right), and a clip to those it shows.
     fn columns_at(&self, col: usize, cells: usize, place: Placement) -> Option<(i32, Rect)> {
+        Self::columns_at_place(col, cells, place)
+    }
+
+    /// [`columns_at`](Self::columns_at) of any window.
+    fn columns_at_place(col: usize, cells: usize, place: Placement) -> Option<(i32, Rect)> {
         let shown: Vec<(usize, i32)> =
             (col..col + cells).filter(|c| (place.from..place.to).contains(c)).filter_map(|c| Some((c, screen_x(c as i32, place.scroll)?))).collect();
         let &(last, last_x) = shown.last()?;
@@ -2766,6 +2876,7 @@ pub fn draw<'a>(
     emblem: &'a Tiles,
     emblem_palette: Palette,
     (seat, sprite_fade): (crate::seat::Seat, Fade),
+    smooth: crate::smooth::Smooth,
     (out_hud, out_names): (&mut Layer, &mut Layer),
     (scratch_hud, scratch_names): (&mut Layer, &mut Layer),
     list: &mut SpriteList<'a>,
@@ -2815,7 +2926,18 @@ pub fn draw<'a>(
     };
     let mut w = Window::build(&v, text, problems);
     let advance_names = w.program_advance(&v, text, problems);
-    w.draw(hud_layer, place);
+    // (With the smooth motion, the form list window's panel as it opens,
+    // over the window the original shows: `Rise`. What it notes of its map
+    // is noted on the ticks the original shows that map.)
+    let rise = if smooth.on { form_list_rise(&v, place) } else { None };
+    let panel = rise.map(|r| (r, Window::build_as(&v, Some(FORM_LIST_OPENING_MAPS - 1), text, &mut Problems::default())));
+    match &panel {
+        Some((r, p)) => {
+            w.draw_where(hud_layer, place, 0, |x, y| !r.holds(x, y));
+            p.draw_where(hud_layer, place, r.top, |x, y| r.holds(x, y));
+        }
+        None => w.draw(hud_layer, place),
+    }
     // (What a pointer finds where, on a seat that shows its own console's
     // screen as it is.)
     let found = if mirrored { Vec::new() } else { targets(&v, &w, place) };
@@ -2843,11 +2965,30 @@ pub fn draw<'a>(
     }
     w.known_icons(&v, place, problems);
     w.mark_icons(&v, place, problems);
+    let items = text.mark();
     w.shape_items(text, place);
     w.name_item(text, place);
     w.help_items(text, place);
     w.damage_item(&v, text, place);
     w.label_items(text, place);
+    if let Some((r, p)) = &panel {
+        // (The window's items but where the panel covers them; then the
+        // panel's, down with it, where it shows.)
+        text.rework_since(items, |plane, item| match plane {
+            Plane::Hud if !item.clip.intersect(item.rect).intersect(r.rect).is_empty() => r.outside(item.clip).into_iter().map(|clip| TextItem { clip, ..item.clone() }).collect(),
+            _ => vec![item],
+        });
+        let items = text.mark();
+        p.shape_items(text, place);
+        p.name_item(text, place);
+        p.help_items(text, place);
+        p.damage_item(&v, text, place);
+        p.label_items(text, place);
+        text.rework_since(items, |_, item| {
+            let clip = item.clip.offset(0, r.top).intersect(r.rect);
+            if clip.is_empty() { Vec::new() } else { vec![TextItem { rect: item.rect.offset(0, r.top), clip, ..item }] }
+        });
+    }
     // The Program Advance's names, a column right of the layer's scroll
     // (`sub_802BA18`), each 9x2 cells column by column.
     let col = (place.scroll >> 3) as i32 + 1;
@@ -2946,7 +3087,9 @@ pub fn draw<'a>(
         queue.extend(parts);
         sprite_ends(&queue);
     }
-    if let Some(part) = element_part(&v, a, place) {
+    // (Not once the rising form list panel reaches it.)
+    let covered = |p: &SpritePart| rise.is_some_and(|r| !Rect::new(p.x, p.y, p.width as i32, p.height as i32).intersect(r.rect).is_empty());
+    if let Some(part) = element_part(&v, a, place).filter(|p| !covered(p)) {
         let parts = framed_element(part, a, text, &mut tags, queue.len());
         queue.extend(parts);
         sprite_ends(&queue);
@@ -2979,7 +3122,18 @@ pub fn draw<'a>(
         // The window as its console draws it, put in the right half: the
         // layers' pixels, the sprites (each as one; the items of a sprite
         // drawn as shapes with it), the text items.
-        upright.splice(0..0, w.upright(&v, place));
+        let mut blocks = w.upright(&v, place);
+        if let Some((r, p)) = &panel {
+            // (The window's but where the panel covers them, after the
+            // panel's, down with it, where it shows.)
+            let window = blocks.into_iter().flat_map(|b| r.outside(b.area).into_iter().map(move |area| crate::seat::Block { area, frame: b.frame }));
+            let risen = p.upright(&v, place).into_iter().filter_map(|b| {
+                let area = b.area.offset(0, r.top).intersect(r.rect);
+                (!area.is_empty()).then_some(crate::seat::Block { area, frame: b.frame.offset(0, r.top) })
+            });
+            blocks = risen.chain(window).collect();
+        }
+        upright.splice(0..0, blocks);
         let mirror = crate::seat::Mirror::new(upright).slid(slide);
         mirror.layer(scratch_hud, out_hud);
         mirror.layer(scratch_names, out_names);
@@ -3021,6 +3175,29 @@ mod tests {
         let p = nettai_assets::CursorPlace { x: 88, y: 112, corners: [[(2, 1, false, false), (2, 22, true, false), (20, 22, true, true), (20, 1, false, true)]; 2] };
         assert_eq!(cursor_cells(&p), [11, 14, 14, 17]);
         assert_eq!((slot_cell(0), slot_cell(HAND_SLOTS - 1)), ((1, 13), (9, 16)));
+    }
+
+    #[test]
+    fn the_cross_windows_panel_rises_every_tick_through_the_originals_steps() {
+        // EXE6's: from the tab's row (88) to rows 7, 3 and 0, every 3 ticks.
+        let steps = [(0, 88), (3, 56), (6, 24), (9, 0)];
+        let tops: Vec<Option<i32>> = (0..12).map(|t| rise_top(&steps, t)).collect();
+        assert_eq!(tops, [None, Some(77), Some(67), Some(56), Some(45), Some(35), Some(24), Some(16), Some(8), None, None, None]);
+    }
+
+    #[test]
+    fn what_the_rising_panel_leaves_of_a_box_is_the_box_but_the_panel() {
+        let rise = Rise { top: 45, rect: Rect::new(0, 45, 88, 51) };
+        let held = |r: Rect, x: i32, y: i32| (r.x..r.x + r.w).contains(&x) && (r.y..r.y + r.h).contains(&y);
+        for r in [Rect::new(0, 0, 120, 160), Rect::new(20, 30, 100, 20), Rect::new(-8, 90, 40, 20), Rect::new(90, 0, 30, 40)] {
+            let parts = rise.outside(r);
+            for y in -10..170 {
+                for x in -10..130 {
+                    let n = parts.iter().filter(|p| held(**p, x, y)).count();
+                    assert_eq!(n, usize::from(held(r, x, y) && !rise.holds(x, y)), "{r:?} at ({x}, {y})");
+                }
+            }
+        }
     }
 
     #[test]

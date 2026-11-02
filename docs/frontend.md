@@ -1465,7 +1465,8 @@ colors, it leaves as the game draws it.
 | The custom gauge's fill | its counter, 128 a pixel, 0x10 to 0x40 a tick | whole pixels: a pixel every 2, 4 or 8 ticks | its end where the counter is, at the window's resolution (a nudge) |
 | The full gauge's flashing, "L or R", "Cstmzing..." | tile frames (the full cells' four, every 7 ticks; "L or R"'s two, every 8; the text's blink every 32) | pictures | the game's |
 | The Program Advance's names | a name every 8 ticks, the recipe's colors cycling | pictures, palettes | the game's |
-| The Cross window's opening, the chatbox's (a description, a message) | three and four steps of their maps; the text printed a character at a time, the portrait's animation, the arrow's frames | pictures | the game's |
+| The Cross window's opening (EXE6) | one panel (the CROSSSELECT header and the bars) laid higher every 3 ticks (`sub_8027834`): from the tab's row, 88 pixels down, to 56, 24, then the window's top | 32, 32 and 24 pixels every 3 ticks | rising every tick through the same places on the same ticks (77, 67, 56, 45, 35, 24, 16, 8, then the top), whole pixels, drawn over what the original shows above it (`custom::Rise`); the element icon goes once the panel reaches it |
+| The chatbox's opening (a description, a message) | four steps of its maps; the text printed a character at a time, the portrait's animation, the arrow's frames | pictures | the game's |
 | HP numbers, the judge's damage, the turn timer, "TIME UP!", "COUNTER HIT!", "PAUSE", the next chip's name, the chip icons, the warning markers | numbers roll by value, lines appear and go, the markers' two frames | none on the screen | the game's |
 | The emotion window's flicker and blink | its palette black two ticks of four, left out on two | palettes | the game's |
 | What moves on the field by parts of a pixel (thrown bombs and rocks, arcs, a few shots and dashes) | its 16.16 place and velocity | the place's whole pixels: uneven steps (a bomb's 2.9 pixels a tick across in steps of 3 and now and then 2) | where it truly is, at the window's resolution (overlays), but a blended or mosaic part |
@@ -1487,7 +1488,8 @@ same (nettai-frontend's
 draws every tick again from a copy of the battle, and finds the frame's own
 pixels the original mode's on every tick but under the overlays, which are
 left out of them for the output to draw, and the custom screen's slide
-lifted on its odd ticks).
+lifted on its odd ticks; its battle opens no Cross window, whose rising
+panel is in the frame's own pixels).
 
 Where it is on: the app's battles (live, online, Practice, a replay
 watched) and its main menu's reel, with Settings' "Smooth motion" on (the

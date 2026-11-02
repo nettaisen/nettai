@@ -18,6 +18,11 @@
 //!   shown on the output rows past the camera's half pixel; the sprites
 //!   are drawn at their true places (overlays, the part of a pixel the
 //!   projection rounds off: `objects::project_fine`).
+//! - **The Cross window's opening** (`custom::Rise`): EXE6's panel is laid
+//!   higher every 3 ticks, from the CROSSSELECT tab's row to the window's
+//!   top in three steps. It is drawn rising a few whole pixels every tick,
+//!   through the steps' places on their first ticks, over what the
+//!   original shows above it.
 //! - (The background's glide is `Frame::glide`, `present`.)
 //!
 //! A position between two whole pixels is drawn twice: the frame as ever,
