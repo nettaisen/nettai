@@ -6,7 +6,9 @@ around where the cursor on the custom screen is purely visual?" This note says w
 simulation, the input path and formats, the renderer and verification (the audits' notes with file:line for every
 claim are in nettai-verify's docs/custom-screen-actions/).
 
-**Status (2026-11-01): checkpoints A and B are built** (keys and pads through the layer; mouse and touch, §5).
+**Status (2026-11-01): checkpoints A and B are built** (keys and pads through the layer; mouse and touch, §5),
+and the pointer's own take-backs (§2: any pick taken back, a Cross un-chosen with the picks kept, a held chip
+released).
 The layer is `custom::layer::Layer` in nettai-battle (with `custom::Lockstep` for both sides in lockstep), a type of
 its own that `Battle` never holds: the code moved there uses the screen's crate-private parts (its slots'
 neighbors and lists, the chip checks, the chatbox), and every crate that needs it (the frontend, the tools, the
@@ -66,11 +68,45 @@ simulation checks it as A on that slot is checked today (a refused one plays the
 | `ok` | A on OK (START only moves the cursor) | OK, with nothing picked too |
 | `take_back` | B | undoes in today's order: an Arm Change hold, the rules' own take-back with nothing picked (EXE6's Cross), a soul trade, the last pick (detaching a capsule) |
 | `choose_form(entry)`, entry 0-4 | UP opens the list, directions, A | EXE6: chooses a Cross from the offered list (MegaMan, no Beast Out picked, no Cross yet, the entry not marked) and plays its 34-tick window |
+| `unpick(place)`, place 0-4 | none (a click on the pick) | takes back the pick in that place as B takes back the last, with what it carries; the picks after it move up a place |
+| `unchoose` | none (a click on the Cross chosen) | un-chooses the rules' form (EXE6's Cross) as B with nothing picked does, the picks kept; refused where none is chosen |
+| `release(slot)`, slot 0-11 | none (a click on the button) | puts back the chip a rules' button holds (EXE5's Arm Change) |
 | `switch(member)` | (already in the word: `PlayerTick::switch_to`) | EXE5 DS's party switch, unchanged |
 
-Per game: EXE6 uses all but `switch`; EXE5 has the soul (slot 11), ColonelSoul's Arm Change, MeddySoul's two
-capsules, SearchSoul's re-deal (three uses) and the DS switch; EXE4 has UNITE (slot 11), SearchSoul's SHUFFLE (three
-uses), and its offered dark chips and JunkSoul's chips as ordinary `pick`s. About 20 values in all.
+Per game: EXE6 uses all but `release` and `switch`; EXE5 has the soul (slot 11), ColonelSoul's Arm Change (and
+`release`), MeddySoul's two capsules, SearchSoul's re-deal (three uses) and the DS switch; EXE4 has UNITE (slot 11),
+SearchSoul's SHUFFLE (three uses), and its offered dark chips and JunkSoul's chips as ordinary `pick`s. 49 values in
+all (§3).
+
+**The pointer's take-backs** (the user, trying the screen by pointer: "unselecting a cross shouldn't remove all
+chips" and "you should also allow removing chips from the middle of the queue"). The game's B undoes only the last
+pick, and with nothing picked the Cross; before these, a click on a pick sent B down to it, one a tick, and a click
+on the chosen Cross every pick and then the Cross. Keys stay the game's: B is `take_back`, and only the pointer
+sends `unpick`, `unchoose` and `release`.
+
+- **`unpick(place)`** takes back that pick and what it carries, as B does the last's: a capsule attached to it
+  (EXE5's MeddySoul) comes off, a button picked alone takes its face back (EXE6's Beast Out: its `taken_back`), a
+  chip's `chip_taken_back` runs (EXE4's offered dark chips' flags, EXE6's BeastOut chip's face). The picks after it
+  move up with their column icons as the screen copied them, and keep what they carry; the column's last cell is
+  emptied, as B empties it. Of the last pick it is B's take-back: the same state, sounds and hooks.
+- **A soul given for a chip** (EXE5's souls, EXE4's Double Soul: the soul first in the column, the chip out of the
+  picks) frees the code the chip held, so a later pick may not go with it. Taken back from before later picks, the
+  chip goes back in the soul's place where it goes with the picks left (the availability's own test,
+  `screen::Together::goes_with`); where it doesn't, the soul and the chip both leave, the chip back in the hand
+  (the rules hear the soul's `taken_back` and the chip's `chip_taken_back`, as two Bs would say them). The soul as
+  the only pick: as B, the chip back as the pick.
+- **A held chip** (`custom.hold_last_pick`, EXE5's Arm Change) is no pick: it leaves the picks and their codes for
+  the button, and B puts it back only with the picks as they were then, before taking back the last pick. So
+  `unpick` never puts it back (where B on the last would put it back first, `unpick` of the last takes back the last
+  pick), and a pick taken back before its place moves its place down one, so that B still puts it back once the
+  picks after it are gone. **`release(slot)`**, a click on the button holding it, puts it back at any time: with the
+  picks as they were, as B; else as a pick in the place it left (the picks from there moving down) where there is
+  room and it goes with them, else back to the hand.
+- **`unchoose`** asks the rules what B with nothing picked asks (`custom.unchoose_form`), now with picks too. No
+  pick depends on the Cross: Beast Out is refused while a Cross is chosen and a Cross while Beast Out is picked
+  (`custom.form_taken`), the BeastOut chip goes with any code, and the slots' availability reads no form. EXE6's
+  Luau gives the emotion window the BeastOut chip's face again where it is picked (a Cross chosen after it covered
+  it).
 
 ## 3. The tick word and the formats
 
@@ -81,11 +117,18 @@ uses), and its offered dark chips and JunkSoul's chips as ordinary `pick`s. Abou
   the pointer's gesture too, `gesture: Option<Gesture>`, bits 25-31 (`Gesture::code`: a hover, a click or a
   describe on each of the 24 targets, a click on none; 0 none): the one the player's layer took on the tick it read
   the word's buttons. The battle never reads it. The word fills its 32 bits, so nothing masks its top any more
-  (`TICK_WORD` and the replay's `INPUT_MASK` are gone).
+  (`TICK_WORD` and the replay's `INPUT_MASK` are gone). *As built (the pointer's take-backs, §2):* the choices
+  number 49 (`ScreenChoice::CODES`, 50 with none: picks 1-12, presses 13-24, OK 25, B 26, the form list's entries
+  27-31, `unpick` 32-36, `unchoose` 37, `release` 38-49), more than five bits hold, and the gestures 73
+  (`Gesture::CODES`, 74 with none) need seven, so bits 20-31 hold the two as one number: the gesture's plus 74 times
+  the choice's (at most 3699 of 4096). `PlayerTick::word` and `from_word` alone know it; netplay's prediction drops
+  a choice and a gesture through `PlayerTick::carried_on`. A gesture alone stays under 128 (the word under 2^27), a
+  choice is past it.
 - **The wire** (nettai-netplay `protocol.rs`): the event flags move up past the action; a tick with an action is a
   4-byte element instead of 3. Actions are a few dozen a screen, so the mean frame doesn't change. *As built (B2):*
   the flags sit at bit 32 of the head, past the gesture; a tick with a gesture is 4 or 5 bytes, one with flags 5 or
   6. A pointer makes a gesture as it moves onto another target, a click, a describe: a few a second while it moves.
+  *As built (§2's take-backs):* a gesture alone is 4 bytes, a choice (the more numbers, the rarer) 5.
 - **Prediction**: a missing remote word is predicted as its last buttons and **no action** (as events are dropped
   now), and no gesture (B2: each of the other's gestures is a misprediction too, though the battle doesn't read
   it; the re-simulated ticks come out the same). Each remote action is then one misprediction, and the remote's cursor moves cost none, because they aren't
@@ -166,13 +209,13 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
   - the mouse over a target: `Hover`, the cursor goes there (its sound, the chip window, the dark chip's shade) with
     no choice; in the form list, its cursor (until a form is chosen, as its keys);
   - a click (down and up on the same target; off it, nothing): `Click`, what A on it would choose (a pick, a
-    button's press, OK); on a pick, a take-back down to it (the last pick: one; an earlier one: one take-back a tick
-    until it is gone; a choice of the keys' ends them); on the tab, the form list opens where UP would, from
-    anywhere (the layer's checks but the cursor's place; refused: the refusal sound), and again closes it as B does;
-    on an entry, its form chosen (as A); on the chosen entry, it is taken back, with the picks after it, one a tick
-    (the battle takes picks back before the form); on the exit label, the list closes as B does (B2), nothing
-    chosen; a click anywhere, on a target or none, while a description, the run message or the hidden window is up
-    is a key for it, as A (it closes the description);
+    button's press, OK); on a button holding a chip, its `release` (§2; A on it is refused, as the game's); on a
+    pick, its `unpick` (§2: that pick alone, the picks after it moving up; before, a take-back a tick down to it); on
+    the tab, the form list opens where UP would, from anywhere (the layer's checks but the cursor's place; refused:
+    the refusal sound), and again closes it as B does; on an entry, its form chosen (as A); on the chosen entry,
+    `unchoose`: the Cross un-chosen, the picks kept (before, every pick was taken back first); on the exit label,
+    the list closes as B does (B2), nothing chosen; a click anywhere, on a target or none, while a description, the
+    run message or the hidden window is up is a key for it, as A (it closes the description);
   - right-click: `Describe`, R on what it is on: a slot's chip (the cursor goes there), a pick's chip (the cursor
     stays), a form list entry's form.
   L's run message and SELECT's hide have no gesture (the keys keep them). A hover is a gesture only as the target
@@ -182,7 +225,7 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
 - **Touch**: a finger down on a target is a hover (the cursor goes there, the chip window shows the chip); up on the
   same target is the click (sliding off cancels, as a button does, also when it slides back); held still on it for
   `pointer::LONG_PRESS` (30 ticks, half a second) it describes it instead, and its letting go chooses nothing. A tap
-  on a pick takes back as a click does.
+  on a pick takes it back as a click does.
 - **Phones held sideways**: while the local custom screen is open (its first tick to its close), the see-through
   pad's directions, L, R and SELECT, which sit over the window, hide (`Shell.pad-gives-way`) and take no finger
   (`TouchPad::give_way`; a direction held lets go), so taps on the window go on to the picture; A, B, START and MENU
@@ -202,9 +245,14 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
   descriptions and Cross list as they were (§3).
 - **Tests**: the layer's gestures (nettai-battle `custom::tests`), the recognizer (`pointer::tests`), the pad giving
   way (nettai `input::tests`), and per game at 240x160 and at a Fill size (347x199) a click at the middle of each
-  target the renderer reports gives its choice, then a pick, its take-back, EXE6's tab and Cross entries and OK played
-  by pointer, EXE6's B:EXIT closing the list, and a long press describing (nettai-tools `tests/custom_pointer.rs`,
-  which needs the ROMs). B2's: the gestures' numbers and the word (nettai-battle `input::tests`); a layer given
+  target the renderer reports gives its choice, then two picks, the first's `unpick`, EXE6's tab and Cross entries
+  and OK played by pointer, EXE6's B:EXIT closing the list, EXE6's Cross chosen and un-chosen with a pick kept, and a
+  long press describing (nettai-tools `tests/custom_pointer.rs`, which needs the ROMs). §2's take-backs: the
+  screen's own (nettai-battle `custom::tests`: a pick anywhere with what it carries, `unpick` of the last as B, a
+  trade's chip back where it fits or to the hand, a held chip kept through `unpick` and released, the pointer's
+  clicks sending them) and each game's (nettai-match `games::take_backs`: EXE5's soul, capsule and Arm Change,
+  EXE6's Beast Out, BeastOut chip and Cross, EXE4's offered dark chips and Double Soul, `unpick` of the last as B
+  tick for tick). B2's: the gestures' numbers and the word (nettai-battle `input::tests`); a layer given
   another's ticks, buttons and gestures shows what it showed (`custom::tests`); a set played by pointer on both
   sides in each game, live at an input delay of 3, recorded and played back, both sides' layers the same on every
   tick (nettai-frontend `replay::tests`); a netplay set with one pointer player at input delays of 2 and 6 over a
@@ -222,6 +270,11 @@ The screen's Luau API is written in cursor terms today, and changes:
   only EXE6's Cross window uses them. It is rewritten as a `choose_form` hook (the choice, its checks, its 34-tick
   window, B's un-choosing) with the list itself the layer's; `form_list.cursor` leaves the rules' state.
 - `custom.fading` reads only the decision fades (§8.1). `custom.describe` (a form's R) becomes the layer's.
+- *As built (§2's take-backs):* `custom.take_back` (B with nothing picked) is `custom.unchoose_form`, which
+  `unchoose` asks too, the picks kept (EXE6's `window.unchoose`). The take-back hooks say which pick:
+  `custom.chip_taken_back(side, chip, place)` and a button's `taken_back(side, place)`, the place (from 0) the pick
+  left (EXE4's dark chips shift their per-place flags by it). Nothing in Rust names what a button is: `release`
+  is a button's held chip released, and EXE5's Arm Change says it is its own.
 
 ## 7. Verification
 

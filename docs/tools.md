@@ -80,7 +80,7 @@ tick compared with what the original recorded; the first difference is printed.
   select`, which reach the custom screen through your layer as a player's keys do; `switch0 switch1 switch2` ask a
   party's switch to that member (`160:switch1`); and a custom screen choice of your own, as a pointer makes it, is
   named (`nettai_battle::ScreenChoice::named`): `pick0` to `pick11`, `press0` to `press11`, `ok`, `take_back`,
-  `form0` to `form4` (`215:pick2,260:ok`). The right navi is the stand-in, standing still and choosing its first
+  `form0` to `form4`, `unpick0` to `unpick4`, `unchoose`, `release0` to `release11` (`215:pick2,260:ok`). The right navi is the stand-in, standing still and choosing its first
   chip. `--opponent moves` has it
   move about at random and `--opponent attacks` press at random what a player fights with
   (`driver::InFight::MovesAround`, `AttacksAtRandom`; `still` is the default); on its custom screen it still picks

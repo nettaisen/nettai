@@ -31,7 +31,9 @@ at `0x020365C0`), reads its own joypad, and sends its result over the link. The 
 screens in the simulation**, each driven by its player's **choices**, so that the whole battle is a function of the
 setup and both players' inputs (rollback netplay). A choice (`input::ScreenChoice`, `PlayerTick::choice`) is what a
 key decided on the original's screen: a chip picked (`Pick(slot)`), a rules' button pressed (`Press(slot)`), OK,
-a take-back (B), an entry of the rules' form list chosen (`ChooseForm(entry)`, EXE6's Cross). The screen takes the
+a take-back (B), an entry of the rules' form list chosen (`ChooseForm(entry)`, EXE6's Cross); or what only a pointer
+decides, which no key of the original's did: any pick taken back (`Unpick(place)`), the form chosen un-chosen with
+the picks kept (`Unchoose`), a button's held chip released (`Release(slot)`) (§3.4). The screen takes the
 choice of the tick while it chooses and reads no key (docs/design/custom-screen-actions.md).
 
 **The player's layer.** What only shows is each player's own, outside the simulation: their **layer**
@@ -236,7 +238,24 @@ The original also fails it on its anti-tamper check, which legitimate play never
 recordings (the counts stayed within the limits).
 
 **B** (`sub_8029032`, the choice `TakeBack`): take back the last pick (Beast Out included); with none picked, what
-the rules take back (`custom.take_back`: EXE6's Cross un-chosen). The cursor doesn't move.
+the rules take back (`custom.unchoose_form`: EXE6's Cross un-chosen). The cursor doesn't move. In that order: a
+button's held chip with the picks as they were when it took it (EXE5's Arm Change, 0x08024CFC) is the last pick
+again; a button picked in a chip's place (EXE5's soul, 0x08024D44) gives the chip back in its place; a pick leaves
+with a button attached to it (EXE5's capsule, 0x08024D78). The column's last cell is emptied (its icon and its
+frame, `sub_80281D4`, `sub_8029CD4`), the slots grayed again, the chip window drawn, and B's sound plays.
+
+**What a pointer takes back** (nettai's, docs/design/custom-screen-actions.md §2): `Unpick(place)` takes back the
+pick in any place as B takes back the last, with what it carries, the picks after it moving up a place with their
+column icons (as copied: a Beast Out's reorder unchecked, Beast Out's the BeastOut chip's) and the last cell
+emptied; of the last pick it is B's take-back. A button picked in a chip's place, taken back from before later
+picks, gives the chip back in its place where it goes with the picks left (the availability's test), else the chip
+goes back to the hand with the button. A button's held chip is no pick: `Unpick` never puts it back, and a pick
+taken back before its place moves the place down. `Unchoose` asks what B with nothing picked asks
+(`custom.unchoose_form`), the picks kept; refused where the rules un-choose nothing. `Release(slot)` puts the chip
+the button on `slot` holds back: with the picks as they were, as B; else in the place it left (the picks from there
+moving down) where there is room and it goes with them, else back to the hand. The rules hear each pick taken back
+with its place (`custom.chip_taken_back(side, chip, place)`, a button's `taken_back(side, place)`); a chip that
+goes back to the hand from a trade or a hold is heard taken back from that place too.
 
 ### 3.5 Sub-screens and their timing
 
@@ -435,7 +454,8 @@ opening), and a Cross's description (R) goes back to it (`layer::ListStage`). A 
 Cross not chosen yet, an entry offered, MegaMan, no other pick holding the form; a marked entry refused. Taken, the
 Cross is marked and chosen, its form held (`custom.set_form(side, "cross_chosen", form)`) and its 34-tick window
 plays (`cross_chosen`, the view `form_chosen`); the layer's list closes as the window comes up. B with nothing
-picked takes it back (`custom.take_back`: `window.take_back`).
+picked takes it back, and so does `Unchoose` (a click on the Cross chosen) with the picks kept
+(`custom.unchoose_form`: `window.unchoose`): the face goes, or is the BeastOut chip's again where it is picked.
 
 **Who gets what** (per player; the original reads the local save):
 
