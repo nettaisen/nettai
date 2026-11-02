@@ -2284,14 +2284,14 @@ impl App {
                 }
             }
             state @ (Some(State::Failed) | Some(State::NoRoms) | Some(State::NoContent { .. }) | None) => {
-                // It can't be played: the next that can. One that couldn't be loaded, whose ROMs aren't found, or
+                // It can't be played: BN6 if it can be, else the first that can (`Games::first_choice`). One that
+                // couldn't be loaded, whose ROMs aren't found, or
                 // whose content couldn't be downloaded, is told above, by its name; one asked for that isn't there,
                 // as something gone wrong.
                 let told = state.is_some();
-                let games = self.shell.games.playable();
                 self.shell.game = None;
-                match games.first() {
-                    Some(next) => self.shell.select_game(&next.clone()),
+                match self.shell.games.first_choice(None) {
+                    Some(next) => self.shell.select_game(&next),
                     None => {
                         shell.set_no_games(true);
                         self.shell.show_no_content(&shell);
@@ -2302,7 +2302,7 @@ impl App {
                 }
             }
             Some(State::NotLoaded) => self.shell.load(&id),
-            Some(State::Loading(_) | State::Reading) => {
+            Some(State::Loading(_) | State::Reading | State::AwaitingRoms) => {
                 shell.set_loading(true);
                 shell.set_loading_progress(self.shell.games.progress(&id));
             }

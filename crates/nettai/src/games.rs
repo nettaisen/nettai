@@ -20,8 +20,8 @@
 //!
 //! The recipe loads with the game's content (its root gives it), so which ROMs a game needs is known once its content
 //! is read: as the app starts (and as a game's newer content arrives), each game's content is read on a thread of its
-//! own ([`State::Reading`]), and the Legacy Collection is looked in once every game's is. What was read is kept for
-//! the game's first load, which goes on from it.
+//! own ([`State::Reading`]), and the Legacy Collection is looked in once every game's is ([`State::AwaitingRoms`]
+//! until then: it may yet be played). What was read is kept for the game's first load, which goes on from it.
 
 use nettai_extract::{Install, Recipe, RomSource};
 use nettai_battle::Content;
@@ -42,6 +42,9 @@ pub enum State {
     NoContent { unpublished: bool },
     /// Its content is being read (defined, on a thread of its own), with the recipe that states its ROMs.
     Reading,
+    /// Its content is read, and its ROMs are looked for once every game's content is (each recipe states them): it may
+    /// yet be played, as one being read may.
+    AwaitingRoms,
     /// Its ROMs aren't found: no Legacy Collection is, or the one found hasn't every ROM its recipe declares (or its
     /// content has no recipe that reads: why is in the log).
     NoRoms,
@@ -215,7 +218,7 @@ impl Games {
             Ok(read) => {
                 self.list[at].recipe = self.recipe_of(id, &read);
                 self.list[at].read = Some(read);
-                self.list[at].state = State::NoRoms;
+                self.list[at].state = State::AwaitingRoms;
             }
             Err(why) => {
                 crate::errors::log(&format!("loading {id}"), &why);
@@ -244,6 +247,12 @@ impl Games {
             }
         } else {
             self.check_roms();
+        }
+        // (Those whose ROMs weren't found can't be played until they are.)
+        for entry in &mut self.list {
+            if matches!(entry.state, State::AwaitingRoms) {
+                entry.state = State::NoRoms;
+            }
         }
         // (A collection found that lacks a game's ROMs was said as it was found: `Games::found`.)
         if !self.wanted().is_empty() && self.source.is_none() && self.incomplete.is_empty() && !self.notices.contains(&Notice::NoSource) {
@@ -325,9 +334,10 @@ impl Games {
         }
     }
 
-    /// The games whose ROMs aren't found yet, with their recipes.
+    /// The games whose ROMs aren't found yet (or not looked for yet), with their recipes.
     fn wanted(&self) -> Vec<(String, Arc<Recipe>)> {
-        self.list.iter().filter(|e| matches!(e.state, State::NoRoms)).filter_map(|e| Some((e.id.clone(), e.recipe.clone()?))).collect()
+        let wants = |e: &&Entry| matches!(e.state, State::NoRoms | State::AwaitingRoms);
+        self.list.iter().filter(wants).filter_map(|e| Some((e.id.clone(), e.recipe.clone()?))).collect()
     }
 
     /// Whether a game's ROMs aren't found: the Legacy Collection's folder would be taken.
@@ -1215,7 +1225,8 @@ mod tests {
 
     /// Each game's content is read before its ROMs are looked for (its recipe states them), and they are looked for
     /// once every game's content is read: what was read is kept for the game's load; content that doesn't read can't
-    /// be played; a read of content the game no longer plays from is let go.
+    /// be played; a read of content the game no longer plays from is let go. A game read before the others is still
+    /// one that may be played, and the one remembered is opened on (it was BN5, the last read, every time).
     #[test]
     fn the_roms_are_looked_for_once_every_games_content_is_read() {
         use nettai_extract::source::testing::{archive, fake_rom};
@@ -1232,7 +1243,9 @@ mod tests {
         games.content_read("exe6", Path::new("elsewhere"), read("exe6"));
         assert!(matches!(games.get("exe6").unwrap().state, State::Reading), "not the content it plays from");
         games.content_read("exe6", &content, read("exe6"));
-        assert!(matches!(games.get("exe6").unwrap().state, State::NoRoms), "its ROMs wait for exe5's content");
+        assert!(matches!(games.get("exe6").unwrap().state, State::AwaitingRoms), "its ROMs wait for exe5's content");
+        assert_eq!(games.playable(), ["exe5", "exe6"], "it may yet play");
+        assert_eq!(games.first_choice(Some("exe6")).as_deref(), Some("exe6"), "the game remembered");
         games.content_read("exe5", &content, Err("exe5's content doesn't load".into()));
         assert!(matches!(games.get("exe6").unwrap().state, State::NotLoaded));
         assert!(games.get("exe6").unwrap().read.is_some(), "kept for its load");
