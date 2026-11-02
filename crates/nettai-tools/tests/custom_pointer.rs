@@ -2,8 +2,9 @@
 //! test's match files (tests/widescreen; EXE6's with Crosses, tests/custom_pointer): at 240 by 160 and at a filled window's size, a click at each target the
 //! renderer reports (`Renderer::targets`, the window at rest) is on that target (`Renderer::target_at`), and through
 //! the pointer (`nettai_frontend::pointer`) and the player's layer it gives the target's choice: a chip its pick, OK,
-//! a button its press, a pick its take-back, a form list entry its choice; the form list's tab opens the list. Then
-//! played through `Player::point`: a click picks a chip, a click on its pick takes it back, a click on OK sends.
+//! a button its press, a pick its take-back, a form list entry its choice; the form list's tab opens the list, and
+//! its exit label (EXE6's B:EXIT) closes it. Then played through `Player::point`: a click picks a chip, a click on
+//! its pick takes it back, the tab opens the form list and closes it, so does its exit label, a click on OK sends.
 
 use nettai_battle::custom::layer::{Gesture, ListStage, Target};
 use nettai_battle::custom::{Phase, SlotKind};
@@ -99,12 +100,12 @@ fn expected(p: &Player, t: Target) -> Option<ScreenChoice> {
         },
         Target::Pick(_) => Some(ScreenChoice::TakeBack),
         Target::Form(k) => Some(ScreenChoice::ChooseForm(k)),
-        Target::FormTab => None,
+        Target::FormTab | Target::FormExit => None,
     }
 }
 
 /// Every target's middle is on it, and a click there gives its choice; the tab opens the form list where it is
-/// offered, whose entries a click chooses.
+/// offered, whose entries a click chooses and whose exit label closes it.
 fn each_target_chooses(p: &mut Player, size: (usize, usize), label: &str) -> usize {
     let found = targets(p);
     let mut checked = 0;
@@ -114,6 +115,9 @@ fn each_target_chooses(p: &mut Player, size: (usize, usize), label: &str) -> usi
         if t == Target::FormTab {
             let offered = p.battle().form_list(0).is_some_and(|l| l.count > 0);
             assert_eq!(layer.list_stage().is_some(), offered, "{label}: the tab opens the form list where it is offered");
+        } else if t == Target::FormExit {
+            assert!(matches!(layer.list_stage(), Some(ListStage::Closing(_))), "{label} {size:?}: a click on B:EXIT closes the form list");
+            assert_eq!(choice, None, "{label} {size:?}: B:EXIT chooses nothing");
         } else {
             assert_eq!(choice, expected(p, t), "{label} {size:?}: a click on {t:?}");
         }
@@ -144,6 +148,7 @@ fn pointer_plays(name: &str, file: &str) {
         assert!(found.iter().filter(|(t, _)| matches!(t, Target::Slot(s) if *s < 10)).count() >= 5, "{label}: the dealt chips are targets");
         // (The window keeps to the top left: its places are the original's.)
         assert_eq!(box_of(&mut p, Target::Slot(0)), Rect::new(8, 104, 16, 24), "{label}: the first chip's cell");
+        assert!(!found.iter().any(|(t, _)| *t == Target::FormExit), "{label}: no exit label while the form list is down");
         let checked = each_target_chooses(&mut p, size, &label);
         // A click on the first chip picks it; its pick is then a target, whose click takes it back.
         let chip = middle(box_of(&mut p, Target::Slot(0)));
@@ -178,6 +183,23 @@ fn pointer_plays(name: &str, file: &str) {
                 p.layers()[0].unwrap().list_stage().is_none()
             });
             assert!(closed, "{label}: the tab again closes the form list");
+            // Opened again, its exit label (B:EXIT, at the window's foot) closes it.
+            draw(&mut p, size);
+            let tab = middle(box_of(&mut p, Target::FormTab));
+            point_click(&mut p, tab);
+            let up = (0..60).any(|_| {
+                p.tick(0);
+                draw(&mut p, size);
+                matches!(p.layers()[0].unwrap().list_stage(), Some(ListStage::Up(n)) if n > 1)
+            });
+            assert!(up, "{label}: the tab opens the form list again");
+            let exit = box_of(&mut p, Target::FormExit);
+            point_click(&mut p, middle(exit));
+            let closed = (0..60).any(|_| {
+                p.tick(0);
+                p.layers()[0].unwrap().list_stage().is_none()
+            });
+            assert!(closed, "{label}: B:EXIT closes the form list");
             draw(&mut p, size);
         }
         // A click on OK sends the hand.
