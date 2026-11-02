@@ -149,7 +149,7 @@ pub(super) fn make(shell: &Shell, dir: &Path) -> Result<(), String> {
         save(&format!("{i:02}.nettaireplay"), &written(replay, &info, ticks), when)?;
     }
     // Three that aren't played: of another layout, of other content, and no replay at all.
-    save("old.nettaireplay", b"NTRP\x02another nettai's", october(9, 23, 40))?;
+    save("old.nettaireplay", b"NTRP\x01another nettai's", october(9, 23, 40))?;
     let mut other = sets[0].clone();
     other.head.content ^= 1;
     let when = october(9, 12, 0);
@@ -813,7 +813,7 @@ mod tests {
         nettai_files::write(dir.join("first.nettaireplay"), written(&replay, &info(100, 0), None)).unwrap();
         nettai_files::write(dir.join("second.nettaireplay"), written(&replay, &info(300, 1), Some(600))).unwrap();
         nettai_files::write(dir.join("other.nettaireplay"), written(&other, &info(200, 0), None)).unwrap();
-        nettai_files::write(dir.join("old.nettaireplay"), b"NTRP\x02another nettai's").unwrap();
+        nettai_files::write(dir.join("old.nettaireplay"), b"NTRP\x01another nettai's").unwrap();
         nettai_files::write(dir.join("notes.txt"), b"not a replay, and not named as one").unwrap();
         let cache = dir.join("kept/replays-played.toml");
 
@@ -824,7 +824,7 @@ mod tests {
         let entries = library.entries.clone();
         let names: Vec<&str> = entries.iter().map(|e| e.path.file_name().unwrap().to_str().unwrap()).collect();
         assert_eq!(names, ["old.nettaireplay", "second.nettaireplay", "other.nettaireplay", "first.nettaireplay"]);
-        assert!(matches!(entries[0].read, Err(ReadError::OtherLayout { layout: 2 })));
+        assert!(matches!(entries[0].read, Err(ReadError::OtherLayout { layout: 1 })));
         let second = entries[1].read.as_ref().unwrap();
         assert_eq!((second.ticks, second.rounds.as_slice(), second.info.side, second.head.game.as_str()), (600, &[0][..], 1, "exe6"));
 
@@ -883,7 +883,7 @@ mod tests {
         other_damaged.push(0xE0);
         nettai_files::write(dir.join("damaged.nettaireplay"), &damaged).unwrap();
         nettai_files::write(dir.join("other.nettaireplay"), &other_damaged).unwrap();
-        nettai_files::write(dir.join("old.nettaireplay"), b"NTRP\x02another nettai's").unwrap();
+        nettai_files::write(dir.join("old.nettaireplay"), b"NTRP\x01another nettai's").unwrap();
         let mut library = Library::default();
         library.list(&dir);
         wait(&mut library, |found| found.iter().any(|f| matches!(f, Found::Listed)));
