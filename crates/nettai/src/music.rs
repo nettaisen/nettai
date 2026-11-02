@@ -1,47 +1,54 @@
-//! The battle's music (docs/app.md §1, "The battle's music"): the game's own, or a battle theme the player picked,
-//! of any game whose pack is there. The user: "you should also allow for selectable battle themes (bn4 virus
-//! battle, bn4 boss battle, bn4 tournament battle, bn4 vs duo, bn5 virus battle, bn5 boss battle, bn5 vs nebula
-//! gray, bn6 virus battle, bn6 boss battle, bn6 vs cybeast, bn6 crossover battle)", picked "beside the arena, each
-//! their own".
+//! The battle's music (docs/app.md §1, "The battle's music"): its rounds' backgrounds', or a battle theme the
+//! player picked, of any game whose pack is there. The user: "you should also allow for selectable battle themes
+//! (bn4 virus battle, bn4 boss battle, bn4 tournament battle, bn4 vs duo, bn5 virus battle, bn5 boss battle, bn5 vs
+//! nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs cybeast, bn6 crossover battle)", picked "beside the arena,
+//! each their own"; then "can you make backgrounds paired with music?", each background with the theme its game's
+//! battles on it start, everywhere a pick doesn't say otherwise.
 //!
 //! What the themes are is each game's content: its rules' `battle_themes`, songs of its game's sound, and their names in
-//! its locales (`battle_themes`, by the song's asset name); this names no song and no game. A theme is offered
+//! its locales (`battle_themes`, by the song's asset name); a background's is its definition's `music`
+//! (`Content::music_of_background`), one of its game's themes. This names no song and no game. A theme is offered
 //! once its game's parts are read (its content and its sound, `Games::read`: no runtime is needed), whichever
 //! game is selected. The pick is one, the player's own, Practice's for one visit (`practice::Visit`: the user,
 //! "going into practice should reset all the arena settings"): the practice menu shows and changes that one,
-//! and its own sessions play it; a match, a replay and its video play the game's own. It is presentation: the
-//! battle, its cues, a replay and its rollback are the same whatever plays (`nettai_audio::with_theme`).
+//! and its own sessions play it; a match, a replay and its video play the backgrounds'. It is presentation: the
+//! battle, its cues, a replay and its rollback are the same whatever plays (`nettai_audio::with_theme`,
+//! `nettai_audio::RoundMusic`).
 
 use crate::games::{Games, Ready};
 use crate::shell::Shell;
+use nettai_audio::RoundMusic;
+use nettai_battle::content::BackgroundId;
+use nettai_content_api::AssetKind;
 use nettai_frontend::preload::SoundParts;
 use slint::ComponentHandle;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 /// A battle's music.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum Music {
-    /// The battle's game's own: what it plays without a pick.
+    /// Each round's background's ([`round_music`]): what it plays without a pick.
     #[default]
-    GameOwn,
+    Background,
     /// A battle theme: game `game`'s theme of song `song` (its asset name).
     Theme { game: String, song: String },
 }
 
-/// What a list of the battle's music offers: the game's own first, then the themes of each game whose parts
+/// What a list of the battle's music offers: the backgrounds' first, then the themes of each game whose parts
 /// are read (`Games::read`), the games in the app's order and each game's in its own. A game whose pack isn't
 /// there offers none.
 pub fn offered(games: &Games) -> Vec<Music> {
     let themes = games.list.iter().filter_map(|g| games.read(&g.id).map(|ready| (g.id.clone(), ready)));
-    std::iter::once(Music::GameOwn)
+    std::iter::once(Music::Background)
         .chain(themes.flat_map(|(game, ready)| {
             ready.loaded.battle_themes().into_iter().map(move |song| Music::Theme { game: game.clone(), song: song.to_string() }).collect::<Vec<_>>()
         }))
         .collect()
 }
 
-/// Where `music` is in `offered`: a pick not offered (its game not read yet) shows as the game's own, the
+/// Where `music` is in `offered`: a pick not offered (its game not read yet) shows as the backgrounds', the
 /// first.
 pub fn place(offered: &[Music], music: &Music) -> usize {
     offered.iter().position(|m| m == music).unwrap_or(0)
@@ -66,11 +73,11 @@ pub fn name_themes<'a>(games: impl IntoIterator<Item = &'a str>, lang: &str) {
 }
 
 /// A theme's name as a list shows it, in the language shown: its game's name, then the theme's ("BN4 Tournament
-/// Battle", "EXE4 トーナメントバトル"); a theme its locales don't name is its song's asset name. The game's own
+/// Battle", "EXE4 トーナメントバトル"); a theme its locales don't name is its song's asset name. The backgrounds'
 /// is `own`, the UI's words for it.
 pub fn name(music: &Music, own: &str) -> String {
     match music {
-        Music::GameOwn => own.to_string(),
+        Music::Background => own.to_string(),
         Music::Theme { game, song } => {
             let theme = NAMES.with(|n| n.borrow().get(&(game.clone(), song.clone())).cloned()).unwrap_or_else(|| song.clone());
             format!("{} {theme}", Shell::game_name(game))
@@ -87,12 +94,12 @@ fn list(shell: &Shell) -> (Vec<Music>, usize) {
     (offered, at)
 }
 
-/// The UI's words for the game's own music: the list's first choice.
+/// The UI's words for the backgrounds' music: the list's first choice.
 fn own_words(shell: &Shell) -> String {
-    shell.ui().global::<nettai_ui::Shell>().get_game_own_music().to_string()
+    shell.ui().global::<nettai_ui::Shell>().get_background_music().to_string()
 }
 
-/// The pick as a select shows it (one not offered now shows as the game's own, which it plays as).
+/// The pick as a select shows it (one not offered now shows as the backgrounds', which it plays as).
 pub fn shown(shell: &Shell) -> String {
     let (offered, at) = list(shell);
     name(&offered[at], &own_words(shell))
@@ -128,32 +135,74 @@ pub fn choose(shell: &mut Shell, choice: i32) {
 pub fn retheme(shell: &mut Shell) {
     let Some(game) = shell.battle.as_ref().map(|b| b.game.clone()) else { return };
     let Some(ready) = shell.games.read(&game) else { return };
-    let Some(parts) = sound(&shell.games, &ready, &shell.battle_music()) else { return };
+    let music = shell.battle_music();
+    let Some(parts) = sound(&shell.games, &ready, &music) else { return };
+    let rounds = round_music(&shell.games, &ready, &music);
     if let Some(b) = &mut shell.battle {
-        b.stage.player.set_sound_parts(parts);
+        match rounds {
+            Some(rounds) => b.stage.player.set_round_music(rounds),
+            None => b.stage.player.set_sound_parts(parts),
+        }
     }
 }
 
-/// The sound of a battle of game `ready` with `music` (as the battle's preload takes it): its theme's song,
-/// with its own game's bank, in place of the game's own music where the theme's game is read and has it; else
-/// the game's own. None: the game has no sound loaded.
+/// The sound of a battle of game `ready` with `music` (as the battle's preload takes it): a theme's song, with
+/// its own game's bank, in place of the game's own music where the theme's game is read and has it; else the
+/// game's own (which the backgrounds' music, [`round_music`], plays in place of round by round). None: the game
+/// has no sound loaded.
 pub fn sound(games: &Games, ready: &Ready, music: &Music) -> Option<SoundParts> {
     let sound = ready.loaded.sound.as_ref()?;
     let theme = match music {
-        Music::GameOwn => None,
+        Music::Background => None,
         Music::Theme { game, song } => games.read(game).and_then(|of| of.loaded.theme(song)),
     };
     Some(sound.parts(ready.content(), theme.as_ref()))
+}
+
+/// The music by the round's background of a battle of game `ready` with `music` (the backgrounds'; none for a
+/// theme, which plays every round): each background a round of the game may be drawn on (the game's own and the
+/// pool's) with its music in place of the game's own, its definition's (`Content::music_of_background`, its
+/// game's content, the battle's for one of its own), with its game's bank. A background whose game isn't read,
+/// or whose definition names no music, plays the game's own. None: the game has no sound loaded.
+pub fn round_music(games: &Games, ready: &Ready, music: &Music) -> Option<Arc<RoundMusic>> {
+    if *music != Music::Background {
+        return None;
+    }
+    let sound = ready.loaded.sound.as_ref()?;
+    let content = ready.content();
+    let own = sound.parts(content, None);
+    // (Each theme's parts once, by its game and song.)
+    let mut made: HashMap<(String, String), SoundParts> = HashMap::new();
+    let mut by_background = HashMap::new();
+    for id in (0..=u16::MAX).map(BackgroundId).map_while(|id| content.background_of(id).map(|_| id)) {
+        let Some((game, name)) = content.background_of(id) else { continue };
+        // (One of the battle's own game is read from its content, which may be a replay's revision.)
+        let other = (game != content.game()).then(|| games.read(game)).flatten();
+        let of = match &other {
+            Some(other) => &other.loaded,
+            None if game == content.game() => &ready.loaded,
+            None => continue,
+        };
+        let Some(song) = of.game.content.music_of_background(name) else { continue };
+        let Some(song) = of.game.content.assets.name(AssetKind::Sound, song.0) else { continue };
+        let key = (game.to_string(), song.to_string());
+        if !made.contains_key(&key) {
+            let Some(theme) = of.theme(song) else { continue };
+            made.insert(key.clone(), sound.parts(content, Some(&theme)));
+        }
+        by_background.insert(id, made[&key].clone());
+    }
+    Some(Arc::new(RoundMusic { own, by_background }))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// A pick no longer offered shows as the game's own.
+    /// A pick no longer offered shows as the backgrounds'.
     #[test]
     fn a_pick_not_offered_is_the_games_own() {
-        let offered = [Music::GameOwn, Music::Theme { game: "exe6".into(), song: "boss-battle".into() }];
+        let offered = [Music::Background, Music::Theme { game: "exe6".into(), song: "boss-battle".into() }];
         assert_eq!(place(&offered, &offered[1]), 1);
         assert_eq!(place(&offered, &Music::Theme { game: "exe4".into(), song: "virus-battle".into() }), 0);
     }
@@ -209,17 +258,17 @@ mod tests {
         Games::read_of(ids.iter().map(|&id| (id, loaded(content(id)))).collect())
     }
 
-    /// The list is the game's own, then each read game's themes as its content states them, by the user's names:
+    /// The list is the backgrounds', then each read game's themes as its content states them, by the user's names:
     /// the game's name as shown in the language, then the theme's. A game not read offers none.
     #[test]
     fn the_themes_are_the_games_in_their_order() {
         let all = games(&["exe4", "exe5", "exe6"]);
         crate::shell::Shell::read_game_names(&["exe4", "exe5", "exe6"], "en");
-        let names: Vec<String> = offered(&all).iter().map(|m| name(m, "Game's own")).collect();
+        let names: Vec<String> = offered(&all).iter().map(|m| name(m, "By background")).collect();
         assert_eq!(
             names,
             [
-                "Game's own",
+                "By background",
                 "BN4 Virus Battle",
                 "BN4 Boss Battle",
                 "BN4 Tournament Battle",
@@ -290,7 +339,7 @@ mod tests {
             SongId(c.assets.handle(nettai_content_api::AssetKind::Sound, song).unwrap())
         };
         let own = SongId(content.defs.roles().link_battle_music(true).0);
-        let (playing, digest) = play(&Music::GameOwn);
+        let (playing, digest) = play(&Music::Background);
         assert_eq!(playing, [Some(own)], "BN6's own");
         let theme = |game: &str, song: &str| Music::Theme { game: game.into(), song: song.into() };
         let (playing, with_theme) = play(&theme("exe4", "tournament-battle"));
@@ -334,7 +383,7 @@ mod tests {
         };
         let own = number("exe6", "virus-battle");
         let theme = Music::Theme { game: "exe5".into(), song: "final-battle".into() };
-        let (mut changed, mut straight) = (player(&Music::GameOwn), player(&Music::GameOwn));
+        let (mut changed, mut straight) = (player(&Music::Background), player(&Music::Background));
         for _ in 0..30 {
             changed.tick(0);
             straight.tick(0);
@@ -346,12 +395,74 @@ mod tests {
             straight.tick(0);
         }
         assert_eq!(playing(&changed), [None, Some(number("exe5", "final-battle"))], "BN5's, at once");
-        changed.set_sound_parts(sound(&all, &six, &Music::GameOwn).unwrap());
+        changed.set_sound_parts(sound(&all, &six, &Music::Background).unwrap());
         for _ in 0..2 {
             changed.tick(0);
             straight.tick(0);
         }
         assert_eq!(playing(&changed), [Some(own), None], "the game's own again, from its start");
         assert_eq!(changed.battle().digest(), straight.battle().digest(), "the battle the same");
+    }
+
+    /// Without a pick, each round plays its background's music (`round_music`): the theme its definition names,
+    /// on its own game's driver (BN6's Graveyard its Crossover Battle on BN6's, BN4's Duo its vs Duo on BN4's). The
+    /// battle is the same whatever plays.
+    #[test]
+    fn a_round_plays_its_backgrounds_music() {
+        use nettai_audio::{MUSIC_PLAYER, m4a::SongId};
+        use nettai_audio::BankId;
+        let all = games(&["exe4", "exe5", "exe6"]);
+        let six = all.read("exe6").unwrap();
+        let content = six.content().clone();
+        let number = |game: &str, song: &str| {
+            let c = all.read(game).unwrap().content().clone();
+            SongId(c.assets.handle(nettai_content_api::AssetKind::Sound, song).unwrap())
+        };
+        // The music each driver plays once the round on `background` has started, and the battle's digest.
+        let play = |background: &str, music: &Music| {
+            let mut m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
+            m.rounds.iter_mut().for_each(|r| r.background = Some(background.into()));
+            let (banks, songs) = sound(&all, &six, music).unwrap();
+            let folders = [0, 1].map(|side| m.sides[side].folder(&content).saved().unwrap());
+            let set = nettai_match::Set::new(content.clone(), m.round(&content, 11), folders);
+            let driver = nettai_frontend::driver::LivePlayer::against(set, Default::default(), 11);
+            let renderer = nettai_frontend::testing::graphics(&content, 0x7FFF).renderer(Enhancements::NONE, None);
+            let mut player = nettai_frontend::Player::with(renderer, None, Some(nettai_audio::BattleAudio::with_banks(banks, songs)), Box::new(driver));
+            if let Some(rounds) = round_music(&all, &six, music) {
+                player.set_round_music(rounds);
+            }
+            for _ in 0..30 {
+                player.tick(0);
+            }
+            let audio = player.audio().unwrap();
+            let playing: Vec<Option<SongId>> = (0..3)
+                .map_while(|p| audio.driver_of(BankId(p)))
+                .map(|d| d.player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| m.song()))
+                .collect();
+            (playing, player.battle().digest())
+        };
+        let (playing, digest) = play("graveyard", &Music::Background);
+        assert_eq!(playing, [Some(number("exe6", "crossover-battle"))], "BN6's Graveyard: its Crossover Battle");
+        let (playing, _) = play("exe4:duo", &Music::Background);
+        assert_eq!(playing, [None, Some(number("exe4", "final-battle"))], "BN4's Duo: its vs Duo, on BN4's driver");
+        let (playing, _) = play("comp", &Music::Background);
+        assert_eq!(playing, [Some(number("exe6", "virus-battle"))], "BN6's Comp: its Virus Battle");
+        let (playing, picked) = play("graveyard", &Music::Theme { game: "exe5".into(), song: "boss-battle".into() });
+        assert_eq!(playing, [None, Some(number("exe5", "boss-battle"))], "a theme picked plays whatever the background");
+        assert_eq!(picked, digest, "the battle is the same");
+        assert_eq!(round_music(&all, &six, &Music::Theme { game: "exe5".into(), song: "boss-battle".into() }).map(|_| ()), None);
+    }
+
+    /// Every background of every game names its music, one of its game's battle themes.
+    #[test]
+    fn every_background_has_its_music() {
+        for content in [nettai_match::testing::exe4_content(), nettai_match::testing::exe5_content(), nettai_match::testing::exe6_content()] {
+            let game = content.game().to_string();
+            let sounds = content.assets.names(nettai_content_api::AssetKind::Sound);
+            for (of, name) in content.background_pool.iter().filter(|(g, _)| *g == game) {
+                let music = content.music_of_background(name).unwrap_or_else(|| panic!("{of}:{name} names no music"));
+                assert!(content.battle_themes().contains(&music), "{of}:{name}: {} is a battle theme", sounds[music.0 as usize]);
+            }
+        }
     }
 }

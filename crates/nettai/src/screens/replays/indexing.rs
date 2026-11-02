@@ -52,10 +52,11 @@ pub enum Taken {
 
 impl Indexing {
     /// Start the threads for the replay at `path`, played on `game` (each console's sound on a thread of its own,
-    /// where the game has sound). None if they couldn't start.
-    pub fn start(mut game: Loaded, path: PathBuf) -> Option<Indexing> {
+    /// where the game has sound, with `music` by the rounds' backgrounds as the viewer has it). None if they
+    /// couldn't start.
+    pub fn start(mut game: Loaded, music: Option<std::sync::Arc<nettai_audio::RoundMusic>>, path: PathBuf) -> Option<Indexing> {
         let (send, parts) = mpsc::channel();
-        let sounds = ConsoleSound::of(&game);
+        let sounds = ConsoleSound::of_with(&game, music);
         // (The battle's thread plays it silent: the sound is the other threads'.)
         game.sound = None;
         let started = match sounds {

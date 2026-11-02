@@ -61,8 +61,9 @@ pub enum BattleMusic {
     /// The player's pick: Practice's own sessions (the pick is Practice's alone: the user, "why does the music
     /// setting carry over from practice mode into pvp mode?").
     Picked,
-    /// The battle's game's own: a match ("for pvp it should use the game's default for now"), a replay.
-    GameOwn,
+    /// Each round's background's: a match, a replay (the user: "for pvp it should use the game's default for
+    /// now", then backgrounds paired with music, "Everywhere").
+    Background,
     /// None of its own: the menus' music goes on under it (the practice battle beside a waiting invite: the user,
     /// "in the practice mode while the lobby is waiting, don't switch the music").
     None,
@@ -220,11 +221,14 @@ impl Shell {
                 let graphics = ready.graphics(self.i18n.code);
                 let font = ready.loaded.font_in(self.i18n.code).filter(|_| enhancements.wants_font());
                 let renderer = graphics.renderer(enhancements, font.clone());
-                // (The music the player picked, the battle's game's own or a theme, where the battle plays the pick:
-                // `crate::music`.)
-                let music = if loading.start.music == BattleMusic::Picked { self.battle_music() } else { crate::music::Music::GameOwn };
+                // (The music the player picked, the backgrounds' or a theme, where the battle plays the pick; else
+                // the backgrounds': `crate::music`.)
+                let music = if loading.start.music == BattleMusic::Picked { self.battle_music() } else { crate::music::Music::Background };
                 let sound = crate::music::sound(&self.games, &ready, &music);
-                loading.preload = Some(Preload::with(renderer, font.map(TextRenderer::new), sound, &loading.start.set, loading.start.viewer, size));
+                let rounds = crate::music::round_music(&self.games, &ready, &music);
+                loading.preload = Some(
+                    Preload::with(renderer, font.map(TextRenderer::new), sound, &loading.start.set, loading.start.viewer, size).round_music(rounds),
+                );
             }
             Some(preload) => {
                 let began = Instant::now();

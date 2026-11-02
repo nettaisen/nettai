@@ -718,7 +718,8 @@ impl Watching {
             && let Some(ready) = self.ready_in(shell)
         {
             let game = game_for_thread(shell, &ready, true);
-            self.indexing = Indexing::start(game, self.path.clone()).map_or(IndexThread::Done, IndexThread::Going);
+            let music = crate::music::round_music(&shell.games, &ready, &crate::music::Music::Background);
+            self.indexing = Indexing::start(game, music, self.path.clone()).map_or(IndexThread::Done, IndexThread::Going);
         }
         self.index_on();
     }

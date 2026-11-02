@@ -380,6 +380,8 @@ impl Player {
         }
         let real_time = self.real_time();
         if let Some(audio) = &mut self.audio {
+            // (The round whose cues these are: the one a step that ended a round ended, else the battle's.)
+            audio.round(self.session.ended.as_deref().unwrap_or(&self.session.battle).setup.settings.background);
             match &self.session.sound {
                 // What a driver that runs the battle itself made of the
                 // frame (netplay: plays, and cancels of cues played on a
@@ -607,7 +609,20 @@ impl Player {
     /// cues are the same. Nothing for a player without audio.
     pub fn set_sound_parts(&mut self, (banks, songs): crate::preload::SoundParts) {
         if let Some(audio) = &mut self.audio {
+            audio.set_round_music(None);
             audio.set_songs(banks, songs);
+        }
+    }
+
+    /// Play the battle's music by its round's background from now on
+    /// (`music`: each background's music in place of the battle's own;
+    /// docs/app.md §1, "The battle's music"): the round on now's at once, as
+    /// [`Player::set_sound_parts`] changes it, and each round after it as it
+    /// starts. Presentation alone. Nothing for a player without audio.
+    pub fn set_round_music(&mut self, music: std::sync::Arc<nettai_audio::RoundMusic>) {
+        if let Some(audio) = &mut self.audio {
+            audio.set_round_music(Some(music));
+            audio.round(self.session.battle.setup.settings.background);
         }
     }
 

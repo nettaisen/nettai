@@ -372,3 +372,50 @@ fn a_change_of_songs_restarts_the_music() {
     assert_eq!((music_of(&a, 0), music_of(&a, 1)), (None, Some(SongId(0x16))), "the next round's start");
     assert_eq!(a.banks.len(), 2, "a bank playing already is that one");
 }
+
+/// The battle's music by its round's background (`RoundMusic`): each round
+/// plays its background's music from its start, another game's on that
+/// game's driver; a background it has none for, the battle's own. A round
+/// on the background before goes on as it was; the round's end and the
+/// result's music are the battle's, as ever.
+#[test]
+fn each_round_plays_its_backgrounds_music() {
+    use nettai_battle::content::BackgroundId;
+    let own = (vec![bank()], Songs::numbers(0x200));
+    let theirs = Theme { bank: other_bank(), song: 0x16 };
+    let music = RoundMusic {
+        own: own.clone(),
+        by_background: [(BackgroundId(3), with_theme(own.0.clone(), &own.1, &[VIRUS_BATTLE], &theirs))].into_iter().collect(),
+    };
+    let mut a = BattleAudio::with_banks(own.0.clone(), own.1.clone());
+    a.set_round_music(Some(Arc::new(music)));
+    let mut out = Vec::new();
+    // Round 1, on background 3: its music, another game's.
+    a.round(BackgroundId(3));
+    a.handle(&[SoundCue::Music(VIRUS_BATTLE)]);
+    a.tick(&mut out);
+    a.tick(&mut out);
+    assert_eq!((music_of(&a, 0), music_of(&a, 1)), (None, Some(SongId(0x16))), "background 3's, on its game's driver");
+    // Its end and its result.
+    a.handle(&[SoundCue::StopMusic, SoundCue::Music(WINNER)]);
+    a.tick(&mut out);
+    a.tick(&mut out);
+    assert_eq!((music_of(&a, 0), music_of(&a, 1)), (Some(SongId(0x1F)), None), "the result's music is the battle's");
+    // Round 2, on background 5, which has none: the battle's own, from the round's start; the result's music
+    // played on until then.
+    a.round(BackgroundId(5));
+    a.tick(&mut out);
+    assert_eq!(music_of(&a, 0), Some(SongId(0x1F)), "nothing changes before the round's music starts");
+    a.handle(&[SoundCue::StopMusic, SoundCue::Music(VIRUS_BATTLE)]);
+    a.tick(&mut out);
+    a.tick(&mut out);
+    assert_eq!((music_of(&a, 0), music_of(&a, 1)), (Some(SongId(0x15)), None), "the battle's own");
+    // A round on the same background goes on as it was: the music playing isn't started again.
+    a.round(BackgroundId(5));
+    assert!(a.banks.iter().all(|p| p.queue.is_empty()));
+    // Without music by background, a round changes nothing.
+    a.set_round_music(None);
+    a.round(BackgroundId(3));
+    assert!(a.banks.iter().all(|p| p.queue.is_empty()));
+    assert_eq!(a.songs.song(VIRUS_BATTLE), VIRUS_BATTLE);
+}

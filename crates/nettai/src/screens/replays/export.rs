@@ -179,7 +179,8 @@ pub fn game_for_thread(shell: &Shell, ready: &crate::games::Ready, sound: bool) 
         graphics: ready.graphics(shell.i18n.code),
         enhancements,
         font: ready.loaded.font_in(shell.i18n.code).filter(|_| enhancements.wants_font()),
-        // (With the game's own music, as the replay plays in the viewer: the pick is Practice's alone.)
+        // (With the game's own songs, the backgrounds' music played in their place round by round, as the replay
+        // plays in the viewer: the pick is Practice's alone.)
         sound: if sound {
             ready.loaded.sound.as_ref().map(|s| Sound { bank: s.bank.clone(), songs: s.songs.clone(), report: Default::default() })
         } else {
@@ -503,6 +504,7 @@ impl Export {
         };
         // What the thread plays from: the game as the window shows it, shared.
         let game = game_for_thread(shell, &ready, true);
+        let music = crate::music::round_music(&shell.games, &ready, &crate::music::Music::Background);
         let sides = SIDES[self.sides];
         // The chapters ("Round 1"...) and the sound's tracks (each side's player) in the words the window shows.
         let titles = {
@@ -525,7 +527,10 @@ impl Export {
                 if stopped.load(Ordering::Relaxed) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
             };
             // (Whole: the file kept, its head first. Canceled or failed: let go, nothing of it left.)
-            let result = nettai_video::export(&game, &replay, &options, to, &mut progress)
+            // (`nettai_video::export`, its viewer with the backgrounds' music.)
+            let result = nettai_frontend::viewer::Viewer::open_with(&game, &replay, options.view, music)
+                .map_err(nettai_video::Error::Replay)
+                .and_then(|mut viewer| nettai_video::write_mp4(&mut viewer, &options, to, &mut progress))
                 .and_then(|made| made.body.finish(made.head).map_err(nettai_video::Error::Disk));
             share(&told).done = Some(result);
         };

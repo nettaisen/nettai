@@ -418,9 +418,9 @@ msgstr "出现错误"
 msgid "Details are in the log file."
 msgstr "详情请查看日志文件。"
 
-# The battle music list's first choice (Play's lobby, Practice): the battle's game's own music.
-msgid "Game's own"
-msgstr "游戏原曲"
+# The battle music list's first choice (Practice): each round's background's music.
+msgid "By background"
+msgstr "随背景"
 
 # ---- An update of the app: the loading screen's lines as the app starts, and the footer's if it fails ----
 

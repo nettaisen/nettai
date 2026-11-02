@@ -816,7 +816,7 @@ impl Replays {
             recorder: None,
             cards: Some(cards),
             full: false,
-            music: crate::battle::BattleMusic::GameOwn,
+            music: crate::battle::BattleMusic::Background,
             gate: None,
         });
     }

@@ -776,7 +776,7 @@ impl Play {
             cards: Some(cards),
             full: true,
             // (A match plays its game's own music: the user, "for pvp it should use the game's default for now".)
-            music: crate::battle::BattleMusic::GameOwn,
+            music: crate::battle::BattleMusic::Background,
             gate: Some(Box::new(move |mine| {
                 said.mine.set(mine);
                 if said.go.get() { 1.0 } else { said.theirs.get().min(0.995) }

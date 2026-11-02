@@ -71,8 +71,8 @@ use crate::game::{Graphics, Loaded};
 use crate::player::{Clock, MOST_SAMPLES, tick_at, time_of};
 use crate::replay::{End, Info, Refused, Replay, ReplayPlayer};
 use crate::session::Session;
-use nettai_audio::{BattleAudio, SoundCue};
-use nettai_battle::content::Content;
+use nettai_audio::{BattleAudio, RoundMusic, SoundCue};
+use nettai_battle::content::{BackgroundId, Content};
 use nettai_battle::custom::Layer;
 use nettai_battle::{Battle, BattleResult, PlayerTick, RoundEnd, Snapshot};
 use nettai_render::hud::HudState;
@@ -185,6 +185,9 @@ pub struct BattlePart {
     cues: [Vec<SoundCue>; SOUNDS],
     /// Where each tick's cues end in them, by sound.
     ends: Vec<[u32; SOUNDS]>,
+    /// Each tick's round's background: the music its cues play by
+    /// ([`BattleAudio::round`]).
+    backgrounds: Vec<BackgroundId>,
     /// The part's ticks played before each state was kept.
     kept_after: Vec<u32>,
     /// By sound: the sound at each state, once it played the part.
@@ -241,7 +244,13 @@ impl ConsoleSound {
     /// `game` has them ([`Viewer::open`]); none where the game's sound isn't
     /// loaded.
     pub fn of(game: &Loaded) -> Option<[ConsoleSound; SOUNDS]> {
-        sound_of(game).map(ConsoleSound::all)
+        ConsoleSound::of_with(game, None)
+    }
+
+    /// The same, the music by the rounds' backgrounds (`music`), as a viewer
+    /// opened with it has it ([`Viewer::open_with`]).
+    pub fn of_with(game: &Loaded, music: Option<Arc<RoundMusic>>) -> Option<[ConsoleSound; SOUNDS]> {
+        sound_of(game, music).map(ConsoleSound::all)
     }
 
     /// Each of a viewer's sounds at a replay's start, as a viewer given
@@ -260,8 +269,9 @@ impl ConsoleSound {
         let mut sounds = Vec::with_capacity(part.kept_after.len());
         let mut kept = part.kept_after.iter().copied().peekable();
         let mut start = 0;
-        for (ran, ends) in (1..).zip(&part.ends) {
+        for ((ran, ends), &background) in (1..).zip(&part.ends).zip(&part.backgrounds) {
             let end = ends[side] as usize;
+            self.audio.round(background);
             self.audio.handle(&part.cues[side][start..end]);
             start = end;
             self.scratch.clear();
@@ -413,7 +423,13 @@ impl Viewer {
     /// replay: one of another game, of another version of nettai, or whose
     /// match doesn't read.
     pub fn open(game: &Loaded, replay: &Replay, view: Option<u8>) -> Result<Viewer, Refused> {
-        Viewer::with(&game.game.content, replay, view, game.renderer(), game.font.clone().map(TextRenderer::new), sound_of(game))
+        Viewer::open_with(game, replay, view, None)
+    }
+
+    /// The same, its music by its rounds' backgrounds (`music`; none: the
+    /// game's own songs: [`BattleAudio::set_round_music`]).
+    pub fn open_with(game: &Loaded, replay: &Replay, view: Option<u8>, music: Option<Arc<RoundMusic>>) -> Result<Viewer, Refused> {
+        Viewer::with(&game.game.content, replay, view, game.renderer(), game.font.clone().map(TextRenderer::new), sound_of(game, music))
     }
 
     /// A viewer from its parts: the content the replay plays on, the
@@ -783,17 +799,18 @@ impl Viewer {
     /// own, the parts going from one to the next as they are made.
     pub fn index_battle(&mut self, ticks: u32) -> BattlePart {
         let from = self.position();
-        let (mut cues, mut ends, mut kept_after) = (<[Vec<SoundCue>; SOUNDS]>::default(), Vec::new(), Vec::new());
+        let (mut cues, mut ends, mut backgrounds, mut kept_after) = (<[Vec<SoundCue>; SOUNDS]>::default(), Vec::new(), Vec::new(), Vec::new());
         let part = self.index_ticks(ticks, |ticked, layers, ran, kept| {
             for (sound, cues) in cues.iter_mut().enumerate() {
                 sound_cues(ticked, layers, sound, cues);
             }
             ends.push(cues.each_ref().map(|c| c.len() as u32));
+            backgrounds.push(ticked.setup.settings.background);
             if kept {
                 kept_after.push(ran);
             }
         });
-        BattlePart { part, from, cues, ends, kept_after, sounds: Default::default() }
+        BattlePart { part, from, cues, ends, backgrounds, kept_after, sounds: Default::default() }
     }
 
     /// Play up to `ticks` ticks on from where the viewer is, the states it
@@ -1000,6 +1017,7 @@ impl Viewer {
             for (k, sound) in audio.iter_mut().enumerate() {
                 self.cues.clear();
                 sound_cues(ticked, self.session.driver.layers(), k, &mut self.cues);
+                sound.round(ticked.setup.settings.background);
                 sound.handle(&self.cues);
                 self.ticks[k].clear();
                 sound.tick(&mut self.ticks[k]);
@@ -1090,8 +1108,12 @@ impl Viewer {
 
 /// A viewer's sound as it opens on `game` (none: the game's sound isn't
 /// loaded): one console's, copied for the other.
-fn sound_of(game: &Loaded) -> Option<BattleAudio> {
-    game.sound.as_ref().map(|s| BattleAudio::new(s.bank.clone(), s.songs.clone()))
+fn sound_of(game: &Loaded, music: Option<Arc<RoundMusic>>) -> Option<BattleAudio> {
+    game.sound.as_ref().map(|s| {
+        let mut audio = BattleAudio::new(s.bank.clone(), s.songs.clone());
+        audio.set_round_music(music);
+        audio
+    })
 }
 
 /// The battle the last tick ran, whose sound cues are that tick's: a tick

@@ -11,7 +11,7 @@
 //! opens it ([`open`]) with the build edited as the player's (the user: "the practice button should probably be
 //! moved into the build editor"; it was Play's), and it goes straight into a session (the user: "i
 //! feel like the practice button is in a weird place", then the whole play/build/practice flow rethought):
-//! the dummy on the player's own build, Arena and Background Random, the game's own music, every option at its
+//! the dummy on the player's own build, Arena and Background Random, the backgrounds' music, every option at its
 //! normal value, and the practice menu open over the battle as it starts ("when practice mode starts you should
 //! also bring up the menu immediately"), its focus on RESUME. The menu's EXIT, or Back, goes back to the editor
 //! on that build ([`go_back`]). A [`Visit`] is the time from PRACTICE to leaving: what the menu sets lasts
@@ -181,7 +181,7 @@ struct Kept {
 
 /// A visit to Practice: from the build editor's PRACTICE until Practice is left other than by the menu's EDIT. The editor is part of it: the menu's EDIT goes there, and its Back comes back.
 /// Through it the sessions keep the Dummy's build, Arena, Background and Music and the menu's choices the player
-/// set; each visit starts on their defaults: the dummy on the player's own build, Random, Random, the game's own,
+/// set; each visit starts on their defaults: the dummy on the player's own build, Random, Random, the backgrounds' music,
 /// every option normal (the user: "going into practice should reset all the arena settings, there's no reason
 /// for it to remember the last settings").
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -1828,7 +1828,7 @@ mod tests {
         let mut visit = Visit::new("exe6", "Swords", None);
         assert!(!visit.arrive(), "the editor's PRACTICE started it");
         assert_eq!((visit.build("exe6", 0), visit.build("exe6", 1), visit.build("exe5", 0)), (Some("Swords"), None, None));
-        assert_eq!((visit.place("exe6", &places), &visit.music), ([0, 0], &Music::GameOwn), "Random, Random, the game's own");
+        assert_eq!((visit.place("exe6", &places), &visit.music), ([0, 0], &Music::Background), "Random, Random, the backgrounds'");
         assert_eq!((&visit.menu, &visit.dummys_build), (&MenuChoices::default(), &None), "the menu's defaults, the dummy on your build");
         visit.leave();
         assert!(visit.arrive(), "from elsewhere, a visit starts");
@@ -1850,7 +1850,7 @@ mod tests {
         for elsewhere in [ScreenId::Menu, ScreenId::Play] {
             visit.shown(elsewhere);
             assert!(visit.arrive(), "{elsewhere:?}: a new visit");
-            assert_eq!((visit.place("exe6", &places), &visit.music), ([0, 0], &Music::GameOwn), "{elsewhere:?}: the defaults again");
+            assert_eq!((visit.place("exe6", &places), &visit.music), ([0, 0], &Music::Background), "{elsewhere:?}: the defaults again");
             assert_eq!((&visit.menu, &visit.dummys_build), (&MenuChoices::default(), &None), "{elsewhere:?}: the menu's too");
             visit.set_place("exe6", [1, 1]);
             visit.music = theme.clone();

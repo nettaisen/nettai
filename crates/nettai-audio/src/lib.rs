@@ -7,6 +7,8 @@
 //!   cue's sounds into songs.
 //! - [`Theme`] and [`with_theme`]: a battle's music in place of its game's
 //!   own, a song of any game's played with that game's bank.
+//! - [`RoundMusic`]: a battle's music by its round's background, which
+//!   [`BattleAudio::round`] switches to as a round starts.
 //! - [`SoundCalls`]: what the game's sound functions ask of the driver for
 //!   each cue in songs (EXE6's wrappers: `PlayMusic`'s current-music check,
 //!   the pinch effect's pitch and tempo, ...), as [`Request`]s.
@@ -109,6 +111,27 @@ impl Songs {
     }
 }
 pub use m4a;
+
+/// A battle's banks and its songs, as [`BattleAudio::with_banks`] and
+/// [`BattleAudio::set_songs`] take them.
+pub type Parts = (Vec<Arc<SoundBank>>, Songs);
+
+/// A battle's music by its round's background (docs/app.md §1, "The
+/// battle's music"): the parts a round plays (each the game's own with its
+/// background's music in place of its own music, [`with_theme`]'s), by
+/// the background it is drawn on; a round on a background it has none for
+/// plays `own`.
+pub struct RoundMusic {
+    pub own: Parts,
+    pub by_background: std::collections::HashMap<nettai_battle::content::BackgroundId, Parts>,
+}
+
+impl RoundMusic {
+    /// What a round drawn on `background` plays.
+    pub fn parts(&self, background: nettai_battle::content::BackgroundId) -> &Parts {
+        self.by_background.get(&background).unwrap_or(&self.own)
+    }
+}
 
 /// A song of a game's, with that game's bank: a battle's music in place of
 /// its game's own (a battle theme a player picked, of the battle's game or
@@ -325,6 +348,10 @@ pub struct BattleAudio {
     /// How the drivers mix ([`BattleAudio::set_mixer`]), for a bank added later.
     mixer: Mixer,
     mix: Vec<[f32; 2]>,
+    /// The music by the round's background ([`BattleAudio::set_round_music`]),
+    /// and the background whose parts play now.
+    round_music: Option<Arc<RoundMusic>>,
+    round: Option<nettai_battle::content::BackgroundId>,
 }
 
 /// `driver` at the host's levels, the music's and the effects'
@@ -357,7 +384,20 @@ impl BattleAudio {
         assert!(!banks.is_empty(), "a bank");
         let banks = banks.into_iter().map(|b| BankSound { driver: Driver::new(b), calls: SoundCalls::new(), queue: Vec::new() }).collect();
         let (music, moved_from, heard, heard_before) = (None, None, None, None);
-        BattleAudio { banks, songs, music, moved_from, heard, heard_before, pinch: false, levels: (1.0, 1.0), mixer: Mixer::Hq, mix: Vec::new() }
+        BattleAudio {
+            banks,
+            songs,
+            music,
+            moved_from,
+            heard,
+            heard_before,
+            pinch: false,
+            levels: (1.0, 1.0),
+            mixer: Mixer::Hq,
+            mix: Vec::new(),
+            round_music: None,
+            round: None,
+        }
     }
 
     /// The bank a cue plays on, and the cue in its songs: a sound's own
@@ -527,6 +567,30 @@ impl BattleAudio {
                 self.play(SoundCue::Pinch(true));
             }
         }
+    }
+
+    /// Play the battle's music by its round's background from now on
+    /// (`music`), or none: the songs stay as they are. A host tells it each
+    /// tick's background ([`BattleAudio::round`]), and the next it is told
+    /// switches to that one's parts.
+    pub fn set_round_music(&mut self, music: Option<Arc<RoundMusic>>) {
+        self.round_music = music;
+        self.round = None;
+    }
+
+    /// The cues handled next are of a round drawn on `background`: where it
+    /// isn't the one before, the battle's songs are its parts from now on
+    /// ([`BattleAudio::set_songs`]; a round's music starts with its first
+    /// tick, so a host tells it before handling a tick's cues). Nothing
+    /// without music by background.
+    pub fn round(&mut self, background: nettai_battle::content::BackgroundId) {
+        if self.round == Some(background) {
+            return;
+        }
+        let Some(music) = self.round_music.clone() else { return };
+        self.round = Some(background);
+        let (banks, songs) = music.parts(background).clone();
+        self.set_songs(banks, songs);
     }
 
     /// The place of `bank` among the battle's: one playing already, else one

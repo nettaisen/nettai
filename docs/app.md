@@ -309,9 +309,22 @@ corner while that is on; a replay's strips name no controls.
 
 **The battle's music** (`music.rs`; docs/design/app-ui.md §2.29). The user: "you should also allow for
 selectable battle themes (bn4 virus battle, bn4 boss battle, bn4 tournament battle, bn4 vs duo, bn5 virus battle,
-bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs cybeast, bn6 crossover battle)".
+bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs cybeast, bn6 crossover battle)";
+then "can you make backgrounds paired with music?", each background with the theme the original played in battles
+on it, "Everywhere" (Practice, matches, replays and their videos).
 
-- *What plays without a pick* (the game's own) is what the engine's round start asks for (`Battle::mode_intro`):
+- *What plays without a pick* is each round's background's music (`music::round_music`, nettai-audio's
+  `RoundMusic`): the theme its definition names (`asset.background("acdc-area", { music =
+  asset.sound("virus-battle") })`, in its game's backgrounds/init.luau; `Content::music_of_background`), one of its
+  game's battle themes (the content refuses another: a song of the content's own is named a theme too, and so is
+  offered in the list), with its own game's bank as a picked theme is. A round's music switches as the round
+  starts (`BattleAudio::round`, told each tick's round's background before its cues: the round's first tick starts
+  its music), so a set whose rounds are drawn on several backgrounds plays each its own; a round on the background
+  before goes on as it was. Rounds are battles of their own, so no rollback crosses the switch. The pairings, from
+  the original's battle settings (below, "The backgrounds' music"), are the games' contents'; the user set BN6's
+  Graveyard's ("for the graveyard stage in bn6, it should be paired with crossover"). A background whose game
+  isn't read, or whose definition names no music (a custom one may name none), plays the game's own.
+- *The game's own* is what the engine's round start asks for (`Battle::mode_intro`):
   every match is a link battle, so the rules' `music.link_battle` (EXE6 and EXE5: `virus-battle`, song 0x15), and
   in EXE4 a single battle's `link_battle_single` (`virus-battle`, 0x14) or a set's `link_battle` (`boss-battle`,
   0x15), as its battle start picks by the battle's type. The stage's own music is a battle's outside a link (none
@@ -338,16 +351,19 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   The names shown are the game's name in the language, then the theme's ("BN4 Tournament Battle", "EXE4
   トーナメントバトル"). The app names no song and no game: it lists what the games' contents state.
 - *The pick* is the player's own and one: the practice menu over the battle (§15) shows and changes it (Play's
-  lobby has none: the user, "don't allow bgm select in lobby"). It is kept for one visit to Practice (`practice::Visit`, `Shell::battle_music`; §15) and each visit starts on "Game's own" (the user, "going
+  lobby has none: the user, "don't allow bgm select in lobby"). It is kept for one visit to Practice (`practice::Visit`, `Shell::battle_music`; §15) and each visit starts on "By background" (the user, "going
   into practice should reset all the arena settings, there's no reason for it to remember the last settings";
-  docs/design/app-ui.md §2.40): nothing of it is in the settings. The list is "Game's own", then the themes of every game whose parts are read
+  docs/design/app-ui.md §2.40): nothing of it is in the settings. The list is "By background", then the themes of every game whose parts are read
   (`Games::read`: its content and its sound; no runtime is needed), the games in their order; a game whose ROMs
-  aren't found offers none, and a pick of one is played as the game's own until its game is read.
+  aren't found offers none, and a pick of one is played as the backgrounds' until its game is read. A theme picked
+  plays every round, whatever its background.
 - *Which battles play it* (`BattleStart::music`, `BattleMusic`): Practice's own sessions play the pick (the
   user: "why does the music setting carry over from practice mode into pvp mode? huh?"); an online match, a replay
-  watched and a replay's video (§16) play the game's own ("for pvp it should use the game's default for now");
-  and the practice battle beside a waiting invite plays none of its own: the menus' music goes on under it, its
-  battle music silent ("in the practice mode while the lobby is waiting, don't switch the music").
+  watched, a replay's video (§16) and the index a replay's seeks start from play the backgrounds' (the user,
+  "Everywhere"; before, the game's own: "for pvp it should use the game's default for now"); and the practice
+  battle beside a waiting invite plays none of its own: the menus' music goes on under it, its battle music silent
+  ("in the practice mode while the lobby is waiting, don't switch the music"). Nothing of it is sent: both players
+  of a match hear the round's background's music, the background being the match's.
 - *How it plays.* A battle that plays the pick has it from `Shell::battle_music` through `music::sound`. The song plays in
   place of the battle's own music (the content's `battle_music`: the link battle's music roles and the stages'
   own), with its own game's bank on a driver of its own (`nettai_audio::with_theme`: its own voice groups and
@@ -3294,7 +3310,7 @@ build gone, or no longer one that can be played) goes back to Play with the fail
 - **What it starts on** (`Practice::start_own`): the player's build the visit's (Play's chosen one; shown from
   elsewhere, the screenshot pass, the one Play remembers, `play::remembered`, else the first that can be
   played), the dummy on the visit's dummy's build (at first the player's own), the place, the music and the
-  menu's choices the visit's (at first Random, Random, "Game's own", Stands still, Normal, every option normal,
+  menu's choices the visit's (at first Random, Random, "By background", Stands still, Normal, every option normal,
   the input display off). The builds are read as Play lists them (`play::shelved`), and those that can be played
   are what the menu's Dummy's build offers (`practice::Pick`: a build and its place among the game's files).
 - **The menu opens as it starts** (the user: "when practice mode starts you should also bring up the menu
@@ -3412,8 +3428,8 @@ back from the editor, keeps what the player set. None of it is in the settings.
   the same whatever the player's builds, and kept for the session by game (the pool's backgrounds once for all
   three): nothing is written to disk. The screenshot pass makes them on the window's thread at once.
 - **Music** is the battle's music the player picked (§1, "The battle's music"), the one pick Practice's sessions
-  play, the visit's ("Game's own" as a visit starts): a dropdown as Background's, its list "Game's own" then the
-  themes, stepped by Left and Right around from the last theme to "Game's own", and Enter, a click or a tap opens
+  play, the visit's ("By background" as a visit starts): a dropdown as Background's, its list "By background" then the
+  themes, stepped by Left and Right around from the last theme to "By background", and Enter, a click or a tap opens
   its list.
 - A build is checked as the lobby will check one (`nettai_match::build::Checked`, through Play's list), and the
   match of the two (`nettai_match::check::problems`) as a session starts.
@@ -3495,7 +3511,7 @@ rows are a model (`PracticeView.rows`: one row component under one `for`), made 
 | Dummy: Level (under Fights alone) | Easy, Normal, Hard | how well it fights (nettai-training's `Level`): below |
 | Stage: Arena (a pictured select) | Random, then "1 / 47" and on, each arena once | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
 | Stage: Background (a pictured select) | Random, then the pool's by game and name | the battle goes on where it is, drawn on the new background: below |
-| Stage: Music (a dropdown) | Game's own, then the battle themes (§1, "The battle's music") | the pick, the battle's music switched at once (not beside a waiting invite) |
+| Stage: Music (a dropdown) | By background, then the battle themes (§1, "The battle's music") | the pick, the battle's music switched at once (not beside a waiting invite) |
 | Options: YOU and DUMMY (the headings of the rows of two columns under them) | | |
 | Options: HP (two columns: yours, the dummy's) | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
 | Options: Emotion (two columns: yours, the dummy's) | Normal, then the game's: Full Synchro, Angry, and BN4's and BN5's Worried and Evil, BN6's Tired and Very tired (the user's names and order; the content's `[emotions]` words) | `Training::emotions`, by side: the navi held in that emotion whatever would change it (a chip that spends Full Synchro, anger running out: `kinds::player::hold_emotion`, by the facts the game's rules hold it by); Normal, as the game goes |

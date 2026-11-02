@@ -146,6 +146,8 @@ pub struct Preload {
     renderer: Renderer,
     text: Option<TextRenderer>,
     sound: Option<SoundParts>,
+    /// The music by the rounds' backgrounds ([`Preload::round_music`]).
+    round_music: Option<Arc<nettai_audio::RoundMusic>>,
     audio: Option<BattleAudio>,
     /// The round's first battle, once made, as the viewer's console shows
     /// it.
@@ -207,7 +209,7 @@ impl Preload {
         if sound.is_some() {
             steps.push(Step { part: Part::Match, share: 2, work: Work::Sound, done: false });
         }
-        Preload { content, set: set.clone(), viewer, size, renderer, text, sound, audio: None, battle: None, steps, stopped: None }
+        Preload { content, set: set.clone(), viewer, size, renderer, text, sound, round_music: None, audio: None, battle: None, steps, stopped: None }
     }
 
     /// Run the next step. True while a step is left after it.
@@ -261,12 +263,28 @@ impl Preload {
         self.stopped.as_deref()
     }
 
+    /// The match's music by its rounds' backgrounds (`music`: each
+    /// background's music in place of the battle's own;
+    /// `BattleAudio::set_round_music`): what the player or viewer it becomes
+    /// plays. Asked for before the steps run.
+    pub fn round_music(mut self, music: Option<Arc<nettai_audio::RoundMusic>>) -> Preload {
+        self.round_music = music;
+        self
+    }
+
+    /// The battle's sound from its parts, with the music by background.
+    fn audio_of(&mut self, (banks, songs): SoundParts) -> BattleAudio {
+        let mut audio = BattleAudio::with_banks(banks, songs);
+        audio.set_round_music(self.round_music.clone());
+        audio
+    }
+
     /// The player of what `driver` plays (the set this was made for), with
     /// what was made ready: its renderer and text as the steps left them,
     /// its sound. Steps not run are made up on the way, as a player made
     /// without a preload makes everything ([`Player::late`] counts it).
     pub fn player(mut self, driver: Box<dyn Driver>) -> Player {
-        let audio = self.audio.take().or_else(|| self.sound.take().map(|(banks, songs)| BattleAudio::with_banks(banks, songs)));
+        let audio = self.audio.take().or_else(|| self.sound.take().map(|parts| self.audio_of(parts)));
         Player::with(self.renderer, self.text, audio, driver)
     }
 
@@ -275,7 +293,7 @@ impl Preload {
     /// made ready, as [`Preload::player`] gives a player. Refused as
     /// [`crate::viewer::Viewer::open`] refuses a replay.
     pub fn viewer(mut self, replay: &crate::replay::Replay, view: Option<u8>) -> Result<crate::viewer::Viewer, crate::replay::Refused> {
-        let audio = self.audio.take().or_else(|| self.sound.take().map(|(banks, songs)| BattleAudio::with_banks(banks, songs)));
+        let audio = self.audio.take().or_else(|| self.sound.take().map(|parts| self.audio_of(parts)));
         crate::viewer::Viewer::with(&self.content, replay, view, self.renderer, self.text, audio)
     }
 
@@ -310,8 +328,8 @@ impl Preload {
                 nettai_render::present::present(&frame, self.text.as_mut(), &mut pixels, w, h);
             }
             Work::Sound => {
-                if let Some((banks, songs)) = self.sound.take() {
-                    self.audio = Some(BattleAudio::with_banks(banks, songs));
+                if let Some(parts) = self.sound.take() {
+                    self.audio = Some(self.audio_of(parts));
                 }
             }
             Work::Navi(navi) => self.look_up_navi(navi),
