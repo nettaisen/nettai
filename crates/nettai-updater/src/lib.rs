@@ -14,8 +14,6 @@
 #![deny(unsafe_code)]
 
 mod platform;
-#[cfg(any(android, test))]
-mod release;
 
 use platform::system;
 use std::sync::mpsc::{self, Receiver, Sender};
