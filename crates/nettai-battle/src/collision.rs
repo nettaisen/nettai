@@ -480,18 +480,7 @@ impl Battle {
     pub fn remove_collision(&mut self, id: CollisionId) {
         let bit = self.collision.get(id).bit;
         let whole_field = self.collision.covers_whole_field(&self.content, id);
-        let panels: Vec<(u8, u8)> = if whole_field {
-            let mut v = Vec::new();
-            for y in 1..=3u8 {
-                for x in 1..=6u8 {
-                    v.push((x, y));
-                }
-            }
-            v
-        } else {
-            self.collision.region_panels(&self.content, &self.field, id)
-        };
-        for (x, y) in panels {
+        for (x, y) in self.removal_panels(id, whole_field) {
             let i = (y * 8 + x) as usize;
             let was = self.collision.masks[i] & bit != 0;
             self.collision.masks[i] &= !bit;
@@ -502,6 +491,31 @@ impl Battle {
             self.pair_test(x, y, id);
             self.convert_panel(x, y, id);
         }
+    }
+
+    /// The panels `remove_collision` takes `id` off, in its order: a
+    /// whole-field registration's every panel, else its region's.
+    fn removal_panels(&self, id: CollisionId, whole_field: bool) -> Vec<(u8, u8)> {
+        if whole_field {
+            (1..=3u8).flat_map(|y| (1..=6u8).map(move |x| (x, y))).collect()
+        } else {
+            self.collision.region_panels(&self.content, &self.field, id)
+        }
+    }
+
+    /// Whether `remove_collision` would test `id` against a registration
+    /// on its panels that it hasn't been tested against since it was
+    /// presented (one that came onto them after it): only such a test adds
+    /// to its hits, so without one its hits are the same before the removal
+    /// as after.
+    pub(crate) fn removal_tests_another(&self, id: CollisionId) -> bool {
+        let s = self.collision.get(id);
+        let (bit, tested) = (s.bit, s.acc.pair_tested);
+        let whole_field = self.collision.covers_whole_field(&self.content, id);
+        self.removal_panels(id, whole_field).into_iter().any(|(x, y)| {
+            let m = self.collision.masks[(y * 8 + x) as usize];
+            (!whole_field || m & bit != 0) && m & !bit & !tested != 0
+        })
     }
 
     /// `sub_30075FC`.

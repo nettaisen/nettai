@@ -678,7 +678,8 @@ declare extern type Object with
     -- ticks after the one it enters on), then a step of a panel in its facing, its coordinates from the panel (with
     -- `climbs`, a pixel further down and a pixel higher than on the last panel) and its collision's panels; its
     -- collision presented again, and it animates. Its update runs instead, and the drive ends, on a tick the battle
-    -- is over, its collision was hit, or its step would leave the field.
+    -- is over, its collision was hit, taking its collision out would test it against something that came onto its
+    -- panels since it was presented (which can hit it), or its step would leave the field.
     function fly(self, climbs: boolean?): ()
     -- `object_genericDestroy`: release panel reservations and collision,
     -- then free.

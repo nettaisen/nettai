@@ -1265,8 +1265,10 @@ pub enum Held {
 /// coordinates from the panel (with `climbs`, a pixel further down and a
 /// pixel higher than on the last), its collision's panels; its collision
 /// presented again, and it animates. Its update runs instead, and the
-/// drive ends, on a tick the battle is over, its collision was hit, or its
-/// step would leave the field.
+/// drive ends, on a tick the battle is over, its collision was hit, taking
+/// its collision out would test it against something that came onto its
+/// panels since it was presented (which can hit it), or its step would
+/// leave the field.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Fly {
     pub climbs: bool,

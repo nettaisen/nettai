@@ -33,6 +33,8 @@ mod games;
 pub mod ids;
 #[cfg(test)]
 mod link_navis;
+#[cfg(test)]
+mod shots;
 pub mod names;
 mod set;
 pub mod sp_times;
