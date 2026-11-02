@@ -518,10 +518,11 @@ impl Player {
     /// as the one playing but for its rounds' backgrounds. The battle goes
     /// on as it is, drawn on the background `set` has for the round being
     /// played, and the rounds after (and the set's next start) are on
-    /// theirs. A round's background is in its setup, and the digest with
-    /// it, but no tick reads it: the renderer alone does, so the battle
-    /// steps as it would have. False (and nothing changes) for a battle
-    /// that isn't live play, and while a recording is made.
+    /// theirs, the music by background following at once (held or not). A
+    /// round's background is in its setup, and the digest with it, but no
+    /// tick reads it: the renderer alone does, so the battle steps as it
+    /// would have. False (and nothing changes) for a battle that isn't live
+    /// play, and while a recording is made.
     pub fn set_backgrounds(&mut self, set: nettai_match::Set) -> bool {
         let session = &mut self.session;
         let Some(live) = session.driver.live_mut().filter(|_| session.recorder.is_none()) else { return false };
@@ -534,9 +535,14 @@ impl Player {
         for (now, then) in setup.later_stages.iter_mut().zip(&first.later_stages) {
             now.background = then.background;
         }
+        let background = setup.settings.background;
         // (Another game's background is drawn once extracted: until then, the stage's own.)
         self.renderer.graphics().want_backgrounds(set.content(), nettai_render::graphics::set_backgrounds(set.first()));
         live.play_set(set);
+        // (The music by background follows at once, held or not: `BattleAudio::round`, as the round's start would.)
+        if let Some(audio) = &mut self.audio {
+            audio.round(background);
+        }
         true
     }
 

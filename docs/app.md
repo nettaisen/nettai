@@ -3571,7 +3571,9 @@ arena either in trianing mode"). A round's background is in its setup (`RoundSet
 renderer alone does. So the battle goes on where it is, the arena, the HP, the dummy and the round as they
 were: the set made again on the new background (its arenas the same, above) is put in the playing one's place,
 and the battle's setup says its backgrounds (the library's `Player::set_backgrounds`), drawn from the next
-frame, the rounds after and a RESTART on them too. Stepped on from there, the battle is the one without the
+frame, the rounds after and a RESTART on them too. With Music "By background", the music switches to the new
+background's at once, the battle held under the menu or not (the user: "if by background is selected and the
+background changes the music doesn't change"): its song from its start, as a round's start would play it. Stepped on from there, the battle is the one without the
 change tick for tick, its digest the same but for the background its setup says, another game's as one of the
 game's own (nettai's `on_another_background_the_battle_goes_on`); practice is neither online nor recorded, so no digest of it is
 compared with another's.

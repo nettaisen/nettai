@@ -465,4 +465,42 @@ mod tests {
             }
         }
     }
+
+    /// Practice's Background changed while the battle is held under its menu (`Player::set_backgrounds`): the
+    /// music by background switches at once, the new background's song from its start, as the next round's
+    /// start would; the battle is the same.
+    #[test]
+    fn a_background_changed_mid_round_changes_the_music_at_once() {
+        use nettai_audio::{MUSIC_PLAYER, m4a::SongId};
+        use nettai_audio::BankId;
+        let all = games(&["exe4", "exe5", "exe6"]);
+        let six = all.read("exe6").unwrap();
+        let content = six.content().clone();
+        let number = |song: &str| SongId(content.assets.handle(nettai_content_api::AssetKind::Sound, song).unwrap());
+        let mut m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
+        let folders = [0, 1].map(|side| m.sides[side].folder(&content).saved().unwrap());
+        let mut set_on = |background: &str| {
+            m.rounds.iter_mut().for_each(|r| r.background = Some(background.into()));
+            nettai_match::Set::new(content.clone(), m.round(&content, 11), folders.clone())
+        };
+        let (comp, graveyard) = (set_on("comp"), set_on("graveyard"));
+        let (banks, songs) = sound(&all, &six, &Music::Background).unwrap();
+        let renderer = nettai_frontend::testing::graphics(&content, 0x7FFF).renderer(Enhancements::NONE, None);
+        let driver = nettai_frontend::driver::LivePlayer::against(comp, Default::default(), 11);
+        let mut player = nettai_frontend::Player::with(renderer, None, Some(nettai_audio::BattleAudio::with_banks(banks, songs)), Box::new(driver));
+        player.set_round_music(round_music(&all, &six, &Music::Background).unwrap());
+        for _ in 0..30 {
+            player.tick(0);
+        }
+        let playing = |p: &nettai_frontend::Player| p.audio().unwrap().driver_of(BankId(0)).unwrap().player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| m.song());
+        assert_eq!(playing(&player), Some(number("virus-battle")), "BN6's Comp: its Virus Battle");
+        let digest = player.battle().digest();
+        assert!(player.set_held(true));
+        assert!(player.set_backgrounds(graveyard));
+        for _ in 0..2 {
+            player.tick(0);
+        }
+        assert_eq!(playing(&player), Some(number("crossover-battle")), "the Graveyard's Crossover Battle, held");
+        assert_eq!(player.battle().digest(), digest, "held: the battle didn't step");
+    }
 }
