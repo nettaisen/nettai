@@ -571,6 +571,10 @@ impl<C: Channel> Driver for NetPlayer<C> {
         out
     }
 
+    fn layer_mut(&mut self, side: u8) -> Option<&mut Layer> {
+        self.layer.as_mut().filter(|_| side as usize & 1 == self.side & 1)
+    }
+
     /// From the set's start: each tick as it settles (both peers' files
     /// alike, but for their info).
     fn record(&mut self) -> bool {

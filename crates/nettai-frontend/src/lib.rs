@@ -40,6 +40,7 @@ pub mod lobby;
 pub mod netplay;
 pub mod party;
 pub mod player;
+pub mod pointer;
 pub mod preload;
 pub mod replay;
 pub mod session;

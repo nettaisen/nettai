@@ -146,6 +146,8 @@ pub struct Player {
     switch: Option<u8>,
     /// The custom screen choice the player made of their own ([`Player::choose`]), until a tick carries it.
     choice: Option<nettai_battle::ScreenChoice>,
+    /// The pointer on the local player's custom screen ([`Player::point`]).
+    pointer: crate::pointer::ScreenPointer,
     speed: usize,
     clock: Clock,
     /// What had been made before the player was: this thread's runtimes
@@ -198,6 +200,7 @@ impl Player {
             held: false,
             switch: None,
             choice: None,
+            pointer: crate::pointer::ScreenPointer::default(),
             speed: NORMAL,
             clock: Clock::new(),
             before,
@@ -299,6 +302,29 @@ impl Player {
         self.choice = Some(choice);
     }
 
+    /// A pointer's event on the battle's picture (the mouse's, a finger's;
+    /// `x` and `y` in the pixels of the last frame drawn): the gesture it
+    /// makes on the local player's custom screen, by what that frame drew
+    /// where, goes to their layer for the next tick (`crate::pointer`;
+    /// docs/design/custom-screen-actions.md §5). Nothing from a driver whose
+    /// player doesn't play (a replay's).
+    pub fn point(&mut self, e: crate::pointer::PointerEvent) {
+        let side = self.session.battle.setup.local_side;
+        let renderer = &self.renderer;
+        let gesture = self.pointer.event(e, |x, y| renderer.target_at(side, x.floor() as i32, y.floor() as i32));
+        if let (Some(g), Some(layer)) = (gesture, self.session.driver.layer_mut(side)) {
+            layer.point(g);
+        }
+    }
+
+    /// Whether the last frame drawn has anything of the local player's
+    /// custom screen for a pointer (its window at rest): a host's cue that
+    /// the picture takes the pointer, and that a phone's pad gives way.
+    pub fn takes_pointer(&self) -> bool {
+        self.session.driver.layers()[self.session.battle.setup.local_side as usize & 1].is_some()
+            && self.renderer.targets(self.session.battle.setup.local_side).next().is_some()
+    }
+
     /// Run one tick with `buttons` held, whatever the clock or the pause
     /// say: a host that paces itself, or a frame's step while paused. (A
     /// driver that runs the battle itself, netplay's, runs one wall-clock
@@ -326,9 +352,15 @@ impl Player {
         if self.session.fresh {
             self.switch = None;
             self.choice = None;
+            // (A finger held long on the custom screen describes what it is on.)
+            let side = self.session.battle.setup.local_side;
+            if let (Some(g), Some(layer)) = (self.pointer.tick(), self.session.driver.layer_mut(side)) {
+                layer.point(g);
+            }
         }
         if self.session.new_round {
             self.renderer.reset();
+            self.pointer.clear();
         }
         if self.session.fresh {
             self.renderer.observe(&self.session.battle);

@@ -46,6 +46,12 @@ pub trait Driver {
     fn layers(&self) -> [Option<&Layer>; 2] {
         [None, None]
     }
+    /// Side `side`'s layer, for its player's pointer to move
+    /// (`Layer::point`): the local player's, of a driver whose player plays
+    /// (live, netplay); none from any other (a replay's).
+    fn layer_mut(&mut self, _side: u8) -> Option<&mut Layer> {
+        None
+    }
     /// The battle after a tick of its inputs (`next`'s): its layers follow
     /// it. (A driver that runs the battle itself does it there.)
     fn follow(&mut self, _b: &Battle) {}
@@ -864,6 +870,10 @@ impl Driver for LivePlayer {
             Some([a, b]) => [Some(a), Some(b)],
             None => [None, None],
         }
+    }
+
+    fn layer_mut(&mut self, side: u8) -> Option<&mut Layer> {
+        self.layers.as_mut().map(|l| &mut l[side as usize & 1])
     }
 
     fn follow(&mut self, b: &Battle) {

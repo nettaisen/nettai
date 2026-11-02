@@ -198,6 +198,10 @@ pub struct Renderer {
     /// What the last frame's sprite draw took of its budget and left out
     /// (`objects::SpriteDraw`).
     pub sprite_drawn: objects::SpriteDrawn,
+    /// What a pointer finds where on the last frame's custom screens: each
+    /// seat's that shows its own console's as it is, by side, in the frame's
+    /// pixels (`Renderer::target_at`).
+    targets: Vec<(u8, nettai_battle::custom::layer::Target, Rect)>,
     /// The version of the console whose screen is drawn, as its game's
     /// pack names its versions (EXE5's "protoman", "colonel"), for a game
     /// whose versions the engine doesn't tell apart: which chips are the
@@ -272,6 +276,7 @@ impl Renderer {
             scratch_names: Layer { palettes: Palettes::Hud, ..Layer::new(0, 0) },
             problems: Problems::default(),
             sprite_drawn: objects::SpriteDrawn::default(),
+            targets: Vec::new(),
             console_version: None,
             enhancements: Enhancements::NONE,
             font: None,
@@ -422,6 +427,19 @@ impl Renderer {
     /// 1.5 pixels a tick (`custom::camera_y`). (A shake's jitter is whole
     /// pixels, and the camera's X has no part of a pixel.) `layers`: each
     /// side's custom screen layer, as `render` takes them.
+    /// What a pointer finds on side `side`'s custom screen in the last
+    /// frame drawn, with each target's box in the frame's pixels (none
+    /// while no screen of its is at rest there: docs/design/custom-screen-actions.md §5).
+    pub fn targets(&self, side: u8) -> impl Iterator<Item = (nettai_battle::custom::layer::Target, Rect)> + '_ {
+        self.targets.iter().filter(move |(s, _, _)| *s == side & 1).map(|&(_, t, r)| (t, r))
+    }
+
+    /// The target a pointer at `(x, y)` of the last frame (its pixels) is
+    /// on, of side `side`'s custom screen: the first whose box holds it.
+    pub fn target_at(&self, side: u8, x: i32, y: i32) -> Option<nettai_battle::custom::layer::Target> {
+        self.targets(side).find(|(_, r)| x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h).map(|(t, _)| t)
+    }
+
     pub fn camera_sub(&self, b: &Battle, layers: Layers) -> i32 {
         Self::view_for(b, self.consoles, layers).camera.1 & 0xFFFF
     }
@@ -465,6 +483,7 @@ impl Renderer {
     fn draw(&mut self, b: &Battle, screen_layers: Layers, smooth: Smooth) -> Frame {
         self.problems.known.clear();
         self.problems.marks.clear();
+        self.targets.clear();
         // (Every layer as large as the frame; what is drawn on the
         // original's screen in the middle of it, the background on to all
         // four edges, the HUD's pieces each where it keeps to: `hud::draw`,
@@ -597,6 +616,7 @@ impl Renderer {
         // (On a screen of both, what either player sees.)
         let viewers: Vec<u8> = seats.iter().map(|s| s.side).collect();
         self.sprite_drawn = objects::queue_objects(b, &graphics, &view, &viewers, &mut list, &mut self.problems, !draw);
+        let mut targets = Vec::new();
         for (k, &seat) in seats.iter().enumerate() {
             if seat.shows == Shows::Nothing {
                 continue;
@@ -613,7 +633,8 @@ impl Renderer {
             // `Seat::clip`.)
             let clip = seat.clip(b, screen_layers, &seats, size);
             list.clip = clip;
-            crate::custom::draw(b, screen_layer, own_game, &graphics, emblem, *emblem_palette, (seat, sprite_fade), (&mut *hud, &mut *names), scratch, &mut list, &mut text, &mut self.problems);
+            let found = crate::custom::draw(b, screen_layer, own_game, &graphics, emblem, *emblem_palette, (seat, sprite_fade), (&mut *hud, &mut *names), scratch, &mut list, &mut text, &mut self.problems);
+            targets.extend(found.into_iter().map(|(t, r)| (seat.side, t, r)));
             crate::hud::draw(b, own_game, &graphics, hud_of(seat), &shared[k], (seat, &view, screen_layer), self.custom_gauge, smooth, (&mut *hud, &mut self.scratch), &mut list, &mut text, &mut self.problems);
             list.clip = None;
             if let Some([x0, x1]) = clip {
@@ -656,6 +677,10 @@ impl Renderer {
         // right one's the other way, as the mirror shows it.)
         let (jx, jy) = crate::custom::hud_jitter(b, screen_layers[local], local as u8);
         self.hud.shift(-jx, -jy);
+        // (The window's places in the frame: from its anchor, shaken as the
+        // HUD layer is.)
+        let (ox, oy) = size.origin(compose::Anchor::TOP_LEFT);
+        self.targets = targets.into_iter().map(|(side, t, r)| (side, t, r.offset(ox - jx, oy - jy))).collect();
         let (rx, ry) = if both { crate::custom::hud_jitter(b, screen_layers[local ^ 1], local as u8 ^ 1) } else { (0, 0) };
         self.hud_right.shift(rx, -ry);
         // (The HUD's BG3 is the game's priority: EXE4's 0 covers the HP

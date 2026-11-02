@@ -27,7 +27,7 @@ use nettai_battle::{Battle, Content};
 use nettai_battle::battle::{FadeMode, mode};
 use nettai_battle::content::{ButtonView, ChipFlags, ChipTraits, VariableDamageShows, WindowView};
 use nettai_battle::rules::Flight;
-use nettai_battle::custom::layer::{HiddenStage, ListStage};
+use nettai_battle::custom::layer::{HiddenStage, ListStage, Target};
 use nettai_battle::custom::look::{ChipWindow, WindowLook};
 use nettai_battle::custom::screen::{OK_SLOT, SPECIAL_SLOT};
 use nettai_battle::custom::{ButtonCell, FolderChip, Layer as ScreenLayer, Phase, Screen, Side, SlotKind, SlotState};
@@ -2315,13 +2315,82 @@ fn slot_cell(s: usize) -> (usize, usize) {
 /// the place's edges), to the nearest cell edges: their first column and
 /// row, one past their last.
 fn cursor_cells(p: &nettai_assets::CursorPlace) -> [usize; 4] {
-    let corners = &p.corners[0];
-    let xs = corners.iter().map(|c| p.x as i32 - 3 + c.1 as i32);
-    let ys = corners.iter().map(|c| p.y as i32 - 3 + c.0 as i32);
-    let edge = |v: i32| (v + 4).div_euclid(8).max(0) as usize;
+    let (x, y, shape) = cursor_at(p);
+    shape_box(x, y, &shape).map(|v| (v / 8) as usize)
+}
+
+/// The box of cells a cursor of `shape` at `(x, y)` goes about, in pixels
+/// (`cursor_cells`'s): left, top, right, bottom.
+fn shape_box(x: i32, y: i32, shape: &CursorShape) -> [i32; 4] {
+    let corners = &shape.corners[0];
+    let xs = corners.iter().map(|c| x - 3 + c.1);
+    let ys = corners.iter().map(|c| y - 3 + c.0);
+    let edge = |v: i32| 8 * (v + 4).div_euclid(8).max(0);
     let (x0, x1) = (xs.clone().min().unwrap_or(0) + 3, xs.max().unwrap_or(0) + 8 - 3);
     let (y0, y1) = (ys.clone().min().unwrap_or(0) + 3, ys.max().unwrap_or(0) + 8 - 3);
     [edge(x0), edge(y0), edge(x1), edge(y1)]
+}
+
+/// Where a pointer finds what it can do on a side's screen (its layer's
+/// `Target`s), in the original's 240 by 160 pixels, from where the screen
+/// draws its cursor and those parts: each slot the cursor goes to, a chip's
+/// whole cell edge to edge (a button in the slots' run too), OK and a
+/// button at a place of its own about its cursor's cells (a button two
+/// cells wide halved); the column's picks; the form list's tab (the window
+/// label its rules name, where the window's map shows it) and, while its
+/// window is up, its entries alone. None while the window isn't at rest.
+fn targets(v: &View, w: &Window, place: Placement) -> Vec<(Target, Rect)> {
+    let mut out = Vec::new();
+    if place.scroll != 0 || place.from != 0 || place.to != COLUMNS {
+        return out;
+    }
+    let a = v.assets;
+    let rect = |[x0, y0, x1, y1]: [i32; 4]| Rect::new(x0, y0, x1 - x0, y1 - y0);
+    let rules = v.b.content.rules().custom_screen.form_list.as_ref();
+    if let Some(tab) = rules.and_then(|r| r.tab.as_deref()) {
+        let drawn = a.labels.iter().filter(|l| l.name == tab).filter_map(|l| w.tiles_rect(place, l.first..l.last + 1));
+        if let Some(r) = drawn.reduce(|r, s| [r[0].min(s[0]), r[1].min(s[1]), r[2].max(s[2]), r[3].max(s[3])]) {
+            out.push((Target::FormTab, rect(r)));
+        }
+    }
+    if let Some(stage) = v.layer.and_then(|l| l.list_stage()) {
+        if let (ListStage::Up(_), Some(list)) = (stage, v.b.form_list(v.side)) {
+            let [x0, y0] = w.layout.form_names_at.map(i32::from);
+            for k in 0..list.count.min(5) {
+                out.push((Target::Form(k), Rect::new(8 * x0, 8 * (y0 + 2 * k as i32), 8 * 9, 16)));
+            }
+        }
+        return out;
+    }
+    for (s, slot) in v.screen.slots.iter().enumerate() {
+        if slot.kind.is_absent() {
+            continue;
+        }
+        let (x, y, shape, chip) = cursor_place(v, a, s as u8);
+        let own_place = match slot.kind {
+            SlotKind::Button { button, .. } => v.button_look(button).is_some_and(|l| l.pack.place.is_some()),
+            _ => false,
+        };
+        let r = if chip || (s < HAND_SLOTS && !own_place) {
+            let (x, y) = (16 * (s % 5) as i32 + 8, 0x68 + 0x18 * (s / 5) as i32);
+            [x, y, x + 16, y + 24]
+        } else {
+            let [x0, y0, x1, y1] = shape_box(x, y, &shape);
+            let mid = (x0 + x1) / 2;
+            match slot.kind {
+                SlotKind::Button { cell: ButtonCell::Left, .. } => [x0, y0, mid, y1],
+                SlotKind::Button { cell: ButtonCell::Right, .. } => [mid, y0, x1, y1],
+                _ => [x0, y0, x1, y1],
+            }
+        };
+        out.push((Target::Slot(s as u8), rect(r)));
+    }
+    let [left, right] = w.layout.column_columns.map(i32::from);
+    let row = w.layout.column_row as i32;
+    for k in 0..v.screen.selection().len().min(5) {
+        out.push((Target::Pick(k as u8), Rect::new(8 * left, 8 * (row + 2 * k as i32), 8 * (right + 1 - left), 16)));
+    }
+    out
 }
 
 /// The cursor at a place the graphics give (OK's, a button's).
@@ -2363,29 +2432,36 @@ fn form_list_cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<S
         .collect()
 }
 
-fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<'a>> {
+/// Where the cursor is drawn on slot `slot`, and its shape: a chip's
+/// (the slot's cell, `true`), or OK's or a button's own.
+fn cursor_place(v: &View, a: &CustomScreen, slot: u8) -> (i32, i32, CursorShape, bool) {
     let s = v.screen;
-    let slot = v.layer.map_or(0, |l| l.cursor);
-    let (x, y, shape) = match s.slots[slot as usize].kind {
-        SlotKind::Chip { .. } | SlotKind::Offered(_) | SlotKind::Empty | SlotKind::Hidden => {
-            let (col, row) = ((slot % 5) as i32, (slot / 5) as i32);
-            (16 * col + 8, 0x68 + 0x18 * row, CHIP_CURSOR)
+    let chip = || {
+        let (col, row) = ((slot % 5) as i32, (slot / 5) as i32);
+        (16 * col + 8, 0x68 + 0x18 * row, CHIP_CURSOR, true)
+    };
+    match s.slots[slot as usize].kind {
+        SlotKind::Chip { .. } | SlotKind::Offered(_) | SlotKind::Empty | SlotKind::Hidden => chip(),
+        SlotKind::Ok => {
+            let (x, y, shape) = cursor_at(&a.layout.ok_cursor);
+            (x, y, shape, false)
         }
-        SlotKind::Ok => cursor_at(&a.layout.ok_cursor),
         // (A button that shows a chip: a chip's cursor, 0x080246B8.)
-        SlotKind::Button { .. } if s.slots[slot as usize].face.is_some() => {
-            let (col, row) = ((slot % 5) as i32, (slot / 5) as i32);
-            (16 * col + 8, 0x68 + 0x18 * row, CHIP_CURSOR)
-        }
+        SlotKind::Button { .. } if s.slots[slot as usize].face.is_some() => chip(),
         // (A button the game's graphics have no look for: a chip's cursor on its slot.)
         SlotKind::Button { button, .. } => match v.button_look(button) {
-            Some(look) => look.cursor(),
-            None => {
-                let (col, row) = ((slot % 5) as i32, (slot / 5) as i32);
-                (16 * col + 8, 0x68 + 0x18 * row, CHIP_CURSOR)
+            Some(look) => {
+                let (x, y, shape) = look.cursor();
+                (x, y, shape, false)
             }
+            None => chip(),
         },
-    };
+    }
+}
+
+fn cursor_parts<'a>(v: &View, a: &'a CustomScreen, frame: u8) -> Vec<SpritePart<'a>> {
+    let slot = v.layer.map_or(0, |l| l.cursor);
+    let (x, y, shape, _) = cursor_place(v, a, slot);
     let palette = v.cursor_palette();
     // Queued last corner first (`sub_8028820`).
     shape.corners[frame as usize & 1]
@@ -2667,11 +2743,11 @@ pub fn draw<'a>(
     list: &mut SpriteList<'a>,
     text: &mut TextSink,
     problems: &mut Problems,
-) {
-    let Some((_, screen)) = screen_of(b, seat.side) else { return };
+) -> Vec<(Target, Rect)> {
+    let Some((_, screen)) = screen_of(b, seat.side) else { return Vec::new() };
     let a = &assets.custom;
     if !crate::lookups::custom_graphics(a, problems) {
-        return;
+        return Vec::new();
     }
     let side = seat.side & 1;
     let mirrored = seat.mirrored();
@@ -2712,6 +2788,9 @@ pub fn draw<'a>(
     let mut w = Window::build(&v, text, problems);
     let advance_names = w.program_advance(&v, text, problems);
     w.draw(hud_layer, place);
+    // (What a pointer finds where, on a seat that shows its own console's
+    // screen as it is.)
+    let found = if mirrored { Vec::new() } else { targets(&v, &w, place) };
     if let Some(why) = w.picture_known {
         w.known_picture(place, why, problems);
     }
@@ -2900,6 +2979,7 @@ pub fn draw<'a>(
     let _ = OK_SLOT;
     crate::hud::keep_to(seat, Anchor::CENTER, (&mut *out_hud, &mut *out_names), list, text);
     crate::hud::keep_to(seat, Anchor::CENTER, (&mut *scratch_hud, &mut *scratch_names), list, text);
+    found
 }
 
 #[cfg(test)]
