@@ -106,6 +106,38 @@ pub enum Sub {
     List(ListStage),
 }
 
+/// What a pointer is on, of a side's custom screen: a place the frontend
+/// draws (nettai-render's `custom::targets` gives each one's box).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Target {
+    /// A slot the cursor goes to: a chip, OK, a cell of a rules' button.
+    Slot(u8),
+    /// The `k`th pick (from 0) in the column of picks.
+    Pick(u8),
+    /// An entry of the rules' form list, while its window is up.
+    Form(u8),
+    /// The form list's tab (EXE6's CROSSSELECT label), which opens and
+    /// closes it.
+    FormTab,
+}
+
+/// A pointer's gesture on the custom screen (the mouse's, a finger's), for
+/// the layer's next tick (docs/design/custom-screen-actions.md §5).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Gesture {
+    /// The pointer is over a target: the cursor goes there, and no choice
+    /// is made (a finger down, the mouse's hover).
+    Hover(Target),
+    /// A click or a tap on a target (none: on none, which closes a
+    /// description or brings the hidden window back as a key does).
+    Click(Option<Target>),
+    /// Right-click, a long press: R on the target.
+    Describe(Target),
+}
+
+/// The most gestures a layer keeps for its next ticks.
+const GESTURES: usize = 4;
+
 /// The state the original's screen was in, of the battle's and the layer's
 /// together.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -132,6 +164,16 @@ impl Was {
     fn hovers(self) -> bool {
         matches!(self, Was::Screen(Phase::Settling | Phase::Choosing) | Was::Description { from_list: false })
     }
+}
+
+/// What the pointer's gesture did over the chips.
+enum Pointed {
+    /// It chose.
+    Choice(ScreenChoice),
+    /// It took the tick (opened something up, or was refused): no keys.
+    Took,
+    /// Nothing that takes the tick: the keys have it.
+    Nothing,
 }
 
 /// What a tick's first half saw, for its second.
@@ -193,6 +235,17 @@ pub struct Layer {
     /// sounds, then the hover's.
     calls: [Option<ScreenCall>; 8],
     plan: Plan,
+    /// The pointer's gestures for the next ticks, in order (`Layer::point`):
+    /// one a tick, a hover replaced by what follows it.
+    gestures: [Option<Gesture>; GESTURES],
+    /// The gesture this tick takes, until what it is for takes it.
+    gesture: Option<Gesture>,
+    /// Take-backs a click on a pick asked for, still to send: one a tick
+    /// while the screen chooses, down to the pick clicked.
+    take_backs: u8,
+    /// This tick's choice is the pointer's (its gesture's, a take-back it
+    /// asked for).
+    pointer_chose: bool,
 }
 
 impl Layer {
@@ -218,7 +271,32 @@ impl Layer {
             hover_fade_last: false,
             calls: [None; 8],
             plan: Plan::default(),
+            gestures: [None; GESTURES],
+            gesture: None,
+            take_backs: 0,
+            pointer_chose: false,
         }
+    }
+
+    /// A gesture of the pointer, for the next tick ([`Layer::input`]): a
+    /// hover the next gesture replaces, the others one a tick, in order (a
+    /// full queue drops the newest).
+    pub fn point(&mut self, gesture: Gesture) {
+        let n = self.gestures.iter().take_while(|g| g.is_some()).count();
+        let n = if n > 0 && matches!(self.gestures[n - 1], Some(Gesture::Hover(_))) {
+            self.gestures[n - 1] = None;
+            n - 1
+        } else {
+            n
+        };
+        if n < GESTURES {
+            self.gestures[n] = Some(gesture);
+        }
+    }
+
+    /// The gesture the last tick took, if it took one (a recording's).
+    pub fn gesture(&self) -> Option<Gesture> {
+        self.gesture
     }
 
     pub fn side(&self) -> u8 {
@@ -333,6 +411,12 @@ impl Layer {
         self.calls = [None; 8];
         self.look.drawn = Shown::default();
         self.plan = Plan::default();
+        // (The pointer's next gesture: this tick's, taken by what it is for
+        // or dropped with the tick.)
+        self.gesture = self.gestures[0];
+        self.gestures.rotate_left(1);
+        self.gestures[GESTURES - 1] = None;
+        self.pointer_chose = false;
         let mut out = PlayerTick { choice: None, ..input };
         let Some(p) = p else { return input };
         let screen = p.screen;
@@ -366,13 +450,30 @@ impl Layer {
             }
             Phase::Choosing if switching => TickKind::Screen,
             Phase::Choosing => {
-                if self.sub == Sub::None {
-                    out.choice = self.choose(p, layout);
+                // (The pointer's gesture first: what it chooses or opens
+                // takes the tick from the keys.)
+                let kind = if self.sub == Sub::None {
+                    out.choice = match self.point_on_chips(p, layout) {
+                        Pointed::Choice(c) => Some(c),
+                        Pointed::Took => None,
+                        Pointed::Nothing => self.choose(p, layout),
+                    };
                     TickKind::Choosing
                 } else {
                     out.choice = self.step_sub(p, layout);
                     TickKind::Sub
+                };
+                // The take-backs a click on a pick asked for, one a tick
+                // while nothing else is chosen and nothing but the form list
+                // is up; a choice of the keys' ends them.
+                let scheduled = self.take_backs;
+                if out.choice.is_some() && !self.pointer_chose {
+                    self.take_backs = 0;
+                } else if out.choice.is_none() && scheduled > 0 && matches!(self.sub, Sub::None | Sub::List(_)) {
+                    out.choice = Some(ScreenChoice::TakeBack);
+                    self.take_backs = scheduled - 1;
                 }
+                kind
             }
             Phase::Settling => TickKind::Settling,
             _ => TickKind::Screen,
@@ -405,6 +506,7 @@ impl Layer {
         self.cursor = p.screen.first_cursor(p.folder, &p.view, true);
         self.sub = Sub::None;
         self.list_cursor = 0;
+        self.take_backs = 0;
         self.look = WindowLook::new();
         self.hover = Hover::default();
         self.hover_fade_last = false;
@@ -432,7 +534,6 @@ impl Layer {
             SlotMoves::Candidates { keys, .. } => keys,
         };
         let key = order.iter().copied().find(|&k| (if k.is_direction() { joy.repeat } else { joy.pressed }) & key_bits(k) != 0)?;
-        let folder = p.folder;
         match key {
             ScreenKey::Up | ScreenKey::Down | ScreenKey::Left | ScreenKey::Right => {
                 if let Some(t) = screen.target_from(self.cursor, key, layout) {
@@ -465,16 +566,7 @@ impl Layer {
                 None
             }
             ScreenKey::R => {
-                // The chip as the screen checks it: an invalid chip shows the
-                // invalid chip's description.
-                let chip = screen.chip_in(self.cursor, folder).map(|c| checked(c, view).id).or(screen.slots[self.cursor as usize].face);
-                if let Some(c) = chip {
-                    // (A button that shows a chip, EXE5's capsules, 0x0802487C:
-                    // the slot's kinds 6 and 7, the chip's description.)
-                    let lines = view.library.chip(c).description_lines;
-                    self.describe(lines, None, false, layout.chatbox_end_clears_tiles);
-                    self.play(ScreenSound::Description);
-                }
+                self.describe_slot(self.cursor, p, layout);
                 None
             }
             ScreenKey::L => {
@@ -504,9 +596,167 @@ impl Layer {
     /// own choice may), the cursor on a slot it opens from (EXE6's top row
     /// and OK).
     fn list_opens(&self, p: &Presented, layout: &CustomScreenLayout) -> bool {
-        let Some(rules) = &layout.form_list else { return false };
-        let Some(list) = p.form_list else { return false };
-        p.screen.megaman && list.count != 0 && (p.screen.form.is_none() || list.chosen.is_some()) && rules.opens_from.contains(&self.cursor)
+        self.list_offered(p, layout) && layout.form_list.as_ref().is_some_and(|rules| rules.opens_from.contains(&self.cursor))
+    }
+
+    /// Whether the rules' form list opens, wherever the cursor is (its tab's
+    /// click: `list_opens` but the cursor's place).
+    fn list_offered(&self, p: &Presented, layout: &CustomScreenLayout) -> bool {
+        let Some(list) = p.form_list.filter(|_| layout.form_list.is_some()) else { return false };
+        p.screen.megaman && list.count != 0 && (p.screen.form.is_none() || list.chosen.is_some())
+    }
+
+    /// R on a slot (the cursor's, or the one a pointer describes): the chip
+    /// in it as the screen checks it (an invalid chip shows the invalid
+    /// chip's description), or the chip a button shows.
+    fn describe_slot(&mut self, slot: u8, p: &Presented, layout: &CustomScreenLayout) {
+        let (screen, view) = (p.screen, &p.view);
+        let Some(s) = screen.slots.get(slot as usize) else { return };
+        let chip = screen.chip_in(slot, p.folder).map(|c| checked(c, view).id).or(s.face);
+        if let Some(c) = chip {
+            // (A button that shows a chip, EXE5's capsules, 0x0802487C:
+            // the slot's kinds 6 and 7, the chip's description.)
+            let lines = view.library.chip(c).description_lines;
+            self.describe(lines, None, false, layout.chatbox_end_clears_tiles);
+            self.play(ScreenSound::Description);
+        }
+    }
+
+    /// The cursor to slot `slot` for the pointer, if the cursor goes there:
+    /// as a key's move, its sound and the chip window. False where it
+    /// doesn't go.
+    fn point_cursor(&mut self, slot: u8, screen: &Screen) -> bool {
+        let Some(s) = screen.slots.get(slot as usize) else { return false };
+        if s.kind.is_absent() {
+            return false;
+        }
+        if slot != self.cursor {
+            self.play(ScreenSound::Cursor);
+            self.cursor = slot;
+            self.plan.chip_window = true;
+        }
+        true
+    }
+
+    /// The tick's gesture over the chips (the choosing's, nothing up): a
+    /// hover moves the cursor; a click chooses what A on it would, takes
+    /// back down to a pick, or opens the form list from its tab; a
+    /// describe is R on what it is on.
+    fn point_on_chips(&mut self, p: &Presented, layout: &CustomScreenLayout) -> Pointed {
+        let Some(gesture) = self.gesture else { return Pointed::Nothing };
+        let screen = p.screen;
+        match gesture {
+            Gesture::Hover(Target::Slot(s)) => {
+                self.point_cursor(s, screen);
+                Pointed::Nothing
+            }
+            Gesture::Click(Some(Target::Slot(s))) => {
+                if !self.point_cursor(s, screen) {
+                    return Pointed::Nothing;
+                }
+                let choice = match screen.slots[s as usize].kind {
+                    SlotKind::Chip { .. } | SlotKind::Offered(_) => ScreenChoice::Pick(s),
+                    SlotKind::Ok => ScreenChoice::Ok,
+                    SlotKind::Button { .. } => ScreenChoice::Press(s),
+                    SlotKind::Empty | SlotKind::Hidden => return Pointed::Nothing,
+                };
+                self.take_backs = 0;
+                self.pointer_chose = true;
+                Pointed::Choice(choice)
+            }
+            // (Down to the pick clicked, the last first: as many take-backs
+            // as picks from it on, one a tick.)
+            Gesture::Click(Some(Target::Pick(k))) => {
+                let picks = screen.selection().len() as u8;
+                if k >= picks {
+                    return Pointed::Nothing;
+                }
+                self.take_backs = picks - k - 1;
+                self.pointer_chose = true;
+                Pointed::Choice(ScreenChoice::TakeBack)
+            }
+            // (The tab opens the list as UP does, from anywhere.)
+            Gesture::Click(Some(Target::FormTab)) => {
+                if self.list_offered(p, layout) {
+                    self.sub = Sub::List(ListStage::Opening(0));
+                    Pointed::Took
+                } else {
+                    self.play(ScreenSound::Refused);
+                    Pointed::Took
+                }
+            }
+            Gesture::Describe(Target::Slot(s)) => {
+                if self.point_cursor(s, screen) {
+                    self.describe_slot(s, p, layout);
+                }
+                Pointed::Took
+            }
+            Gesture::Describe(Target::Pick(k)) => {
+                if let Some(&slot) = screen.selection().get(k as usize) {
+                    self.describe_slot(slot, p, layout);
+                }
+                Pointed::Took
+            }
+            Gesture::Hover(_) | Gesture::Click(_) | Gesture::Describe(_) => Pointed::Nothing,
+        }
+    }
+
+    /// The tick's gesture in the form list's window, while it reads keys: a
+    /// hover moves its cursor and a click on an entry chooses it, until one
+    /// is chosen; a click on the chosen one takes it back (and the picks
+    /// after it, one a tick); a click on the tab closes the window, as B
+    /// does; a describe is R on the entry. None: it takes nothing, and the
+    /// keys have the tick.
+    fn point_in_list(&mut self, p: &Presented, layout: &CustomScreenLayout) -> Option<Option<ScreenChoice>> {
+        let gesture = self.gesture?;
+        let list = p.form_list.unwrap_or_default();
+        let open = list.chosen.is_none();
+        match gesture {
+            Gesture::Hover(Target::Form(k)) if open && k < list.count => {
+                if k != self.list_cursor {
+                    self.list_cursor = k;
+                    if list.count > 1 {
+                        self.play(ScreenSound::Cursor);
+                    }
+                }
+                None
+            }
+            Gesture::Click(Some(Target::Form(k))) if k < list.count => {
+                if open {
+                    self.list_cursor = k;
+                    self.pointer_chose = true;
+                    Some(Some(ScreenChoice::ChooseForm(k)))
+                } else if list.chosen == Some(k) {
+                    self.take_backs = p.screen.selection().len() as u8;
+                    self.pointer_chose = true;
+                    Some(Some(ScreenChoice::TakeBack))
+                } else {
+                    self.play(ScreenSound::Refused);
+                    Some(None)
+                }
+            }
+            Gesture::Click(Some(Target::FormTab)) => {
+                self.sub = Sub::List(ListStage::Closing(0));
+                Some(None)
+            }
+            Gesture::Describe(Target::Form(k)) if k < list.count => {
+                if open {
+                    self.list_cursor = k;
+                }
+                let form = list.forms.get(k as usize).copied().flatten();
+                let lines = form.map_or(3, |f| p.view.library.form_description_lines(f));
+                self.describe(lines, form, true, layout.chatbox_end_clears_tiles);
+                self.play(ScreenSound::Description);
+                Some(None)
+            }
+            _ => None,
+        }
+    }
+
+    /// A click of this tick's, where what is up takes any key (a
+    /// description's or the run message's box, the hidden window): A's bit.
+    fn click_as_key(&self) -> u16 {
+        if matches!(self.gesture, Some(Gesture::Click(_))) { keys::A } else { 0 }
     }
 
     /// R: a description's chatbox (`chatbox_runScript` in the key's
@@ -533,7 +783,7 @@ impl Layer {
                     .talking(view.library.run_message_talking(navi))
             }
         };
-        chatbox.update(self.joypad.held, self.joypad.pressed);
+        chatbox.update(self.joypad.held, self.joypad.pressed | self.click_as_key());
         self.sub = Sub::RunMessage { chatbox: Some(chatbox) };
     }
 
@@ -561,7 +811,7 @@ impl Layer {
                         self.play(ScreenSound::Hide);
                         Sub::Hidden(HiddenStage::Waiting)
                     }
-                    HiddenStage::Waiting if joy.pressed != 0 => {
+                    HiddenStage::Waiting if joy.pressed | self.click_as_key() != 0 => {
                         if emblem {
                             self.look.draw_emblem(0);
                         }
@@ -600,7 +850,7 @@ impl Layer {
                     }
                     return None;
                 }
-                chatbox.update(joy.held, joy.pressed);
+                chatbox.update(joy.held, joy.pressed | self.click_as_key());
                 self.sub = Sub::Description { form, from_list, chatbox };
                 if in_choosing && on_chip {
                     self.look.draw_element();
@@ -700,7 +950,10 @@ impl Layer {
                 if tick == 1 {
                     self.look.frame = 0;
                 } else {
-                    choice = self.list_keys(joy, p, layout);
+                    choice = match self.point_in_list(p, layout) {
+                        Some(pointed) => pointed,
+                        None => self.list_keys(joy, p, layout),
+                    };
                 }
                 self.draw_list(regular, late);
                 (true, choice)

@@ -1245,3 +1245,88 @@ fn the_clock_is_part_of_the_battles_state() {
     later.custom.sides[0].clock += 1;
     assert_ne!(snapshot.digest(), later.digest(), "the digest covers the clock");
 }
+
+/// The pointer (docs/design/custom-screen-actions.md §5): a hover moves the
+/// cursor with no choice; a click picks; a click on a pick takes back down
+/// to it, one take-back a tick; a describe is R on what it is on, and a
+/// click closes the description.
+#[test]
+fn the_pointer_hovers_picks_takes_back_and_describes() {
+    use super::layer::{Gesture, Target};
+    let mut p = Player::new(&[(SHOT, 0), (SHOT, 1), (SHOT, 2), (WAVE, 0), (MEGA, 2)]);
+    p.open();
+    p.wait(10);
+    p.step(0);
+    assert_eq!(p.phase(), Phase::Choosing);
+    // A hover: the cursor moves (its sound), nothing is chosen.
+    p.layer.point(Gesture::Hover(Target::Slot(2)));
+    p.step(0);
+    assert_eq!(p.layer.cursor, 2);
+    assert!(p.sounds().contains(&look::ScreenSound::Cursor));
+    assert!(p.screen().selection().is_empty());
+    // A hover on a slot the cursor never goes to (none dealt there) does nothing.
+    p.layer.point(Gesture::Hover(Target::Slot(7)));
+    p.step(0);
+    assert_eq!(p.layer.cursor, 2);
+    // Clicks pick, the cursor going to each.
+    for s in [0, 1, 2] {
+        p.layer.point(Gesture::Click(Some(Target::Slot(s))));
+        p.step(0);
+        assert_eq!(p.layer.cursor, s);
+    }
+    assert_eq!(p.screen().selection(), [0, 1, 2]);
+    // A click on the last pick takes it back.
+    p.layer.point(Gesture::Click(Some(Target::Pick(2))));
+    p.step(0);
+    assert_eq!(p.screen().selection(), [0, 1]);
+    // On the first, down to it: one a tick.
+    p.layer.point(Gesture::Click(Some(Target::Pick(0))));
+    p.step(0);
+    assert_eq!(p.screen().selection(), [0]);
+    p.step(0);
+    assert!(p.screen().selection().is_empty());
+    p.step(0);
+    assert!(p.screen().selection().is_empty());
+    // A click past the picks does nothing.
+    p.layer.point(Gesture::Click(Some(Target::Pick(0))));
+    p.step(0);
+    assert!(p.screen().selection().is_empty());
+    // Right-click: R on the chip under the pointer; a click closes it.
+    p.layer.point(Gesture::Describe(Target::Slot(4)));
+    p.step(0);
+    assert_eq!((p.up(), p.layer.cursor), (Up::Description, 4));
+    let opened = (1..200).find(|_| {
+        p.layer.point(Gesture::Click(None));
+        p.step(0);
+        p.up() != Up::Description
+    });
+    assert!(opened.is_some(), "a click closes the description");
+    p.wait(4);
+    assert_eq!(p.up(), Up::Screen(Phase::Choosing));
+    // A click on OK sends the hand.
+    p.layer.point(Gesture::Click(Some(Target::Slot(OK_SLOT))));
+    p.step(0);
+    assert_ne!(p.phase(), Phase::Choosing);
+}
+
+/// The take-backs a click on a pick asks for end at a choice of the keys'.
+#[test]
+fn a_keys_choice_ends_the_pointers_take_backs() {
+    use super::layer::{Gesture, Target};
+    let mut p = Player::new(&[(SHOT, 0), (SHOT, 1), (SHOT, 2), (WAVE, 0), (MEGA, 2)]);
+    p.open();
+    p.wait(10);
+    p.step(0);
+    for s in [0, 1, 2] {
+        p.layer.point(Gesture::Click(Some(Target::Slot(s))));
+        p.step(0);
+    }
+    p.layer.point(Gesture::Click(Some(Target::Pick(0))));
+    p.step(0);
+    assert_eq!(p.screen().selection(), [0, 1]);
+    // The cursor on the third chip (taken back), A picks it again: no more take-backs.
+    p.step(keys::A);
+    p.step(0);
+    p.step(0);
+    assert_eq!(p.screen().selection(), [0, 1, 2]);
+}
