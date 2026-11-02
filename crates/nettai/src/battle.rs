@@ -737,9 +737,12 @@ mod tests {
         while !choosing(&b) {
             assert!(!frame(&mut b, 0) && b.stage.player.ticks() < 3000);
         }
-        // (A chip picked, as the player's screen takes it.)
-        for keys in [nettai_battle::input::keys::A, 0, 0, 0] {
-            frame(&mut b, keys);
+        // (A chip picked, as the player's screen takes it, and the menu opened on the frame it shows: the dummy
+        // chooses its own chip and OK a choice every other tick, so it is still choosing then.)
+        let picked = |b: &Battle| b.stage.player.battle().custom.sides[0].screen.as_ref().is_some_and(|s| s.selected > 0);
+        frame(&mut b, nettai_battle::input::keys::A);
+        while !picked(&b) {
+            assert!(!frame(&mut b, 0) && b.stage.player.ticks() < 3000);
         }
         let chosen = |b: &Battle| {
             let (battle, layers) = (b.stage.player.battle(), b.stage.player.layers());
