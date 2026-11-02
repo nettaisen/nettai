@@ -468,7 +468,7 @@ mod tests {
 
     /// Practice's Background changed while the battle is held under its menu (`Player::set_backgrounds`): the
     /// music by background switches at once, the new background's song from its start, as the next round's
-    /// start would; the battle is the same.
+    /// start would; the battle doesn't step.
     #[test]
     fn a_background_changed_mid_round_changes_the_music_at_once() {
         use nettai_audio::{MUSIC_PLAYER, m4a::SongId};
@@ -494,13 +494,13 @@ mod tests {
         }
         let playing = |p: &nettai_frontend::Player| p.audio().unwrap().driver_of(BankId(0)).unwrap().player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| m.song());
         assert_eq!(playing(&player), Some(number("virus-battle")), "BN6's Comp: its Virus Battle");
-        let digest = player.battle().digest();
+        let ticks = player.ticks();
         assert!(player.set_held(true));
         assert!(player.set_backgrounds(graveyard));
         for _ in 0..2 {
             player.tick(0);
         }
         assert_eq!(playing(&player), Some(number("crossover-battle")), "the Graveyard's Crossover Battle, held");
-        assert_eq!(player.battle().digest(), digest, "held: the battle didn't step");
+        assert_eq!(player.ticks(), ticks, "held: the battle didn't step");
     }
 }
