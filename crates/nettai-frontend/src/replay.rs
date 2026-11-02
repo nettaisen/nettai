@@ -586,6 +586,83 @@ mod tests {
         }
     }
 
+    /// What a layer shows, of a tick: the cursor, what is up over the chips
+    /// (a description, the form list, the hidden window), the form list's
+    /// cursor, the chip window, the window's look, the dark chip's hover,
+    /// and the sounds the tick asked for.
+    fn shown(l: &Layer) -> impl PartialEq + std::fmt::Debug {
+        (l.cursor, l.sub, l.list_cursor, l.chip_window, l.look, l.hover, l.hover_fade_last, l.calls().collect::<Vec<_>>())
+    }
+
+    /// Both sides' layers as a session's driver keeps them after a tick.
+    pub(crate) fn layers_shown(s: &Session) -> [Option<impl PartialEq + std::fmt::Debug>; 2] {
+        s.driver.layers().map(|l| l.map(shown))
+    }
+
+    /// A set played by pointer, both players' (the local player's at an
+    /// input delay of 3, keys among their gestures; the opponent's on its
+    /// second pad, which holds nothing), recorded: played back, both sides'
+    /// layers show on every tick what they showed live (the cursor, what is
+    /// up, the form list and its cursor, the chip window, the hover, the
+    /// sounds), every game; and the gestures were in the words, which a
+    /// replay of keys alone never has.
+    #[test]
+    fn a_pointer_played_set_plays_back_its_cursors() {
+        use crate::driver::short_set::pointing;
+        use nettai_battle::battle::mode;
+        use nettai_battle::input::keys;
+        for (content, game) in [
+            (nettai_match::testing::exe6_content(), "exe6"),
+            (nettai_match::testing::exe5_content(), "exe5"),
+            (nettai_match::testing::exe4_content(), "exe4"),
+        ] {
+            let m = short_set::of(&content, game, 7);
+            let sink = Shared::default();
+            let mut live = LivePlayer::new(Set::of(&content, &m, 7)).with_input_delay(3);
+            live.set_opponent(crate::driver::Opponent { in_fight: crate::driver::InFight::SecondPad, ..Default::default() });
+            live.set_second_pad(Some(0));
+            let mut s = Session::new(Box::new(live));
+            s.record(Recorder::new(Box::new(sink.clone()), &content, &m, &Info::of(MatchKind::Offline, 0)).unwrap()).unwrap();
+            let (mut seen, mut up) = (Vec::new(), [0u32; 2]);
+            loop {
+                let tick = s.ticks as u32;
+                for side in 0..2 {
+                    if let Some(g) = pointing(&s.battle, side, tick) {
+                        s.driver.layer_mut(side as u8).expect("live play keeps both layers").point(g);
+                    }
+                }
+                let input = if s.battle.round.mode == mode::CUSTOM {
+                    nettai_battle::PlayerTick::buttons(if tick % 37 < 2 { keys::RIGHT } else { 0 })
+                } else {
+                    short_set::shooter(&s.battle, 0, tick)
+                };
+                if !s.step(input) {
+                    break;
+                }
+                seen.push(format!("{:?}", layers_shown(&s)));
+                for l in s.driver.layers().into_iter().flatten() {
+                    up[0] += l.chatbox().is_some() as u32;
+                    up[1] += l.list_stage().is_some() as u32;
+                }
+                assert!(s.ticks < 20_000, "{game}: the set doesn't end ({})", s.driver.position());
+            }
+            assert_eq!(s.result, Some(BattleResult::Won), "{game}");
+            // (What the pointers had up: descriptions in every game, EXE6's Cross list.)
+            assert!(up[0] > 0 && (up[1] > 0) == (game == "exe6"), "{game}: {up:?}");
+            let replay = Replay::read(&sink.bytes()).unwrap();
+            let gestures = |side: usize| replay.ticks.iter().filter(|t| PlayerTick::from_word(t.inputs[side]).gesture.is_some()).count();
+            assert!(gestures(0) > 10 && gestures(1) > 10, "{game}: gestures {} and {}", gestures(0), gestures(1));
+            assert!(replay.ticks.iter().any(|t| t.delays == [3, 0]), "{game}");
+            let mut p = Session::new(Box::new(ReplayPlayer::new(&content, &replay, Some(0)).unwrap()));
+            let mut tick = 0;
+            while p.step(PlayerTick::default()) {
+                assert_eq!(format!("{:?}", layers_shown(&p)), seen[tick], "{game}: tick {tick}");
+                tick += 1;
+            }
+            assert_eq!((p.diverged, p.result, tick), (None, Some(BattleResult::Won), seen.len()), "{game}");
+        }
+    }
+
     /// How long `play_out` takes over a long EXE6 set: the left side
     /// mashing, the right the stand-in's custom screen, 2000 HP each so the
     /// rounds last, recorded, then played out. Run in a release build:

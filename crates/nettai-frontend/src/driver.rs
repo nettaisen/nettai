@@ -976,6 +976,37 @@ pub mod short_set {
         }
     }
 
+    /// What a pointer does on side `side`'s custom screen while it chooses,
+    /// every third tick, from a hash of `tick`: the mouse onto a slot, a
+    /// pick, the form list's tab, an entry or its exit; a click on one of
+    /// them or on nothing; a right-click on one; a click on OK now and then,
+    /// so that the screen ends. (Many do nothing where they land: they are
+    /// the player's gestures all the same.)
+    pub fn pointing(b: &Battle, side: usize, tick: u32) -> Option<custom::layer::Gesture> {
+        use custom::layer::{Gesture, Target};
+        let s = &b.custom.sides[side];
+        let screen = s.screen.as_ref().filter(|_| b.round.mode == mode::CUSTOM && s.in_custom)?;
+        if screen.phase != Phase::Choosing || tick % 3 != 0 {
+            return None;
+        }
+        let h = (tick / 3 ^ (side as u32) << 16).wrapping_mul(0x9E37_79B9).rotate_left(15).wrapping_mul(0x85EB_CA6B);
+        let n = (h >> 8) as u8;
+        let target = match h % 8 {
+            0..=3 => Target::Slot(n % 12),
+            4 => Target::Pick(n % 5),
+            5 => Target::FormTab,
+            6 => Target::Form(n % 5),
+            _ => Target::FormExit,
+        };
+        Some(match (h >> 16) % 32 {
+            0 => Gesture::Click(Some(Target::Slot(custom::screen::OK_SLOT))),
+            1..=12 => Gesture::Hover(target),
+            13..=21 => Gesture::Click(Some(target)),
+            22..=27 => Gesture::Describe(target),
+            _ => Gesture::Click(None),
+        })
+    }
+
     /// A match of `game` whose set is first to `wins` round wins (each
     /// round's place left to `seed`), picked as [`of`] picks one, both navis
     /// with 1 HP: a round is over when the shooter's buster hits.
