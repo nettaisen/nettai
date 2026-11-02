@@ -77,11 +77,18 @@ uses), and its offered dark chips and JunkSoul's chips as ordinary `pick`s. Abou
 - **The word**: `PlayerTick` grows an optional action, `choice: Option<ScreenChoice>`, at bits 20-25 of the word (it
   is 20 bits today: buttons 0-9, the switch 10-11, the microphone 12-19). Buttons and an action, not one or the
   other: a word decided while the presented frame shows the fight lands the input delay later, maybe on the screen,
-  so it has to say both.
+  so it has to say both. *As built (B2):* the choice is bits 20-24 (its 31 numbers fit five), and the tick carries
+  the pointer's gesture too, `gesture: Option<Gesture>`, bits 25-31 (`Gesture::code`: a hover, a click or a
+  describe on each of the 24 targets, a click on none; 0 none): the one the player's layer took on the tick it read
+  the word's buttons. The battle never reads it. The word fills its 32 bits, so nothing masks its top any more
+  (`TICK_WORD` and the replay's `INPUT_MASK` are gone).
 - **The wire** (nettai-netplay `protocol.rs`): the event flags move up past the action; a tick with an action is a
-  4-byte element instead of 3. Actions are a few dozen a screen, so the mean frame doesn't change.
+  4-byte element instead of 3. Actions are a few dozen a screen, so the mean frame doesn't change. *As built (B2):*
+  the flags sit at bit 32 of the head, past the gesture; a tick with a gesture is 4 or 5 bytes, one with flags 5 or
+  6. A pointer makes a gesture as it moves onto another target, a click, a describe: a few a second while it moves.
 - **Prediction**: a missing remote word is predicted as its last buttons and **no action** (as events are dropped
-  now). Each remote action is then one misprediction, and the remote's cursor moves cost none, because they aren't
+  now), and no gesture (B2: each of the other's gestures is a misprediction too, though the battle doesn't read
+  it; the re-simulated ticks come out the same). Each remote action is then one misprediction, and the remote's cursor moves cost none, because they aren't
   input any more. `StandInBattle`'s prediction (`last.clone()`) gets this override; it fixes a smaller thing seen in
   the audit: today a predicted tick repeats the remote's party switch request until the real word arrives.
 - **Replays** (nettai-replay): the input mask grows to the action's bits. A replay still has to show both players'
@@ -90,8 +97,21 @@ uses), and its offered dark chips and JunkSoul's chips as ordinary `pick`s. Abou
   the digest; the viewer's seek keyframes keep the layer's state as they keep the HUD's. *As built (A):* the track
   is each side's screen delay (`Tick::delays`, control bits 5 and 6, written when it changes), and the viewer runs
   each side's layer again from its words' buttons, the word that landed `delay` ticks on; a netplay peer learns the
-  other's delay from a marker in its stream (`protocol::Element::Delay`) and records both. Pointer input (B) will
-  need its events in the track too.
+  other's delay from a marker in its stream (`protocol::Element::Delay`) and records both. *As built (B2):* the
+  words carry the pointer's gestures (above), and the replay's driver gives each side's layer the gesture, the
+  buttons and the switch request of the word that landed the side's screen delay later (a gesture given with the
+  input is the tick's, ahead of the layer's own queue): the viewer, the both-sides spectator view and video export,
+  all on that driver, show a pointer player's cursor, hover, descriptions and Cross list as they were, and the
+  viewer's keyframes keep the layers as before. Netplay's screen delay is the present delay **and one**: getgud
+  presents a frame's battle the present delay behind the input it decides, and the layer reads the battle shown
+  before the frame decides (A recorded the present delay: a replay ran a netplay player's layer a tick early). And
+  a netplay layer reads each battle once, on the frame whose word lands the screen delay past it, as a replay runs
+  it: while the presentation holds a battle (a round's first frames until the delay's words are in or the other's
+  first input comes; a delay made longer) the frame's buttons pass the layer by and a gesture waits in its queue.
+  (Before, it read the round's first battle the delay and two times, which also put the key repeat's beat off the
+  battle's but at a delay of 4.) What a replay can't give again: the battles a peer never showed (it jumps past them
+  once the other's late input comes, or when the delay is made shorter) are read in the replay with the words'
+  buttons alone.
 - **State and digest**: `custom::Side` loses its joypad, the screen its cursor, the rules' state EXE6's list cursor;
   the decision fades move out of `ScreenLook` into hashed state (§8.1).
 
@@ -130,7 +150,11 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
   - `Pick(k)`, the column's picks;
   - `FormTab`, the form list's tab: the window label its rules name (`FormListRules::tab`; EXE6's `cross-select`,
     the tab's tiles with its triangle, and the window's header once it is up), where the window's map shows it;
-  - `Form(k)`, the form list's entries (the names' 9x2 cells), and only they and the tab while its window is up.
+  - `Form(k)`, the form list's entries (the names' 9x2 cells), and only they, the tab and the exit while its window
+    is up;
+  - `FormExit`, the form list's exit label while its window is up (B2: `FormListRules::exit`; EXE6's `b-exit`,
+    B:EXIT, the window's foot bar where the label's tiles are: the letters, their filler and the end, 88 by 8).
+    EXE4 and EXE5 draw no such label (their windows' labels are BATTLE CHIP and CHIP SELECT), so they have none.
   None while the window slides, hides or isn't there.
 - **The picture takes the pointer**: in the app a `TouchArea` over the battle's picture, as the replay viewer has,
   enabled while the battle has the keys and the frame has targets (`Player::takes_pointer`), sends each event of the
@@ -146,11 +170,15 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
     until it is gone; a choice of the keys' ends them); on the tab, the form list opens where UP would, from
     anywhere (the layer's checks but the cursor's place; refused: the refusal sound), and again closes it as B does;
     on an entry, its form chosen (as A); on the chosen entry, it is taken back, with the picks after it, one a tick
-    (the battle takes picks back before the form); a click anywhere, on a target or none, while a description, the
-    run message or the hidden window is up is a key for it, as A (it closes the description);
+    (the battle takes picks back before the form); on the exit label, the list closes as B does (B2), nothing
+    chosen; a click anywhere, on a target or none, while a description, the run message or the hidden window is up
+    is a key for it, as A (it closes the description);
   - right-click: `Describe`, R on what it is on: a slot's chip (the cursor goes there), a pick's chip (the cursor
     stays), a form list entry's form.
-  L's run message and SELECT's hide have no gesture (the keys keep them).
+  L's run message and SELECT's hide have no gesture (the keys keep them). A hover is a gesture only as the target
+  under the pointer changes (B2): the mouse onto another target; pressed where it already hovers, none; a finger
+  down after it was lifted (a lifted finger is over nothing). Each gesture the layer takes goes in the player's tick
+  (§3).
 - **Touch**: a finger down on a target is a hover (the cursor goes there, the chip window shows the chip); up on the
   same target is the click (sliding off cancels, as a button does, also when it slides back); held still on it for
   `pointer::LONG_PRESS` (30 ticks, half a second) it describes it instead, and its letting go chooses nothing. A tap
@@ -164,13 +192,25 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
 - **Where it plays**: Practice and live play (`LivePlayer`) and netplay (`NetPlayer`): `Driver::layer_mut` gives the
   local player's layer, which moves at once (no input delay); its choices go into the player's tick as their keys'
   do. A replay's driver gives none, and the replay viewer and the spectator view take no pointer.
-- **Not yet**: the replay's presentation track records each side's screen delay, not the pointer's gestures, so a
-  viewer runs a pointer player's layer from their buttons alone: their choices and the battle are exact, but the
-  cursor, the hover and a right-click's description show as their keys left them (§3).
+- **The mouse's cursor** (B2, the user after B): while a battle is played (`Shell.hide-mouse`: the battle has the
+  keys, no menu, pause or dialog over it, not a replay), the system's cursor hides over the battle's picture, in
+  the fight and on the custom screen alike, so the game's cursor is the only one there; the pointer works as
+  before. A `TouchArea` over the picture, enabled while it hides, has `mouse-cursor: none`; the custom screen's
+  area sits inside it with its own enabling. The cursor shows over the app's own UI and outside the picture, and
+  over a replay and the spectator view. (Practice shown beside the Play screen's wait, in a `Picture` of that
+  screen's, has neither the pointer nor the hiding.)
+- **Replays** (B2): the gestures go in the player's ticks, so a replay shows a pointer player's cursor, hover,
+  descriptions and Cross list as they were (§3).
 - **Tests**: the layer's gestures (nettai-battle `custom::tests`), the recognizer (`pointer::tests`), the pad giving
   way (nettai `input::tests`), and per game at 240x160 and at a Fill size (347x199) a click at the middle of each
   target the renderer reports gives its choice, then a pick, its take-back, EXE6's tab and Cross entries and OK played
-  by pointer, and a long press describing (nettai-tools `tests/custom_pointer.rs`, which needs the ROMs).
+  by pointer, EXE6's B:EXIT closing the list, and a long press describing (nettai-tools `tests/custom_pointer.rs`,
+  which needs the ROMs). B2's: the gestures' numbers and the word (nettai-battle `input::tests`); a layer given
+  another's ticks, buttons and gestures shows what it showed (`custom::tests`); a set played by pointer on both
+  sides in each game, live at an input delay of 3, recorded and played back, both sides' layers the same on every
+  tick (nettai-frontend `replay::tests`); a netplay set with one pointer player at input delays of 2 and 6 over a
+  link with latency, the other's replay showing the pointer player's layer as they first saw it on every tick they
+  saw (`netplay::tests`); the wire's sizes and prediction (nettai-netplay).
 
 ## 6. The content API
 
