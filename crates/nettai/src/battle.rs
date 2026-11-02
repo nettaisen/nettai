@@ -140,6 +140,10 @@ pub struct Battle {
     party: party::PartyState,
 }
 
+/// The keys of a phone's pad held sideways that are over the custom screen's window, by bit: SELECT, the four
+/// directions, R and L (A, B and START stay).
+const PAD_OVER_WINDOW: u16 = 1 << 2 | 0xF << 4 | 1 << 8 | 1 << 9;
+
 impl Battle {
     /// Whether the battle has the keys: it runs, and nothing is over it.
     pub fn playing(&self) -> bool {
@@ -457,6 +461,16 @@ impl Shell {
         });
         let faces = |n| kit.as_ref().map(|k| k.pictures.navi(n)).unwrap_or_default();
         b.party.show(&shell, b.stage.player.battle(), &b.game, b.viewer, faces, keys);
+        // The custom screen by pointer: the picture takes it while the battle has the keys and its screen something
+        // to point at (the window at rest); a phone held sideways gives its pad's keys over the window way while the
+        // screen is open (docs/design/custom-screen-actions.md §5).
+        let has_keys = b.playing() && !b.kept && self.dialog.is_none();
+        shell.set_screen_pointer(has_keys && b.stage.player.takes_pointer());
+        let sideways = cfg!(any(target_os = "ios", target_os = "android")) && !self.scale.phone;
+        let local = b.stage.player.battle().setup.local_side;
+        let away = if sideways && has_keys && b.stage.player.battle().presented(local).is_some() { PAD_OVER_WINDOW } else { 0 };
+        shell.set_pad_gives_way(away != 0);
+        self.touch.give_way(away);
         if let Some(net) = b.stage.player.net_status() {
             // (The bars are the library's quality, from the round trip and how steady it is; while the link
             // is down, the seconds until it gives up, or those it has been down where it never does.)
@@ -488,6 +502,36 @@ impl Shell {
             self.open_menu();
         }
         (ticks, event.map(|e| (owner, e)))
+    }
+
+    /// The pointer on the battle's picture (`Shell.picture-pointer`: its kind, its button, its place in the
+    /// picture in logical pixels, whether it is a finger), to the battle's player in the frame's pixels: the local
+    /// player's custom screen's (`Player::point`), while the battle has the keys.
+    pub fn picture_pointer(&mut self, kind: i32, button: i32, x: f32, y: f32, touch: bool) {
+        use nettai_frontend::pointer::{PointerButton, PointerEvent, PointerKind};
+        let ui = self.ui();
+        let shell = ui.global::<nettai_ui::Shell>();
+        let (width, height) = (shell.get_picture_width(), shell.get_picture_height());
+        let dialog = self.dialog.is_some();
+        let Some(b) = self.battle.as_mut().filter(|b| b.playing() && !b.kept && !dialog) else { return };
+        if width <= 0.0 || height <= 0.0 {
+            return;
+        }
+        let size = b.stage.player.renderer().frame_size();
+        let kind = match kind {
+            0 => PointerKind::Down,
+            1 => PointerKind::Up,
+            2 => PointerKind::Moved,
+            3 => PointerKind::Cancel,
+            _ => PointerKind::Left,
+        };
+        let button = match button {
+            0 => PointerButton::Primary,
+            1 => PointerButton::Secondary,
+            _ => PointerButton::Other,
+        };
+        let (x, y) = (x / width * size.width as f32, y / height * size.height as f32);
+        b.stage.player.point(PointerEvent { kind, button, touch, x, y });
     }
 
     /// How the picture fits a room of `width` by `height` display pixels: `stage::fit`, held to the settings'

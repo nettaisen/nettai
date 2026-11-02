@@ -381,4 +381,6 @@ fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
     ui.global::<nettai_ui::Shell>().on_touch(move |bit, down| tell(&a, NavInput::Touch(bit, down)));
     let a = app.clone();
     ui.global::<nettai_ui::Shell>().on_pad_key(move |bit, x, y, w, h| tell(&a, NavInput::PadKey(bit, Rect { x, y, w, h })));
+    let a = app.clone();
+    ui.global::<nettai_ui::Shell>().on_picture_pointer(move |kind, button, x, y, touch| tell(&a, NavInput::Picture { kind, button, x, y, touch }));
 }

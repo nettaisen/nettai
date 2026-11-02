@@ -747,6 +747,8 @@ pub struct TouchPad {
     keys: Vec<(u8, Rect)>,
     /// Each finger on the pad, by the system's number for it, and the button under it (none: between two).
     fingers: Vec<(u64, Option<u8>)>,
+    /// The buttons that give way, by bit (`TouchPad::give_way`): hidden, they take no finger.
+    away: u16,
 }
 
 impl TouchPad {
@@ -782,9 +784,22 @@ impl TouchPad {
     }
 
     /// What is at a point: nothing of the pad's (`None`), or the pad's, with the button there if there is one.
+    /// The buttons in `away` (by bit) give way to what is under them (a phone held sideways: its directions, L, R
+    /// and SELECT over the custom screen's window while it is open): they take no finger, and a finger on one lets it
+    /// go.
+    pub fn give_way(&mut self, away: u16) {
+        self.away = away;
+        for (_, held) in &mut self.fingers {
+            if held.is_some_and(|b| away >> b & 1 != 0) {
+                *held = None;
+            }
+        }
+    }
+
     fn at(&self, x: f32, y: f32) -> Option<Option<u8>> {
         let within = |r: &Rect, reach: f32| x >= r.x - reach && x < r.right() + reach && y >= r.y - reach && y < r.bottom() + reach;
-        if let Some(square) = self.directions().filter(|r| within(r, TouchPad::REACH)) {
+        let directions = TouchPad::DIRECTIONS.iter().fold(0u16, |m, b| m | 1 << b);
+        if let Some(square) = self.directions().filter(|r| self.away & directions == 0 && within(r, TouchPad::REACH)) {
             let (dx, dy) = (x - (square.x + square.w / 2.0), y - (square.y + square.h / 2.0));
             // (The middle sixth holds none: a thumb at rest there isn't pressing a direction.)
             if dx.abs().max(dy.abs()) < square.w.min(square.h) / 12.0 {
@@ -795,7 +810,7 @@ impl TouchPad {
         let near = |r: &Rect| (x - (r.x + r.w / 2.0)).abs() + (y - (r.y + r.h / 2.0)).abs();
         self.keys
             .iter()
-            .filter(|(b, r)| !TouchPad::DIRECTIONS.contains(b) && within(r, TouchPad::REACH))
+            .filter(|(b, r)| !TouchPad::DIRECTIONS.contains(b) && self.away >> b & 1 == 0 && within(r, TouchPad::REACH))
             .min_by(|a, b| near(&a.1).total_cmp(&near(&b.1)))
             .map(|(b, _)| Some(*b))
     }

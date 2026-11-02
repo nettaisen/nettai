@@ -328,6 +328,15 @@ export global Shell {
     callback touch(int, bool);
     callback pad-key(int, length, length, length, length);
     in property <[bool]> pad-held;
+    // The custom screen by pointer (the battle's picture takes it while `screen-pointer`): each event of the mouse's
+    // or a finger's over the picture, at its place in the picture (logical pixels from its top left): its kind (0
+    // down, 1 up, 2 moved, 3 cancelled, 4 left the picture), its button (0 the primary, 1 the secondary, 2 another),
+    // and whether it is a finger's.
+    in property <bool> screen-pointer;
+    callback picture-pointer(int, int, length, length, bool);
+    // A phone's pad held sideways gives way to the custom screen while it is open: its directions, L, R and SELECT
+    // hide, and taps on the window are the screen's (A, B, START and MENU stay).
+    in property <bool> pad-gives-way;
     // The player's party beside the battle, in a party battle (`PartyHud`): read from the battle each frame. On a
     // phone the pad has the switches' two buttons (bits 14 and 15), each with the member it names.
     in property <PartyHud> party;

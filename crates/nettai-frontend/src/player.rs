@@ -320,9 +320,9 @@ impl Player {
     /// Whether the last frame drawn has anything of the local player's
     /// custom screen for a pointer (its window at rest): a host's cue that
     /// the picture takes the pointer, and that a phone's pad gives way.
-    pub fn takes_pointer(&self) -> bool {
-        self.session.driver.layers()[self.session.battle.setup.local_side as usize & 1].is_some()
-            && self.renderer.targets(self.session.battle.setup.local_side).next().is_some()
+    pub fn takes_pointer(&mut self) -> bool {
+        let side = self.session.battle.setup.local_side;
+        self.session.driver.layer_mut(side).is_some() && self.renderer.targets(side).next().is_some()
     }
 
     /// Run one tick with `buttons` held, whatever the clock or the pause
