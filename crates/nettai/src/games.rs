@@ -798,7 +798,9 @@ impl Games {
     /// (`crate::contents::fetch_catalog`), then each game's newest bundle where the store hasn't it
     /// (`crate::contents::fetch_newest`), one after the other, the one shown first: every game the store has no
     /// content of, whatever the settings say, and, with `newer` (Settings' "Check for updates"), each game that has
-    /// some, where its index has a newer revision. Development's content downloads nothing.
+    /// some, where its index has a newer revision. Once one of them has failed, those left fail with it, asked of
+    /// no site: a network that reaches none of them is said at once, not after every one has waited its turn (each
+    /// up to `http::CONNECT_WAIT`). Development's content downloads nothing.
     pub fn download(&mut self, newer: bool) {
         if crate::contents::development() {
             return;
@@ -819,23 +821,37 @@ impl Games {
         drop(downloads);
         let shared = self.downloads.clone();
         let started = slint::spawn_local(async move {
+            // (What failed first: the others are given up with it.)
+            let mut failed = None;
             if read_catalog {
                 let read = crate::contents::fetch_catalog().await;
                 let mut downloads = shared.borrow_mut();
-                if let Ok(games) = &read {
-                    for game in games {
-                        if crate::contents::dir(game).is_none() || downloads.newer {
-                            downloads.enqueue(game);
+                match &read {
+                    Ok(games) => {
+                        for game in games {
+                            if crate::contents::dir(game).is_none() || downloads.newer {
+                                downloads.enqueue(game);
+                            }
                         }
                     }
+                    Err(why) => failed = Some(format!("the catalog of games couldn't be read ({why})")),
                 }
                 downloads.catalog = Some(read);
                 downloads.reading_catalog = false;
             }
             loop {
                 let Some(game) = shared.borrow_mut().queue.pop_front() else { break };
-                let (told, id) = (shared.clone(), game.clone());
-                let done = crate::contents::fetch_newest(&game, move |p| told.borrow_mut().progress = Some((id.clone(), p))).await;
+                let done = match &failed {
+                    Some(why) => Err(format!("not asked: {why}")),
+                    None => {
+                        let (told, id) = (shared.clone(), game.clone());
+                        let done = crate::contents::fetch_newest(&game, move |p| told.borrow_mut().progress = Some((id.clone(), p))).await;
+                        if let Err(why) = &done {
+                            failed = Some(format!("{game}'s couldn't be downloaded ({why})"));
+                        }
+                        done
+                    }
+                };
                 shared.borrow_mut().done.push((game, done));
             }
             shared.borrow_mut().running = false;

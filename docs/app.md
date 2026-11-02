@@ -4615,7 +4615,11 @@ extractor reads. At start, on the window's loop (`slint::spawn_local`; the files
 downloaded where the store hasn't it, the game shown first, checked against its id as it is unpacked. A game the
 store has no content of is downloaded whatever Settings say, the first start included; Settings → General → Check
 for updates off stops only the look for newer revisions of the games that have some (the app's own updates, §19,
-the same). A start without a connection plays what the store has, by the catalog and the indexes kept.
+the same). A start without a connection plays what the store has, by the catalog and the indexes kept. A request
+gives up on a site that doesn't answer (`http.rs`: 10 seconds to connect, 30 with nothing heard; the browser's
+`fetch` has its own), and once the catalog or a game's download has failed, the games left fail with it, unasked:
+a network whose packets go nowhere (a player in China, 2026-11-02, when the sites couldn't be reached) is said in
+seconds, where each request had waited out the system's own retries (two minutes on Android) one after the other.
 
 **What the player sees.** While a game's content downloads, the loading screen's bar is the download's,
 "DOWNLOADING BN6" and its percentage (where "LOADING BN6" shows: the download, then the load).
