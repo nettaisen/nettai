@@ -287,6 +287,7 @@ export component Pill inherits Rectangle {
 // as far as takes it to 44 where it is short (none on a desktop); placed before the control's `Focusable`, which keeps
 // the box's own presses and the cursor's place. (A leaf, shared by its uses: docs/app.md §14.)
 export component Reach inherits TouchArea {
+    mouse-cursor: self.enabled && root.nav != "" ? MouseCursor.pointer : MouseCursor.default;
     in property <string> nav;
     in property <int> nav-index;
     in property <length> box-width;
@@ -643,6 +644,7 @@ export component Stepper inherits Rectangle {
 
         // (A phone's reaches past the arrow's box to 44 by 44: 8 out, 4 into the gap by the value.)
         left := TouchArea {
+            mouse-cursor: self.enabled ? MouseCursor.pointer : MouseCursor.default;
             x: Theme.handheld ? -8px : 0px;
             y: -root.reach;
             width: Theme.handheld ? 44px : parent.width;
@@ -702,6 +704,7 @@ export component Stepper inherits Rectangle {
         ArrowRight { }
 
         right := TouchArea {
+            mouse-cursor: self.enabled ? MouseCursor.pointer : MouseCursor.default;
             x: Theme.handheld ? -4px : 0px;
             y: -root.reach;
             width: Theme.handheld ? 44px : parent.width;
@@ -808,6 +811,7 @@ export component Seg inherits Rectangle {
     }
 
     TouchArea {
+        mouse-cursor: self.enabled ? MouseCursor.pointer : MouseCursor.default;
         x: 0;
         y: -root.reach;
         width: root.first-width;
@@ -842,6 +846,7 @@ export component Seg inherits Rectangle {
     }
 
     TouchArea {
+        mouse-cursor: self.enabled ? MouseCursor.pointer : MouseCursor.default;
         x: root.first-width + 1px;
         y: -root.reach;
         width: root.second-width;
@@ -941,6 +946,7 @@ export component Slider inherits Rectangle {
 
     // (A phone's reaches past the track's 40 to 44 tall.)
     drag := TouchArea {
+        mouse-cursor: self.enabled ? MouseCursor.pointer : MouseCursor.default;
         x: 0;
         y: Theme.handheld ? -2px : 0px;
         width: root.track;
@@ -1248,6 +1254,7 @@ export component RowBack inherits Rectangle {
 
 // A row's clicks, where the rows are a `ListView`'s (the list is what is focusable, not each row).
 export component RowTouch inherits TouchArea {
+    mouse-cursor: self.enabled ? MouseCursor.pointer : MouseCursor.default;
     in property <string> nav;
     in property <int> nav-index;
     // The list its row can be dragged in to another place (`Drag`), or none.

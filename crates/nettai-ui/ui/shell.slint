@@ -334,9 +334,9 @@ export global Shell {
     // and whether it is a finger's.
     in property <bool> screen-pointer;
     callback picture-pointer(int, int, length, length, bool);
-    // The mouse's cursor hides over the battle's picture while a battle is played (the battle has the keys,
-    // nothing is over it, and it isn't a replay): the game's own cursor is the one there.
-    in property <bool> hide-mouse;
+    // The mouse's cursor is a hand over the battle's picture where a click takes what is under it (a target of
+    // the local player's custom screen, while the picture takes the pointer), as over the app's controls.
+    in property <bool> picture-hand;
     // A phone's pad held sideways gives way to the custom screen while it is open: its directions, L, R and SELECT
     // hide, and taps on the window are the screen's (A, B, START and MENU stay).
     in property <bool> pad-gives-way;

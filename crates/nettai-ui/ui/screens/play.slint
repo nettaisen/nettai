@@ -489,6 +489,7 @@ component VersionChoice inherits Rectangle {
         }
 
         TouchArea {
+            mouse-cursor: self.enabled ? MouseCursor.pointer : MouseCursor.default;
             clicked => {
                 Nav.point("name.version", 0);
                 Nav.choose("name.version", 0, i);

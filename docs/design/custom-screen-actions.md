@@ -192,13 +192,12 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
 - **Where it plays**: Practice and live play (`LivePlayer`) and netplay (`NetPlayer`): `Driver::layer_mut` gives the
   local player's layer, which moves at once (no input delay); its choices go into the player's tick as their keys'
   do. A replay's driver gives none, and the replay viewer and the spectator view take no pointer.
-- **The mouse's cursor** (B2, the user after B): while a battle is played (`Shell.hide-mouse`: the battle has the
-  keys, no menu, pause or dialog over it, not a replay), the system's cursor hides over the battle's picture, in
-  the fight and on the custom screen alike, so the game's cursor is the only one there; the pointer works as
-  before. A `TouchArea` over the picture, enabled while it hides, has `mouse-cursor: none`; the custom screen's
-  area sits inside it with its own enabling. The cursor shows over the app's own UI and outside the picture, and
-  over a replay and the spectator view. (Practice shown beside the Play screen's wait, in a `Picture` of that
-  screen's, has neither the pointer nor the hiding.)
+- **The mouse's cursor** (B2, the user after B, then on trying it: "the hidden cursor is so hard to use, maybe it
+  should change into a pointer hand if it's mousing over something clickable? that applies for the entire
+  application"): the system's cursor stays over the battle's picture, the arrow, and turns a hand over a target of
+  the local player's custom screen (`Shell.picture-hand`, from `Player::pointer_on_target`: where the mouse last was,
+  `ScreenPointer::mouse_at`, against the last frame's targets), as over the app's own controls (docs/design/app-ui.md:
+  the hand on what a click takes).
 - **Replays** (B2): the gestures go in the player's ticks, so a replay shows a pointer player's cursor, hover,
   descriptions and Cross list as they were (§3).
 - **Tests**: the layer's gestures (nettai-battle `custom::tests`), the recognizer (`pointer::tests`), the pad giving

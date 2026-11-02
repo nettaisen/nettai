@@ -193,6 +193,9 @@ export component Focusable inherits TouchArea {
     in property <string> nav;
     in property <int> nav-index;
     in property <NavKind> kind: NavKind.button;
+    // (The pointer over it: a hand where a click takes it, the text cursor over a field, the arrow over a page or a
+    // list, whose rows have their own, and over what is disabled.)
+    mouse-cursor: !self.enabled || root.kind == NavKind.page || root.kind == NavKind.list ? MouseCursor.default : root.kind == NavKind.field ? MouseCursor.text : MouseCursor.pointer;
     // The list its row can be dragged in to another place (`Drag`), or none.
     in property <string> drag;
     // It holds something of the build: a right click on it removes that, as Del does.

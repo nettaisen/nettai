@@ -424,7 +424,7 @@ impl Shell {
         }
         shell.set_battle(BattleKind::None);
         shell.set_battle_menu(false);
-        shell.set_hide_mouse(false);
+        shell.set_picture_hand(false);
         shell.set_connection_shown(false);
         shell.set_connection_open(false);
         shell.set_party(Default::default());
@@ -466,10 +466,10 @@ impl Shell {
         // to point at (the window at rest); a phone held sideways gives its pad's keys over the window way while the
         // screen is open (docs/design/custom-screen-actions.md §5).
         let has_keys = b.playing() && !b.kept && self.dialog.is_none();
-        shell.set_screen_pointer(has_keys && b.stage.player.takes_pointer());
-        // (And while a battle is played, not a replay watched, the mouse's cursor hides over its picture: the
-        // game's cursor is the one there.)
-        shell.set_hide_mouse(has_keys && b.kind != BattleKind::Replay);
+        let pointer = has_keys && b.stage.player.takes_pointer();
+        shell.set_screen_pointer(pointer);
+        // (The mouse's cursor a hand over what a click there takes, as over the app's controls.)
+        shell.set_picture_hand(pointer && b.stage.player.pointer_on_target());
         let sideways = cfg!(any(target_os = "ios", target_os = "android")) && !self.scale.phone;
         let local = b.stage.player.battle().setup.local_side;
         let away = if sideways && has_keys && b.stage.player.battle().presented(local).is_some() { PAD_OVER_WINDOW } else { 0 };

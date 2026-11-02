@@ -311,6 +311,7 @@ component ChoiceSeg inherits Rectangle {
             }
 
             touch := TouchArea {
+                mouse-cursor: self.enabled ? MouseCursor.pointer : MouseCursor.default;
                 clicked => {
                     Nav.point("choice", root.choice.index);
                     Nav.choose("choice", root.choice.index, i);

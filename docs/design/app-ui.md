@@ -1881,6 +1881,13 @@ Each is settled unless the user changes it.
      - They are there only while a piece is in hand, so the cursor never rests on one that does nothing; a tap between
        them is no tap off the board (which puts the piece back). The desktop's layout has none: its wheel and keys
        turn the piece.
+105. **The hand on what a click takes** (2026-11-01, the user: "maybe it should change into a pointer hand if it's
+    mousing over something clickable? that applies for the entire application"). The mouse's cursor is a hand over
+    every control a click takes (`Focusable`'s buttons, steppers, segments and sliders, `Reach`, a stepper's arrows,
+    a segment, a slider's track, a list's rows, the choices' boxes, the connection's corner, the phone's menu key)
+    and over the custom screen's targets in a battle; the text cursor over a field; the arrow over a page, a list as
+    a whole, a shade that closes what is over it, and anything disabled. The NaviCust board keeps its grab cursor,
+    the replay's seek bar its resize cursor.
 
 ## 3. Chosen where the user gave no answer
 

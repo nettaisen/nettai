@@ -69,12 +69,14 @@ struct Press {
 }
 
 /// The pointer's state on the custom screen: the target the pointer was
-/// last over (the mouse's; a finger's while it is down), and the press
-/// under way.
+/// last over (the mouse's; a finger's while it is down), the press under
+/// way, and where the mouse is (frame pixels; none for a finger or a mouse
+/// gone off the picture), for its cursor.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ScreenPointer {
     over: Option<Target>,
     press: Option<Press>,
+    at: Option<(i32, i32)>,
 }
 
 impl ScreenPointer {
@@ -82,6 +84,11 @@ impl ScreenPointer {
     /// gesture it makes, if it makes one.
     pub fn event(&mut self, e: PointerEvent, at: impl Fn(f32, f32) -> Option<Target>) -> Option<Gesture> {
         let under = at(e.x, e.y);
+        self.at = match e.kind {
+            PointerKind::Left | PointerKind::Cancel => None,
+            _ if e.touch => None,
+            _ => Some((e.x.floor() as i32, e.y.floor() as i32)),
+        };
         match (e.kind, e.button) {
             (PointerKind::Down, PointerButton::Primary) => {
                 self.press = Some(Press { target: under, touch: e.touch, held: 0, off: false, described: false });
@@ -146,6 +153,12 @@ impl ScreenPointer {
         None
     }
 
+    /// Where the mouse is on the picture, in frame pixels (none for a finger,
+    /// or off the picture).
+    pub fn mouse_at(&self) -> Option<(i32, i32)> {
+        self.at
+    }
+
     /// Forget what is under way (a new round, the battle held).
     pub fn clear(&mut self) {
         *self = ScreenPointer::default();
@@ -166,6 +179,21 @@ mod tests {
 
     fn e(kind: PointerKind, button: PointerButton, touch: bool, x: f32, y: f32) -> PointerEvent {
         PointerEvent { kind, button, touch, x, y }
+    }
+
+    /// The mouse's place, for its cursor: where it last was on the picture;
+    /// none once it leaves, and none for a finger.
+    #[test]
+    fn the_mouse_is_where_it_last_was() {
+        let mut p = ScreenPointer::default();
+        p.event(e(PointerKind::Moved, PointerButton::Primary, false, 20.5, 10.0), at);
+        assert_eq!(p.mouse_at(), Some((20, 10)));
+        p.event(e(PointerKind::Down, PointerButton::Primary, false, 120.0, 10.0), at);
+        assert_eq!(p.mouse_at(), Some((120, 10)));
+        p.event(e(PointerKind::Left, PointerButton::Primary, false, 0.0, 0.0), at);
+        assert_eq!(p.mouse_at(), None);
+        p.event(e(PointerKind::Down, PointerButton::Primary, true, 20.0, 10.0), at);
+        assert_eq!(p.mouse_at(), None);
     }
 
     #[test]
