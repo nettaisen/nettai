@@ -142,7 +142,7 @@ pub struct Battle {
 
 /// The keys of a phone's pad held sideways that are over the custom screen's window, by bit: SELECT, the four
 /// directions, R and L (A, B and START stay).
-const PAD_OVER_WINDOW: u16 = 1 << 2 | 0xF << 4 | 1 << 8 | 1 << 9;
+pub(crate) const PAD_OVER_WINDOW: u16 = 1 << 2 | 0xF << 4 | 1 << 8 | 1 << 9;
 
 impl Battle {
     /// Whether the battle has the keys: it runs, and nothing is over it.

@@ -897,6 +897,27 @@ mod tests {
         pad
     }
 
+    /// While the custom screen is open on a phone held sideways, the keys over its window give way: a finger there
+    /// is not the pad's (it goes on to the picture), one already on a direction lets it go, and A, B and START are
+    /// the pad's still; after, the pad is whole again.
+    #[test]
+    fn the_keys_over_the_window_give_way() {
+        let mut pad = pad();
+        assert!(pad.down(1, 196.0, 623.0));
+        assert_eq!(pad.held(), 1 << 4);
+        pad.give_way(crate::battle::PAD_OVER_WINDOW);
+        assert_eq!(pad.held(), 0, "the held direction is let go");
+        assert!(!pad.down(2, 121.0, 553.0), "up's place is the picture's");
+        assert!(!pad.down(3, 80.0, 470.0), "L's place is the picture's");
+        assert!(!pad.down(4, 130.0, 760.0), "SELECT's place is the picture's");
+        assert!(pad.down(5, 320.0, 570.0) && pad.down(6, 250.0, 760.0));
+        assert_eq!(pad.held(), 1 << 0 | 1 << 3);
+        pad.clear();
+        pad.give_way(0);
+        assert!(pad.down(2, 121.0, 553.0));
+        assert_eq!(pad.held(), 1 << 6);
+    }
+
     /// A key held repeats as the game's menus do, 16 frames after the press, then every 5th, on a 60 Hz display's
     /// frames too (which don't divide the beat); after a stall it starts again rather than catching up, and another
     /// key let go leaves it held.
