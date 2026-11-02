@@ -38,8 +38,9 @@
 //!
 //! ```text
 //! head & 1 == 0   a tick: head >> 1 = buttons (10 bits, in WIRE_ORDER) | switch << 10 (2 bits: the member
-//!                 + 1, 0 none) | microphone level << 12 (8 bits) | choice << 20 (5 bits: `ScreenChoice::code`,
-//!                 0 none) | gesture << 25 (7 bits: `Gesture::code`, 0 none) | flags << 32
+//!                 + 1, 0 none) | microphone level << 12 (8 bits) | screen << 20 (12 bits: the gesture's
+//!                 `Gesture::code` + 74 × the choice's `ScreenChoice::code`, each 0 none: `PlayerTick::word`)
+//!                 | flags << 32
 //! head & 1 == 1   head >> 1: 0 the round's end, 1 the match's end, 2 + d the sender's present delay d (0-255)
 //! ```
 
@@ -284,7 +285,7 @@ mod tests {
     }
 
     /// Ticks with A, B and the directions are a byte, other buttons or a
-    /// switch two, a level three, a choice four, a gesture four or five,
+    /// switch two, a level three, a gesture four or five, a choice five,
     /// flags five or six; markers one.
     #[test]
     fn element_sizes() {
@@ -296,12 +297,14 @@ mod tests {
         assert_eq!(bytes(Element::Tick { word: BUTTONS as u32, flags: 0xFF }).len(), 6);
         assert_eq!(bytes(Element::Tick { word: 0x1E << 12, flags: 0 }).len(), 3);
         assert_eq!(bytes(Element::Tick { word: 1 << 10, flags: 0 }).len(), 2);
-        let choice = |c: ScreenChoice| c.code() << 20;
-        assert_eq!(bytes(Element::Tick { word: choice(ScreenChoice::Pick(0)), flags: 0 }).len(), 4);
-        assert_eq!(bytes(Element::Tick { word: keys::A as u32 | choice(ScreenChoice::ChooseForm(4)), flags: 0 }).len(), 4);
-        let gesture = |g: Gesture| g.code() << 25;
+        let choice = |c: ScreenChoice| PlayerTick { choice: Some(c), ..PlayerTick::buttons(0) }.word();
+        assert_eq!(bytes(Element::Tick { word: choice(ScreenChoice::Ok), flags: 0 }).len(), 5);
+        assert_eq!(bytes(Element::Tick { word: keys::A as u32 | choice(ScreenChoice::Release(11)), flags: 0 }).len(), 5);
+        let gesture = |g: Gesture| PlayerTick { gesture: Some(g), ..PlayerTick::buttons(0) }.word();
         assert_eq!(bytes(Element::Tick { word: gesture(Gesture::Hover(Target::Slot(2))), flags: 0 }).len(), 4);
-        assert_eq!(bytes(Element::Tick { word: keys::A as u32 | gesture(Gesture::Click(Some(Target::Slot(10)))), flags: 0 }).len(), 5);
+        assert_eq!(bytes(Element::Tick { word: keys::A as u32 | gesture(Gesture::Describe(Target::FormExit)), flags: 0 }).len(), 4);
+        let both = PlayerTick { choice: Some(ScreenChoice::Unpick(4)), gesture: Some(Gesture::Click(Some(Target::Pick(4)))), ..PlayerTick::buttons(0) };
+        assert_eq!(bytes(Element::Tick { word: both.word(), flags: 0 }).len(), 5);
         assert_eq!(bytes(Element::Tick { word: u32::MAX, flags: 0 }).len(), 5);
         assert_eq!(bytes(Element::Tick { word: u32::MAX, flags: 0xFF }).len(), 6);
         assert_eq!(bytes(Element::RoundEnd), [0x01]);
@@ -314,10 +317,10 @@ mod tests {
 
     #[test]
     fn elements_roundtrip() {
-        let ok = ScreenChoice::Ok.code() << 20;
-        let click = Gesture::Click(Some(Target::Slot(10))).code() << 25;
+        let ok = PlayerTick { choice: Some(ScreenChoice::Ok), ..PlayerTick::buttons(0) }.word();
+        let click = PlayerTick { choice: Some(ScreenChoice::Ok), gesture: Some(Gesture::Click(Some(Target::Slot(10)))), ..PlayerTick::buttons(0) }.word();
         for word in
-            [0, keys::A as u32, (keys::START | keys::L) as u32, BUTTONS as u32, u32::MAX, keys::A as u32 | 1 << 10, 0xFF << 12, ok, ok | 0xFF << 12 | keys::B as u32, ok | click]
+            [0, keys::A as u32, (keys::START | keys::L) as u32, BUTTONS as u32, u32::MAX, keys::A as u32 | 1 << 10, 0xFF << 12, ok, ok | 0xFF << 12 | keys::B as u32, click]
         {
             for flags in [0, 1, 0x7F, 0xFF] {
                 roundtrip(Element::Tick { word, flags });
@@ -334,7 +337,7 @@ mod tests {
             held: keys::A | keys::UP,
             switch_to: Some(1),
             mic_level: 7,
-            choice: Some(ScreenChoice::Press(11)),
+            choice: Some(ScreenChoice::Release(11)),
             gesture: Some(Gesture::Describe(Target::FormExit)),
         };
         let b = bytes(Element::Tick { word: t.word(), flags: 0 });

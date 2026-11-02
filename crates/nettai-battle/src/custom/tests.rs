@@ -5,7 +5,7 @@ use super::layer::{HiddenStage, Layer, Presented, Sub};
 use super::library::testing::{EVERY_CODE, TestLibrary, chip};
 use super::screen::{OK_SLOT, SPECIAL_SLOT};
 use super::*;
-use crate::input::PlayerTick;
+use crate::input::{PlayerTick, ScreenChoice};
 use crate::content::{ButtonHandle, ChipClass, ChipCode, ChipFlags};
 use crate::custom::library::testing::ChipId;
 use crate::input::keys;
@@ -76,7 +76,7 @@ impl Extras for TestButtons {
         (b.0 == 0).then(|| if screen.last_pick_is_chip() { SlotState::Selectable } else { SlotState::Unavailable })
     }
 
-    fn button_taken_back(&mut self, _: &mut Screen, _: ButtonHandle) {}
+    fn button_taken_back(&mut self, _: &mut Screen, _: ButtonHandle, _: u8) {}
 
     fn dealing(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut crate::console::Console) {}
     fn opened(&mut self, _: &mut Screen) {}
@@ -89,7 +89,7 @@ impl Extras for TestButtons {
 
     fn chip_picked(&mut self, _: &mut Screen, _: &mut BattleFolder, _: ChipHandle) {}
 
-    fn chip_taken_back(&mut self, _: &mut Screen, _: ChipHandle) {}
+    fn chip_taken_back(&mut self, _: &mut Screen, _: ChipHandle, _: u8) {}
 
     fn window_update(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: crate::content::WindowHandle) -> bool {
         false
@@ -97,7 +97,7 @@ impl Extras for TestButtons {
 
     fn choose_form(&mut self, _: &mut Screen, _: &mut BattleFolder, _: u8) {}
 
-    fn take_back(&mut self, _: &mut Screen, _: &BattleFolder) -> bool {
+    fn unchoose_form(&mut self, _: &mut Screen, _: &BattleFolder) -> bool {
         false
     }
 
@@ -1253,9 +1253,9 @@ fn the_clock_is_part_of_the_battles_state() {
 }
 
 /// The pointer (docs/design/custom-screen-actions.md §5): a hover moves the
-/// cursor with no choice; a click picks; a click on a pick takes back down
-/// to it, one take-back a tick; a describe is R on what it is on, and a
-/// click closes the description.
+/// cursor with no choice; a click picks; a click on a pick takes it back,
+/// the later ones moving up; a describe is R on what it is on, and a click
+/// closes the description.
 #[test]
 fn the_pointer_hovers_picks_takes_back_and_describes() {
     use super::layer::{Gesture, Target};
@@ -1285,12 +1285,14 @@ fn the_pointer_hovers_picks_takes_back_and_describes() {
     p.layer.point(Gesture::Click(Some(Target::Pick(2))));
     p.step(0);
     assert_eq!(p.screen().selection(), [0, 1]);
-    // On the first, down to it: one a tick.
+    // On the first: it alone, the second moving up, its icon with it.
     p.layer.point(Gesture::Click(Some(Target::Pick(0))));
     p.step(0);
-    assert_eq!(p.screen().selection(), [0]);
+    assert_eq!(p.screen().selection(), [1]);
+    assert_eq!(p.screen().look.column.map(|c| c.map(|c| c.code)), [Some(ChipCode(1)), None, None, None, None]);
     p.step(0);
-    assert!(p.screen().selection().is_empty());
+    assert_eq!(p.screen().selection(), [1]);
+    p.layer.point(Gesture::Click(Some(Target::Pick(0))));
     p.step(0);
     assert!(p.screen().selection().is_empty());
     // A click past the picks does nothing.
@@ -1383,24 +1385,246 @@ fn a_layer_given_the_ticks_gestures_shows_what_the_pointers_did() {
     assert_ne!(live.phase(), Phase::Choosing, "OK sent the hand");
 }
 
-/// The take-backs a click on a pick asks for end at a choice of the keys'.
+/// One tick with this choice given (a replay's or a bot's, past the
+/// layer's keys).
+fn choose(p: &mut Player, choice: ScreenChoice) {
+    p.step_input(PlayerTick::buttons(0).with_choice(Some(choice)));
+}
+
+/// The screen's availability done again, as the rules' `update_availability`
+/// does after a trade or a hold.
+fn redo_availability(p: &mut Player) {
+    on_screen(p, |s, f, v| s.update_availability(v, f, &mut NoExtras));
+}
+
+/// The icons the column shows, by their chips' codes.
+fn column_codes(p: &Player) -> [Option<u8>; 5] {
+    p.screen().look.column.map(|c| c.map(|c| c.code.0))
+}
+
+/// `Unpick`: a pick anywhere taken back, the picks after it moving up a
+/// place with their icons and what they carry (a button attached to it goes
+/// with it, one attached to a later pick stays); the availability follows,
+/// and OK builds the hand from what is left.
 #[test]
-fn a_keys_choice_ends_the_pointers_take_backs() {
-    use super::layer::{Gesture, Target};
+fn a_pick_anywhere_is_taken_back_and_the_later_move_up() {
     let mut p = Player::new(&[(SHOT, 0), (SHOT, 1), (SHOT, 2), (WAVE, 0), (MEGA, 2)]);
     p.open();
     p.wait(10);
     p.step(0);
-    for s in [0, 1, 2] {
-        p.layer.point(Gesture::Click(Some(Target::Slot(s))));
-        p.step(0);
-    }
-    p.layer.point(Gesture::Click(Some(Target::Pick(0))));
-    p.step(0);
-    assert_eq!(p.screen().selection(), [0, 1]);
-    // The cursor on the third chip (taken back), A picks it again: no more take-backs.
-    p.step(keys::A);
-    p.step(0);
-    p.step(0);
+    choose(&mut p, ScreenChoice::Pick(0));
+    choose(&mut p, ScreenChoice::Pick(1));
+    assert!(on_screen(&mut p, |s, f, v| s.attach_to_last_pick(8, 0x04, f, v)));
+    choose(&mut p, ScreenChoice::Pick(2));
+    assert!(on_screen(&mut p, |s, f, v| s.attach_to_last_pick(9, 0x10, f, v)));
     assert_eq!(p.screen().selection(), [0, 1, 2]);
+    assert_eq!(p.screen().slots[3].state, SlotState::Unavailable, "WAVE A goes with SHOT A, B and C by none");
+    choose(&mut p, ScreenChoice::Unpick(1));
+    let s = p.screen();
+    assert_eq!(s.selection(), [0, 2]);
+    assert_eq!(column_codes(&p), [Some(0), Some(2), None, None, None]);
+    assert_eq!((s.slots[1].state, s.slots[1].marks, s.slots[1].attached, s.slots[8].state), (SlotState::Selectable, 0, None, SlotState::Selectable));
+    assert_eq!((s.slots[2].marks, s.slots[2].attached, s.slots[9].state), (0x10, Some(9), SlotState::Selected));
+    assert_eq!(p.sounds(), [look::ScreenSound::Back]);
+    // The first: SHOT C alone is left, which MEGA C goes with and WAVE A
+    // doesn't.
+    choose(&mut p, ScreenChoice::Unpick(0));
+    let s = p.screen();
+    assert_eq!(s.selection(), [2]);
+    assert_eq!(column_codes(&p), [Some(2), None, None, None, None]);
+    assert_eq!((s.slots[0].state, s.slots[3].state, s.slots[4].state), (SlotState::Selectable, SlotState::Unavailable, SlotState::Selectable));
+    // Past the picks: refused.
+    choose(&mut p, ScreenChoice::Unpick(1));
+    assert_eq!((p.screen().selection(), p.sounds()), (&[2u8][..], vec![look::ScreenSound::Refused]));
+    choose(&mut p, ScreenChoice::Pick(4));
+    let hand = confirm(&mut p);
+    assert_eq!(hand.ids[..3], [Some(ChipHandle(SHOT)), Some(ChipHandle(MEGA)), None]);
+    assert_eq!(hand.modifiers[..2], [0x10, 0]);
+}
+
+/// `Unpick` of the last pick is B: the same screen and sounds on every
+/// tick, for a chip, a chip with a button attached, and a button picked in
+/// a chip's place.
+#[test]
+fn unpicking_the_last_pick_is_b() {
+    type Setup = fn(&mut Player);
+    let setups: [(&str, Setup); 3] = [
+        ("a chip", |p| {
+            choose(p, ScreenChoice::Pick(0));
+            choose(p, ScreenChoice::Pick(1));
+        }),
+        ("a chip with a button", |p| {
+            choose(p, ScreenChoice::Pick(0));
+            choose(p, ScreenChoice::Pick(1));
+            assert!(on_screen(p, |s, f, v| s.attach_to_last_pick(8, 0x04, f, v)));
+        }),
+        ("a button in a chip's place", |p| {
+            choose(p, ScreenChoice::Pick(1));
+            assert!(on_screen(p, |s, f, v| s.trade_last_pick(8, f, v)));
+            on_screen(p, |s, _, _| s.slots[8].state = SlotState::Selected);
+            redo_availability(p);
+        }),
+    ];
+    for (what, setup) in setups {
+        let chips = [(SHOT, 0), (SHOT, 1), (SHOT, 2), (WAVE, 0), (MEGA, 2)];
+        let (mut b, mut unpick) = (Player::new(&chips), Player::new(&chips));
+        for p in [&mut b, &mut unpick] {
+            p.open();
+            p.wait(10);
+            p.step(0);
+            setup(p);
+        }
+        let last = b.screen().selected - 1;
+        choose(&mut b, ScreenChoice::TakeBack);
+        choose(&mut unpick, ScreenChoice::Unpick(last));
+        for tick in 0..4 {
+            assert_eq!(unpick.screen(), b.screen(), "{what}, tick {tick}");
+            assert_eq!(unpick.sounds(), b.sounds(), "{what}, tick {tick}");
+            b.step(0);
+            unpick.step(0);
+        }
+    }
+}
+
+/// A button picked in a chip's place (`trade_last_pick`: EXE5's and EXE4's
+/// souls) taken back from before later picks: the chip given up for it
+/// back in its place where it goes with the picks left; where it doesn't,
+/// back to the hand, with the button.
+#[test]
+fn a_traded_pick_gives_its_chip_back_where_it_goes_with_the_others() {
+    for (later, back) in [(2, true), (3, false)] {
+        let mut p = Player::new(&[(SHOT, 0), (SHOT, 1), (SHOT, 2), (WAVE, 0), (MEGA, 2)]);
+        p.open();
+        p.wait(10);
+        p.step(0);
+        choose(&mut p, ScreenChoice::Pick(1));
+        choose(&mut p, ScreenChoice::Pick(0));
+        // SHOT A given up for the button: SHOT B is left, which SHOT C
+        // goes with (the same chip) and WAVE B (the same code).
+        assert!(on_screen(&mut p, |s, f, v| s.trade_last_pick(8, f, v)));
+        on_screen(&mut p, |s, _, _| s.slots[8].state = SlotState::Selected);
+        redo_availability(&mut p);
+        assert_eq!(p.screen().selection(), [8, 1]);
+        if !back {
+            // (Slot 3's chip made WAVE B, which goes with SHOT B by its code.)
+            p.side.folder.chips[3] = Some(FolderChip::new(ChipHandle(WAVE), ChipCode(1)));
+            redo_availability(&mut p);
+        }
+        choose(&mut p, ScreenChoice::Pick(later));
+        assert_eq!(p.screen().selection(), [8, 1, later]);
+        choose(&mut p, ScreenChoice::Unpick(0));
+        let s = p.screen();
+        assert_eq!((s.trade, s.slots[8].state), (None, SlotState::Selectable), "later {later}");
+        if back {
+            // SHOT A goes with SHOT B and SHOT C.
+            assert_eq!(s.selection(), [0, 1, later]);
+            assert_eq!(s.slots[0].state, SlotState::Selected);
+            assert_eq!(column_codes(&p), [Some(0), Some(1), Some(2), None, None]);
+        } else {
+            // SHOT A goes with SHOT B but not WAVE B: both leave.
+            assert_eq!(s.selection(), [1, later]);
+            assert_eq!(s.slots[0].state, SlotState::Unavailable, "back in the hand, not with SHOT B and WAVE B");
+            assert_eq!(column_codes(&p), [Some(1), Some(1), None, None, None]);
+        }
+        assert_eq!(p.sounds(), [look::ScreenSound::Back]);
+        let hand = confirm(&mut p);
+        let picked = if back { 3 } else { 2 };
+        assert!(hand.ids[..picked].iter().all(Option::is_some) && hand.ids[picked].is_none(), "later {later}: {:?}", hand.ids);
+    }
+}
+
+/// A button's held chip (`hold_last_pick`: EXE5's Arm Change) is no pick:
+/// `Unpick` never puts it back (where B, with the picks as they were, would
+/// first), and a pick before its place moves the place down, so that B
+/// still puts it back once the picks after it are gone. `Release` puts it
+/// back in its place where it goes with the picks, else back to the hand.
+#[test]
+fn a_held_chip_stays_held_through_unpicks_until_released() {
+    let mut p = Player::new(&[(SHOT, 0), (WAVE, 0), (SHOT, 1), (MEGA, 0), (MEGA, 1)]);
+    // (A button two wide on slots 8 and 9 to hold it: DustCross's.)
+    p.stats.form = library::testing::DUST_CROSS;
+    p.open();
+    p.wait(10);
+    p.step(0);
+    choose(&mut p, ScreenChoice::Pick(0));
+    choose(&mut p, ScreenChoice::Pick(1));
+    assert!(on_screen(&mut p, |s, f, v| s.hold_last_pick(8, f, v)));
+    redo_availability(&mut p);
+    assert_eq!(p.screen().hold.map(|h| h.at), Some(1));
+    // The picks as they were: `Unpick` of the last takes SHOT A, not the
+    // held chip; the place moves down.
+    choose(&mut p, ScreenChoice::Unpick(0));
+    let s = p.screen();
+    assert_eq!((s.selection(), s.hold.map(|h| (h.chip, h.at))), (&[][..], Some((1, 0))));
+    // B puts it back, the picks being as they were.
+    choose(&mut p, ScreenChoice::TakeBack);
+    assert_eq!((p.screen().selection(), p.screen().hold), (&[1u8][..], None));
+    // Held again (WAVE A), then SHOT B (code B, which WAVE A doesn't go
+    // with): released, it goes back to the hand.
+    assert!(on_screen(&mut p, |s, f, v| s.hold_last_pick(8, f, v)));
+    on_screen(&mut p, |s, _, _| s.look.column_kept = None);
+    redo_availability(&mut p);
+    choose(&mut p, ScreenChoice::Pick(2));
+    assert_eq!(p.screen().selection(), [2]);
+    choose(&mut p, ScreenChoice::Release(9));
+    let s = p.screen();
+    assert_eq!((s.selection(), s.hold, s.slots[1].state, s.slots[8].state), (&[2u8][..], None, SlotState::Unavailable, SlotState::Selectable));
+    assert_eq!(p.sounds(), [look::ScreenSound::Back]);
+    // Held again after MEGA A, then MEGA B taken back and SHOT A picked
+    // (code A): released, it goes back in the place it left.
+    choose(&mut p, ScreenChoice::Unpick(0));
+    choose(&mut p, ScreenChoice::Pick(3));
+    choose(&mut p, ScreenChoice::Pick(1));
+    assert!(on_screen(&mut p, |s, f, v| s.hold_last_pick(8, f, v)));
+    redo_availability(&mut p);
+    choose(&mut p, ScreenChoice::Pick(0));
+    assert_eq!(p.screen().selection(), [3, 0]);
+    choose(&mut p, ScreenChoice::Release(8));
+    let s = p.screen();
+    assert_eq!((s.selection(), s.hold, s.slots[8].state), (&[3u8, 1, 0][..], None, SlotState::Selectable));
+    assert_eq!(column_codes(&p), [Some(0), Some(0), Some(0), None, None]);
+    // A button holding nothing: refused.
+    choose(&mut p, ScreenChoice::Release(8));
+    assert_eq!(p.sounds(), [look::ScreenSound::Refused]);
+    let hand = confirm(&mut p);
+    assert_eq!(hand.ids[..4], [Some(ChipHandle(MEGA)), Some(ChipHandle(WAVE)), Some(ChipHandle(SHOT)), None]);
+}
+
+/// `Unchoose` where the rules un-choose nothing: refused, the picks kept.
+#[test]
+fn unchoosing_nothing_chosen_is_refused() {
+    let mut p = Player::new(&[(SHOT, 0), (SHOT, 1)]);
+    p.open();
+    p.wait(10);
+    p.step(0);
+    choose(&mut p, ScreenChoice::Pick(0));
+    choose(&mut p, ScreenChoice::Unchoose);
+    assert_eq!((p.screen().selection(), p.sounds()), (&[0u8][..], vec![look::ScreenSound::Refused]));
+}
+
+/// The pointer on a button holding a chip releases it (no key does: A on it
+/// is refused, as the game's); on a pick, `Unpick`.
+#[test]
+fn the_pointer_releases_a_held_chip_and_unpicks() {
+    use super::layer::{Gesture, Target};
+    let mut p = Player::new(&[(SHOT, 0), (WAVE, 0), (SHOT, 1), (MEGA, 0), (MEGA, 1)]);
+    p.stats.form = library::testing::DUST_CROSS;
+    p.open();
+    p.wait(10);
+    p.step(0);
+    choose(&mut p, ScreenChoice::Pick(0));
+    choose(&mut p, ScreenChoice::Pick(1));
+    assert!(on_screen(&mut p, |s, f, v| s.hold_last_pick(8, f, v)));
+    redo_availability(&mut p);
+    p.layer.point(Gesture::Click(Some(Target::Pick(0))));
+    let (_, given) = p.step_input(PlayerTick::buttons(0));
+    assert_eq!(given.choice, Some(ScreenChoice::Unpick(0)));
+    p.layer.point(Gesture::Click(Some(Target::Slot(9))));
+    let (_, given) = p.step_input(PlayerTick::buttons(0));
+    assert_eq!(given.choice, Some(ScreenChoice::Release(9)));
+    assert_eq!((p.screen().selection(), p.screen().hold), (&[1u8][..], None));
+    // Not holding: a click on it is A on it.
+    p.layer.point(Gesture::Click(Some(Target::Slot(8))));
+    let (_, given) = p.step_input(PlayerTick::buttons(0));
+    assert_eq!(given.choice, Some(ScreenChoice::Press(8)));
 }

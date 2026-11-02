@@ -71,15 +71,9 @@ impl Game for StandInBattle {
     /// again, or refused with its sound, on every tick predicted; a gesture,
     /// which the battle doesn't read, is the player's layer's alone).
     fn predict(last: &u32) -> u32 {
-        last & !(SWITCH_BITS | CHOICE_BITS | GESTURE_BITS)
+        PlayerTick::from_word(*last).carried_on().word()
     }
 }
-
-/// A tick word's switch request, custom screen's choice and pointer's
-/// gesture (`PlayerTick::word`).
-const SWITCH_BITS: u32 = 3 << 10;
-const CHOICE_BITS: u32 = 0x1F << 20;
-const GESTURE_BITS: u32 = 0x7F << 25;
 
 /// A battle folder of these chips of `content` (key, code) over and over,
 /// in this order (not shuffled).

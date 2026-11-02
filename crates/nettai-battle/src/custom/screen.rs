@@ -1144,6 +1144,9 @@ impl Screen {
             ScreenChoice::TakeBack => self.deselect(view, folder, extras),
             // (A list whose rules take no choice of it: nothing.)
             ScreenChoice::ChooseForm(entry) => extras.choose_form(self, folder, entry),
+            ScreenChoice::Unpick(place) => self.unpick(place, view, folder, extras),
+            ScreenChoice::Unchoose => self.unchoose(view, folder, extras),
+            ScreenChoice::Release(slot) => self.release(slot, view, folder, extras),
         }
         None
     }
@@ -1475,51 +1478,167 @@ impl Screen {
             // took it (EXE5's Arm Change, 0x08024CFC: before anything else,
             // with no picks too): the chip is the last pick again, and the
             // button selectable.
-            self.selection[h.at as usize] = h.chip;
-            self.selected += 1;
-            self.look.column_kept = None;
-            self.look.column[h.at as usize] = self.chip_in(h.chip, folder).map(|c| checked(c, view));
-            self.slots[h.button as usize].state = SlotState::Selectable;
-            self.hold = None;
-            if let SlotKind::Button { button, .. } = self.slots[h.button as usize].kind {
-                extras.button_taken_back(self, button);
-            }
+            self.put_held_back(h, view, folder, extras);
         } else if self.selected == 0 {
-            if !extras.take_back(self, folder) {
+            if !extras.unchoose_form(self, folder) {
                 self.look.play(ScreenSound::Refused);
                 return;
             }
-        } else if let Some(t) = self.trade.filter(|t| t.button == self.selection[self.selected as usize - 1]) {
-            // A button picked in a chip's place (EXE5's soul, 0x08024D44):
-            // the chip given up for it goes back in its place, and the
-            // button is selectable again.
-            let last = self.selected as usize - 1;
-            self.selection[last] = t.chip;
-            self.look.column[last] = self.chip_in(t.chip, folder).map(|c| checked(c, view));
+        } else {
+            self.take_back(self.selected - 1, view, folder, extras);
+        }
+        self.after_taking_back(view, folder, extras);
+    }
+
+    /// The player's `Unpick`: the pick in place `place` taken back as B
+    /// takes the last back, the picks after it moving up a place with what
+    /// they carry (a place past the picks is refused). It never puts a
+    /// button's held chip back, as B on the last pick may first.
+    fn unpick(&mut self, place: u8, view: &PlayerView, folder: &BattleFolder, extras: &mut dyn super::Extras) {
+        if place >= self.selected {
+            self.look.play(ScreenSound::Refused);
+            return;
+        }
+        self.take_back(place, view, folder, extras);
+        self.after_taking_back(view, folder, extras);
+    }
+
+    /// The player's `Unchoose`: what B with nothing picked takes back (the
+    /// rules' form chosen, `custom.unchoose_form`), the picks kept; refused
+    /// where the rules take nothing back.
+    fn unchoose(&mut self, view: &PlayerView, folder: &BattleFolder, extras: &mut dyn super::Extras) {
+        if !extras.unchoose_form(self, folder) {
+            self.look.play(ScreenSound::Refused);
+            return;
+        }
+        self.after_taking_back(view, folder, extras);
+    }
+
+    /// The player's `Release` of the chip the button on slot `slot` holds:
+    /// with the picks as they were when it took it, as B puts it back; else
+    /// back as a pick in the place it left, the picks from there moving
+    /// down one, where there is room and it goes with them; else back to
+    /// the hand, as B would put it back and take it back. Refused where the
+    /// button holds none.
+    fn release(&mut self, slot: u8, view: &PlayerView, folder: &BattleFolder, extras: &mut dyn super::Extras) {
+        let button = self.button_slot(slot);
+        let Some(h) = self.hold.filter(|h| Some(h.button) == button) else {
+            self.look.play(ScreenSound::Refused);
+            return;
+        };
+        let room = (self.selected as usize) < MAX_SELECTIONS;
+        if h.at == self.selected || (room && self.fits(h.chip, None, view, folder)) {
+            self.put_held_back(h, view, folder, extras);
+        } else {
+            self.hold = None;
+            self.look.column_kept = None;
+            self.slots[h.button as usize].state = SlotState::Selectable;
+            if let SlotKind::Button { button, .. } = self.slots[h.button as usize].kind {
+                extras.button_taken_back(self, button, h.at);
+            }
+            self.free(h.chip, h.at, folder, extras);
+        }
+        self.after_taking_back(view, folder, extras);
+    }
+
+    /// A button's held chip back in the picks, in the place it left (the
+    /// picks from there moving down one), and the button selectable.
+    fn put_held_back(&mut self, h: Hold, view: &PlayerView, folder: &BattleFolder, extras: &mut dyn super::Extras) {
+        let (at, n) = (h.at as usize, self.selected as usize);
+        self.selection[at..=n].rotate_right(1);
+        self.selection[at] = h.chip;
+        self.look.column[at..=n].rotate_right(1);
+        self.look.column[at] = self.chip_in(h.chip, folder).map(|c| checked(c, view));
+        self.selected += 1;
+        self.look.column_kept = None;
+        self.slots[h.button as usize].state = SlotState::Selectable;
+        self.hold = None;
+        if let SlotKind::Button { button, .. } = self.slots[h.button as usize].kind {
+            extras.button_taken_back(self, button, h.at);
+        }
+    }
+
+    /// The pick in place `place` taken back with what it carries: a button
+    /// picked in a chip's place (EXE5's soul, 0x08024D44) gives the chip
+    /// back in its place (as B on the last pick; before, where the chip
+    /// goes with the picks left, else the chip goes back to the hand with
+    /// the button); a chip, or a button picked alone, leaves the picks,
+    /// those after it moving up a place.
+    fn take_back(&mut self, place: u8, view: &PlayerView, folder: &BattleFolder, extras: &mut dyn super::Extras) {
+        let k = place as usize;
+        let slot = self.selection[k];
+        if let Some(t) = self.trade.filter(|t| t.button == slot) {
+            let last = place + 1 == self.selected;
             self.slots[t.button as usize].state = SlotState::Selectable;
             self.trade = None;
-            if let SlotKind::Button { button, .. } = self.slots[t.button as usize].kind {
-                extras.button_taken_back(self, button);
+            if last || self.fits(t.chip, Some(place), view, folder) {
+                // The chip given up for the button goes back in its place,
+                // and the button is selectable again.
+                self.selection[k] = t.chip;
+                self.look.column[k] = self.chip_in(t.chip, folder).map(|c| checked(c, view));
+                if let SlotKind::Button { button, .. } = self.slots[t.button as usize].kind {
+                    extras.button_taken_back(self, button, place);
+                }
+            } else {
+                self.leave_picks(place);
+                if let SlotKind::Button { button, .. } = self.slots[t.button as usize].kind {
+                    extras.button_taken_back(self, button, place);
+                }
+                self.free(t.chip, place, folder, extras);
             }
-        } else {
-            let last = self.selection[self.selected as usize - 1];
-            self.selected -= 1;
-            self.slots[last as usize].state = SlotState::Selectable;
-            self.look.column[self.selected as usize] = None;
-            // A button attached to the chip (EXE5's capsule, 0x08024D78): the
-            // chip's marks go, and the button is selectable again.
-            if let Some(button) = self.slots[last as usize].attached.take() {
-                self.slots[last as usize].marks = 0;
-                self.slots[button as usize].state = SlotState::Selectable;
-            }
-            // sub_802A0EC: the side's rules (taking Beast Out, or the
-            // BeastOut chip, back takes its face back).
-            if let SlotKind::Button { button, .. } = self.slots[last as usize].kind {
-                extras.button_taken_back(self, button);
-            } else if let Some(c) = self.chip_in(last, folder) {
-                extras.chip_taken_back(self, c.id);
-            }
+            return;
         }
+        self.leave_picks(place);
+        self.slots[slot as usize].state = SlotState::Selectable;
+        // A button attached to the chip (EXE5's capsule, 0x08024D78): the
+        // chip's marks go, and the button is selectable again.
+        self.detach(slot);
+        // sub_802A0EC: the side's rules (taking Beast Out, or the
+        // BeastOut chip, back takes its face back).
+        if let SlotKind::Button { button, .. } = self.slots[slot as usize].kind {
+            extras.button_taken_back(self, button, place);
+        } else if let Some(c) = self.chip_in(slot, folder) {
+            extras.chip_taken_back(self, c.id, place);
+        }
+    }
+
+    /// The pick in place `place` leaves the picks, those after it moving up
+    /// a place with their column icons (the last cell empty), and a held
+    /// chip's place with them.
+    fn leave_picks(&mut self, place: u8) {
+        let (k, n) = (place as usize, self.selected as usize);
+        self.selection[k..n].rotate_left(1);
+        self.look.column[k..n].rotate_left(1);
+        self.selected -= 1;
+        self.look.column[self.selected as usize] = None;
+        if let Some(h) = self.hold.as_mut().filter(|h| place < h.at) {
+            h.at -= 1;
+        }
+    }
+
+    /// A chip that has left the picks (a chip given up for a button, or a
+    /// button's held chip) back in the hand: selectable, unattached, its
+    /// pick taken back from place `place` as the rules hear it.
+    fn free(&mut self, slot: u8, place: u8, folder: &BattleFolder, extras: &mut dyn super::Extras) {
+        self.slots[slot as usize].state = SlotState::Selectable;
+        self.detach(slot);
+        if let Some(c) = self.chip_in(slot, folder) {
+            extras.chip_taken_back(self, c.id, place);
+        }
+    }
+
+    /// A button attached to the chip in slot `slot` (`attach_to_last_pick`)
+    /// comes off: the chip's marks go, and the button is selectable again.
+    fn detach(&mut self, slot: u8) {
+        if let Some(button) = self.slots[slot as usize].attached.take() {
+            self.slots[slot as usize].marks = 0;
+            self.slots[button as usize].state = SlotState::Selectable;
+        }
+    }
+
+    /// What follows a take-back (`sub_8029032`): the availability redone,
+    /// the chip window drawn again, and B's sound.
+    fn after_taking_back(&mut self, view: &PlayerView, folder: &BattleFolder, extras: &mut dyn super::Extras) {
         self.update_availability(view, folder, extras);
         self.show_chip_window();
         self.look.play(ScreenSound::Back);
@@ -1700,74 +1819,121 @@ impl Screen {
 
     /// `sub_8028E32`: gray out what doesn't go with the selection.
     pub(crate) fn update_availability(&mut self, view: &PlayerView, folder: &BattleFolder, extras: &mut dyn super::Extras) {
-        let layout = view.library.layout();
-        // A chip as the selection counts it: as checked, or as it is where
-        // an invalid chip is never picked (EXE4's 0x0801F9E0).
-        let counted = |c: FolderChip| match layout.invalid_picks {
-            InvalidPicks::Picked => checked(c, view),
-            InvalidPicks::Refused => c,
-        };
-        // The codes that stand apart, and the one `*` doesn't stand for.
-        let (apart, unstarred): (&[ChipCode], Option<ChipCode>) = match layout.special_codes {
-            SpecialCodes::Apart => (&SPECIAL_CODES, None),
-            SpecialCodes::Unstarred => (&[], Some(INVALID_CODE)),
-        };
-        // sub_8028E4C: what the picked chips have in common.
-        let mut same_chip = Common::Any;
-        let mut code = Common::Any;
-        let mut special = None;
-        for &s in self.selection() {
+        let together = self.together(None, view, folder);
+        // updateCustomScreen_WhenUnselectingChip_8028EC8
+        let full = self.selected as usize >= MAX_SELECTIONS;
+        for s in 0..10u8 {
             let Some(c) = self.chip_in(s, folder) else { continue };
-            let c = counted(c);
+            if self.slots[s as usize].state == SlotState::Selected {
+                continue;
+            }
+            let ok = !full && together.goes_with(c, view);
+            self.slots[s as usize].state = if ok { SlotState::Selectable } else { SlotState::Unavailable };
+        }
+        self.refresh_buttons(extras);
+        // sub_8028250: the slots are drawn again.
+        self.draw_slots(folder, view);
+    }
+
+    /// Whether the chip in slot `slot` goes with the picks (but the one in
+    /// place `without`), as the availability counts them: a chip given up
+    /// for a button, or a button's held chip, may go back among them.
+    fn fits(&self, slot: u8, without: Option<u8>, view: &PlayerView, folder: &BattleFolder) -> bool {
+        self.chip_in(slot, folder).is_some_and(|c| self.together(without, view, folder).goes_with(c, view))
+    }
+
+    /// `sub_8028E4C`: what the picked chips (but the one in place
+    /// `without`) have in common.
+    fn together(&self, without: Option<u8>, view: &PlayerView, folder: &BattleFolder) -> Together {
+        let rules = PickRules::of(view);
+        let mut t = Together { rules, same_chip: Common::Any, code: Common::Any, special: None };
+        for (k, &s) in self.selection().iter().enumerate() {
+            if without == Some(k as u8) {
+                continue;
+            }
+            let Some(c) = self.chip_in(s, folder) else { continue };
+            let c = rules.counted(c, view);
             // (A chip that goes with any selection constrains none: EXE6's
             // BeastOut chip.)
             if view.library.chip(c.id).traits.has(crate::content::ChipTraits::GOES_WITH_ANY) {
                 continue;
             }
-            if apart.contains(&c.code) {
-                special = Some(c.code);
+            if rules.apart.contains(&c.code) {
+                t.special = Some(c.code);
                 continue;
             }
             if c.code != ChipCode::ASTERISK {
-                code = code.and(c.code);
+                t.code = t.code.and(c.code);
             }
-            same_chip = same_chip.and(c.id);
+            t.same_chip = t.same_chip.and(c.id);
         }
-        // updateCustomScreen_WhenUnselectingChip_8028EC8
-        let full = self.selected as usize >= MAX_SELECTIONS;
-        for s in 0..10u8 {
-            let Some(c) = self.chip_in(s, folder) else { continue };
-            let slot = &mut self.slots[s as usize];
-            if slot.state == SlotState::Selected {
-                continue;
+        t
+    }
+}
+
+/// How the screen's layout counts picks together (`sub_8028E32`).
+#[derive(Clone, Copy)]
+struct PickRules {
+    /// A chip as the selection counts it: as checked, or as it is where an
+    /// invalid chip is never picked (EXE4's 0x0801F9E0).
+    invalid_picks: InvalidPicks,
+    /// The codes that stand apart, and the one `*` doesn't stand for.
+    apart: &'static [ChipCode],
+    unstarred: Option<ChipCode>,
+}
+
+impl PickRules {
+    fn of(view: &PlayerView) -> PickRules {
+        let layout = view.library.layout();
+        let (apart, unstarred): (&'static [ChipCode], Option<ChipCode>) = match layout.special_codes {
+            SpecialCodes::Apart => (&SPECIAL_CODES, None),
+            SpecialCodes::Unstarred => (&[], Some(INVALID_CODE)),
+        };
+        PickRules { invalid_picks: layout.invalid_picks, apart, unstarred }
+    }
+
+    fn counted(&self, c: FolderChip, view: &PlayerView) -> FolderChip {
+        match self.invalid_picks {
+            InvalidPicks::Picked => checked(c, view),
+            InvalidPicks::Refused => c,
+        }
+    }
+}
+
+/// What picked chips have in common (`sub_8028E4C`), and whether another
+/// goes with them.
+#[derive(Clone, Copy)]
+struct Together {
+    rules: PickRules,
+    same_chip: Common<ChipHandle>,
+    code: Common<ChipCode>,
+    special: Option<ChipCode>,
+}
+
+impl Together {
+    /// Whether chip `c` goes with the picks (`sub_8028EC8`), room aside.
+    fn goes_with(&self, c: FolderChip, view: &PlayerView) -> bool {
+        let c = self.rules.counted(c, view);
+        let (apart, unstarred) = (self.rules.apart, self.rules.unstarred);
+        if view.library.chip(c.id).traits.has(crate::content::ChipTraits::GOES_WITH_ANY) {
+            true
+        } else if apart.contains(&c.code) {
+            self.special.is_none_or(|s| s == c.code)
+        } else if self.same_chip == Common::One(c.id) {
+            true
+        } else {
+            match self.code {
+                Common::Mixed => false,
+                // (No code yet: no chip picked, or every pick a `*`,
+                // which goes with any code but the one it doesn't stand
+                // for.)
+                Common::Any => unstarred.is_none_or(|u| c.code != u || self.same_chip == Common::Any),
+                // The code `*` doesn't stand for goes with itself alone
+                // (EXE4's 0x0801FA96).
+                Common::One(k) if unstarred.is_some_and(|u| k == u || c.code == u) => c.code == k,
+                Common::One(k) => c.code == ChipCode::ASTERISK || c.code == k,
             }
-            let c = counted(c);
-            let ok = if full {
-                false
-            } else if view.library.chip(c.id).traits.has(crate::content::ChipTraits::GOES_WITH_ANY) {
-                true
-            } else if apart.contains(&c.code) {
-                special.is_none_or(|s| s == c.code)
-            } else if same_chip == Common::One(c.id) {
-                true
-            } else {
-                match code {
-                    Common::Mixed => false,
-                    // (No code yet: no chip picked, or every pick a `*`,
-                    // which goes with any code but the one it doesn't stand
-                    // for.)
-                    Common::Any => unstarred.is_none_or(|u| c.code != u || same_chip == Common::Any),
-                    // The code `*` doesn't stand for goes with itself alone
-                    // (EXE4's 0x0801FA96).
-                    Common::One(k) if unstarred.is_some_and(|u| k == u || c.code == u) => c.code == k,
-                    Common::One(k) => c.code == ChipCode::ASTERISK || c.code == k,
-                }
-            };
-            slot.state = if ok { SlotState::Selectable } else { SlotState::Unavailable };
         }
-        self.refresh_buttons(extras);
-        // sub_8028250: the slots are drawn again.
-        self.draw_slots(folder, view);
     }
 }
 

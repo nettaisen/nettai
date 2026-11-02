@@ -1979,8 +1979,10 @@ export type ButtonSpec = {
     state: ((side: number) -> ("selectable" | "unavailable"))?,
     -- A on it.
     pressed: (side: number) -> (),
-    -- B took its pick back.
-    taken_back: ((side: number) -> ())?,
+    -- Its pick in place `place` (from 0) of the picks was taken back (B on
+    -- the last; the player's `Unpick` on any), or the chip it was picked in
+    -- the place of, or held, went back (the player's `Release`).
+    taken_back: ((side: number, place: number) -> ())?,
     -- As the screen lays it out: the chip it shows, if any (EXE5's capsules:
     -- the chip window shows the chip for it, and R describes it).
     chip: ((side: number) -> Chip?)?,
@@ -2078,18 +2080,22 @@ export type RulesSpec = {
         open: ((side: number) -> ())?,
         -- OK built the hand.
         confirmed: ((side: number) -> ())?,
-        -- A chip of the hand picked, or its pick taken back.
+        -- A chip of the hand picked; its pick in place `place` (from 0) of
+        -- the picks taken back (B on the last, the player's `Unpick` on
+        -- any: the picks after it move up a place), or a chip that left the
+        -- picks for a button back in the hand from there.
         chip_picked: ((side: number, chip: Chip) -> ())?,
-        chip_taken_back: ((side: number, chip: Chip) -> ())?,
+        chip_taken_back: ((side: number, chip: Chip, place: number) -> ())?,
         -- Choosing chips, the player chose entry `entry` (from 0) of the
         -- rules' form list (the fields of the roles `form_list.*`), which
         -- their own layer showed them: the rules check it (a refusal's
         -- `custom.refuse`) and take it. The list's browsing (its window, its
         -- cursor, a form's description) is the layer's.
         choose_form: ((side: number, entry: number) -> ())?,
-        -- B with nothing picked: whether the rules took something back
-        -- (none: B is refused).
-        take_back: ((side: number) -> boolean)?,
+        -- B with nothing picked, or the player's `Unchoose` (a click on
+        -- the entry chosen) with picks too: whether the rules un-chose the
+        -- form `choose_form` chose, the picks kept (none: refused).
+        unchoose_form: ((side: number) -> boolean)?,
     }?,
     hooks: {
         -- Once per side as the round is set up, before anything reads the
@@ -3413,7 +3419,9 @@ declare custom: {
     -- The form takes, beside it, the transform record's turns and Chaos flag
     -- (EXE5's Soul Unison). The last pick, if it is a chip (dealt, or a link
     -- navi's own), as the screen checked it; the rules' button in the last
-    -- pick's place, first in the selection (B puts the chip back; at OK the
+    -- pick's place, first in the selection (B puts the chip back, as the
+    -- player's `Unpick` of the button does where the chip goes with the picks
+    -- left, else the chip goes back to the hand with the button; at OK the
     -- chip leaves the folder where the button stands): false when the last
     -- pick isn't a chip; whether the screen's fade (`fade`'s) is still
     -- running.
@@ -3423,10 +3431,13 @@ declare custom: {
     -- chip-use rules read at the use: `mark_damage` and `mark_heals`; EXE5's
     -- 0x02, 0x04, 0x08 and 0x20 the damage word's 0x4000, 0x2000, 0x1000 and
     -- 0x0800, its 0x10 a tenth of its user's HP healed), and the button is
-    -- picked until B takes the chip back. A button holding the last pick
-    -- (EXE5's Arm Change): the last pick, a chip dealt from the folder,
+    -- picked until the chip's pick is taken back. A button holding the last
+    -- pick (EXE5's Arm Change): the last pick, a chip dealt from the folder,
     -- leaves the picks for the button, which is picked; B, with the picks as
-    -- they were then, puts it back; at OK the chip leaves the folder. The
+    -- they were then, puts it back, and the player's `Release` (a click on
+    -- the button) at any time: back in the place it left where there is room
+    -- and it goes with the picks, else back to the hand; at OK the chip
+    -- leaves the folder. The
     -- chip a button holds, and its icon in the column cell it left, shown or
     -- not.
     pick: (side: number) -> (),

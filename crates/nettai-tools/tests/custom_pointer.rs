@@ -2,9 +2,11 @@
 //! test's match files (tests/widescreen; EXE6's with Crosses, tests/custom_pointer): at 240 by 160 and at a filled window's size, a click at each target the
 //! renderer reports (`Renderer::targets`, the window at rest) is on that target (`Renderer::target_at`), and through
 //! the pointer (`nettai_frontend::pointer`) and the player's layer it gives the target's choice: a chip its pick, OK,
-//! a button its press, a pick its take-back, a form list entry its choice; the form list's tab opens the list, and
-//! its exit label (EXE6's B:EXIT) closes it. Then played through `Player::point`: a click picks a chip, a click on
-//! its pick takes it back, the tab opens the form list and closes it, so does its exit label, a click on OK sends.
+//! a button its press (or the release of the chip it holds), a pick its `Unpick`, a form list entry its choice; the
+//! form list's tab opens the list, and its exit label (EXE6's B:EXIT) closes it. Then played through
+//! `Player::point`: clicks pick two chips, a click on the first pick takes it alone back (the second moving up), the
+//! tab opens the form list and closes it, so does its exit label, a click on OK sends; in EXE6 a click on the Cross
+//! chosen un-chooses it, the picks kept.
 
 use nettai_battle::custom::layer::{Gesture, ListStage, Target};
 use nettai_battle::custom::{Phase, SlotKind};
@@ -95,10 +97,11 @@ fn expected(p: &Player, t: Target) -> Option<ScreenChoice> {
         Target::Slot(s) => match screen.slots[s as usize].kind {
             SlotKind::Chip { .. } | SlotKind::Offered(_) => Some(ScreenChoice::Pick(s)),
             SlotKind::Ok => Some(ScreenChoice::Ok),
+            SlotKind::Button { .. } if screen.hold.is_some_and(|h| screen.button_slot(s) == Some(h.button)) => Some(ScreenChoice::Release(s)),
             SlotKind::Button { .. } => Some(ScreenChoice::Press(s)),
             SlotKind::Empty | SlotKind::Hidden => None,
         },
-        Target::Pick(_) => Some(ScreenChoice::TakeBack),
+        Target::Pick(k) => Some(ScreenChoice::Unpick(k)),
         Target::Form(k) => Some(ScreenChoice::ChooseForm(k)),
         Target::FormTab | Target::FormExit => None,
     }
@@ -133,6 +136,12 @@ fn point_click(p: &mut Player, (x, y): (f32, f32)) {
     }
 }
 
+/// A click at the middle of `t`'s box, through the player.
+fn click_on(p: &mut Player, t: Target) {
+    let at = middle(box_of(p, t));
+    point_click(p, at);
+}
+
 fn box_of(p: &mut Player, t: Target) -> Rect {
     targets(p).into_iter().find(|(u, _)| *u == t).unwrap_or_else(|| panic!("no {t:?} among the targets")).1
 }
@@ -158,10 +167,27 @@ fn pointer_plays(name: &str, file: &str) {
         assert_eq!(p.battle().presented(0).unwrap().screen.selection(), [0], "{label}: a click picks");
         assert_eq!(p.layers()[0].unwrap().cursor, 0);
         let checked = checked + each_target_chooses(&mut p, size, &label);
-        let pick = middle(box_of(&mut p, Target::Pick(0)));
-        point_click(&mut p, pick);
-        p.tick(0);
-        assert!(p.battle().presented(0).unwrap().screen.selection().is_empty(), "{label}: a click on the pick takes it back");
+        // A second chip that goes with it, then a click on the first pick: it alone is taken back.
+        let screen = p.battle().presented(0).unwrap().screen;
+        let second = (1..10u8).find(|&s| {
+            let slot = screen.slots[s as usize];
+            matches!(slot.kind, SlotKind::Chip { .. }) && slot.state == nettai_battle::custom::SlotState::Selectable
+        });
+        if let Some(second) = second {
+            click_on(&mut p, Target::Slot(second));
+            p.tick(0);
+            draw(&mut p, size);
+            assert_eq!(p.battle().presented(0).unwrap().screen.selection(), [0, second], "{label}: a second click picks");
+            click_on(&mut p, Target::Pick(0));
+            p.tick(0);
+            draw(&mut p, size);
+            assert_eq!(p.battle().presented(0).unwrap().screen.selection(), [second], "{label}: a click on the first pick takes it alone back");
+        }
+        while !p.battle().presented(0).unwrap().screen.selection().is_empty() {
+            click_on(&mut p, Target::Pick(0));
+            p.tick(0);
+            draw(&mut p, size);
+        }
         // The form list's tab, where the game has one: a click opens the list; its entries are the targets, each
         // choosing its form; the tab again closes it.
         draw(&mut p, size);
@@ -208,7 +234,7 @@ fn pointer_plays(name: &str, file: &str) {
         p.tick(0);
         p.tick(0);
         assert_ne!(p.battle().presented(0).map(|s| s.screen.phase), Some(Phase::Choosing), "{label}: a click on OK sends");
-        println!("{label}: {checked} targets clicked");
+        println!("{label}: {checked} targets clicked; the first of two picks taken back: {}", second.is_some());
     }
 }
 
@@ -228,6 +254,54 @@ fn exe5_by_pointer() {
 #[ignore = "requires the original ROMs: $NETTAI_ROMS, else the Legacy Collection installed through Steam"]
 fn exe4_by_pointer() {
     pointer_plays("exe4", "widescreen/m4.toml");
+}
+
+/// Opens the form list by its tab and waits until it is up.
+fn open_form_list(p: &mut Player, size: (usize, usize), label: &str) {
+    click_on(p, Target::FormTab);
+    let up = (0..60).any(|_| {
+        p.tick(0);
+        draw(p, size);
+        matches!(p.layers()[0].unwrap().list_stage(), Some(ListStage::Up(n)) if n > 1)
+    });
+    assert!(up, "{label}: the tab opens the form list");
+}
+
+/// EXE6: a click on the Cross chosen un-chooses it, the picks kept (the user: "unselecting a cross shouldn't remove
+/// all chips").
+#[test]
+#[ignore = "requires the original ROMs: $NETTAI_ROMS, else the Legacy Collection installed through Steam"]
+fn exe6_unchoosing_a_cross_keeps_the_picks() {
+    let game = game("exe6");
+    let size = SIZES[0];
+    let label = "exe6";
+    let mut p = player(&game, "custom_pointer/m6.toml");
+    to_choosing(&mut p, size, label);
+    click_on(&mut p, Target::Slot(0));
+    p.tick(0);
+    draw(&mut p, size);
+    assert_eq!(p.battle().presented(0).unwrap().screen.selection(), [0]);
+    open_form_list(&mut p, size, label);
+    click_on(&mut p, Target::Form(0));
+    // The Cross's window plays; then the screen chooses again.
+    let chosen = (0..120).any(|_| {
+        p.tick(0);
+        draw(&mut p, size);
+        let s = p.battle().presented(0).unwrap().screen;
+        s.phase == Phase::Choosing && s.form.is_some() && p.layers()[0].unwrap().list_stage().is_none()
+    });
+    assert!(chosen, "{label}: a click on an entry chooses its Cross");
+    assert_eq!(p.battle().form_list(0).and_then(|l| l.chosen), Some(0));
+    open_form_list(&mut p, size, label);
+    let entry = middle(box_of(&mut p, Target::Form(0)));
+    let (_, choice, _) = click(&mut p, entry);
+    assert_eq!(choice, Some(ScreenChoice::Unchoose), "{label}: a click on the Cross chosen");
+    click_on(&mut p, Target::Form(0));
+    p.tick(0);
+    p.tick(0);
+    let s = p.battle().presented(0).unwrap().screen;
+    assert_eq!((s.selection(), s.form), (&[0u8][..], None), "{label}: the Cross un-chosen, the pick kept");
+    assert_eq!(p.battle().form_list(0).and_then(|l| l.chosen), None);
 }
 
 /// A tap held still on a chip describes it; a gesture of the mouse's on the picture with no screen up does nothing.

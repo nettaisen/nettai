@@ -3288,10 +3288,22 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             LuaValue::Integer(mlua::Integer::from(side)),
             entry.map_or(LuaValue::Nil, |e| LuaValue::Integer(mlua::Integer::from(e))),
         ],
-        // A custom screen's chip hooks: the side, then the chip.
-        HookCall::Rules { side, hook: RulesHook::CustomChipPicked | RulesHook::CustomChipTakenBack, chip, .. } => vec![
+        // A custom screen's chip hooks: the side, then the chip, and a
+        // take-back's place among the picks.
+        HookCall::Rules { side, hook: RulesHook::CustomChipPicked | RulesHook::CustomChipTakenBack, chip, place, .. } => {
+            let mut v = vec![
+                LuaValue::Integer(mlua::Integer::from(side)),
+                chip.map_or(Ok(LuaValue::Nil), |c| bound.def_value(Registry::Chip, c.0).map(LuaValue::Table))?,
+            ];
+            if let Some(k) = place {
+                v.push(LuaValue::Integer(mlua::Integer::from(k)));
+            }
+            v
+        }
+        // A button's take-back: the side, then the place among the picks.
+        HookCall::Rules { side, hook: RulesHook::ButtonTakenBack, place, .. } => vec![
             LuaValue::Integer(mlua::Integer::from(side)),
-            chip.map_or(Ok(LuaValue::Nil), |c| bound.def_value(Registry::Chip, c.0).map(LuaValue::Table))?,
+            place.map_or(LuaValue::Nil, |k| LuaValue::Integer(mlua::Integer::from(k))),
         ],
         // A party's hooks: the side, the navi where they have one, then the
         // member and the mood.
@@ -3419,7 +3431,7 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             hook:
                 RulesHook::ButtonShown
                 | RulesHook::WindowUpdate
-                | RulesHook::CustomTakeBack
+                | RulesHook::CustomUnchooseForm
                 | RulesHook::BugMark
                 | RulesHook::HpEmptied
                 | RulesHook::NaviFalling

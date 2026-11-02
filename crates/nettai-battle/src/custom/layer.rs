@@ -179,7 +179,10 @@ pub enum Gesture {
 }
 
 impl Gesture {
-    /// The gesture's number in a tick word's seven bits (none is 0): a
+    /// How many numbers the gestures take, none's 0 with them.
+    pub const CODES: u32 = 2 + 3 * TARGETS;
+
+    /// The gesture's number (none is 0), below [`Gesture::CODES`]: a
     /// hover's 1 + its target's number ([`Target::index`]), then a click's
     /// on each target, a click on none, a describe's.
     pub const fn code(self) -> u32 {
@@ -325,12 +328,6 @@ pub struct Layer {
     gestures: [Option<Gesture>; GESTURES],
     /// The gesture this tick takes, until what it is for takes it.
     gesture: Option<Gesture>,
-    /// Take-backs a click on a pick asked for, still to send: one a tick
-    /// while the screen chooses, down to the pick clicked.
-    take_backs: u8,
-    /// This tick's choice is the pointer's (its gesture's, a take-back it
-    /// asked for).
-    pointer_chose: bool,
 }
 
 impl Layer {
@@ -358,8 +355,6 @@ impl Layer {
             plan: Plan::default(),
             gestures: [None; GESTURES],
             gesture: None,
-            take_backs: 0,
-            pointer_chose: false,
         }
     }
 
@@ -504,7 +499,6 @@ impl Layer {
                 next
             }
         };
-        self.pointer_chose = false;
         let mut out = PlayerTick { choice: None, gesture: self.gesture, ..input };
         let Some(p) = p else { return PlayerTick { gesture: self.gesture, ..input } };
         let screen = p.screen;
@@ -540,7 +534,7 @@ impl Layer {
             Phase::Choosing => {
                 // (The pointer's gesture first: what it chooses or opens
                 // takes the tick from the keys.)
-                let kind = if self.sub == Sub::None {
+                if self.sub == Sub::None {
                     out.choice = match self.point_on_chips(p, layout) {
                         Pointed::Choice(c) => Some(c),
                         Pointed::Took => None,
@@ -550,18 +544,7 @@ impl Layer {
                 } else {
                     out.choice = self.step_sub(p, layout);
                     TickKind::Sub
-                };
-                // The take-backs a click on a pick asked for, one a tick
-                // while nothing else is chosen and nothing but the form list
-                // is up; a choice of the keys' ends them.
-                let scheduled = self.take_backs;
-                if out.choice.is_some() && !self.pointer_chose {
-                    self.take_backs = 0;
-                } else if out.choice.is_none() && scheduled > 0 && matches!(self.sub, Sub::None | Sub::List(_)) {
-                    out.choice = Some(ScreenChoice::TakeBack);
-                    self.take_backs = scheduled - 1;
                 }
-                kind
             }
             Phase::Settling => TickKind::Settling,
             _ => TickKind::Screen,
@@ -594,7 +577,6 @@ impl Layer {
         self.cursor = p.screen.first_cursor(p.folder, &p.view, true);
         self.sub = Sub::None;
         self.list_cursor = 0;
-        self.take_backs = 0;
         self.look = WindowLook::new();
         self.hover = Hover::default();
         self.hover_fade_last = false;
@@ -742,26 +724,24 @@ impl Layer {
                 if !self.point_cursor(s, screen) {
                     return Pointed::Nothing;
                 }
+                // (A button holding a chip, `custom.hold_last_pick`: the
+                // chip released, which no key does.)
+                let holds = screen.hold.is_some_and(|h| screen.button_slot(s) == Some(h.button));
                 let choice = match screen.slots[s as usize].kind {
                     SlotKind::Chip { .. } | SlotKind::Offered(_) => ScreenChoice::Pick(s),
                     SlotKind::Ok => ScreenChoice::Ok,
+                    SlotKind::Button { .. } if holds => ScreenChoice::Release(s),
                     SlotKind::Button { .. } => ScreenChoice::Press(s),
                     SlotKind::Empty | SlotKind::Hidden => return Pointed::Nothing,
                 };
-                self.take_backs = 0;
-                self.pointer_chose = true;
                 Pointed::Choice(choice)
             }
-            // (Down to the pick clicked, the last first: as many take-backs
-            // as picks from it on, one a tick.)
+            // (The pick clicked taken back, wherever it is.)
             Gesture::Click(Some(Target::Pick(k))) => {
-                let picks = screen.selection().len() as u8;
-                if k >= picks {
+                if k as usize >= screen.selection().len() {
                     return Pointed::Nothing;
                 }
-                self.take_backs = picks - k - 1;
-                self.pointer_chose = true;
-                Pointed::Choice(ScreenChoice::TakeBack)
+                Pointed::Choice(ScreenChoice::Unpick(k))
             }
             // (The tab opens the list as UP does, from anywhere.)
             Gesture::Click(Some(Target::FormTab)) => {
@@ -791,10 +771,10 @@ impl Layer {
 
     /// The tick's gesture in the form list's window, while it reads keys: a
     /// hover moves its cursor and a click on an entry chooses it, until one
-    /// is chosen; a click on the chosen one takes it back (and the picks
-    /// after it, one a tick); a click on the tab or the exit label closes
-    /// the window, as B does; a describe is R on the entry. None: it takes nothing, and the
-    /// keys have the tick.
+    /// is chosen; a click on the chosen one un-chooses it, the picks kept;
+    /// a click on the tab or the exit label closes the window, as B does; a
+    /// describe is R on the entry. None: it takes nothing, and the keys
+    /// have the tick.
     fn point_in_list(&mut self, p: &Presented, layout: &CustomScreenLayout) -> Option<Option<ScreenChoice>> {
         let gesture = self.gesture?;
         let list = p.form_list.unwrap_or_default();
@@ -812,12 +792,9 @@ impl Layer {
             Gesture::Click(Some(Target::Form(k))) if k < list.count => {
                 if open {
                     self.list_cursor = k;
-                    self.pointer_chose = true;
                     Some(Some(ScreenChoice::ChooseForm(k)))
                 } else if list.chosen == Some(k) {
-                    self.take_backs = p.screen.selection().len() as u8;
-                    self.pointer_chose = true;
-                    Some(Some(ScreenChoice::TakeBack))
+                    Some(Some(ScreenChoice::Unchoose))
                 } else {
                     self.play(ScreenSound::Refused);
                     Some(None)

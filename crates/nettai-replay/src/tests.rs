@@ -8,6 +8,10 @@ fn info() -> Info {
     Info { when: 1_790_000_000, side: 1, kind: MatchKind::Online, open_setups: false, names: ["Lan".into(), String::new()] }
 }
 
+/// OK's number in a word's screen part (bits 20 to 31): its choice's 25,
+/// times the 74 gestures' numbers (`PlayerTick::word`).
+const OK: u32 = 25 * 74;
+
 /// A set of two rounds: input that changes now and then (a custom screen's
 /// choice now and then), side 1's screen delay changing once, a digest
 /// every 60 ticks and at each round's end.
@@ -15,7 +19,7 @@ fn ticks() -> Vec<Tick> {
     let mut out: Vec<Tick> = (0..300u32)
         .map(|i| Tick {
             inputs: [
-                if i % 20 < 5 { 0x001 } else if i % 70 == 11 { 25 << 20 } else { 0 },
+                if i % 20 < 5 { 0x001 } else if i % 70 == 11 { OK << 20 } else { 0 },
                 if i % 33 < 3 { 0x220 } else if i % 50 == 7 { 0x1E600 } else { 0x200 },
             ],
             delays: [0, if i < 120 { 4 } else { 2 }],
@@ -232,12 +236,12 @@ fn a_head_reads_whatever_follows_it() {
 
 /// A side's screen delay is written as it changes, a byte after the inputs
 /// (control bit 5 for side 0, 6 for side 1), and carried by the reader; a
-/// word with a custom screen's choice (bits 20 to 24) and a pointer's
-/// gesture (bits 25 to 31, to the word's top) reads back.
+/// word with a custom screen's choice and a pointer's gesture (bits 20 to
+/// 31, to the word's top) reads back.
 #[test]
 fn screen_delays_choices_and_gestures_read_back() {
-    // (A held, B's choice, take back, and the highest gesture's number.)
-    let choice: u32 = 1 | 26 << 20 | 0x7F << 25;
+    // (A held, the highest choice's number with the highest gesture's.)
+    let choice: u32 = 1 | (73 + 74 * 49) << 20;
     let ticks = [
         Tick { inputs: [0, 0], delays: [4, 0], ..Tick::default() },
         Tick { inputs: [choice, 0], delays: [4, 0], ..Tick::default() },

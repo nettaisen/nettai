@@ -205,8 +205,9 @@ pub trait Extras {
     /// A button's `pressed` (A on it), which may change the screen, on the
     /// side's console (its RNG1).
     fn button_pressed(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console, button: crate::content::ButtonHandle);
-    /// A button's `taken_back` (B took its pick back), if it has one.
-    fn button_taken_back(&mut self, screen: &mut Screen, button: crate::content::ButtonHandle);
+    /// A button's `taken_back(side, place)` (its pick in place `place` of
+    /// the picks taken back: B, an `Unpick`, a `Release`), if it has one.
+    fn button_taken_back(&mut self, screen: &mut Screen, button: crate::content::ButtonHandle, place: u8);
     /// `custom.deal(side)`: the screen deals, the folder not yet closed
     /// up, on the side's console (its RNG1).
     fn dealing(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console);
@@ -218,17 +219,18 @@ pub trait Extras {
     /// hand in its place, if any (EXE4's soul).
     fn button_hand_chip(&mut self, screen: &Screen, button: crate::content::ButtonHandle) -> Option<ChipHandle>;
     /// `custom.chip_picked(side, chip)` and `custom.chip_taken_back(side,
-    /// chip)`: a chip of the hand picked, or its pick taken back.
+    /// chip, place)`: a chip of the hand picked, or its pick in place
+    /// `place` of the picks taken back.
     fn chip_picked(&mut self, screen: &mut Screen, folder: &mut BattleFolder, chip: ChipHandle);
-    fn chip_taken_back(&mut self, screen: &mut Screen, chip: ChipHandle);
+    fn chip_taken_back(&mut self, screen: &mut Screen, chip: ChipHandle, place: u8);
     /// A window's `update` (a tick of it): whether it stays up.
     fn window_update(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console, window: crate::content::WindowHandle) -> bool;
     /// `custom.choose_form(side, entry)`: the player chose entry `entry` of
     /// the rules' form list (EXE6's Cross window's, `sub_8028A78`'s A).
     fn choose_form(&mut self, screen: &mut Screen, folder: &mut BattleFolder, entry: u8);
-    /// `custom.take_back(side)`: B with nothing picked: whether the rules
-    /// took something back.
-    fn take_back(&mut self, screen: &mut Screen, folder: &BattleFolder) -> bool;
+    /// `custom.unchoose_form(side)`: B with nothing picked, or the
+    /// player's `Unchoose`: whether the rules un-chose a form.
+    fn unchoose_form(&mut self, screen: &mut Screen, folder: &BattleFolder) -> bool;
     /// `member_busy(side, member)`: whether the side's rules keep the screen
     /// from switching to `member` now (EXE5 DS's 0x02004B80, its supports'
     /// busy flags; they play the refusal).
@@ -253,7 +255,7 @@ impl Extras for NoExtras {
 
     fn button_pressed(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: crate::content::ButtonHandle) {}
 
-    fn button_taken_back(&mut self, _: &mut Screen, _: crate::content::ButtonHandle) {}
+    fn button_taken_back(&mut self, _: &mut Screen, _: crate::content::ButtonHandle, _: u8) {}
 
     fn dealing(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console) {}
     fn opened(&mut self, _: &mut Screen) {}
@@ -266,7 +268,7 @@ impl Extras for NoExtras {
 
     fn chip_picked(&mut self, _: &mut Screen, _: &mut BattleFolder, _: ChipHandle) {}
 
-    fn chip_taken_back(&mut self, _: &mut Screen, _: ChipHandle) {}
+    fn chip_taken_back(&mut self, _: &mut Screen, _: ChipHandle, _: u8) {}
 
     fn window_update(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: crate::content::WindowHandle) -> bool {
         false
@@ -274,7 +276,7 @@ impl Extras for NoExtras {
 
     fn choose_form(&mut self, _: &mut Screen, _: &mut BattleFolder, _: u8) {}
 
-    fn take_back(&mut self, _: &mut Screen, _: &BattleFolder) -> bool {
+    fn unchoose_form(&mut self, _: &mut Screen, _: &BattleFolder) -> bool {
         false
     }
 
@@ -867,12 +869,12 @@ impl Extras for SideExtras<'_> {
         self.with_screen_console(screen, Some(folder), Some(console), |b| b.call_button(side, button, nettai_content_api::RulesHook::ButtonPressed));
     }
 
-    fn button_taken_back(&mut self, screen: &mut Screen, button: crate::content::ButtonHandle) {
+    fn button_taken_back(&mut self, screen: &mut Screen, button: crate::content::ButtonHandle, place: u8) {
         if self.b.content.defs.button(button).taken_back.is_none() {
             return;
         }
         let side = self.side;
-        self.with_screen(screen, None, |b| b.call_button(side, button, nettai_content_api::RulesHook::ButtonTakenBack));
+        self.with_screen(screen, None, |b| b.call_button_taken_back(side, button, place));
     }
 
     fn dealing(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console) {
@@ -905,9 +907,9 @@ impl Extras for SideExtras<'_> {
         self.with_screen(screen, Some(folder), |b| b.rules_call_custom_chip(side, nettai_content_api::RulesHook::CustomChipPicked, chip));
     }
 
-    fn chip_taken_back(&mut self, screen: &mut Screen, chip: ChipHandle) {
+    fn chip_taken_back(&mut self, screen: &mut Screen, chip: ChipHandle, place: u8) {
         let side = self.side;
-        self.with_screen(screen, None, |b| b.rules_call_custom_chip(side, nettai_content_api::RulesHook::CustomChipTakenBack, chip));
+        self.with_screen(screen, None, |b| b.rules_call_chip_taken_back(side, chip, place));
     }
 
     fn window_update(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console, window: crate::content::WindowHandle) -> bool {
@@ -920,10 +922,10 @@ impl Extras for SideExtras<'_> {
         self.with_screen(screen, Some(folder), |b| b.rules_call_custom_entry(side, nettai_content_api::RulesHook::CustomChooseForm, entry));
     }
 
-    fn take_back(&mut self, screen: &mut Screen, folder: &BattleFolder) -> bool {
+    fn unchoose_form(&mut self, screen: &mut Screen, folder: &BattleFolder) -> bool {
         let side = self.side;
         let mut folder = *folder;
-        self.with_screen(screen, Some(&mut folder), |b| b.rules_ask_custom(side, nettai_content_api::RulesHook::CustomTakeBack))
+        self.with_screen(screen, Some(&mut folder), |b| b.rules_ask_custom(side, nettai_content_api::RulesHook::CustomUnchooseForm))
     }
 
     fn member_busy(&mut self, member: u8) -> bool {

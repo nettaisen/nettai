@@ -462,7 +462,7 @@ impl Battle {
         if !self.has_rules(side) || self.rules[side as usize & 1].muted & hook.bit() != 0 {
             return None;
         }
-        let call = HookCall::Rules { side, hook, navi, chip, weapon, member: None, mood: None, entry: None };
+        let call = HookCall::Rules { side, hook, navi, chip, weapon, member: None, mood: None, entry: None, place: None };
         Some(crate::behavior::call_hook(self, f, call))
     }
 
@@ -644,12 +644,11 @@ impl Battle {
             RulesHook::ButtonShown => d.shown,
             RulesHook::ButtonState => d.state.expect("a button's state, asked only when it has one"),
             RulesHook::ButtonPressed => d.pressed,
-            RulesHook::ButtonTakenBack => d.taken_back.expect("a button's taken_back, asked only when it has one"),
             RulesHook::ButtonChip => d.chip.expect("a button's chip, asked only when it has one"),
             RulesHook::ButtonHandChip => d.hand_chip.expect("a button's hand chip, asked only when it has one"),
             h => panic!("{h:?} is no button's function"),
         };
-        let call = HookCall::Rules { side, hook, navi: None, chip: None, weapon: None, member: None, mood: None, entry: None };
+        let call = HookCall::Rules { side, hook, navi: None, chip: None, weapon: None, member: None, mood: None, entry: None, place: None };
         crate::behavior::call_hook(self, f, call)
     }
 
@@ -657,13 +656,34 @@ impl Battle {
     pub(crate) fn call_window(&mut self, side: u8, window: crate::content::WindowHandle) -> Value {
         let content = self.content.clone();
         let d = content.defs.window(window);
-        let call = HookCall::Rules { side, hook: RulesHook::WindowUpdate, navi: None, chip: None, weapon: None, member: None, mood: None, entry: None };
+        let call = HookCall::Rules { side, hook: RulesHook::WindowUpdate, navi: None, chip: None, weapon: None, member: None, mood: None, entry: None, place: None };
         crate::behavior::call_hook(self, d.update, call)
     }
 
     /// The rules' custom chip hook `hook(side, chip)`.
     pub(crate) fn rules_call_custom_chip(&mut self, side: u8, hook: RulesHook, chip: ChipHandle) {
         self.call_rules(side, hook, None, Some(chip), None);
+    }
+
+    /// The rules' `custom.chip_taken_back(side, chip, place)`.
+    pub(crate) fn rules_call_chip_taken_back(&mut self, side: u8, chip: ChipHandle, place: u8) {
+        let hook = RulesHook::CustomChipTakenBack;
+        let Some(f) = self.content.defs.rules().and_then(|r| r.hook(hook)) else { return };
+        if !self.has_rules(side) || self.rules[side as usize & 1].muted & hook.bit() != 0 {
+            return;
+        }
+        let call = HookCall::Rules { side, hook, navi: None, chip: Some(chip), weapon: None, member: None, mood: None, entry: None, place: Some(place) };
+        crate::behavior::call_hook(self, f, call);
+    }
+
+    /// A button's `taken_back(side, place)`, as the rules' call for side
+    /// `side`.
+    pub(crate) fn call_button_taken_back(&mut self, side: u8, button: crate::content::ButtonHandle, place: u8) {
+        let content = self.content.clone();
+        let f = content.defs.button(button).taken_back.expect("a button's taken_back, asked only when it has one");
+        let hook = RulesHook::ButtonTakenBack;
+        let call = HookCall::Rules { side, hook, navi: None, chip: None, weapon: None, member: None, mood: None, entry: None, place: Some(place) };
+        crate::behavior::call_hook(self, f, call);
     }
 
     /// The rules' custom hook `hook(side)`.
@@ -677,7 +697,7 @@ impl Battle {
         if !self.has_rules(side) || self.rules[side as usize & 1].muted & hook.bit() != 0 {
             return;
         }
-        let call = HookCall::Rules { side, hook, navi: None, chip: None, weapon: None, member: None, mood: None, entry: Some(entry) };
+        let call = HookCall::Rules { side, hook, navi: None, chip: None, weapon: None, member: None, mood: None, entry: Some(entry), place: None };
         crate::behavior::call_hook(self, f, call);
     }
 
@@ -781,7 +801,7 @@ impl Battle {
         if !self.has_rules(side) || self.rules[side as usize & 1].muted & hook.bit() != 0 {
             return None;
         }
-        let call = HookCall::Rules { side, hook, navi, chip: None, weapon: None, member: Some(member), mood, entry: None };
+        let call = HookCall::Rules { side, hook, navi, chip: None, weapon: None, member: Some(member), mood, entry: None, place: None };
         Some(crate::behavior::call_hook(self, f, call))
     }
 

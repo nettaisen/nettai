@@ -136,15 +136,30 @@ pub enum ScreenChoice {
     /// OK, with what is picked (nothing picked too).
     Ok,
     /// B: the last pick taken back, or what the rules take back with none
-    /// (`custom.take_back`), in the screen's order.
+    /// (`custom.unchoose_form`), in the screen's order.
     TakeBack,
     /// An entry (0-4) of the rules' form list chosen (their
     /// `custom.choose_form`: EXE6's Cross).
     ChooseForm(u8),
+    /// The pick in this place (0-4) taken back, the picks after it moving
+    /// up a place, and what it carries with it (a button attached to it, a
+    /// chip a button was traded for: back in its place where it goes with
+    /// the picks left, else back to the hand); B on the last pick.
+    Unpick(u8),
+    /// The form the rules' list chose un-chosen (`custom.unchoose_form`),
+    /// the picks kept: B with nothing picked, with picks too.
+    Unchoose,
+    /// The chip the rules' button on a slot (0-11, either cell) holds
+    /// (`custom.hold_last_pick`) released: back as a pick in the place it
+    /// left where it goes with the picks, else back to the hand.
+    Release(u8),
 }
 
 impl ScreenChoice {
-    /// The choice's number in a tick word's five bits (none is 0).
+    /// How many numbers the choices take, none's 0 with them.
+    pub const CODES: u32 = 50;
+
+    /// The choice's number (none is 0), below [`ScreenChoice::CODES`].
     pub const fn code(self) -> u32 {
         match self {
             ScreenChoice::Pick(s) => 1 + (s as u32 % 12),
@@ -152,6 +167,9 @@ impl ScreenChoice {
             ScreenChoice::Ok => 25,
             ScreenChoice::TakeBack => 26,
             ScreenChoice::ChooseForm(e) => 27 + (e as u32 % 5),
+            ScreenChoice::Unpick(k) => 32 + (k as u32 % 5),
+            ScreenChoice::Unchoose => 37,
+            ScreenChoice::Release(s) => 38 + (s as u32 % 12),
         }
     }
 
@@ -163,24 +181,55 @@ impl ScreenChoice {
             25 => ScreenChoice::Ok,
             26 => ScreenChoice::TakeBack,
             27..=31 => ScreenChoice::ChooseForm(code as u8 - 27),
+            32..=36 => ScreenChoice::Unpick(code as u8 - 32),
+            37 => ScreenChoice::Unchoose,
+            38..=49 => ScreenChoice::Release(code as u8 - 38),
             _ => return None,
         })
     }
 
     /// A choice by its name, as a script names it (nettai-tool's `--keys`):
-    /// `pick3`, `press11`, `ok`, `take_back`, `form2`.
+    /// `pick3`, `press11`, `ok`, `take_back`, `form2`, `unpick1`,
+    /// `unchoose`, `release8`.
     pub fn named(name: &str) -> Option<ScreenChoice> {
         let number = |prefix: &str, max: u8| name.strip_prefix(prefix).and_then(|n| n.parse::<u8>().ok()).filter(|&n| n <= max);
         match name {
             "ok" => Some(ScreenChoice::Ok),
             "take_back" => Some(ScreenChoice::TakeBack),
+            "unchoose" => Some(ScreenChoice::Unchoose),
             _ => number("pick", 11)
                 .map(ScreenChoice::Pick)
                 .or_else(|| number("press", 11).map(ScreenChoice::Press))
-                .or_else(|| number("form", 4).map(ScreenChoice::ChooseForm)),
+                .or_else(|| number("form", 4).map(ScreenChoice::ChooseForm))
+                .or_else(|| number("unpick", 4).map(ScreenChoice::Unpick))
+                .or_else(|| number("release", 11).map(ScreenChoice::Release)),
         }
     }
 }
+
+/// A tick's screen part, its choice and its gesture as one number in the
+/// word's bits 20 to 31: the gesture's number ([`Gesture::code`], 0 none)
+/// and [`Gesture::CODES`] times the choice's ([`ScreenChoice::code`], 0
+/// none), at most 3699 (a gesture alone, the more frequent, is below 128).
+const fn screen_part(choice: Option<ScreenChoice>, gesture: Option<Gesture>) -> u32 {
+    let choice = match choice {
+        Some(c) => c.code(),
+        None => 0,
+    };
+    let gesture = match gesture {
+        Some(g) => g.code(),
+        None => 0,
+    };
+    gesture + Gesture::CODES * choice
+}
+
+/// The choice and the gesture a screen part ([`screen_part`]) holds; a
+/// number none has is ignored.
+const fn screen_of(part: u32) -> (Option<ScreenChoice>, Option<Gesture>) {
+    (ScreenChoice::from_code(part / Gesture::CODES), Gesture::from_code(part % Gesture::CODES))
+}
+
+const _: () = assert!(ScreenChoice::CODES * Gesture::CODES <= 1 << 12);
 
 /// What one player contributes to a tick.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -232,23 +281,19 @@ impl PlayerTick {
     /// The tick as one word, for the hosts that carry a tick as a number
     /// (netplay's wire, replays, a frontend's input): the buttons in the
     /// low ten bits, the switch request in bits 10 and 11 (the member plus
-    /// one, 0 none), the microphone's level in bits 12 to 19, the screen's
-    /// choice in bits 20 to 24 ([`ScreenChoice::code`], 0 none), the
-    /// pointer's gesture in bits 25 to 31 ([`Gesture::code`], 0 none).
+    /// one, 0 none), the microphone's level in bits 12 to 19, and the
+    /// screen's choice with the pointer's gesture as one number in bits 20
+    /// to 31: the gesture's number ([`Gesture::code`], 0 none) plus 74
+    /// ([`Gesture::CODES`]) times the choice's ([`ScreenChoice::code`], 0
+    /// none). (A choice and a gesture together take 50 times 74 numbers,
+    /// more than two fields of 12 bits hold.)
     pub const fn word(self) -> u32 {
         let switch = match self.switch_to {
             Some(m) => (m as u32 & 3) + 1,
             None => 0,
         };
-        let choice = match self.choice {
-            Some(c) => c.code(),
-            None => 0,
-        };
-        let gesture = match self.gesture {
-            Some(g) => g.code(),
-            None => 0,
-        };
-        (self.held as u32 & 0x3FF) | (switch & 3) << 10 | (self.mic_level as u32) << 12 | (choice & 0x1F) << 20 | (gesture & 0x7F) << 25
+        let screen = screen_part(self.choice, self.gesture);
+        (self.held as u32 & 0x3FF) | (switch & 3) << 10 | (self.mic_level as u32) << 12 | screen << 20
     }
 
     /// The tick a word ([`PlayerTick::word`]) holds; a choice's or a
@@ -256,13 +301,22 @@ impl PlayerTick {
     /// names member 2.)
     pub const fn from_word(word: u32) -> PlayerTick {
         let switch = (word >> 10) & 3;
+        let (choice, gesture) = screen_of(word >> 20);
         PlayerTick {
             held: (word & 0x3FF) as u16,
             switch_to: if switch == 0 { None } else { Some(switch as u8 - 1) },
             mic_level: (word >> 12) as u8,
-            choice: ScreenChoice::from_code((word >> 20) & 0x1F),
-            gesture: Gesture::from_code(word >> 25),
+            choice,
+            gesture,
         }
+    }
+
+    /// The tick as a missing word of the player's is guessed from their
+    /// last (netplay's prediction): its buttons and microphone carry on; a
+    /// switch request, a choice and a gesture are a tick's own, and happen
+    /// once.
+    pub const fn carried_on(self) -> PlayerTick {
+        PlayerTick { switch_to: None, choice: None, gesture: None, ..self }
     }
 }
 
@@ -306,7 +360,12 @@ mod tests {
             t(keys::A, None, 0, Some(ScreenChoice::Pick(11))),
             t(0, Some(1), 0, Some(ScreenChoice::Press(8))),
             t(0, None, 0, Some(ScreenChoice::TakeBack)),
+            t(0, None, 0, Some(ScreenChoice::Unpick(4))),
+            t(keys::B, None, 0, Some(ScreenChoice::Unchoose)),
+            t(0x3FF, Some(2), 0xFF, Some(ScreenChoice::Release(11))),
             PlayerTick { gesture: Some(Gesture::Hover(Target::Slot(0))), ..t(keys::UP, None, 0, None) },
+            PlayerTick { gesture: Some(Gesture::Describe(Target::FormExit)), ..t(0x3FF, Some(2), 0xFF, Some(ScreenChoice::Release(11))) },
+            PlayerTick { gesture: Some(Gesture::Describe(Target::FormExit)), ..t(0x3FF, Some(2), 0xFF, None) },
             PlayerTick { gesture: Some(Gesture::Click(Some(Target::Pick(4)))), ..t(0, None, 0, Some(ScreenChoice::TakeBack)) },
             PlayerTick { gesture: Some(Gesture::Click(None)), ..t(0x3FF, Some(2), 0xFF, Some(ScreenChoice::ChooseForm(4))) },
             PlayerTick { gesture: Some(Gesture::Describe(Target::FormExit)), ..t(0x3FF, Some(2), 0xFF, Some(ScreenChoice::ChooseForm(4))) },
@@ -319,20 +378,43 @@ mod tests {
     }
 
     #[test]
+    fn a_word_holds_every_choice_with_every_gesture() {
+        let choices = (0..ScreenChoice::CODES).map(ScreenChoice::from_code);
+        for choice in choices {
+            for gesture in (0..Gesture::CODES).map(Gesture::from_code) {
+                let t = PlayerTick { held: 0x3FF, switch_to: Some(2), mic_level: 0xFF, choice, gesture };
+                assert_eq!(PlayerTick::from_word(t.word()), t);
+            }
+        }
+        // A gesture alone keeps the word below 2^27 (a wire element of four
+        // bytes).
+        let hover = PlayerTick { gesture: Gesture::from_code(Gesture::CODES - 1), ..PlayerTick::buttons(0x3FF) };
+        assert!(hover.word() < 1 << 27);
+    }
+
+    #[test]
     fn every_choice_has_its_own_number_and_name() {
         let all: Vec<ScreenChoice> = (0..12)
             .map(ScreenChoice::Pick)
             .chain((0..12).map(ScreenChoice::Press))
             .chain([ScreenChoice::Ok, ScreenChoice::TakeBack])
             .chain((0..5).map(ScreenChoice::ChooseForm))
+            .chain((0..5).map(ScreenChoice::Unpick))
+            .chain([ScreenChoice::Unchoose])
+            .chain((0..12).map(ScreenChoice::Release))
             .collect();
         for (i, c) in all.iter().enumerate() {
             assert_eq!(ScreenChoice::from_code(c.code()), Some(*c));
             assert!(all[..i].iter().all(|d| d.code() != c.code()), "{c:?}");
-            assert!(c.code() < 32);
+            assert!((1..ScreenChoice::CODES).contains(&c.code()), "{c:?}");
         }
+        assert_eq!(all.len() as u32 + 1, ScreenChoice::CODES);
         assert_eq!(ScreenChoice::from_code(0), None);
-        assert_eq!(ScreenChoice::from_code(32), None);
+        assert_eq!(ScreenChoice::from_code(ScreenChoice::CODES), None);
+        assert_eq!(ScreenChoice::named("unpick4"), Some(ScreenChoice::Unpick(4)));
+        assert_eq!(ScreenChoice::named("unpick5"), None);
+        assert_eq!(ScreenChoice::named("unchoose"), Some(ScreenChoice::Unchoose));
+        assert_eq!(ScreenChoice::named("release9"), Some(ScreenChoice::Release(9)));
         assert_eq!(ScreenChoice::named("pick3"), Some(ScreenChoice::Pick(3)));
         assert_eq!(ScreenChoice::named("press11"), Some(ScreenChoice::Press(11)));
         assert_eq!(ScreenChoice::named("form2"), Some(ScreenChoice::ChooseForm(2)));
@@ -359,10 +441,10 @@ mod tests {
         for (i, g) in all.iter().enumerate() {
             assert_eq!(Gesture::from_code(g.code()), Some(*g), "{g:?}");
             assert!(all[..i].iter().all(|h| h.code() != g.code()), "{g:?}");
-            assert!((1..128).contains(&g.code()), "{g:?}");
+            assert!((1..Gesture::CODES).contains(&g.code()), "{g:?}");
         }
+        assert_eq!(all.len() as u32 + 1, Gesture::CODES);
         assert_eq!(Gesture::from_code(0), None);
-        assert_eq!(Gesture::from_code(all.len() as u32 + 1), None);
-        assert_eq!(Gesture::from_code(127), None);
+        assert_eq!(Gesture::from_code(Gesture::CODES), None);
     }
 }

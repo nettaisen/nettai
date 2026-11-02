@@ -169,8 +169,10 @@ pub enum HookCall {
     /// between); a party's hooks with the side, then the navi where they
     /// have one, then the member of the side's party they are about and a
     /// mood (`member`, `mood`); a list's with the side and the entry of the
-    /// list they are about (`entry`: `custom.choose_form`'s). Its result is
-    /// the hook's.
+    /// list they are about (`entry`: `custom.choose_form`'s); a custom
+    /// screen's take-back's with the side, the chip where it has one, and
+    /// the place among the picks it was taken back from (`place`). Its
+    /// result is the hook's.
     Rules {
         side: u8,
         hook: RulesHook,
@@ -180,6 +182,7 @@ pub enum HookCall {
         member: Option<u8>,
         mood: Option<u8>,
         entry: Option<u8>,
+        place: Option<u8>,
     },
     /// A hook of a panel type's (its rules' `panels.types.<name>.<hook>`):
     /// what the type does where the engine meets it, with the body it
@@ -658,8 +661,11 @@ pub enum RulesHook {
     /// BeastOut chip starts its animation, `sub_802A00C`). Its result is
     /// unused.
     CustomChipPicked,
-    /// `custom.chip_taken_back(side, chip)`: B took a chip's pick back
-    /// (EXE6's BeastOut chip: its face goes, `sub_802A0EC`). Its result is
+    /// `custom.chip_taken_back(side, chip, place)`: a chip's pick in place
+    /// `place` (from 0) of the picks was taken back (B, the last; an
+    /// `Unpick`, any), or a chip that had left the picks for a button went
+    /// back to the hand from there (EXE6's BeastOut chip: its face goes,
+    /// `sub_802A0EC`; EXE4's offered dark chips' places). Its result is
     /// unused.
     CustomChipTakenBack,
     /// `custom.confirmed(side)`: OK was pressed and the hand is built (the
@@ -672,15 +678,18 @@ pub enum RulesHook {
     /// shows); the choice is the rules', who check it. Its result is
     /// unused.
     CustomChooseForm,
-    /// `custom.take_back(side)`: B with nothing picked (`sub_8029032`):
-    /// whether the rules took something back (EXE6's Cross chosen). The
-    /// first part that answers true did; none, and B is refused.
-    CustomTakeBack,
+    /// `custom.unchoose_form(side)`: B with nothing picked
+    /// (`sub_8029032`), or the player's `Unchoose` with picks too: whether
+    /// the rules un-chose the form their list chose (EXE6's Cross), the
+    /// picks kept. The first part that answers true did; none, and it is
+    /// refused.
+    CustomUnchooseForm,
     /// A window's `update(side)`, each tick it is up: whether it
     /// stays up (`custom.window_tick` counts its ticks from 1).
     WindowUpdate,
-    /// A button's `taken_back(side)`: B took its pick back (EXE6's Beast
-    /// Out: its face goes).
+    /// A button's `taken_back(side, place)`: its pick in place `place` (from
+    /// 0) of the picks was taken back, or the chip it held or was picked in
+    /// the place of went back (EXE6's Beast Out: its face goes).
     ButtonTakenBack,
     /// A custom-screen button's `shown(side)` (§4.4), as the
     /// screen opens: whether it is on the screen. (Not in `hooks`: each
@@ -819,7 +828,7 @@ impl RulesHook {
             RulesHook::CustomOpen => "custom.open",
             RulesHook::CustomConfirmed => "custom.confirmed",
             RulesHook::CustomChooseForm => "custom.choose_form",
-            RulesHook::CustomTakeBack => "custom.take_back",
+            RulesHook::CustomUnchooseForm => "custom.unchoose_form",
             RulesHook::CustomChipPicked => "custom.chip_picked",
             RulesHook::CustomChipTakenBack => "custom.chip_taken_back",
             RulesHook::WindowUpdate => "window.update",
@@ -902,7 +911,7 @@ impl RulesHook {
         RulesHook::CustomChipPicked,
         RulesHook::CustomChipTakenBack,
         RulesHook::CustomChooseForm,
-        RulesHook::CustomTakeBack,
+        RulesHook::CustomUnchooseForm,
         RulesHook::Validate,
         RulesHook::FolderView,
         RulesHook::Overview,

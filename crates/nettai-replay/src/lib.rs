@@ -39,9 +39,10 @@
 //! Numbers are little-endian. A side's input is its tick's word
 //! (`nettai_battle::PlayerTick::word`): the GBA's buttons in the low ten
 //! bits, the party switch request in bits 10 and 11 (the member + 1, 0
-//! none), the microphone's level in bits 12 to 19, the custom screen's
-//! choice in bits 20 to 24 (`ScreenChoice::code`, 0 none), the pointer's
-//! gesture on it in bits 25 to 31 (`Gesture::code`, 0 none). It is written
+//! none), the microphone's level in bits 12 to 19, and in bits 20 to 31
+//! the custom screen's choice with the pointer's gesture on it as one
+//! number (the gesture's `Gesture::code` + 74 × the choice's
+//! `ScreenChoice::code`, each 0 none). It is written
 //! when it changes: before the first tick nothing is held, and it carries
 //! across a round's end. A writer flushes each record as it is written, so
 //! a file cut short (a crash) holds every tick before the cut, and a reader
