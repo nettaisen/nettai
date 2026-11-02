@@ -977,10 +977,10 @@ pub mod short_set {
     }
 
     /// What a pointer does on side `side`'s custom screen while it chooses,
-    /// every third tick, from a hash of `tick`: a press on a slot, a pick,
-    /// the form list's tab, an entry or its exit; a click on one of them or
-    /// on nothing; a right-click on one; a click on OK now and then once two
-    /// chips are picked, so that the screen ends. (Many do nothing where
+    /// every third tick, from a hash of `tick`: the pointer over a slot, a
+    /// pick, the form list's tab, an entry or its exit, or off them; a click
+    /// on one of them or on nothing; a right-click on one; a click on OK now
+    /// and then once two chips are picked, so that the screen ends. (Many do nothing where
     /// they land: they are the player's gestures all the same.)
     pub fn pointing(b: &Battle, side: usize, tick: u32) -> Option<custom::layer::Gesture> {
         use custom::layer::{Gesture, Target};
@@ -1001,12 +1001,13 @@ pub mod short_set {
         let ok = Target::Slot(custom::screen::OK_SLOT);
         Some(match (h >> 16) % 32 {
             0 => Gesture::Click(Some(ok)),
-            1..=12 => Gesture::Down(target),
+            1..=12 => Gesture::Over(target),
             13..=21 => Gesture::Click(Some(target)),
             22..=26 => Gesture::Describe(target),
+            27 => Gesture::Away,
             _ => Gesture::Click(None),
         })
-        .map(|g| if g == Gesture::Click(Some(ok)) && screen.selection().len() < 2 { Gesture::Down(ok) } else { g })
+        .map(|g| if g == Gesture::Click(Some(ok)) && screen.selection().len() < 2 { Gesture::Over(ok) } else { g })
     }
 
     /// A match of `game` whose set is first to `wins` round wins (each

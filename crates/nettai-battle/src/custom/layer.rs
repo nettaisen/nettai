@@ -135,9 +135,12 @@ pub enum Target {
 /// choices.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Gesture {
-    /// Pressed on a target (the mouse's button, a finger down): the cursor
-    /// goes there, and no choice is made.
-    Down(Target),
+    /// The pointer over a target (the mouse's hover, a press, a finger
+    /// down): the cursor goes there, and no choice is made.
+    Over(Target),
+    /// The pointer off the targets (the mouse onto none of them, or off the
+    /// picture): a cursor it put on a pick goes back to its slot.
+    Away,
     /// Let go on the target it was pressed on, a click or a tap (none: on
     /// none, which closes a description or brings the hidden window back as
     /// a key does, and closes the form list as B does).
@@ -228,7 +231,7 @@ pub struct Layer {
     turn: Option<u8>,
     /// The slot under the cursor.
     pub cursor: u8,
-    /// The pick the pointer's press put the cursor on instead, in the
+    /// The pick the pointer put the cursor on instead, in the
     /// picked chips' column (a place of the pointer's alone: no key moves
     /// the cursor there; `cursor` keeps its slot, where a direction brings
     /// it back).
@@ -252,7 +255,7 @@ pub struct Layer {
     calls: [Option<ScreenCall>; 8],
     plan: Plan,
     /// The pointer's gestures for the next ticks, in order (`Layer::point`):
-    /// one a tick, a press replaced by what follows it.
+    /// one a tick, the pointer's place replaced by what follows it.
     gestures: [Option<Gesture>; GESTURES],
     /// The gesture this tick takes, until what it is for takes it.
     gesture: Option<Gesture>,
@@ -288,11 +291,11 @@ impl Layer {
     }
 
     /// A gesture of the pointer, for the next tick ([`Layer::input`]): a
-    /// press the next gesture replaces, the others one a tick, in order (a
-    /// full queue drops the newest).
+    /// place (over a target, away) the next gesture replaces, the others one
+    /// a tick, in order (a full queue drops the newest).
     pub fn point(&mut self, gesture: Gesture) {
         let n = self.gestures.iter().take_while(|g| g.is_some()).count();
-        let n = if n > 0 && matches!(self.gestures[n - 1], Some(Gesture::Down(_))) {
+        let n = if n > 0 && matches!(self.gestures[n - 1], Some(Gesture::Over(_) | Gesture::Away)) {
             self.gestures[n - 1] = None;
             n - 1
         } else {
@@ -731,19 +734,19 @@ impl Layer {
         let Some(gesture) = self.gesture else { return Pointed::Nothing };
         let screen = p.screen;
         match gesture {
-            Gesture::Down(Target::Slot(s)) => {
+            Gesture::Over(Target::Slot(s)) => {
                 if !self.point_cursor(s, screen) {
                     self.leave_picks();
                 }
                 Pointed::Nothing
             }
-            // (On a pick: the cursor there, its chip in the chip window.)
-            Gesture::Down(Target::Pick(k)) => {
+            // (Over a pick: the cursor there, its chip in the chip window.)
+            Gesture::Over(Target::Pick(k)) => {
                 self.point_pick(k, screen);
                 Pointed::Nothing
             }
-            // (On something else: back to its slot.)
-            Gesture::Down(_) => {
+            // (Off the picks, over something else or nothing: back to its slot.)
+            Gesture::Over(_) | Gesture::Away => {
                 self.leave_picks();
                 Pointed::Nothing
             }
@@ -807,7 +810,7 @@ impl Layer {
         let list = p.form_list.unwrap_or_default();
         let open = list.chosen.is_none();
         match gesture {
-            Gesture::Down(Target::Form(k)) if open && k < list.count => {
+            Gesture::Over(Target::Form(k)) if open && k < list.count => {
                 if k != self.list_cursor {
                     self.list_cursor = k;
                     if list.count > 1 {

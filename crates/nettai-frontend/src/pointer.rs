@@ -4,14 +4,17 @@
 //! (`nettai_battle::custom::layer::Gesture`) by what the last frame drew
 //! where (`nettai_render::Renderer::target_at`).
 //!
-//! The mouse and a finger are one: pressed on a target, the cursor goes
-//! there; let go on the same target, it chooses what it is (sliding off
+//! The mouse and a finger are one: over a target (the mouse moved onto it,
+//! a press on it), the cursor goes there; off the targets (the mouse onto
+//! none, or off the picture), a cursor on a pick goes back to its slot; let
+//! go on the target it was pressed on, it chooses what it is (sliding off
 //! cancels, as a button does); held still on it for [`LONG_PRESS`] ticks,
 //! it describes it instead, as a right-click does. A click or a tap on no
 //! target is still a click: it closes a description, as a key does, and the
-//! form list's window, as B does (its targets span it). The pointer's moves
-//! choose nothing and move no cursor: only what a gesture chooses goes in
-//! the player's tick (docs/design/custom-screen-actions.md §3).
+//! form list's window, as B does (its targets span it). A finger only moves
+//! pressed, so it never hovers. Only what a gesture chooses goes in the
+//! player's tick (docs/design/custom-screen-actions.md §3): the cursor's
+//! moves are the player's view alone.
 
 use nettai_battle::custom::layer::{Gesture, Target};
 
@@ -64,11 +67,12 @@ struct Press {
     described: bool,
 }
 
-/// The pointer's state on the custom screen: the press under way, and where
-/// the pointer is (frame pixels; none once it leaves the picture), for the
-/// host's hand cursor.
+/// The pointer's state on the custom screen: the target it was last over,
+/// the press under way, and where the pointer is (frame pixels; none once
+/// it leaves the picture), for the host's hand cursor.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ScreenPointer {
+    over: Option<Target>,
     press: Option<Press>,
     at: Option<(i32, i32)>,
 }
@@ -83,9 +87,12 @@ impl ScreenPointer {
             _ => Some((e.x.floor() as i32, e.y.floor() as i32)),
         };
         match (e.kind, e.button) {
+            // (Over its target again, where the mouse already was: a finger
+            // lifted since, a key moved the cursor.)
             (PointerKind::Down, PointerButton::Primary) => {
                 self.press = Some(Press { target: under, held: 0, off: false, described: false });
-                under.map(Gesture::Down)
+                self.over = under;
+                under.map(Gesture::Over)
             }
             (PointerKind::Down, PointerButton::Secondary) => under.map(Gesture::Describe),
             (PointerKind::Down, PointerButton::Other) => None,
@@ -95,12 +102,13 @@ impl ScreenPointer {
             }
             (PointerKind::Up, _) => None,
             // (A press follows nothing: off its target, it is cancelled.)
-            (PointerKind::Moved, _) => {
-                if let Some(press) = &mut self.press {
+            (PointerKind::Moved, _) => match &mut self.press {
+                Some(press) => {
                     press.off |= under != press.target;
+                    None
                 }
-                None
-            }
+                None => self.hover(under),
+            },
             (PointerKind::Cancel, _) => {
                 self.press = None;
                 None
@@ -109,9 +117,19 @@ impl ScreenPointer {
                 if let Some(press) = &mut self.press {
                     press.off = true;
                 }
-                None
+                self.over.take().map(|_| Gesture::Away)
             }
         }
+    }
+
+    /// The mouse moved over `under`: over it, if it is another target than
+    /// the one it was over; off the targets, away.
+    fn hover(&mut self, under: Option<Target>) -> Option<Gesture> {
+        if under == self.over {
+            return None;
+        }
+        self.over = under;
+        Some(under.map_or(Gesture::Away, Gesture::Over))
     }
 
     /// A tick of the battle's: a press held still on a target long enough
@@ -171,22 +189,41 @@ mod tests {
         assert_eq!(s.at(), None);
     }
 
-    /// Moves make no gesture; down on a target puts the cursor there, up on
-    /// the same target chooses; sliding off cancels; on nothing, a click on
-    /// nothing; right-click or a long press describes.
+    /// The mouse over a target moves the cursor there, once as it comes
+    /// onto it; off the targets, away, once; off the picture from one, away.
+    #[test]
+    fn the_mouse_hovers() {
+        let mut s = ScreenPointer::default();
+        assert_eq!(s.event(p(PointerKind::Moved, 10.0, 10.0), at), Some(Gesture::Over(CHIP)));
+        assert_eq!(s.event(p(PointerKind::Moved, 20.0, 10.0), at), None);
+        assert_eq!(s.event(p(PointerKind::Moved, 120.0, 10.0), at), Some(Gesture::Over(OK)));
+        assert_eq!(s.event(p(PointerKind::Moved, 10.0, 90.0), at), Some(Gesture::Away));
+        assert_eq!(s.event(p(PointerKind::Moved, 11.0, 90.0), at), None);
+        assert_eq!(s.event(p(PointerKind::Moved, 120.0, 10.0), at), Some(Gesture::Over(OK)));
+        assert_eq!(s.event(p(PointerKind::Left, 0.0, 0.0), at), Some(Gesture::Away));
+        assert_eq!(s.event(p(PointerKind::Left, 0.0, 0.0), at), None);
+        // Pressed, it follows nothing: no hover until it is let go.
+        assert_eq!(s.event(p(PointerKind::Down, 10.0, 10.0), at), Some(Gesture::Over(CHIP)));
+        assert_eq!(s.event(p(PointerKind::Moved, 120.0, 10.0), at), None);
+        assert_eq!(s.event(p(PointerKind::Up, 120.0, 10.0), at), None);
+        assert_eq!(s.event(p(PointerKind::Moved, 121.0, 10.0), at), Some(Gesture::Over(OK)));
+    }
+
+    /// Down on a target puts the cursor there (where it already hovers too),
+    /// up on the same target chooses; sliding off cancels; on nothing, a
+    /// click on nothing; right-click or a long press describes.
     #[test]
     fn a_press_moves_the_cursor_and_its_letting_go_chooses() {
         let mut s = ScreenPointer::default();
-        assert_eq!(s.event(p(PointerKind::Moved, 10.0, 10.0), at), None);
-        assert_eq!(s.event(p(PointerKind::Moved, 120.0, 10.0), at), None);
-        assert_eq!(s.event(p(PointerKind::Left, 0.0, 0.0), at), None);
-        assert_eq!(s.event(p(PointerKind::Down, 10.0, 10.0), at), Some(Gesture::Down(CHIP)));
+        assert_eq!(s.event(p(PointerKind::Down, 10.0, 10.0), at), Some(Gesture::Over(CHIP)));
         assert_eq!(s.tick(), None);
         assert_eq!(s.event(p(PointerKind::Moved, 12.0, 10.0), at), None);
         assert_eq!(s.event(p(PointerKind::Up, 12.0, 10.0), at), Some(Gesture::Click(Some(CHIP))));
-        assert_eq!(s.event(p(PointerKind::Down, 120.0, 10.0), at), Some(Gesture::Down(OK)));
+        assert_eq!(s.event(p(PointerKind::Down, 10.0, 10.0), at), Some(Gesture::Over(CHIP)));
+        assert_eq!(s.event(p(PointerKind::Up, 10.0, 10.0), at), Some(Gesture::Click(Some(CHIP))));
+        assert_eq!(s.event(p(PointerKind::Down, 120.0, 10.0), at), Some(Gesture::Over(OK)));
         assert_eq!(s.event(p(PointerKind::Up, 121.0, 11.0), at), Some(Gesture::Click(Some(OK))));
-        // Down on one, up on another; slid off and back; off the picture: nothing.
+        // Down on one, up on another; slid off and back; off the picture: nothing chosen.
         s.event(p(PointerKind::Down, 10.0, 10.0), at);
         s.event(p(PointerKind::Moved, 120.0, 10.0), at);
         assert_eq!(s.event(p(PointerKind::Up, 120.0, 10.0), at), None);
@@ -195,7 +232,7 @@ mod tests {
         s.event(p(PointerKind::Moved, 10.0, 10.0), at);
         assert_eq!(s.event(p(PointerKind::Up, 10.0, 10.0), at), None);
         s.event(p(PointerKind::Down, 10.0, 10.0), at);
-        s.event(p(PointerKind::Left, 0.0, 0.0), at);
+        assert_eq!(s.event(p(PointerKind::Left, 0.0, 0.0), at), Some(Gesture::Away));
         assert_eq!(s.event(p(PointerKind::Up, 10.0, 10.0), at), None);
         // On nothing: a click on nothing.
         assert_eq!(s.event(p(PointerKind::Down, 10.0, 90.0), at), None);
