@@ -439,7 +439,8 @@ and replaces it as the game's own would. The file is made into the driver's song
   longer; a chord's notes are at one tick;
 - the controllers volume (7), pan (10), modulation (1), bend range (20, or RPN 0's data entry), LFO speed (21),
   modulation type (22), tune (24) and LFO delay (26), and pitch bend (its top 7 bits), are the driver's commands of
-  the same; any other event is passed by;
+  the same; controller 30 picks an extended command that 29 or 31 then sets, as mid2agb's: 8 the pseudo-echo's
+  volume (XCMD xIECV), 9 its length (xIECL), the channel's pick its own; any other event is passed by;
 - the markers (or texts, or cue points) "[" and "]", or "loopStart" and "loopEnd", are where it loops: each track
   jumps back to where it was at the start when it reaches the end, and a note past the end is cut there, what
   follows it left out. Without them each track ends at the song's last note.

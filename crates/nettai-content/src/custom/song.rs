@@ -78,6 +78,9 @@ pub(super) fn song(bytes: &[u8], like: &Song, max_tracks: usize) -> Result<Song,
         let mut notes: Vec<(u32, u32, u8, u8)> = Vec::new();
         // (The registered parameter data entry sets: bend range is RPN 0.)
         let mut rpn = (127u8, 127u8);
+        // (The extended command controller 30 picks, which 29 and 31 set, as mid2agb's: 8 the pseudo-echo's
+        // volume, 9 its length; the channel's own.)
+        let mut extended = 0u8;
         let last = events.last().map_or(0, |e| e.0);
         for &(t, message) in &events {
             let at = tick(t);
@@ -114,6 +117,15 @@ pub(super) fn song(bytes: &[u8], like: &Song, max_tracks: usize) -> Result<Song,
                             None
                         }
                         6 if rpn == (0, 0) => Some(Command::BendRange(v)),
+                        30 => {
+                            extended = v;
+                            None
+                        }
+                        29 | 31 => match extended {
+                            8 => Some(Command::EchoVolume(v)),
+                            9 => Some(Command::EchoLength(v)),
+                            _ => None,
+                        },
                         _ => None,
                     }
                 }
@@ -329,6 +341,28 @@ mod tests {
             [Command::Voice(3), Command::Volume(100), Command::Tempo(60), note(24, 60, 90), note(24, 64, 80), Command::Wait(36), note(3, 67, 70), Command::Wait(18), Command::Fine]
         );
         assert_eq!(s.tracks[1].commands, [Command::Pan(20), Command::Wait(48), note(6, 36, 127), Command::Wait(6), Command::Fine]);
+    }
+
+    /// Controller 30 picks an extended command and 29 or 31 sets it, as mid2agb reads them: 8 the pseudo-echo's
+    /// volume, 9 its length; another is passed by, and a channel's pick is its own.
+    #[test]
+    fn the_extended_commands_set_the_echo() {
+        let bytes = midi(vec![vec![
+            (0, cc(0, 30, 8)),
+            (0, cc(0, 29, 40)),
+            (0, cc(0, 30, 9)),
+            (0, cc(0, 31, 12)),
+            (0, cc(0, 30, 5)),
+            (0, cc(0, 29, 1)),
+            (0, cc(1, 29, 30)),
+            (0, on(0, 60, 64)),
+            (0, on(1, 62, 64)),
+            (24, off(0, 60)),
+            (0, off(1, 62)),
+        ]]);
+        let s = song(&bytes, &like(), 16).unwrap();
+        assert_eq!(s.tracks[0].commands, [Command::EchoVolume(40), Command::EchoLength(12), note(6, 60, 64), Command::Wait(6), Command::Fine]);
+        assert_eq!(s.tracks[1].commands, [note(6, 62, 64), Command::Wait(6), Command::Fine]);
     }
 
     /// A note longer than one note command holds is a tie and its end; a wait longer than one command holds is
