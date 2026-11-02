@@ -322,7 +322,7 @@ on it, "Everywhere" (Practice, matches, replays and their videos).
   its music), so a set whose rounds are drawn on several backgrounds plays each its own; a round on the background
   before goes on as it was. Rounds are battles of their own, so no rollback crosses the switch. The pairings, from
   the original's battle settings (below, "The backgrounds' music"), are the games' contents'; the user set BN6's
-  Graveyard's ("for the graveyard stage in bn6, it should be paired with crossover"). A background whose game
+  Graveyard's ("for the graveyard stage in bn6, it should be paired with crossover") and more (below). A background whose game
   isn't read, or whose definition names no music (a custom one may name none), plays the game's own.
 - *The game's own* is what the engine's round start asks for (`Battle::mode_intro`):
   every match is a link battle, so the rules' `music.link_battle` (EXE6 and EXE5: `virus-battle`, song 0x15), and
@@ -350,6 +350,19 @@ on it, "Everywhere" (Practice, matches, replays and their videos).
 
   The names shown are the game's name in the language, then the theme's ("BN4 Tournament Battle", "EXE4
   トーナメントバトル"). The app names no song and no game: it lists what the games' contents state.
+- *The backgrounds' music* (each game's backgrounds/init.luau, its comments the evidence): a background's is the
+  theme most of the original's battles on it start, counting the random encounters of the maps that draw it (all
+  virus battles, but for a conditional navi) and the battles their scripts start or that state it; a background
+  only link battles draw (EXE4's eight homepages, EXE6's Lan's HP) has a link battle's, the virus battles'. By
+  count nearly every background is the virus battles', so the user picked the rest: a comp or dungeon that ends in a
+  story navi's battle has the boss battles' ("Story navi comps"), BN6's Graveyard the crossover battle's and
+  CopyBotComp vs Cybeast ("copybot comp should use cybeast theme").
+
+  | Game | Not Virus Battle |
+  |---|---|
+  | BN4 | Boss Battle: ElTwrComp, ToyRoboComp4, MeteorComp, BlackEarth, DarkSoul (stated by its battle); vs Duo: Duo; Tournament Battle: Stadium, AirStadium, Colosseum (stated by their battles) |
+  | BN5 | Boss Battle: MainComp, DrillComp, ShipComp, GargoylComp, FactoryComp; vs Nebula Gray: NebulaGray (stated by its battles) |
+  | BN6 | Boss Battle: RobCtrlComp, AquarumComp, JdgTreeComp, MrWeathrCmp and its storm, Underground; vs Cybeast: CopyBotComp; Crossover Battle: Graveyard |
 - *The pick* is the player's own and one: the practice menu over the battle (§15) shows and changes it (Play's
   lobby has none: the user, "don't allow bgm select in lobby"). It is kept for one visit to Practice (`practice::Visit`, `Shell::battle_music`; §15) and each visit starts on "By background" (the user, "going
   into practice should reset all the arena settings, there's no reason for it to remember the last settings";
