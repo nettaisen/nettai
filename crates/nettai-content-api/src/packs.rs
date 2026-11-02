@@ -294,9 +294,10 @@ pub const SECTIONS: [(&str, &str); 4] = [("chips", "Chip"), ("navis", "NaviDef")
 /// The root's field that is the game's rules.
 pub const RULES: &str = "rules";
 
-/// The root's field that lists the custom backgrounds no stage names (`asset.background(name, { file = ... })`,
-/// docs/design/asset-formats.md §7): what the background pool offers past the stages'. A module runs only when
-/// something requires it, so a background no stage requires is reached from here.
+/// The root's field that lists the game's backgrounds' definitions (`asset.background(name, { music = ... })`, and
+/// a custom one's `{ file = ... }`: docs/design/asset-formats.md §7): each background's music, and the custom
+/// backgrounds the background pool offers past the stages'. A module runs only when something requires it, so a
+/// background no stage requires is reached from here.
 pub const BACKGROUNDS: &str = "backgrounds";
 
 /// The sections module source `source` gives definitions of: those a

@@ -160,13 +160,28 @@ pub struct SpriteAnimation {
 }
 
 /// What the define phase made of the assets content names: their names
-/// (the handles), each sprite's definition, by handle, and the assets the
-/// content makes from files of its own.
+/// (the handles), each sprite's definition, by handle, the assets the
+/// content makes from files of its own and the backgrounds' music.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct DefinedAssets {
     pub names: AssetNames,
     pub sprites: Vec<SpriteDef>,
     pub custom: CustomAssets,
+    pub background_music: BackgroundMusic,
+}
+
+/// Each background's music (`asset.background("acdc-area", { music =
+/// asset.sound("virus-battle") })`; docs/app.md §1, "The battle's music"):
+/// the song a round drawn on it plays where no other is picked, by the
+/// background's name and the sound's. A background is defined once.
+///
+/// Presentation: no tick reads it, so it is left out of a content's hash,
+/// as the custom assets are.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct BackgroundMusic(pub BTreeMap<String, String>);
+
+impl std::hash::Hash for BackgroundMusic {
+    fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
 }
 
 /// The assets content makes from files of its own, not the ROMs'

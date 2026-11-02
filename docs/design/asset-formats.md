@@ -404,7 +404,11 @@ A background is in the background pool when the game's own language's `[backgrou
 player sees it), and the content check holds that table to the assets, the custom ones too (docs/app.md §1, "The
 battle's background"). A module runs only when something requires it: a background no stage requires is listed in
 the game's root, `backgrounds = require("@self/backgrounds")`, where backgrounds/init.luau returns a list of them
-(`packs::BACKGROUNDS`).
+(`packs::BACKGROUNDS`). A background's definition names its `music` too, one of the game's battle themes (a song of
+the content's own named one in its rules' `battle_themes`), which a round drawn on it plays where the player picked
+none (docs/app.md §1, "The battle's music"): `asset.background("my-stage", { file = "./my_stage.png", music =
+require("../sounds/my_theme") })`. One of the ROMs' backgrounds is defined with its music alone, in the same list
+(`asset.background("acdc-area", { music = asset.sound("virus-battle") })`).
 
 **Sprites.** `asset.sprite(name, animations, { file, frame, origin, shadow })`, beside `parts` where content reads
 them; the animations time it, as a ROM sprite's do. `file` is an indexed PNG of cells `frame = { width, height }`

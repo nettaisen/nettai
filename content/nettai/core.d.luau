@@ -1848,11 +1848,19 @@ end
 declare extern type Background with
     name: string
 end
--- A background made from a picture of the content's own, not the ROMs' (docs/design/asset-formats.md §7), defined
--- once, by a module of its own that returns it; whoever shows it requires that module:
+-- A background's definition, made once, by the module that returns it; whoever shows it requires that module (or
+-- names it alone, `asset.background("comp")`), and the game's root lists those no stage requires
+-- (`backgrounds = require("@self/backgrounds")`). `music` is the song a round drawn on it plays where the player
+-- picked none (docs/app.md §1, "The battle's music"): the theme its game's battles on it start, or a song of the
+-- content's own:
+--
+--     asset.background("acdc-area", { music = asset.sound("virus-battle") })
+--
+-- A background made from a picture of the content's own, not the ROMs' (docs/design/asset-formats.md §7), names its
+-- `file`:
 --
 --     -- backgrounds/my_stage.luau
---     return asset.background("my-stage", { file = "./my_stage.png", scroll = { 16, 8 } })
+--     return asset.background("my-stage", { file = "./my_stage.png", scroll = { 16, 8 }, music = require("../sounds/my_theme") })
 --
 -- `file` is an indexed PNG beside the module (a path as a `require` writes one, with its `.png`): its pixels the
 -- colors of one 16 of its palette (0 to 15, or 16 to 31, ...), color 0 of the 16 the backdrop, its width and height
@@ -1865,7 +1873,13 @@ end
 --     return asset.background("sea", { file = "./sea.png", scroll = { 0, 16 }, frames = { 8, 8, 8, loop = true } })
 --
 -- A name the ROMs have too is this one wherever it is named (the ROMs' stays under any other name it has).
-export type BackgroundFile = { file: string, scroll: { number }?, speed_up: number?, frames: { [number]: number, loop: boolean? }? }
+export type BackgroundDef = {
+    music: Sound?,
+    file: string?,
+    scroll: { number }?,
+    speed_up: number?,
+    frames: { [number]: number, loop: boolean? }?,
+}
 declare extern type Mugshot with
     name: string
 end
@@ -1874,7 +1888,7 @@ declare asset: {
     sprite: (name: string, animations: { SpriteAnimation }, extra: SpriteExtra?) -> SpriteAsset,
     sound: (name: string, made: SoundFile?) -> Sound,
     banner: (name: string) -> Banner,
-    background: (name: string, made: BackgroundFile?) -> Background,
+    background: (name: string, def: BackgroundDef?) -> Background,
     mugshot: (name: string) -> Mugshot,
 }
 

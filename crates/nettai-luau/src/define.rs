@@ -45,7 +45,7 @@ use std::ffi::c_void;
 use std::rc::Rc;
 
 use nettai_content_api::{
-    AssetKind, AssetNames, CustomAssets, CustomBackground, CustomInstrument, CustomSound, CustomSprite, Data, DataKey, DefinedAssets, Definition, Definitions, Registry, SpriteDef, keys,
+    AssetKind, AssetNames, BackgroundMusic, CustomAssets, CustomBackground, CustomInstrument, CustomSound, CustomSprite, Data, DataKey, DefinedAssets, Definition, Definitions, Registry, SpriteDef, keys,
     valid_key,
 };
 use mlua::{Lua, Table, Value as LuaValue};
@@ -85,7 +85,7 @@ pub const SECTIONS: [(&str, Registry); 4] =
 /// The root's field the game's rules are.
 pub const RULES_SECTION: &str = nettai_content_api::packs::RULES;
 
-/// The root's list of custom backgrounds no stage names (`packs::BACKGROUNDS`).
+/// The root's list of the game's backgrounds' definitions (`packs::BACKGROUNDS`).
 pub const BACKGROUNDS_SECTION: &str = nettai_content_api::packs::BACKGROUNDS;
 
 /// The root's field the game's extraction recipe is (docs/design/extraction-recipes.md §4.2): what a module of its
@@ -135,6 +135,10 @@ pub(crate) struct AssetTables {
     sprites: BTreeMap<String, (String, SpriteDef)>,
     /// The assets content makes from files of its own, by kind and name.
     custom: CustomAssets,
+    /// The backgrounds content defines (`asset.background(name, { ... })`), by name: the module that defines each.
+    defined_backgrounds: BTreeMap<String, String>,
+    /// The backgrounds' music, by name.
+    background_music: BackgroundMusic,
     /// The names, once loading is done: their places are the handles.
     pub names: AssetNames,
     pub by_ptr: HashMap<Ptr, (AssetKind, u16)>,
@@ -156,6 +160,8 @@ impl AssetTables {
             named: BTreeMap::new(),
             sprites: BTreeMap::new(),
             custom: CustomAssets::default(),
+            defined_backgrounds: BTreeMap::new(),
+            background_music: BackgroundMusic::default(),
             names: AssetNames::default(),
             by_ptr: HashMap::new(),
             by_handle: HashMap::new(),
@@ -193,18 +199,23 @@ impl AssetTables {
         self.named(lua, AssetKind::Sprite, name)
     }
 
-    /// Background `name` as its module makes it from a picture of its own
-    /// (`def.module`): its value. A custom background is defined once.
-    fn define_background(&mut self, lua: &Lua, name: &str, def: CustomBackground) -> mlua::Result<Table> {
-        if let Some(other) = self.custom.backgrounds.get(name) {
+    /// Background `name` as module `module` defines it (its music, and a picture of its own for one the ROMs
+    /// haven't): its value. A background is defined once.
+    fn define_background(&mut self, lua: &Lua, module: &str, name: &str, def: BackgroundMade) -> mlua::Result<Table> {
+        if let Some(other) = self.defined_backgrounds.get(name) {
             return Err(mlua::Error::runtime(format!(
-                "{}: background {name:?} is defined twice: in {}.luau and in {}.luau (a background is defined once, by its module: require it)",
-                def.module,
-                keys::module_path(&other.module),
-                keys::module_path(&def.module)
+                "{module}: background {name:?} is defined twice: in {}.luau and in {}.luau (a background is defined once, by its module: require it)",
+                keys::module_path(other),
+                keys::module_path(module)
             )));
         }
-        self.custom.backgrounds.insert(name.to_string(), def);
+        self.defined_backgrounds.insert(name.to_string(), module.to_string());
+        if let Some(custom) = def.custom {
+            self.custom.backgrounds.insert(name.to_string(), custom);
+        }
+        if let Some(music) = def.music {
+            self.background_music.0.insert(name.to_string(), music);
+        }
         self.named(lua, AssetKind::Background, name)
     }
 
@@ -224,7 +235,7 @@ impl AssetTables {
     /// sprite is named only by its definition.)
     pub fn defined(&self) -> DefinedAssets {
         let sprites = self.names.sprites.iter().map(|n| self.sprites[n].1.clone()).collect();
-        DefinedAssets { names: self.names.clone(), sprites, custom: self.custom.clone() }
+        DefinedAssets { names: self.names.clone(), sprites, custom: self.custom.clone(), background_music: self.background_music.clone() }
     }
 
     /// Sound `name` as its module makes it from a MIDI file of its own
@@ -242,9 +253,10 @@ impl AssetTables {
         self.named(lua, AssetKind::Sound, name)
     }
 
-    /// Whether content made background `name` from a picture of its own.
-    pub fn is_custom_background(&self, name: &str) -> bool {
-        self.custom.backgrounds.contains_key(name)
+    /// Whether content defines background `name` (`asset.background(name, { ... })`: its music, or a picture of
+    /// its own).
+    pub fn is_defined_background(&self, name: &str) -> bool {
+        self.defined_backgrounds.contains_key(name)
     }
 
     /// The value of asset `h` of `kind`.
@@ -400,11 +412,20 @@ fn sprite_def(at: &str, module: &str, animations: &LuaValue, extra: &LuaValue) -
     Ok((def, Some(custom)))
 }
 
-/// A custom background's definition, as content writes it (`asset.background(name, { file = "./my_stage.png",
-/// scroll = { x, y } })`, core.d.luau's `BackgroundFile`): its picture, a file of its pack's by a path from the
-/// module that defines it (as a `require` names a module: `keys::resolve`), and its scroll.
-fn background_def(at: &str, module: &str, def: &Table) -> Result<CustomBackground, String> {
+/// A background's definition, as content writes it (core.d.luau's `BackgroundDef`): its music
+/// (`asset.background("acdc-area", { music = asset.sound("virus-battle") })`), and for one made from a picture of
+/// the content's own (`{ file = "./my_stage.png", scroll = { x, y } }`) its picture, a file of its pack's by a path
+/// from the module that defines it (as a `require` names a module: `keys::resolve`), and its scroll.
+struct BackgroundMade {
+    /// Made from a picture of its own; none: the ROMs'.
+    custom: Option<CustomBackground>,
+    /// Its music: a sound's name.
+    music: Option<String>,
+}
+
+fn background_def(at: &str, module: &str, def: &Table) -> Result<BackgroundMade, String> {
     let mut file = None;
+    let mut music = None;
     let mut made = CustomBackground { module: module.to_string(), ..Default::default() };
     let mut scroll = (0, 0);
     let count = |v: &LuaValue, what: &str| match v {
@@ -438,6 +459,12 @@ fn background_def(at: &str, module: &str, def: &Table) -> Result<CustomBackgroun
                 let path = path.to_str().map_err(|e| format!("{at}: `file` isn't UTF-8 ({e})"))?.to_string();
                 file = Some(asset_file(at, module, &path, "png")?);
             }
+            (DataKey::Str(s), LuaValue::Table(t)) if s == "music" && asset_kind(&t) == Some(AssetKind::Sound) => {
+                music = Some(t.raw_get::<String>("name").map_err(|e| format!("{at}: `music`: {e}"))?);
+            }
+            (DataKey::Str(s), v) if s == "music" => {
+                return Err(format!("{at}: `music` is a sound (`asset.sound(name)`), not a {}", v.type_name()));
+            }
             (DataKey::Str(s), LuaValue::Table(xy)) if s == "scroll" => {
                 let int = |v: &LuaValue| match v {
                     LuaValue::Integer(i) if (-0x8000..=0x7FFF).contains(i) => Some(*i as i32),
@@ -459,16 +486,27 @@ fn background_def(at: &str, module: &str, def: &Table) -> Result<CustomBackgroun
                 return Err(format!("{at}: `{s}` is a {}, not {what}", v.type_name()));
             }
             (k, _) => {
-                return Err(format!("{at}: a background made from a picture has its `file`, `scroll`, `speed_up` and `frames`, not {k}"));
+                return Err(format!(
+                    "{at}: a background's definition has its `music`, and for one made from a picture its `file`, `scroll`, `speed_up` and `frames`, not {k}"
+                ));
             }
         }
     }
-    made.file = file.ok_or_else(|| format!("{at}: a background made from a picture names its `file` (an indexed PNG)"))?;
+    let Some(file) = file else {
+        if scroll != (0, 0) || made.speed_up.is_some() || !made.frames.is_empty() {
+            return Err(format!("{at}: `scroll`, `speed_up` and `frames` are a background's made from a picture: it names its `file` (an indexed PNG)"));
+        }
+        if music.is_none() {
+            return Err(format!("{at}: a background's definition names its `music`, or for one made from a picture its `file` (an indexed PNG)"));
+        }
+        return Ok(BackgroundMade { custom: None, music });
+    };
+    made.file = file;
     if made.speed_up.is_some() && scroll == (0, 0) {
         return Err(format!("{at}: `speed_up` is how many frames it takes to reach its `scroll`, and it has none"));
     }
     made.scroll = scroll;
-    Ok(made)
+    Ok(BackgroundMade { custom: Some(made), music })
 }
 
 /// A custom sound's definition, as content writes it (`asset.sound(name, { file = "./my_theme.mid", voices =
@@ -608,7 +646,7 @@ pub(crate) fn install_assets(
                 && extra.is_nil()
             {
                 let def = background_def(&format!("{at}: background {name:?}"), &at, def).map_err(mlua::Error::runtime)?;
-                return tables.borrow_mut().define_background(lua, &name, def);
+                return tables.borrow_mut().define_background(lua, &at, &name, def);
             }
             if kind == AssetKind::Sound
                 && let LuaValue::Table(def) = &animations
@@ -1048,10 +1086,10 @@ pub(crate) fn finish(
             }
             v => return Err(format!("{}, a table, not {}", recipe_is(), v.type_name())),
         }
-        // The custom backgrounds no stage names: a list of them (their modules ran as the root required them).
+        // The game's backgrounds' definitions: a list of them (their modules ran as the root required them).
         let backgrounds_are = || {
             format!(
-                "{}.luau: `{BACKGROUNDS_SECTION}` is a list of the game's custom backgrounds (each `asset.background(name, {{ file = ... }})`, its module's)",
+                "{}.luau: `{BACKGROUNDS_SECTION}` is a list of the game's backgrounds' definitions (each `asset.background(name, {{ music = ... }})`, its module's)",
                 keys::module_path(module)
             )
         };
@@ -1059,8 +1097,8 @@ pub(crate) fn finish(
             LuaValue::Nil => {}
             LuaValue::Table(list) => {
                 for (i, (k, v)) in fields(&list, module)?.into_iter().enumerate() {
-                    let custom = assets.asset(&v).and_then(|(kind, h)| (kind == AssetKind::Background).then(|| assets.names.name(kind, h)).flatten());
-                    if k != DataKey::Int(i as i64 + 1) || !custom.is_some_and(|name| assets.is_custom_background(name)) {
+                    let defined = assets.asset(&v).and_then(|(kind, h)| (kind == AssetKind::Background).then(|| assets.names.name(kind, h)).flatten());
+                    if k != DataKey::Int(i as i64 + 1) || !defined.is_some_and(|name| assets.is_defined_background(name)) {
                         return Err(backgrounds_are());
                     }
                 }
