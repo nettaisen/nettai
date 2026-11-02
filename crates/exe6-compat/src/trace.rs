@@ -1168,6 +1168,9 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> (usi
     // (Each side's buttons through its custom screen layer, in lockstep: the
     // choices on the ticks the original's screens took the keys.)
     let mut layers = nettai_battle::custom::Lockstep::new(&b);
+    // (The traces keep no record of the collision pool: a record let go of
+    // while in use is the engine's own slip, and stops the round.)
+    let mut strays = nettai_battle::collision::StrayWatch::default();
     for i in 0..frames.len() {
         let (input, events) = round.tick_inputs(i, &frames);
         let input = layers.input(&b, &input);
@@ -1179,7 +1182,8 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> (usi
             let msg = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()));
             return (i, Some((frames[i].frame, vec![format!("engine panicked: {}", msg.unwrap_or_default())])));
         }
-        let diffs = compare_at(&b, round, &frames, i, compat);
+        let mut diffs = compare_at(&b, round, &frames, i, compat);
+        diffs.extend(strays.difference(&b, &[]));
         if !diffs.is_empty() {
             return (i, Some((frames[i].frame, diffs)));
         }

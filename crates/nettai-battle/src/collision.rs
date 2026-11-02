@@ -245,6 +245,11 @@ impl Collision {
         Some(CollisionId(k as u8))
     }
 
+    /// Whether slot `id` is allocated.
+    pub fn in_use(&self, id: CollisionId) -> bool {
+        self.in_use & self.slots[id.0 as usize].bit != 0
+    }
+
     /// `object_freeCollisionData`. Mask bits and fields are left alone.
     pub fn free(&mut self, id: CollisionId) {
         let s = &mut self.slots[id.0 as usize];
@@ -301,6 +306,60 @@ impl Collision {
     /// Whether a registration's region is a whole-field one.
     fn covers_whole_field(&self, content: &Content, id: CollisionId) -> bool {
         matches!(self.slots[id.0 as usize].region.map(|h| content.region(h)), Some(Region::Field(_)))
+    }
+}
+
+/// Records let go of while still in use: an object freed without freeing
+/// its collision record (`object_freeCollisionData` before
+/// `object_freeMemory`) keeps the record taken for the rest of the round,
+/// and with all [`SLOTS`] taken nothing new can collide. For the replays
+/// against the original, which keep no record of its collision pool: what
+/// each tick lets go of. (The original lets go of one itself, EXE6's
+/// TenguMan's, `sub_80B9F00`; nettai frees it.)
+#[derive(Clone, Debug, Default)]
+pub struct StrayWatch {
+    /// The records already let go of, as of the last tick looked at.
+    strays: u32,
+}
+
+impl StrayWatch {
+    /// The kinds of the objects that let go of a record still in use since
+    /// the last call (each record said once, as its holder is freed or
+    /// takes another).
+    pub fn let_go(&mut self, b: &Battle) -> Vec<String> {
+        let mut strays = 0;
+        let mut out = Vec::new();
+        for k in 0..SLOTS as u8 {
+            let id = CollisionId(k);
+            if !b.collision.in_use(id) {
+                continue;
+            }
+            let Some(holder) = b.collision.get(id).parent else { continue };
+            if b.objects.is_allocated(holder) && b.objects.get(holder).collision == Some(id) {
+                continue;
+            }
+            let bit = b.collision.get(id).bit;
+            strays |= bit;
+            if self.strays & bit == 0 {
+                // (A freed object keeps its kind until its slot is taken again.)
+                out.push(b.content.defs.kind(b.objects.get(holder).kind).key.to_string());
+            }
+        }
+        self.strays = strays;
+        out
+    }
+
+    /// A replay's difference for this tick: a record let go of while the
+    /// battle still runs, by a kind other than `the_originals` (those the
+    /// original's own code lets go of). At the battle's end every object
+    /// goes, and nothing is said.
+    pub fn difference(&mut self, b: &Battle, the_originals: &[&str]) -> Option<String> {
+        let kinds = self.let_go(b);
+        if b.is_battle_over() {
+            return None;
+        }
+        let kind = kinds.into_iter().find(|k| !the_originals.contains(&k.as_str()))?;
+        Some(format!("collision: {kind} let go of its collision record still in use (freed without object_freeCollisionData)"))
     }
 }
 

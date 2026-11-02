@@ -2205,6 +2205,9 @@ pub fn run_round_seeing(
     // (Each side's buttons through its custom screen layer, in lockstep: the
     // choices on the ticks the original's screens took the keys.)
     let mut layers = nettai_battle::custom::Lockstep::new(&b);
+    // (The recordings keep no record of the collision pool: a record let go
+    // of while in use is the engine's own slip, and stops the round.)
+    let mut strays = nettai_battle::collision::StrayWatch::default();
     for i in 0..frames.len() {
         // (A DS link stall: the frame routine ran without the battle's
         // update, its tick count held, waiting on the other console's
@@ -2229,7 +2232,8 @@ pub fn run_round_seeing(
         }
         layers.follow(&b);
         see(frames[i].frame, &b, [Some(&layers.layers[0]), Some(&layers.layers[1])]);
-        let differences = compare_at(&b, round, &frames, i, compat);
+        let mut differences = compare_at(&b, round, &frames, i, compat);
+        differences.extend(strays.difference(&b, &[]));
         if !differences.is_empty() {
             replay.stopped = Some(Stop::Differs { frame: frames[i].frame, differences });
             return replay;
