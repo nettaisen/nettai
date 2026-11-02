@@ -38,7 +38,7 @@ pub fn tick_input(inputs: [&PlayerInput; 2]) -> TickInput {
 }
 
 /// A player's input on the wire: the tick's word (the buttons, the switch
-/// request, the microphone's level and the custom screen's choice), and the
+/// request, the microphone heard or not and the custom screen's choice), and the
 /// events as flags
 /// ([`flags`]).
 impl WireInput for PlayerInput {
@@ -77,7 +77,7 @@ impl Game for Battle {
         self
     }
 
-    /// Buttons (and the microphone's level) carry on; events, a switch
+    /// Buttons (and the microphone) carry on; events, a switch
     /// request and a custom screen's choice happen once.
     fn predict(last: &PlayerInput) -> PlayerInput {
         PlayerInput { tick: PlayerTick { switch_to: None, choice: None, ..last.tick }, events: TickEvents::default() }
@@ -181,7 +181,7 @@ mod tests {
             })
             .collect();
         assert_eq!(got, inputs);
-        // A frame's header, then a byte or two a tick (four with a choice).
+        // A frame's header, then a byte or two a tick (three with a choice).
         assert!(datagram.len() < 22, "{} bytes", datagram.len());
         // A flag no event has is refused.
         assert!(PlayerInput::decode(0, 2).is_err());
@@ -194,11 +194,11 @@ mod tests {
         let tick = PlayerTick {
             held: keys::B,
             switch_to: Some(2),
-            mic_level: 3,
+            mic_loud: true,
             choice: Some(nettai_battle::ScreenChoice::Ok),
         };
         let last = PlayerInput { tick, events: TickEvents { link_closed: true } };
         let p = <Battle as Game>::predict(&last);
-        assert_eq!(p, PlayerInput { tick: PlayerTick { mic_level: 3, ..PlayerTick::buttons(keys::B) }, events: TickEvents::default() });
+        assert_eq!(p, PlayerInput { tick: PlayerTick { mic_loud: true, ..PlayerTick::buttons(keys::B) }, events: TickEvents::default() });
     }
 }

@@ -1515,7 +1515,9 @@ pub trait CoreApi {
     /// field and the switches made.
     fn party(&self, side: u8) -> PartyInfo;
     /// Side `side`'s microphone level this tick, 0 to 255 (its input
-    /// record's: `PlayerTick::mic_level`).
+    /// record's): 255 where its player's input heard them
+    /// (`PlayerTick::mic_loud`: nettai's microphone is silent or full),
+    /// else 0.
     fn mic_level(&self, side: u8) -> u8;
     /// While the round is set up (the rules' `round_setup`): a navi joins
     /// side `side`'s party, with its fresh stats; its member number, which

@@ -8,7 +8,7 @@ fn info() -> Info {
     Info { when: 1_790_000_000, side: 1, kind: MatchKind::Online, open_setups: false, names: ["Lan".into(), String::new()] }
 }
 
-/// OK's number in a word's choice (bits 20 to 31: `PlayerTick::word`).
+/// OK's number in a word's choice (bits 13 to 18: `PlayerTick::word`).
 const OK: u32 = 25;
 
 /// A set of two rounds: input that changes now and then (a custom screen's
@@ -18,8 +18,8 @@ fn ticks() -> Vec<Tick> {
     let mut out: Vec<Tick> = (0..300u32)
         .map(|i| Tick {
             inputs: [
-                if i % 20 < 5 { 0x001 } else if i % 70 == 11 { OK << 20 } else { 0 },
-                if i % 33 < 3 { 0x220 } else if i % 50 == 7 { 0x1E600 } else { 0x200 },
+                if i % 20 < 5 { 0x001 } else if i % 70 == 11 { OK << 13 } else { 0 },
+                if i % 33 < 3 { 0x220 } else if i % 50 == 7 { 0x1600 } else { 0x200 },
             ],
             delays: [0, if i < 120 { 4 } else { 2 }],
             digest: (i % 60 == 59).then_some(i as u64 * 7),
@@ -64,7 +64,7 @@ fn a_replay_reads_back() {
     assert_eq!(r.rounds().iter().map(|t| t.len()).collect::<Vec<_>>(), [150, 150]);
     assert_eq!(r.round_starts(), [0, 150]);
     let header = bytes.len() - written(&[]).len();
-    assert!(header < 300 * 3, "{header} bytes of input");
+    assert!(header < 300 * 2, "{header} bytes of input");
     // (The head, the info, the match, the input: a reader that wants who
     // played when reads no match.)
     let at = |tag: &[u8]| bytes.windows(4).position(|w| w == tag).unwrap();
@@ -161,11 +161,11 @@ fn a_file_that_doesnt_read_is_refused_as_what_it_is() {
     assert_eq!(Replay::read(b"PK\x03\x04").unwrap_err(), ReadError::NotAReplay);
     assert_eq!(refused(b"PK\x03\x04"), "not a replay (no \"NTRP\" at its start)");
     assert_eq!(Replay::read(b"").unwrap_err(), ReadError::NotAReplay);
-    for other in [0, 2] {
+    for other in [0, 1, 3] {
         let mut layout = bytes.clone();
         layout[4] = other;
         assert_eq!(Replay::read(&layout).unwrap_err(), ReadError::OtherLayout { layout: other });
-        assert_eq!(refused(&layout), format!("a replay of layout {other}; this reads layout 1"));
+        assert_eq!(refused(&layout), format!("a replay of layout {other}; this reads layout 2"));
     }
     let mut bits = bytes.clone();
     bits[start] |= 0x80;
@@ -227,34 +227,43 @@ fn a_head_reads_whatever_follows_it() {
     assert!(Replay::read(&wrong).is_err());
     assert_eq!(Head::read(&wrong), Some(head()));
     let mut other = bytes.clone();
-    other[4] = 2;
+    other[4] = 1;
     assert_eq!(Head::read(&other), None);
     assert_eq!(Head::read(b"not a replay"), None);
     assert_eq!(Head::read(&bytes[..info_at - 3]), None);
 }
 
 /// A side's screen delay is written as it changes, a byte after the inputs
-/// (control bit 5 for side 0, 6 for side 1), and carried by the reader; a
-/// word with a custom screen's choice (bits 20 to 31, to the word's top)
-/// reads back.
+/// (control bit 5 for side 0, 6 for side 1), and carried by the reader; an
+/// input is LEB128: A alone one byte, a word with a custom screen's choice
+/// (bits 13 to 18) three, any 32-bit word at most five; a word cut short is
+/// the file's cut, one past 32 bits damage.
 #[test]
-fn screen_delays_and_choices_read_back() {
-    // (A held, the highest choice's number; the top bit too.)
-    let choice: u32 = 1 | 49 << 20 | 1 << 31;
+fn screen_delays_and_inputs_read_back() {
+    // (A held, the highest choice's number.)
+    let choice: u32 = 1 | 49 << 13;
     let ticks = [
         Tick { inputs: [0, 0], delays: [4, 0], ..Tick::default() },
         Tick { inputs: [choice, 0], delays: [4, 0], ..Tick::default() },
-        Tick { inputs: [choice, 0], delays: [2, 7], ..Tick::default() },
+        Tick { inputs: [choice, 1], delays: [2, 7], ..Tick::default() },
+        Tick { inputs: [u32::MAX, 1], delays: [2, 7], ..Tick::default() },
         Tick { inputs: [0, 0], delays: [2, 7], round_ended: true, set_ended: true, digest: Some(3) },
     ];
     let bytes = written(&ticks);
     let start = written(&[]).len();
-    // Side 0's delay alone; side 0's input alone; both delays; side 0's
-    // input with the digest.
+    // Side 0's delay alone; side 0's input alone (three bytes); both
+    // delays and side 1's input (a byte); side 0's input (five bytes).
     assert_eq!(bytes[start..start + 2], [0x20, 4]);
-    assert_eq!(bytes[start + 2], 0x01);
-    assert_eq!(u32::from_le_bytes(bytes[start + 3..start + 7].try_into().unwrap()), choice);
-    assert_eq!(bytes[start + 7..start + 10], [0x60, 2, 7]);
+    assert_eq!(bytes[start + 2..start + 6], [0x01, 0x81, 0xC0, 0x18]);
+    assert_eq!(bytes[start + 6..start + 10], [0x62, 0x01, 2, 7]);
+    assert_eq!(bytes[start + 10..start + 16], [0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x0F]);
     let r = Replay::read(&bytes).unwrap();
     assert_eq!(r.ticks, ticks);
+    // Cut inside side 0's input: the ticks before it.
+    let r = Replay::read(&bytes[..start + 4]).unwrap();
+    assert_eq!((r.ticks.len(), r.end), (1, End::Cut));
+    // Past 32 bits.
+    let mut past = bytes[..start + 10].to_vec();
+    past.extend_from_slice(&[0x01, 0xFF, 0xFF, 0xFF, 0xFF, 0x1F]);
+    assert_eq!(refused(&past), "an input in its input is past 32 bits");
 }

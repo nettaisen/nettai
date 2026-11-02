@@ -472,7 +472,8 @@ pub struct Battle {
     pub switch_inputs: [Option<u8>; 2],
     /// Each side's input record's microphone level (the DS's +9, its
     /// packet's +5: 0x020022E8), which the side's rules may hear
-    /// (`mic_heard`). Nothing in nettai sets it.
+    /// (`mic_heard`): 255 where the player's input heard them loud
+    /// (`PlayerTick::mic_loud`), else 0. Nothing in nettai sets it.
     pub mic_levels: [u8; 2],
     /// Each side's choice on its custom screen this tick (`PlayerTick::
     /// choice`), which its screen takes if it chooses.
@@ -1143,7 +1144,7 @@ impl Battle {
             self.round.remote_status[p] = (if side.in_custom { 4 } else { 0 }) | side.selecting as u8;
         }
         self.read_switch_requests(input);
-        self.mic_levels = [input[0].mic_level, input[1].mic_level];
+        self.mic_levels = input.each_ref().map(|t| if t.mic_loud { u8::MAX } else { 0 });
 
         self.run_mode_handler();
         self.run_objects();

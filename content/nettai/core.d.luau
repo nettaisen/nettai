@@ -1274,7 +1274,8 @@ declare battle: {
     -- While the round is set up (the rules' `round_setup`): `navi` joins the side's party with its fresh stats, its
     -- block returned to fill in.
     join_party: (side: number, navi: NaviDef) -> Navi,
-    -- The side's microphone level this tick, 0 to 255 (its player's input: nothing in nettai sets it).
+    -- The side's microphone level this tick, 0 to 255: 255 where its player's input heard them (nettai's microphone is
+    -- silent or full), else 0. Nothing in nettai sets it.
     mic_level: (side: number) -> number,
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.

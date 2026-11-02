@@ -10,12 +10,12 @@
 //!
 //! - [`Element::Tick`]: one tick of the player's input, its word
 //!   (`nettai_battle::PlayerTick::word`: their held buttons, a party switch
-//!   request, a microphone level and their custom screen's choice) and a
-//!   few flags for the tick's events. A tick with no flags, switch, level
-//!   or choice and only A, B and the directions held is one byte; any other
-//!   buttons or a switch, two; a level, three; a choice, four; flags, five
-//!   or six. A player makes a few dozen choices a screen: the mean frame
-//!   hardly grows.
+//!   request, the microphone heard or not and their custom screen's
+//!   choice: 19 bits) and a few flags for the tick's events. A tick with no
+//!   flags, switch, microphone or choice and only A, B and the directions
+//!   held is one byte; any other buttons, a switch or the microphone, two;
+//!   a choice, three; flags, five or six. A player makes a few dozen
+//!   choices a screen: the mean frame hardly grows.
 //! - [`Element::RoundEnd`] and [`Element::MatchEnd`]: the in-band markers.
 //!   The sender's round is over, and what follows is the next round's
 //!   input; the sender left the match.
@@ -37,7 +37,7 @@
 //!
 //! ```text
 //! head & 1 == 0   a tick: head >> 1 = buttons (10 bits, in WIRE_ORDER) | switch << 10 (2 bits: the member
-//!                 + 1, 0 none) | microphone level << 12 (8 bits) | choice << 20 (12 bits: the choice's
+//!                 + 1, 0 none) | microphone heard << 12 (1 bit) | choice << 13 (6 bits: the choice's
 //!                 `ScreenChoice::code`, 0 none: `PlayerTick::word`) | flags << 32
 //! head & 1 == 1   head >> 1: 0 the round's end, 1 the match's end, 2 + d the sender's present delay d (0-255)
 //! ```
@@ -52,7 +52,7 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// on that the content's hash doesn't say:
 ///
 /// - the stream's elements and their wire form (this module): a tick is its
-///   buttons, its switch request, its microphone level, its custom screen's choice and its flags
+///   buttons, its switch request, its microphone heard or not, its custom screen's choice and its flags
 ///   (`battle::flags`: the link closing), and the round's and the match's end and the sender's present delay are
 ///   markers;
 /// - the lobby and the handshake (nettai-frontend's `lobby`): the lobby's
@@ -116,7 +116,7 @@ pub type Frame = rennet::Frame<Netplay>;
 pub enum Element {
     /// One tick of the player's input: its word (`PlayerTick::word`: the
     /// buttons they hold, the GBA's bits, `nettai_battle::input::keys`,
-    /// their switch request, their microphone's level and their custom
+    /// their switch request, their microphone heard or not and their custom
     /// screen's choice) and the game's flags for the tick's events
     /// ([`WireInput`]).
     Tick { word: u32, flags: u8 },
@@ -234,7 +234,7 @@ pub trait WireInput: Sized {
 }
 
 /// A tick word alone (the stand-in battle's input: buttons, the switch
-/// request, the microphone level and the custom screen's choice).
+/// request, the microphone heard or not and the custom screen's choice).
 impl WireInput for u32 {
     fn encode(&self) -> (u32, u8) {
         (*self, 0)
@@ -280,8 +280,8 @@ mod tests {
     }
 
     /// Ticks with A, B and the directions are a byte, other buttons or a
-    /// switch two, a level three, a choice four, flags five or six; markers
-    /// one.
+    /// switch or the microphone two, a choice three, flags five or six;
+    /// markers one.
     #[test]
     fn element_sizes() {
         assert_eq!(bytes(Element::Tick { word: 0, flags: 0 }), [0x00]);
@@ -290,12 +290,14 @@ mod tests {
         assert_eq!(bytes(Element::Tick { word: (keys::L) as u32, flags: 0 }).len(), 2);
         assert_eq!(bytes(Element::Tick { word: BUTTONS as u32, flags: 1 }).len(), 5);
         assert_eq!(bytes(Element::Tick { word: BUTTONS as u32, flags: 0xFF }).len(), 6);
-        assert_eq!(bytes(Element::Tick { word: 0x1E << 12, flags: 0 }).len(), 3);
+        assert_eq!(bytes(Element::Tick { word: PlayerTick { mic_loud: true, ..PlayerTick::buttons(0) }.word(), flags: 0 }).len(), 2);
         assert_eq!(bytes(Element::Tick { word: 1 << 10, flags: 0 }).len(), 2);
         let choice = |c: ScreenChoice| PlayerTick { choice: Some(c), ..PlayerTick::buttons(0) }.word();
-        assert_eq!(bytes(Element::Tick { word: choice(ScreenChoice::Ok), flags: 0 }).len(), 4);
-        assert_eq!(bytes(Element::Tick { word: keys::A as u32 | choice(ScreenChoice::Release(11)), flags: 0 }).len(), 4);
-        assert_eq!(bytes(Element::Tick { word: choice(ScreenChoice::Unpick(4)), flags: 0 }).len(), 4);
+        assert_eq!(bytes(Element::Tick { word: choice(ScreenChoice::Ok), flags: 0 }).len(), 3);
+        assert_eq!(bytes(Element::Tick { word: keys::A as u32 | choice(ScreenChoice::Release(11)), flags: 0 }).len(), 3);
+        assert_eq!(bytes(Element::Tick { word: choice(ScreenChoice::Unpick(4)), flags: 0 }).len(), 3);
+        let most = PlayerTick { held: BUTTONS, switch_to: Some(2), mic_loud: true, choice: Some(ScreenChoice::Release(11)) };
+        assert_eq!(bytes(Element::Tick { word: most.word(), flags: 0 }).len(), 3);
         assert_eq!(bytes(Element::Tick { word: u32::MAX, flags: 0 }).len(), 5);
         assert_eq!(bytes(Element::Tick { word: u32::MAX, flags: 0xFF }).len(), 6);
         assert_eq!(bytes(Element::RoundEnd), [0x01]);
@@ -324,7 +326,7 @@ mod tests {
         }
         // A tick's word through the wire is the player's tick: its choice
         // too.
-        let t = PlayerTick { held: keys::A | keys::UP, switch_to: Some(1), mic_level: 7, choice: Some(ScreenChoice::Release(11)) };
+        let t = PlayerTick { held: keys::A | keys::UP, switch_to: Some(1), mic_loud: true, choice: Some(ScreenChoice::Release(11)) };
         let b = bytes(Element::Tick { word: t.word(), flags: 0 });
         let Some(Element::Tick { word, .. }) = Element::decode(&mut &b[..]).unwrap() else { panic!() };
         assert_eq!(PlayerTick::from_word(word), t);

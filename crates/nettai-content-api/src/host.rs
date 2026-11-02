@@ -550,7 +550,7 @@ pub enum RulesHook {
     /// true refuses (the rules play its sound). None answering: not busy.
     MemberBusy,
     /// `mic_heard(side)`: each fight tick the side's microphone level isn't 0
-    /// (`CoreApi::mic_level`, the player's `PlayerTick::mic_level`), just
+    /// (`CoreApi::mic_level`, the player's `PlayerTick::mic_loud`), just
     /// before the navis copy their input (the DS's 0x022261A4: a loud
     /// enough shout at a low enough HP starts its heal). Its result is
     /// unused.

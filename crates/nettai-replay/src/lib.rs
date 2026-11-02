@@ -17,7 +17,7 @@
 //! refuses another's ([`Head::require`]).
 //!
 //! ```text
-//! file   := "NTRP", layout (a byte: 1), head, info, match, input
+//! file   := "NTRP", layout (a byte: 2), head, info, match, input
 //! head   := "HEAD", length (u32), engine version (string), game (string),
 //!           content hash (u64), the first battle's digest before any tick (u64)
 //! info   := "INFO", length (u32), when (u64: unix seconds), the side that
@@ -27,7 +27,7 @@
 //! match  := "MTCH", length (u32), the match in nettai-match's binary
 //! input  := "TICK", then a record per tick to the end of the file
 //! record := control (a byte), then what its bits announce, in their order:
-//!           bit 0: side 0's input (u32) follows, bit 1: side 1's,
+//!           bit 0: side 0's input (LEB128) follows, bit 1: side 1's,
 //!           bit 5: side 0's screen delay (a byte) follows, bit 6: side 1's,
 //!           bit 2: the battle's digest after the tick (u64) follows,
 //!           bit 3: a round ended on the tick (a digest always comes with it),
@@ -37,11 +37,12 @@
 //! ```
 //!
 //! Numbers are little-endian. A side's input is its tick's word
-//! (`nettai_battle::PlayerTick::word`): the GBA's buttons in the low ten
-//! bits, the party switch request in bits 10 and 11 (the member + 1, 0
-//! none), the microphone's level in bits 12 to 19, and in bits 20 to 31
-//! the custom screen's choice (its `ScreenChoice::code`, 0 none). It is
-//! written
+//! (`nettai_battle::PlayerTick::word`, 19 bits): the GBA's buttons in the
+//! low ten bits, the party switch request in bits 10 and 11 (the member +
+//! 1, 0 none), the microphone heard (full) or not (silent) in bit 12, and
+//! in bits 13 to 18 the custom screen's choice (its `ScreenChoice::code`, 0
+//! none). It is written as LEB128 (one byte for A, B and the directions,
+//! two with other buttons, a switch or the microphone, three with a choice)
 //! when it changes: before the first tick nothing is held, and it carries
 //! across a round's end. A writer flushes each record as it is written, so
 //! a file cut short (a crash) holds every tick before the cut, and a reader
@@ -73,7 +74,8 @@
 //! show the setups either is told so by the info ([`Info::open_setups`]:
 //! where they weren't open).
 //!
-//! **The layout.** This is layout 1. A file of another layout is refused
+//! **The layout.** This is layout 2 (layout 1, nettai 0.20 and before,
+//! wrote each input as four bytes). A file of another layout is refused
 //! as one from another version of nettai ([`ReadError::OtherLayout`]): a
 //! replay plays only on the engine and content it was made with, so such a
 //! file would not play here whatever its layout.
@@ -87,7 +89,7 @@ use std::io::{self, Write};
 pub const MAGIC: &[u8; 4] = b"NTRP";
 
 /// The layout this crate writes and reads.
-pub const LAYOUT: u8 = 1;
+pub const LAYOUT: u8 = 2;
 
 /// The part of a nettai version that says what its simulation is: its
 /// major and minor numbers ("0.7" of "0.7.3"). Engines of one line play the
@@ -235,7 +237,7 @@ impl Info {
 }
 
 /// One tick: both players' input by side (each a tick word: the buttons,
-/// the switch request, the microphone's level and the custom screen's
+/// the switch request, the microphone heard or not and the custom screen's
 /// choice), each side's screen delay, and what a recording marks of it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Tick {
@@ -349,7 +351,7 @@ impl<W: Write> Writer<W> {
         for side in 0..2 {
             if t.inputs[side] != self.inputs[side] {
                 control |= [INPUT_0, INPUT_1][side];
-                rest.extend_from_slice(&t.inputs[side].to_le_bytes());
+                leb128(&mut rest, t.inputs[side] as u64);
             }
         }
         for side in 0..2 {
@@ -384,8 +386,7 @@ impl<W: Write> Writer<W> {
     }
 }
 
-fn string(out: &mut Vec<u8>, s: &str) {
-    let mut n = s.len();
+fn leb128(out: &mut Vec<u8>, mut n: u64) {
     loop {
         let byte = (n & 0x7F) as u8;
         n >>= 7;
@@ -395,6 +396,10 @@ fn string(out: &mut Vec<u8>, s: &str) {
         }
         out.push(byte | 0x80);
     }
+}
+
+fn string(out: &mut Vec<u8>, s: &str) {
+    leb128(out, s.len() as u64);
     out.extend_from_slice(s.as_bytes());
 }
 
@@ -432,6 +437,20 @@ impl<'a> Bytes<'a> {
 
     fn u64(&mut self) -> Result<u64, String> {
         Ok(u64::from_le_bytes(self.take(8)?.try_into().expect("eight bytes")))
+    }
+
+    /// A tick's input, LEB128 (none: the bytes end inside it, a file cut
+    /// there).
+    fn input(&mut self) -> Result<Option<u32>, String> {
+        let mut n: u64 = 0;
+        for shift in (0..35).step_by(7) {
+            let Ok(b) = self.u8() else { return Ok(None) };
+            n |= ((b & 0x7F) as u64) << shift;
+            if b & 0x80 == 0 {
+                return u32::try_from(n).map(Some).map_err(|_| format!("an input in its {} is past 32 bits", self.what));
+            }
+        }
+        Err(format!("an input in its {} is past 32 bits", self.what))
     }
 
     fn string(&mut self) -> Result<String, String> {
@@ -558,7 +577,7 @@ impl Replay {
                 let mut t = Tick { inputs, delays, ..Tick::default() };
                 for side in 0..2 {
                     if control & [INPUT_0, INPUT_1][side] != 0 {
-                        let Ok(word) = b.u32() else { return Ok(None) };
+                        let Some(word) = b.input()? else { return Ok(None) };
                         t.inputs[side] = word;
                     }
                 }

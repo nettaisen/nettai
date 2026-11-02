@@ -1323,9 +1323,10 @@ fn the_soul_button_follows_the_screens_navi() {
 }
 
 /// EXE5 DS's shout (rules/shout), which nothing in nettai makes: a worried
-/// MegaMan at a quarter of his HP who shouts loudly enough is healed,
-/// charged or barriered once a battle; the strongest shout puts him in Full
-/// Synchro first. A quiet tick, or a second shout, does nothing.
+/// MegaMan at a quarter of his HP who shouts is healed, charged or
+/// barriered once a battle, and put in Full Synchro first (nettai's
+/// microphone is silent or full, the strongest shout). A silent tick, or a
+/// second shout, does nothing.
 #[test]
 fn a_shout_helps_once_a_battle() {
     use nettai_battle::input::PlayerTick;
@@ -1338,14 +1339,14 @@ fn a_shout_helps_once_a_battle() {
     let r = b.player(0).unwrap();
     b.objects.get_mut(r).hp = 200;
     b.stats[0].mood = 0x30;
-    let shout = |b: &mut nettai_battle::Battle, level: u8| {
-        b.tick(&[PlayerTick { mic_level: level, ..Default::default() }, Default::default()], Default::default());
+    let shout = |b: &mut nettai_battle::Battle, mic_loud: bool| {
+        b.tick(&[PlayerTick { mic_loud, ..Default::default() }, Default::default()], Default::default());
     };
-    // Too quiet.
-    shout(&mut b, 0x1D);
+    // Silent.
+    shout(&mut b, false);
     assert!(!b.is_dimmed());
     let before = (b.stats[0].attack, b.stats[0].charge, b.stats[0].rapid);
-    shout(&mut b, 0x50);
+    shout(&mut b, true);
     assert!(b.is_dimmed(), "the shout dims the battle");
     for _ in 0..200 {
         b.tick(&Default::default(), Default::default());
@@ -1359,7 +1360,7 @@ fn a_shout_helps_once_a_battle() {
     // Once a battle.
     b.objects.get_mut(r).hp = 200;
     b.stats[0].mood = 0x30;
-    shout(&mut b, 0x50);
+    shout(&mut b, true);
     assert!(!b.is_dimmed());
 }
 

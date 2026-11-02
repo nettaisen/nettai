@@ -98,11 +98,12 @@ the frame's record combines both shares (`exe6::tick_input`).
 
 **A player's tick** (`PlayerTick`) is their buttons, the member of their side's party they ask to switch to
 (`switch_to`: the DS's party battle, docs/design/exe5ds-map.md §11; none in a battle without partners), their
-microphone's level (`mic_level`, 0 to 255: the DS's shout, which nothing in nettai sets), and what they chose on their
-custom screen this tick (`choice`, a `ScreenChoice`: a chip picked, a rules' button pressed, OK, a take-back, a form
-list's entry). Hosts that carry a tick as a number carry its word (`PlayerTick::word`, 26 bits, `TICK_WORD`: the
-buttons in bits 0–9, the switch in 10–11 as the member + 1, the level in 12–19, the choice in 20–25 as
-`ScreenChoice::code`, 0 none): the wire, replays, the frontend's netplay and the stand-in battle. A tick of buttons
+microphone (`mic_loud`: silent or full, the DS's shout at its loudest, which nothing in nettai sets; the battle's
+record holds 255 or 0 for the rules), and what they chose on their custom screen this tick (`choice`, a
+`ScreenChoice`: a chip picked, a rules' button pressed, OK, a take-back, a form list's entry, a pick or the Cross
+taken back by pointer, a held chip released). Hosts that carry a tick as a number carry its word (`PlayerTick::word`,
+19 bits: the buttons in bits 0–9, the switch in 10–11 as the member + 1, the microphone in 12, the choice in 13–18 as
+`ScreenChoice::code`, 0 none): the wire, replays (LEB128), the frontend's netplay and the stand-in battle. A tick of buttons
 alone is its buttons' word, as before. Buttons and a choice, not one or the other: a word decided while the player
 sees the fight lands the input delay later, maybe on the screen, so it says both; the screen takes the choice and
 reads no key, and the fight's record takes the buttons through it.

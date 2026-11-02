@@ -65,7 +65,7 @@ impl Game for StandInBattle {
         &mut self.battle
     }
 
-    /// The buttons (and the microphone's level) carry on; a switch request
+    /// The buttons (and the microphone) carry on; a switch request
     /// and a custom screen's choice happen once (each is a tick's, as the
     /// link closing is: carried on, a choice would be taken again, or
     /// refused with its sound, on every tick predicted).
@@ -250,11 +250,11 @@ mod tests {
     use super::*;
     use nettai_battle::content::testing;
 
-    /// A tick word predicted is its buttons and level carried on, without
+    /// A tick word predicted is its buttons and microphone carried on, without
     /// its switch request or its choice.
     #[test]
     fn a_choice_and_a_switch_are_not_predicted() {
-        let t = PlayerTick { held: keys::A | keys::UP, switch_to: Some(1), mic_level: 9, choice: Some(ScreenChoice::Pick(3)) };
+        let t = PlayerTick { held: keys::A | keys::UP, switch_to: Some(1), mic_loud: true, choice: Some(ScreenChoice::Pick(3)) };
         let predicted = PlayerTick::from_word(<StandInBattle as Game>::predict(&t.word()));
         assert_eq!(predicted, PlayerTick { switch_to: None, choice: None, ..t });
     }

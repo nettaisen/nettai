@@ -129,13 +129,17 @@ sends `unpick`, `unchoose` and `release`.
   about all the mouse movement, right? i only really care about the selections/deselections and the mouse movement
   is just noise"):* the gesture is out of the tick (`PlayerTick` has no `gesture`, `Gesture` no numbers), and bits
   20-31 hold the choice's number alone (`ScreenChoice::code`, 0-49). Nothing of the pointer is recorded or sent:
-  only what it chose, as keys' choices are.
+  only what it chose, as keys' choices are. *As built (narrow words; the user: "the custom screen inputs are so
+  big, do they have to be this wide?", and "microphone input can be 1 bit: max volume or silent"):* the microphone
+  is bit 12 and the choice bits 13-18 (six bits hold its 50 numbers), so the word is 19 bits
+  (`PlayerTick::WORD_BITS`), and the replay writes each input as LEB128 (layout 2): a choice is three bytes there
+  and on the wire.
 - **The wire** (nettai-netplay `protocol.rs`): the event flags move up past the action; a tick with an action is a
   4-byte element instead of 3. Actions are a few dozen a screen, so the mean frame doesn't change. *As built (B2):*
   the flags sit at bit 32 of the head, past the gesture; a tick with a gesture is 4 or 5 bytes, one with flags 5 or
   6. A pointer makes a gesture as it moves onto another target, a click, a describe: a few a second while it moves.
   *As built (§2's take-backs):* a gesture alone is 4 bytes, a choice (the more numbers, the rarer) 5. *As built
-  (choices only):* a choice is 4 bytes again, and the pointer adds nothing to the wire.
+  (choices only):* a choice is 4 bytes again, and the pointer adds nothing to the wire; with the narrow words, 3.
 - **Prediction**: a missing remote word is predicted as its last buttons and **no action** (as events are dropped
   now), and no gesture (B2: each of the other's gestures is a misprediction too, though the battle doesn't read
   it; the re-simulated ticks come out the same). Each remote action is then one misprediction, and the remote's cursor moves cost none, because they aren't

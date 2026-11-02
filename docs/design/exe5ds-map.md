@@ -1180,7 +1180,9 @@ EXE5 content on its hooks below) and the supports (step 10).
 **The machine (Rust, neutral names).**
 - **The input.** `PlayerTick` gains `switch_to` (the member asked for: the DS's packet +7, the member + 1) and
   `mic_level` (packet +5). A host carries a tick as a 20-bit word (`PlayerTick::word`: buttons 0–9, switch 10–11,
-  level 12–19): the wire's tick element, replays (a u32 a side where it changes) and the frontend's netplay. Nothing in
+  level 12–19): the wire's tick element, replays (a u32 a side where it changes) and the frontend's netplay. *Since
+  0.21:* the microphone is one bit, `mic_loud` (the user: "microphone input can be 1 bit: max volume or silent"),
+  which the battle's record holds as 255 or 0, and the word is 19 bits (docs/design/rollback.md). Nothing in
   nettai sets either yet: the app's X/Y bindings are step 13, and the microphone is wired to nothing (the user).
 - **The state.** `Battle::party: [Party; 2]` in place of `reserves`: the members' stats blocks (member 0 the side's
   own navi, a copy of its stats as the battle starts: the GBA's one reserve, which a side without partners still is),

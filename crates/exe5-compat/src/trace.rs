@@ -12,8 +12,8 @@
 //! on top: the setup's member blocks, party blocks and panels, `party` lines
 //! when they change, and each frame's party blocks, switch inputs and the
 //! navis' switch state. A DS round replays as a GBA one, its party from its
-//! member blocks and each tick's switch request and microphone level from
-//! the side's input record.
+//! member blocks and each tick's switch request and microphone (heard or
+//! not: nettai's is one bit) from the side's input record.
 
 use crate::codec::{self, ChipHand, NAVI_STATS, NaviStats, Panel};
 use crate::{Compat, pool_of_type, pool_slots};
@@ -793,12 +793,13 @@ impl Round {
         let f = frames[i];
         // (A DS recording's switch request and microphone level are its
         // input record's on the frame, +8 the member + 1 and +9, which both
-        // its fight and its custom screen read.)
+        // its fight and its custom screen read. nettai's microphone is one
+        // bit: a level other than 0 is full, 255.)
         let input = std::array::from_fn(|p| {
             let mut t = PlayerTick::buttons(self.fed(i, frames, p) | self.ds_early_direction(i, frames, p));
             if let Some(sw) = f.switch {
                 t.switch_to = sw[p][0].checked_sub(1);
-                t.mic_level = sw[p][2];
+                t.mic_loud = sw[p][2] != 0;
             }
             t
         });
@@ -1895,8 +1896,9 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, exchange:
     }
     // A DS side's navi's switch state: AIData +0x70, the switch its player
     // asks this tick (the member + 1, 0 none); +0x71, the microphone's
-    // level the navi copied; +0x72, the member its in-battle switch goes to
-    // (kept after).
+    // level the navi copied (heard or not: nettai's is 255 or 0, the DS's
+    // any level); +0x72, the member its in-battle switch goes to (kept
+    // after).
     // And of AIData +0x48 the two states the DS's party battle adds:
     // KnightMan's guard (0x400000) and ToadMan's dive (0x01000000), the
     // navi's state's `guarded` and `diving` (content's: the rules'
@@ -1916,9 +1918,12 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, exchange:
             let (guarded, diving) = (0x40_0000u32, 0x0100_0000u32);
             let ours = if own("guarded") { guarded } else { 0 } | if own("diving") { diving } else { 0 };
             check(&format!("side {side}'s navi's guard and dive (+0x48)"), format!("{ours:#x}"), format!("{:#x}", status & (guarded | diving)));
-            let ours = [a.switch_input.map_or(0, |m| m + 1), b.mic_levels[side], a.switch_member.unwrap_or(0)];
+            let ours = [a.switch_input.map_or(0, |m| m + 1), (b.mic_levels[side] != 0) as u8, a.switch_member.unwrap_or(0)];
             match unhex(hex) {
-                Ok(raw) if raw.len() >= 3 => check(&format!("side {side}'s navi's switch (+0x70..+0x72)"), format!("{ours:?}"), format!("{:?}", &raw[..3])),
+                Ok(raw) if raw.len() >= 3 => {
+                    let theirs = [raw[0], (raw[1] != 0) as u8, raw[2]];
+                    check(&format!("side {side}'s navi's switch (+0x70..+0x72, the level heard or not)"), format!("{ours:?}"), format!("{theirs:?}"))
+                }
                 _ => check(&format!("side {side}'s navi's switch"), "AIData +0x70..+0x73".to_string(), hex.clone()),
             }
         }
