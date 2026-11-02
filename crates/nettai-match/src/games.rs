@@ -14,6 +14,8 @@ use nettai_battle::rules::Fact;
 use nettai_content_api::{FormHandle, Registry, Value};
 use std::sync::Arc;
 
+mod take_backs;
+
 /// A number, a flag and forms of `game` by name, as a side's fact takes
 /// them.
 fn number(n: i64) -> [Fact<'static>; 1] {
