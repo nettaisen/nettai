@@ -445,6 +445,9 @@ impl CustomScreen {
     /// A form list name's tiles (9x2, `VersionPictures::form_names`).
     pub const FORM_NAME_COLUMNS: usize = 9;
     pub const FORM_NAME_TILES: usize = 18;
+    /// The form list window's maps (`form_list_maps`) that open it, before
+    /// those with its forms' names (EXE6's Cross window's three steps).
+    pub const FORM_LIST_OPENING_MAPS: usize = 3;
     /// The form list names' looks: a version's forms on the cursor's row
     /// (from the first), then on the others' (from this).
     pub const FORM_NAMES_UNDER_CURSOR: usize = 5;

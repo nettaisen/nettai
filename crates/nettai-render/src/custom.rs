@@ -48,7 +48,7 @@ const PICTURE_TILES: u16 = CustomScreen::PICTURE_TILES as u16;
 pub(crate) const FORM_NAME_TILES: usize = CustomScreen::FORM_NAME_TILES;
 /// The form list window's maps: three opening steps, then the window with
 /// one to five forms (EXE6's Cross window's).
-const FORM_LIST_OPENING_MAPS: usize = 3;
+const FORM_LIST_OPENING_MAPS: usize = CustomScreen::FORM_LIST_OPENING_MAPS;
 /// The Program Advance animation's names (`sub_802B80C`): 9 cells of the
 /// 8x16 font from the chip window's picture's first tile (EXE6's 0xAB), 18
 /// tiles a name; a pick's code in its last cell; a name every 3 rows from

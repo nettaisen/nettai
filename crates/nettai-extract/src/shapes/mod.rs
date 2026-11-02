@@ -818,10 +818,18 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
     let window = if c.letters.window_blank.len() == c.window_tiles.len() { &c.letters.window_blank } else { &c.window_tiles };
     let mut maps: Vec<NamedMap> = Vec::new();
     for (k, m) in c.window_maps.iter().enumerate() {
-        maps.push((format!("custom/window-{k}"), window_grid(c, window, m, &c.window_patches, false, say)));
+        maps.push((format!("custom/window-{k}"), window_grid(c, window, m, &c.window_patches, &|_, _| false, say)));
     }
+    // (The opening steps lay no names: where the names go they show the
+    // panel's empty bars, and above it the chip window's frame, which is
+    // the window's with the form list's tab, the last, as that lays and
+    // draws it: drawn as it is there.)
+    let tab = c.window_maps.last().zip(maps.last().and_then(|(_, m)| m.as_ref()).map(|(_, cells)| cells.clone()));
     for (k, m) in c.form_list_maps.iter().enumerate() {
-        maps.push((format!("custom/form-list-{k}"), window_grid(c, window, m, &c.form_list_patches, true, say)));
+        let opening = k < CustomScreen::FORM_LIST_OPENING_MAPS;
+        let chips = |x: usize, y: usize| tab.as_ref().is_some_and(|(t, cells)| t.get(y * 15 + x) == m.get(y * 15 + x) && cells.contains(&[x as u8, y as u8]));
+        let names = |x: usize, y: usize| !opening || !chips(x, y);
+        maps.push((format!("custom/form-list-{k}"), window_grid(c, window, m, &c.form_list_patches, &names, say)));
     }
     let mut drawn = map_drawings(&maps, sh);
     s.form_list_maps = drawn.split_off(c.window_maps.len());
@@ -945,10 +953,10 @@ fn slot_code(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> 
 
 /// A window map's frame: its own tiles (the window's, letters off), each
 /// cell something else is laid in a hole: the patches, the column's cells,
-/// the form list's names (`form_list`), a button at its own place, the
+/// the form list's names (where `names` says), a button at its own place, the
 /// screen's emblem, OK (the cells its cursor's corners take half of or
 /// more), and any tile not the window's.
-fn window_grid(c: &CustomScreen, window: &Tiles, map: &[MapEntry], patches: &PatchList, form_list: bool, say: &mut dyn FnMut(String)) -> Option<(Grid, Vec<[u8; 2]>)> {
+fn window_grid(c: &CustomScreen, window: &Tiles, map: &[MapEntry], patches: &PatchList, names: &dyn Fn(usize, usize) -> bool, say: &mut dyn FnMut(String)) -> Option<(Grid, Vec<[u8; 2]>)> {
     const COLUMNS: usize = 15;
     const ROWS: usize = 20;
     if map.len() != COLUMNS * ROWS {
@@ -975,11 +983,12 @@ fn window_grid(c: &CustomScreen, window: &Tiles, map: &[MapEntry], patches: &Pat
             mark(x as usize, l.column_row as usize + 2 * i + 1, &mut hole);
         }
     }
-    if form_list {
-        let [x0, y0] = l.form_names_at.map(usize::from);
-        for slot in 0..5 {
-            for i in 0..CustomScreen::FORM_NAME_TILES {
-                mark(x0 + i % CustomScreen::FORM_NAME_COLUMNS, y0 + 2 * slot + i / CustomScreen::FORM_NAME_COLUMNS, &mut hole);
+    let [x0, y0] = l.form_names_at.map(usize::from);
+    for slot in 0..5 {
+        for i in 0..CustomScreen::FORM_NAME_TILES {
+            let (x, y) = (x0 + i % CustomScreen::FORM_NAME_COLUMNS, y0 + 2 * slot + i / CustomScreen::FORM_NAME_COLUMNS);
+            if names(x, y) {
+                mark(x, y, &mut hole);
             }
         }
     }
