@@ -440,7 +440,7 @@ and replaces it as the game's own would. The file is made into the driver's song
 - time is the driver's 24 ticks a beat, each event's time rounded to the nearest; the tempo events are the first
   track's TEMPO;
 - a note is a note command of its key, velocity and length (1 to 99 ticks), or a tie and its end where it is
-  longer; a chord's notes are at one tick;
+  longer; a chord's notes are at one tick, in the order the file starts them;
 - the controllers volume (7), pan (10), modulation (1), bend range (20, or RPN 0's data entry), LFO speed (21),
   modulation type (22), tune (24) and LFO delay (26), and pitch bend (its top 7 bits), are the driver's commands of
   the same; controller 30 picks an extended command that 29 or 31 then sets, as mid2agb's: 8 the pseudo-echo's

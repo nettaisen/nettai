@@ -74,8 +74,11 @@ pub(super) fn song(bytes: &[u8], like: &Song, max_tracks: usize) -> Result<Song,
     let mut end = 0u32;
     for (_, events) in channels {
         let mut out: Vec<(u32, Step, Command)> = Vec::new();
-        let mut held: HashMap<u8, VecDeque<(u64, u8)>> = HashMap::new();
-        let mut notes: Vec<(u32, u32, u8, u8)> = Vec::new();
+        // (Each note held by its start, its velocity and its place among the channel's notes, which orders a chord's
+        // notes as the file does whenever they end.)
+        let mut held: HashMap<u8, VecDeque<(u64, u8, usize)>> = HashMap::new();
+        let mut notes: Vec<(usize, u32, u32, u8, u8)> = Vec::new();
+        let mut started = 0usize;
         // (The registered parameter data entry sets: bend range is RPN 0.)
         let mut rpn = (127u8, 127u8);
         // (The extended command controller 30 picks, which 29 and 31 set, as mid2agb's: 8 the pseudo-echo's
@@ -86,12 +89,13 @@ pub(super) fn song(bytes: &[u8], like: &Song, max_tracks: usize) -> Result<Song,
             let at = tick(t);
             let set = match message {
                 MidiMessage::NoteOn { key, vel } if vel.as_int() > 0 => {
-                    held.entry(key.as_int()).or_default().push_back((t, vel.as_int()));
+                    held.entry(key.as_int()).or_default().push_back((t, vel.as_int(), started));
+                    started += 1;
                     None
                 }
                 MidiMessage::NoteOn { key, .. } | MidiMessage::NoteOff { key, .. } => {
-                    if let Some((from, vel)) = held.get_mut(&key.as_int()).and_then(VecDeque::pop_front) {
-                        notes.push((tick(from), at, key.as_int(), vel));
+                    if let Some((from, vel, n)) = held.get_mut(&key.as_int()).and_then(VecDeque::pop_front) {
+                        notes.push((n, tick(from), at, key.as_int(), vel));
                     }
                     None
                 }
@@ -137,14 +141,16 @@ pub(super) fn song(bytes: &[u8], like: &Song, max_tracks: usize) -> Result<Song,
         }
         // (A note never released ends with the channel's last event.)
         for (key, queue) in held {
-            for (from, vel) in queue {
-                notes.push((tick(from), tick(last), key, vel));
+            for (from, vel, n) in queue {
+                notes.push((n, tick(from), tick(last), key, vel));
             }
         }
         if notes.is_empty() {
             continue;
         }
-        for (from, to, key, velocity) in notes {
+        // (In the order they start: a chord's notes as the file has them, the shorter not first.)
+        notes.sort_unstable_by_key(|n| n.0);
+        for (_, from, to, key, velocity) in notes {
             let to = cut.map_or(to, |c| to.min(c)).max(from + 1);
             if cut.is_some_and(|c| from >= c) {
                 continue;
@@ -341,6 +347,13 @@ mod tests {
             [Command::Voice(3), Command::Volume(100), Command::Tempo(60), note(24, 60, 90), note(24, 64, 80), Command::Wait(36), note(3, 67, 70), Command::Wait(18), Command::Fine]
         );
         assert_eq!(s.tracks[1].commands, [Command::Pan(20), Command::Wait(48), note(6, 36, 127), Command::Wait(6), Command::Fine]);
+    }
+
+    /// A chord's notes are in the order the file starts them, whichever ends first.
+    #[test]
+    fn a_chords_notes_keep_the_files_order() {
+        let s = song(&midi(vec![vec![(0, on(0, 36, 100)), (0, on(0, 42, 90)), (12, off(0, 42)), (12, off(0, 36))]]), &like(), 16).unwrap();
+        assert_eq!(s.tracks[0].commands, [note(6, 36, 100), note(3, 42, 90), Command::Wait(6), Command::Fine]);
     }
 
     /// Controller 30 picks an extended command and 29 or 31 sets it, as mid2agb reads them: 8 the pseudo-echo's
