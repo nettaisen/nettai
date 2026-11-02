@@ -317,11 +317,11 @@ impl Player {
         }
     }
 
-    /// Whether the mouse is over a target of the local player's custom screen
-    /// in the last frame drawn: a host's cue for a hand cursor.
+    /// Whether the pointer is over a target of the local player's custom
+    /// screen in the last frame drawn: a host's cue for a hand cursor.
     pub fn pointer_on_target(&self) -> bool {
         let side = self.session.battle.setup.local_side;
-        self.pointer.mouse_at().is_some_and(|(x, y)| self.renderer.target_at(side, x, y).is_some())
+        self.pointer.at().is_some_and(|(x, y)| self.renderer.target_at(side, x, y).is_some())
     }
 
     /// Whether the last frame drawn has anything of the local player's

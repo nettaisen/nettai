@@ -1,6 +1,5 @@
 //! Player input as the engine consumes it.
 
-use crate::custom::layer::Gesture;
 
 /// GBA button bits (KEYINPUT order).
 pub mod keys {
@@ -207,29 +206,7 @@ impl ScreenChoice {
     }
 }
 
-/// A tick's screen part, its choice and its gesture as one number in the
-/// word's bits 20 to 31: the gesture's number ([`Gesture::code`], 0 none)
-/// and [`Gesture::CODES`] times the choice's ([`ScreenChoice::code`], 0
-/// none), at most 3749 (a gesture alone, the more frequent, is below 128).
-const fn screen_part(choice: Option<ScreenChoice>, gesture: Option<Gesture>) -> u32 {
-    let choice = match choice {
-        Some(c) => c.code(),
-        None => 0,
-    };
-    let gesture = match gesture {
-        Some(g) => g.code(),
-        None => 0,
-    };
-    gesture + Gesture::CODES * choice
-}
-
-/// The choice and the gesture a screen part ([`screen_part`]) holds; a
-/// number none has is ignored.
-const fn screen_of(part: u32) -> (Option<ScreenChoice>, Option<Gesture>) {
-    (ScreenChoice::from_code(part / Gesture::CODES), Gesture::from_code(part % Gesture::CODES))
-}
-
-const _: () = assert!(ScreenChoice::CODES * Gesture::CODES <= 1 << 12);
+const _: () = assert!(ScreenChoice::CODES <= 1 << 12);
 
 /// What one player contributes to a tick.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -258,19 +235,12 @@ pub struct PlayerTick {
     /// ([`ScreenChoice`]): taken if the screen chooses as it comes in,
     /// else nothing.
     pub choice: Option<ScreenChoice>,
-    /// The pointer's gesture their custom screen layer took on the tick it
-    /// read this one's buttons ([`Gesture`]: a hover onto a target, a click,
-    /// a describe), if it took one. The battle never reads it: it is carried
-    /// for a replay, whose viewer gives it to the player's layer again, so
-    /// that a pointer player's cursor shows as they moved it
-    /// (docs/design/custom-screen-actions.md §3).
-    pub gesture: Option<Gesture>,
 }
 
 impl PlayerTick {
     /// A tick of these buttons alone.
     pub const fn buttons(held: u16) -> PlayerTick {
-        PlayerTick { held, switch_to: None, mic_level: 0, choice: None, gesture: None }
+        PlayerTick { held, switch_to: None, mic_level: 0, choice: None }
     }
 
     /// The tick with this choice besides.
@@ -282,41 +252,37 @@ impl PlayerTick {
     /// (netplay's wire, replays, a frontend's input): the buttons in the
     /// low ten bits, the switch request in bits 10 and 11 (the member plus
     /// one, 0 none), the microphone's level in bits 12 to 19, and the
-    /// screen's choice with the pointer's gesture as one number in bits 20
-    /// to 31: the gesture's number ([`Gesture::code`], 0 none) plus 75
-    /// ([`Gesture::CODES`]) times the choice's ([`ScreenChoice::code`], 0
-    /// none). (A choice and a gesture together take 50 times 75 numbers,
-    /// more than two fields of 12 bits hold.)
+    /// screen's choice's number ([`ScreenChoice::code`], 0 none) in bits 20
+    /// to 31.
     pub const fn word(self) -> u32 {
         let switch = match self.switch_to {
             Some(m) => (m as u32 & 3) + 1,
             None => 0,
         };
-        let screen = screen_part(self.choice, self.gesture);
-        (self.held as u32 & 0x3FF) | (switch & 3) << 10 | (self.mic_level as u32) << 12 | screen << 20
+        let choice = match self.choice {
+            Some(c) => c.code(),
+            None => 0,
+        };
+        (self.held as u32 & 0x3FF) | (switch & 3) << 10 | (self.mic_level as u32) << 12 | choice << 20
     }
 
-    /// The tick a word ([`PlayerTick::word`]) holds; a choice's or a
-    /// gesture's number none has is ignored. (A word's switch field of 3
-    /// names member 2.)
+    /// The tick a word ([`PlayerTick::word`]) holds; a choice's number
+    /// none has is ignored. (A word's switch field of 3 names member 2.)
     pub const fn from_word(word: u32) -> PlayerTick {
         let switch = (word >> 10) & 3;
-        let (choice, gesture) = screen_of(word >> 20);
         PlayerTick {
             held: (word & 0x3FF) as u16,
             switch_to: if switch == 0 { None } else { Some(switch as u8 - 1) },
             mic_level: (word >> 12) as u8,
-            choice,
-            gesture,
+            choice: ScreenChoice::from_code(word >> 20),
         }
     }
 
     /// The tick as a missing word of the player's is guessed from their
     /// last (netplay's prediction): its buttons and microphone carry on; a
-    /// switch request, a choice and a gesture are a tick's own, and happen
-    /// once.
+    /// switch request and a choice are a tick's own, and happen once.
     pub const fn carried_on(self) -> PlayerTick {
-        PlayerTick { switch_to: None, choice: None, gesture: None, ..self }
+        PlayerTick { switch_to: None, choice: None, ..self }
     }
 }
 
@@ -348,9 +314,8 @@ mod tests {
     }
 
     #[test]
-    fn a_tick_word_holds_the_buttons_the_switch_the_microphone_the_choice_and_the_gesture() {
-        use crate::custom::layer::{Gesture, Target};
-        let t = |held, switch_to, mic_level, choice| PlayerTick { held, switch_to, mic_level, choice, gesture: None };
+    fn a_tick_word_holds_the_buttons_the_switch_the_microphone_and_the_choice() {
+        let t = |held, switch_to, mic_level, choice| PlayerTick { held, switch_to, mic_level, choice };
         for t in [
             PlayerTick::buttons(0),
             PlayerTick::buttons(0x3FF),
@@ -363,12 +328,7 @@ mod tests {
             t(0, None, 0, Some(ScreenChoice::Unpick(4))),
             t(keys::B, None, 0, Some(ScreenChoice::Unchoose)),
             t(0x3FF, Some(2), 0xFF, Some(ScreenChoice::Release(11))),
-            PlayerTick { gesture: Some(Gesture::Hover(Target::Slot(0))), ..t(keys::UP, None, 0, None) },
-            PlayerTick { gesture: Some(Gesture::Describe(Target::FormExit)), ..t(0x3FF, Some(2), 0xFF, Some(ScreenChoice::Release(11))) },
-            PlayerTick { gesture: Some(Gesture::Describe(Target::FormExit)), ..t(0x3FF, Some(2), 0xFF, None) },
-            PlayerTick { gesture: Some(Gesture::Click(Some(Target::Pick(4)))), ..t(0, None, 0, Some(ScreenChoice::TakeBack)) },
-            PlayerTick { gesture: Some(Gesture::Click(None)), ..t(0x3FF, Some(2), 0xFF, Some(ScreenChoice::ChooseForm(4))) },
-            PlayerTick { gesture: Some(Gesture::Describe(Target::FormExit)), ..t(0x3FF, Some(2), 0xFF, Some(ScreenChoice::ChooseForm(4))) },
+            t(0x3FF, Some(2), 0xFF, None),
         ] {
             assert_eq!(PlayerTick::from_word(t.word()), t);
         }
@@ -378,18 +338,11 @@ mod tests {
     }
 
     #[test]
-    fn a_word_holds_every_choice_with_every_gesture() {
-        let choices = (0..ScreenChoice::CODES).map(ScreenChoice::from_code);
-        for choice in choices {
-            for gesture in (0..Gesture::CODES).map(Gesture::from_code) {
-                let t = PlayerTick { held: 0x3FF, switch_to: Some(2), mic_level: 0xFF, choice, gesture };
-                assert_eq!(PlayerTick::from_word(t.word()), t);
-            }
+    fn a_word_holds_every_choice() {
+        for choice in (0..ScreenChoice::CODES).map(ScreenChoice::from_code) {
+            let t = PlayerTick { held: 0x3FF, switch_to: Some(2), mic_level: 0xFF, choice };
+            assert_eq!(PlayerTick::from_word(t.word()), t);
         }
-        // A gesture alone keeps the word below 2^27 (a wire element of four
-        // bytes).
-        let hover = PlayerTick { gesture: Gesture::from_code(Gesture::CODES - 1), ..PlayerTick::buttons(0x3FF) };
-        assert!(hover.word() < 1 << 27);
     }
 
     #[test]
@@ -420,32 +373,5 @@ mod tests {
         assert_eq!(ScreenChoice::named("form2"), Some(ScreenChoice::ChooseForm(2)));
         assert_eq!(ScreenChoice::named("form5"), None);
         assert_eq!(ScreenChoice::named("take_back"), Some(ScreenChoice::TakeBack));
-    }
-
-    #[test]
-    fn every_gesture_has_its_own_number() {
-        use crate::custom::layer::{Gesture, Target};
-        let targets: Vec<Target> = (0..12)
-            .map(Target::Slot)
-            .chain((0..5).map(Target::Pick))
-            .chain((0..5).map(Target::Form))
-            .chain([Target::FormTab, Target::FormExit])
-            .collect();
-        let all: Vec<Gesture> = targets
-            .iter()
-            .map(|&t| Gesture::Hover(t))
-            .chain(targets.iter().map(|&t| Gesture::Click(Some(t))))
-            .chain([Gesture::Click(None)])
-            .chain(targets.iter().map(|&t| Gesture::Describe(t)))
-            .chain([Gesture::Away])
-            .collect();
-        for (i, g) in all.iter().enumerate() {
-            assert_eq!(Gesture::from_code(g.code()), Some(*g), "{g:?}");
-            assert!(all[..i].iter().all(|h| h.code() != g.code()), "{g:?}");
-            assert!((1..Gesture::CODES).contains(&g.code()), "{g:?}");
-        }
-        assert_eq!(all.len() as u32 + 1, Gesture::CODES);
-        assert_eq!(Gesture::from_code(0), None);
-        assert_eq!(Gesture::from_code(Gesture::CODES), None);
     }
 }

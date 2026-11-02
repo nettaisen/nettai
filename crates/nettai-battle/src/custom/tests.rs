@@ -207,6 +207,19 @@ impl Player {
         (r, input)
     }
 
+    /// A tick as a replay plays it: the layer given the recorded input, its
+    /// choice with it, and the screen taking the recorded choice alone (what
+    /// the layer's keys would choose is its view, not the battle's).
+    fn step_replayed(&mut self, recorded: PlayerTick) {
+        self.tick += 1;
+        let mut buttons = self.buttons();
+        let ctx = context_of(&self.lib, self.stats, self.turn, self.run_key, self.time_limit, self.tick);
+        self.layer.input_on(recorded, presented(&self.side, &ctx, self.turn, self.time_limit).as_ref());
+        let lib = &self.lib;
+        self.side.tick_with(&ctx, recorded.choice, &mut self.console, |id| lib.chip(id).damage, &mut buttons);
+        self.layer.follow_on(presented(&self.side, &ctx, self.turn, self.time_limit).as_ref());
+    }
+
     /// What the player sees.
     fn up(&self) -> Up {
         match self.layer.sub {
@@ -1252,26 +1265,26 @@ fn the_clock_is_part_of_the_battles_state() {
     assert_ne!(snapshot.digest(), later.digest(), "the digest covers the clock");
 }
 
-/// The pointer (docs/design/custom-screen-actions.md §5): a hover moves the
+/// The pointer (docs/design/custom-screen-actions.md §5): a press moves the
 /// cursor with no choice; a click picks; a click on a pick takes it back,
 /// the later ones moving up; a describe is R on what it is on, and a click
 /// closes the description.
 #[test]
-fn the_pointer_hovers_picks_takes_back_and_describes() {
+fn the_pointer_presses_picks_takes_back_and_describes() {
     use super::layer::{Gesture, Target};
     let mut p = Player::new(&[(SHOT, 0), (SHOT, 1), (SHOT, 2), (WAVE, 0), (MEGA, 2)]);
     p.open();
     p.wait(10);
     p.step(0);
     assert_eq!(p.phase(), Phase::Choosing);
-    // A hover: the cursor moves (its sound), nothing is chosen.
-    p.layer.point(Gesture::Hover(Target::Slot(2)));
+    // A press: the cursor moves (its sound), nothing is chosen.
+    p.layer.point(Gesture::Down(Target::Slot(2)));
     p.step(0);
     assert_eq!(p.layer.cursor, 2);
     assert!(p.sounds().contains(&look::ScreenSound::Cursor));
     assert!(p.screen().selection().is_empty());
-    // A hover on a slot the cursor never goes to (none dealt there) does nothing.
-    p.layer.point(Gesture::Hover(Target::Slot(7)));
+    // A press on a slot the cursor never goes to (none dealt there) does nothing.
+    p.layer.point(Gesture::Down(Target::Slot(7)));
     p.step(0);
     assert_eq!(p.layer.cursor, 2);
     // Clicks pick, the cursor going to each.
@@ -1337,36 +1350,35 @@ fn a_pick_described_is_its_own_chip() {
     assert!(matches!(p.layer.sub, Sub::Description { chip: Some(c), from_list: false, .. } if c == ChipHandle(SHOT)), "{:?}", p.layer.sub);
 }
 
-/// The tick's input carries the gesture the layer took (none from an empty
-/// queue), and a gesture given with the input is the tick's: a layer given
-/// another's ticks, buttons and gestures, as a replay gives them, shows what
-/// it showed on every tick, and the screen takes the same choices.
+/// A layer given another's ticks as a replay gives them (their buttons and
+/// choices; no gestures, which the input doesn't carry) takes the same
+/// choices, and its cursor goes to what each names as the pointer's did: a
+/// chip's slot, the slot a pick taken back goes back to, OK.
 #[test]
-fn a_layer_given_the_ticks_gestures_shows_what_the_pointers_did() {
+fn a_layer_given_the_ticks_follows_the_pointers_choices() {
     use super::layer::{Gesture, Target};
     let chips = [(SHOT, 0), (SHOT, 1), (SHOT, 2), (WAVE, 0), (MEGA, 2)];
     let (mut live, mut again) = (Player::new(&chips), Player::new(&chips));
     for p in [&mut live, &mut again] {
         p.open();
     }
-    let script: [(u32, Option<Gesture>, u16); 15] = [
-        (12, Some(Gesture::Hover(Target::Slot(3))), 0),
-        (13, Some(Gesture::Hover(Target::Slot(1))), 0),
-        (14, Some(Gesture::Click(Some(Target::Slot(0)))), 0),
+    let script: [(u32, Option<Gesture>, u16); 14] = [
+        (12, Some(Gesture::Down(Target::Slot(3))), 0),
+        (13, Some(Gesture::Down(Target::Slot(1))), 0),
+        (14, Some(Gesture::Click(Some(Target::Slot(4)))), 0),
         (16, None, keys::RIGHT),
         (20, Some(Gesture::Click(Some(Target::Slot(1)))), 0),
-        (21, Some(Gesture::Hover(Target::Pick(1))), 0),
+        (21, Some(Gesture::Down(Target::Pick(1))), 0),
         (22, Some(Gesture::Describe(Target::Pick(0))), 0),
         (40, Some(Gesture::Click(None)), 0),
-        (58, Some(Gesture::Hover(Target::Pick(0))), 0),
-        (59, Some(Gesture::Away), 0),
-        (60, Some(Gesture::Hover(Target::Slot(4))), 0),
+        (60, Some(Gesture::Down(Target::Slot(2))), 0),
         (61, Some(Gesture::Click(Some(Target::Pick(0)))), 0),
-        (70, Some(Gesture::Describe(Target::Slot(2))), 0),
+        (70, Some(Gesture::Click(Some(Target::Slot(0)))), 0),
+        (80, Some(Gesture::Down(Target::Slot(2))), 0),
         (90, None, keys::A),
         (110, Some(Gesture::Click(Some(Target::Slot(OK_SLOT)))), 0),
     ];
-    let mut taken = 0;
+    let mut chosen = Vec::new();
     for tick in 0..130 {
         let mut held = 0;
         for &(_, gesture, keys) in script.iter().filter(|s| s.0 == tick) {
@@ -1376,16 +1388,16 @@ fn a_layer_given_the_ticks_gestures_shows_what_the_pointers_did() {
             held = keys;
         }
         let (_, given) = live.step_input(PlayerTick::buttons(held));
-        assert_eq!(given.gesture.is_some(), script.iter().any(|s| s.0 == tick && s.1.is_some()), "tick {tick}");
-        taken += given.gesture.is_some() as u32;
-        let (_, replayed) = again.step_input(PlayerTick { gesture: given.gesture, ..PlayerTick::buttons(given.held) });
-        assert_eq!(replayed, given, "tick {tick}");
-        let shown = |l: &Layer| (l.cursor, l.pick_cursor, l.sub, l.list_cursor, l.chip_window, l.look, l.hover, l.calls().collect::<Vec<_>>());
-        assert_eq!(shown(&again.layer), shown(&live.layer), "tick {tick}");
+        again.step_replayed(given);
         assert_eq!(again.screen().selection(), live.screen().selection(), "tick {tick}");
+        if let Some(c) = given.choice {
+            chosen.push(c);
+            assert_eq!(again.layer.cursor, live.layer.cursor, "tick {tick}: {c:?}");
+        }
     }
-    assert_eq!(taken, 13);
-    assert_ne!(live.phase(), Phase::Choosing, "OK sent the hand");
+    use ScreenChoice::{Ok, Pick, Unpick};
+    assert_eq!(chosen, [Pick(4), Pick(1), Unpick(0), Pick(0), Pick(2), Ok]);
+    assert_ne!(again.phase(), Phase::Choosing, "OK sent the hand");
 }
 
 /// One tick with this choice given (a replay's or a bot's, past the
@@ -1606,13 +1618,13 @@ fn unchoosing_nothing_chosen_is_refused() {
 }
 
 /// The cursor on a pick (the user: "when mousing over the stack of chips you
-/// should show the cursor there too"): a hover on a pick puts it there, its
+/// should show the cursor there too"): a press on a pick puts it there, its
 /// slot kept, the chip window showing the pick's chip; a direction brings it
 /// back to its slot and moves it no further; A takes the pick back, the
 /// cursor to the slot it goes back to (the user: "when deleting a chip from
 /// the tray, you should reposition the cursor to where the chip returns");
 /// R describes it; B taking the pick from under it leaves it on its slot; a
-/// hover on a slot, or the pointer away, brings it back.
+/// press on a slot, or on another target, brings it back.
 #[test]
 fn the_cursor_goes_on_a_pick_by_pointer_only() {
     use super::layer::{Gesture, Target};
@@ -1622,12 +1634,12 @@ fn the_cursor_goes_on_a_pick_by_pointer_only() {
     p.step(0);
     choose(&mut p, ScreenChoice::Pick(0));
     choose(&mut p, ScreenChoice::Pick(1));
-    p.layer.point(Gesture::Hover(Target::Slot(3)));
+    p.layer.point(Gesture::Down(Target::Slot(3)));
     p.step(0);
     assert_eq!((p.layer.cursor, p.layer.pick_cursor), (3, None));
-    // Onto the second pick: the cursor there, the slot kept, WAVE in the
+    // On the second pick: the cursor there, the slot kept, WAVE in the
     // chip window, the cursor's sound.
-    p.layer.point(Gesture::Hover(Target::Pick(1)));
+    p.layer.point(Gesture::Down(Target::Pick(1)));
     p.step(0);
     assert_eq!((p.layer.cursor, p.layer.pick_cursor), (3, Some(1)));
     assert_eq!((p.layer.chip_window.slot, p.layer.chip_window.last_chip.map(|c| c.id)), (1, Some(ChipHandle(WAVE))));
@@ -1640,7 +1652,7 @@ fn the_cursor_goes_on_a_pick_by_pointer_only() {
     p.press(keys::RIGHT);
     assert_eq!((p.layer.cursor, p.layer.pick_cursor), (4, None));
     // R on a pick describes its chip; A takes it back.
-    p.layer.point(Gesture::Hover(Target::Pick(0)));
+    p.layer.point(Gesture::Down(Target::Pick(0)));
     p.step(0);
     assert_eq!(p.layer.pick_cursor, Some(0));
     p.press(keys::R);
@@ -1661,17 +1673,17 @@ fn the_cursor_goes_on_a_pick_by_pointer_only() {
     assert_eq!((p.layer.chip_window.slot, p.layer.chip_window.last_chip.map(|c| c.id)), (0, Some(ChipHandle(SHOT))));
     // On WAVE's pick, B is the game's B: the pick gone from under it, the
     // cursor back on its slot.
-    p.layer.point(Gesture::Hover(Target::Pick(0)));
+    p.layer.point(Gesture::Down(Target::Pick(0)));
     p.step(0);
     assert_eq!(p.layer.pick_cursor, Some(0));
     let (_, given) = p.step_input(PlayerTick::buttons(keys::B));
     assert_eq!(given.choice, Some(ScreenChoice::TakeBack));
     p.step(0);
     assert_eq!((p.screen().selection(), p.layer.pick_cursor, p.layer.cursor), (&[][..], None, 0));
-    // The pointer away, or onto a slot: back on the slots.
+    // A press on another target, or on a slot: back on the slots.
     choose(&mut p, ScreenChoice::Pick(0));
-    for (off, cursor) in [(Gesture::Away, 0), (Gesture::Hover(Target::Slot(2)), 2)] {
-        p.layer.point(Gesture::Hover(Target::Pick(0)));
+    for (off, cursor) in [(Gesture::Down(Target::FormTab), 0), (Gesture::Down(Target::Slot(2)), 2)] {
+        p.layer.point(Gesture::Down(Target::Pick(0)));
         p.step(0);
         assert_eq!(p.layer.pick_cursor, Some(0));
         p.layer.point(off);
@@ -1695,7 +1707,7 @@ fn the_pointer_releases_a_held_chip_and_unpicks() {
     choose(&mut p, ScreenChoice::Pick(1));
     assert!(on_screen(&mut p, |s, f, v| s.hold_last_pick(8, f, v)));
     redo_availability(&mut p);
-    p.layer.point(Gesture::Hover(Target::Slot(4)));
+    p.layer.point(Gesture::Down(Target::Slot(4)));
     p.step(0);
     assert_eq!(p.layer.cursor, 4);
     p.layer.point(Gesture::Click(Some(Target::Pick(0))));

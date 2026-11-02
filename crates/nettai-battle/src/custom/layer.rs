@@ -32,7 +32,7 @@
 use super::chatbox::{Chatbox, Script};
 use super::folder::BattleFolder;
 use super::look::{ChipWindow, Draw, Hover, ScreenCall, ScreenSound, Shown, WindowLook};
-use super::screen::{FORM_LIST_ENTRIES, MAX_SELECTIONS, OK_SLOT, Phase, PlayerView, SLOTS, Screen, SlotKind, checked};
+use super::screen::{OK_SLOT, Phase, PlayerView, Screen, SlotKind, checked};
 use crate::battle::{Battle, TickEvents, mode};
 use crate::rules::FormList;
 use crate::content::{CustomScreenLayout, FormListRules, HoverRuns, ScreenKey, SlotMoves};
@@ -127,108 +127,23 @@ pub enum Target {
     FormExit,
 }
 
-/// The targets a gesture's number tells apart ([`Target::index`]).
-const TARGETS: u32 = SLOTS as u32 + MAX_SELECTIONS as u32 + FORM_LIST_ENTRIES as u32 + 2;
-
-impl Target {
-    /// The target's number among them all, 0 to 23: the slots, the picks,
-    /// the form list's entries, its tab and its exit.
-    const fn index(self) -> u32 {
-        const PICKS: u32 = SLOTS as u32;
-        const FORMS: u32 = PICKS + MAX_SELECTIONS as u32;
-        const TAB: u32 = FORMS + FORM_LIST_ENTRIES as u32;
-        match self {
-            Target::Slot(s) => s as u32 % SLOTS as u32,
-            Target::Pick(k) => PICKS + k as u32 % MAX_SELECTIONS as u32,
-            Target::Form(k) => FORMS + k as u32 % FORM_LIST_ENTRIES as u32,
-            Target::FormTab => TAB,
-            Target::FormExit => TAB + 1,
-        }
-    }
-
-    /// The target of a number ([`Target::index`]), if one has it.
-    const fn of_index(i: u32) -> Option<Target> {
-        const PICKS: u32 = SLOTS as u32;
-        const FORMS: u32 = PICKS + MAX_SELECTIONS as u32;
-        const TAB: u32 = FORMS + FORM_LIST_ENTRIES as u32;
-        Some(match i {
-            i if i < PICKS => Target::Slot(i as u8),
-            i if i < FORMS => Target::Pick((i - PICKS) as u8),
-            i if i < TAB => Target::Form((i - FORMS) as u8),
-            i if i == TAB => Target::FormTab,
-            i if i == TAB + 1 => Target::FormExit,
-            _ => return None,
-        })
-    }
-}
-
-/// A pointer's gesture on the custom screen (the mouse's, a finger's), for
-/// the layer's next tick (docs/design/custom-screen-actions.md §5). The
-/// tick's input carries the one the layer took (`PlayerTick::gesture`), for
-/// a replay to give its layer again.
+/// A pointer's gesture on the custom screen, for the layer's next tick
+/// (docs/design/custom-screen-actions.md §5): the mouse's and a finger's
+/// alike (nettai-frontend's `pointer`). Only what it chooses goes in the
+/// tick's input (`PlayerTick::choice`); the cursor it moves and what it
+/// opens are its player's view alone, which a replay follows from the
+/// choices.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Gesture {
-    /// The pointer is over a target: the cursor goes there, and no choice
-    /// is made (a finger down, the mouse's hover).
-    Hover(Target),
-    /// A click or a tap on a target (none: on none, which closes a
-    /// description or brings the hidden window back as a key does, and
-    /// closes the form list as B does).
+    /// Pressed on a target (the mouse's button, a finger down): the cursor
+    /// goes there, and no choice is made.
+    Down(Target),
+    /// Let go on the target it was pressed on, a click or a tap (none: on
+    /// none, which closes a description or brings the hidden window back as
+    /// a key does, and closes the form list as B does).
     Click(Option<Target>),
     /// Right-click, a long press: R on the target.
     Describe(Target),
-    /// The pointer went off the targets (onto none of them, or off the
-    /// picture): a cursor it put on a pick goes back to its slot.
-    Away,
-}
-
-impl Gesture {
-    /// How many numbers the gestures take, none's 0 with them.
-    pub const CODES: u32 = 3 + 3 * TARGETS;
-
-    /// The gesture's number (none is 0), below [`Gesture::CODES`]: a
-    /// hover's 1 + its target's number ([`Target::index`]), then a click's
-    /// on each target, a click on none, a describe's, the pointer away.
-    pub const fn code(self) -> u32 {
-        match self {
-            Gesture::Hover(t) => 1 + t.index(),
-            Gesture::Click(Some(t)) => 1 + TARGETS + t.index(),
-            Gesture::Click(None) => 1 + 2 * TARGETS,
-            Gesture::Describe(t) => 2 + 2 * TARGETS + t.index(),
-            Gesture::Away => 2 + 3 * TARGETS,
-        }
-    }
-
-    /// The gesture a number names; none for 0 and the numbers no gesture
-    /// has.
-    pub const fn from_code(code: u32) -> Option<Gesture> {
-        if code == 0 {
-            return None;
-        }
-        let i = code - 1;
-        if i < TARGETS {
-            return match Target::of_index(i) {
-                Some(t) => Some(Gesture::Hover(t)),
-                None => None,
-            };
-        }
-        if i < 2 * TARGETS {
-            return match Target::of_index(i - TARGETS) {
-                Some(t) => Some(Gesture::Click(Some(t))),
-                None => None,
-            };
-        }
-        if i == 2 * TARGETS {
-            return Some(Gesture::Click(None));
-        }
-        if i == 1 + 3 * TARGETS {
-            return Some(Gesture::Away);
-        }
-        match Target::of_index(i - 2 * TARGETS - 1) {
-            Some(t) => Some(Gesture::Describe(t)),
-            None => None,
-        }
-    }
 }
 
 /// The most gestures a layer keeps for its next ticks.
@@ -313,7 +228,7 @@ pub struct Layer {
     turn: Option<u8>,
     /// The slot under the cursor.
     pub cursor: u8,
-    /// The pick the pointer's hover put the cursor on instead, in the
+    /// The pick the pointer's press put the cursor on instead, in the
     /// picked chips' column (a place of the pointer's alone: no key moves
     /// the cursor there; `cursor` keeps its slot, where a direction brings
     /// it back).
@@ -337,7 +252,7 @@ pub struct Layer {
     calls: [Option<ScreenCall>; 8],
     plan: Plan,
     /// The pointer's gestures for the next ticks, in order (`Layer::point`):
-    /// one a tick, a hover replaced by what follows it.
+    /// one a tick, a press replaced by what follows it.
     gestures: [Option<Gesture>; GESTURES],
     /// The gesture this tick takes, until what it is for takes it.
     gesture: Option<Gesture>,
@@ -373,11 +288,11 @@ impl Layer {
     }
 
     /// A gesture of the pointer, for the next tick ([`Layer::input`]): a
-    /// hover the next gesture replaces, the others one a tick, in order (a
+    /// press the next gesture replaces, the others one a tick, in order (a
     /// full queue drops the newest).
     pub fn point(&mut self, gesture: Gesture) {
         let n = self.gestures.iter().take_while(|g| g.is_some()).count();
-        let n = if n > 0 && matches!(self.gestures[n - 1], Some(Gesture::Hover(_) | Gesture::Away)) {
+        let n = if n > 0 && matches!(self.gestures[n - 1], Some(Gesture::Down(_))) {
             self.gestures[n - 1] = None;
             n - 1
         } else {
@@ -485,12 +400,13 @@ impl Layer {
 
     /// The first half of a tick: the player's input of the tick (`input`:
     /// their buttons, as they hold them now; a switch request; a choice of
-    /// their own; a pointer's gesture, a recording's) against the battle as
-    /// presented, `b`, before it ticks. The tick's input, with the choice its
-    /// keys made (a choice given stays), a switch request held back while
-    /// the layer has something up over the chips (the original's screen reads
-    /// it only while choosing), and the gesture the tick took: the one given,
-    /// else the pointer's next ([`Layer::point`]).
+    /// their own, a recording's or a peer's) against the battle as
+    /// presented, `b`, before it ticks, with the pointer's next gesture
+    /// ([`Layer::point`]). The tick's input, with the choice its keys or the
+    /// gesture made (a choice given stays, and the cursor goes to what it
+    /// names), and a switch request held back while the layer has something
+    /// up over the chips (the original's screen reads it only while
+    /// choosing).
     pub fn input(&mut self, input: PlayerTick, b: &Battle) -> PlayerTick {
         self.input_on(input, b.presented(self.side).as_ref())
     }
@@ -501,20 +417,13 @@ impl Layer {
         self.calls = [None; 8];
         self.look.drawn = Shown::default();
         self.plan = Plan::default();
-        // (The tick's gesture: one given with the input, a recording's; else
-        // the pointer's next. What it is for takes it, or it is dropped with
-        // the tick; the tick's input carries it either way.)
-        self.gesture = match input.gesture {
-            Some(g) => Some(g),
-            None => {
-                let next = self.gestures[0];
-                self.gestures.rotate_left(1);
-                self.gestures[GESTURES - 1] = None;
-                next
-            }
-        };
-        let mut out = PlayerTick { choice: None, gesture: self.gesture, ..input };
-        let Some(p) = p else { return PlayerTick { gesture: self.gesture, ..input } };
+        // (The tick's gesture, the pointer's next: what it is for takes it,
+        // or it is dropped with the tick.)
+        self.gesture = self.gestures[0];
+        self.gestures.rotate_left(1);
+        self.gestures[GESTURES - 1] = None;
+        let mut out = PlayerTick { choice: None, ..input };
+        let Some(p) = p else { return input };
         let screen = p.screen;
         if self.turn != Some(p.turn) {
             // (A screen it hasn't followed from its opening: a layer made
@@ -569,8 +478,11 @@ impl Layer {
             Phase::Settling => TickKind::Settling,
             _ => TickKind::Screen,
         };
-        if input.choice.is_some() {
-            out.choice = input.choice;
+        if let Some(c) = input.choice {
+            out.choice = Some(c);
+            if phase == Phase::Choosing && self.sub == Sub::None {
+                self.cursor_to_choice(c, screen);
+            }
         }
         out
     }
@@ -626,7 +538,7 @@ impl Layer {
             }
             if joy.pressed & keys::A != 0 {
                 if let Some(&slot) = screen.selection().get(k as usize) {
-                    self.cursor_to_taken_back(slot);
+                    self.put_cursor(slot);
                 }
                 return Some(ScreenChoice::Unpick(k));
             }
@@ -774,13 +686,35 @@ impl Layer {
         }
     }
 
-    /// The cursor off a pick taken back (`Unpick`), onto the slot it goes
-    /// back to: silently, the take-back's sound the screen's. (B, the
-    /// original's, leaves the cursor where it is.)
-    fn cursor_to_taken_back(&mut self, slot: u8) {
+    /// The cursor onto slot `slot`, off any pick, silently (the choice's
+    /// sound the screen's): where a pick taken back (`Unpick`) goes back to
+    /// (B, the original's, leaves the cursor where it is), or what a choice
+    /// given names.
+    fn put_cursor(&mut self, slot: u8) {
         self.cursor = slot;
         self.pick_cursor = None;
         self.plan.chip_window = true;
+    }
+
+    /// The cursor onto what a choice given names (a replay's, a peer's, an
+    /// AI's, which no keys of the layer's made): a chip's, a button's or
+    /// OK's slot, the slot a pick taken back goes back to. A pointer
+    /// player's cursor so follows their choices in a replay, which carries
+    /// no gestures.
+    fn cursor_to_choice(&mut self, c: ScreenChoice, screen: &Screen) {
+        let slot = match c {
+            ScreenChoice::Pick(s) | ScreenChoice::Press(s) | ScreenChoice::Release(s) => s,
+            ScreenChoice::Ok => OK_SLOT,
+            ScreenChoice::Unpick(k) => match screen.selection().get(k as usize) {
+                Some(&s) => s,
+                None => return,
+            },
+            ScreenChoice::TakeBack | ScreenChoice::ChooseForm(_) | ScreenChoice::Unchoose => return,
+        };
+        let there = slot == self.cursor && self.pick_cursor.is_none();
+        if !there && screen.slots.get(slot as usize).is_some_and(|s| !s.kind.is_absent()) {
+            self.put_cursor(slot);
+        }
     }
 
     /// The slot whose chip the cursor shows: a pick's, where it is on one,
@@ -797,19 +731,19 @@ impl Layer {
         let Some(gesture) = self.gesture else { return Pointed::Nothing };
         let screen = p.screen;
         match gesture {
-            Gesture::Hover(Target::Slot(s)) => {
+            Gesture::Down(Target::Slot(s)) => {
                 if !self.point_cursor(s, screen) {
                     self.leave_picks();
                 }
                 Pointed::Nothing
             }
-            // (Onto a pick: the cursor there, its chip in the chip window.)
-            Gesture::Hover(Target::Pick(k)) => {
+            // (On a pick: the cursor there, its chip in the chip window.)
+            Gesture::Down(Target::Pick(k)) => {
                 self.point_pick(k, screen);
                 Pointed::Nothing
             }
-            // (Off the picks, onto something else or nothing: back to its slot.)
-            Gesture::Hover(_) | Gesture::Away => {
+            // (On something else: back to its slot.)
+            Gesture::Down(_) => {
                 self.leave_picks();
                 Pointed::Nothing
             }
@@ -832,7 +766,7 @@ impl Layer {
             // (The pick clicked taken back, wherever it is.)
             Gesture::Click(Some(Target::Pick(k))) => {
                 let Some(&slot) = screen.selection().get(k as usize) else { return Pointed::Nothing };
-                self.cursor_to_taken_back(slot);
+                self.put_cursor(slot);
                 Pointed::Choice(ScreenChoice::Unpick(k))
             }
             // (The tab opens the list as UP does, from anywhere.)
@@ -873,7 +807,7 @@ impl Layer {
         let list = p.form_list.unwrap_or_default();
         let open = list.chosen.is_none();
         match gesture {
-            Gesture::Hover(Target::Form(k)) if open && k < list.count => {
+            Gesture::Down(Target::Form(k)) if open && k < list.count => {
                 if k != self.list_cursor {
                     self.list_cursor = k;
                     if list.count > 1 {

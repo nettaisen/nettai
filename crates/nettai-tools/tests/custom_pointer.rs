@@ -8,7 +8,7 @@
 //! cursor to its slot), the tab opens the form list and closes it, so does its exit label and a click off its window,
 //! a click on OK sends; in EXE6 a click on the Cross chosen un-chooses it, the picks kept.
 
-use nettai_battle::custom::layer::{Gesture, ListStage, Target};
+use nettai_battle::custom::layer::{ListStage, Target};
 use nettai_battle::custom::{Phase, SlotKind};
 use nettai_battle::{PlayerTick, ScreenChoice};
 use nettai_frontend::driver::{InFight, LivePlayer, Opponent};
@@ -79,7 +79,7 @@ fn click(p: &mut Player, (x, y): (f32, f32)) -> (Option<Target>, Option<ScreenCh
     let renderer = p.renderer();
     let at = |x: f32, y: f32| renderer.target_at(0, x as i32, y as i32);
     let on = at(x, y);
-    let e = |kind| PointerEvent { kind, button: PointerButton::Primary, touch: false, x, y };
+    let e = |kind| PointerEvent { kind, button: PointerButton::Primary, x, y };
     for g in [pointer.event(e(PointerKind::Down), at), pointer.event(e(PointerKind::Up), at)].into_iter().flatten() {
         layer.point(g);
     }
@@ -132,7 +132,7 @@ fn each_target_chooses(p: &mut Player, size: (usize, usize), label: &str) -> usi
 /// A pointer's click through the player, in the frame's pixels.
 fn point_click(p: &mut Player, (x, y): (f32, f32)) {
     for kind in [PointerKind::Moved, PointerKind::Down, PointerKind::Up] {
-        p.point(PointerEvent { kind, button: PointerButton::Primary, touch: false, x, y });
+        p.point(PointerEvent { kind, button: PointerButton::Primary, x, y });
     }
 }
 
@@ -342,7 +342,7 @@ fn differences(a: &nettai_render::Frame, b: &nettai_render::Frame) -> Vec<Rect> 
 }
 
 /// The cursor on a pick by pointer (the user: "when mousing over the stack of chips you should show the cursor
-/// there too"): drawn about the pick's icon, inside the pick's box, the slot's cursor gone; nothing else of the
+/// there too"; now a press on the pick puts it there): drawn about the pick's icon, inside the pick's box, the slot's cursor gone; nothing else of the
 /// frame changes. Each game, at both sizes.
 #[test]
 #[ignore = "requires the original ROMs: $NETTAI_ROMS, else the Legacy Collection installed through Steam"]
@@ -374,7 +374,7 @@ fn the_cursor_on_a_pick_is_drawn_there() {
     }
 }
 
-/// A tap held still on a chip describes it; a gesture of the mouse's on the picture with no screen up does nothing.
+/// A press held still on a chip (a finger's, the mouse's alike) describes it.
 #[test]
 #[ignore = "requires the original ROMs: $NETTAI_ROMS, else the Legacy Collection installed through Steam"]
 fn a_long_press_describes() {
@@ -382,16 +382,15 @@ fn a_long_press_describes() {
     let mut p = player(&game, "custom_pointer/m6.toml");
     to_choosing(&mut p, SIZES[0], "exe6");
     let chip = middle(box_of(&mut p, Target::Slot(2)));
-    let e = |kind| PointerEvent { kind, button: PointerButton::Primary, touch: true, x: chip.0, y: chip.1 };
+    let e = |kind| PointerEvent { kind, button: PointerButton::Primary, x: chip.0, y: chip.1 };
     p.point(e(PointerKind::Down));
     let described = (0..nettai_frontend::pointer::LONG_PRESS + 5).any(|_| {
         p.tick(0);
         p.layers()[0].unwrap().chatbox().is_some()
     });
     assert!(described, "a long press describes");
-    assert_eq!(p.layers()[0].unwrap().cursor, 2, "the finger's down put the cursor there");
+    assert_eq!(p.layers()[0].unwrap().cursor, 2, "the press put the cursor there");
     p.point(e(PointerKind::Up));
     p.tick(0);
     assert!(p.battle().presented(0).unwrap().screen.selection().is_empty(), "its letting go picks nothing");
-    let _ = Gesture::Click(None);
 }

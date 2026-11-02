@@ -40,32 +40,29 @@
 //! (`nettai_battle::PlayerTick::word`): the GBA's buttons in the low ten
 //! bits, the party switch request in bits 10 and 11 (the member + 1, 0
 //! none), the microphone's level in bits 12 to 19, and in bits 20 to 31
-//! the custom screen's choice with the pointer's gesture on it as one
-//! number (the gesture's `Gesture::code` + 75 × the choice's
-//! `ScreenChoice::code`, each 0 none). It is written
+//! the custom screen's choice (its `ScreenChoice::code`, 0 none). It is
+//! written
 //! when it changes: before the first tick nothing is held, and it carries
 //! across a round's end. A writer flushes each record as it is written, so
 //! a file cut short (a crash) holds every tick before the cut, and a reader
 //! says it was cut ([`End::Cut`]).
 //!
 //! **The screens' presentation track.** Where each player's custom screen
-//! cursor was, what it hovered and what they had up over the chips (R's
-//! description, L's message, SELECT's hiding, the form list) is no part of
-//! the simulation: each player's own screen layer kept it, outside it
+//! cursor was and what they had up over the chips (R's description, L's
+//! message, SELECT's hiding, the form list) is no part of the simulation:
+//! each player's own screen layer kept it, outside it
 //! (`nettai_battle::custom::layer`), driven by their buttons and their
-//! pointer's gestures (a hover onto another target, a click, a describe).
-//! A viewer shows both players' screens by running each side's layer again
-//! from the words' buttons and gestures: each word carries the gesture its
-//! player's layer took on the tick it read the word's buttons (the
-//! simulation reads none). A player's layer read them a few ticks before
-//! their word landed (their input delay: netplay's present delay and one,
-//! live play's input delay; none for a side played with no delay, a bot's,
-//! a trace's): the record keeps it as the side's screen delay
-//! ([`Tick::delays`]), written when it changes (0 before the first tick),
-//! and the layer's input before tick `u` is the buttons and the gesture of
-//! the word that landed on tick `u + delay`. The delay and the gestures are
-//! presentation alone: no part of the input the simulation takes, nor of
-//! its digest.
+//! pointer. A viewer shows both players' screens by running each side's
+//! layer again from the words' buttons and choices: what keys did shows as
+//! it was, and a pointer's choice puts the cursor on what it names (the
+//! pointer's presses and moves aren't recorded). A player's layer read the
+//! word a few ticks before it landed (their input delay: netplay's present
+//! delay and one, live play's input delay; none for a side played with no
+//! delay, a bot's, a trace's): the record keeps it as the side's screen
+//! delay ([`Tick::delays`]), written when it changes (0 before the first
+//! tick), and the layer's input before tick `u` is the word that landed on
+//! tick `u + delay`. The delay is presentation alone: no part of the input
+//! the simulation takes, nor of its digest.
 //!
 //! **What a replay says of each side** is its player's name (the info) and
 //! its setup (the match: the navi, the folder and whatever else its game's
@@ -238,9 +235,8 @@ impl Info {
 }
 
 /// One tick: both players' input by side (each a tick word: the buttons,
-/// the switch request, the microphone's level, the custom screen's choice
-/// and the pointer's gesture on it), each side's screen delay, and what a
-/// recording marks of it.
+/// the switch request, the microphone's level and the custom screen's
+/// choice), each side's screen delay, and what a recording marks of it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Tick {
     pub inputs: [u32; 2],
@@ -248,9 +244,9 @@ pub struct Tick {
     /// ticks between the tick whose battle its player's custom screen layer
     /// read and the tick the word lands on (live play's input delay,
     /// netplay's present delay and one; 0 for a side played with none, a
-    /// bot's, a trace's, lockstep). Presentation: the
-    /// layer's input before tick `u` is the buttons and the gesture of the
-    /// word that landed on tick `u + delay` (the crate's docs).
+    /// bot's, a trace's, lockstep). Presentation: the layer's input before
+    /// tick `u` is the word that landed on tick `u + delay` (the crate's
+    /// docs).
     pub delays: [u8; 2],
     /// The battle's digest after the tick, where it was taken.
     pub digest: Option<u64>,

@@ -244,12 +244,13 @@ impl Driver for ReplayPlayer {
     fn next(&mut self, b: &Battle, _: PlayerTick) -> Option<Step> {
         let t = *self.ticks.get(self.at)?;
         // Each side's layer as it ran: before this tick it read the buttons (and the switch request it let
-        // through) of the word that landed the side's delay later, and took the pointer's gesture that word
-        // carries (what it chose then is the recording's, in its words).
+        // through) of the word that landed the side's delay later, and the choice that word carries, whose slot
+        // its cursor goes to (a pointer player's moves aren't in the words). What it chooses is the recording's,
+        // in its words: the layer is the view alone.
         let mut layers = self.layers.take().unwrap_or_else(|| [Layer::new(0, b), Layer::new(1, b)]);
         for (side, layer) in layers.iter_mut().enumerate() {
             let read = self.ticks.get(self.at + t.delays[side] as usize).map_or_else(PlayerTick::default, |r| PlayerTick::from_word(r.inputs[side]));
-            layer.input(PlayerTick { choice: None, ..read }, b);
+            layer.input(read, b);
         }
         self.layers = Some(layers);
         self.at += 1;
@@ -595,20 +596,78 @@ pub(crate) mod tests {
     }
 
     /// Both sides' layers as a session's driver keeps them after a tick.
-    pub(crate) fn layers_shown(s: &Session) -> [Option<impl PartialEq + std::fmt::Debug>; 2] {
+    fn layers_shown(s: &Session) -> [Option<impl PartialEq + std::fmt::Debug>; 2] {
         s.driver.layers().map(|l| l.map(shown))
+    }
+
+    /// A set played by keys (the local player's at an input delay of 3,
+    /// pressing about their custom screens; the opponent a bot that gives
+    /// its choices), recorded: played back, both sides' layers show on
+    /// every tick what they showed live (the cursor, what is up, the form
+    /// list and its cursor, the chip window, the hover, the sounds), every
+    /// game.
+    #[test]
+    fn a_keys_played_set_plays_back_its_screens() {
+        use nettai_battle::battle::mode;
+        use nettai_battle::input::keys;
+        const PRESSED: [u16; 12] =
+            [keys::RIGHT, keys::DOWN, keys::LEFT, keys::UP, keys::A, keys::A, keys::B, keys::R, keys::SELECT, keys::L, keys::RIGHT, keys::A];
+        for (content, game) in [
+            (nettai_match::testing::exe6_content(), "exe6"),
+            (nettai_match::testing::exe5_content(), "exe5"),
+            (nettai_match::testing::exe4_content(), "exe4"),
+        ] {
+            let m = short_set::of(&content, game, 7);
+            let sink = Shared::default();
+            let mut s = Session::new(Box::new(LivePlayer::new(Set::of(&content, &m, 7)).with_input_delay(3)));
+            s.record(Recorder::new(Box::new(sink.clone()), &content, &m, &Info::of(MatchKind::Offline, 0)).unwrap()).unwrap();
+            let mut seen = Vec::new();
+            let mut up = 0;
+            loop {
+                let tick = s.ticks as u32;
+                let input = if s.battle.round.mode == mode::CUSTOM {
+                    let h = (tick / 4).wrapping_mul(0x9E37_79B9).rotate_left(15);
+                    let held = match tick % 97 {
+                        0 => keys::START,
+                        2 => keys::A,
+                        t if t % 4 == 0 => PRESSED[(h % PRESSED.len() as u32) as usize],
+                        _ => 0,
+                    };
+                    nettai_battle::PlayerTick::buttons(held)
+                } else {
+                    short_set::shooter(&s.battle, 0, tick)
+                };
+                if !s.step(input) {
+                    break;
+                }
+                seen.push(format!("{:?}", layers_shown(&s)));
+                up += s.driver.layers().into_iter().flatten().filter(|l| l.chatbox().is_some() || l.list_stage().is_some()).count();
+                assert!(s.ticks < 20_000, "{game}: the set doesn't end ({})", s.driver.position());
+            }
+            assert_eq!(s.result, Some(BattleResult::Won), "{game}");
+            assert!(up > 0, "{game}: nothing came up over the chips");
+            let replay = Replay::read(&sink.bytes()).unwrap();
+            let mut p = Session::new(Box::new(ReplayPlayer::new(&content, &replay, Some(0)).unwrap()));
+            let mut tick = 0;
+            while p.step(PlayerTick::default()) {
+                assert_eq!(format!("{:?}", layers_shown(&p)), seen[tick], "{game}: tick {tick}");
+                tick += 1;
+            }
+            assert_eq!((p.diverged, p.result, tick), (None, Some(BattleResult::Won), seen.len()), "{game}");
+        }
     }
 
     /// A set played by pointer, both players' (the local player's at an
     /// input delay of 3, keys among their gestures; the opponent's on its
-    /// second pad, which holds nothing), recorded: played back, both sides'
-    /// layers show on every tick what they showed live (the cursor, what is
-    /// up, the form list and its cursor, the chip window, the hover, the
-    /// sounds), every game; and the gestures were in the words, which a
-    /// replay of keys alone never has.
+    /// second pad, which holds nothing), recorded: played back, the battle
+    /// is the same, and on every tick a side's layer read a choice that
+    /// names a place (a pick, a button, OK, a pick taken back), its cursor
+    /// is where it was live, every game. (The pointer's presses aren't in
+    /// the words: between choices a replay's cursor is the keys' alone.)
     #[test]
-    fn a_pointer_played_set_plays_back_its_cursors() {
+    fn a_pointer_played_set_plays_back_its_choices_cursors() {
         use crate::driver::short_set::pointing;
+        use nettai_battle::ScreenChoice;
         use nettai_battle::battle::mode;
         use nettai_battle::input::keys;
         for (content, game) in [
@@ -623,7 +682,7 @@ pub(crate) mod tests {
             live.set_second_pad(Some(0));
             let mut s = Session::new(Box::new(live));
             s.record(Recorder::new(Box::new(sink.clone()), &content, &m, &Info::of(MatchKind::Offline, 0)).unwrap()).unwrap();
-            let (mut seen, mut up) = (Vec::new(), [0u32; 2]);
+            let mut seen = Vec::new();
             loop {
                 let tick = s.ticks as u32;
                 for side in 0..2 {
@@ -639,27 +698,28 @@ pub(crate) mod tests {
                 if !s.step(input) {
                     break;
                 }
-                seen.push(format!("{:?}", layers_shown(&s)));
-                for l in s.driver.layers().into_iter().flatten() {
-                    up[0] += l.chatbox().is_some() as u32;
-                    up[1] += l.list_stage().is_some() as u32;
-                }
+                seen.push(s.driver.layers().map(|l| l.map(|l| (l.cursor, l.pick_cursor))));
                 assert!(s.ticks < 20_000, "{game}: the set doesn't end ({})", s.driver.position());
             }
             assert_eq!(s.result, Some(BattleResult::Won), "{game}");
-            // (What the pointers had up: descriptions in every game, EXE6's Cross list.)
-            assert!(up[0] > 0 && (up[1] > 0) == (game == "exe6"), "{game}: {up:?}");
             let replay = Replay::read(&sink.bytes()).unwrap();
-            let gestures = |side: usize| replay.ticks.iter().filter(|t| PlayerTick::from_word(t.inputs[side]).gesture.is_some()).count();
-            assert!(gestures(0) > 10 && gestures(1) > 10, "{game}: gestures {} and {}", gestures(0), gestures(1));
             assert!(replay.ticks.iter().any(|t| t.delays == [3, 0]), "{game}");
             let mut p = Session::new(Box::new(ReplayPlayer::new(&content, &replay, Some(0)).unwrap()));
-            let mut tick = 0;
+            let (mut tick, mut compared) = (0, [0; 2]);
             while p.step(PlayerTick::default()) {
-                assert_eq!(format!("{:?}", layers_shown(&p)), seen[tick], "{game}: tick {tick}");
+                for side in 0..2 {
+                    let delay = replay.ticks[tick].delays[side] as usize;
+                    let read = replay.ticks.get(tick + delay).map(|t| PlayerTick::from_word(t.inputs[side]).choice);
+                    if let Some(Some(ScreenChoice::Pick(_) | ScreenChoice::Press(_) | ScreenChoice::Release(_) | ScreenChoice::Ok | ScreenChoice::Unpick(_))) = read {
+                        let shown = p.driver.layers()[side].map(|l| (l.cursor, l.pick_cursor));
+                        assert_eq!(shown, seen[tick][side], "{game}: side {side} tick {tick}: {read:?}");
+                        compared[side] += 1;
+                    }
+                }
                 tick += 1;
             }
             assert_eq!((p.diverged, p.result, tick), (None, Some(BattleResult::Won), seen.len()), "{game}");
+            assert!(compared[0] > 5 && compared[1] > 5, "{game}: {compared:?} choices compared");
         }
     }
 

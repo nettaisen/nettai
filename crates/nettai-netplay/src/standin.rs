@@ -65,11 +65,10 @@ impl Game for StandInBattle {
         &mut self.battle
     }
 
-    /// The buttons (and the microphone's level) carry on; a switch request,
-    /// a custom screen's choice and a pointer's gesture happen once (each is
-    /// a tick's, as the link closing is: carried on, a choice would be taken
-    /// again, or refused with its sound, on every tick predicted; a gesture,
-    /// which the battle doesn't read, is the player's layer's alone).
+    /// The buttons (and the microphone's level) carry on; a switch request
+    /// and a custom screen's choice happen once (each is a tick's, as the
+    /// link closing is: carried on, a choice would be taken again, or
+    /// refused with its sound, on every tick predicted).
     fn predict(last: &u32) -> u32 {
         PlayerTick::from_word(*last).carried_on().word()
     }
@@ -252,19 +251,12 @@ mod tests {
     use nettai_battle::content::testing;
 
     /// A tick word predicted is its buttons and level carried on, without
-    /// its switch request, its choice or its gesture.
+    /// its switch request or its choice.
     #[test]
-    fn a_choice_a_switch_and_a_gesture_are_not_predicted() {
-        use nettai_battle::custom::layer::{Gesture, Target};
-        let t = PlayerTick {
-            held: keys::A | keys::UP,
-            switch_to: Some(1),
-            mic_level: 9,
-            choice: Some(ScreenChoice::Pick(3)),
-            gesture: Some(Gesture::Click(Some(Target::Slot(3)))),
-        };
+    fn a_choice_and_a_switch_are_not_predicted() {
+        let t = PlayerTick { held: keys::A | keys::UP, switch_to: Some(1), mic_level: 9, choice: Some(ScreenChoice::Pick(3)) };
         let predicted = PlayerTick::from_word(<StandInBattle as Game>::predict(&t.word()));
-        assert_eq!(predicted, PlayerTick { switch_to: None, choice: None, gesture: None, ..t });
+        assert_eq!(predicted, PlayerTick { switch_to: None, choice: None, ..t });
     }
 
     /// Two mashers get a stand-in netbattle through its first custom

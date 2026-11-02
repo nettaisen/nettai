@@ -8,7 +8,8 @@ claim are in nettai-verify's docs/custom-screen-actions/).
 
 **Status (2026-11-01): checkpoints A and B are built** (keys and pads through the layer; mouse and touch, §5),
 and the pointer's own take-backs (§2: any pick taken back, a Cross un-chosen with the picks kept, a held chip
-released).
+released). Since then the tick carries the choices alone, no gestures, and the mouse and a finger are one path
+(§3, §5).
 The layer is `custom::layer::Layer` in nettai-battle (with `custom::Lockstep` for both sides in lockstep), a type of
 its own that `Battle` never holds: the code moved there uses the screen's crate-private parts (its slots'
 neighbors and lists, the chip checks, the chatbox), and every crate that needs it (the frontend, the tools, the
@@ -124,11 +125,17 @@ sends `unpick`, `unchoose` and `release`.
   gesture's plus 75 times the choice's (at most 3749 of 4096). `PlayerTick::word` and `from_word` alone know it; netplay's prediction drops
   a choice and a gesture through `PlayerTick::carried_on`. A gesture alone stays under 128 (the word under 2^27), a
   choice is past it.
+  *As built (choices only, 2026-11-01; the user: "for the mouse support in custom screen i don't actually care
+  about all the mouse movement, right? i only really care about the selections/deselections and the mouse movement
+  is just noise"):* the gesture is out of the tick (`PlayerTick` has no `gesture`, `Gesture` no numbers), and bits
+  20-31 hold the choice's number alone (`ScreenChoice::code`, 0-49). Nothing of the pointer is recorded or sent:
+  only what it chose, as keys' choices are.
 - **The wire** (nettai-netplay `protocol.rs`): the event flags move up past the action; a tick with an action is a
   4-byte element instead of 3. Actions are a few dozen a screen, so the mean frame doesn't change. *As built (B2):*
   the flags sit at bit 32 of the head, past the gesture; a tick with a gesture is 4 or 5 bytes, one with flags 5 or
   6. A pointer makes a gesture as it moves onto another target, a click, a describe: a few a second while it moves.
-  *As built (§2's take-backs):* a gesture alone is 4 bytes, a choice (the more numbers, the rarer) 5.
+  *As built (§2's take-backs):* a gesture alone is 4 bytes, a choice (the more numbers, the rarer) 5. *As built
+  (choices only):* a choice is 4 bytes again, and the pointer adds nothing to the wire.
 - **Prediction**: a missing remote word is predicted as its last buttons and **no action** (as events are dropped
   now), and no gesture (B2: each of the other's gestures is a misprediction too, though the battle doesn't read
   it; the re-simulated ticks come out the same). Each remote action is then one misprediction, and the remote's cursor moves cost none, because they aren't
@@ -154,7 +161,12 @@ sends `unpick`, `unchoose` and `release`.
   (Before, it read the round's first battle the delay and two times, which also put the key repeat's beat off the
   battle's but at a delay of 4.) What a replay can't give again: the battles a peer never showed (it jumps past them
   once the other's late input comes, or when the delay is made shorter) are read in the replay with the words'
-  buttons alone.
+  buttons alone. *As built (choices only):* the words carry no gestures, so the replay's driver gives each side's
+  layer the whole word that landed the side's screen delay later, its choice with it, and a layer given a choice
+  (a replay's, a peer's, an AI's) puts its cursor on what it names (`Layer::cursor_to_choice`: a pick's or a
+  button's slot, OK, the slot a pick taken back goes back to). Keys' screens replay as they were, tick for tick; a
+  pointer player's cursor is on each place they chose as they chose it, and between choices it is the keys' alone
+  (their presses, descriptions and the Cross list opened by click aren't shown).
 - **State and digest**: `custom::Side` loses its joypad, the screen its cursor, the rules' state EXE6's list cursor;
   the decision fades move out of `ScreenLook` into hashed state (§8.1).
 
@@ -205,47 +217,43 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
   and gives it to the battle's player (`Player::point`).
 - **Gestures** (nettai-frontend `pointer::ScreenPointer`, the layer's `Gesture`): the player hit-tests against the
   last frame drawn and gives the local player's layer a gesture for its next tick (`Layer::point`; a few kept, one a
-  tick, a hover replaced by what follows it):
-  - the mouse over a target: `Hover`, the cursor goes there (its sound, the chip window, the dark chip's shade) with
-    no choice; in the form list, its cursor (until a form is chosen, as its keys); over a pick, the cursor goes on
-    the pick's icon in the column (below);
-  - the mouse off the targets (onto none, or off the picture): `Away`, which takes a cursor on a pick back to its
-    slot;
-  - a click (down and up on the same target; off it, nothing): `Click`, what A on it would choose (a pick, a
-    button's press, OK); on a button holding a chip, its `release` (§2; A on it is refused, as the game's); on a
-    pick, its `unpick` (§2: that pick alone, the picks after it moving up; before, a take-back a tick down to it),
-    the cursor to the slot it goes back to (the user: "when deleting a chip from the tray, you should reposition the
-    cursor to where the chip returns"; B, the game's, leaves it where it is); on
-    the tab, the form list opens where UP would, from anywhere (the layer's checks but the cursor's place; refused:
-    the refusal sound), and again closes it as B does; on an entry, its form chosen (as A); on the chosen entry,
-    `unchoose`: the Cross un-chosen, the picks kept (before, every pick was taken back first); on the exit label,
-    the list closes as B does (B2), nothing chosen, and so it does on none, off the window (the user: "in
-    crossselect, you should probably allow clicks outside cross select (e.g. the chips) to dismiss crossselect";
-    the chips aren't targets while it is up); a click anywhere, on a target or none, while a description, the
-    run message or the hidden window is up is a key for it, as A (it closes the description);
-  - right-click: `Describe`, R on what it is on: a slot's chip (the cursor goes there), a pick's chip (the cursor
-    stays), a form list entry's form.
+  tick, a press replaced by what follows it). The mouse and a finger are one path (the user: "then you can unify
+  the touch path with the mouse path"); the pointer's moves make no gesture (before, the mouse's hover moved the
+  cursor, and leaving the targets was `Away`):
+  - pressed on a target (the mouse's button, a finger down): `Down`, the cursor goes there (its sound, the chip
+    window, the dark chip's shade) with no choice; in the form list, its cursor (until a form is chosen, as its
+    keys); on a pick, the cursor goes on the pick's icon in the column (below); on another target, a cursor on a
+    pick goes back to its slot;
+  - let go on the target it was pressed on (off it, or slid off and back, nothing; the system taking it, nothing):
+    `Click`, what A on it would choose (a pick, a button's press, OK); on a button holding a chip, its `release`
+    (§2; A on it is refused, as the game's); on a pick, its `unpick` (§2: that pick alone, the picks after it moving
+    up; before, a take-back a tick down to it), the cursor to the slot it goes back to (the user: "when deleting a
+    chip from the tray, you should reposition the cursor to where the chip returns"; B, the game's, leaves it where
+    it is); on the tab, the form list opens where UP would, from anywhere (the layer's checks but the cursor's
+    place; refused: the refusal sound), and again closes it as B does; on an entry, its form chosen (as A); on the
+    chosen entry, `unchoose`: the Cross un-chosen, the picks kept (before, every pick was taken back first); on the
+    exit label, the list closes as B does (B2), nothing chosen, and so it does on none, off the window (the user:
+    "in crossselect, you should probably allow clicks outside cross select (e.g. the chips) to dismiss
+    crossselect"; the chips aren't targets while it is up); a click anywhere, on a target or none, while a
+    description, the run message or the hidden window is up is a key for it, as A (it closes the description);
+  - right-click, or a press held still on its target for `pointer::LONG_PRESS` (30 ticks, half a second; its
+    letting go then chooses nothing): `Describe`, R on what it is on: a slot's chip (the cursor goes there), a
+    pick's chip (the cursor stays), a form list entry's form.
   L's run message and SELECT's hide have no gesture (the keys keep them).
 - **The cursor on a pick** (the user: "when mousing over the stack of chips you should show the cursor there too.
   or does that conflict with how the keyboard works?"). It doesn't conflict: the column is the pointer's place
-  alone. A hover on a pick puts the layer's cursor on it (`Layer::pick_cursor`) beside its slot (`Layer::cursor`
+  alone. A press on a pick puts the layer's cursor on it (`Layer::pick_cursor`) beside its slot (`Layer::cursor`
   stays as it was), with a move's sound; the renderer draws the screen's chip cursor about the pick's icon (inside
-  the box `custom::targets` reports for `Pick(k)`), and the chip window shows the pick's chip as a hover on its slot
-  would (a button's pick, its picture); no dark chip's shade runs there. A hover on a slot moves the cursor there
-  as before; a hover on another target or `Away` brings it back to its slot, as a move. Keys while it is on a pick:
+  the box `custom::targets` reports for `Pick(k)`), and the chip window shows the pick's chip as a press on its slot
+  would (a button's pick, its picture); no dark chip's shade runs there. A press on a slot moves the cursor there
+  as before; a press on another target brings it back to its slot, as a move. Keys while it is on a pick:
   a direction only brings it back to its slot (that press moves it no further; held, it repeats on the slots as
   any hold does); A does what a click there does (`unpick`, §2); R describes the pick; B is the game's B, START
   goes to OK. No key moves the cursor into the column. A pick it takes back (A, a click) puts it on the slot the
   pick goes back to; one taken back from under it otherwise (B's last) leaves it on the place, over the pick that
-  moved up there, or, with none, back on its slot. It is the layer's state, so replays show it
-  from the recorded gestures (`Gesture::Away` is one more gesture: 75 numbers, §3). A hover is a gesture only as the target
-  under the pointer changes (B2): the mouse onto another target; pressed where it already hovers, none; a finger
-  down after it was lifted (a lifted finger is over nothing). Each gesture the layer takes goes in the player's tick
-  (§3).
-- **Touch**: a finger down on a target is a hover (the cursor goes there, the chip window shows the chip); up on the
-  same target is the click (sliding off cancels, as a button does, also when it slides back); held still on it for
-  `pointer::LONG_PRESS` (30 ticks, half a second) it describes it instead, and its letting go chooses nothing. A tap
-  on a pick takes it back as a click does.
+  moved up there, or, with none, back on its slot. It is the layer's state, the player's view alone (§3: a
+  replay shows the cursor on a pick's slot as the pick is taken back).
+- **Touch**: the mouse's path (above): a tap on a pick takes it back as a click does.
 - **Phones held sideways**: while the local custom screen is open (its first tick to its close), the see-through
   pad's directions, L, R and SELECT, which sit over the window, hide (`Shell.pad-gives-way`) and take no finger
   (`TouchPad::give_way`; a direction held lets go), so taps on the window go on to the picture; A, B, START and MENU
@@ -259,10 +267,10 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
   should change into a pointer hand if it's mousing over something clickable? that applies for the entire
   application"): the system's cursor stays over the battle's picture, the arrow, and turns a hand over a target of
   the local player's custom screen (`Shell.picture-hand`, from `Player::pointer_on_target`: where the mouse last was,
-  `ScreenPointer::mouse_at`, against the last frame's targets), as over the app's own controls (docs/design/app-ui.md:
-  the hand on what a click takes).
-- **Replays** (B2): the gestures go in the player's ticks, so a replay shows a pointer player's cursor, hover,
-  descriptions and Cross list as they were (§3).
+  `ScreenPointer::at`, against the last frame's targets), as over the app's own controls (docs/design/app-ui.md:
+  the hand on what a click takes). The pointer's moves serve the hand, and a press sliding off, alone.
+- **Replays**: only the choices go in the player's ticks; a replay puts a pointer player's cursor on each place
+  they chose (§3).
 - **Tests**: the layer's gestures (nettai-battle `custom::tests`), the recognizer (`pointer::tests`), the pad giving
   way (nettai `input::tests`), and per game at 240x160 and at a Fill size (347x199) a click at the middle of each
   target the renderer reports gives its choice, then two picks, the first's `unpick`, EXE6's tab and Cross entries
@@ -271,14 +279,16 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
   screen's own (nettai-battle `custom::tests`: a pick anywhere with what it carries, `unpick` of the last as B, a
   trade's chip back where it fits or to the hand, a held chip kept through `unpick` and released, the pointer's
   clicks sending them; the cursor on a pick: its place and chip window, a direction back to its slot, A's `unpick`,
-  R, away and a slot's hover bringing it back; a layer given another's gestures shows it too) and each game's (nettai-match `games::take_backs`: EXE5's soul, capsule and Arm Change,
+  R, a press on a slot or another target bringing it back) and each game's (nettai-match `games::take_backs`: EXE5's soul, capsule and Arm Change,
   EXE6's Beast Out, BeastOut chip and Cross, EXE4's offered dark chips and Double Soul, `unpick` of the last as B
-  tick for tick). B2's: the gestures' numbers and the word (nettai-battle `input::tests`); a layer given
-  another's ticks, buttons and gestures shows what it showed (`custom::tests`); a set played by pointer on both
-  sides in each game, live at an input delay of 3, recorded and played back, both sides' layers the same on every
-  tick (nettai-frontend `replay::tests`); a netplay set with one pointer player at input delays of 2 and 6 over a
-  link with latency, the other's replay showing the pointer player's layer as they first saw it on every tick they
-  saw (`netplay::tests`); the wire's sizes and prediction (nettai-netplay).
+  tick for tick). Choices only: the word's fields (nettai-battle `input::tests`); a layer given another's ticks
+  (buttons and choices, as a replay) takes the same choices with its cursor where the pointer's was at each
+  (`custom::tests`); a set played by keys in each game, live at an input delay of 3, recorded and played back,
+  both sides' layers the same on every tick, and one played by pointer on both sides, the replayed cursors where
+  they were live on every tick a choice names a place (nettai-frontend `replay::tests`); a netplay set with one
+  pointer player at input delays of 2 and 6 over a link with latency, the other's replay showing the pointer
+  player's cursor as they saw it at each such choice (`netplay::tests`); the wire's sizes and prediction
+  (nettai-netplay); the pointer's one path (`pointer::tests`).
 
 ## 6. The content API
 
@@ -342,8 +352,11 @@ The screen's Luau API is written in cursor terms today, and changes:
 
 ## 10. The user's answers (2026-11-01)
 
-1. **Replays keep showing both cursors**, by recording each side's layer (§3): "yes".
-2. **Hover moves the cursor** and the chip window: "yes".
+1. **Replays keep showing both cursors**, by recording each side's layer (§3): "yes". Narrowed later to the
+   choices alone (§3, "choices only"): "i only really care about the selections/deselections and the mouse
+   movement is just noise".
+2. **Hover moves the cursor** and the chip window: "yes". Dropped with the recorded gestures: a press moves it, as
+   a finger's did ("then you can unify the touch path with the mouse path").
 3. **R's description by right-click**; L and SELECT get no pointer gesture: "right click to show description. L
    doens't get used in battle anyway, no need to bind select". So `take_back` by pointer is a click on the last
    picked chip (§5).

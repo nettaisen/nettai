@@ -987,8 +987,8 @@ export component BattleScreen inherits Rectangle {
         ground: transparent;
     }
 
-    // The custom screen by pointer, over the picture as the replay viewer's is: hover, clicks, a right-click, a
-    // finger's down and up, while the battle takes them (`Shell.screen-pointer`); the app finds what they are on.
+    // The custom screen by pointer, over the picture as the replay viewer's is: the mouse's and a finger's downs,
+    // ups and moves, while the battle takes them (`Shell.screen-pointer`); the app finds what they are on.
     // The mouse's cursor is a hand over what a click there takes (`Shell.picture-hand`: a chip, OK, a button, the
     // Cross list's tab, an entry), as over the app's own controls, and the arrow elsewhere.
     TouchArea {
@@ -998,33 +998,32 @@ export component BattleScreen inherits Rectangle {
         height: Shell.picture-height;
         enabled: Shell.screen-pointer;
         mouse-cursor: Shell.picture-hand ? MouseCursor.pointer : MouseCursor.default;
-        function send(kind: int, button: int, touch: bool) {
-            Shell.picture-pointer(kind, button, self.mouse-x, self.mouse-y, touch);
+        function send(kind: int, button: int) {
+            Shell.picture-pointer(kind, button, self.mouse-x, self.mouse-y);
         }
         pointer-event(e) => {
             if e.kind == PointerEventKind.down || e.kind == PointerEventKind.up || e.kind == PointerEventKind.cancel {
                 self.send(
                     e.kind == PointerEventKind.down ? 0 : e.kind == PointerEventKind.up ? 1 : 3,
-                    e.button == PointerEventButton.left ? 0 : e.button == PointerEventButton.right ? 1 : 2,
-                    e.touch-finger-id != 0);
+                    e.button == PointerEventButton.left ? 0 : e.button == PointerEventButton.right ? 1 : 2);
             }
         }
         moved => {
-            self.send(2, 0, false);
+            self.send(2, 0);
         }
         changed mouse-x => {
             if self.has-hover && !self.pressed {
-                self.send(2, 0, false);
+                self.send(2, 0);
             }
         }
         changed mouse-y => {
             if self.has-hover && !self.pressed {
-                self.send(2, 0, false);
+                self.send(2, 0);
             }
         }
         changed has-hover => {
             if !self.has-hover {
-                self.send(4, 0, false);
+                self.send(4, 0);
             }
         }
     }

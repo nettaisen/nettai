@@ -509,9 +509,9 @@ impl Shell {
     }
 
     /// The pointer on the battle's picture (`Shell.picture-pointer`: its kind, its button, its place in the
-    /// picture in logical pixels, whether it is a finger), to the battle's player in the frame's pixels: the local
-    /// player's custom screen's (`Player::point`), while the battle has the keys.
-    pub fn picture_pointer(&mut self, kind: i32, button: i32, x: f32, y: f32, touch: bool) {
+    /// picture in logical pixels; the mouse's and a finger's alike), to the battle's player in the frame's pixels:
+    /// the local player's custom screen's (`Player::point`), while the battle has the keys.
+    pub fn picture_pointer(&mut self, kind: i32, button: i32, x: f32, y: f32) {
         use nettai_frontend::pointer::{PointerButton, PointerEvent, PointerKind};
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
@@ -535,7 +535,7 @@ impl Shell {
             _ => PointerButton::Other,
         };
         let (x, y) = (x / width * size.width as f32, y / height * size.height as f32);
-        b.stage.player.point(PointerEvent { kind, button, touch, x, y });
+        b.stage.player.point(PointerEvent { kind, button, x, y });
     }
 
     /// How the picture fits a room of `width` by `height` display pixels: `stage::fit`, held to the settings'

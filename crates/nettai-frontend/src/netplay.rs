@@ -806,12 +806,12 @@ mod tests {
     /// screens by gestures alone, the buster in the fight; side 1 the
     /// shooter's bot, its navi at 1 HP), over a link with latency, at input
     /// delays of 2 and 6: the other player's recording, played back, shows
-    /// the pointer player's custom screen on every tick as they first saw
-    /// it (their layer's cursor, what was up over the chips, the form list,
-    /// the chip window, the hover, the sounds), the gestures carried in
-    /// their words.
+    /// the pointer player's cursor where they first saw it on every tick
+    /// their layer read a choice that names a place (a pick, a button, OK,
+    /// a pick taken back), from their words' choices alone.
     #[test]
-    fn the_other_players_replay_shows_a_pointer_players_cursor() {
+    fn the_other_players_replay_shows_a_pointer_players_choices() {
+        use nettai_battle::ScreenChoice;
         use crate::driver::short_set::{pointing, shooter};
         use crate::replay::{ReplayPlayer, testing::Shared};
         use crate::session::Session;
@@ -852,7 +852,8 @@ mod tests {
                 assert!(s.step(keys), "side {side}: {:?}", s.stopped);
                 if side == 0 && s.fresh {
                     let r = &s.battle.round;
-                    seen.entry((r.round, r.frames)).or_insert_with(|| format!("{:?}", crate::replay::tests::layers_shown(s)[0]));
+                    let layer = s.driver.layers()[0].map(|l| (l.cursor, l.pick_cursor));
+                    seen.entry((r.round, r.frames)).or_insert(layer);
                 }
             }
             if playing.iter().all(|s| s.driver.result().is_some()) {
@@ -863,23 +864,23 @@ mod tests {
         }
         assert_eq!(playing.iter().map(|s| s.driver.result()).collect::<Vec<_>>(), [Some(BattleResult::Won), Some(BattleResult::Lost)]);
         let theirs = nettai_replay::Replay::read(&sinks[1].bytes()).unwrap();
-        let gestures = theirs.ticks.iter().filter(|t| PlayerTick::from_word(t.inputs[0]).gesture.is_some()).count();
-        assert!(gestures > 10, "{gestures} gestures");
         let mut p = Session::new(Box::new(ReplayPlayer::new(&content, &theirs, Some(1)).unwrap()));
-        let (mut compared, mut choosing) = (0, 0);
+        let (mut tick, mut compared) = (0, 0);
         while p.step(PlayerTick::default()) {
             let r = &p.battle.round;
-            let shown = format!("{:?}", crate::replay::tests::layers_shown(&p)[0]);
-            if let Some(live) = seen.get(&(r.round, r.frames)) {
-                assert_eq!(&shown, live, "round {} tick {}", r.round, r.frames);
+            let delay = theirs.ticks[tick].delays[0] as usize;
+            let read = theirs.ticks.get(tick + delay).and_then(|t| PlayerTick::from_word(t.inputs[0]).choice);
+            let names_a_place =
+                matches!(read, Some(ScreenChoice::Pick(_) | ScreenChoice::Press(_) | ScreenChoice::Release(_) | ScreenChoice::Ok | ScreenChoice::Unpick(_)));
+            if let (true, Some(live)) = (names_a_place, seen.get(&(r.round, r.frames))) {
+                let shown = p.driver.layers()[0].map(|l| (l.cursor, l.pick_cursor));
+                assert_eq!(&shown, live, "round {} tick {}: {read:?}", r.round, r.frames);
                 compared += 1;
-                choosing += (r.mode == mode::CUSTOM) as u32;
             }
+            tick += 1;
         }
         assert_eq!((p.diverged, p.result), (None, Some(BattleResult::Lost)));
-        // (Every tick but the few the pointer player never saw: their peer, waiting at a round's start for the
-        // other's first input, shows the battle past them once it comes.)
-        assert!(compared + 20 >= p.ticks && choosing > 100, "{compared} of {} ticks compared, {choosing} choosing", p.ticks);
+        assert!(compared > 5, "{compared} choices compared");
     }
 
     /// A player's channel on a WebRTC link (nettai-rtc's, as the program's

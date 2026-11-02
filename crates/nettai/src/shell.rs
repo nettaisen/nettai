@@ -1082,7 +1082,7 @@ pub enum NavInput {
     PadKey(i32, Rect),
     /// The pointer on the battle's picture, for the custom screen (`Shell.picture-pointer`): its kind, its button,
     /// its place in the picture (logical pixels), whether it is a finger.
-    Picture { kind: i32, button: i32, x: f32, y: f32, touch: bool },
+    Picture { kind: i32, button: i32, x: f32, y: f32 },
 }
 
 pub struct App {
@@ -1617,7 +1617,7 @@ impl App {
                 self.shell.show_pad();
             }
             NavInput::PadKey(bit, rect) => self.shell.touch.place(bit.clamp(0, 15) as u8, rect),
-            NavInput::Picture { kind, button, x, y, touch } => self.shell.picture_pointer(kind, button, x, y, touch),
+            NavInput::Picture { kind, button, x, y } => self.shell.picture_pointer(kind, button, x, y),
         }
         self.settle();
     }
