@@ -76,8 +76,8 @@ nettai-extract = { path = "../nettai-extract" }
 # The Legacy Collection from a computer nearby, to a device without it (`nearby.rs`; docs/app.md §17).
 nettai-nearby = { path = "../nettai-nearby" }
 
-# Updates (`updates.rs`): the installed app's own (Velopack's packages: packaging/), from the project's GitHub
-# releases; the desktop's alone (a phone's app is its store's: `updates_none.rs`). The version the release workflow's
+# The desktop's updates (`updates/velopack.rs`): the installed app's own (Velopack's packages: packaging/), from the
+# project's GitHub releases (Android's are the release's APK: `updates/android.rs`). The version the release workflow's
 # `vpk` is (VPK_VERSION), exactly: the first release on crates.io that asks for zip 9 (the ones before asked for
 # zip 8, all of whose versions are yanked).
 [target.'cfg(not(any(target_arch = "wasm32", target_os = "ios", target_os = "android")))'.dependencies]
@@ -95,7 +95,8 @@ i-slint-backend-winit = { version = "=1.18.1", default-features = false, feature
 winit = { version = "0.30", default-features = false, features = ["rwh_06", "android-game-activity"] }
 # The app's calls into Java and Java's into it (`activity.rs`: the safe area; `lifecycle.rs`: the window's screen
 # kept on, by android/nettai/lifecycle/NettaiAwake.kt; `haptics.rs`: the pad's taps, by
-# android/nettai/haptics/NettaiHaptics.kt), through JNI on the activity android-activity hands over.
+# android/nettai/haptics/NettaiHaptics.kt; `updates/android.rs`: the update installed, by
+# android/nettai/updates/NettaiUpdates.kt), through JNI on the activity android-activity hands over.
 # (The Kotlin is the APK's: its Gradle build compiles every crate's android/ folder in.)
 jni = "0.22"
 # The context the crates' JNI is on (their pickers, nearby, the clipboard: they call an `android.app.Activity`'s
@@ -104,6 +105,8 @@ ndk-context = "0.1"
 # reqwest checks certificates with Android's own verifier through this (the version reqwest's is), which calls its
 # Kotlin component in the APK through JNI: it is given the VM and the activity first (`android_main`).
 rustls-platform-verifier = "0.7"
+# The SHA-256 the update's APK is checked by (`updates/android.rs`).
+sha2 = "0.10"
 
 # macOS: the activity that keeps the app's time while a battle runs in a covered window (`lifecycle::Awake`). (In the
 # tree already, for the window.)

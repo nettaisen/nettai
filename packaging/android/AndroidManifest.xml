@@ -10,6 +10,11 @@
     <!-- (The internet's is all NsdManager asks at this target SDK, too: the system's own service does the multicast
          that finds a computer nearby, nettai-nearby's.) -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- The app's update (crates/nettai/src/updates/android.rs): the release's APK installed over the app by the
+         system's installer, which asks the player once to let the app install apps (Settings' "Install unknown
+         apps"), and after that, on Android 12 and later, asks nothing, as the app updates itself. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
     <uses-feature android:glEsVersion="0x00030000" android:required="true" />
     <!-- (A touch screen isn't required: a TV or a box with a pad plays too.) -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
