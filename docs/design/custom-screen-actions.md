@@ -6,7 +6,7 @@ around where the cursor on the custom screen is purely visual?" This note says w
 simulation, the input path and formats, the renderer and verification (the audits' notes with file:line for every
 claim are in nettai-verify's docs/custom-screen-actions/).
 
-**Status (2026-11-01): checkpoint A is built** (keys and pads through the layer; mouse and touch are checkpoint B).
+**Status (2026-11-01): checkpoints A and B are built** (keys and pads through the layer; mouse and touch, §5).
 The layer is `custom::layer::Layer` in nettai-battle (with `custom::Lockstep` for both sides in lockstep), a type of
 its own that `Battle` never holds: the code moved there uses the screen's crate-private parts (its slots'
 neighbors and lists, the chip checks, the chatbox), and every crate that needs it (the frontend, the tools, the
@@ -117,24 +117,60 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
 
 ## 5. Mouse and touch
 
-- **Hit targets**: the renderer reports each target's box from the places it already draws the cursor at (the slot
-  cells, OK and the buttons from each game's extraction, the Cross list's entries), in frame pixels. The custom window
-  keeps to the top-left anchor in every Fill size, so the boxes are the original's 240x160 places shifted by the
-  slide and a shake. The app maps a pointer through the picture's fit (`stage::fit`, `place_picture`).
-- **The picture takes pointers**: a `TouchArea` over the battle's picture, as the replay viewer has over its own.
-- **The mouse**: hovering moves the cursor (and the chip window) with no action; a click on a chip, OK or a button
-  sends its action; a click on a Cross list entry chooses it; a click on the last picked chip in the column takes it
-  back (`take_back`, as B); right-click shows the description of what is under the pointer (R). L's run message and
-  SELECT's hide have no pointer gesture: L isn't used in battle, and SELECT stays a key.
-- **Touch**: a finger down moves the cursor (the chip window shows the chip), and lifting it on the same target sends
-  the action (sliding off cancels, as a button does); a long press shows the description; a tap on the last picked
-  chip takes it back.
-- **Phones held sideways**: the see-through pad's directions sit over the custom window's left edge. While the
-  custom screen is open the d-pad is hidden and taps on the window are the screen's; A, B and START stay. A slot's
-  cell is 16 by 24 frame pixels, edge to edge, so the whole cell is its target: about 6 by 9 mm at a sideways phone's
-  multiple (7 display pixels a frame pixel on a 1170-row iPhone), an iPhone keyboard key's width.
-- **Phones held upright**: the pad is under the picture, not over it, and stays. The picture is about 4 times the
-  frame there, a slot about 3.5 by 5 mm: taps work, but the pad is the way to play.
+*As built (B).*
+
+- **Hit targets** (nettai-render `custom::targets`, `Renderer::targets` and `Renderer::target_at`): while a side's
+  window is at rest, the renderer reports what a pointer finds where, from the places it draws the cursor and those
+  parts at, for each seat that shows its own console's screen as it is (not a mirrored seat), in the frame's pixels:
+  the window's anchor (top left, in every Fill size) plus the HUD layer's shake. The layer's `Target`s:
+  - `Slot(s)`, each slot the cursor goes to: a chip's whole cell edge to edge (16 by 24, its code plate in it), a
+    button in the slots' run too (EXE6's ChpShufl and DustCross on slots 8 and 9: each its cell); OK and a button at a
+    place of its own (the special slot's Beast Out, EXE5's soul, EXE4's UNITE) the cells its cursor goes about
+    (`cursor_cells`, as the upright view's OK box), a two-cell one halved;
+  - `Pick(k)`, the column's picks;
+  - `FormTab`, the form list's tab: the window label its rules name (`FormListRules::tab`; EXE6's `cross-select`,
+    the tab's tiles with its triangle, and the window's header once it is up), where the window's map shows it;
+  - `Form(k)`, the form list's entries (the names' 9x2 cells), and only they and the tab while its window is up.
+  None while the window slides, hides or isn't there.
+- **The picture takes the pointer**: in the app a `TouchArea` over the battle's picture, as the replay viewer has,
+  enabled while the battle has the keys and the frame has targets (`Player::takes_pointer`), sends each event of the
+  mouse's or a finger's (`Shell.picture-pointer`); the app maps it to the frame's pixels through the picture's size
+  and gives it to the battle's player (`Player::point`).
+- **Gestures** (nettai-frontend `pointer::ScreenPointer`, the layer's `Gesture`): the player hit-tests against the
+  last frame drawn and gives the local player's layer a gesture for its next tick (`Layer::point`; a few kept, one a
+  tick, a hover replaced by what follows it):
+  - the mouse over a target: `Hover`, the cursor goes there (its sound, the chip window, the dark chip's shade) with
+    no choice; in the form list, its cursor (until a form is chosen, as its keys);
+  - a click (down and up on the same target; off it, nothing): `Click`, what A on it would choose (a pick, a
+    button's press, OK); on a pick, a take-back down to it (the last pick: one; an earlier one: one take-back a tick
+    until it is gone; a choice of the keys' ends them); on the tab, the form list opens where UP would, from
+    anywhere (the layer's checks but the cursor's place; refused: the refusal sound), and again closes it as B does;
+    on an entry, its form chosen (as A); on the chosen entry, it is taken back, with the picks after it, one a tick
+    (the battle takes picks back before the form); a click anywhere, on a target or none, while a description, the
+    run message or the hidden window is up is a key for it, as A (it closes the description);
+  - right-click: `Describe`, R on what it is on: a slot's chip (the cursor goes there), a pick's chip (the cursor
+    stays), a form list entry's form.
+  L's run message and SELECT's hide have no gesture (the keys keep them).
+- **Touch**: a finger down on a target is a hover (the cursor goes there, the chip window shows the chip); up on the
+  same target is the click (sliding off cancels, as a button does, also when it slides back); held still on it for
+  `pointer::LONG_PRESS` (30 ticks, half a second) it describes it instead, and its letting go chooses nothing. A tap
+  on a pick takes back as a click does.
+- **Phones held sideways**: while the local custom screen is open (its first tick to its close), the see-through
+  pad's directions, L, R and SELECT, which sit over the window, hide (`Shell.pad-gives-way`) and take no finger
+  (`TouchPad::give_way`; a direction held lets go), so taps on the window go on to the picture; A, B, START and MENU
+  stay. A slot's cell is 16 by 24 frame pixels, about 6 by 9 mm at a sideways phone's multiple; the tab is one row of
+  cells (8 pixels) tall.
+- **Phones held upright**: the pad is under the picture and stays as it is; taps on the picture work as above.
+- **Where it plays**: Practice and live play (`LivePlayer`) and netplay (`NetPlayer`): `Driver::layer_mut` gives the
+  local player's layer, which moves at once (no input delay); its choices go into the player's tick as their keys'
+  do. A replay's driver gives none, and the replay viewer and the spectator view take no pointer.
+- **Not yet**: the replay's presentation track records each side's screen delay, not the pointer's gestures, so a
+  viewer runs a pointer player's layer from their buttons alone: their choices and the battle are exact, but the
+  cursor, the hover and a right-click's description show as their keys left them (§3).
+- **Tests**: the layer's gestures (nettai-battle `custom::tests`), the recognizer (`pointer::tests`), the pad giving
+  way (nettai `input::tests`), and per game at 240x160 and at a Fill size (347x199) a click at the middle of each
+  target the renderer reports gives its choice, then a pick, its take-back, EXE6's tab and Cross entries and OK played
+  by pointer, and a long press describing (nettai-tools `tests/custom_pointer.rs`, which needs the ROMs).
 
 ## 6. The content API
 
