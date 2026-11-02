@@ -2338,8 +2338,10 @@ fn shape_box(x: i32, y: i32, shape: &CursorShape) -> [i32; 4] {
 /// button at a place of its own about its cursor's cells (a button two
 /// cells wide halved); the column's picks; the form list's tab (the window
 /// label its rules name, where the window's map shows it) and, while its
-/// window is up, its entries and its exit label (the rules' too) alone.
-/// None while the window isn't at rest.
+/// window is up, its entries and its exit label (the rules' too) alone,
+/// each entry's row as wide as the exit label (the window's frame either
+/// side with it), so that a click on none of them is off the window. None
+/// while the window isn't at rest.
 fn targets(v: &View, w: &Window, place: Placement) -> Vec<(Target, Rect)> {
     let mut out = Vec::new();
     if place.scroll != 0 || place.from != 0 || place.to != COLUMNS {
@@ -2361,10 +2363,12 @@ fn targets(v: &View, w: &Window, place: Placement) -> Vec<(Target, Rect)> {
     if let Some(stage) = v.layer.and_then(|l| l.list_stage()) {
         if let (ListStage::Up(_), Some(list)) = (stage, v.b.form_list(v.side)) {
             let [x0, y0] = w.layout.form_names_at.map(i32::from);
+            let exit = label(rules.and_then(|r| r.exit.as_deref()));
+            let (left, width) = exit.map_or((8 * x0, 8 * 9), |r| (r.x, r.w));
             for k in 0..list.count.min(5) {
-                out.push((Target::Form(k), Rect::new(8 * x0, 8 * (y0 + 2 * k as i32), 8 * 9, 16)));
+                out.push((Target::Form(k), Rect::new(left, 8 * (y0 + 2 * k as i32), width, 16)));
             }
-            if let Some(r) = label(rules.and_then(|r| r.exit.as_deref())) {
+            if let Some(r) = exit {
                 out.push((Target::FormExit, r));
             }
         }

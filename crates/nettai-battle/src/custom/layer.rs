@@ -172,7 +172,8 @@ pub enum Gesture {
     /// is made (a finger down, the mouse's hover).
     Hover(Target),
     /// A click or a tap on a target (none: on none, which closes a
-    /// description or brings the hidden window back as a key does).
+    /// description or brings the hidden window back as a key does, and
+    /// closes the form list as B does).
     Click(Option<Target>),
     /// Right-click, a long press: R on the target.
     Describe(Target),
@@ -624,6 +625,9 @@ impl Layer {
                 return None;
             }
             if joy.pressed & keys::A != 0 {
+                if let Some(&slot) = screen.selection().get(k as usize) {
+                    self.cursor_to_taken_back(slot);
+                }
                 return Some(ScreenChoice::Unpick(k));
             }
             if joy.pressed & keys::R != 0 {
@@ -770,6 +774,15 @@ impl Layer {
         }
     }
 
+    /// The cursor off a pick taken back (`Unpick`), onto the slot it goes
+    /// back to: silently, the take-back's sound the screen's. (B, the
+    /// original's, leaves the cursor where it is.)
+    fn cursor_to_taken_back(&mut self, slot: u8) {
+        self.cursor = slot;
+        self.pick_cursor = None;
+        self.plan.chip_window = true;
+    }
+
     /// The slot whose chip the cursor shows: a pick's, where it is on one,
     /// else its own.
     fn shown_slot(&self, screen: &Screen) -> u8 {
@@ -778,8 +791,8 @@ impl Layer {
 
     /// The tick's gesture over the chips (the choosing's, nothing up): a
     /// hover moves the cursor; a click chooses what A on it would, takes
-    /// back down to a pick, or opens the form list from its tab; a
-    /// describe is R on what it is on.
+    /// back a pick (the cursor to the slot it goes back to), or opens the
+    /// form list from its tab; a describe is R on what it is on.
     fn point_on_chips(&mut self, p: &Presented, layout: &CustomScreenLayout) -> Pointed {
         let Some(gesture) = self.gesture else { return Pointed::Nothing };
         let screen = p.screen;
@@ -818,9 +831,8 @@ impl Layer {
             }
             // (The pick clicked taken back, wherever it is.)
             Gesture::Click(Some(Target::Pick(k))) => {
-                if k as usize >= screen.selection().len() {
-                    return Pointed::Nothing;
-                }
+                let Some(&slot) = screen.selection().get(k as usize) else { return Pointed::Nothing };
+                self.cursor_to_taken_back(slot);
                 Pointed::Choice(ScreenChoice::Unpick(k))
             }
             // (The tab opens the list as UP does, from anywhere.)
@@ -852,8 +864,9 @@ impl Layer {
     /// The tick's gesture in the form list's window, while it reads keys: a
     /// hover moves its cursor and a click on an entry chooses it, until one
     /// is chosen; a click on the chosen one un-chooses it, the picks kept;
-    /// a click on the tab or the exit label closes the window, as B does; a
-    /// describe is R on the entry. None: it takes nothing, and the keys
+    /// a click on the tab or the exit label, or off the window (on the
+    /// chips, on nothing), closes it, as B does; a describe is R on the
+    /// entry. None: it takes nothing, and the keys
     /// have the tick.
     fn point_in_list(&mut self, p: &Presented, layout: &CustomScreenLayout) -> Option<Option<ScreenChoice>> {
         let gesture = self.gesture?;
@@ -880,8 +893,9 @@ impl Layer {
                     Some(None)
                 }
             }
-            // (The tab again, or the exit label: as B.)
-            Gesture::Click(Some(Target::FormTab | Target::FormExit)) => {
+            // (The tab again, the exit label, or a click off the window,
+            // the entries spanning it: as B.)
+            Gesture::Click(Some(Target::FormTab | Target::FormExit | Target::Slot(_) | Target::Pick(_)) | None) => {
                 self.sub = Sub::List(ListStage::Closing(0));
                 Some(None)
             }

@@ -9,12 +9,13 @@
 //! finger: down on a target puts the cursor there; up on the same target
 //! chooses (sliding off cancels, as a button does); held still on it for
 //! [`LONG_PRESS`] ticks, it describes it instead. A click or a tap on no
-//! target is still a click: it closes a description, as a key does. A hover
-//! is a gesture only as the target under the pointer changes (the mouse
-//! onto another, a finger down after it was lifted); the mouse off the
-//! targets (onto none, or off the picture) is away, which takes a cursor on
-//! a pick back to its slot. Each gesture goes in the player's tick, for a
-//! replay to show their cursor (docs/design/custom-screen-actions.md §3).
+//! target is still a click: it closes a description, as a key does, and the
+//! form list's window, as B does (its targets span it). A hover is a
+//! gesture only as the target under the pointer changes (the mouse onto
+//! another, a finger down after it was lifted); the mouse off the targets
+//! (onto none, or off the picture) is away, which takes a cursor on a pick
+//! back to its slot. Each gesture goes in the player's tick, for a replay
+//! to show their cursor (docs/design/custom-screen-actions.md §3).
 
 use nettai_battle::custom::layer::{Gesture, Target};
 

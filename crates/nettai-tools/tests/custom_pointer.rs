@@ -4,9 +4,9 @@
 //! the pointer (`nettai_frontend::pointer`) and the player's layer it gives the target's choice: a chip its pick, OK,
 //! a button its press (or the release of the chip it holds), a pick its `Unpick`, a form list entry its choice; the
 //! form list's tab opens the list, and its exit label (EXE6's B:EXIT) closes it. Then played through
-//! `Player::point`: clicks pick two chips, a click on the first pick takes it alone back (the second moving up), the
-//! tab opens the form list and closes it, so does its exit label, a click on OK sends; in EXE6 a click on the Cross
-//! chosen un-chooses it, the picks kept.
+//! `Player::point`: clicks pick two chips, a click on the first pick takes it alone back (the second moving up, the
+//! cursor to its slot), the tab opens the form list and closes it, so does its exit label and a click off its window,
+//! a click on OK sends; in EXE6 a click on the Cross chosen un-chooses it, the picks kept.
 
 use nettai_battle::custom::layer::{Gesture, ListStage, Target};
 use nettai_battle::custom::{Phase, SlotKind};
@@ -182,6 +182,7 @@ fn pointer_plays(name: &str, file: &str) {
             p.tick(0);
             draw(&mut p, size);
             assert_eq!(p.battle().presented(0).unwrap().screen.selection(), [second], "{label}: a click on the first pick takes it alone back");
+            assert_eq!(p.layers()[0].unwrap().cursor, 0, "{label}: the cursor on the slot the pick went back to");
         }
         while !p.battle().presented(0).unwrap().screen.selection().is_empty() {
             click_on(&mut p, Target::Pick(0));
@@ -226,6 +227,26 @@ fn pointer_plays(name: &str, file: &str) {
                 p.layers()[0].unwrap().list_stage().is_none()
             });
             assert!(closed, "{label}: B:EXIT closes the form list");
+            // Opened again, each entry's row spans the window as its exit label does, and a click off the window (on
+            // the first chip) closes it, picking nothing.
+            draw(&mut p, size);
+            let tab = middle(box_of(&mut p, Target::FormTab));
+            point_click(&mut p, tab);
+            let up = (0..60).any(|_| {
+                p.tick(0);
+                draw(&mut p, size);
+                matches!(p.layers()[0].unwrap().list_stage(), Some(ListStage::Up(n)) if n > 1)
+            });
+            assert!(up, "{label}: the tab opens the form list a third time");
+            let (entry, exit) = (box_of(&mut p, Target::Form(0)), box_of(&mut p, Target::FormExit));
+            assert_eq!((entry.x, entry.w), (exit.x, exit.w), "{label}: an entry's row spans the window");
+            point_click(&mut p, chip);
+            let closed = (0..60).any(|_| {
+                p.tick(0);
+                p.layers()[0].unwrap().list_stage().is_none()
+            });
+            assert!(closed, "{label}: a click off the window closes the form list");
+            assert!(p.battle().presented(0).unwrap().screen.selection().is_empty(), "{label}: a click off the window picks nothing");
             draw(&mut p, size);
         }
         // A click on OK sends the hand.

@@ -193,8 +193,8 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
   - `Pick(k)`, the column's picks;
   - `FormTab`, the form list's tab: the window label its rules name (`FormListRules::tab`; EXE6's `cross-select`,
     the tab's tiles with its triangle, and the window's header once it is up), where the window's map shows it;
-  - `Form(k)`, the form list's entries (the names' 9x2 cells), and only they, the tab and the exit while its window
-    is up;
+  - `Form(k)`, the form list's entries (the names' 9x2 cells' rows, as wide as the exit label: the window's frame
+    either side with them), and only they, the tab and the exit while its window is up, which so span the window;
   - `FormExit`, the form list's exit label while its window is up (B2: `FormListRules::exit`; EXE6's `b-exit`,
     B:EXIT, the window's foot bar where the label's tiles are: the letters, their filler and the end, 88 by 8).
     EXE4 and EXE5 draw no such label (their windows' labels are BATTLE CHIP and CHIP SELECT), so they have none.
@@ -213,11 +213,15 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
     slot;
   - a click (down and up on the same target; off it, nothing): `Click`, what A on it would choose (a pick, a
     button's press, OK); on a button holding a chip, its `release` (§2; A on it is refused, as the game's); on a
-    pick, its `unpick` (§2: that pick alone, the picks after it moving up; before, a take-back a tick down to it); on
+    pick, its `unpick` (§2: that pick alone, the picks after it moving up; before, a take-back a tick down to it),
+    the cursor to the slot it goes back to (the user: "when deleting a chip from the tray, you should reposition the
+    cursor to where the chip returns"; B, the game's, leaves it where it is); on
     the tab, the form list opens where UP would, from anywhere (the layer's checks but the cursor's place; refused:
     the refusal sound), and again closes it as B does; on an entry, its form chosen (as A); on the chosen entry,
     `unchoose`: the Cross un-chosen, the picks kept (before, every pick was taken back first); on the exit label,
-    the list closes as B does (B2), nothing chosen; a click anywhere, on a target or none, while a description, the
+    the list closes as B does (B2), nothing chosen, and so it does on none, off the window (the user: "in
+    crossselect, you should probably allow clicks outside cross select (e.g. the chips) to dismiss crossselect";
+    the chips aren't targets while it is up); a click anywhere, on a target or none, while a description, the
     run message or the hidden window is up is a key for it, as A (it closes the description);
   - right-click: `Describe`, R on what it is on: a slot's chip (the cursor goes there), a pick's chip (the cursor
     stays), a form list entry's form.
@@ -231,8 +235,9 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
   as before; a hover on another target or `Away` brings it back to its slot, as a move. Keys while it is on a pick:
   a direction only brings it back to its slot (that press moves it no further; held, it repeats on the slots as
   any hold does); A does what a click there does (`unpick`, §2); R describes the pick; B is the game's B, START
-  goes to OK. No key moves the cursor into the column. A pick taken back from under it leaves it on the place,
-  over the pick that moved up there, or, with none, back on its slot. It is the layer's state, so replays show it
+  goes to OK. No key moves the cursor into the column. A pick it takes back (A, a click) puts it on the slot the
+  pick goes back to; one taken back from under it otherwise (B's last) leaves it on the place, over the pick that
+  moved up there, or, with none, back on its slot. It is the layer's state, so replays show it
   from the recorded gestures (`Gesture::Away` is one more gesture: 75 numbers, §3). A hover is a gesture only as the target
   under the pointer changes (B2): the mouse onto another target; pressed where it already hovers, none; a finger
   down after it was lifted (a lifted finger is over nothing). Each gesture the layer takes goes in the player's tick

@@ -1608,8 +1608,11 @@ fn unchoosing_nothing_chosen_is_refused() {
 /// The cursor on a pick (the user: "when mousing over the stack of chips you
 /// should show the cursor there too"): a hover on a pick puts it there, its
 /// slot kept, the chip window showing the pick's chip; a direction brings it
-/// back to its slot and moves it no further; A takes the pick back; R
-/// describes it; a hover on a slot, or the pointer away, brings it back.
+/// back to its slot and moves it no further; A takes the pick back, the
+/// cursor to the slot it goes back to (the user: "when deleting a chip from
+/// the tray, you should reposition the cursor to where the chip returns");
+/// R describes it; B taking the pick from under it leaves it on its slot; a
+/// hover on a slot, or the pointer away, brings it back.
 #[test]
 fn the_cursor_goes_on_a_pick_by_pointer_only() {
     use super::layer::{Gesture, Target};
@@ -1653,17 +1656,21 @@ fn the_cursor_goes_on_a_pick_by_pointer_only() {
     let (_, given) = p.step_input(PlayerTick::buttons(keys::A));
     assert_eq!(given.choice, Some(ScreenChoice::Unpick(0)));
     p.step(0);
-    // WAVE moved up under the cursor; B is the game's B.
-    assert_eq!((p.screen().selection(), p.layer.pick_cursor), (&[1u8][..], Some(0)));
-    assert_eq!(p.layer.chip_window.last_chip.map(|c| c.id), Some(ChipHandle(WAVE)));
+    // WAVE moved up; the cursor on SHOT's slot, which it went back to.
+    assert_eq!((p.screen().selection(), p.layer.pick_cursor, p.layer.cursor), (&[1u8][..], None, 0));
+    assert_eq!((p.layer.chip_window.slot, p.layer.chip_window.last_chip.map(|c| c.id)), (0, Some(ChipHandle(SHOT))));
+    // On WAVE's pick, B is the game's B: the pick gone from under it, the
+    // cursor back on its slot.
+    p.layer.point(Gesture::Hover(Target::Pick(0)));
+    p.step(0);
+    assert_eq!(p.layer.pick_cursor, Some(0));
     let (_, given) = p.step_input(PlayerTick::buttons(keys::B));
     assert_eq!(given.choice, Some(ScreenChoice::TakeBack));
     p.step(0);
-    // The pick gone from under it: back on its slot.
-    assert_eq!((p.screen().selection(), p.layer.pick_cursor, p.layer.cursor), (&[][..], None, 4));
+    assert_eq!((p.screen().selection(), p.layer.pick_cursor, p.layer.cursor), (&[][..], None, 0));
     // The pointer away, or onto a slot: back on the slots.
     choose(&mut p, ScreenChoice::Pick(0));
-    for (off, cursor) in [(Gesture::Away, 4), (Gesture::Hover(Target::Slot(2)), 2)] {
+    for (off, cursor) in [(Gesture::Away, 0), (Gesture::Hover(Target::Slot(2)), 2)] {
         p.layer.point(Gesture::Hover(Target::Pick(0)));
         p.step(0);
         assert_eq!(p.layer.pick_cursor, Some(0));
@@ -1688,9 +1695,14 @@ fn the_pointer_releases_a_held_chip_and_unpicks() {
     choose(&mut p, ScreenChoice::Pick(1));
     assert!(on_screen(&mut p, |s, f, v| s.hold_last_pick(8, f, v)));
     redo_availability(&mut p);
+    p.layer.point(Gesture::Hover(Target::Slot(4)));
+    p.step(0);
+    assert_eq!(p.layer.cursor, 4);
     p.layer.point(Gesture::Click(Some(Target::Pick(0))));
     let (_, given) = p.step_input(PlayerTick::buttons(0));
     assert_eq!(given.choice, Some(ScreenChoice::Unpick(0)));
+    // (The cursor to the slot the pick goes back to.)
+    assert_eq!((p.layer.cursor, p.layer.pick_cursor), (0, None));
     p.layer.point(Gesture::Click(Some(Target::Slot(9))));
     let (_, given) = p.step_input(PlayerTick::buttons(0));
     assert_eq!(given.choice, Some(ScreenChoice::Release(9)));
