@@ -987,39 +987,49 @@ export component BattleScreen inherits Rectangle {
 
     // The custom screen by pointer, over the picture as the replay viewer's is: hover, clicks, a right-click, a
     // finger's down and up, while the battle takes them (`Shell.screen-pointer`); the app finds what they are on.
+    // While a battle is played (`Shell.hide-mouse`: the battle has the keys, nothing over it, not a replay), the
+    // mouse's own cursor hides over the picture, the fight's and the custom screen's alike: the game's cursor is
+    // the one there. (Around it, over the app's menus and over a replay, it shows.)
     TouchArea {
         x: Shell.picture-x;
         y: Shell.picture-y;
         width: Shell.picture-width;
         height: Shell.picture-height;
-        enabled: Shell.screen-pointer;
-        function send(kind: int, button: int, touch: bool) {
-            Shell.picture-pointer(kind, button, self.mouse-x, self.mouse-y, touch);
-        }
-        pointer-event(e) => {
-            if e.kind == PointerEventKind.down || e.kind == PointerEventKind.up || e.kind == PointerEventKind.cancel {
-                self.send(
-                    e.kind == PointerEventKind.down ? 0 : e.kind == PointerEventKind.up ? 1 : 3,
-                    e.button == PointerEventButton.left ? 0 : e.button == PointerEventButton.right ? 1 : 2,
-                    e.touch-finger-id != 0);
+        enabled: Shell.hide-mouse;
+        mouse-cursor: MouseCursor.none;
+        TouchArea {
+            width: parent.width;
+            height: parent.height;
+            enabled: Shell.screen-pointer;
+            mouse-cursor: Shell.hide-mouse ? MouseCursor.none : MouseCursor.default;
+            function send(kind: int, button: int, touch: bool) {
+                Shell.picture-pointer(kind, button, self.mouse-x, self.mouse-y, touch);
             }
-        }
-        moved => {
-            self.send(2, 0, false);
-        }
-        changed mouse-x => {
-            if self.has-hover && !self.pressed {
+            pointer-event(e) => {
+                if e.kind == PointerEventKind.down || e.kind == PointerEventKind.up || e.kind == PointerEventKind.cancel {
+                    self.send(
+                        e.kind == PointerEventKind.down ? 0 : e.kind == PointerEventKind.up ? 1 : 3,
+                        e.button == PointerEventButton.left ? 0 : e.button == PointerEventButton.right ? 1 : 2,
+                        e.touch-finger-id != 0);
+                }
+            }
+            moved => {
                 self.send(2, 0, false);
             }
-        }
-        changed mouse-y => {
-            if self.has-hover && !self.pressed {
-                self.send(2, 0, false);
+            changed mouse-x => {
+                if self.has-hover && !self.pressed {
+                    self.send(2, 0, false);
+                }
             }
-        }
-        changed has-hover => {
-            if !self.has-hover {
-                self.send(4, 0, false);
+            changed mouse-y => {
+                if self.has-hover && !self.pressed {
+                    self.send(2, 0, false);
+                }
+            }
+            changed has-hover => {
+                if !self.has-hover {
+                    self.send(4, 0, false);
+                }
             }
         }
     }
