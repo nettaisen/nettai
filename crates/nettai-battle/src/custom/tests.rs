@@ -1315,6 +1315,26 @@ fn the_pointer_hovers_picks_takes_back_and_describes() {
     assert_ne!(p.phase(), Phase::Choosing);
 }
 
+/// A right-click on a pick describes that pick's chip, wherever the cursor
+/// is (the user: the pick's description, not the cursor's chip's).
+#[test]
+fn a_pick_described_is_its_own_chip() {
+    use super::layer::{Gesture, Target};
+    let mut p = Player::new(&[(SHOT, 0), (WAVE, 0), (MEGA, 0)]);
+    p.open();
+    p.wait(10);
+    p.step(0);
+    for s in [0, 1] {
+        p.layer.point(Gesture::Click(Some(Target::Slot(s))));
+        p.step(0);
+    }
+    assert_eq!((p.screen().selection(), p.layer.cursor), (&[0, 1][..], 1));
+    p.layer.point(Gesture::Describe(Target::Pick(0)));
+    p.step(0);
+    assert_eq!(p.layer.cursor, 1, "the cursor stays");
+    assert!(matches!(p.layer.sub, Sub::Description { chip: Some(c), from_list: false, .. } if c == ChipHandle(SHOT)), "{:?}", p.layer.sub);
+}
+
 /// The tick's input carries the gesture the layer took (none from an empty
 /// queue), and a gesture given with the input is the tick's: a layer given
 /// another's ticks, buttons and gestures, as a replay gives them, shows what

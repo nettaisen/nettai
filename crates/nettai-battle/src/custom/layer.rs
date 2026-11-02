@@ -38,7 +38,7 @@ use crate::rules::FormList;
 use crate::content::{CustomScreenLayout, FormListRules, HoverRuns, ScreenKey, SlotMoves};
 use crate::input::{Joypad, PlayerTick, ScreenChoice, keys};
 use crate::sound::SoundCue;
-use nettai_content_api::FormHandle;
+use nettai_content_api::{ChipHandle, FormHandle};
 
 /// What a player's layer reads of their custom screen as it is presented
 /// (`Battle::presented`): the screen and the folder it deals from, what it
@@ -101,7 +101,10 @@ pub enum Sub {
     #[default]
     None,
     Hidden(HiddenStage),
-    Description { form: Option<FormHandle>, from_list: bool, chatbox: Chatbox },
+    /// R's description: of a chip (`chip`, as the screen checks it, or the
+    /// chip a button shows), or of a form of the rules' form list (`form`,
+    /// `from_list`).
+    Description { chip: Option<ChipHandle>, form: Option<FormHandle>, from_list: bool, chatbox: Chatbox },
     RunMessage { chatbox: Option<Chatbox> },
     List(ListStage),
 }
@@ -702,7 +705,7 @@ impl Layer {
             // (A button that shows a chip, EXE5's capsules, 0x0802487C:
             // the slot's kinds 6 and 7, the chip's description.)
             let lines = view.library.chip(c).description_lines;
-            self.describe(lines, None, false, layout.chatbox_end_clears_tiles);
+            self.describe(lines, Some(c), None, false, layout.chatbox_end_clears_tiles);
             self.play(ScreenSound::Description);
         }
     }
@@ -831,7 +834,7 @@ impl Layer {
                 }
                 let form = list.forms.get(k as usize).copied().flatten();
                 let lines = form.map_or(3, |f| p.view.library.form_description_lines(f));
-                self.describe(lines, form, true, layout.chatbox_end_clears_tiles);
+                self.describe(lines, None, form, true, layout.chatbox_end_clears_tiles);
                 self.play(ScreenSound::Description);
                 Some(None)
             }
@@ -847,10 +850,10 @@ impl Layer {
 
     /// R: a description's chatbox (`chatbox_runScript` in the key's
     /// handler), which runs its first tick this tick.
-    fn describe(&mut self, lines: u8, form: Option<FormHandle>, from_list: bool, end_clears_tiles: bool) {
+    fn describe(&mut self, lines: u8, chip: Option<ChipHandle>, form: Option<FormHandle>, from_list: bool, end_clears_tiles: bool) {
         let mut chatbox = Chatbox::new(Script::Description { breaks: lines.saturating_sub(1) }).end_clears_tiles(end_clears_tiles);
         chatbox.update(self.joypad.held, self.joypad.pressed);
-        self.sub = Sub::Description { form, from_list, chatbox };
+        self.sub = Sub::Description { chip, form, from_list, chatbox };
     }
 
     /// A tick of the no-running message's chatbox: its first (`sub_8026EC8`:
@@ -914,7 +917,7 @@ impl Layer {
                 };
                 None
             }
-            Sub::Description { form, from_list, mut chatbox } => {
+            Sub::Description { chip, form, from_list, mut chatbox } => {
                 // The screen sees the chatbox closed the tick after it
                 // closes, and reads keys again the tick after that; the
                 // chatbox runs after the screen, each tick. The emblem is
@@ -937,7 +940,7 @@ impl Layer {
                     return None;
                 }
                 chatbox.update(joy.held, joy.pressed | self.click_as_key());
-                self.sub = Sub::Description { form, from_list, chatbox };
+                self.sub = Sub::Description { chip, form, from_list, chatbox };
                 if in_choosing && on_chip {
                     self.look.draw_element();
                 }
@@ -1102,7 +1105,7 @@ impl Layer {
             let form = list.forms.get(self.list_cursor as usize).copied().flatten();
             // (Three lines for a form the content has no description of.)
             let lines = form.map_or(3, |f| view.library.form_description_lines(f));
-            self.describe(lines, form, true, layout.chatbox_end_clears_tiles);
+            self.describe(lines, None, form, true, layout.chatbox_end_clears_tiles);
             self.play(ScreenSound::Description);
         }
         None

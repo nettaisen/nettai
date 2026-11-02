@@ -77,7 +77,8 @@ pub fn prepare<'a>(
     sink: &TextSink,
     problems: &mut Problems,
 ) -> Option<Shown<'a>> {
-    let (_, screen) = crate::custom::screen_of(b, side)?;
+    // (Only while the side has a screen up.)
+    crate::custom::screen_of(b, side)?;
     let layer = layer?;
     let navi = b.stats[side as usize & 1].navi;
     // The text: the content's own strings, or the player's language's
@@ -87,14 +88,15 @@ pub fn prepare<'a>(
     let strings = &sink.strings;
     // (Each with the lookup its text is: whose it is.)
     let (chatbox, said, portrait, lookup) = match layer.sub {
-        Sub::Description { from_list: false, chatbox, .. } => {
-            // The chip under the cursor as the screen checked it (the chip
-            // window's), or the chip a button there shows (EXE5's capsules).
-            let chip = screen.slots[layer.cursor as usize].face.or(layer.chip_window.last_chip.map(|c| c.id));
+        Sub::Description { from_list: false, chip, chatbox, .. } => {
+            // The chip described: the one in the slot R or a pointer
+            // described (the cursor's, or a pick's in the column) as the
+            // screen checked it, or the chip a button there shows (EXE5's
+            // capsules).
             let said = chip.and_then(|c| strings.chip_description(&b.content, c));
             (chatbox, said, None, chip.map(Lookup::ChipDescription))
         }
-        Sub::Description { from_list: true, form, chatbox } => {
+        Sub::Description { from_list: true, form, chatbox, .. } => {
             // A form of the rules' form list described (EXE6's Cross window:
             // the Cross under its cursor, of whichever game it is).
             let said = form.and_then(|f| strings.form_description(&b.content, f));

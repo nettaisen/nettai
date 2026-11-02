@@ -2121,7 +2121,7 @@ mod tests {
             }
             keys_in_turn(&mut live, &mut b, &[keys::R]);
             let up = live.layers()[0].unwrap().sub;
-            let Sub::Description { from_list: true, form, chatbox } = up else { panic!("{key}: no description: {up:?}") };
+            let Sub::Description { from_list: true, form, chatbox, .. } = up else { panic!("{key}: no description: {up:?}") };
             let want = form_of(&content, key);
             assert_eq!(form, Some(want), "{key}");
             let breaks = content.form(want).description_lines - 1;
