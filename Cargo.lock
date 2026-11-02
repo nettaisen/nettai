@@ -3810,6 +3810,7 @@ dependencies = [
  "nettai-threads",
  "nettai-training",
  "nettai-ui",
+ "nettai-updater",
  "nettai-video",
  "objc2 0.6.4",
  "objc2-avf-audio",
@@ -3827,7 +3828,6 @@ dependencies = [
  "tempfile",
  "tokio",
  "toml 0.8.23",
- "velopack",
  "wasm-bindgen",
  "web-time",
  "winit",
@@ -4156,6 +4156,26 @@ version = "0.1.0"
 dependencies = [
  "slint",
  "slint-build",
+]
+
+[[package]]
+name = "nettai-updater"
+version = "0.1.0"
+dependencies = [
+ "cfg_aliases",
+ "futures-util",
+ "jni",
+ "log",
+ "ndk-context",
+ "nettai-files",
+ "reqwest",
+ "rustls",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+ "tokio",
+ "velopack",
 ]
 
 [[package]]

@@ -1,4 +1,4 @@
-package nettai.updates
+package nettai.updater
 
 import android.app.Activity
 import android.app.PendingIntent
@@ -7,22 +7,35 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.PackageInstaller
+import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.ContextCompat
 import java.io.File
 
 /**
- * The app's update put in place by the system's installer (crates/nettai/src/updates/android.rs): the APK the app
- * downloaded and checked, written into a session of Android's [PackageInstaller] that asks for no confirmation (the
+ * The app's update put in place by the system's installer (crates/nettai-updater/src/platform/android.rs): the APK the
+ * app downloaded and checked, written into a session of Android's [PackageInstaller] that asks for no confirmation (the
  * app updates itself: Android 12 and later install it without a word, with the manifest's
  * UPDATE_PACKAGES_WITHOUT_USER_ACTION), and committed. Android ends the app once the update is in place. Where it asks
  * the player first (Settings' "Install unknown apps" not yet allowed for the app; Android 11 and earlier, always), its
  * answer says so and carries the screen that asks, which the activity shows; any other answer is the app's, through
  * [ended].
  */
-object NettaiUpdates {
+object NettaiUpdater {
     /** The installer's answers, to this app alone. */
-    private const val ANSWER = "nettai.updates.ANSWER"
+    private const val ANSWER = "nettai.updater.ANSWER"
+
+    /** The installed app's version (the APK's versionName). */
+    @JvmStatic
+    fun version(activity: Activity): String {
+        val info = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            activity.packageManager.getPackageInfo(activity.packageName, PackageManager.PackageInfoFlags.of(0))
+        } else {
+            @Suppress("DEPRECATION")
+            activity.packageManager.getPackageInfo(activity.packageName, 0)
+        }
+        return info.versionName ?: ""
+    }
 
     /** Install [apk] over the app: null once the session is committed, else why it couldn't be. */
     @JvmStatic

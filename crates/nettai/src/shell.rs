@@ -8,7 +8,6 @@
 //! The window's rendering is the app's clock: [`App::frame`] runs before each frame is drawn (docs/app.md §1).
 
 use crate::battle::{Battle, Loading};
-use crate::updates::Holding;
 use crate::errors::UserError;
 use crate::games::{Games, Notice, Ready, State};
 use crate::input::{Action, Bindings, KeyPress, Keys, Pad, Scroll, menu_action, scroll_key};
@@ -21,6 +20,7 @@ use nettai_frontend::game::Enhancements;
 use nettai_dialogs::Filter;
 use crate::page::text_entry::Entry;
 use nettai_ui::{AppWindow, ButtonKind, DialogButton, Theme};
+use nettai_updater::Status;
 use i_slint_backend_winit::WinitWindowAccessor;
 use i_slint_backend_winit::winit::event::{ElementState, KeyEvent, TouchPhase};
 use i_slint_backend_winit::winit::keyboard::{KeyCode, PhysicalKey};
@@ -284,8 +284,9 @@ pub struct Shell {
     /// player, before and between their battles): the app isn't napped while this is set, as it isn't while a
     /// battle runs (`crate::lifecycle::Awake`).
     pub stay_awake: bool,
-    /// The app's update: checked for and downloaded at the loading screen as the app starts (`updates.rs`).
-    pub updates: crate::updates::Updates,
+    /// The app's update: checked for, downloaded and installed at the loading screen as the app starts
+    /// (nettai-updater).
+    pub updates: nettai_updater::Updater,
     awake: Option<crate::lifecycle::Awake>,
     /// This frame is being drawn (the window's rendering runs it). When the window isn't drawn (minimized,
     /// hidden, covered), a timer runs the frames instead, and no picture is presented in them: there is no
@@ -2153,23 +2154,34 @@ impl App {
     }
 
     /// The loading screen as the games load (`follow_game_loading`), and, as the app starts, while its update is
-    /// checked for and downloaded (`updates.rs`): the bar the download's, and the line the update's.
+    /// checked for, downloaded and installed (nettai-updater): the bar the download's, and the line the update's. An
+    /// update that failed is said in the footer; the app goes on as it is.
     fn follow_games(&mut self) {
-        let holding = self.shell.updates.holding();
-        self.follow_game_loading(holding.is_some());
+        let status = self.shell.updates.poll();
+        let held = matches!(status, Status::Checking | Status::Downloading { .. } | Status::Installing { .. });
+        self.follow_game_loading(held);
         let ui = self.shell.ui();
         let shell = ui.global::<nettai_ui::Shell>();
         let words = ui.global::<nettai_ui::UpdateWords>();
-        shell.set_update_checking(matches!(holding, Some(Holding::Checking)));
-        match holding {
-            None => shell.set_update_line("".into()),
-            Some(Holding::Checking) => {
+        shell.set_update_checking(status == Status::Checking);
+        match status {
+            Status::Idle => shell.set_update_line("".into()),
+            Status::Failed => {
+                shell.set_update_line("".into());
+                shell.set_updating(words.get_failed());
+            }
+            Status::Checking => {
                 shell.set_loading(true);
                 shell.set_update_line(words.get_checking());
             }
-            Some(Holding::Downloading { version, progress }) => {
+            Status::Downloading { version, progress } => {
                 shell.set_loading(true);
                 shell.set_loading_progress(progress);
+                shell.set_update_line(words.invoke_updating(version.into()));
+            }
+            Status::Installing { version } => {
+                shell.set_loading(true);
+                shell.set_loading_progress(1.0);
                 shell.set_update_line(words.invoke_updating(version.into()));
             }
         }

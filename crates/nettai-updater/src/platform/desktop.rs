@@ -5,7 +5,8 @@
 //! folder, and Velopack's updater puts it in place once the app has ended, silently (no window of its own), and starts
 //! the app again.
 
-use super::{Told, tell};
+use crate::Told;
+use std::sync::mpsc::{self, Sender};
 use velopack::sources::GithubSource;
 use velopack::{UpdateCheck, UpdateInfo, UpdateManager, UpdateOptions};
 
@@ -53,42 +54,46 @@ fn options(os: &str, arch: &str) -> UpdateOptions {
     UpdateOptions { ExplicitChannel: channel.map(str::to_owned), ..UpdateOptions::default() }
 }
 
-/// Ask the releases on a thread (always: the app's being installed is the thread's to find out).
-pub fn check() -> bool {
-    std::thread::spawn(|| {
-        let Some(manager) = manager() else { return tell(Told::None) };
-        match manager.check_for_updates() {
-            Ok(UpdateCheck::UpdateAvailable(info)) => tell(Told::Found(Found(*info))),
-            Ok(_) => tell(Told::None),
+/// Ask the releases on a thread (always: whether the app is installed is the thread's to find out).
+pub fn check(tell: Sender<Told>) -> bool {
+    std::thread::spawn(move || {
+        let Some(manager) = manager() else { return drop(tell.send(Told::None)) };
+        let told = match manager.check_for_updates() {
+            Ok(UpdateCheck::UpdateAvailable(info)) => Told::Found(Found(*info)),
+            Ok(_) => Told::None,
             Err(why) => {
-                crate::errors::log("checking for an update", &why);
-                tell(Told::None);
+                log::warn!("checking for an update: {why}");
+                Told::None
             }
-        }
+        };
+        let _ = tell.send(told);
     });
     true
 }
 
 /// Download `found`'s update on a thread, telling how far.
-pub fn download(found: &Found) {
+pub fn download(found: &Found, tell: Sender<Told>) {
     let info = found.0.clone();
     std::thread::spawn(move || {
-        let Some(manager) = manager() else { return tell(Told::Downloaded(Err("the app isn't installed".into()))) };
-        let (progress, heard) = std::sync::mpsc::channel::<i16>();
-        let forward = std::thread::spawn(move || {
-            for percent in heard {
-                tell(Told::Progress(percent));
-            }
-        });
+        let Some(manager) = manager() else { return drop(tell.send(Told::Downloaded(Err("the app isn't installed".into())))) };
+        let (progress, heard) = mpsc::channel::<i16>();
+        let forward = {
+            let tell = tell.clone();
+            std::thread::spawn(move || {
+                for percent in heard {
+                    let _ = tell.send(Told::Progress(f32::from(percent.clamp(0, 100)) / 100.0));
+                }
+            })
+        };
         let done = manager.download_updates(&info, Some(progress)).map_err(|why| why.to_string());
         let _ = forward.join();
-        tell(Told::Downloaded(done));
+        let _ = tell.send(Told::Downloaded(done));
     });
 }
 
 /// The updater waits for this process to end, then puts the update in place silently (no window of its own) and
-/// starts the app again. The process ends here (the settings are written as each changes).
-pub fn apply(found: Found) -> Result<(), String> {
+/// starts the app again. The process ends here (the app writes its settings as each changes).
+pub fn install(found: Found, _tell: Sender<Told>) -> Result<(), String> {
     let manager = manager().ok_or("the app isn't installed")?;
     match manager.wait_exit_then_apply_updates(&found.0.TargetFullRelease, true, true, Vec::<String>::new()) {
         Ok(()) => std::process::exit(0),

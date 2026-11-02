@@ -1268,16 +1268,17 @@ web type-check is `cargo +nightly check --target wasm32-unknown-unknown -p netta
 packaging/web/serve.py` serves it at http://localhost:8000/ cross-origin isolated (COOP and COEP), which a page
 with threads must be.
 
-- **What the app asks of the system** is the same calls everywhere, a crate a concern (nettai-platform's modules
-  until 2026-10-30): nettai-files (files, the app's folders), nettai-threads (threads, their locks, work off the
-  window's thread) and nettai-dialogs (files to open, a folder, where to save, a file written as it is made, files
-  dropped, the clipboard); time is web-time's; the browser's page (the window is the page's whole, following its
-  size, and the input over a field: `page::text_entry`), the app's life (kept awake, come back: `lifecycle`), files
-  over HTTP (`http.rs`), what the browser's page calls (`page`) and Android's entry point, activity and safe area
-  (`activity.rs`) are the app's own modules (nettai-page's, nettai-lifecycle's, nettai-http's, nettai-web's,
-  nettai-android's and nettai-android-app's until they folded in, 2026-10-30). Each crate (and each of those modules) has its systems' code in modules of their own under
-  `platform/`, `desktop`, `web`, `ios`, `android` or one several share (`native`: the desktop's and a phone's;
-  `phone`; `none`: nothing to do), chosen in one place (`platform.rs`), as nettai-video's are. Android's crates
+- **What the app asks of the system** is the same calls everywhere, a crate a concern (nettai-platform's modules until
+  2026-10-30): nettai-files (files, the app's folders), nettai-threads (threads, their locks, work off the window's
+  thread), nettai-dialogs (files to open, a folder, where to save, a file written as it is made, files dropped, the
+  clipboard) and nettai-updater (the app's own updates, §19); time is web-time's; the browser's page (the window is
+  the page's whole, following its size, and the input over a field: `page::text_entry`), the app's life (kept awake,
+  come back: `lifecycle`), files over HTTP (`http.rs`), what the browser's page calls (`page`) and Android's entry
+  point, activity and safe area (`activity.rs`) are the app's own modules (nettai-page's, nettai-lifecycle's,
+  nettai-http's, nettai-web's, nettai-android's and nettai-android-app's until they folded in, 2026-10-30). Each crate
+  (and each of those modules) has its systems' code in modules of their own under `platform/`, `desktop`, `web`,
+  `ios`, `android` or one several share (`native`: the desktop's and a phone's; `phone`; `none`: nothing to do),
+  chosen in one place (`platform.rs`), as nettai-video's are. Android's crates
   reach Java through ndk-context's VM and activity, which the app sets as `android_main` begins (android-activity
   0.6.1 sets the Application there, on which the Kotlin's Activity calls fail: up to 0.18.2 the pickers, the
   clipboard and nearby did nothing). A dialog answers
@@ -1447,9 +1448,9 @@ run in the emulator (below, "Android"). What builds: the whole app, for iOS (typ
   No pad has run: the iOS backend's calls ran on macOS (the same framework) with none attached, and Android's ran
   in the emulator on events adb made.
 - **Text:** the system's input method works through winit on iOS; on Android, below.
-- **Updates:** Android's app updates itself from the release's APK (§19, "Updates"; `updates/android.rs`). iOS's
-  is its sideloading tool's (AltStore's source, §19): it has the no-updater stand-in (`updates/none.rs`, the
-  web's).
+- **Updates:** Android's app updates itself from the release's APK (§19, "Updates"; nettai-updater's
+  `platform/android.rs`). iOS's is its sideloading tool's (AltStore's source, §19): it has nettai-updater's
+  `platform/none.rs`, the web's.
 - **Netplay:** nettai-rtc natively is str0m (pure Rust, its sockets on tokio), which builds for both; not tried.
   On Android, reqwest's certificate checks (rustls-platform-verifier) are that crate's JNI set-up (`android_main`)
   and its Android component in the APK; the emulator's app downloaded the games' content over HTTPS with them.
@@ -1543,8 +1544,8 @@ what goes in, in `target/package/android`:
 then runs Gradle in packaging/android on them (their paths as `-P` properties): `gradlew`, the wrapper, fetches
 Gradle 9.8.1 and checks its zip's SHA-256; `build.gradle.kts` is AGP 9.5.0 with its own Kotlin (2.2.10), on a
 JDK 17 (`JAVA_HOME`). Gradle
-- compiles every crate's `android/**/*.kt` (the app's `NettaiActivity`, `NettaiAwake`, `NettaiHaptics` and
-  `NettaiUpdates`, nettai-gamepad's `NettaiGamepads`, nettai-dialogs' `NettaiFiles`);
+- compiles every crate's `android/**/*.kt` (the app's `NettaiActivity`, `NettaiAwake` and `NettaiHaptics`,
+  nettai-gamepad's `NettaiGamepads`, nettai-dialogs' `NettaiFiles`, nettai-updater's `NettaiUpdater`);
 - adds GameActivity (`androidx.games:games-activity:4.4.0`), AppCompat (`androidx.appcompat:appcompat:1.7.1`,
   GameActivity's base class) and the verifier's AAR;
 - shrinks the code and resources with R8 (`proguard-rules.pro` keeps what native code finds by name: the crates'
@@ -4502,9 +4503,12 @@ base64) and `WINDOWS_CERTIFICATE_PASSWORD`; `MACOS_CERTIFICATE` (a Developer ID 
 `MACOS_CERTIFICATE_PASSWORD`, and for notarizing `APPLE_ID`, `APPLE_TEAM_ID` and `APPLE_APP_PASSWORD` (made a notarytool
 profile in the job's keychain).
 
-**Updates** (`updates.rs`: the loading screen's part, the same everywhere; each system's in `updates/`; Android's
-below). The user asked for an updater, then for Velopack with GitHub releases. Velopack's hook runs first in `main`
-(`updates::startup`: run by the installer or the updater, it does its part and the process ends). An
+**Updates** (nettai-updater: the stages, the same everywhere, in its `lib.rs`, polled by the app's loading screen,
+`Updater::poll`; each system's in `src/platform/`, `desktop`, `android` and `none`, a browser's and iOS's; Android's
+below). The user asked for an updater, then for Velopack with GitHub releases, then for the updater as a crate of its
+own ("move updater code into nettai-updater with platform modules like the other vertically split modules").
+Velopack's hook runs first in `main` (`nettai_updater::startup`: run by the installer or the updater, it does its part
+and the process ends). An
 installed app asks `https://github.com/nettaisen/nettai`'s published releases at start, on a thread, whether a newer one
 is out on its channel (`velopack::sources::GithubSource`; unauthenticated, one request a start; its system's and
 architecture's channel, whatever its package was made on: below); a build run from the repository isn't installed and
@@ -4521,7 +4525,7 @@ workflow packs with: the first release that asks for zip 9 (the ones before aske
 yanked, so it was taken from Velopack's repository until then).
 
 **Channels.** Velopack's app asks the channel its package was made on unless it is told another, so an install keeps
-asking the channel it came from for good. The app tells it (`updates::options`: Velopack's
+asking the channel it came from for good. The app tells it (nettai-updater's `options`: Velopack's
 `UpdateOptions::ExplicitChannel`) the channel of the system and architecture its program was built for, whatever
 package it came from: `macos-arm64` or `macos-x64` (the slice that runs, so a universal app opened with Rosetta asks
 Intel's), `win-x64` or `win-arm64`, `linux-x64` or `linux-arm64`; elsewhere none. An app from a package on another
@@ -4542,9 +4546,9 @@ the newest on that channel (the same version on another channel is no update: Ve
 The bridge stopped after 0.19.1 (the user, 2026-11-01: "you can remove the bridge channels as well now right?"), and
 the site's downloads moved to the new names first. An install of 0.19.0 or before finds 0.19.1 as long as it is among
 the ten newest published (Velopack's `GithubSource` reads ten, below); one not opened until ten more are out finds
-nothing, and its player downloads the app again. The tests (`updates/velopack.rs`) run Velopack's own check on such
-feeds: an app installed from a package on each channel before takes its architecture's package, waits when the
-version there is its own, and an app on each new channel stays on it.
+nothing, and its player downloads the app again. The tests (nettai-updater's `platform/desktop.rs`) run Velopack's own
+check on such feeds: an app installed from a package on each channel before takes its architecture's package, waits
+when the version there is its own, and an app on each new channel stays on it.
 
 **The universal package stopped** after 0.18.1 (the user: "get rid of the universal binary"). An install of 0.12.0
 or before finds 0.18.1, the last universal release, updates to it and on to its architecture's, as long as 0.18.1 is
@@ -4553,19 +4557,21 @@ nothing, and its player downloads their architecture's app again. A universal ap
 architecture's channel already (`osx-arm64`, `osx-x64`, which 0.19.1's bridge served). The site's macOS downloads are
 the two architectures' zips.
 
-**Android's updates** (`updates/android.rs`, `updates/release.rs`, `NettaiUpdates.kt`). The user asked for the APK
-to update itself, after Obtainium, an F-Droid repository and Google Play were weighed ("ok do that", of the app
-installing it with Android's own installer). The same loading screen as the desktop's, with the same setting and the
-same five seconds: the app asks GitHub's API for the newest published release
-(`api.github.com/repos/nettaisen/nettai/releases/latest`, unauthenticated, one request a start; the app sends a
-User-Agent, `nettai/<version>`, which the API answers nothing without), and if its tag's version (three numbers) is
-newer than the app's, downloads its `nettai-android.apk` into the app's cache folder, the bar its progress, checking
-it by the SHA-256 GitHub gives each release asset (`digest`; a release without one, or without the APK, is logged
-and no update). Then `NettaiUpdates.install` writes it into a session of Android's `PackageInstaller` and commits
-it, the session asking for no confirmation (`USER_ACTION_NOT_REQUIRED`), with the manifest's
-`REQUEST_INSTALL_PACKAGES` and `UPDATE_PACKAGES_WITHOUT_USER_ACTION` (a normal permission, granted at install,
-which says nothing to the player). What the player sees, by Android's rules (`PackageInstallerSession`'s
-`computeUserActionRequirement` in AOSP):
+**Android's updates** (nettai-updater's `platform/android.rs`, `release.rs`, `NettaiUpdater.kt`). The user asked for
+the APK to update itself, after Obtainium, an F-Droid repository and Google Play were weighed ("ok do that", of the
+app installing it with Android's own installer). The same loading screen as the desktop's, with the same setting and
+the same five seconds: the updater asks GitHub's API for the newest published release
+(`api.github.com/repos/nettaisen/nettai/releases/latest`, unauthenticated, one request a start, with a User-Agent,
+`nettai`, which the API answers nothing without), and if its tag's version (three numbers) is newer than the installed
+app's (the APK's `versionName`, as Android's `PackageManager` says it), downloads its `nettai-android.apk` into the
+app's cache folder, the bar its progress, checking it by the SHA-256 GitHub gives each release asset (`digest`; a
+release without one, or without the APK, is logged and no update). Each is reqwest's, as the app's files are, on a
+thread of the updater's with a tokio runtime of its own; a connection not made in 10 seconds, or a download that hears
+nothing for 30, fails (logged, said in the footer) and the loading screen goes on. Then `NettaiUpdater.install` writes
+it into a session of Android's `PackageInstaller` and commits it, the session asking for no confirmation
+(`USER_ACTION_NOT_REQUIRED`), with the manifest's `REQUEST_INSTALL_PACKAGES` and `UPDATE_PACKAGES_WITHOUT_USER_ACTION`
+(a normal permission, granted at install, which says nothing to the player). What the player sees, by Android's rules
+(`PackageInstallerSession`'s `computeUserActionRequirement` in AOSP):
 - the first time, the app isn't yet allowed to install apps (Settings → Apps → Special app access → Install unknown
   apps), and the installer's answer is a screen that asks (`STATUS_PENDING_USER_ACTION`, its intent shown by the
   activity), which leads to that setting and then asks to update;
@@ -4577,7 +4583,7 @@ Android checks the new APK is signed with the installed app's key (every release
 the app as it installs it, and doesn't open it again: the player does. The player turning the installer down
 (`STATUS_FAILURE_ABORTED`) is logged, and the app goes on; any other failure is said in the footer, as a download's
 is; either way the update is downloaded and offered again next start. Nothing is updated during a session. The
-release's JSON is read by `updates/release.rs`, whose tests run on the host.
+release's JSON is read by `release.rs`, whose tests run on the host.
 
 What ran (2026-11-01, the emulator: Android 16): an APK of this code built as 0.19.9 and signed with the release key,
 installed by adb, found 0.20.0's release, downloaded its APK (97 MB) and checked it, and handed it to the installer;

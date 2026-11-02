@@ -145,6 +145,7 @@ and the WASI SDK; see [docs/app.md](docs/app.md) §6.
 | `crates/nettai-replay`, `nettai-video` | The replay format; replays exported as MP4 |
 | `crates/nettai`, `nettai-ui` | The app (Slint), and its UI files |
 | `crates/nettai-files`, `nettai-threads`, `nettai-dialogs`, `nettai-gamepad` | What the app asks of the system, the same on the desktop, in a browser and on a phone, a crate a concern |
+| `crates/nettai-updater` | The app's own updates from the GitHub releases: Velopack's on the desktop, the release's APK on Android |
 | `crates/nettai-tools` | `nettai-tool`, the command line |
 | `crates/nettai-training`, `training/` | A learned AI opponent (work in progress): the Rust side and the Python trainer |
 | `crates/exe4-compat`, `exe5-compat`, `exe6-compat` | Each game's original IDs, save import and trace formats (the engine never depends on these) |

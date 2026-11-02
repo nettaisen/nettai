@@ -40,7 +40,6 @@ mod settings;
 mod shell;
 mod sound;
 mod stage;
-mod updates;
 // (The screenshot pass is the `tour` feature's: a player's build has none of it. The tests compile it all the
 // same, so that it keeps compiling.)
 #[cfg(any(test, feature = "tour"))]
@@ -97,7 +96,7 @@ fn select_backend(tour: bool) -> Result<(), slint::PlatformError> {
 /// it, and this returns once it is started).
 pub fn run() -> Result<(), slint::PlatformError> {
     // (Run by the installer or the updater, Velopack's hook does its part and the process ends here.)
-    updates::startup();
+    nettai_updater::startup();
     // (An engine stop is the session's to report, as a value: kept off stderr.)
     nettai_frontend::session::quiet_engine_panics();
     errors::catch_library_logs();

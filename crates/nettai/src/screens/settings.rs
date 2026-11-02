@@ -258,7 +258,7 @@ impl Settings {
     }
 
     /// The check for updates on or off: turned on, the games' content is checked now, and the app at its next start
-    /// (its loading screen is where it updates: `updates.rs`).
+    /// (its loading screen is where it updates: nettai-updater).
     fn set_check_updates(&mut self, shell: &mut Shell, on: bool) {
         shell.settings.check_updates = on;
         shell.save_settings();

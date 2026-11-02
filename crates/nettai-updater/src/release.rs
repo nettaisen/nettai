@@ -1,5 +1,5 @@
 //! The newest release as GitHub's API says it (`releases/latest`: the newest published, not a prerelease), read for
-//! Android's update (`android.rs`): its APK, if the release is newer than the app.
+//! Android's update (`platform/android.rs`): its APK, if the release is newer than the installed app.
 
 use serde::Deserialize;
 
@@ -20,7 +20,7 @@ pub struct Found {
 }
 
 impl Found {
-    #[cfg_attr(not(target_os = "android"), allow(dead_code))]
+    #[cfg_attr(not(android), allow(dead_code))]
     pub fn version(&self) -> &str {
         &self.version
     }
@@ -41,14 +41,14 @@ struct Asset {
     digest: Option<String>,
 }
 
-/// The release's APK, if the release (GitHub's JSON for it) is newer than `running`, the app's version; a release
-/// that has none, or doesn't say its SHA-256, is an error.
-pub fn newer(json: &[u8], running: &str) -> Result<Option<Found>, String> {
+/// The release's APK, if the release (GitHub's JSON for it) is newer than `installed`, the installed app's version; a
+/// release that has none, or doesn't say its SHA-256, is an error.
+pub fn newer(json: &[u8], installed: &str) -> Result<Option<Found>, String> {
     let release: Release = serde_json::from_slice(json).map_err(|e| format!("the release's JSON: {e}"))?;
     let tag = release.tag_name;
     let version = tag.strip_prefix('v').unwrap_or(&tag);
-    let (Some(out), Some(ours)) = (numbers(version), numbers(running)) else {
-        return Err(format!("the release's version {version} and the app's {running} don't compare"));
+    let (Some(out), Some(ours)) = (numbers(version), numbers(installed)) else {
+        return Err(format!("the release's version {version} and the app's {installed} don't compare"));
     };
     if out <= ours {
         return Ok(None);

@@ -27,7 +27,7 @@ pub struct Settings {
     pub full_screen: bool,
     /// Motion turned down: everything is a cut. None: as the system asks.
     pub reduce_motion: Option<bool>,
-    /// An installed app asks nettai's GitHub releases at start whether a newer one is out (`updates.rs`).
+    /// An installed app asks nettai's GitHub releases at start whether a newer one is out (nettai-updater).
     pub check_updates: bool,
     /// The graphics enhancements battles are drawn with (`Enhancements`), each on or off; all off, as the game
     /// draws them. Sharp text: the strings in a font at the window's resolution.
