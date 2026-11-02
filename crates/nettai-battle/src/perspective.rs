@@ -380,14 +380,14 @@ mod tests {
         use crate::input::PlayerTick;
         use crate::kinds::player::{EmotionRole, hold_emotion};
         let mut b = Battle::new(crate::scenario::setup(), crate::scenario::content());
-        let mut last = [0u16; 2];
+        let mut last = [None; 2];
         for _ in 0..2000 {
             if b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING {
                 break;
             }
             let input = [0, 1].map(|side| {
-                last[side] = crate::scenario::custom_buttons(&b, side, last[side]);
-                PlayerTick::buttons(last[side])
+                last[side] = crate::scenario::custom_choice(&b, side, last[side]);
+                PlayerTick::buttons(0).with_choice(last[side])
             });
             b.tick(&input, TickEvents::default());
         }

@@ -37,9 +37,9 @@ fn main() {
     let compat = exe5_compat::Compat::exe5();
     let rounds = trace::rounds(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
     for (i, round) in rounds.iter().enumerate() {
-        let replay = trace::run_round_seeing(round, &content, compat, &mut |frame, b| {
+        let replay = trace::run_round_seeing(round, &content, compat, &mut |frame, b, layers| {
             if (first..=last).contains(&frame) {
-                let picture = renderer.render(b);
+                let picture = renderer.render(b, layers);
                 nettai_render::present::write_png(&out.join(format!("nettai_{frame:05}.png")), &picture, 1, None).unwrap();
             }
         });

@@ -72,11 +72,11 @@ fn main() {
     let mut b = Battle::new(m.round(&content, 0x5EED), content.clone());
 
     // Through the custom screens to the fight.
-    let mut last = [0u16; 2];
+    let mut last = [None; 2];
     while !(b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING) {
         let input = [0, 1].map(|s| {
-            last[s] = nettai_battle::scenario::custom_buttons(&b, s, last[s]);
-            PlayerTick::buttons(last[s])
+            last[s] = nettai_battle::scenario::custom_choice(&b, s, last[s]);
+            PlayerTick::buttons(0).with_choice(last[s])
         });
         b.tick(&input, Default::default());
     }
@@ -136,7 +136,7 @@ fn main() {
     let mut tsv = std::fs::File::create(out.join("ticks.tsv")).unwrap();
     for (i, (battle, sounds)) in ticks.iter().enumerate() {
         let n = i as i64 - at;
-        let frame = renderer.render(battle);
+        let frame = renderer.render(battle, [None, None]);
         nettai_render::present::write_png(&out.join(format!("nettai_{n:+05}.png")), &frame, 1, None).unwrap();
         // The same without the Double Attack's own drawings (its kinds, the attachments and one-shot effects), for
         // a comparison of what it draws alone.
@@ -152,7 +152,7 @@ fn main() {
         for r in hidden {
             bare.objects.get_mut(r).set_visible(false);
         }
-        let frame = renderer.render(&bare);
+        let frame = renderer.render(&bare, [None, None]);
         nettai_render::present::write_png(&out.join(format!("bare_{n:+05}.png")), &frame, 1, None).unwrap();
         writeln!(tsv, "{n}\t{sounds}").unwrap();
     }

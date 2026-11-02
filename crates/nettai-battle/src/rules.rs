@@ -285,8 +285,8 @@ impl<'a> SetupFact<'a> {
 /// `form_list_opening`, `form_list`, `form_list_closing` and `form_chosen`,
 /// [`Battle::form_list`]): the places of the forms offered among the
 /// player's form list (the setup's field of the role `form_list`), the
-/// forms there, how many, which entries are marked, the entry under the
-/// cursor, and the place chosen.
+/// forms there, how many, which entries are marked, and the place chosen.
+/// (The entry under the list's cursor is the player's layer's.)
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct FormList {
     pub offered: [u8; FORM_LIST_ENTRIES],
@@ -295,7 +295,6 @@ pub struct FormList {
     pub forms: [Option<FormHandle>; FORM_LIST_ENTRIES],
     pub count: u8,
     pub marked: [bool; FORM_LIST_ENTRIES],
-    pub cursor: u8,
     pub chosen: Option<u8>,
 }
 
@@ -367,7 +366,6 @@ impl Battle {
         let get = |p| state.get_at(schema.place_of(p));
         let mut list = FormList {
             count: byte(get(f.count)),
-            cursor: byte(get(f.cursor)),
             chosen: flag(get(f.chosen_set)).then(|| byte(get(f.chosen))),
             ..FormList::default()
         };
@@ -464,7 +462,7 @@ impl Battle {
         if !self.has_rules(side) || self.rules[side as usize & 1].muted & hook.bit() != 0 {
             return None;
         }
-        let call = HookCall::Rules { side, hook, navi, chip, weapon, member: None, mood: None };
+        let call = HookCall::Rules { side, hook, navi, chip, weapon, member: None, mood: None, entry: None };
         Some(crate::behavior::call_hook(self, f, call))
     }
 
@@ -651,7 +649,7 @@ impl Battle {
             RulesHook::ButtonHandChip => d.hand_chip.expect("a button's hand chip, asked only when it has one"),
             h => panic!("{h:?} is no button's function"),
         };
-        let call = HookCall::Rules { side, hook, navi: None, chip: None, weapon: None, member: None, mood: None };
+        let call = HookCall::Rules { side, hook, navi: None, chip: None, weapon: None, member: None, mood: None, entry: None };
         crate::behavior::call_hook(self, f, call)
     }
 
@@ -659,7 +657,7 @@ impl Battle {
     pub(crate) fn call_window(&mut self, side: u8, window: crate::content::WindowHandle) -> Value {
         let content = self.content.clone();
         let d = content.defs.window(window);
-        let call = HookCall::Rules { side, hook: RulesHook::WindowUpdate, navi: None, chip: None, weapon: None, member: None, mood: None };
+        let call = HookCall::Rules { side, hook: RulesHook::WindowUpdate, navi: None, chip: None, weapon: None, member: None, mood: None, entry: None };
         crate::behavior::call_hook(self, d.update, call)
     }
 
@@ -671,6 +669,16 @@ impl Battle {
     /// The rules' custom hook `hook(side)`.
     pub(crate) fn rules_call_custom(&mut self, side: u8, hook: RulesHook) {
         self.call_rules(side, hook, None, None, None);
+    }
+
+    /// The rules' custom hook `hook(side, entry)` (`custom.choose_form`).
+    pub(crate) fn rules_call_custom_entry(&mut self, side: u8, hook: RulesHook, entry: u8) {
+        let Some(f) = self.content.defs.rules().and_then(|r| r.hook(hook)) else { return };
+        if !self.has_rules(side) || self.rules[side as usize & 1].muted & hook.bit() != 0 {
+            return;
+        }
+        let call = HookCall::Rules { side, hook, navi: None, chip: None, weapon: None, member: None, mood: None, entry: Some(entry) };
+        crate::behavior::call_hook(self, f, call);
     }
 
     /// The rules' custom hook `hook(side)`: whether it answered true.
@@ -773,7 +781,7 @@ impl Battle {
         if !self.has_rules(side) || self.rules[side as usize & 1].muted & hook.bit() != 0 {
             return None;
         }
-        let call = HookCall::Rules { side, hook, navi, chip: None, weapon: None, member: Some(member), mood };
+        let call = HookCall::Rules { side, hook, navi, chip: None, weapon: None, member: Some(member), mood, entry: None };
         Some(crate::behavior::call_hook(self, f, call))
     }
 
@@ -1356,7 +1364,7 @@ mod tests {
         let button_named = |c: &Content, name: &str| c.defs.rules().unwrap().buttons.iter().copied().find(|&b| c.defs.button(b).name == name);
         // A window's view: a name of the engine's, whose fields the rules
         // keep as the view's types.
-        window_refused("mark = \"u8\"", "form_lst", &["rules/init.luau: rules", "window `w`: `view` is \"form_lst\"", "form_list_opening"]);
+        window_refused("mark = \"u8\"", "form_lst", &["rules/init.luau: rules", "window `w`: `view` is \"form_lst\"", "form_chosen"]);
         window_refused(
             "mark = \"u8\"",
             "offer_flight",

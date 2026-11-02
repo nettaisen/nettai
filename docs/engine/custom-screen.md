@@ -28,12 +28,46 @@ and says what is verified and how.
 
 In the original each console runs only its own player's screen (`sub_8026A28`, state block `0x020364C0`, slots
 at `0x020365C0`), reads its own joypad, and sends its result over the link. The port runs **both players'
-screens in the simulation**, each driven by its player's buttons, so that the whole battle is a function of the
-setup and both players' buttons (rollback netplay):
+screens in the simulation**, each driven by its player's **choices**, so that the whole battle is a function of the
+setup and both players' inputs (rollback netplay). A choice (`input::ScreenChoice`, `PlayerTick::choice`) is what a
+key decided on the original's screen: a chip picked (`Pick(slot)`), a rules' button pressed (`Press(slot)`), OK,
+a take-back (B), an entry of the rules' form list chosen (`ChooseForm(entry)`, EXE6's Cross). The screen takes the
+choice of the tick while it chooses and reads no key (docs/design/custom-screen-actions.md).
+
+**The player's layer.** What only shows is each player's own, outside the simulation: their **layer**
+(`custom::layer::Layer`, one a side, a round long). It holds the cursor and its blink, where it starts (the first
+dark chip), the chip window's chip, the dark chips' hover and its shade, R's description, L's run message,
+SELECT's hiding and the form list with its own cursor, and the joypad they read (`Layer::joypad`, with its
+console's repeat beat). Keys drive it by the code that drove the simulated cursor (§3: each game's slot
+neighbors and EXE4's key orders, the repeat, START to OK, UP into the form list); a key that decides makes the
+tick's choice. It never enters `Battle`, its snapshot or its digest. A tick has two halves around the battle's:
+`Layer::input` before it (the player's buttons against the battle as presented, the state the last tick left: the
+tick's input with its choice) and `Layer::follow` after it (the drawing, the chip window, the hover). It reads its
+side's screen through `Battle::presented` (`layer::Presented`: the screen, its folder, what it reads of its
+player, its number in the round, the time left, the rules' form list). In live play it reads the battle as the
+player sees it, so the cursor moves at once and the choices land the input delay later; stepped in lockstep with
+no delay (`custom::Lockstep`), it gives the choices on the ticks the original's screens took their keys (§7).
+
+**What the split changes** from the original, on purpose (each where the battle can't know what only the layer
+knows):
+
+- The dark chips' hover runs the console's first fade record in the original, which the screen's own fades share;
+  here the hover's fades are the layer's and the screen waits only on its own (`Screen::fade`, `custom.fading`).
+  In EXE5, a party switch begun within about 5 ticks of the cursor landing on a dark chip completes at its own
+  time, a few ticks before the original's (the hover's fade back no longer holds its fade up); the outcome is the
+  same. No recording has it.
+- A screen fade started while the hover's shade holds starts from its own record's level, not the shade's (the
+  shared record's, in the original). Drawn, the fade started last shows, as before.
+- On the tick the time limit runs out (nettai's own) with the hover up, its cleared volumes now come after the
+  OK's sound in the player's cues (the layer's go after the screen's).
+- A party switch asked while the layer has something up over the chips (SELECT's hiding, a description, the run
+  message) is held back, as the original's screen reads switches only while choosing. On a tick a switch is
+  taken the layer reads no keys, as the original's choosing state doesn't, whatever the rules' `member_busy` would
+  say (the layer can't ask it): a key on a tick whose switch the rules refuse is lost (EXE5 DS only).
 
 | Original (per console) | Port |
 |---|---|
-| The local screen reads `eJoypad` (the undelayed joypad); the fight reads the link's input records, which lag it by the link queue (4 frames) | `PlayerTick::held` is the player's buttons this tick, which `Side::joypad` and the fight both read at once: the engine has no link. A recording's replay feeds what the original's fight and screen saw (battle-flow.md §6.1, `Round::fed`) |
+| The local screen reads `eJoypad` (the undelayed joypad); the fight reads the link's input records, which lag it by the link queue (4 frames) | The player's layer reads their buttons (`Layer::joypad`) and gives the tick's choice (`PlayerTick::choice`), which the screen takes; the fight reads `PlayerTick::held` (its record takes the buttons through the screen, so a button held across its close isn't a new press), at once: the engine has no link. A recording's replay feeds what the original's fight and screen saw (battle-flow.md §6.1, `Round::fed`) through each side's layer in lockstep (§7) |
 | The status byte BS+0x11 bit 2 (custom screen open), sent in the link packet; received as BS+0x14/0x15 | `Side::in_custom` per player; `RoundState::remote_status` is it, at once (in a recording it arrives the cable's delay later: a known difference on a screen's opening) |
 | The hand, NaviStats and transform record sent in 50 link words; committed when both magic words are in | `Side::sent` (the result and the tick its last word arrives, 50 after it is sent); the fight resumes when both have arrived |
 | The folder shuffle at the round's init with the console's own RNG1 | `BattleFolder::shuffled` with the RNG it's given, by whoever makes the setup (nettai-match's `Match::round`); `RoundSetup::players[p].folder` is the shuffled folder, which `Battle::new` takes as it is (it deals nothing). A setup with empty folders (`BattleFolder::empty`, `Match::undealt_round`) sets up a round the tools ask the rules of (nettai-match's checks), its stats a dealt round's |
@@ -127,16 +161,25 @@ dealt). All neighbor bytes of all openings match **[dumps]**.
 
 ## 3. Choosing
 
+The keys are the player's layer's (§0): it reads them by the original's rules below and turns those that decide
+into the tick's choice (`ScreenChoice`), which the screen takes in its choosing state (`Screen::choose`) and checks
+as A on its slot was checked (a choice that can't be taken plays the refusal; one for a slot of another kind, laid
+out since, does nothing). Everything else a key does (the cursor, START, SELECT, R, L, the form list's browsing)
+is the layer's alone. The layer reads keys on a tick whose screen, as the tick starts, chooses (`Phase::Choosing`),
+and not on the tick its time runs out (§6.1) or a party switch is taken (EXE5 DS: the switch takes the tick,
+0x02063038). Its joypad updates every tick, the fight's too, so a hold begun in the fight repeats on the screen.
+
 ### 3.1 The joypad
 
 `eJoypad` (`main_static_80003E4`, once per frame): held, pressed (down now, not last frame), and **repeat**: a
 held button repeats on the second frame of a hold, then from its 17th frame on every fifth frame, on the frames a
 console-wide counter (0-4, +1 a frame) reads 0. That counter is each console's own: `PlayerSetup::joypad_phase`
-(the recordings' consoles read the frame number mod 5) **[dumps]**. `input::Joypad`.
+(the recordings' consoles read the frame number mod 5) **[dumps]**. `input::Joypad`, which the player's layer keeps
+(`Layer::joypad`, `Layer::on_beat`): the simulation reads no joypad of the screen's.
 
 ### 3.2 Keys (`sub_8028B74`, state 4)
 
-One action per tick, in this order:
+One action per tick, in this order (the layer's `Layer::choose`):
 
 1. UP/DOWN (repeat): UP from a top-row chip or OK opens the Cross window (§4) when the navi is MegaMan, Beast
    Out isn't picked and a Cross is offered; otherwise the slot's vertical neighbor.
@@ -150,6 +193,12 @@ One action per tick, in this order:
 
 Cursor movement never skips grayed or picked slots. Verified on every state-4 tick of both players in both
 replays (37.5k ticks: 692 moves, 174 picks, 49 take-backs, 88 Cross windows, 40 OKs, 10 scraps…) **[dumps]**.
+
+A on a chip is `Pick(slot)`, on OK `Ok`, on a rules' button `Press(slot)` (either cell of one two wide); B is
+`TakeBack`. The rest is the layer's: the cursor (`Layer::cursor`; `Screen::target_from` gives a direction's slot
+from the screen's neighbors and lists), START, SELECT, R, L, and UP into the form list (by the layout's
+`form_list`, §4). The cursor starts where `Screen::first_cursor` says (the first slot there, or the first dark
+chip dealt, `sub_802806C`), and goes to the first slot there when a switch lays the slots out again (EXE5 DS).
 
 ### 3.3 A
 
@@ -186,10 +235,17 @@ MegaLevel/GigaLevel, or when its code isn't one of the chip's codes (not checked
 The original also fails it on its anti-tamper check, which legitimate play never trips. Never seen in the
 recordings (the counts stayed within the limits).
 
-**B** (`sub_8029032`): take back the last pick (Beast Out included); with none picked, un-choose the Cross. The
-cursor doesn't move.
+**B** (`sub_8029032`, the choice `TakeBack`): take back the last pick (Beast Out included); with none picked, what
+the rules take back (`custom.take_back`: EXE6's Cross un-chosen). The cursor doesn't move.
 
 ### 3.5 Sub-screens and their timing
+
+SELECT's hiding, R's description, L's run message and the Cross window's browsing are the player's layer's
+(`layer::Sub`: `Hidden`, `Description`, `RunMessage`, `List`), with the original's timing; the screen chooses
+through them (it counts toward the time limit as before) and takes no choice while one is up, as the original's
+read no key then. The rules' windows whose effects land mid-animation (Beast Out, a Cross chosen, a scrap, a
+re-deal) are the screen's own busy states, as before: the layer reads no key while one runs. The table is the
+original's; the layer reproduces it tick for tick (the lab's scenarios below replay through it).
 
 T is the tick that took the key; "input from" is the first tick the grid reads keys again.
 
@@ -206,7 +262,7 @@ T is the tick that took the key; "input from" is the first tick the grid reads k
 | 0x38 DustCross scrap | A on the scrap button at T | T+4+25k for k chips scrapped **[dumps, 13 cases]** |
 | 0x28 ChpShufl re-deal (`sub_80271F8`) | A on the re-deal button at T | T+34 **[lab: navicust/chpshufl-redeal*]** |
 
-**The chatbox** (`custom::chatbox`). Both sub-screens wait on the original's chatbox, which runs a text script
+**The chatbox** (`custom::chatbox`, which the layer runs). Both sub-screens wait on the original's chatbox, which runs a text script
 once a frame after the screen (`chatbox_onUpdate`) and clears its flag (`eFlags2009F38` 0x80) when the script ends.
 The port runs what those scripts' commands do to the timing:
 
@@ -232,9 +288,9 @@ its own script (`TextScriptBattleRunDialog`'s script 3 sends it there). gen-cont
 counted records against the ROM. (The text itself is presentation, out of the hash: docs/design/text-rendering.md
 §10.)
 
-**What the chatbox shows** is presentation, kept beside its timing in `ChatboxLook` (left out of the state digest,
-as `ScreenLook` is) and read through `Chatbox::box_step`, `shows_contents` and `look`, from which the frontend
-draws it (docs/frontend.md §3):
+**What the chatbox shows** is presentation, kept beside its timing in `ChatboxLook` (the chatbox is the player's
+layer's, outside the simulation, `Layer::chatbox`) and read through `Chatbox::box_step`, `shows_contents` and
+`look`, from which the frontend draws it (docs/frontend.md §3):
 
 - the box's map at its opening step, while it's drawn (`chatbox_CopyBackgroundTiles_8040344`); the text and the
   portrait only while it's fully open (or not drawn at all);
@@ -365,8 +421,21 @@ their own (§7) takes the recording console's RNG1 from the trace on every frame
 ## 4. Beast Out and Crosses
 
 EXE6's Beast Out and its Cross window are its rules' (docs/design/rules-in-luau.md §4.4): the beast module's
-button and windows (content/exe6/rules/beast/custom.luau) and the cross module's windows
+button and windows (content/exe6/rules/beast/custom.luau) and the cross module's Cross chosen
 (content/exe6/rules/cross/window.luau), whose state holds what this section's screen remembers.
+
+**The Cross window is the player's layer's**, a form list as the layout's `form_list` says it
+(content/exe6/rules/custom_screen.luau; `content::FormListRules`): UP opens it from the slots it names (the top
+row and OK) when the rules' form list (`Battle::form_list`, the state's `form_list.*` fields) offers an entry, the
+navi changes form and no other pick holds the turn's form; it opens in `opening` ticks (12, its map every 3) with
+`open_sound` (0x7A), is up (`sub_802794A`: its first tick reads no keys), and closes in `closing` ticks (6) with
+`close_sound` (0x7D); its cursor is the layer's (`Layer::list_cursor`, on the first entry at each screen's
+opening), and a Cross's description (R) goes back to it (`layer::ListStage`). A in it is the choice
+`ChooseForm(entry)`, which the rules take (their `custom.choose_form(side, entry)`: `window.choose`) and check: a
+Cross not chosen yet, an entry offered, MegaMan, no other pick holding the form; a marked entry refused. Taken, the
+Cross is marked and chosen, its form held (`custom.set_form(side, "cross_chosen", form)`) and its 34-tick window
+plays (`cross_chosen`, the view `form_chosen`); the layer's list closes as the window comes up. B with nothing
+picked takes it back (`custom.take_back`: `window.take_back`).
 
 **Who gets what** (per player; the original reads the local save):
 
@@ -381,9 +450,10 @@ button and windows (content/exe6/rules/beast/custom.luau) and the cross module's
   saves, read as everything unlocked. The lab's `custom/one-cross-owned` and `custom/no-beast-out` are saves with
   fewer.
 
-**Keys.** In the window: UP/DOWN (repeat) move with wrap-around, A chooses (once), B closes, START closes with the
-grid cursor on OK, R describes. With a Cross chosen, UP/DOWN/A are ignored; B on the grid with nothing picked
-un-chooses it. Beast Out goes first in the pick list once its animation ends, so B takes it back last.
+**Keys** (the layer's). In the window: UP/DOWN (repeat) move with wrap-around, A chooses (once), B closes, START
+closes with the grid cursor on OK, R describes. With a Cross chosen, UP/DOWN/A are ignored; B on the grid with
+nothing picked un-chooses it. Beast Out goes first in the pick list once its animation ends, so B takes it back
+last.
 
 **Result** (at OK, `sub_8029344`, `sub_802937A`):
 
@@ -554,17 +624,20 @@ and the fight resumes as usual (no loss, no leaving the match).
   original: Practice, the compat crates' rounds of the recordings, the lab and the tests. Without one nothing below
   happens, and the screen is the original's to the byte.
 - **Counting**: each side's screen counts its own ticks (`Side::clock`, reset as the screen opens) from the tick
-  after its window is in (the first tick of `Settling` or `Choosing`) for as long as it chooses or is hidden
-  (`Phase::counts_time`: choosing, SELECT's hiding, R's description, L's message, a window of the rules, a scrap,
-  a re-deal), up to OK. Both screens run in the shared simulation, so the count is part of the battle's state
+  after its window is in (the first tick of `Settling` or `Choosing`) for as long as it chooses
+  (`Phase::counts_time`: choosing, a window of the rules, a scrap, a re-deal; SELECT's hiding, R's description,
+  L's message and the form list are the player's layer's, and the screen chooses through them), up to OK. Both screens run in the shared simulation, so the count is part of the battle's state
   (snapshotted and digested with the side) and both peers and a replay close a screen on the same tick, with no
   message between them.
-- **Time up**: on the tick the clock reaches the limit the screen reads no keys and ends as if OK were pressed
+- **Time up**: on the tick the clock reaches the limit the screen takes no choice and ends as if OK were pressed
   (`Screen::tick_time_up`): from choosing at once, the chips picked so far the hand (none picked: no hand, as OK
-  with nothing); SELECT's hiding, a description and the run message close silently first; a window of the rules
-  (EXE6's Cross window and Beast Out, EXE4's and EXE5's soul choices) goes as if cancelled: what its rules noted
-  before stays (a Cross chosen, a soul given at the white), what they hadn't yet doesn't count, and its fades and
-  the dark chip's hover end at once (the hover's volumes where its clearing ramp ends). The rules hear nothing of
+  with nothing); a window of the rules (EXE6's Beast Out and a Cross chosen, EXE4's and EXE5's soul choices) goes
+  as if cancelled: what its rules noted before stays (a Cross chosen, a soul given at the white), what they hadn't
+  yet doesn't count, and its fades and the dark chip's hover end at once (the hover's volumes where its clearing
+  ramp ends). The battle's time-up is the authority: the player's layer, which knows the time left
+  (`Presented::time_left`), reads no key on that tick and lets what it has up go silently (SELECT's hiding, a
+  description, the run message; the Cross window as a window of the rules cancelled, its fades and the hover
+  cleared). The rules hear nothing of
   it: the screen closes as OK closes it, and their `confirmed` reads what they hold. A scrap or a re-deal reads no
   keys and runs to its end, and OK is pressed on the tick after. From there the screen goes on as from OK (its
   sound, the slide-out, a Program Advance's animation, the send), and the fight resumes once both results are in.
@@ -573,23 +646,33 @@ and the fight resumes as usual (no loss, no leaving the match).
 
 ## 7. Verification
 
-- **Unit tests** (in this repository, with made-up chips): the time limit (§6.1: OK at time up from choosing,
-  from SELECT's hiding, a description and L's message, nothing without a limit, the count in a battle's
-  snapshot), the shuffle on four recorded folders, the joypad's
-  repeat, the builder (Program Advances, modifiers, class counts), and scripted screens (dealing and layout, the
-  timeline from opening to sending, the selection rules, invalid chips, Beast Out and a Cross for both games,
-  DustCross's scrap, hand sizes, SELECT), and Crosses of both games in a setup's list (§4.1: either game's Crosses offered and
-  chosen, Beast Out from the other game's Cross with its roar and Beast Over, the window in a Beast form, entries
-  that aren't Crosses). nettai-frontend's `a_falzar_player_plays_a_gregar_cross` plays one through on content/exe6:
+- **Unit tests** (in this repository, with made-up chips; custom/tests.rs drives a screen by keys through its
+  player's layer, `Layer::input_on` and `follow_on`): the time limit (§6.1: OK at time up from choosing, from
+  SELECT's hiding, a description and L's message, nothing without a limit, the count in a battle's snapshot), the
+  shuffle on four recorded folders, the joypad's repeat, the tick word with its choice, the builder (Program
+  Advances, modifiers, class counts), and scripted screens (dealing and layout, the timeline from opening to
+  sending, the selection rules, invalid chips, Beast Out and a Cross for both games, DustCross's scrap, hand sizes,
+  SELECT), and Crosses of both games in a setup's list (§4.1: either game's Crosses offered and chosen, Beast Out
+  from the other game's Cross with its roar and Beast Over, the window in a Beast form, entries that aren't
+  Crosses). nettai-frontend's `a_falzar_player_plays_a_gregar_cross` plays one through on content/exe6:
   HeatCross chosen by a Falzar player, its form, element, buster and charged flame, then Beast Out from it into
   HeatCross Beast with that form's weapons.
+- **Through the layers.** A recording is the original's buttons; the engine's screens take choices. Every replay
+  of one puts each side's recorded buttons (`Round::fed`, `tick_inputs`) through that side's layer in lockstep
+  with the battle (`custom::Lockstep`: `input` before each tick, `follow` after, no delay), which makes the
+  choices on the ticks the original's screens took the keys: the repeat on the console's beat, the cable's held
+  buttons carried into the screen, EXE4's settling tick, EXE5 DS's early repeat (all in what `fed` feeds). The
+  compat crates' `run_round` (exe6-compat, exe5-compat's with `run_round_seeing`, exe4-compat) and
+  `check_custom_screens`, nettai-tool's trace drivers (crates/nettai-tools/src/trace.rs) and the verification
+  repository's replays (traces, the lab, rollback, mirror, sound) all do.
 - **Golden traces** (`trace::run_round`, verification workspace): the traces' recorded buttons drive the
-  engine; each player's custom screen runs on their folder (setup `folders`: every recording has both
-  consoles'). Each frame compares, besides the rest of the
-  battle, both hands and the received status bits; every frame up to the existing floors matches, also under
-  rollback at latencies 0-10.
+  engine through the layers; each player's custom screen runs on their folder (setup `folders`: every recording
+  has both consoles'). Each frame compares, besides the rest of the battle, both hands and the received status
+  bits; every frame up to the existing floors matches, also under rollback at latencies 0-10 (the peers carry the
+  choices the plain replay's layers made).
 - **Every screen on its own** (`trace::check_custom_screens`): the custom screens alone, over the whole trace
-  (the fight isn't simulated; each screen reads its navi's stats from the trace). With both consoles' folders all
+  (the fight isn't simulated; each screen reads its navi's stats from the trace), each side's buttons through its
+  layer (`Side::presented` gives the layer the standalone screen). With both consoles' folders all
   40 player-screens match: the OK tick, the hand as installed, the transformation, the status bit's clearing, and
   the tick the fight resumes. The check reads emotions from the mood only, so a tired navi isn't seen, and
   doesn't check damage from formulas. The recording console's RNG1 (a re-deal's) is the trace's, frame by frame;
@@ -662,10 +745,24 @@ and the fight resumes as usual (no loss, no leaving the match).
 ## 9. Presentation: what the screen shows
 
 The simulation above is all the battle needs. What each console draws of its own screen is presentation: the
-frontend draws the local player's (nettai-render `custom`, docs/frontend.md §3), from the `Screen` and from
-`Screen::look` (`custom/look.rs`), the part of the original's control block at `0x020364C0` and of its VRAM that
-the screen's drawing reads. The state digest leaves `look` out, like a sprite's `Look`; nothing the simulation
-reads depends on it.
+frontend draws each side's (nettai-render `custom`, docs/frontend.md §3) from the `Screen`, from `Screen::look`
+(`custom/look.rs`) and from that side's layer (§0), together the part of the original's control block at
+`0x020364C0` and of its VRAM that the screen's drawing reads. The state digest leaves `look` out, like a sprite's
+`Look`, and the layer is no part of the battle; nothing the simulation reads depends on either.
+
+**Who draws what.** The screen's look (`ScreenLook`) keeps what its decisions leave drawn: the picked column, the
+slots as last drawn, the face, the form list's tab, the Program Advance's colors, and `frame` as its own states
+and its rules' windows set it (`custom.frame`, which a window reads only after setting it). The layer keeps the
+window's counters and this tick's sprites (`WindowLook`: the frame counter as drawn, the emblem's spin and matrix,
+the last turns' block, the Regular chip's frame, the cursor, the form list's cursor, the element icon, the held
+chip), the chip window (`ChipWindow`) and the hover (`look::Hover`). Each tick the screen asks the drawing what
+its states did, in order (`Drawn::draws`, a `Draw` each: the frame set or counted, the spin, the emblem at an
+offset, the Regular chip's frame, the last turns' block, the cursor, the element icon, the held chip, the chip
+window drawn again, a fade started, the fades or the hover cleared, the slots laid out again), and the layer does
+it (`Layer::follow`); on a choosing tick, and through what the layer has up, the layer draws as the original's
+choosing state and sub-screens drew (`sub_8026CCC`, `sub_8026D06`, `sub_8026E4C`, `sub_8026E98`, the Cross
+window's), knowing what the original's state was. The chip window is drawn for the layer's cursor
+(`Screen::chip_window_at`).
 
 - **The frame counter** (`+0x40`). While the window slides in (`sub_8026B04`) it is the window's offset, 0x78 less
   12 a tick; sliding out (`sub_8026BF4`), 12 more a tick. While the chips are chosen (`sub_8026CCC`) it counts the
@@ -691,7 +788,11 @@ reads depends on it.
   Over's for a tired navi), the BeastOut chip's from its 68th; taking it back (`sub_802A0EC`) takes the face back.
 - **The screen fade** the screen runs on its console: Beast Out's modes 0x64 (half way to black, background
   palettes 0-13 and sprite palettes 0-10) and 0x60 back, at 8 a frame. The original runs them on the console's
-  one fade record; the port keeps them per screen, apart from the battle's `Fade`.
+  one fade record; the port keeps them per screen (`Screen::fade`, apart from the battle's `Fade`), in the
+  screen's state and its digest, since the screen and its windows wait on them (a switch, `custom.fading`). The
+  dark chips' hover runs the same record in the original; its fades are the layer's (`Hover::fade`,
+  `Hover::window_fade`), and what is shown of the first record is the fade started last, the screen's or the
+  hover's (`Layer::fade`, `Draw::FadeStarted`), as the shared record held the last one started.
 - **The window's map variant**: with the Cross tab while MegaMan has a Cross he owns and hasn't used this round
   (`sub_8029EC8`, at the opening).
 - **The sub-screens' counters and sprites.** The window's frame counter (`+0x40`) is the sub-screens' timer too, and
@@ -718,9 +819,11 @@ reads depends on it.
   Falzar and 0x191 on Gregar (`custom_beast_out_falzar`, `_gregar`). It is by the Beast's
   game (§4.1: a Falzar player in HeatCross, which only nettai's lists of both games have, roars Gregar's).
 
-What isn't in the look derives from the screen: the window's place (the phase's ticks), the slots' kinds and
-states, the cursor, the picks, and from the battle the camera's jitter, which in Beast Out's states, the Cross
-window's, the scrap's and the re-deal's moves the HUD layer too (`sub_80269E2`, `sub_8030158`).
+What isn't in the looks derives from the screen and the layer: the window's place (the phase's ticks, and
+SELECT's hiding, `Layer::hidden`), the slots' kinds and states, the cursor (`Layer::cursor`), the picks, and
+from the battle the camera's jitter, which in Beast Out's states, the Cross window's (the layer's list and a
+Cross's description from it), the scrap's and the re-deal's moves the HUD layer too (`sub_80269E2`,
+`sub_8030158`).
 
 **Dark chips.** A chip whose record has bit 0x20 of its flags (the `dark` flag of chip definitions; the dark chips
 of the earlier games) gets three things on the screen, all ported though no chip record of the US ROM has the bit
@@ -728,8 +831,8 @@ of the earlier games) gets three things on the screen, all ported though no chip
 
 - **The cursor's start** (`sub_802806C`, the last step of the opening's layout): a cursor on the first slot goes to
   the first chip slot (0-9, the link navi's chip's too) whose chip, as the class limits count it (`sub_802A53C`: an
-  over-limit Mega or Giga chip is the invalid chip; the code isn't checked), has the flag. This is simulation
-  state: the cursor decides the picks.
+  over-limit Mega or Giga chip is the invalid chip; the code isn't checked), has the flag. The player's layer
+  starts its cursor there (`Screen::first_cursor`); the picks are the choices it makes.
 - **The window's frame**: the chip window's frame palette is by the chip's class (`byte_86E587C`: standard, Mega,
   Giga), a class past Giga's the standard one, and a dark chip of the first three classes the fourth, dark one.
 - **The hover** (`sub_802A2B0`, after every tick's state; `+0x12` its state, `+0x13` its step): while the screen
@@ -750,9 +853,11 @@ of the earlier games) gets three things on the screen, all ported though no chip
   the Program Advance plays; a tick whose state left the chips turns it neither way), its ramps are 11 ticks with a
   call on every other (0x0801E528, from 0x0801E584 by a formula that leaves the music at 0x60 and the screen at 0xC0
   when dark, 0xC0 and 0x60 back), its players are 31 and 9, its close sets 9 and then 31 back (0x0801E180), and its
-  sound (0x100) plays on the tick after the shade settles and every 61 ticks it stays (`+0x5C`, 0x0801E49C). The look keeps the hover (`ScreenLook::dark`)
-  and the second record (`window_fade`).
-- **The hover's counter** (`+0x14`; `ScreenLook::hover_count`): the routine steps it every tick, 0 to 63, from 0
+  sound (0x100) plays on the tick after the shade settles and every 61 ticks it stays (`+0x5C`, 0x0801E49C). The
+  player's layer runs the hover after each tick's state (`Layer::follow`, `look::Hover`: its shade, its two fade
+  records and its counter), on the slot under its cursor (`Screen::shades_at`) and the original's state as the
+  tick left it.
+- **The hover's counter** (`+0x14`; `Hover::count`): the routine steps it every tick, 0 to 63, from 0
   as each screen opens, whatever the screen's state (a description, a window of the rules such as EXE5's soul's
   choice, the window hidden). EXE6's routine does nothing with it. EXE5's (0x08025A80) plays its hover sound,
   0x16B, each time the counter wraps to 0 with the hover not clear (darkening, dark or clearing: 0x08025AA2): the
@@ -765,9 +870,13 @@ of the earlier games) gets three things on the screen, all ported though no chip
   keeps the hover up over a wrap (the longest is 14 ticks).
 - **The order of a tick's calls.** The hover's routine runs after the tick's state, and runs its own state
   before it steps its counter. So what a tick asks of the sound driver is, in order: the state's sounds (a
-  cursor move, a pick, a description), then the hover's two volume controls, then the hover's sound. The look
-  keeps them as one list in the order they were asked (`Drawn::calls`, a `ScreenCall` each: a sound or the
-  volumes), and the battle makes its cues in that order. A volume step and the counter's wrap fall on one tick
+  cursor move, a pick, a description), then the hover's two volume controls, then the hover's sound. The
+  screen's own (a pick, a refusal, OK, a take-back, its windows') are its look's (`Drawn::calls`), which the
+  battle makes cues of in that order, for its player alone; the layer's (a cursor move, a sub-screen's, the
+  hover's volumes and sound) are the layer's (`Layer::calls`, `Layer::cues`), which go among the battle's cues
+  where the screen's end (`Battle::screen_cues_at`; `Layer::heard` gives the player's tick so), in the same call
+  as the original made them: a tick has the screen's sounds or the layer's state's (one key a tick), then the
+  hover's. A volume step and the counter's wrap fall on one tick
   where the cursor comes back onto a dark chip a few ticks before a wrap: custom/dark-hover's frame 598, the
   volumes 0x80 and 0xE0 and then 0x16B. (Until 2026-10-05 the look kept the volumes apart from the sounds and the
   battle made their cue after all of the tick's sounds, the hover's among them: the same calls on the frame in

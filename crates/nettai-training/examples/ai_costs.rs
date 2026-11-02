@@ -122,7 +122,7 @@ fn main() {
             encode.push(started.elapsed().as_nanos());
             if out.phase[0] == 2 && probes.len() < 200 {
                 let started = Instant::now();
-                nettai_training::env::probe_keys(env.battle(), 0);
+                nettai_training::env::probe_keys(env.battle(), &env.layers()[0], 0);
                 probes.push(started.elapsed().as_nanos());
             }
             let tokens: usize = env.obs[0].sets.iter().map(|s| s.mask.iter().filter(|&&m| m).count()).sum();

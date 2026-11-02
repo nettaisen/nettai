@@ -42,20 +42,21 @@ fn play_fight(game: &str, seed: u32, ai: &mut dyn Ai, ticks: u32, theirs: u16) -
     let sides = [0, 1].map(|_| maker.random(&mut picks, &none, 0.75, crate::builds::Combos::NONE).unwrap().side);
     let m = maker.round(sides, 1000, seed).unwrap();
     let mut b = Set::of(&c, &m, seed).start();
+    let mut layers = [nettai_battle::custom::Layer::new(0, &b), nettai_battle::custom::Layer::new(1, &b)];
     let (mut pressed, mut runs) = (Vec::new(), Vec::new());
     for t in 0..ticks {
         let custom = b.round.mode == mode::CUSTOM;
         let mine = if custom {
-            nettai_frontend::driver::bot_buttons(&b, 0, t)
+            nettai_frontend::driver::bot_tick(&b, 0, t)
         } else if fight_runs(&b) && !b.is_dimmed() && b.gauge.value >= CustomGauge::FULL && t % 2 == 0 {
-            keys::L
+            nettai_battle::PlayerTick::buttons(keys::L)
         } else {
-            0
+            nettai_battle::PlayerTick::default()
         };
-        let held = if custom { ai.custom_screen(&b, 1) } else { ai.fight(&b, 1, theirs) };
+        let held = if custom { ai.custom_screen(&b, 1, &layers[1]) } else { ai.fight(&b, 1, theirs) };
         pressed.push(held);
         runs.push(fight_runs(&b));
-        if !env::step_battle(&mut b, [mine, held]) || b.is_battle_over() {
+        if !env::step_through(&mut b, &mut layers, [mine, nettai_battle::PlayerTick::buttons(held)]) || b.is_battle_over() {
             break;
         }
     }
@@ -140,19 +141,20 @@ fn it_opens_the_custom_screen_as_the_env_did() {
         let sides = [0, 1].map(|_| maker.random(&mut picks, &none, 0.75, crate::builds::Combos::NONE).unwrap().side);
         let m = maker.round(sides, 1000, seed).unwrap();
         let mut b = Set::of(&c, &m, seed).start();
+        let mut layers = [nettai_battle::custom::Layer::new(0, &b), nettai_battle::custom::Layer::new(1, &b)];
         let (mut full_since, mut first_l) = (None, None);
         for t in 0..4000u32 {
             let custom = b.round.mode == mode::CUSTOM;
             // (The other side picks its chips and never opens the screen.)
-            let mine = if custom { nettai_frontend::driver::bot_buttons(&b, 0, t) } else { 0 };
-            let held = if custom { ai.custom_screen(&b, 1) } else { ai.fight(&b, 1, 0) };
+            let mine = if custom { nettai_frontend::driver::bot_tick(&b, 0, t) } else { nettai_battle::PlayerTick::default() };
+            let held = if custom { ai.custom_screen(&b, 1, &layers[1]) } else { ai.fight(&b, 1, 0) };
             if env::may_open(&b) {
                 full_since.get_or_insert(t);
                 if held & keys::L != 0 {
                     first_l.get_or_insert(t);
                 }
             }
-            if !env::step_battle(&mut b, [mine, held]) || b.is_battle_over() {
+            if !env::step_through(&mut b, &mut layers, [mine, nettai_battle::PlayerTick::buttons(held)]) || b.is_battle_over() {
                 break;
             }
             // (A screen the gauge was full for: not a round's first, which opens on its own.)

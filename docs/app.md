@@ -3669,8 +3669,8 @@ values are the content's names has them as its text, as Arena's), its place in `
 
 **The input display** (`PracticeInputs`) is the app's own: two rows of ten buttons (the directions, A, B, L, R,
 SELECT, START), the player's over the dummy's in their sides' colors, each lit while it is held. It reads what
-each side's custom screen reads (`Battle::custom.sides[n].joypad.held`: this tick's buttons, not the fight's
-delayed ones) after the frame's ticks, and tells the UI only when they change. It is in the picture's top right
+each side's tick held (`Battle::inputs[n].held`, the fight's input record, which takes each tick's buttons, the
+custom screen's ticks' too) after the frame's ticks, and tells the UI only when they change. It is in the picture's top right
 corner, under the eighth the battle's own text takes there; on a phone, under MENU. It is drawn into a layer
 and drawn anew only when a button changes (§5: drawn each frame it cost 0.3 ms a frame). Under the menu it shows
 nothing held: the battle takes no button then, and the dummy's presses go nowhere.
@@ -3955,7 +3955,7 @@ screen runs the ticks due, presents the picture into the window's texture if one
   - *The input display* (I): Practice's (§15; one component, `ui/inputs.slint`'s `InputDisplay`, which Practice
     places too), in the picture's top right corner as Practice's is, the console shown's player's buttons in
     red over the other's in blue (the colors of their sides of the picture). The buttons are the battle's own
-    (`custom.sides[side].joypad.held`, as Practice reads them), so they are the tick shown's wherever the replay
+    (`inputs[side].held`, as Practice reads them), so they are the tick shown's wherever the replay
     is: playing, paused, stepped, sought or dragged.
   - *The other console's picture* (P: a picture in the picture), in the shown one's bottom right corner, four of
     the game's pixels in, a line around it: a whole multiple of the frame about a third of the picture's width

@@ -627,7 +627,13 @@ mod tests {
         let player = Player::with(graphics(&content, 0x7FFF).renderer(Enhancements::NONE, None), None, None, Box::new(driver));
         let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, kept: false, hold: Default::default(), link: Default::default(), party: Default::default() };
         let play_out = |b: &mut Battle| {
-            while b.stage.player.tick(short_set::shooter(b.stage.player.battle(), 0, b.stage.player.ticks() as u32)) {
+            while {
+                let input = short_set::shooter(b.stage.player.battle(), 0, b.stage.player.ticks() as u32);
+                if let Some(choice) = input.choice {
+                    b.stage.player.choose(choice);
+                }
+                b.stage.player.tick(input.held)
+            } {
                 assert!(b.stage.player.ticks() < 30_000, "the set doesn't end");
             }
             assert!(b.stage.player.finished());
@@ -651,6 +657,14 @@ mod tests {
         let buttons = if b.playing() { keys } else { 0 };
         b.stage.player.tick(buttons);
         b.stage.player.take_pause_requests()[b.viewer as usize] && b.playing()
+    }
+
+    /// [`frame`] with a whole input: its custom screen choice made first, as a pointer makes it.
+    fn frame_input(b: &mut Battle, input: nettai_battle::PlayerTick) -> bool {
+        if let Some(choice) = input.choice.filter(|_| b.playing()) {
+            b.stage.player.choose(choice);
+        }
+        frame(b, input.held)
     }
 
     /// Whether the fight runs, START there the menu's.
@@ -716,7 +730,6 @@ mod tests {
         let mut b = practice(&content, &m, 11, opponent);
         // Onto the custom screen, a chip picked; the menu opened there: held, both screens' cursors and choices
         // as they were (the dummy's presses held too).
-        let custom = |b: &Battle| nettai_frontend::driver::bot_buttons(b.stage.player.battle(), 0, b.stage.player.ticks() as u32);
         let choosing = |b: &Battle| {
             let battle = b.stage.player.battle();
             battle.round.mode == mode::CUSTOM && battle.custom.sides.iter().all(|s| s.screen.as_ref().is_some_and(|s| s.phase == nettai_battle::custom::Phase::Choosing))
@@ -729,8 +742,11 @@ mod tests {
             frame(&mut b, keys);
         }
         let chosen = |b: &Battle| {
-            let battle = b.stage.player.battle();
-            battle.custom.sides.each_ref().map(|side| side.screen.as_ref().map(|s| (s.cursor, s.selected, s.slots.iter().map(|slot| slot.state).collect::<Vec<_>>())))
+            let (battle, layers) = (b.stage.player.battle(), b.stage.player.layers());
+            [0, 1].map(|side| {
+                let cursor = layers[side].map(|l| l.cursor);
+                battle.custom.sides[side].screen.as_ref().map(|s| (cursor, s.selected, s.slots.iter().map(|slot| slot.state).collect::<Vec<_>>()))
+            })
         };
         let before = chosen(&b);
         // (The player's buttons are the menu's.)
@@ -740,8 +756,8 @@ mod tests {
         resume(&mut b);
         assert!(!b.stage.player.held());
         while !fighting(&b) {
-            let keys = custom(&b);
-            assert!(!frame(&mut b, keys) && b.stage.player.ticks() < 3000);
+            let input = nettai_frontend::driver::bot_tick(b.stage.player.battle(), 0, b.stage.player.ticks() as u32);
+            assert!(!frame_input(&mut b, input) && b.stage.player.ticks() < 3000);
         }
         for _ in 0..90 {
             let keys = nettai_battle::input::keys::B * (b.stage.player.ticks() % 2 == 0) as u16;
@@ -906,7 +922,7 @@ mod tests {
     /// alike (EXE4's own pause drains it: the game's pause no longer holds a practice battle).
     #[test]
     fn under_the_menu_mid_fight_the_hp_bug_waits() {
-        use nettai_frontend::driver::bot_buttons;
+        use nettai_frontend::driver::bot_tick;
         for content in [nettai_match::testing::exe6_content(), nettai_match::testing::exe4_content()] {
             let game = content.game().to_string();
             let m = nettai_match::pick::live(&content, &game, 11, None).unwrap();
@@ -916,8 +932,8 @@ mod tests {
                 battle.player(0).map(|r| battle.objects.get(r).hp)
             };
             while !fighting(&b) {
-                let keys = bot_buttons(b.stage.player.battle(), 0, b.stage.player.ticks() as u32);
-                frame(&mut b, keys);
+                let input = bot_tick(b.stage.player.battle(), 0, b.stage.player.ticks() as u32);
+                frame_input(&mut b, input);
                 assert!(b.stage.player.ticks() < 3000, "{game}");
             }
             let fought = hp(&b);
@@ -1009,7 +1025,7 @@ mod tests {
     #[ignore]
     fn the_dummy_that_fights_takes_hp_away() {
         use nettai_battle::battle::mode;
-        use nettai_frontend::driver::{InFight, OnCustomScreen, Opponent, bot_buttons};
+        use nettai_frontend::driver::{InFight, OnCustomScreen, Opponent, bot_tick};
         let content = nettai_match::testing::exe6_content();
         let m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
         let opponent = Opponent { in_fight: InFight::Ai, on_custom_screen: OnCustomScreen::Ai };
@@ -1036,8 +1052,8 @@ mod tests {
         };
         for _ in 0..3600 {
             let battle = b.stage.player.battle();
-            let keys = if battle.round.mode == mode::CUSTOM { bot_buttons(battle, 0, b.stage.player.ticks() as u32) } else { 0 };
-            frame(&mut b, keys);
+            let input = if battle.round.mode == mode::CUSTOM { bot_tick(battle, 0, b.stage.player.ticks() as u32) } else { Default::default() };
+            frame_input(&mut b, input);
             assert_eq!(plugged.stopped.why(), None);
             if hp(&b).is_some_and(|(hp, max)| hp < max) {
                 return;
@@ -1059,7 +1075,7 @@ mod tests {
     #[test]
     fn held_in_a_dimming_and_at_a_rounds_end() {
         use nettai_battle::battle::{fight, mode};
-        use nettai_frontend::driver::{InFight, OnCustomScreen, Opponent, bot_buttons};
+        use nettai_frontend::driver::{InFight, OnCustomScreen, Opponent, bot_tick};
         let content = nettai_match::testing::exe6_content();
         let opponent = Opponent { in_fight: InFight::AttacksAtRandom, on_custom_screen: OnCustomScreen::PicksFirst };
         // A dimming: play until one begins (the player shooting and using a chip now and then, the dummy at
@@ -1078,8 +1094,8 @@ mod tests {
         while !dimmed(&b) {
             let battle = b.stage.player.battle();
             let tick = b.stage.player.ticks() as u32;
-            let keys = if battle.round.mode == mode::CUSTOM { bot_buttons(battle, 0, tick) } else { pressed(tick) };
-            assert!(!frame(&mut b, keys) && tick < 30_000, "no dimming came");
+            let input = if battle.round.mode == mode::CUSTOM { bot_tick(battle, 0, tick) } else { nettai_battle::PlayerTick::buttons(pressed(tick)) };
+            assert!(!frame_input(&mut b, input) && tick < 30_000, "no dimming came");
         }
         hold_for(&mut b, 300, nettai_battle::input::keys::A);
         assert!(dimmed(&b), "held in the dimming");
@@ -1101,8 +1117,8 @@ mod tests {
             battle.round.mode == mode::FIGHTING && battle.is_battle_over()
         };
         while !decided(&b) {
-            let keys = nettai_frontend::testing::short_set::shooter(b.stage.player.battle(), 0, b.stage.player.ticks() as u32);
-            assert!(!frame(&mut b, keys) && b.stage.player.ticks() < 5000, "the round wasn't decided");
+            let input = nettai_frontend::testing::short_set::shooter(b.stage.player.battle(), 0, b.stage.player.ticks() as u32);
+            assert!(!frame_input(&mut b, input) && b.stage.player.ticks() < 5000, "the round wasn't decided");
         }
         hold_for(&mut b, 300, nettai_battle::input::keys::START);
         resume(&mut b);

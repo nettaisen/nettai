@@ -195,6 +195,9 @@ struct CustomScreenSection {
     chatbox_end_clears_tiles: bool,
     chatbox_character_ends_tick: bool,
     variable_damage_shows: super::custom::VariableDamageShows,
+    /// (A screen without one: none.)
+    #[serde(default)]
+    form_list: Option<super::custom::FormListRules>,
 }
 
 #[derive(Deserialize)]
@@ -765,6 +768,11 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
             }
             "custom_screen" => {
                 let s: CustomScreenSection = r.read(spec, &at).map_err(e)?;
+                if let Some(list) = &s.form_list {
+                    if list.opens_from.iter().any(|&slot| slot >= 12) || list.opening == 0 || list.closing == 0 {
+                        return Err(e(format!("{at}: form_list opens from slots 0 to 11, and opens and closes in a tick at least")));
+                    }
+                }
                 if s.talking_characters.only.is_some() == s.talking_characters.all_but.is_some() {
                     return Err(e(format!("{at}: talking_characters states `only` or `all_but`, one of the two")));
                 }
@@ -808,6 +816,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     emblem_at_window_return: s.emblem_at_window_return,
                     chatbox_commands_wait_for_text: s.chatbox_commands_wait_for_text,
                     talking_characters: s.talking_characters,
+                    form_list: s.form_list,
                 });
             }
             "buster" => stated.buster = Some(r.read(spec, &at).map_err(e)?),

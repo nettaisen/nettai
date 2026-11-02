@@ -22,7 +22,7 @@ use nettai_battle::input::keys;
 use nettai_battle::rules::Fact;
 use nettai_content_api::Value;
 use nettai_frontend::connection::Reconnecting;
-use nettai_frontend::driver::bot_buttons;
+use nettai_frontend::driver::bot_tick;
 use nettai_frontend::game::{Graphics, Enhancements};
 use nettai_frontend::lobby::{Lobby, Role, Status};
 use nettai_frontend::netplay::{NetOptions, NetPlayer};
@@ -252,12 +252,16 @@ pub fn frame(shell: &mut Shell, now: Instant) {
             watch.frame(shell, now);
         }
         let was = rig.held;
-        rig.held = match &shell.battle {
+        rig.held = match &mut shell.battle {
             Some(b) if rig.shoots && b.kind == BattleKind::Online => {
                 let battle = b.stage.player.battle();
                 let tick = b.stage.player.ticks() as u32;
                 if battle.round.mode == mode::CUSTOM {
-                    bot_buttons(battle, b.viewer as usize, tick)
+                    // (On the custom screen the rig chooses, as a pointer does.)
+                    if let Some(choice) = bot_tick(battle, b.viewer as usize, tick).choice {
+                        b.stage.player.choose(choice);
+                    }
+                    0
                 } else if tick % 8 < 2 {
                     keys::B
                 } else {
@@ -335,8 +339,11 @@ impl Peer {
         if let Some(player) = &mut self.player {
             let elapsed = self.last.map_or(Duration::ZERO, |last| now.saturating_duration_since(last));
             let side = player.battle().setup.local_side as usize;
-            let buttons = bot_buttons(player.battle(), side, player.ticks() as u32);
-            player.advance(elapsed, buttons);
+            let input = bot_tick(player.battle(), side, player.ticks() as u32);
+            if let Some(choice) = input.choice {
+                player.choose(choice);
+            }
+            player.advance(elapsed, input.held);
             let mut samples = Vec::new();
             player.take_samples(&mut samples);
         }

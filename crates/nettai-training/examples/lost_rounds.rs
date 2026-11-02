@@ -427,6 +427,7 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
     let m = s.game.maker.round_with([s.builds[i].side.clone(), s.builds[j].side.clone()], Some(1000), seed).expect("a round of the fixed builds");
     let set = Set::of(content, &m, seed);
     let mut b = set.start();
+    let mut layers = [nettai_battle::custom::Layer::new(0, &b), nettai_battle::custom::Layer::new(1, &b)];
     let mut ai = NetAi::of(s.net.clone(), level(), rng.next_u64(), Fingerprinter::made(s.fingerprints.clone())).expect("the AI");
     // (LOST_SEARCH 1 or 0: the AI looks ahead, `search::Search`, or doesn't, whatever its level does.)
     if let Ok(on) = std::env::var("LOST_SEARCH") {
@@ -516,18 +517,23 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
         screen_ticks += custom as u32;
         let masher = if custom {
             if nav.idle() {
-                let p = act::scripted_pointer(&b, 0, &nav);
+                let p = act::scripted_pointer(&b, 0, &layers[0], &nav);
                 nav.point(p);
             }
-            nav.buttons(&b, 0)
+            nav.buttons(&b, 0, &layers[0])
         } else if env::fight_runs(&b) {
             bot.fight(&b, 0)
         } else {
             0
         };
-        let mine = if custom { ai.custom_screen(&b, 1) } else { ai.fight(&b, 1, 0) };
+        let mine = if custom { ai.custom_screen(&b, 1, &layers[1]) } else { ai.fight(&b, 1, 0) };
         in_screen = custom;
-        let went_on = env::step_battle(&mut b, [masher, mine]);
+        // (Both sides' buttons through their layers: the words the replay keeps.)
+        let input = [layers[0].input(nettai_battle::PlayerTick::buttons(masher), &b), layers[1].input(nettai_battle::PlayerTick::buttons(mine), &b)];
+        let went_on = env::step_ticks(&mut b, input);
+        for layer in &mut layers {
+            layer.follow(&b);
+        }
         let index = t as u64;
         t += 1;
         measure.tick(&b, t);
@@ -538,7 +544,8 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
         was_dimmed = b.is_dimmed();
         let ended = matches!(b.round_end(), Some(nettai_battle::RoundEnd::NextRound { .. } | nettai_battle::RoundEnd::Over(_)));
         let tick = nettai_replay::Tick {
-            inputs: [masher as u32, mine as u32],
+            inputs: input.map(|t| t.word()),
+            delays: [0, 0],
             digest: (nettai_frontend::replay::digest_due(index) || ended).then(|| b.digest()),
             round_ended: ended,
             set_ended: matches!(b.round_end(), Some(nettai_battle::RoundEnd::Over(_))),
@@ -720,6 +727,7 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
         let ended = matches!(b.round_end(), Some(nettai_battle::RoundEnd::NextRound { .. } | nettai_battle::RoundEnd::Over(_)));
         let tick = nettai_replay::Tick {
             inputs: [0, 0],
+            delays: [0, 0],
             digest: (nettai_frontend::replay::digest_due(index) || ended).then(|| b.digest()),
             round_ended: ended,
             set_ended: matches!(b.round_end(), Some(nettai_battle::RoundEnd::Over(_))),

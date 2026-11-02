@@ -73,7 +73,8 @@ use crate::replay::{End, Info, Refused, Replay, ReplayPlayer};
 use crate::session::Session;
 use nettai_audio::{BattleAudio, SoundCue};
 use nettai_battle::content::Content;
-use nettai_battle::{Battle, BattleResult, RoundEnd, Snapshot};
+use nettai_battle::custom::Layer;
+use nettai_battle::{Battle, BattleResult, PlayerTick, RoundEnd, Snapshot};
 use nettai_render::hud::HudState;
 use nettai_render::vfont::TextRenderer;
 use nettai_render::{Consoles, Frame, Renderer};
@@ -134,6 +135,8 @@ struct State {
     huds: [HudState; 2],
     /// By sound ([`SOUNDS`]); none: a silent viewer.
     audio: Option<[BattleAudio; SOUNDS]>,
+    /// Each side's custom screen layer (the replay's driver's), by side.
+    layers: [Option<Layer>; 2],
     /// The session's: why it stopped, if it had, whether that was the
     /// replay's end, and the set's result.
     stopped: Option<String>,
@@ -359,13 +362,18 @@ pub const SOUNDS: usize = 4;
 const BOTH: usize = 2;
 
 /// The cues of the viewer's sound `sound` ([`SOUNDS`]) on the tick `b` ran,
-/// appended to `out`.
-fn sound_cues(b: &Battle, sound: usize, out: &mut Vec<SoundCue>) {
+/// appended to `out`: a console's with its side's layer's among them
+/// (`Layer::heard`).
+fn sound_cues(b: &Battle, layers: [Option<&Layer>; 2], sound: usize, out: &mut Vec<SoundCue>) {
+    let heard = |side: u8| match layers[side as usize & 1] {
+        Some(layer) => layer.heard(b),
+        None => b.sound_cues_for(side).to_vec(),
+    };
     match sound {
-        0 | 1 => out.extend_from_slice(b.sound_cues_for(sound as u8)),
+        0 | 1 => out.extend(heard(sound as u8)),
         _ => {
             let side = (sound - 2) as u8 & 1;
-            own_effects(b.sound_cues_for(side), b.sound_cues_for(side ^ 1), out);
+            own_effects(&heard(side), &heard(side ^ 1), out);
         }
     }
 }
@@ -761,7 +769,7 @@ impl Viewer {
     /// sound is made elsewhere, each console's beside the battle:
     /// [`Viewer::index_battle`].)
     pub fn index_part(&mut self, ticks: u32) -> IndexPart {
-        self.index_ticks(ticks, |_, _, _| {})
+        self.index_ticks(ticks, |_, _, _, _| {})
     }
 
     /// Play up to `ticks` ticks on from where the viewer is, as
@@ -776,9 +784,9 @@ impl Viewer {
     pub fn index_battle(&mut self, ticks: u32) -> BattlePart {
         let from = self.position();
         let (mut cues, mut ends, mut kept_after) = (<[Vec<SoundCue>; SOUNDS]>::default(), Vec::new(), Vec::new());
-        let part = self.index_ticks(ticks, |ticked, ran, kept| {
+        let part = self.index_ticks(ticks, |ticked, layers, ran, kept| {
             for (sound, cues) in cues.iter_mut().enumerate() {
-                sound_cues(ticked, sound, cues);
+                sound_cues(ticked, layers, sound, cues);
             }
             ends.push(cues.each_ref().map(|c| c.len() as u32));
             if kept {
@@ -792,7 +800,7 @@ impl Viewer {
     /// would keep going into a part and not into its keeping; after each
     /// tick `each` is told the battle that ticked, the ticks played and
     /// whether the state was kept.
-    fn index_ticks(&mut self, ticks: u32, mut each: impl FnMut(&Battle, u32, bool)) -> IndexPart {
+    fn index_ticks(&mut self, ticks: u32, mut each: impl FnMut(&Battle, [Option<&Layer>; 2], u32, bool)) -> IndexPart {
         let mut states = Vec::new();
         let mut ran = 0;
         while ran < ticks && self.play(false) {
@@ -801,7 +809,7 @@ impl Viewer {
             if kept {
                 states.push(self.state());
             }
-            each(ticked(&self.session), ran, kept);
+            each(ticked(&self.session), self.session.driver.layers(), ran, kept);
         }
         // (Where the engine stopped, the tick it stopped on is past what was reached.)
         IndexPart { states, reached: self.reached.min(self.position()), whole: self.whole }
@@ -846,7 +854,7 @@ impl Viewer {
 
     /// The battle's picture now, with nothing over it: the renderer's frame size (`Renderer::frame_size`).
     pub fn frame(&mut self) -> Frame {
-        self.renderer.render(&self.session.battle)
+        self.renderer.render(&self.session.battle, self.session.driver.layers())
     }
 
     /// The picture into the host's pixels, as [`crate::Player::present`]:
@@ -873,12 +881,12 @@ impl Viewer {
     pub fn frame_view(&mut self, side: u8) -> Frame {
         let consoles = std::mem::replace(&mut self.renderer.consoles, Consoles::One);
         let frame = if side == self.view || side > 1 {
-            self.renderer.render(&self.session.battle)
+            self.renderer.render(&self.session.battle, self.session.driver.layers())
         } else {
             // (The renderer follows nothing else by side: its stage clock and its graphics are both consoles'.)
             swap_huds(&mut self.renderer);
             self.session.battle.setup.local_side = side;
-            let frame = self.renderer.render(&self.session.battle);
+            let frame = self.renderer.render(&self.session.battle, self.session.driver.layers());
             self.session.battle.setup.local_side = self.view;
             swap_huds(&mut self.renderer);
             frame
@@ -972,7 +980,7 @@ impl Viewer {
     /// to seek from. False, and nothing runs, at the end or where the
     /// engine stopped.
     fn play(&mut self, heard: bool) -> bool {
-        if self.at_end() || !self.session.step(0) {
+        if self.at_end() || !self.session.step(PlayerTick::default()) {
             // (The engine stopping is the end of what there is to index.)
             self.whole |= self.session.stopped.is_some();
             return false;
@@ -991,7 +999,7 @@ impl Viewer {
             let ticked = ticked(&self.session);
             for (k, sound) in audio.iter_mut().enumerate() {
                 self.cues.clear();
-                sound_cues(ticked, k, &mut self.cues);
+                sound_cues(ticked, self.session.driver.layers(), k, &mut self.cues);
                 sound.handle(&self.cues);
                 self.ticks[k].clear();
                 sound.tick(&mut self.ticks[k]);
@@ -1024,6 +1032,7 @@ impl Viewer {
             battle: self.session.battle.save_state(),
             huds,
             audio: self.audio.clone(),
+            layers: self.session.driver.layers().map(|l| l.copied()),
             stopped: self.session.stopped.clone(),
             finished: self.session.finished,
             result: self.session.result,
@@ -1105,6 +1114,7 @@ fn put(
     session.battle.setup.local_side = view;
     let round = rounds.partition_point(|&start| start <= state.tick).max(1) as u32;
     session.driver.go_to(Place { tick: state.tick, round, viewer: view });
+    session.driver.set_layers(state.layers);
     renderer.hud_state.clone_from(&state.huds[view as usize]);
     renderer.other_hud.clone_from(&state.huds[view as usize ^ 1]);
     if let (Some(audio), Some(kept)) = (audio, &state.audio) {

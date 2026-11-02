@@ -2142,23 +2142,6 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         own("custom.button_picked")?;
         with(|api, _| api.custom_button_picked(side, &button).map_err(api_error))
     });
-    lib_fn!(lua, t, "cursor", |_, side: LuaValue| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| api.custom_cursor(side).map_err(api_error))
-    });
-    lib_fn!(lua, t, "set_cursor", |_, (side, slot): (LuaValue, LuaValue)| {
-        let side = u8_arg(side, "side")? & 1;
-        let slot = u8_arg(slot, "slot")?;
-        with(|api, _| api.custom_set_cursor(side, slot).map_err(api_error))
-    });
-    lib_fn!(lua, t, "pressed", |_, (side, key): (LuaValue, String)| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| api.custom_pressed(side, &key).map_err(api_error))
-    });
-    lib_fn!(lua, t, "repeated", |_, (side, key): (LuaValue, String)| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| api.custom_repeated(side, &key).map_err(api_error))
-    });
     lib_fn!(lua, t, "draw_window", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_draw_window(side).map_err(api_error))
@@ -2184,10 +2167,6 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_draw_held(side).map_err(api_error))
     });
-    lib_fn!(lua, t, "draw_form_list_cursor", |_, side: LuaValue| {
-        let side = u8_arg(side, "side")? & 1;
-        with(|api, _| api.custom_draw_form_list_cursor(side).map_err(api_error))
-    });
     lib_fn!(lua, t, "show_chip_window", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_show_chip_window(side).map_err(api_error))
@@ -2195,11 +2174,6 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "set_form_list_tab", |_, (side, on): (LuaValue, bool)| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_set_form_list_tab(side, on).map_err(api_error))
-    });
-    lib_fn!(lua, t, "describe", move |_, (side, form): (LuaValue, LuaValue)| {
-        let side = u8_arg(side, "side")? & 1;
-        let form = form_or_nil(&form, "custom.describe")?;
-        with(|api, _| api.custom_describe(side, form).map_err(api_error))
     });
     lib_fn!(lua, t, "refresh_buttons", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -3309,6 +3283,11 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
         }
         // The side, then the navi, the chip and the weapon, where the hook
         // has them (nil in between).
+        // A custom screen's form list's choice: the side, then the entry.
+        HookCall::Rules { side, hook: RulesHook::CustomChooseForm, entry, .. } => vec![
+            LuaValue::Integer(mlua::Integer::from(side)),
+            entry.map_or(LuaValue::Nil, |e| LuaValue::Integer(mlua::Integer::from(e))),
+        ],
         // A custom screen's chip hooks: the side, then the chip.
         HookCall::Rules { side, hook: RulesHook::CustomChipPicked | RulesHook::CustomChipTakenBack, chip, .. } => vec![
             LuaValue::Integer(mlua::Integer::from(side)),
@@ -3435,12 +3414,11 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             _ => Err(mlua::Error::runtime(format!("a controller returns its outcome's name, not a {}", v.type_name()))),
         },
         // A button's `shown` and `state`, a window's `update`, and whether
-        // the rules took the keys or took something back.
+        // the rules took something back.
         HookCall::Rules {
             hook:
                 RulesHook::ButtonShown
                 | RulesHook::WindowUpdate
-                | RulesHook::CustomKeys
                 | RulesHook::CustomTakeBack
                 | RulesHook::BugMark
                 | RulesHook::HpEmptied

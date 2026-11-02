@@ -10,10 +10,13 @@
 //!   delay costs one encoding every `k` ticks.
 //! - **The custom screen.** A policy decides when its screen is choosing
 //!   chips and its navigator is done with the last choice, from the screen
-//!   as it is (nothing moves on it but its own cursor). At the screen's
-//!   first decision, each key is pressed in a copy of the battle to see
-//!   which ones open a window, and the one that opens the rules' form list
-//!   is the navigator's way into it (the key probe, §4.2).
+//!   as it is (nothing moves on it but its own cursor). Each seat's buttons
+//!   go through its side's custom screen layer (`nettai_battle::custom::
+//!   Layer`, in lockstep: [`step_layered`]), which holds the cursor and the
+//!   form list and makes the screen's choices of the keys. At the screen's
+//!   first decision, each key is pressed in a copy of the battle and the
+//!   layer to see which ones open a window, and the one that opens the
+//!   rules' form list is the navigator's way into it (the key probe, §4.2).
 //! - **Who opens the custom screen** (§6.3): the env, for one seat or the
 //!   other, a random while after the gauge fills (0 to 10 seconds, weighted
 //!   toward soon), pressing L; no seat's own L or R reaches the fight.
@@ -33,11 +36,10 @@ use crate::builds::Maker;
 use crate::observe::{self, AttackHistory, Extra, Names, Obs};
 use crate::spec;
 use crate::stats::{Measure, RoundStats, navi_hp};
-use nettai_battle::Battle;
 use nettai_battle::battle::{fight, mode};
-use nettai_battle::content::WindowHandle;
-use nettai_battle::custom::FolderChip;
 use nettai_battle::custom::screen::Phase;
+use nettai_battle::custom::{FolderChip, Layer};
+use nettai_battle::{Battle, PlayerTick};
 use nettai_battle::hud::CustomGauge;
 use nettai_battle::input::keys;
 use nettai_match::{Picks, Set, Side};
@@ -284,6 +286,8 @@ pub struct Env {
     picks: Picks,
     game: usize,
     battle: Battle,
+    /// Each side's custom screen layer, of the round's battle.
+    layers: [Layer; 2],
     folders: Vec<nettai_battle::custom::SavedFolder>,
     t: u32,
     screen_ticks: u32,
@@ -343,9 +347,37 @@ pub fn quiet_engine_panics() {
 /// One tick of `b` on the players' buttons (by side), as a session runs
 /// one: a tick the engine stops on (a panic: a content error, a state the
 /// original can't go on from) stops the battle (`Battle::fail`). Whether it
-/// went on.
+/// went on. Buttons alone choose nothing on a custom screen: a tick that
+/// is to get through one goes through the sides' layers
+/// ([`step_layered`]).
 pub fn step_battle(b: &mut Battle, held: [u16; 2]) -> bool {
-    let input = nettai_netplay::standin::tick_input(b, held.map(|h| h as u32));
+    step_ticks(b, held.map(PlayerTick::buttons))
+}
+
+/// One tick of `b` on the players' buttons through their custom screen
+/// layers (`layers`, by side, of `b`'s round): each reads its player's
+/// buttons against the battle as it stands and makes their screen's
+/// choices of them, as a player's layer does, and follows the tick after.
+/// Whether it went on ([`step_battle`]).
+pub fn step_layered(b: &mut Battle, layers: &mut [Layer; 2], held: [u16; 2]) -> bool {
+    step_through(b, layers, held.map(PlayerTick::buttons))
+}
+
+/// The same with the players' inputs (by side: their buttons, a choice of
+/// their own, a bot's, which their layers pass on).
+pub fn step_through(b: &mut Battle, layers: &mut [Layer; 2], ticks: [PlayerTick; 2]) -> bool {
+    let input = [0, 1].map(|s| layers[s].input(ticks[s], b));
+    let went_on = step_ticks(b, input);
+    for layer in layers.iter_mut() {
+        layer.follow(b);
+    }
+    went_on
+}
+
+/// One tick of `b` on the players' inputs (by side: their buttons, a
+/// custom screen choice), as [`step_battle`] runs one.
+pub fn step_ticks(b: &mut Battle, ticks: [PlayerTick; 2]) -> bool {
+    let input = nettai_netplay::standin::tick_input(b, ticks.map(|t| t.word()));
     IN_ENGINE.with(|f| f.set(true));
     let stepped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.step(&input)));
     IN_ENGINE.with(|f| f.set(false));
@@ -364,37 +396,43 @@ pub fn fight_runs(b: &Battle) -> bool {
     b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING && !b.is_battle_over()
 }
 
-/// The window of the rules each key opens on side `side`'s custom screen
-/// in `b`, if any (§4.2): each pressed once in a copy of the battle, the
-/// other side pressing nothing; only that side's own screen is read of the
-/// copy.
-pub fn probe_keys(b: &Battle, side: u8) -> [Option<WindowHandle>; act::KEYS.len()] {
+/// What each key opens on side `side`'s custom screen in `b`, its layer
+/// `layer`, if anything (§4.2): the rules' form list (the layer's) or a
+/// window of the rules (the battle's). Each pressed once in a copy of the
+/// battle and of the layer, the other side pressing nothing; only that
+/// side's own screen is read of the copy.
+pub fn probe_keys(b: &Battle, layer: &Layer, side: u8) -> [Option<act::Opened>; act::KEYS.len()] {
     act::KEYS.map(|key| {
         let mut copy = b.clone();
+        let mut mine = *layer;
         let direction = key & (keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT) != 0;
         let presses: &[u16] = if direction { &[key, key, 0, 0] } else { &[key, 0, 0] };
         for &held in presses {
-            let mut both = [0; 2];
-            both[side as usize] = held;
-            if !step_battle(&mut copy, both) {
+            let mut both = [PlayerTick::default(); 2];
+            both[side as usize] = mine.input(PlayerTick::buttons(held), &copy);
+            let went_on = step_ticks(&mut copy, both);
+            mine.follow(&copy);
+            if !went_on {
                 return None;
             }
             if let Some(Phase::Window { window, .. }) = copy.custom.sides[side as usize].screen.map(|s| s.phase) {
-                return Some(window);
+                return Some(act::Opened::Window(window));
+            }
+            if mine.list_stage().is_some() {
+                return Some(act::Opened::FormList);
             }
         }
         None
     })
 }
 
-/// A seat's key probe on its screen in `b` (§4.2), at its first decision
-/// there: the flags its view holds, and its navigator's way into the form
-/// list.
-pub fn probe(b: &Battle, side: u8, nav: &mut Navigator) -> [bool; act::KEYS.len()] {
-    let opened = probe_keys(b, side);
-    let cursor = b.custom.sides[side as usize].screen.map_or(0, |s| s.cursor);
-    nav.opener = act::opener(b, cursor, &opened);
-    opened.map(|w| w.is_some())
+/// A seat's key probe on its screen in `b` (§4.2), its layer `layer`, at
+/// its first decision there: the flags its view holds, and its navigator's
+/// way into the form list.
+pub fn probe(b: &Battle, layer: &Layer, side: u8, nav: &mut Navigator) -> [bool; act::KEYS.len()] {
+    let opened = probe_keys(b, layer, side);
+    nav.opener = act::opener(layer.cursor, &opened);
+    opened.map(|o| o.is_some())
 }
 
 impl Env {
@@ -433,6 +471,7 @@ impl Env {
         let builds = Arc::new(EnvBuilds::new(games.clone(), streams, &cfg));
         let g = picks.below(games.len());
         let first = RoundMade::new(&games[g], &mut picks, &builds, g, &cfg)?;
+        let layers = [Layer::new(0, &first.battle), Layer::new(1, &first.battle)];
         let mut env = Env {
             builds,
             deal: None,
@@ -441,6 +480,7 @@ impl Env {
             picks,
             game: g,
             battle: first.battle,
+            layers,
             folders: first.folders,
             t: 0,
             screen_ticks: 0,
@@ -469,6 +509,11 @@ impl Env {
 
     pub fn battle(&self) -> &Battle {
         &self.battle
+    }
+
+    /// Each side's custom screen layer.
+    pub fn layers(&self) -> &[Layer; 2] {
+        &self.layers
     }
 
     pub fn game(&self) -> usize {
@@ -623,6 +668,7 @@ impl Env {
                 mem.reset();
             }
         }
+        self.layers = [Layer::new(0, &self.battle), Layer::new(1, &self.battle)];
         self.full_gauge = self.chance(self.cfg.practice);
         let folder_order = self.chance(self.cfg.practice);
         if folder_order {
@@ -831,7 +877,7 @@ impl Env {
                 out[s] = FIGHT;
             } else if b.round.mode == mode::CUSTOM
                 && seat.nav.idle()
-                && b.custom.sides[s].screen.is_some_and(|screen| act::chooses(&screen))
+                && b.custom.sides[s].screen.is_some_and(|screen| act::chooses(&screen, &self.layers[s]))
             {
                 out[s] = SCREEN;
             }
@@ -848,6 +894,7 @@ impl Env {
             refused: seat.nav.refused,
             screen_decisions: seat.decisions,
             only_ok: seat.decisions >= self.cfg.screen_decisions,
+            layer: Some(self.layers[s]),
         }
     }
 
@@ -891,14 +938,14 @@ impl Env {
                 if self.seats[s].probe.is_none() {
                     let started = std::time::Instant::now();
                     let seat = &mut self.seats[s];
-                    seat.probe = Some(probe(&self.battle, s as u8, &mut seat.nav));
+                    seat.probe = Some(probe(&self.battle, &self.layers[s], s as u8, &mut seat.nav));
                     self.profile.probe += started.elapsed().as_nanos() as u64;
                 }
                 let extra = self.extra(s);
                 let started = std::time::Instant::now();
                 observe::encode(&self.battle, s as u8, names, &extra, &mut self.obs[s]);
                 self.profile.encode += started.elapsed().as_nanos() as u64;
-                self.legal_screen[s] = act::legal_screen(&self.battle, s as u8, &self.seats[s].nav, extra.only_ok);
+                self.legal_screen[s] = act::legal_screen(&self.battle, s as u8, &self.layers[s], &self.seats[s].nav, extra.only_ok);
                 self.legal_fight[s] = [false; spec::FIGHT_ACTIONS];
                 self.teacher[s] = -1;
             }
@@ -927,12 +974,13 @@ impl Env {
         for s in 0..2 {
             let b = &self.battle;
             let seat = &mut self.seats[s];
+            let layer = &self.layers[s];
             held[s] = if custom {
                 if !seat.controller.decides() && seat.nav.idle() {
-                    let p = act::scripted_pointer(b, s as u8, &seat.nav);
+                    let p = act::scripted_pointer(b, s as u8, layer, &seat.nav);
                     seat.nav.point(p);
                 }
-                seat.nav.buttons(b, s as u8)
+                seat.nav.buttons(b, s as u8, layer)
             } else if runs {
                 match seat.controller {
                     Controller::Policy | Controller::Searcher => act::fight_buttons(seat.action),
@@ -951,7 +999,7 @@ impl Env {
         for s in 0..2 {
             self.seats[s].presses[self.t as usize % PRESSES] = held[s];
         }
-        step_battle(&mut self.battle, held);
+        step_layered(&mut self.battle, &mut self.layers, held);
         self.t += 1;
         self.profile.ticks += 1;
         self.log.push(&self.battle);

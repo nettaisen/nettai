@@ -212,16 +212,13 @@ mod tests {
     /// left alone).
     #[test]
     fn the_attacked_panels_are_no_part_of_the_simulation() {
-        // (On the custom screen START and A, to OK; in the fight B tapped
-        // every 8 frames: buster shots, each a hit region.)
+        // (On the custom screen OK; in the fight B tapped every 8 frames:
+        // buster shots, each a hit region.)
         let shoot = |b: &Battle, frame: u32| {
-            let held = match (b.round.mode == crate::battle::mode::CUSTOM, frame % 8) {
-                (true, 0) => keys::START,
-                (true, 4) => keys::A,
-                (false, 0 | 1) => keys::B,
-                _ => 0,
-            };
-            TickInput { players: [PlayerTick::buttons(held); 2], events: TickEvents::default() }
+            let custom = b.round.mode == crate::battle::mode::CUSTOM;
+            let held = if !custom && matches!(frame % 8, 0 | 1) { keys::B } else { 0 };
+            let choice = (custom && frame % 8 == 4).then_some(crate::input::ScreenChoice::Ok);
+            TickInput { players: [PlayerTick::buttons(held).with_choice(choice); 2], events: TickEvents::default() }
         };
         // (Navis with the test content's buster.)
         let armed = || {

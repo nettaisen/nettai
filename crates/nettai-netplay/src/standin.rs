@@ -1,19 +1,21 @@
-//! A battle whose tick words (`PlayerTick::word`: the buttons and a party
-//! switch request) are the whole input (the engine simulates both
-//! custom screens), with the one event left from outside the simulation,
-//! the link session closing at the end of the round, derived inside the
-//! game: what live netplay plays (a frontend's), and synthetic matches;
-//! and, for those, a seeded button masher and a netbattle setup.
+//! A battle whose tick words (`PlayerTick::word`: the buttons, a party
+//! switch request and a custom screen's choice) are the whole input (the
+//! engine simulates both custom screens on the choices), with the one event
+//! left from outside the simulation, the link session closing at the end of
+//! the round, derived inside the game: what live netplay plays (a
+//! frontend's), and synthetic matches; and, for those, a seeded masher and a
+//! netbattle setup.
 
 use crate::rng::SplitMix64;
 use crate::world::Game;
-use nettai_battle::battle::top;
+use nettai_battle::battle::{mode, top};
 use nettai_battle::console::ConsoleSetup;
-use nettai_battle::custom::{BattleFolder, FolderChip, PlayerSetup};
+use nettai_battle::custom::screen::MAX_SELECTIONS;
+use nettai_battle::custom::{BattleFolder, FolderChip, Phase, PlayerSetup, SlotKind, SlotState};
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::input::keys;
 use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore};
-use nettai_battle::{Battle, PlayerTick, TickEvents, TickInput};
+use nettai_battle::{Battle, PlayerTick, ScreenChoice, TickEvents, TickInput};
 
 /// A battle stepped on the players' buttons alone.
 #[derive(Clone, Debug)]
@@ -34,7 +36,8 @@ impl StandInBattle {
 }
 
 /// The engine input for `battle`'s next tick from the two players' tick
-/// words (by side: `PlayerTick::word`, their buttons and switch request)
+/// words (by side: `PlayerTick::word`, their buttons, switch request and
+/// custom screen's choice)
 /// and the battle as it stands before the tick: the one place that derives
 /// it, for whoever steps a battle on tick words alone (a netplay peer,
 /// offline play).
@@ -61,7 +64,20 @@ impl Game for StandInBattle {
     fn battle_mut(&mut self) -> &mut Battle {
         &mut self.battle
     }
+
+    /// The buttons (and the microphone's level) carry on; a switch request
+    /// and a custom screen's choice happen once (each is a tick's, as the
+    /// link closing is: carried on, a choice would be taken again, or
+    /// refused with its sound, on every tick predicted).
+    fn predict(last: &u32) -> u32 {
+        last & !(SWITCH_BITS | CHOICE_BITS)
+    }
 }
+
+/// A tick word's switch request and custom screen's choice
+/// (`PlayerTick::word`).
+const SWITCH_BITS: u32 = 3 << 10;
+const CHOICE_BITS: u32 = 0x3F << 20;
 
 /// A battle folder of these chips of `content` (key, code) over and over,
 /// in this order (not shuffled).
@@ -149,19 +165,68 @@ fn player_setup(f: BattleFolder, seed: u32, side: u32) -> PlayerSetup {
 }
 
 /// Random button mashing, seeded: held buttons change every few frames
-/// (directions, A for chips and the custom screen, B to shoot and charge,
-/// L/R). START (pause) is never pressed.
+/// (directions, A for chips, B to shoot and charge, L/R). START (pause) is
+/// never pressed. On the custom screen, which takes choices and no keys
+/// ([`Masher::choice`]): now and then a chip that can be picked, and OK
+/// once it has chosen a while.
 #[derive(Clone, Debug)]
 pub struct Masher {
     rng: SplitMix64,
     held: u16,
-    /// Also press B: the buster, and held, the charged shot.
+    /// Also press B: the buster, and held, the charged shot (and on the
+    /// custom screen, now and then, B: a pick taken back).
     pub buster: bool,
+    /// Ticks the side's custom screen has chosen on so far.
+    choosing: u32,
 }
+
+/// Ticks a masher's custom screen chooses at least before it presses OK.
+const CHOOSING_AT_LEAST: u32 = 30;
 
 impl Masher {
     pub fn new(seed: u64) -> Masher {
-        Masher { rng: SplitMix64::new(seed), held: 0, buster: false }
+        Masher { rng: SplitMix64::new(seed), held: 0, buster: false, choosing: 0 }
+    }
+
+    /// The next frame's input for side `side` on `b` (the battle as it
+    /// stands before the frame): the held buttons ([`Masher::buttons`]) and
+    /// the custom screen's choice ([`Masher::choice`]).
+    pub fn input(&mut self, b: &Battle, side: u8) -> PlayerTick {
+        let held = self.buttons();
+        PlayerTick::buttons(held).with_choice(self.choice(b, side))
+    }
+
+    /// The next frame's choice on side `side`'s custom screen, while it
+    /// chooses on `b`: one tick in six, a chip that can be picked (one of
+    /// those there, at random) while there is room; from the screen's 30th
+    /// choosing tick, one in eight, OK; with the buster, one in twenty, a
+    /// pick taken back. None while the screen doesn't choose.
+    pub fn choice(&mut self, b: &Battle, side: u8) -> Option<ScreenChoice> {
+        let screen = b.custom.sides[side as usize & 1].screen.as_ref().filter(|s| b.round.mode == mode::CUSTOM && s.phase == Phase::Choosing);
+        let Some(screen) = screen else {
+            self.choosing = 0;
+            return None;
+        };
+        self.choosing += 1;
+        let r = &mut self.rng;
+        if self.choosing >= CHOOSING_AT_LEAST && r.chance(1, 8) {
+            return Some(ScreenChoice::Ok);
+        }
+        if self.buster && r.chance(1, 20) {
+            return Some(ScreenChoice::TakeBack);
+        }
+        if r.chance(1, 6) && (screen.selected as usize) < MAX_SELECTIONS {
+            let pickable: Vec<u8> = (0..screen.slots.len() as u8)
+                .filter(|&s| {
+                    let slot = &screen.slots[s as usize];
+                    matches!(slot.kind, SlotKind::Chip { .. } | SlotKind::Offered(_)) && slot.state == SlotState::Selectable
+                })
+                .collect();
+            if !pickable.is_empty() {
+                return Some(ScreenChoice::Pick(pickable[r.below(pickable.len() as u64) as usize]));
+            }
+        }
+        None
     }
 
     /// The next frame's held buttons.
@@ -182,5 +247,45 @@ impl Masher {
             self.held = held;
         }
         self.held
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nettai_battle::content::testing;
+
+    /// A tick word predicted is its buttons and level carried on, without
+    /// its switch request or its choice.
+    #[test]
+    fn a_choice_and_a_switch_are_not_predicted() {
+        let t = PlayerTick { held: keys::A | keys::UP, switch_to: Some(1), mic_level: 9, choice: Some(ScreenChoice::Pick(3)) };
+        let predicted = PlayerTick::from_word(<StandInBattle as Game>::predict(&t.word()));
+        assert_eq!(predicted, PlayerTick { switch_to: None, choice: None, ..t });
+    }
+
+    /// Two mashers get a stand-in netbattle through its first custom
+    /// screens: picks, then OK, and the fight goes on.
+    #[test]
+    fn mashers_choose_through_the_custom_screen() {
+        let c = testing::content();
+        let f = || folder(&c, &[(testing::SUN_GUN_3, 0), (testing::SUN_GUN_1, 0)]);
+        let mut b = Battle::new(netbattle(&c, testing::LINK_BATTLE, 300, 0x1357, [f(), f()]), c.clone());
+        let mut mashers = [Masher::new(1), Masher::new(2)];
+        let (mut picks, mut oks, mut fought) = (0, 0, 0);
+        for _ in 0..3000 {
+            let words = [0u8, 1].map(|side| mashers[side as usize].input(&b, side).word());
+            for w in words {
+                match PlayerTick::from_word(w).choice {
+                    Some(ScreenChoice::Pick(_)) => picks += 1,
+                    Some(ScreenChoice::Ok) => oks += 1,
+                    _ => {}
+                }
+            }
+            let input = tick_input(&b, words);
+            b.step(&input);
+            fought += (b.round.mode == mode::FIGHTING) as u32;
+        }
+        assert!(picks > 0 && oks >= 2 && fought > 1000, "{picks} picks, {oks} OKs, {fought} ticks fought");
     }
 }

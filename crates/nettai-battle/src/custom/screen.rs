@@ -1,22 +1,24 @@
-//! One player's custom screen: the slots, the cursor, the selection and
-//! the sub-screens (the Cross window, Beast Out, the chip descriptions),
-//! driven by that player's joypad. The original runs this on each
-//! console for its own player only (`sub_8026A88` and its states); here
-//! both players' screens run in the simulation. See
-//! docs/engine/custom-screen.md §2-§4.
+//! One player's custom screen: the slots, the selection and the rules'
+//! windows (Beast Out, a Cross chosen), driven by that player's choices
+//! (`ScreenChoice`). The original runs this on each console for its own
+//! player only (`sub_8026A88` and its states); here both players' screens
+//! run in the simulation. Where the cursor is and what only shows (R's
+//! description, L's message, SELECT's hiding, the form list's browsing) are
+//! the player's own screen layer's (`super::layer`), outside it. See
+//! docs/engine/custom-screen.md §2-§4 and
+//! docs/design/custom-screen-actions.md.
 
 use super::folder::{BattleFolder, FOLDER_SIZE, FolderChip, shuffle};
 use super::builder::{ClassCounts, FormedAdvance};
-use super::chatbox::{Chatbox, Script};
 use super::library::Library;
-use super::look::{ScreenLook, ScreenSound};
+use super::look::{ChipWindow, Draw, ScreenLook, ScreenSound};
 use crate::console::Console;
-use crate::battle::FadeMode;
+use crate::battle::{Fade, FadeMode};
 use crate::content::{ButtonHandle, WindowHandle};
 use nettai_content_api::ChipHandle;
 use crate::content::{ChipClass, ChipCode, CustomScreenLayout, HoverRuns, InvalidPicks, ScreenKey, SlotMoves, SpecialCodes, TemplateSlot};
 use crate::hud::{Banner, BannerStatus};
-use crate::input::{Joypad, keys};
+use crate::input::ScreenChoice;
 use crate::kinds::player::Emotion;
 use crate::content::FormTraits;
 use crate::setup::NaviStats;
@@ -79,7 +81,7 @@ pub enum SlotKind {
 
 impl SlotKind {
     /// The cursor never goes to these.
-    fn is_absent(self) -> bool {
+    pub fn is_absent(self) -> bool {
         matches!(self, SlotKind::Empty | SlotKind::Hidden)
     }
 }
@@ -153,26 +155,18 @@ pub enum Phase {
     /// The window slides in (`sub_8026B04`, 10 ticks).
     Opening { tick: u8 },
     /// The window is in, and the screen sets its cursor's state up before
-    /// it reads keys (EXE4's selection state 0, 0x08020340: a tick, where
+    /// it takes a choice (EXE4's selection state 0, 0x08020340: a tick, where
     /// the layout's `first_choosing_tick_reads_keys` says so). Drawn as
     /// choosing, but for the cursor.
     Settling,
-    /// Picking chips (`sub_8026CCC`).
+    /// Picking chips (`sub_8026CCC`): the one state that takes the player's
+    /// choices. (SELECT's hiding, R's description, L's message and the form
+    /// list's browsing, states of the original's own, are the player's
+    /// layer's: the screen chooses through them.)
     Choosing,
-    /// SELECT hid the window to look at the field (`sub_8026D06`).
-    Hidden { stage: HiddenStage },
-    /// R shows the chip's description (`sub_8026E4C`), or a window of the rules
-    /// a form's (EXE6's Cross window: the Cross's, `sub_8026E78`): `window`
-    /// the window it returns to, `form` the form described. The screen
-    /// waits for its chatbox to close.
-    Description { window: Option<WindowHandle>, form: Option<nettai_content_api::FormHandle>, chatbox: Chatbox },
-    /// L: the "no time to run" message (`sub_8026E98`), whose chatbox
-    /// starts on the state's first tick (`sub_8026EC8`) and is waited for
-    /// from the next (`sub_8026FAA`).
-    RunMessage { chatbox: Option<Chatbox> },
     /// A window of the rules is up (docs/design/rules-in-luau.md §4.4: EXE6's
-    /// Beast Out, `sub_802770C`, and the Cross window): its `update` runs
-    /// each tick, `tick` from 1, until it says it is done.
+    /// Beast Out, `sub_802770C`, and a Cross chosen, `sub_8027A58`): its
+    /// `update` runs each tick, `tick` from 1, until it says it is done.
     Window { window: WindowHandle, tick: u16 },
     /// The selected chips are scrapped (DustCross's, `sub_8027406`), for
     /// the button in slot `button`. `done`: the last scrap is over; the
@@ -211,25 +205,16 @@ pub enum SwitchStage {
 impl Phase {
     /// The screen counts toward the round's time limit (nettai's own,
     /// `RoundSetup::custom_screen_limit`): from the tick its window is in
-    /// until OK, hidden or not.
+    /// until OK (hidden by its player's SELECT or not: the layer's).
     pub fn counts_time(&self) -> bool {
-        self.chooses() || matches!(self, Phase::Hidden { .. })
+        self.chooses()
     }
 
     /// The screen chooses: the window is in and its own (EXE4's running
     /// state 4, 0x0801E3D8, whatever its selection's state), not sliding,
-    /// hidden, playing the Program Advance or sending.
+    /// playing the Program Advance or sending.
     pub fn chooses(&self) -> bool {
-        matches!(
-            self,
-            Phase::Settling
-                | Phase::Choosing
-                | Phase::Description { .. }
-                | Phase::RunMessage { .. }
-                | Phase::Window { .. }
-                | Phase::Scrapping { .. }
-                | Phase::Redealing { .. }
-        )
+        matches!(self, Phase::Settling | Phase::Choosing | Phase::Window { .. } | Phase::Scrapping { .. } | Phase::Redealing { .. })
     }
 }
 
@@ -306,14 +291,6 @@ const SWITCH_FADE_SPEED: u8 = 0x20;
 const PROGRAM_ADVANCE_FADE_SPEED: u8 = 8;
 const FADE_IN_FRAMES: u8 = 1 + 0x40 / 8;
 
-/// The SELECT sub-screen's steps.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum HiddenStage {
-    Hiding,
-    Waiting,
-    Restoring,
-}
-
 /// What a tick of the screen asks the battle to do.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Request {
@@ -331,7 +308,10 @@ pub enum Request {
 pub struct Screen {
     pub phase: Phase,
     pub slots: [Slot; SLOTS],
-    pub cursor: u8,
+    /// The slot of the rules' button whose `pressed` runs (the choice's
+    /// slot: what `custom.cursor_state`, `custom.pick`, `custom.sacrifice`
+    /// and `custom.redeal` mean), while it runs.
+    pub pressed: Option<u8>,
     /// Picked slots, in order.
     pub selection: [u8; MAX_SELECTIONS],
     pub selected: u8,
@@ -367,6 +347,14 @@ pub struct Screen {
     /// Advance's), stepped after the screen's logic each tick as the HUD
     /// task is.
     pub hud: Banner,
+    /// The screen fade the screen runs on its console (Beast Out's, the
+    /// Program Advance's, a Cross's white, a soul's flashes, a switch's),
+    /// which its windows and a switch wait on (`custom.fading`): the
+    /// console's first fade record, as the screen's decisions run it. (The
+    /// dark chips' hover runs the same record in the original; it is the
+    /// layer's here, `look::Hover`, and the record shown is the one started
+    /// last.)
+    pub fade: Fade,
     /// What the screen shows (presentation).
     pub look: ScreenLook,
     /// The chips the side's rules offer as the screen deals (`custom.offer`),
@@ -471,7 +459,7 @@ impl Screen {
                 attached: None,
                 face: None,
             }; SLOTS],
-            cursor: 0,
+            pressed: None,
             selection: [0; MAX_SELECTIONS],
             selected: 0,
             chips_left: 0,
@@ -485,7 +473,8 @@ impl Screen {
             hold: None,
             program_advance: None,
             hud: Banner::default(),
-            look: ScreenLook::new(view.late_turns, false, None),
+            fade: super::look::CLEAR_FADE,
+            look: ScreenLook::new(view.late_turns, false),
             offers: [None; SLOTS],
             member: None,
         };
@@ -512,17 +501,26 @@ impl Screen {
         if matches!(screen.slots[9].kind, SlotKind::Offered(_)) && view.library.navi_chip_draws(view.stats.navi) {
             console.rng.next();
         }
-        // sub_802806C: a cursor on the first slot goes to the first dark
-        // chip dealt (as the class limits count it).
-        if screen.cursor == 0 {
-            if let Some(s) = (0..OK_SLOT).find(|&s| screen.chip_in(s, folder).is_some_and(|c| is_dark(within_limit(c, view), view))) {
-                screen.cursor = s;
-            }
-        }
-        // sub_8028476: the chip window shows the first slot.
-        screen.show_chip_window(folder, view);
+        // sub_8028476: the chip window shows the slot the cursor starts on
+        // (the layer's: `Screen::first_cursor`).
+        screen.show_chip_window();
         screen.draw_slots(folder, view);
         screen
+    }
+
+    /// The slot the cursor starts on as the screen opens (`sub_8027E2C`'s
+    /// first slot there, then `sub_802806C`: a cursor on the first slot goes
+    /// to the first dark chip dealt, as the class limits count it), or as a
+    /// switch lays the slots out again (the first slot there): the player's
+    /// layer's, which reads it of the screen.
+    pub fn first_cursor(&self, folder: &BattleFolder, view: &PlayerView, opening: bool) -> u8 {
+        let first = (0..SLOTS as u8).find(|&s| !self.slots[s as usize].kind.is_absent()).unwrap_or(OK_SLOT);
+        if opening && first == 0 {
+            if let Some(s) = (0..OK_SLOT).find(|&s| self.chip_in(s, folder).is_some_and(|c| is_dark(within_limit(c, view), view))) {
+                return s;
+            }
+        }
+        first
     }
 
     /// `sub_8027E2C`: the slots, the dealt chips and the cursor.
@@ -605,23 +603,16 @@ impl Screen {
         if layout.slots.iter().all(|s| s.moves.neighbors().is_some()) {
             self.fix_neighbors(layout);
         }
-        self.cursor = (0..SLOTS as u8).find(|&s| !self.slots[s as usize].kind.is_absent()).unwrap_or(OK_SLOT);
     }
 
-    /// Where a direction key takes the cursor from the slot it is on: its
-    /// neighbor (the neighbors model, fixed up as the screen opened; a
-    /// button's own), else the first slot of its list that is there. (A
-    /// button two cells wide is left by its ends: LEFT from its right cell
-    /// reads its left cell's list, RIGHT from its left cell its right
-    /// cell's. EXE4's SHUFFLE: LEFT from either cell is slot 8's,
-    /// 0x0802044E, RIGHT goes on to OK, 0x0802041C.)
-    fn target(&self, key: ScreenKey, layout: &CustomScreenLayout) -> Option<u8> {
-        self.target_from(self.cursor, key, layout)
-    }
-
-    /// Where the cursor goes from slot `at` on the direction `key`, as
-    /// [`Screen::target`] says from the cursor's own slot (none: nowhere):
-    /// for a player that finds its way about the screen (an AI's).
+    /// Where a direction key takes the cursor from slot `at` (none:
+    /// nowhere): its neighbor (the neighbors model, fixed up as the screen
+    /// opened; a button's own), else the first slot of its list that is
+    /// there. (A button two cells wide is left by its ends: LEFT from its
+    /// right cell reads its left cell's list, RIGHT from its left cell its
+    /// right cell's. EXE4's SHUFFLE: LEFT from either cell is slot 8's,
+    /// 0x0802044E, RIGHT goes on to OK, 0x0802041C.) The player's layer's
+    /// cursor goes by it.
     pub fn target_from(&self, at: u8, key: ScreenKey, layout: &CustomScreenLayout) -> Option<u8> {
         let here = &self.slots[at as usize];
         let own = match key {
@@ -712,12 +703,12 @@ impl Screen {
     fn switch_step(&mut self, stage: SwitchStage, member: u8, view: &PlayerView, folder: &BattleFolder, extras: &mut dyn super::Extras) -> Option<Request> {
         match stage {
             SwitchStage::Out => {
-                self.look.fade.start(FadeMode::EndToWhite, SWITCH_FADE_SPEED);
+                self.start_fade(FadeMode::EndToWhite, SWITCH_FADE_SPEED);
                 self.phase = Phase::Switching { stage: SwitchStage::Taken, member };
                 None
             }
             SwitchStage::Taken => {
-                if self.look.fade.active() {
+                if self.fade.active() {
                     return None;
                 }
                 self.member = (member != view.party.active).then_some(member);
@@ -726,15 +717,16 @@ impl Screen {
                 self.megaman = navi_view.megaman();
                 self.selected = 0;
                 self.lay_out(&navi_view, extras);
-                self.show_chip_window(folder, &navi_view);
+                self.look.draw(Draw::LaidOut);
+                self.show_chip_window();
                 self.draw_slots(folder, &navi_view);
-                self.look.fade.start(FadeMode::IntroFromWhite, SWITCH_FADE_SPEED);
+                self.start_fade(FadeMode::IntroFromWhite, SWITCH_FADE_SPEED);
                 self.look.play(ScreenSound::NaviSwitch);
                 self.phase = Phase::Switching { stage: SwitchStage::In, member };
                 Some(Request::Switched(member))
             }
             SwitchStage::In => {
-                if !self.look.fade.active() {
+                if !self.fade.active() {
                     self.phase = Phase::Choosing;
                 }
                 None
@@ -756,59 +748,78 @@ impl Screen {
         &self.selection[..self.selected as usize]
     }
 
-    /// Whether the window is on screen (for the HUD).
+    /// Whether the window is on screen (for the HUD), as far as the screen
+    /// says: its player's SELECT may hide it too (the layer's).
     pub fn window_shown(&self) -> bool {
-        !matches!(self.phase, Phase::Hidden { .. } | Phase::Closing { .. } | Phase::ProgramAdvance { .. } | Phase::Sending { .. })
+        !matches!(self.phase, Phase::Closing { .. } | Phase::ProgramAdvance { .. } | Phase::Sending { .. })
     }
 
-    /// One tick of the screen with this joypad, on the player's console
-    /// (its RNG, for ChpShufl's re-deal, and its camera), then the
-    /// console's HUD banner.
-    pub fn tick(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console, extras: &mut dyn super::Extras) -> Option<Request> {
-        self.run(Some(joy), view, folder, console, extras)
+    /// The screen's fade starts (`SetScreenFade` on its console's first
+    /// record): from the level where the record is.
+    pub(crate) fn start_fade(&mut self, mode: FadeMode, speed: u8) {
+        self.fade.start(mode, speed);
+        self.look.draw(Draw::FadeStarted);
+    }
+
+    /// `sub_80062D0`, `sub_80062D6`: both fade records cleared at once, the
+    /// hover's (the layer's) too.
+    fn clear_fades(&mut self) {
+        self.fade = super::look::CLEAR_FADE;
+        self.look.draw(Draw::FadesCleared);
+    }
+
+    /// One tick of the screen with the player's choice of the tick, if any,
+    /// on the player's console (its RNG, for ChpShufl's re-deal, and its
+    /// camera), then the console's HUD banner.
+    pub fn tick(
+        &mut self,
+        choice: Option<ScreenChoice>,
+        view: &PlayerView,
+        folder: &mut BattleFolder,
+        console: &mut Console,
+        extras: &mut dyn super::Extras,
+    ) -> Option<Request> {
+        self.run(choice, false, view, folder, console, extras)
     }
 
     /// A tick of the screen whose time is up (the round's time limit,
     /// nettai's own: `RoundSetup::custom_screen_limit`), as [`Screen::tick`]
-    /// but with no keys read: it ends as if OK were pressed, with the chips
-    /// picked so far. What is up over the chips goes first, silently: SELECT's
-    /// hiding, a description, the run message, a window of the rules (as if
-    /// it were cancelled: what its rules noted stays, what they hadn't yet
-    /// doesn't count, and its fades and the dark chip's hover are cleared). A
-    /// scrap or a re-deal runs to its end first (it reads no keys), and the
-    /// tick after it OK is pressed.
+    /// but taking no choice: it ends as if OK were pressed, with the chips
+    /// picked so far. A window of the rules goes first, silently (as if it
+    /// were cancelled: what its rules noted stays, what they hadn't yet
+    /// doesn't count, and its fades and the dark chip's hover are cleared).
+    /// A scrap or a re-deal runs to its end first (it takes no choice), and
+    /// the tick after it OK is pressed. (What the player's layer has up over
+    /// the chips, SELECT's hiding, a description, the run message or the form
+    /// list, goes as silently: the layer's.)
     pub fn tick_time_up(&mut self, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console, extras: &mut dyn super::Extras) -> Option<Request> {
-        self.run(None, view, folder, console, extras)
+        self.run(None, true, view, folder, console, extras)
     }
 
-    /// A tick: `joy` the keys the screen reads, none when its time is up.
-    fn run(&mut self, joy: Option<&Joypad>, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console, extras: &mut dyn super::Extras) -> Option<Request> {
+    /// A tick: `choice` the player's, `time_up` the time limit's last.
+    fn run(
+        &mut self,
+        choice: Option<ScreenChoice>,
+        time_up: bool,
+        view: &PlayerView,
+        folder: &mut BattleFolder,
+        console: &mut Console,
+        extras: &mut dyn super::Extras,
+    ) -> Option<Request> {
         self.look.drawn = Default::default();
-        if joy.is_none() {
+        if time_up {
             self.leave_for_ok(view);
         }
-        let choosing = self.phase.chooses();
-        let released = Joypad::new(0);
-        let time_up = joy.is_none();
-        let request = self.step(joy.unwrap_or(&released), time_up, view, folder, console, extras);
-        let hover = &view.library.layout().hover;
-        match hover.runs {
-            HoverRuns::EveryTick => self.look.hover(Some(self.on_shading_chip(view, folder)), hover),
-            HoverRuns::WhileChoosing if choosing => {
-                let on_shading = self.phase.chooses().then(|| self.on_shading_chip(view, folder));
-                self.look.hover(on_shading, hover);
-            }
-            HoverRuns::WhileChoosing => {}
-        }
+        let request = self.step(choice, time_up, view, folder, console, extras);
+        // (The dark chip's hover runs here, after the tick's state: the
+        // layer's, as it reads where the cursor is.)
         self.hud.tick();
         if let Phase::ProgramAdvance { anim } = &mut self.phase {
             anim.fade = anim.fade.saturating_sub(1);
         }
         // (SetScreenFade's records, the console's: a fade toward clear ends
         // as the rules' do.)
-        let clear = view.library.fade_clear();
-        self.look.fade.step(clear);
-        self.look.window_fade.step(clear);
+        self.fade.step(view.library.fade_clear());
         request
     }
 
@@ -825,13 +836,13 @@ impl Screen {
     /// the frame counts on.
     fn count_choosing_frame(&mut self) {
         self.look.draw_turn_limit();
-        self.look.frame += 1;
+        self.look.count_frame();
     }
 
-    /// EXE4's 0x08020A0A: a state of the choosing (a description, L's
-    /// message) gives way to the one it came from, which the choosing's
-    /// tick then draws (0x0801E3F2, 0x0801E412): the Regular chip's frame
-    /// and the cursor, by the frame counted.
+    /// EXE4's 0x08020A0A: a state of the choosing (a window of the rules)
+    /// gives way to the one it came from, which the choosing's tick then
+    /// draws (0x0801E3F2, 0x0801E412): the Regular chip's frame and the
+    /// cursor, by the frame counted.
     fn draw_choosing_return(&mut self, folder: &BattleFolder) {
         self.look.draw_regular(folder.regular_pending, true);
         self.draw_cursor();
@@ -842,38 +853,28 @@ impl Screen {
     /// then 0x0801EECC, unless the slot is a button's, its flag 8; OK's and
     /// the button's states draw the cursor alone, 0x08020DBC, 0x08020DD0).
     fn draw_cursor(&mut self) {
-        self.look.draw_cursor();
-        self.draw_element_on_chip();
+        self.look.draw(Draw::Cursor);
+        self.look.draw(Draw::ElementOnChip);
     }
 
-    /// The chip window's element icon while the cursor rests on a chip
-    /// (EXE4's: also what R's description and L's message draw each tick,
-    /// with no cursor, when they came from the chips' state, 0x08020E10).
-    fn draw_element_on_chip(&mut self) {
-        if matches!(self.slots[self.cursor as usize].kind, SlotKind::Chip { .. } | SlotKind::Offered(_)) {
-            self.look.draw_element();
+    /// `sub_802A394`'s part of the slot: a chip that, as it counts in a
+    /// selection, is dark; on a chip the rules offered, what the offer says
+    /// (EXE4's 0x0801E4CC reads its slot's flag). The player's layer asks it
+    /// of the slot under its cursor (the dark chip's hover).
+    pub fn shades_at(&self, slot: u8, view: &PlayerView, folder: &BattleFolder) -> bool {
+        let at = slot as usize;
+        let offered = self.offers[at].filter(|_| matches!(self.slots[at].kind, SlotKind::Offered(_)));
+        match offered {
+            Some(offer) => offer.shades,
+            None => self.chip_in(slot, folder).is_some_and(|c| is_dark(checked(c, view), view)),
         }
     }
 
-    /// `sub_802A394`: choosing chips or reading a chip's description, the
-    /// cursor rests on a dark chip (as it counts in a selection); on a chip
-    /// the rules offered, what the offer says (EXE4's 0x0801E4CC reads its
-    /// slot's flag).
-    fn on_shading_chip(&self, view: &PlayerView, folder: &BattleFolder) -> bool {
-        let slot = self.cursor as usize;
-        let offered = self.offers[slot].filter(|_| matches!(self.slots[slot].kind, SlotKind::Offered(_)));
-        matches!(self.phase, Phase::Settling | Phase::Choosing | Phase::Description { window: None, .. })
-            && match offered {
-                Some(offer) => offer.shades,
-                None => self.chip_in(self.cursor, folder).is_some_and(|c| is_dark(checked(c, view), view)),
-            }
-    }
-
-    /// `time_up`: choosing, OK is pressed whatever the keys (the round's
+    /// `time_up`: choosing, OK is pressed whatever the choice (the round's
     /// time limit).
     fn step(
         &mut self,
-        joy: &Joypad,
+        choice: Option<ScreenChoice>,
         time_up: bool,
         view: &PlayerView,
         folder: &mut BattleFolder,
@@ -894,27 +895,21 @@ impl Screen {
                 } else {
                     Phase::Settling
                 };
-                self.look.frame = SLIDE - SLIDE_STEP * tick as u32;
+                self.look.set_frame(SLIDE - SLIDE_STEP * tick as u32);
                 self.look.draw_emblem(self.look.frame);
                 // (EXE4's slide in draws the chip window's element icon each
                 // tick of a screen that dealt from a folder with chips,
                 // 0x0801E306: the screen's +0x15 and +0x11.)
                 if self.chips_left != 0 && self.hand_size != 0 {
-                    self.look.draw_element();
+                    self.look.draw(Draw::Element);
                 }
                 None
             }
             Phase::Settling => {
-                // EXE4's 0x08020340 (the cursor's state put back, its keys
-                // unread), then the rest of 0x0801E3D8's tick: the last
-                // turns' block, the frame count, the emblem's spin, the
-                // Regular chip's frame and the cursor its state draws
-                // (0x0801E41E).
+                // EXE4's 0x08020340: the cursor's state put back, no choice
+                // taken. (What its tick draws, the choosing's, is the
+                // layer's.)
                 self.phase = Phase::Choosing;
-                self.count_choosing_frame();
-                self.look.draw_emblem(0);
-                self.look.draw_regular(folder.regular_pending, true);
-                self.draw_cursor();
                 None
             }
             // EXE5 DS's 0x02063038: a switch the screen takes leaves the rest
@@ -926,130 +921,14 @@ impl Screen {
             }
             Phase::Switching { stage, member } => self.switch_step(stage, member, view, folder, extras),
             Phase::Choosing => {
-                // sub_8026CCC: the keys, then the cursor, the emblem, the
-                // Regular chip's frame and the last turns' block are drawn,
-                // and the frame counts on. (EXE4's 0x0801E3D8 draws the last
-                // turns' block and counts first, then reads the keys and
-                // draws the rest: the rule `frame_counts_first`.)
-                let counts_first = view.library.layout().frame_counts_first;
-                if counts_first {
-                    self.count_choosing_frame();
+                // sub_8026CCC: the player's choice (what its tick draws, the
+                // cursor, the emblem, the Regular chip's frame, the last
+                // turns' block and the frame's count, is the layer's).
+                if time_up {
+                    self.press_ok(view)
+                } else {
+                    choice.and_then(|c| self.choose(c, view, folder, console, extras))
                 }
-                let request = if time_up { self.press_ok(view) } else { self.choose(joy, view, folder, console, extras) };
-                // (OK takes the Regular chip out of the folder before the
-                // frame is drawn: `sub_80293F8`.)
-                let regular_taken = request == Some(Request::Confirm)
-                    && self.selection().iter().any(|&s| matches!(self.slots[s as usize].kind, SlotKind::Chip { regular: true, .. }));
-                // (A screen that draws by the state its keys left it in,
-                // EXE4's, draws no cursor on the tick a key leaves the
-                // choosing, and takes the last turns' block off where the
-                // key leaves the window, OK or SELECT: 0x0801E412.)
-                let drawn_after = view.library.layout().cursor_after_leaving || self.phase == Phase::Choosing;
-                if drawn_after {
-                    self.draw_cursor();
-                } else if matches!(self.phase, Phase::Description { window: None, .. } | Phase::RunMessage { .. }) {
-                    // (R's description and L's message are states of the
-                    // choosing, which its tick draws by the state the key
-                    // left: the element icon, no cursor, 0x08020E10 and
-                    // 0x08020E24.)
-                    self.draw_element_on_chip();
-                }
-                self.look.draw_emblem(0);
-                self.look.draw_regular(folder.regular_pending && !regular_taken, counts_first);
-                // (EXE5's 0x08023012: the chip a button holds, over it.)
-                self.look.draw_held(self.hold.is_some());
-                if drawn_after {
-                    if !counts_first {
-                        self.look.draw_turn_limit();
-                    }
-                } else if matches!(self.phase, Phase::Closing { .. } | Phase::Hidden { .. }) {
-                    self.look.turn_limit = false;
-                }
-                if !counts_first {
-                    self.look.frame += 1;
-                }
-                request
-            }
-            Phase::Hidden { stage } => {
-                // sub_8026D06: hiding takes the last turns' block off;
-                // coming back draws the emblem on that tick and the next,
-                // where the game's screen does (the layout's
-                // `emblem_at_window_return`: EXE5's 0x08023022 draws it on
-                // neither).
-                let emblem = view.library.layout().emblem_at_window_return;
-                self.phase = match stage {
-                    HiddenStage::Hiding => {
-                        self.look.turn_limit = false;
-                        self.look.play(ScreenSound::Hide);
-                        Phase::Hidden { stage: HiddenStage::Waiting }
-                    }
-                    HiddenStage::Waiting if joy.pressed != 0 => {
-                        if emblem {
-                            self.look.draw_emblem(0);
-                        }
-                        self.look.play(ScreenSound::Hide);
-                        Phase::Hidden { stage: HiddenStage::Restoring }
-                    }
-                    HiddenStage::Waiting => self.phase,
-                    HiddenStage::Restoring => {
-                        if emblem {
-                            self.look.draw_emblem(0);
-                        }
-                        Phase::Choosing
-                    }
-                };
-                None
-            }
-            Phase::Description { window, form, mut chatbox } => {
-                // The screen sees the chatbox closed the tick after it
-                // closes, and reads keys again the tick after that; the
-                // chatbox runs after the screen, each tick. The emblem is
-                // drawn every tick (`sub_8026E4C`). (A description that is
-                // a state of the choosing, EXE4's, runs the choosing's tick
-                // around it: the rule `states_in_choosing`.)
-                let in_choosing = window.is_none() && view.library.layout().states_in_choosing;
-                if in_choosing {
-                    self.count_choosing_frame();
-                }
-                self.look.draw_emblem(0);
-                if !chatbox.is_open() {
-                    self.look.play(ScreenSound::DescriptionClose);
-                    // (Back to the window it came from: its first tick
-                    // again, which reads no keys.)
-                    self.phase = match window {
-                        Some(window) => Phase::Window { window, tick: 0 },
-                        None => Phase::Choosing,
-                    };
-                    if in_choosing {
-                        self.draw_choosing_return(folder);
-                    }
-                    return None;
-                }
-                chatbox.update(joy.held, joy.pressed);
-                self.phase = Phase::Description { window, form, chatbox };
-                if in_choosing {
-                    self.draw_element_on_chip();
-                }
-                None
-            }
-            Phase::RunMessage { chatbox } => {
-                let in_choosing = view.library.layout().states_in_choosing;
-                if in_choosing {
-                    self.count_choosing_frame();
-                }
-                self.look.draw_emblem(0);
-                if chatbox.is_some_and(|c| !c.is_open()) {
-                    self.phase = Phase::Choosing;
-                    if in_choosing {
-                        self.draw_choosing_return(folder);
-                    }
-                    return None;
-                }
-                self.step_run_message(joy, view);
-                if in_choosing {
-                    self.draw_element_on_chip();
-                }
-                None
             }
             Phase::Window { window, tick } => {
                 // The rules' window (EXE6's Beast Out, `sub_802770C`): its
@@ -1067,7 +946,7 @@ impl Screen {
                 }
                 let tick = tick.saturating_add(1);
                 self.phase = Phase::Window { window, tick };
-                let stays = extras.window_update(self, folder, console, joy, window);
+                let stays = extras.window_update(self, folder, console, window);
                 if !stays && self.phase == (Phase::Window { window, tick }) {
                     self.phase = Phase::Choosing;
                 }
@@ -1102,9 +981,9 @@ impl Screen {
                 // first tick takes the last turns' block off.
                 let tick = tick + 1;
                 if tick == 1 {
-                    self.look.turn_limit = false;
+                    self.look.draw(Draw::TurnLimitOff);
                 }
-                self.look.frame = SLIDE_STEP * tick as u32;
+                self.look.set_frame(SLIDE_STEP * tick as u32);
                 self.look.draw_emblem(self.look.frame);
                 self.phase = match tick {
                     // (The animation's first tick only starts it, or, as the
@@ -1154,26 +1033,6 @@ impl Screen {
         }
     }
 
-    /// A tick of the no-running message's chatbox: its first (`sub_8026EC8`:
-    /// the message's sound, the script), or the next.
-    fn step_run_message(&mut self, joy: &Joypad, view: &PlayerView) {
-        let Phase::RunMessage { chatbox } = self.phase else { return };
-        let mut chatbox = match chatbox {
-            Some(c) => c,
-            None => {
-                self.look.play(ScreenSound::RunMessage);
-                let navi = view.stats.navi;
-                Chatbox::new(Script::RunMessage { lines: view.library.run_message(navi) })
-                    .commands_wait_for_text(view.library.layout().chatbox_commands_wait_for_text)
-                    .end_clears_tiles(view.library.layout().chatbox_end_clears_tiles)
-                    .character_ends_tick(view.library.layout().chatbox_character_ends_tick)
-                    .talking(view.library.run_message_talking(navi))
-            }
-        };
-        chatbox.update(joy.held, joy.pressed);
-        self.phase = Phase::RunMessage { chatbox: Some(chatbox) };
-    }
-
     /// `sub_802B76C`: one step of the Program Advance animation.
     fn animate_program_advance(&mut self, anim: &mut ProgramAdvanceAnimation, pa: FormedAdvance, view: &PlayerView) {
         use ProgramAdvanceStep as S;
@@ -1192,7 +1051,7 @@ impl Screen {
                     anim.fade = FADE_OUT_FRAMES;
                     // sub_802B9FE(0); the screen fades a quarter of the way.
                     self.look.pa_palette = 0;
-                    self.look.fade.start(FadeMode::ProgramAdvance, PROGRAM_ADVANCE_FADE_SPEED);
+                    self.start_fade(FadeMode::ProgramAdvance, PROGRAM_ADVANCE_FADE_SPEED);
                     return;
                 }
                 if anim.fade != 0 {
@@ -1256,7 +1115,7 @@ impl Screen {
                     // step more: the rules' `effects.fade_clear`, EXE4's.)
                     let past = view.library.fade_clear() == crate::content::FadeClear::PastTarget;
                     anim.fade = FADE_IN_FRAMES + past as u8;
-                    self.look.fade.start(FadeMode::ProgramAdvanceBack, PROGRAM_ADVANCE_FADE_SPEED);
+                    self.start_fade(FadeMode::ProgramAdvanceBack, PROGRAM_ADVANCE_FADE_SPEED);
                 }
             }
             S::FadeIn => {
@@ -1267,143 +1126,83 @@ impl Screen {
         }
     }
 
-    /// State 4 (`sub_8028B74`): one key per tick, the first down in the
-    /// order the slot under the cursor reads them (the neighbors model's:
-    /// the directions by their auto-repeat, then A, B, START, SELECT, R and
-    /// L pressed; EXE4's: each place's own, 0x08020350, 0x08020620,
-    /// 0x08020728).
+    /// State 4 (`sub_8028B74`): the player's choice of the tick, as the key
+    /// that made it was (one a tick): A on a chip, OK or a button, B, or the
+    /// rules' form list's entry chosen.
     fn choose(
         &mut self,
-        joy: &Joypad,
+        choice: ScreenChoice,
         view: &PlayerView,
         folder: &mut BattleFolder,
         console: &mut Console,
         extras: &mut dyn super::Extras,
     ) -> Option<Request> {
-        // The side's rules first (EXE6's UP opening the Cross window, which
-        // the original asks before the cursor's UP).
-        if (joy.repeat | joy.pressed) != 0 && extras.keys(self, folder, joy) {
-            return None;
-        }
-        let layout = view.library.layout();
-        let order: &[ScreenKey] = match &layout.slots[self.cursor as usize].moves {
-            SlotMoves::Neighbors { .. } => &ScreenKey::NEIGHBORS_ORDER,
-            SlotMoves::Candidates { keys, .. } => keys,
-        };
-        let Some(key) = order.iter().copied().find(|&k| (if k.is_direction() { joy.repeat } else { joy.pressed }) & key_bits(k) != 0) else {
-            return None;
-        };
-        match key {
-            ScreenKey::Up | ScreenKey::Down | ScreenKey::Left | ScreenKey::Right => {
-                if let Some(t) = self.target(key, layout) {
-                    if t != self.cursor {
-                        self.look.play(ScreenSound::Cursor);
-                    }
-                    self.cursor = t;
-                    self.show_chip_window(folder, view);
-                }
-            }
-            ScreenKey::A => return self.press_a(view, folder, console, extras),
-            ScreenKey::B => self.deselect(view, folder, extras),
-            ScreenKey::Start => {
-                if self.cursor != OK_SLOT {
-                    self.look.play(ScreenSound::Cursor);
-                }
-                self.cursor = OK_SLOT;
-                self.show_chip_window(folder, view);
-            }
-            ScreenKey::Select => self.phase = Phase::Hidden { stage: HiddenStage::Hiding },
-            ScreenKey::R => {
-                // The chip as the screen checks it: an invalid chip shows the
-                // invalid chip's description.
-                if let Some(c) = self.chip_in(self.cursor, folder) {
-                    let lines = view.library.chip(checked(c, view).id).description_lines;
-                    self.describe(joy, lines, None, None, layout.chatbox_end_clears_tiles);
-                    self.look.play(ScreenSound::Description);
-                } else if let Some(c) = self.slots[self.cursor as usize].face {
-                    // A button that shows a chip (EXE5's capsules, 0x0802487C: the
-                    // slot's kinds 6 and 7): the chip's description.
-                    let lines = view.library.chip(c).description_lines;
-                    self.describe(joy, lines, None, None, layout.chatbox_end_clears_tiles);
-                    self.look.play(ScreenSound::Description);
-                }
-            }
-            ScreenKey::L => {
-                // (The navi's message: every navi of the originals has one. A
-                // navi whose content states none has no box to open; the
-                // frontend's audit lists it. Nor does a round whose host took
-                // the run key, `HostKeys::run`, where the original's
-                // `sub_8028B74` goes on to state 0x1C, `sub_8026E98`: the key
-                // is read, as it was the tick's first down, and does
-                // nothing.)
-                if view.run_key && view.library.run_message(view.stats.navi)[0] != 0 {
-                    self.phase = Phase::RunMessage { chatbox: None };
-                    if layout.run_message_at_key {
-                        // (EXE4's 0x080205C6 runs its script with the key, and
-                        // its state waits for it from the next tick.)
-                        self.step_run_message(joy, view);
-                    }
-                }
-            }
+        match choice {
+            ScreenChoice::Pick(slot) => self.pick(slot, view, folder, extras),
+            ScreenChoice::Press(slot) => self.press(slot, folder, console, extras),
+            ScreenChoice::Ok => return self.press_ok(view),
+            ScreenChoice::TakeBack => self.deselect(view, folder, extras),
+            // (A list whose rules take no choice of it: nothing.)
+            ScreenChoice::ChooseForm(entry) => extras.choose_form(self, folder, entry),
         }
         None
     }
 
-    /// A on the slot under the cursor (`off_8028C9C`).
-    fn press_a(&mut self, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console, extras: &mut dyn super::Extras) -> Option<Request> {
-        let cursor = self.cursor;
-        let here = self.slots[cursor as usize];
-        match here.kind {
-            SlotKind::Chip { .. } | SlotKind::Offered(_) => {
-                // sub_8028CCC (EXE4's 0x0801F73C refuses a chip that counts
-                // as the invalid chip too).
-                let invalid = view.library.layout().invalid_picks == InvalidPicks::Refused
-                    && self.chip_in(cursor, folder).is_some_and(|c| is_invalid(c, view));
-                if here.state != SlotState::Selectable || self.selected as usize >= MAX_SELECTIONS || invalid {
-                    self.look.play(ScreenSound::Refused);
-                    return None;
-                }
-                self.push_selection(cursor);
-                self.slots[cursor as usize].state = SlotState::Selected;
-                self.look.play(ScreenSound::Pick);
-                self.update_availability(view, folder, extras);
-                // The pick's icon in the column, and the emblem spins.
-                self.look.column[self.selected as usize - 1] = self.chip_in(cursor, folder).map(|c| checked(c, view));
-                self.look.spin = 1;
-                // sub_802A00C: the side's rules (EXE6's BeastOut chip starts
-                // its animation).
-                if let Some(c) = self.chip_in(cursor, folder) {
-                    extras.chip_picked(self, folder, c.id);
-                }
-            }
-            SlotKind::Ok => return self.press_ok(view),
-            // A button of the rules (EXE6's: the scrap, `sub_8028E04`; the
-            // re-deal, `sub_8028DD6`): its `pressed`, which may start the
-            // shared machinery (`custom.sacrifice`, `custom.redeal`), on
-            // the side's console (EXE4's SHUFFLE makes its deal with the
-            // press, 0x0802037E: its RNG1's draws).
-            SlotKind::Button { button, .. } => extras.button_pressed(self, folder, console, button),
-            SlotKind::Empty | SlotKind::Hidden => {}
+    /// A on a chip slot (`sub_8028CCC`; EXE4's 0x0801F73C refuses a chip that
+    /// counts as the invalid chip too). A slot of another kind (the choice
+    /// came for a slot laid out since) does nothing, as A on an empty slot.
+    fn pick(&mut self, slot: u8, view: &PlayerView, folder: &mut BattleFolder, extras: &mut dyn super::Extras) {
+        let Some(&here) = self.slots.get(slot as usize) else { return };
+        if !matches!(here.kind, SlotKind::Chip { .. } | SlotKind::Offered(_)) {
+            return;
         }
-        None
+        let invalid = view.library.layout().invalid_picks == InvalidPicks::Refused && self.chip_in(slot, folder).is_some_and(|c| is_invalid(c, view));
+        if here.state != SlotState::Selectable || self.selected as usize >= MAX_SELECTIONS || invalid {
+            self.look.play(ScreenSound::Refused);
+            return;
+        }
+        self.push_selection(slot);
+        self.slots[slot as usize].state = SlotState::Selected;
+        self.look.play(ScreenSound::Pick);
+        self.update_availability(view, folder, extras);
+        // The pick's icon in the column, and the emblem spins.
+        self.look.column[self.selected as usize - 1] = self.chip_in(slot, folder).map(|c| checked(c, view));
+        self.look.draw(Draw::Spin);
+        // sub_802A00C: the side's rules (EXE6's BeastOut chip starts
+        // its animation).
+        if let Some(c) = self.chip_in(slot, folder) {
+            extras.chip_picked(self, folder, c.id);
+        }
     }
 
-    /// Time is up: what is up over the chips goes, silently, for OK to be
-    /// pressed on them this tick (a scrap or a re-deal stays to its end). A
-    /// window of the rules goes as if cancelled, its fades and the dark
-    /// chip's hover cleared; a hover that runs only while choosing ends
-    /// too, as it would not run again.
+    /// A on a button of the rules (EXE6's: the scrap, `sub_8028E04`; the
+    /// re-deal, `sub_8028DD6`; Beast Out, `sub_8028D6C`): its `pressed`,
+    /// which may start the shared machinery (`custom.sacrifice`,
+    /// `custom.redeal`), on the side's console (EXE4's SHUFFLE makes its deal
+    /// with the press, 0x0802037E: its RNG1's draws). A slot that isn't a
+    /// button's does nothing.
+    fn press(&mut self, slot: u8, folder: &mut BattleFolder, console: &mut Console, extras: &mut dyn super::Extras) {
+        let Some(SlotKind::Button { button, .. }) = self.slots.get(slot as usize).map(|s| s.kind) else { return };
+        self.pressed = Some(slot);
+        extras.button_pressed(self, folder, console, button);
+        self.pressed = None;
+    }
+
+    /// Time is up: a window of the rules goes, silently, for OK to be
+    /// pressed this tick (a scrap or a re-deal stays to its end), as if
+    /// cancelled, its fades and the dark chip's hover cleared; a hover that
+    /// runs only while choosing ends too, as it would not run again.
     fn leave_for_ok(&mut self, view: &PlayerView) {
         let hover = &view.library.layout().hover;
         if matches!(self.phase, Phase::Window { .. }) {
-            self.look.clear_fades();
-            self.look.clear_hover(hover);
+            self.clear_fades();
+            self.look.draw(Draw::HoverCleared);
         }
-        if matches!(self.phase, Phase::Settling | Phase::Hidden { .. } | Phase::Description { .. } | Phase::RunMessage { .. } | Phase::Window { .. }) {
+        if matches!(self.phase, Phase::Settling | Phase::Window { .. }) {
             self.phase = Phase::Choosing;
         }
         if self.phase == Phase::Choosing && hover.runs == HoverRuns::WhileChoosing {
-            self.look.clear_hover(hover);
+            self.look.draw(Draw::HoverCleared);
         }
     }
 
@@ -1413,7 +1212,7 @@ impl Screen {
         self.phase = Phase::Closing { tick: 0 };
         self.look.play(ScreenSound::Ok);
         if view.library.layout().fades_clear_at_ok {
-            self.look.clear_fades();
+            self.clear_fades();
         }
         Some(Request::Confirm)
     }
@@ -1431,9 +1230,12 @@ impl Screen {
         }
     }
 
-    /// `custom.pick`: the slot under the cursor is picked.
-    pub fn pick_cursor(&mut self) {
-        self.push_selection(self.cursor);
+    /// `custom.pick`: the slot of the button pressed is picked. False when
+    /// no button's `pressed` runs.
+    pub fn pick_pressed(&mut self) -> bool {
+        let Some(slot) = self.pressed else { return false };
+        self.push_selection(slot);
+        true
     }
 
     /// `custom.play`: a screen sound by its name.
@@ -1488,11 +1290,17 @@ impl Screen {
         self.reorder_column(folder, first);
     }
 
-    /// The slot of the button under the cursor (its first cell).
-    pub fn cursor_button_slot(&self) -> Option<u8> {
-        match self.slots[self.cursor as usize].kind {
-            SlotKind::Button { cell: ButtonCell::Right, .. } => Some(self.cursor - 1),
-            SlotKind::Button { .. } => Some(self.cursor),
+    /// The slot of the button pressed (its first cell), while its
+    /// `pressed` runs.
+    pub fn pressed_button_slot(&self) -> Option<u8> {
+        self.pressed.and_then(|slot| self.button_slot(slot))
+    }
+
+    /// The first cell of the button on slot `slot`, if a button is there.
+    pub fn button_slot(&self, slot: u8) -> Option<u8> {
+        match self.slots.get(slot as usize)?.kind {
+            SlotKind::Button { cell: ButtonCell::Right, .. } => Some(slot - 1),
+            SlotKind::Button { .. } => Some(slot),
             _ => None,
         }
     }
@@ -1622,13 +1430,21 @@ impl Screen {
         }
     }
 
-    /// `sub_8028476`: the chip window shows the slot under the cursor.
-    pub(crate) fn show_chip_window(&mut self, folder: &BattleFolder, view: &PlayerView) {
-        let chip = self.chip_in(self.cursor, folder).map(|c| checked(c, view));
-        let here = self.slots[self.cursor as usize];
-        let uses = self.cursor_button_slot().map_or(0, |s| self.slots[s as usize].uses_left);
-        let w = &mut self.look.chip_window;
-        w.slot = self.cursor;
+    /// `sub_8028476`: the chip window shows the slot under the cursor
+    /// (the layer's, which draws it again by [`Screen::chip_window_at`]).
+    pub(crate) fn show_chip_window(&mut self) {
+        self.look.draw(Draw::ChipWindow);
+    }
+
+    /// `sub_8028476`: the chip window as it is drawn for slot `slot` over
+    /// what it showed before (`window`): the slot, the picks there are,
+    /// a button's uses, the last chip it showed and the frame's colors.
+    pub fn chip_window_at(&self, slot: u8, window: &mut ChipWindow, folder: &BattleFolder, view: &PlayerView) {
+        let chip = self.chip_in(slot, folder).map(|c| checked(c, view));
+        let here = self.slots[slot as usize];
+        let uses = self.button_slot(slot).map_or(0, |s| self.slots[s as usize].uses_left);
+        let w = window;
+        w.slot = slot;
         w.picks = self.selected;
         w.uses = uses;
         if chip.is_some() {
@@ -1705,25 +1521,8 @@ impl Screen {
             }
         }
         self.update_availability(view, folder, extras);
-        self.show_chip_window(folder, view);
+        self.show_chip_window();
         self.look.play(ScreenSound::Back);
-    }
-
-    /// R: a description's chatbox (`chatbox_runScript` in the key's
-    /// handler), which runs its first tick this tick.
-    fn describe(&mut self, joy: &Joypad, lines: u8, window: Option<WindowHandle>, form: Option<nettai_content_api::FormHandle>, end_clears_tiles: bool) {
-        let mut chatbox = Chatbox::new(Script::Description { breaks: lines.saturating_sub(1) }).end_clears_tiles(end_clears_tiles);
-        chatbox.update(joy.held, joy.pressed);
-        self.phase = Phase::Description { window, form, chatbox };
-    }
-
-    /// `custom.describe`: R in the window up, `form`'s description (`lines`
-    /// long), back to the window when it closes. False when no window is
-    /// up.
-    pub fn describe_form(&mut self, joy: &Joypad, lines: u8, form: Option<nettai_content_api::FormHandle>, end_clears_tiles: bool) -> bool {
-        let Phase::Window { window, .. } = self.phase else { return false };
-        self.describe(joy, lines, Some(window), form, end_clears_tiles);
-        true
     }
 
     /// DustCross's scrap (`sub_8027406`): every 25 ticks the last picked
@@ -1744,7 +1543,11 @@ impl Screen {
         let tick = tick + 1;
         // The window's frame counter is the scrap's timer, from 24
         // (`sub_8027434`).
-        self.look.frame = if tick == 1 { SCRAP_TIMER_START } else { self.look.frame + 1 };
+        if tick == 1 {
+            self.look.set_frame(SCRAP_TIMER_START);
+        } else {
+            self.look.count_frame();
+        }
         if tick >= 2 && (tick - 2) % 25 == 0 {
             let last = self.selected.checked_sub(1).map(|i| self.selection[i as usize]);
             match last.map(|s| self.slots[s as usize].kind) {
@@ -1760,7 +1563,7 @@ impl Screen {
                     // sub_80281D4, sub_8029CD4: the pick's icon and cell
                     // go; the chip window is drawn again.
                     self.look.column[self.selected as usize] = None;
-                    self.show_chip_window(folder, view);
+                    self.show_chip_window();
                     self.look.play(ScreenSound::Scrap);
                 }
                 _ => {
@@ -1819,11 +1622,11 @@ impl Screen {
             self.update_availability(view, folder, extras);
             self.phase = Phase::Redealing { button, started: true, elapsed: 0, deal };
             // The window's frame counter is the re-deal's (`+0x40`).
-            self.look.frame = 0;
+            self.look.set_frame(0);
             return;
         }
         let elapsed = elapsed + 1;
-        self.look.frame = elapsed as u32;
+        self.look.set_frame(elapsed as u32);
         self.phase = Phase::Redealing { button, started, elapsed, deal };
         if elapsed % REDEAL_STEP != 0 {
             return;
@@ -1836,7 +1639,7 @@ impl Screen {
             button.uses_left = button.uses_left.wrapping_sub(1);
             button.state = if button.uses_left != 0 { SlotState::Selectable } else { SlotState::Unavailable };
             self.phase = Phase::Choosing;
-            self.show_chip_window(folder, view);
+            self.show_chip_window();
         } else {
             let mut shown: Vec<Option<FolderChip>> = places.iter().map(|&i| folder.chips[i]).collect();
             let n = shown.len();
@@ -1999,22 +1802,6 @@ const SLIDE_STEP: u32 = 12;
 const REDEAL_STEP: u8 = 4;
 const REDEAL_STEPS: u8 = 8;
 
-/// A key's joypad bit.
-fn key_bits(k: ScreenKey) -> u16 {
-    match k {
-        ScreenKey::A => keys::A,
-        ScreenKey::B => keys::B,
-        ScreenKey::Start => keys::START,
-        ScreenKey::Select => keys::SELECT,
-        ScreenKey::R => keys::R,
-        ScreenKey::L => keys::L,
-        ScreenKey::Up => keys::UP,
-        ScreenKey::Down => keys::DOWN,
-        ScreenKey::Left => keys::LEFT,
-        ScreenKey::Right => keys::RIGHT,
-    }
-}
-
 /// Scan `list` from `start` for the first slot present.
 fn scan(list: &[u8], start: u8, absent: impl Fn(u8) -> bool) -> u8 {
     let mut i = start as usize;
@@ -2034,7 +1821,7 @@ pub fn checked(c: FolderChip, view: &PlayerView) -> FolderChip {
 
 /// Whether a chip counts as the invalid chip ([`checked`]): past the
 /// navi's limit, or in a code the chip doesn't come in.
-fn is_invalid(c: FolderChip, view: &PlayerView) -> bool {
+pub(crate) fn is_invalid(c: FolderChip, view: &PlayerView) -> bool {
     // (The original also skips the check for chips past its chip table,
     // which no folder holds.)
     past_limit(c, view) || (c.code != INVALID_CODE && !view.library.chip(c.id).codes.contains(&c.code))
@@ -2062,7 +1849,7 @@ fn past_limit(c: FolderChip, view: &PlayerView) -> bool {
 }
 
 /// A chip with the dark flag (its record's `0x20`).
-fn is_dark(c: FolderChip, view: &PlayerView) -> bool {
+pub(crate) fn is_dark(c: FolderChip, view: &PlayerView) -> bool {
     view.library.chip(c.id).flags.has(crate::content::ChipFlags::DARK)
 }
 

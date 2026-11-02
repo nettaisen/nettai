@@ -1,9 +1,11 @@
-//! One player's custom screen driven by scripted buttons, with made-up
-//! chips.
+//! One player's custom screen driven by scripted buttons through their
+//! layer (`super::layer`), with made-up chips.
 
+use super::layer::{HiddenStage, Layer, Presented, Sub};
 use super::library::testing::{EVERY_CODE, TestLibrary, chip};
-use super::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
+use super::screen::{OK_SLOT, SPECIAL_SLOT};
 use super::*;
+use crate::input::PlayerTick;
 use crate::content::{ButtonHandle, ChipClass, ChipCode, ChipFlags};
 use crate::custom::library::testing::ChipId;
 use crate::input::keys;
@@ -89,13 +91,11 @@ impl Extras for TestButtons {
 
     fn chip_taken_back(&mut self, _: &mut Screen, _: ChipHandle) {}
 
-    fn window_update(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: &Joypad, _: crate::content::WindowHandle) -> bool {
+    fn window_update(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: crate::content::WindowHandle) -> bool {
         false
     }
 
-    fn keys(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &Joypad) -> bool {
-        false
-    }
+    fn choose_form(&mut self, _: &mut Screen, _: &mut BattleFolder, _: u8) {}
 
     fn take_back(&mut self, _: &mut Screen, _: &BattleFolder) -> bool {
         false
@@ -106,7 +106,7 @@ impl Extras for TestButtons {
     }
 
     fn button_pressed(&mut self, screen: &mut Screen, _: &mut BattleFolder, _: &mut Console, b: ButtonHandle) {
-        let slot = screen.cursor_button_slot().expect("a button under the cursor");
+        let slot = screen.pressed_button_slot().expect("a button pressed");
         if screen.slots[slot as usize].state != SlotState::Selectable {
             screen.refuse();
         } else if b.0 == 0 {
@@ -118,9 +118,24 @@ impl Extras for TestButtons {
     }
 }
 
-/// A player's side with this folder, and what their screen reads.
+/// What the player sees: their screen's state, or what their layer has up
+/// over the chips.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Up {
+    Screen(Phase),
+    Hidden(HiddenStage),
+    Description,
+    /// L's message (its chatbox started).
+    RunMessage { started: bool },
+}
+
+/// A player's side with this folder, their layer, and what their screen
+/// reads.
 struct Player {
     side: Side,
+    layer: Layer,
+    /// The screen's number in the round, counted as the player opens them.
+    turn: u8,
     console: Console,
     lib: TestLibrary,
     stats: NaviStats,
@@ -136,25 +151,22 @@ struct Player {
 impl Player {
     fn new(chips: &[(ChipId, u8)]) -> Player {
         let setup = PlayerSetup { folder: folder(chips), ..PlayerSetup::default() };
-        Player { side: Side::new(&setup), console: Console::new(&setup.console), lib: library(), stats: stats(), chip_shuffle: false, run_key: true, time_limit: None, tick: 0 }
+        Player {
+            side: Side::new(&setup),
+            layer: Layer::on_beat(0, setup.joypad_phase),
+            turn: 0,
+            console: Console::new(&setup.console),
+            lib: library(),
+            stats: stats(),
+            chip_shuffle: false,
+            run_key: true,
+            time_limit: None,
+            tick: 0,
+        }
     }
 
     fn context(&self) -> Context<'_> {
-        Context {
-            library: &self.lib,
-            stats: self.stats,
-            emotion: Emotion::default(),
-            turn: 1,
-            own_gauges: false,
-            random_battle: false,
-            battle_mode: 0,
-            party: crate::party::Party::of(self.stats),
-            switch_request: None,
-            late_turns: false,
-            run_key: self.run_key,
-            time_limit: self.time_limit,
-            now: self.tick,
-        }
+        context_of(&self.lib, self.stats, self.turn, self.run_key, self.time_limit, self.tick)
     }
 
     /// EXE6's buttons as its systems would show them.
@@ -169,25 +181,52 @@ impl Player {
     }
 
     fn open(&mut self) {
-        let ctx = self.context();
-        let mut side = self.side.clone();
-        let mut console = self.console;
-        side.open_with(&ctx, &mut console, &mut self.buttons());
-        self.side = side;
-        self.console = console;
+        self.turn += 1;
+        let mut buttons = self.buttons();
+        let ctx = context_of(&self.lib, self.stats, self.turn, self.run_key, self.time_limit, self.tick);
+        self.side.open_with(&ctx, &mut self.console, &mut buttons);
+        // (The layer sees the screen as the opening tick left it.)
+        self.layer.follow_on(presented(&self.side, &ctx, self.turn, self.time_limit).as_ref());
     }
 
-    /// One tick with these buttons held.
+    /// One tick with these buttons held, through the layer.
     fn step(&mut self, held: u16) -> Option<Request> {
         self.tick += 1;
-        self.side.joypad.update(held);
-        let ctx = self.context();
-        let mut side = self.side.clone();
-        let mut console = self.console;
-        let r = side.tick_with(&ctx, &mut console, |id| self.lib.chip(id).damage, &mut self.buttons());
-        self.side = side;
-        self.console = console;
+        let mut buttons = self.buttons();
+        let ctx = context_of(&self.lib, self.stats, self.turn, self.run_key, self.time_limit, self.tick);
+        let input = self.layer.input_on(PlayerTick::buttons(held), presented(&self.side, &ctx, self.turn, self.time_limit).as_ref());
+        let lib = &self.lib;
+        let r = self.side.tick_with(&ctx, input.choice, &mut self.console, |id| lib.chip(id).damage, &mut buttons);
+        self.layer.follow_on(presented(&self.side, &ctx, self.turn, self.time_limit).as_ref());
         r
+    }
+
+    /// What the player sees.
+    fn up(&self) -> Up {
+        match self.layer.sub {
+            Sub::Hidden(stage) => Up::Hidden(stage),
+            Sub::Description { .. } => Up::Description,
+            Sub::RunMessage { chatbox } => Up::RunMessage { started: chatbox.is_some() },
+            _ => Up::Screen(self.phase()),
+        }
+    }
+
+    /// The tick's screen sounds as the player hears them: the screen's, then
+    /// the layer's.
+    fn sounds(&self) -> Vec<look::ScreenSound> {
+        let layer = self.layer.calls().filter_map(|c| match c {
+            look::ScreenCall::Sound(s) => Some(s),
+            look::ScreenCall::Volume { .. } => None,
+        });
+        self.screen().look.drawn.sounds().chain(layer).collect()
+    }
+
+    /// The volumes the tick's hover set, if it set them.
+    fn volume(&self) -> Option<(u16, u16)> {
+        self.layer.calls().find_map(|c| match c {
+            look::ScreenCall::Volume { music, screen } => Some((music, screen)),
+            look::ScreenCall::Sound(_) => None,
+        })
     }
 
     /// Press a button: two ticks down (a direction moves the cursor on
@@ -211,13 +250,44 @@ impl Player {
     }
 }
 
+/// What a player's screen reads of the battle, in these tests.
+fn context_of(lib: &TestLibrary, stats: NaviStats, turn: u8, run_key: bool, time_limit: Option<u16>, tick: u32) -> Context<'_> {
+    Context {
+        library: lib,
+        stats,
+        emotion: Emotion::default(),
+        turn: turn.max(1),
+        own_gauges: false,
+        random_battle: false,
+        battle_mode: 0,
+        party: crate::party::Party::of(stats),
+        switch_request: None,
+        late_turns: false,
+        run_key,
+        time_limit,
+        now: tick,
+    }
+}
+
+/// The side's screen as its layer reads it.
+fn presented<'a>(side: &'a Side, ctx: &'a Context, turn: u8, time_limit: Option<u16>) -> Option<Presented<'a>> {
+    Some(Presented {
+        screen: side.screen.as_ref()?,
+        folder: &side.folder,
+        view: side.view(ctx, side.folder.regular_pending),
+        turn,
+        time_left: side.time_left(time_limit),
+        form_list: None,
+    })
+}
+
 #[test]
 fn five_chips_are_dealt_into_the_top_row() {
     let mut p = Player::new(&[]);
     p.open();
     let s = p.screen();
     assert_eq!(s.hand_size, 5);
-    assert_eq!(s.cursor, 0);
+    assert_eq!(p.layer.cursor, 0);
     for i in 0..5 {
         assert_eq!(s.slots[i].kind, SlotKind::Chip { index: i as u8, regular: false });
         assert_eq!(s.slots[i].vertical, None);
@@ -244,14 +314,14 @@ fn the_timeline_from_opening_to_sending() {
         assert!(matches!(p.phase(), Phase::Opening { .. }));
         p.step(keys::A);
     }
-    assert_eq!(p.phase(), Phase::Choosing);
+    assert_eq!(p.up(), Up::Screen(Phase::Choosing));
     p.step(0);
     p.press(keys::RIGHT);
-    assert_eq!(p.screen().cursor, 1);
+    assert_eq!(p.layer.cursor, 1);
     p.press(keys::A);
     assert_eq!(p.screen().selection(), [1]);
     p.press(keys::START);
-    assert_eq!(p.screen().cursor, OK_SLOT);
+    assert_eq!(p.layer.cursor, OK_SLOT);
     // OK: the status bit clears on the next tick, the hand goes out 11
     // ticks after OK and arrives 50 ticks after that (its 50 words, one a
     // tick).
@@ -345,10 +415,10 @@ fn dust_cross_scraps_the_picks() {
     p.press(keys::RIGHT);
     p.press(keys::RIGHT);
     p.press(keys::DOWN);
-    assert_eq!(p.screen().cursor, 8);
+    assert_eq!(p.layer.cursor, 8);
     let a = p.tick + 1;
     p.step(keys::A);
-    while p.phase() != Phase::Choosing && p.tick < 1000 {
+    while p.up() != Up::Screen(Phase::Choosing) && p.tick < 1000 {
         p.step(0);
     }
     // 25 ticks a chip, and 3 more.
@@ -385,9 +455,9 @@ fn dust_cross_scrapping_the_regular_chip_ends_it() {
         p.press(keys::RIGHT);
     }
     p.press(keys::DOWN);
-    assert_eq!(p.screen().cursor, 8);
+    assert_eq!(p.layer.cursor, 8);
     p.step(keys::A);
-    while p.phase() != Phase::Choosing && p.tick < 1000 {
+    while p.up() != Up::Screen(Phase::Choosing) && p.tick < 1000 {
         p.step(0);
     }
     assert!(!p.side.folder.regular_pending);
@@ -418,15 +488,15 @@ fn select_hides_the_window_until_a_key() {
     p.wait(10);
     p.step(0);
     p.press(keys::SELECT);
-    assert!(matches!(p.phase(), Phase::Hidden { .. }));
+    assert!(matches!(p.up(), Up::Hidden(_)));
     p.step(0);
     // The key that brings the window back does nothing else, even as it
     // starts to repeat.
     p.step(keys::RIGHT);
     p.step(keys::RIGHT);
-    assert_eq!(p.phase(), Phase::Choosing);
+    assert_eq!(p.up(), Up::Screen(Phase::Choosing));
     p.step(keys::RIGHT);
-    assert_eq!(p.screen().cursor, 0);
+    assert_eq!(p.layer.cursor, 0);
 }
 
 /// The emblem as the hidden window comes back is the game's screen's: one
@@ -441,19 +511,19 @@ fn the_returning_window_draws_the_emblem_where_the_screen_does() {
         p.open();
         p.wait(10);
         p.step(0);
-        assert!(p.screen().look.drawn.emblem.is_some(), "the choosing state draws it");
+        assert!(p.layer.look.drawn.emblem.is_some(), "the choosing state draws it");
         p.press(keys::SELECT);
         p.step(0);
-        assert!(matches!(p.phase(), Phase::Hidden { stage: HiddenStage::Waiting }));
-        assert!(p.screen().look.drawn.emblem.is_none(), "hidden");
+        assert!(p.up() == Up::Hidden(HiddenStage::Waiting));
+        assert!(p.layer.look.drawn.emblem.is_none(), "hidden");
         p.step(keys::RIGHT);
-        assert!(matches!(p.phase(), Phase::Hidden { stage: HiddenStage::Restoring }));
-        assert_eq!(p.screen().look.drawn.emblem.is_some(), at_return, "the tick of the key");
+        assert!(p.up() == Up::Hidden(HiddenStage::Restoring));
+        assert_eq!(p.layer.look.drawn.emblem.is_some(), at_return, "the tick of the key");
         p.step(keys::RIGHT);
-        assert_eq!(p.phase(), Phase::Choosing);
-        assert_eq!(p.screen().look.drawn.emblem.is_some(), at_return, "the next");
+        assert_eq!(p.up(), Up::Screen(Phase::Choosing));
+        assert_eq!(p.layer.look.drawn.emblem.is_some(), at_return, "the next");
         p.step(0);
-        assert!(p.screen().look.drawn.emblem.is_some(), "choosing again");
+        assert!(p.layer.look.drawn.emblem.is_some(), "choosing again");
     }
 }
 
@@ -475,12 +545,12 @@ fn chip_shuffle_redeals_what_is_not_picked() {
     p.press(keys::RIGHT);
     p.press(keys::RIGHT);
     p.press(keys::DOWN);
-    assert_eq!(p.screen().cursor, 8);
+    assert_eq!(p.layer.cursor, 8);
     let rng = p.console.rng;
     let a = p.tick + 1;
     p.step(keys::A);
     assert!(matches!(p.phase(), Phase::Redealing { .. }));
-    while p.phase() != Phase::Choosing && p.tick < 1000 {
+    while p.up() != Up::Screen(Phase::Choosing) && p.tick < 1000 {
         p.step(0);
     }
     // The first tick, then 32.
@@ -522,7 +592,7 @@ fn chip_shuffle_leaves_the_regular_chip_and_the_tag_pair() {
     p.press(keys::RIGHT);
     p.press(keys::DOWN);
     p.step(keys::A);
-    while p.phase() != Phase::Choosing && p.tick < 1000 {
+    while p.up() != Up::Screen(Phase::Choosing) && p.tick < 1000 {
         p.step(0);
     }
     let after = p.side.folder;
@@ -565,9 +635,9 @@ fn the_tag_pair_index_follows_the_folder_as_picks_leave_it() {
     p.press(keys::RIGHT);
     p.press(keys::RIGHT);
     p.press(keys::DOWN);
-    assert_eq!(p.screen().cursor, 8);
+    assert_eq!(p.layer.cursor, 8);
     p.step(keys::A);
-    while p.phase() != Phase::Choosing && p.tick < 1000 {
+    while p.up() != Up::Screen(Phase::Choosing) && p.tick < 1000 {
         p.step(0);
     }
     let after = p.side.folder;
@@ -592,7 +662,7 @@ fn a_description_takes_keys_later_for_each_line() {
         // A the tick before the box takes keys is lost.
         let mut p = describing(lines);
         p.step(keys::R);
-        assert!(matches!(p.phase(), Phase::Description { .. }));
+        assert!(p.up() == Up::Description);
         for _ in 1..first - 1 {
             p.step(0);
         }
@@ -600,7 +670,7 @@ fn a_description_takes_keys_later_for_each_line() {
         for _ in 0..30 {
             p.step(0);
         }
-        assert!(matches!(p.phase(), Phase::Description { .. }), "{lines} lines: A on tick {} closed it", first - 1);
+        assert!(p.up() == Up::Description, "{lines} lines: A on tick {} closed it", first - 1);
         // On the tick it does, the box closes; the grid takes keys six
         // ticks after the key (not five).
         let mut p = describing(lines);
@@ -611,10 +681,10 @@ fn a_description_takes_keys_later_for_each_line() {
         p.step(keys::A);
         for _ in 0..4 {
             p.step(0);
-            assert!(matches!(p.phase(), Phase::Description { .. }));
+            assert!(p.up() == Up::Description);
         }
         p.step(keys::A);
-        assert_eq!(p.phase(), Phase::Choosing, "{lines} lines");
+        assert_eq!(p.up(), Up::Screen(Phase::Choosing), "{lines} lines");
         assert_eq!(p.screen().selection(), &[] as &[u8]);
         p.step(0);
         p.step(keys::A);
@@ -635,18 +705,18 @@ fn b_held_closes_a_description() {
     for _ in 0..10 {
         p.step(0);
     }
-    assert!(matches!(p.phase(), Phase::Description { .. }));
+    assert!(p.up() == Up::Description);
     let mut p = describing(3);
     p.step(keys::R);
     for _ in 1..=18 {
         p.step(keys::B);
     }
     for _ in 0..4 {
-        assert!(matches!(p.phase(), Phase::Description { .. }));
+        assert!(p.up() == Up::Description);
         p.step(0);
     }
     p.step(0);
-    assert_eq!(p.phase(), Phase::Choosing);
+    assert_eq!(p.up(), Up::Screen(Phase::Choosing));
 }
 
 /// A navi whose content states no no-running message has no box to open:
@@ -656,7 +726,7 @@ fn l_opens_no_message_for_a_navi_without_one() {
     let mut p = describing(3);
     p.stats.navi = library::testing::SILENT_NAVI;
     p.step(keys::L);
-    assert_eq!(p.phase(), Phase::Choosing);
+    assert_eq!(p.up(), Up::Screen(Phase::Choosing));
     p.step(0);
     p.step(keys::A);
     assert_eq!(p.screen().selection(), [0]);
@@ -672,15 +742,15 @@ fn l_does_nothing_when_the_host_took_the_run_key() {
     p.run_key = false;
     for held in [keys::L, 0, keys::L, keys::L, 0] {
         p.step(held);
-        assert_eq!(p.phase(), Phase::Choosing);
-        assert_eq!(p.screen().look.drawn.sounds().count(), 0, "L makes no sound");
+        assert_eq!(p.up(), Up::Screen(Phase::Choosing));
+        assert_eq!(p.sounds().len(), 0, "L makes no sound");
     }
     p.step(keys::A);
     assert_eq!(p.screen().selection(), [0]);
     p.step(0);
     // A description closes on any key, L among them.
     p.step(keys::R);
-    assert!(matches!(p.phase(), Phase::Description { .. }));
+    assert!(p.up() == Up::Description);
     for _ in 1..8 {
         p.step(0);
     }
@@ -688,27 +758,27 @@ fn l_does_nothing_when_the_host_took_the_run_key() {
     for _ in 0..6 {
         p.step(0);
     }
-    assert_eq!(p.phase(), Phase::Choosing);
+    assert_eq!(p.up(), Up::Screen(Phase::Choosing));
     // The hidden window comes back on any key, L among them.
     p.press(keys::SELECT);
     p.step(0);
-    assert!(matches!(p.phase(), Phase::Hidden { stage: HiddenStage::Waiting }));
+    assert!(p.up() == Up::Hidden(HiddenStage::Waiting));
     p.step(keys::L);
-    assert!(matches!(p.phase(), Phase::Hidden { stage: HiddenStage::Restoring }));
+    assert!(p.up() == Up::Hidden(HiddenStage::Restoring));
     p.step(0);
-    assert_eq!(p.phase(), Phase::Choosing);
+    assert_eq!(p.up(), Up::Screen(Phase::Choosing));
     // And on a console it is the run key still.
     p.run_key = true;
     p.step(0);
     p.step(keys::L);
-    assert_eq!(p.phase(), Phase::RunMessage { chatbox: None });
+    assert_eq!(p.up(), Up::RunMessage { started: false });
 }
 
 #[test]
 fn the_no_running_message_starts_a_tick_after_l() {
     let mut p = describing(3);
     p.step(keys::L);
-    assert_eq!(p.phase(), Phase::RunMessage { chatbox: None });
+    assert_eq!(p.up(), Up::RunMessage { started: false });
     // Its box takes A or B from its 80th tick (the 80th after L): a press
     // a tick before is lost.
     for _ in 1..79 {
@@ -718,15 +788,15 @@ fn the_no_running_message_starts_a_tick_after_l() {
     for _ in 0..20 {
         p.step(0);
     }
-    assert!(matches!(p.phase(), Phase::RunMessage { .. }));
+    assert!(matches!(p.up(), Up::RunMessage { .. }));
     p.step(keys::A);
     // Closed seven ticks later; the screen sees it the tick after, and
     // takes keys the tick after that.
     for _ in 0..8 {
-        assert!(matches!(p.phase(), Phase::RunMessage { .. }));
+        assert!(matches!(p.up(), Up::RunMessage { .. }));
         p.step(0);
     }
-    assert_eq!(p.phase(), Phase::Choosing);
+    assert_eq!(p.up(), Up::Screen(Phase::Choosing));
     assert_eq!(p.screen().selection(), &[] as &[u8]);
     p.step(keys::A);
     assert_eq!(p.screen().selection(), [0]);
@@ -738,13 +808,13 @@ fn a_dark_chip_takes_the_cursor_and_darkens_the_screen() {
     let mut p = Player::new(&[(SHOT, 0), (DARK, 0), (SHOT, 1)]);
     p.open();
     // sub_802806C: the cursor starts on the first dark chip dealt.
-    assert_eq!(p.screen().cursor, 1);
+    assert_eq!(p.layer.cursor, 1);
     // The hover starts on the tick the window is in (the chips' state).
     for _ in 0..10 {
         p.step(0);
     }
-    assert_eq!(p.phase(), Phase::Choosing);
-    let look = p.screen().look;
+    assert_eq!(p.up(), Up::Screen(Phase::Choosing));
+    let look = p.layer.hover;
     assert_eq!(look.shade, ChipShade::Shading { step: 0 });
     assert_eq!((look.fade.mode, look.window_fade.mode), (FadeMode::Shade, FadeMode::ShadeWindow));
     // The music turns down and the screen's player up, a step a tick, until
@@ -753,13 +823,13 @@ fn a_dark_chip_takes_the_cursor_and_darkens_the_screen() {
         (0..n)
             .map(|_| {
                 p.step(0);
-                p.screen().look.drawn.volume()
+                p.volume()
             })
             .collect::<Vec<_>>()
     };
     let down = volumes(&mut p, 6);
     assert_eq!(down, [Some((0x100, 0x80)), Some((0xE0, 0x80)), Some((0xC0, 0xA0)), Some((0xA0, 0xC0)), Some((0x80, 0xE0)), None]);
-    let look = p.screen().look;
+    let look = p.layer.hover;
     assert_eq!(look.shade, ChipShade::Shaded);
     assert_eq!(look.window_fade.level, 0x30);
     // (The screen's own fade, eight steps to 0x50, has one to go.)
@@ -768,29 +838,29 @@ fn a_dark_chip_takes_the_cursor_and_darkens_the_screen() {
     // way, a step longer.
     p.step(keys::RIGHT);
     p.step(keys::RIGHT);
-    assert_eq!(p.screen().cursor, 2);
-    assert_eq!(p.screen().look.shade, ChipShade::Clearing { step: 0 });
+    assert_eq!(p.layer.cursor, 2);
+    assert_eq!(p.layer.hover.shade, ChipShade::Clearing { step: 0 });
     let up = volumes(&mut p, 7);
     assert_eq!(
         up,
         [Some((0x80, 0x100)), Some((0x80, 0xE0)), Some((0xA0, 0xC0)), Some((0xC0, 0xA0)), Some((0xE0, 0x80)), Some((0x100, 0x80)), None]
     );
-    let look = p.screen().look;
+    let look = p.layer.hover;
     assert_eq!((look.shade, look.window_fade.level), (ChipShade::Clear, 0));
     // The screen's own fade, back from 0x50, clears a tick later.
-    assert_eq!(p.screen().look.fade.level, 0xA);
+    assert_eq!(p.layer.hover.fade.level, 0xA);
     p.step(0);
-    assert_eq!((p.screen().look.fade.level, p.screen().look.fade.active()), (0, false));
+    assert_eq!((p.layer.hover.fade.level, p.layer.hover.fade.active()), (0, false));
 }
 
 #[test]
 fn the_cursor_stays_put_without_a_dark_chip() {
     let mut p = Player::new(&[(SHOT, 0), (MEGA, 0)]);
     p.open();
-    assert_eq!(p.screen().cursor, 0);
+    assert_eq!(p.layer.cursor, 0);
     for _ in 0..20 {
         p.step(0);
-        assert_eq!((p.screen().look.shade, p.screen().look.drawn.volume()), (ChipShade::Clear, None));
+        assert_eq!((p.layer.hover.shade, p.volume()), (ChipShade::Clear, None));
     }
 }
 
@@ -883,7 +953,7 @@ fn a_button_holding_a_pick_takes_it_out_of_the_picks_and_the_folder() {
     assert!(on_screen(&mut p, |s, f, v| s.set_held_icon(8, false, f, v)));
     // The held chip is drawn over the button while choosing.
     p.step(0);
-    assert!(p.screen().look.drawn.held);
+    assert!(p.layer.look.drawn.held);
     // A later pick is taken back first; then, the picks as they were, the
     // held chip is the last pick again and the button is free.
     p.press(keys::RIGHT);
@@ -896,7 +966,7 @@ fn a_button_holding_a_pick_takes_it_out_of_the_picks_and_the_folder() {
     let s = p.screen();
     assert_eq!((s.selection(), s.hold, s.slots[8].state), (&[0u8, 1][..], None, SlotState::Selectable));
     assert_eq!(s.look.column[1].map(|c| c.id), Some(ChipHandle(WAVE)));
-    assert!(!s.look.drawn.held);
+    assert!(!p.layer.look.drawn.held);
     // Held again, and OK: the first pick alone is the hand; both chips
     // left the folder.
     assert!(on_screen(&mut p, |s, f, v| s.hold_last_pick(8, f, v)));
@@ -916,7 +986,7 @@ fn a_buttons_chip_keeps_the_chip_windows_frame_and_is_described() {
     p.open();
     p.wait(10);
     p.step(0);
-    let framed = |p: &Player| p.screen().look.chip_window.framed.map(|c| c.id);
+    let framed = |p: &Player| p.layer.chip_window.framed.map(|c| c.id);
     assert_eq!(framed(&p), Some(ChipHandle(MEGA)));
     // The second slot a button showing a chip, the third a plain button.
     {
@@ -925,26 +995,26 @@ fn a_buttons_chip_keeps_the_chip_windows_frame_and_is_described() {
         s.slots[2] = Slot { kind: SlotKind::Button { button: ButtonHandle(1), cell: ButtonCell::Only }, face: None, ..s.slots[2] };
     }
     p.press(keys::RIGHT);
-    assert_eq!((p.screen().cursor, p.screen().look.chip_window.slot), (1, 1));
+    assert_eq!((p.layer.cursor, p.layer.chip_window.slot), (1, 1));
     assert_eq!(framed(&p), Some(ChipHandle(MEGA)), "the button's chip sets no frame");
     // R: its chip's description.
     p.press(keys::R);
-    assert!(matches!(p.phase(), Phase::Description { window: None, .. }));
-    while p.phase() != Phase::Choosing && p.tick < 1000 {
+    assert!(p.up() == Up::Description);
+    while p.up() != Up::Screen(Phase::Choosing) && p.tick < 1000 {
         p.press(keys::A);
     }
-    assert_eq!(p.phase(), Phase::Choosing);
+    assert_eq!(p.up(), Up::Screen(Phase::Choosing));
     // A button's picture: the standard frame; R on it describes nothing.
     p.press(keys::RIGHT);
-    assert_eq!((p.screen().cursor, framed(&p)), (2, None));
+    assert_eq!((p.layer.cursor, framed(&p)), (2, None));
     p.press(keys::R);
-    assert_eq!(p.phase(), Phase::Choosing);
+    assert_eq!(p.up(), Up::Screen(Phase::Choosing));
     // Back on the chip: its own again; OK: the standard one.
     p.press(keys::LEFT);
     p.press(keys::LEFT);
-    assert_eq!((p.screen().cursor, framed(&p)), (0, Some(ChipHandle(MEGA))));
+    assert_eq!((p.layer.cursor, framed(&p)), (0, Some(ChipHandle(MEGA))));
     p.press(keys::START);
-    assert_eq!((p.screen().cursor, framed(&p)), (OK_SLOT, None));
+    assert_eq!((p.layer.cursor, framed(&p)), (OK_SLOT, None));
 }
 
 /// The hover over a dark chip plays its sound each time the hover's
@@ -958,9 +1028,9 @@ fn the_dark_hover_sounds_every_64_ticks() {
         let mut ticks = Vec::new();
         for _ in 0..200 {
             p.step(0);
-            if p.screen().look.drawn.sounds().any(|s| s == super::look::ScreenSound::Shade) {
-                assert_eq!(p.screen().look.hover_count, 0);
-                assert_ne!(p.screen().look.shade, ChipShade::Clear);
+            if p.sounds().into_iter().any(|s| s == super::look::ScreenSound::Shade) {
+                assert_eq!(p.layer.hover.count, 0);
+                assert_ne!(p.layer.hover.shade, ChipShade::Clear);
                 ticks.push(p.tick);
             }
         }
@@ -978,17 +1048,16 @@ fn the_dark_hover_sounds_every_64_ticks() {
 /// lab's custom/dark-hover has one: its frame 598).
 #[test]
 fn the_dark_hover_sets_its_volumes_before_it_sounds() {
-    use super::look::{ScreenCall, ScreenLook, ScreenSound};
-    let mut look = ScreenLook::new(false, false, None);
+    use super::look::{Hover, ScreenCall, ScreenSound};
+    let mut look = Hover::default();
     let rules = crate::content::testing::rules().custom_screen.hover;
-    // A tick of the look as the screen's tick runs it: the hover, then the
-    // fades' steps; what it asked of the sound driver, in order.
-    let tick = |look: &mut ScreenLook, on_dark: bool| {
-        look.drawn = Default::default();
-        look.hover(Some(on_dark), &rules);
-        look.fade.step(crate::content::FadeClear::AtTarget);
-        look.window_fade.step(crate::content::FadeClear::AtTarget);
-        look.drawn.calls().collect::<Vec<_>>()
+    // A tick of the hover as the layer runs it: the hover, then the fades'
+    // steps; what it asked of the sound driver, in order.
+    let tick = |look: &mut Hover, on_dark: bool| {
+        let mut calls = Vec::new();
+        look.hover(Some(on_dark), &rules, &mut calls);
+        look.step_fades(crate::content::FadeClear::AtTarget);
+        calls
     };
     // Off a dark chip for 60 ticks: nothing asked.
     for _ in 0..60 {
@@ -999,12 +1068,12 @@ fn the_dark_hover_sets_its_volumes_before_it_sounds() {
     assert_eq!(tick(&mut look, true), []);
     assert_eq!(tick(&mut look, true), [ScreenCall::Volume { music: 0x100, screen: 0x80 }]);
     assert_eq!(tick(&mut look, true), [ScreenCall::Volume { music: 0xE0, screen: 0x80 }]);
-    assert_eq!(look.hover_count, 63);
+    assert_eq!(look.count, 63);
     assert_eq!(
         tick(&mut look, true),
         [ScreenCall::Volume { music: 0xC0, screen: 0xA0 }, ScreenCall::Sound(ScreenSound::Shade)]
     );
-    assert_eq!(look.hover_count, 0);
+    assert_eq!(look.count, 0);
 }
 
 /// EXE4's hover (0x0801E478): a ramp of 11 ticks with a volume call every
@@ -1012,7 +1081,7 @@ fn the_dark_hover_sets_its_volumes_before_it_sounds() {
 /// after that, counted only while it stays (none while it ramps back).
 #[test]
 fn a_hover_that_sounds_while_dark() {
-    use super::look::{ScreenCall, ScreenLook, ScreenSound};
+    use super::look::{Hover, ScreenCall, ScreenSound};
     use crate::content::{HoverRules, HoverRuns, HoverSound};
     let calls = |music: u16, screen: u16| Some([music, screen]);
     let gaps = |v: [Option<[u16; 2]>; 5]| -> Vec<Option<[u16; 2]>> { v.into_iter().flat_map(|c| [None, c]).chain([None]).collect() };
@@ -1023,11 +1092,11 @@ fn a_hover_that_sounds_while_dark() {
         players: [31, 9],
         sound: HoverSound::WhileDark { every: 61 },
     };
-    let mut look = ScreenLook::new(false, false, None);
-    let tick = |look: &mut ScreenLook, on_dark: Option<bool>| {
-        look.drawn = Default::default();
-        look.hover(on_dark, &rules);
-        look.drawn.calls().collect::<Vec<_>>()
+    let mut look = Hover::default();
+    let tick = |look: &mut Hover, on_dark: Option<bool>| {
+        let mut calls = Vec::new();
+        look.hover(on_dark, &rules, &mut calls);
+        calls
     };
     assert_eq!(tick(&mut look, Some(false)), []);
     // The turn, then 11 ticks of ramp, the volumes on every other.
@@ -1068,7 +1137,7 @@ fn timed(limit: Option<u16>) -> Player {
     p.time_limit = limit;
     p.open();
     p.wait(10);
-    assert_eq!(p.phase(), Phase::Choosing);
+    assert_eq!(p.up(), Up::Screen(Phase::Choosing));
     p
 }
 
@@ -1123,7 +1192,7 @@ fn time_up_closes_what_is_over_the_chips_then_confirms() {
         p.lib.chips[0].1.description_lines = 2;
         p.press(keys::A);
         p.press(key);
-        assert!(matches!(p.phase(), Phase::Hidden { .. } | Phase::Description { .. } | Phase::RunMessage { .. }), "{key:#x}");
+        assert!(matches!(p.up(), Up::Hidden(_) | Up::Description | Up::RunMessage { .. }), "{key:#x}");
         run_out(&mut p, 0);
         assert_eq!(sent(&mut p).expect("a hand").selection[0], Some(FolderChip::new(ChipHandle(SHOT), ChipCode(0))), "{key:#x}");
     }

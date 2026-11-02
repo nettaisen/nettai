@@ -1796,21 +1796,16 @@ fn drive(chip: &str, ticks: usize, fight: impl Fn(&Battle, usize, u32) -> u16, m
     let mut setup = scenario::setup_with_handles(&[testing::chip_handle(chip)]);
     setup.players[1] = scenario::setup().players[1].clone();
     let mut b = Battle::new(setup, scenario::content());
-    let mut last = [0u16; 2];
+    let mut last = [None; 2];
     let mut n = 0;
     for _ in 0..ticks {
         let fighting = b.round.mode == mode::FIGHTING && b.round.flags & battle_flags::FIGHTING != 0;
         let mut input = [PlayerTick::default(); 2];
         for side in 0..2 {
-            let held = if b.round.mode == mode::CUSTOM {
-                scenario::custom_buttons(&b, side, last[side])
-            } else if fighting {
-                fight(&b, side, n)
-            } else {
-                0
-            };
-            input[side] = PlayerTick::buttons(held);
-            last[side] = held;
+            let choice = if b.round.mode == mode::CUSTOM { scenario::custom_choice(&b, side, last[side]) } else { None };
+            let held = if fighting { fight(&b, side, n) } else { 0 };
+            input[side] = PlayerTick::buttons(held).with_choice(choice);
+            last[side] = choice;
         }
         n += fighting as u32;
         b.tick(&input, TickEvents::default());

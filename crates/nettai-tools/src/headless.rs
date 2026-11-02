@@ -27,11 +27,15 @@ pub fn parse_frames(s: &str) -> Result<BTreeSet<u32>, String> {
 
 /// Buttons held on chosen ticks, for headless live play (`--keys`): a
 /// list like "232-233:up,300:a+b" (ticks, then buttons by name: a, b, l,
-/// r, up, down, left, right, start, select). Other ticks hold none. A
-/// party's switch is asked for the same way, by the member: switch0 (the
-/// side's own navi), switch1, switch2 (its partners).
+/// r, up, down, left, right, start, select). Other ticks hold none. The
+/// buttons reach the custom screen through the player's layer, as a
+/// player's keys do. A party's switch is asked for the same way, by the
+/// member: switch0 (the side's own navi), switch1, switch2 (its partners);
+/// and a custom screen choice of the player's own, as a pointer makes it,
+/// by its name (`nettai_battle::ScreenChoice::named`: pick0 to pick11,
+/// press0 to press11, ok, take_back, form0 to form4).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct KeyScript(Vec<(u32, u32, u16, Option<u8>)>);
+pub struct KeyScript(Vec<(u32, u32, u16, Option<u8>, Option<nettai_battle::ScreenChoice>)>);
 
 impl KeyScript {
     pub fn parse(s: &str) -> Result<KeyScript, String> {
@@ -44,11 +48,15 @@ impl KeyScript {
                 Some((a, b)) => (num(a)?, num(b)?),
                 None => (num(ticks)?, num(ticks)?),
             };
-            let (mut held, mut switch) = (0, None);
+            let (mut held, mut switch, mut choice) = (0, None, None);
             for b in buttons.split('+') {
                 let name = b.trim().to_ascii_lowercase();
                 if let Some(member) = name.strip_prefix("switch") {
                     switch = Some(member.parse::<u8>().ok().filter(|&m| m < 3).ok_or_else(|| format!("no member {member:?} to switch to"))?);
+                    continue;
+                }
+                if let Some(c) = nettai_battle::ScreenChoice::named(&name) {
+                    choice = Some(c);
                     continue;
                 }
                 held |= match name.as_str() {
@@ -65,19 +73,24 @@ impl KeyScript {
                     other => return Err(format!("no button {other:?}")),
                 };
             }
-            out.push((from, to, held, switch));
+            out.push((from, to, held, switch, choice));
         }
         Ok(KeyScript(out))
     }
 
     /// The buttons held on tick `tick`.
     pub fn held(&self, tick: u32) -> u16 {
-        self.0.iter().filter(|(a, b, ..)| (*a..=*b).contains(&tick)).fold(0, |k, (_, _, h, _)| k | h)
+        self.0.iter().filter(|(a, b, ..)| (*a..=*b).contains(&tick)).fold(0, |k, (_, _, h, ..)| k | h)
     }
 
     /// The party member a switch is asked to on tick `tick`, if any.
     pub fn switch(&self, tick: u32) -> Option<u8> {
-        self.0.iter().filter(|(a, b, ..)| (*a..=*b).contains(&tick)).find_map(|(.., s)| *s)
+        self.0.iter().filter(|(a, b, ..)| (*a..=*b).contains(&tick)).find_map(|&(_, _, _, s, _)| s)
+    }
+
+    /// The custom screen choice made on tick `tick`, if any.
+    pub fn choice(&self, tick: u32) -> Option<nettai_battle::ScreenChoice> {
+        self.0.iter().filter(|(a, b, ..)| (*a..=*b).contains(&tick)).find_map(|&(.., c)| c)
     }
 
     /// One tick of `player` with what the script holds on it.
@@ -85,6 +98,9 @@ impl KeyScript {
         let tick = player.ticks() as u32 + 1;
         if let Some(member) = self.switch(tick) {
             player.ask_switch(member);
+        }
+        if let Some(choice) = self.choice(tick) {
+            player.choose(choice);
         }
         player.tick(self.held(tick))
     }
@@ -296,12 +312,13 @@ pub fn audit(renderer: &mut Renderer, sessions: Vec<Session>, sound: Option<std:
     for mut s in sessions {
         renderer.reset();
         renderer.console_version = s.driver.console_version();
-        while s.step(0) {
+        while s.step(nettai_battle::PlayerTick::default()) {
             renderer.observe(&s.battle);
             renderer.problems.at(s.frame);
-            renderer.render(&s.battle);
+            renderer.render(&s.battle, s.driver.layers());
             out.frames += 1;
-            let cues = s.battle.sound_cues();
+            let heard = nettai_frontend::session::heard(&s.battle, s.driver.layers());
+            let cues = &heard[..];
             out.cues += cues.len() as u32;
             if let Some(bank) = &sound {
                 for &cue in cues {

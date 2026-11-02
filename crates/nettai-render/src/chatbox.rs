@@ -3,11 +3,11 @@
 //! (`chatbox_interpreteAndDrawDialogChar`): the box on BG0, the text as
 //! three rows of sprites, the speaker's portrait and the key-wait arrow.
 //!
-//! How far the chatbox has got is the engine's (`custom::chatbox`: the
-//! box's opening step, the characters printed, the portrait's face and
-//! tint, the arrow); the text is the content's strings (a chip's or a
-//! Cross's `description`, a navi's `run_message`, in the player's
-//! language), drawn in the dialogue font.
+//! How far the chatbox has got is the player's layer's (`custom::layer`,
+//! its `custom::chatbox`: the box's opening step, the characters printed,
+//! the portrait's face and tint, the arrow); the text is the content's
+//! strings (a chip's or a Cross's `description`, a navi's `run_message`,
+//! in the player's language), drawn in the dialogue font.
 //! docs/frontend.md §3.
 
 use crate::audit::{Lookup, Problems};
@@ -18,7 +18,7 @@ use crate::textlayer::{Plane, Rect, TextItem, TextSink};
 use crate::vfont::Role;
 use nettai_assets::{Bundle, Chatbox as Graphics, Palette, SpriteSheet, Tiles};
 use nettai_battle::custom::chatbox::{Chatbox, PortraitLook, Script};
-use nettai_battle::custom::Phase;
+use nettai_battle::custom::layer::Sub;
 use nettai_battle::Battle;
 
 /// Four blank tiles: the arrow's part where it is drawn as shapes.
@@ -65,9 +65,20 @@ pub struct Shown<'a> {
     portrait: Option<(&'a SpriteSheet, PortraitLook, usize)>,
 }
 
-/// Side `side`'s player's chatbox, if one is up, with its text composed.
-pub fn prepare<'a>(b: &Battle, side: u8, assets: &'a Bundle, graphics: &crate::graphics::Graphics<'a>, sink: &TextSink, problems: &mut Problems) -> Option<Shown<'a>> {
+/// Side `side`'s player's chatbox, if their layer (`layer`) has one up,
+/// with its text composed.
+#[allow(clippy::too_many_arguments)]
+pub fn prepare<'a>(
+    b: &Battle,
+    layer: Option<&nettai_battle::custom::Layer>,
+    side: u8,
+    assets: &'a Bundle,
+    graphics: &crate::graphics::Graphics<'a>,
+    sink: &TextSink,
+    problems: &mut Problems,
+) -> Option<Shown<'a>> {
     let (_, screen) = crate::custom::screen_of(b, side)?;
+    let layer = layer?;
     let navi = b.stats[side as usize & 1].navi;
     // The text: the content's own strings, or the player's language's
     // (`DisplayText`); a translation prints in step with the content's
@@ -75,21 +86,21 @@ pub fn prepare<'a>(b: &Battle, side: u8, assets: &'a Bundle, graphics: &crate::g
     // (`shown`).
     let strings = &sink.strings;
     // (Each with the lookup its text is: whose it is.)
-    let (chatbox, said, portrait, lookup) = match screen.phase {
-        Phase::Description { window: None, chatbox, .. } => {
+    let (chatbox, said, portrait, lookup) = match layer.sub {
+        Sub::Description { from_list: false, chatbox, .. } => {
             // The chip under the cursor as the screen checked it (the chip
             // window's), or the chip a button there shows (EXE5's capsules).
-            let chip = screen.slots[screen.cursor as usize].face.or(screen.look.chip_window.last_chip.map(|c| c.id));
+            let chip = screen.slots[layer.cursor as usize].face.or(layer.chip_window.last_chip.map(|c| c.id));
             let said = chip.and_then(|c| strings.chip_description(&b.content, c));
             (chatbox, said, None, chip.map(Lookup::ChipDescription))
         }
-        Phase::Description { window: Some(_), form, chatbox } => {
-            // A form a window of the rules describes (EXE6's Cross window: the
-            // Cross under its cursor, of whichever game it is).
+        Sub::Description { from_list: true, form, chatbox } => {
+            // A form of the rules' form list described (EXE6's Cross window:
+            // the Cross under its cursor, of whichever game it is).
             let said = form.and_then(|f| strings.form_description(&b.content, f));
             (chatbox, said, None, form.map(Lookup::FormDescription))
         }
-        Phase::RunMessage { chatbox: Some(chatbox) } => {
+        Sub::RunMessage { chatbox: Some(chatbox) } => {
             let said = strings.run_message(&b.content, navi);
             (chatbox, said, b.content.navi(navi).run_message.portrait, Some(Lookup::RunMessage(navi)))
         }

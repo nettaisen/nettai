@@ -21,9 +21,9 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
 - **Protocol**: rennet (a workspace dependency likewise) carries each player's inputs to the other peer once and in
   order over datagrams that are lost, reordered and duplicated, every frame resending what isn't acknowledged, so a
   lost datagram's inputs come with the next one. nettai's protocol (`protocol`) names what a player's stream holds:
-  a tick's word (its buttons, a party switch request, a microphone level) and event flags (one byte for A, B and the
-  directions),
-  and the round and match markers; and the frame's meta, the sender's tick advantage. A frame costs 6 bytes at no
+  a tick's word (its buttons, a party switch request, a microphone level, a custom screen choice) and event flags
+  (one byte for A, B and the directions; four with a choice), the round and match markers and the sender's input
+  delay (a marker, for a replay's sake); and the frame's meta, the sender's tick advantage. A frame costs 6 bytes at no
   latency, 9 at 2 frames, 17 at 5 and 28 at 10 (the unacknowledged window grows with the round trip) (§4.6).
 - **Transport**: a WebRTC data channel, unordered and without retransmits (nettai-rtc: str0m natively, the
   browser's on wasm32), met in a room of the signaling server (`signaling/`, a Cloudflare Worker: a player asks
@@ -52,9 +52,10 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
 - **Digest**: `Battle::digest()` hashes the simulation state (presentation left out) with a platform-independent
   hasher. Peers compare their settled states' digests. It covers the round's setup, which carries the content's
   hash (`RoundSetup::content`), rather than the content itself.
-- **Input**: `Battle::step(&TickInput)`. A `TickInput` is both players' buttons plus the link-closed event at
-  the end of a round, which netplay carries in a player's input so both peers step every frame with the same
-  record. Both players' custom screens are simulated from their buttons (engine/custom-screen.md).
+- **Input**: `Battle::step(&TickInput)`. A `TickInput` is both players' ticks (their buttons and a custom screen
+  choice) plus the link-closed event at the end of a round, which netplay carries in a player's input so both
+  peers step every frame with the same record. Both players' custom screens are simulated from their choices; the
+  cursor and what only shows are each player's own layer's, outside the simulation (engine/custom-screen.md §0).
 - **Perspective**: both peers simulate from the same side (`RoundSetup::local_side` is shared setup) and present
   it for their own player (`sound_cues_for`, `banner_for`, `round_end_for`, `visible_to`). §2 explains why and
   lists every per-console detail with its decision.
@@ -96,40 +97,54 @@ Each player contributes their share. In nettai-netplay that is `PlayerInput { ti
 the frame's record combines both shares (`exe6::tick_input`).
 
 **A player's tick** (`PlayerTick`) is their buttons, the member of their side's party they ask to switch to
-(`switch_to`: the DS's party battle, docs/design/exe5ds-map.md §11; none in a battle without partners), and their
-microphone's level (`mic_level`, 0 to 255: the DS's shout, which nothing in nettai sets). Hosts that carry a tick as a
-number carry its word (`PlayerTick::word`, 20 bits: the buttons in bits 0–9, the switch in 10–11 as the member + 1,
-the level in 12–19): the wire, replays, the frontend's netplay and the stand-in battle. A tick of buttons alone is its
-buttons' word, as before.
+(`switch_to`: the DS's party battle, docs/design/exe5ds-map.md §11; none in a battle without partners), their
+microphone's level (`mic_level`, 0 to 255: the DS's shout, which nothing in nettai sets), and what they chose on their
+custom screen this tick (`choice`, a `ScreenChoice`: a chip picked, a rules' button pressed, OK, a take-back, a form
+list's entry). Hosts that carry a tick as a number carry its word (`PlayerTick::word`, 26 bits, `TICK_WORD`: the
+buttons in bits 0–9, the switch in 10–11 as the member + 1, the level in 12–19, the choice in 20–25 as
+`ScreenChoice::code`, 0 none): the wire, replays, the frontend's netplay and the stand-in battle. A tick of buttons
+alone is its buttons' word, as before. Buttons and a choice, not one or the other: a word decided while the player
+sees the fight lands the input delay later, maybe on the screen, so it says both; the screen takes the choice and
+reads no key, and the fight's record takes the buttons through it.
 
-**The custom screen is simulated.** Both players' custom screens run in the engine from their buttons
+**The custom screen is simulated.** Both players' custom screens run in the engine from their choices
 (engine/custom-screen.md), and what used to be inputs is state:
 
 | Former input | Now |
 |---|---|
 | `PlayerTick::in_custom` | `custom::Side::in_custom`, which the fight reads at once (`RoundState::remote_status`) |
-| `TickEvents::local_confirm` | Each player's screen, from their buttons |
+| `TickEvents::local_confirm` | Each player's screen, from their choices |
 | `TickEvents::exchange` | Each player's result (`custom::Side::sent`), arriving 50 ticks after it is sent (its 50 words) |
 | `TickEvents::link_closed` | Still an event (the end state's link session closing) |
 
 The events are part
 of the frame's input record: one player's input carries them (the golden-trace replay puts them in player 0's),
 both peers receive them like any input, and a peer that predicted "no events" rolls back when they arrive.
-Prediction repeats the buttons and never repeats events (`Game::predict` for `Battle`).
+Prediction repeats the buttons and never repeats events, choices or switch requests (`Game::predict` for
+`Battle`).
 
-The engine has no link of its own: the fight and the custom screens read a tick's buttons at once. The only
+The engine has no link of its own: the fight reads a tick's buttons and the custom screens its choices at once. The only
 delay is the netplay layer's present delay, which is the player's input delay (`NetOptions::input_delay`, 4 ticks
 unless they say: each player's own, changed during a match; §4.10), and prediction. The original's link queue (4 ticks in the recordings) is the recordings' cable,
 which their replay reproduces at its boundary (battle-flow.md §6.1).
 
 For live netplay and synthetic matches, `standin::StandInBattle` closes the link at once at the end of a round;
-everything else is the engine, so the players' buttons are the whole input.
+everything else is the engine, so the players' words are the whole input.
+
+**A player's layer is no part of it.** The cursor, its blink and repeat, the chip window's chip, the dark chips'
+hover, R's description, L's message, SELECT's hiding and the form list's browsing are each player's layer's
+(`custom::Layer`, engine/custom-screen.md §0), which a peer runs for its own player against the frame it presents
+and keeps out of the world: no snapshot, no digest, no rollback. Its cursor moves at once, with no input delay; the
+choices its keys make go into the player's word and land the delay later. The other player's layer isn't run
+live (only the local console is drawn); a replay runs both again (§4.6).
 
 ### 1.2 Prediction
 
-A missing remote input is predicted as the latest known input of that player: buttons held, events dropped
-(`Game::predict`, which getgud calls through `World::predict` per remote slot, only where the real input hasn't
-arrived). A peer presents the frame `present_delay` ticks behind its newest local input; the ticks between the
+A missing remote input is predicted as the latest known input of that player: buttons held, events dropped,
+and no custom screen choice and no switch request (each a one-time thing: `Game::predict` for `Battle` clears them,
+and `StandInBattle::predict` clears their bits of the word), which getgud calls through `World::predict` per remote
+slot, only where the real input hasn't arrived. Each remote choice is one misprediction; the remote's cursor moves
+are none, being no input. A peer presents the frame `present_delay` ticks behind its newest local input; the ticks between the
 last confirmed one and that frame are speculated on predicted input. getgud sets no limit on how far: clock sync
 keeps the peers' leads even, and a host adds a stall guard (§4.1).
 
@@ -366,8 +381,9 @@ The inputs go between the peers on rennet (Tango's netplay transport, §4.6), ov
   `BattleWorld::session` makes the session.
 - `exe6`: `Battle` as a `Game` on the engine's input record (`PlayerInput`, `tick_input`), and the sound feed
   (`CueFeed`).
-- `standin`: `StandInBattle` as a `Game` on the buttons alone (what live netplay plays); a MegaMan built in code, a
-  netbattle setup on given content with given folders, and a seeded button masher.
+- `standin`: `StandInBattle` as a `Game` on the tick words alone (what live netplay plays; its prediction clears a
+  word's choice and switch request); a MegaMan built in code, a netbattle setup on given content with given
+  folders, and a seeded masher (buttons, and choices on the custom screen).
 - `protocol`: nettai's rennet protocol: the elements, the meta, their codecs, the horizon, and `WireInput`, a
   game input's wire form (buttons and flags), for the buttons alone and for `PlayerInput` (§4.6).
 - `wire`: byte codecs for what the handshake carries: its versions, the game, the content's hash, the nonce. (What
@@ -486,9 +502,10 @@ which says what an element and the meta are. nettai's (`protocol::Netplay`):
 
 | Element | What | Wire form (a LEB128 head; bit 0 tells a tick from the rest) |
 |---|---|---|
-| `Tick { word, flags }` | One tick of a player's input: its word (`PlayerTick::word`: the buttons, the switch request, the microphone level), and the game's flags for the tick's events | `(buttons \| switch << 10 \| level << 12 \| flags << 20) << 1`: buttons in the wire order A, B, right, left, up, down, SELECT, START, R, L, so that a tick with only A, B and directions is one byte, with any button or a switch two, with a level three, with flags up to five |
+| `Tick { word, flags }` | One tick of a player's input: its word (`PlayerTick::word`: the buttons, the switch request, the microphone level, the custom screen choice), and the game's flags for the tick's events | `(buttons \| switch << 10 \| level << 12 \| choice << 20 \| flags << 26) << 1`: buttons in the wire order A, B, right, left, up, down, SELECT, START, R, L, so that a tick with only A, B and directions is one byte, with any button or a switch two, with a level three, with a choice four, with flags up to five |
 | `RoundEnd` | The sender's round is over: what follows is the next round's | `0x01` |
 | `MatchEnd` | The sender left | `0x03` |
+| `Delay(d)` | The sender's present delay (its input delay): the ticks between the frame its player's layer read and the tick its word lands on. Sent before its first tick, and again before the first tick decided after it changes (`Peer::decide`, from `PeerConfig::present_delay`). Presentation, for a replay: no part of the input, the prediction or the digest | `(2 + d) << 1 \| 1` (one byte up to 61) |
 
 The **meta** is the sender's tick advantage as of its newest input (getgud's `local_tick_advantage`, a signed
 LEB128: one byte), which the receiver hands getgud with each input it delivers (rennet keeps the freshest, so a
@@ -499,6 +516,12 @@ the window, the ack and the meta.
 is the tick word, with no flags (live netplay's: the end of a round is derived in the game). `PlayerInput`'s one event
 is a flag: the link closing. The golden-trace replays go through the same
 protocol as live play.
+
+**The delays a replay keeps.** A peer keeps both players' delays as told, by round and tick (`Peer::local_delay`,
+`Peer::remote_delay`, `DelayMark`); the frontend's recording writes each settled tick with them
+(`nettai_replay::Tick::delays`), so a replay runs each side's layer again as it ran: before tick u, the buttons of
+the word that landed on tick u + delay (docs/frontend.md §8). Choices are a few dozen a screen, so they change
+the mean frame little.
 
 **Byte cost.** A frame is the header (the base, two bytes from the 128th element to the 16,383rd, three after;
 the ack, one; the meta, one) and the window: one element a tick, a byte with A, B and the directions. The window is
@@ -1157,8 +1180,9 @@ the link says the same itself (`Link::down_for`, `Link::gives_up_in`).
 (`content::testing`: EXE6's modules the tests need and made-up chips on the engine's own actions, not EXE6's data):
 side 0's folder holds a level-3 GunDelSol, an eraser navi chip, a level-1 GunDelSol, an invisibility dimming chip
 and a level-3 GunDelSol over and over, side 1's GunDelSols only (no Crosses or Beast Out). Both players mash (held
-buttons change every four frames on average: a direction, A, B, L or R; START is never pressed), and the mashing
-drives their custom screens too. Three seeds, each under every configuration, over getgud sessions whose
+buttons change every four frames on average: a direction, A, B, L or R; START is never pressed), and the masher
+chooses on their custom screens (`Masher::input`: now and then a selectable chip, a take-back, and OK after a
+while). Three seeds, each under every configuration, over getgud sessions whose
 inputs go on rennet over the simulated datagram network:
 
 | Network | Present delay | Seed 1 / 2 / 3: frames to the KO | Rollbacks per peer (seed 3) | Deepest rollback | Clock-sync stalls per peer (seed 3) | Diverged |
@@ -1394,13 +1418,16 @@ call instead of recycling them at once.)
 
 Done (engine/custom-screen.md): what follows is what it guarantees.
 
-- **Driven by buttons only.** Its outputs (the hand, the transformation, confirmation timing) come from the
-  players' buttons and simulated state, inside `Battle`. Then `TickEvents` and `PlayerTick::in_custom` go away
-  and each player's buttons are the whole input.
-- **Both sides, all the time.** Each player's screen is simulated on both peers: cursor, selection, confirmation
-  and the timers that follow it (`custom_ui`, `round.status` bit 2, the gauge restart 11 ticks after the
-  confirmation) must exist per side, or be defined from shared state, never "the local player's". Which screen a
-  viewer sees is presentation.
+- **Driven by choices only.** Its outputs (the hand, the transformation, confirmation timing) come from the
+  players' choices (`PlayerTick::choice`) and simulated state, inside `Battle`. `TickEvents` and
+  `PlayerTick::in_custom` went away and each player's tick is the whole input. The cursor and what only shows are
+  each player's layer's, outside the simulation (engine/custom-screen.md §0): nothing the battle reads depends on
+  them, and the screen's fades the battle waits on are its own (`Screen::fade`, digested), apart from the dark
+  chips' hover's.
+- **Both sides, all the time.** Each player's screen is simulated on both peers: selection, confirmation and the
+  timers that follow it (`custom_ui`, `round.status` bit 2, the gauge restart 11 ticks after the confirmation) must
+  exist per side, or be defined from shared state, never "the local player's". Which screen a viewer sees is
+  presentation.
 - **Per-console RNG in the simulation.** The original shuffles the folder with RNG1, a per-console stream, and
   exchanges the result: each player's shuffled folder is setup. ChpShufl's re-deal draws from the same stream
   mid-battle, so each player's console RNG is simulated (`Battle::consoles`): its seed is setup both peers share

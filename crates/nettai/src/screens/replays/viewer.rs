@@ -860,8 +860,8 @@ impl Watching {
             return;
         }
         let shown = self.viewer.view() as usize;
-        let joypads = &self.viewer.battle().custom.sides;
-        let held = [joypads[shown].joypad.held, joypads[shown ^ 1].joypad.held];
+        let inputs = &self.viewer.battle().inputs;
+        let held = [inputs[shown].held & 0x3FF, inputs[shown ^ 1].held & 0x3FF];
         if self.held != Some(held) {
             self.held = Some(held);
             view.set_held_shown(held[0] as i32);

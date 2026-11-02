@@ -23,7 +23,8 @@
 
 use nettai_battle::battle::mode;
 use nettai_frontend::Player;
-use nettai_frontend::driver::{InFight, LivePlayer, Opponent, bot_buttons};
+use nettai_battle::PlayerTick;
+use nettai_frontend::driver::{InFight, LivePlayer, Opponent, bot_tick};
 use nettai_frontend::game::{Loading, Options};
 use nettai_frontend::preload::{self, Part, Preload};
 use std::path::{Path, PathBuf};
@@ -66,9 +67,12 @@ fn play(player: &mut Player, plain: &mut Player, ticks: u32, (w, h): (usize, usi
     let (mut longest_tick, mut longest_picture) = (Duration::ZERO, Duration::ZERO);
     for tick in 0..ticks {
         let b = player.battle();
-        let keys = if b.round.mode == mode::CUSTOM { bot_buttons(b, 0, tick) } else { masher.buttons() };
+        let input = if b.round.mode == mode::CUSTOM { bot_tick(b, 0, tick) } else { PlayerTick::buttons(masher.buttons()) };
         let t = Instant::now();
-        if !player.tick(keys) {
+        if let Some(c) = input.choice {
+            player.choose(c);
+        }
+        if !player.tick(input.held) {
             // (A set played out is its end, not a stop.)
             if player.finished() {
                 break;
@@ -82,7 +86,10 @@ fn play(player: &mut Player, plain: &mut Player, ticks: u32, (w, h): (usize, usi
         samples.clear();
         player.take_samples(&mut samples);
         // The same tick of the player made without the preload.
-        plain.tick(keys);
+        if let Some(c) = input.choice {
+            plain.choose(c);
+        }
+        plain.tick(input.held);
         let (ours, theirs) = (player.frame(), plain.frame());
         if ours.pixels != theirs.pixels || ours.text != theirs.text {
             return Err(format!("tick {tick}: the preloaded player's picture isn't the one a player made without the preload draws"));

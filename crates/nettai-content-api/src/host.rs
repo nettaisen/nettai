@@ -168,7 +168,9 @@ pub enum HookCall {
     /// chip and the weapon the hook is about, where it has them (nil in
     /// between); a party's hooks with the side, then the navi where they
     /// have one, then the member of the side's party they are about and a
-    /// mood (`member`, `mood`). Its result is the hook's.
+    /// mood (`member`, `mood`); a list's with the side and the entry of the
+    /// list they are about (`entry`: `custom.choose_form`'s). Its result is
+    /// the hook's.
     Rules {
         side: u8,
         hook: RulesHook,
@@ -177,6 +179,7 @@ pub enum HookCall {
         weapon: Option<crate::WeaponHandle>,
         member: Option<u8>,
         mood: Option<u8>,
+        entry: Option<u8>,
     },
     /// A hook of a panel type's (its rules' `panels.types.<name>.<hook>`):
     /// what the type does where the engine meets it, with the body it
@@ -662,12 +665,13 @@ pub enum RulesHook {
     /// `custom.confirmed(side)`: OK was pressed and the hand is built (the
     /// round's Beast Out or Cross noted). Its result is unused.
     CustomConfirmed,
-    /// `custom.keys(side)`: choosing chips, on a tick a key repeats or is
-    /// pressed, before the screen's own keys (`custom.pressed`,
-    /// `custom.repeated`): whether the rules took the tick's keys (EXE6's
-    /// UP opening the Cross window, `sub_8028B74`). The first part that
-    /// answers true takes them.
-    CustomKeys,
+    /// `custom.choose_form(side, entry)`: choosing chips, the player chose
+    /// entry `entry` (from 0) of the rules' form list (EXE6's Cross window's
+    /// A, `sub_8028A78`: the Cross chosen, its window). The list's browsing
+    /// is the player's layer's (its view's fields, `form_list.*`, what it
+    /// shows); the choice is the rules', who check it. Its result is
+    /// unused.
+    CustomChooseForm,
     /// `custom.take_back(side)`: B with nothing picked (`sub_8029032`):
     /// whether the rules took something back (EXE6's Cross chosen). The
     /// first part that answers true did; none, and B is refused.
@@ -814,7 +818,7 @@ impl RulesHook {
             RulesHook::CustomDeal => "custom.deal",
             RulesHook::CustomOpen => "custom.open",
             RulesHook::CustomConfirmed => "custom.confirmed",
-            RulesHook::CustomKeys => "custom.keys",
+            RulesHook::CustomChooseForm => "custom.choose_form",
             RulesHook::CustomTakeBack => "custom.take_back",
             RulesHook::CustomChipPicked => "custom.chip_picked",
             RulesHook::CustomChipTakenBack => "custom.chip_taken_back",
@@ -897,7 +901,7 @@ impl RulesHook {
         RulesHook::ButtonTakenBack,
         RulesHook::CustomChipPicked,
         RulesHook::CustomChipTakenBack,
-        RulesHook::CustomKeys,
+        RulesHook::CustomChooseForm,
         RulesHook::CustomTakeBack,
         RulesHook::Validate,
         RulesHook::FolderView,

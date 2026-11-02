@@ -921,14 +921,14 @@ impl CoreApi for Battle {
 
     fn custom_sacrifice(&mut self, side: u8) -> ApiResult<()> {
         let s = self.custom_screen_mut(side)?;
-        let slot = s.cursor_button_slot().ok_or_else(|| ApiError::Other("custom.sacrifice: no button under the cursor".into()))?;
+        let slot = s.pressed_button_slot().ok_or_else(|| ApiError::Other("custom.sacrifice: no button is pressed".into()))?;
         s.start_sacrifice(slot);
         Ok(())
     }
 
     fn custom_redeal(&mut self, side: u8) -> ApiResult<()> {
         let s = self.custom_screen_mut(side)?;
-        let slot = s.cursor_button_slot().ok_or_else(|| ApiError::Other("custom.redeal: no button under the cursor".into()))?;
+        let slot = s.pressed_button_slot().ok_or_else(|| ApiError::Other("custom.redeal: no button is pressed".into()))?;
         s.start_redeal(slot);
         Ok(())
     }
@@ -939,7 +939,7 @@ impl CoreApi for Battle {
 
     fn custom_cursor_state(&self, side: u8) -> ApiResult<&'static str> {
         let s = self.custom_screen(side)?;
-        let slot = s.cursor_button_slot().ok_or_else(|| ApiError::Other("custom.cursor_state: no button under the cursor".into()))?;
+        let slot = s.pressed_button_slot().ok_or_else(|| ApiError::Other("custom.cursor_state: no button is pressed".into()))?;
         use crate::custom::screen::SlotState;
         Ok(match s.slots[slot as usize].state {
             SlotState::Selectable => "selectable",
@@ -949,7 +949,9 @@ impl CoreApi for Battle {
     }
 
     fn custom_pick(&mut self, side: u8) -> ApiResult<()> {
-        self.custom_screen_mut(side)?.pick_cursor();
+        if !self.custom_screen_mut(side)?.pick_pressed() {
+            return Err(ApiError::Other("custom.pick: no button is pressed".into()));
+        }
         Ok(())
     }
 
@@ -990,12 +992,12 @@ impl CoreApi for Battle {
     }
 
     fn custom_set_frame(&mut self, side: u8, frame: u32) -> ApiResult<()> {
-        self.custom_screen_mut(side)?.look.frame = frame;
+        self.custom_screen_mut(side)?.look.set_frame(frame);
         Ok(())
     }
 
     fn custom_spin(&mut self, side: u8) -> ApiResult<()> {
-        self.custom_screen_mut(side)?.look.spin = 1;
+        self.custom_screen_mut(side)?.look.draw(crate::custom::Draw::Spin);
         Ok(())
     }
 
@@ -1010,7 +1012,7 @@ impl CoreApi for Battle {
             "flash_back" => FadeMode::FlashBack,
             m => return Err(ApiError::Other(format!("custom.fade: no screen fade is named {m:?}"))),
         };
-        self.custom_screen_mut(side)?.look.fade.start(mode, speed);
+        self.custom_screen_mut(side)?.start_fade(mode, speed);
         Ok(())
     }
 
@@ -1144,31 +1146,7 @@ impl CoreApi for Battle {
     }
 
     fn custom_fading(&self, side: u8) -> ApiResult<bool> {
-        Ok(self.custom_screen(side)?.look.fade.active())
-    }
-
-    fn custom_cursor(&self, side: u8) -> ApiResult<u8> {
-        Ok(self.custom_screen(side)?.cursor)
-    }
-
-    fn custom_set_cursor(&mut self, side: u8, slot: u8) -> ApiResult<()> {
-        if slot as usize >= crate::custom::screen::SLOTS {
-            return Err(ApiError::Other(format!("custom.set_cursor: no slot {slot}")));
-        }
-        self.custom_screen_mut(side)?.cursor = slot;
-        Ok(())
-    }
-
-    fn custom_pressed(&self, side: u8, key: &str) -> ApiResult<bool> {
-        let bit = crate::input::key_named(key).ok_or_else(|| ApiError::Other(format!("custom.pressed: no key is named {key:?}")))?;
-        self.custom_screen(side)?;
-        Ok(self.custom.sides[side as usize & 1].joypad.pressed & bit != 0)
-    }
-
-    fn custom_repeated(&self, side: u8, key: &str) -> ApiResult<bool> {
-        let bit = crate::input::key_named(key).ok_or_else(|| ApiError::Other(format!("custom.repeated: no key is named {key:?}")))?;
-        self.custom_screen(side)?;
-        Ok(self.custom.sides[side as usize & 1].joypad.repeat & bit != 0)
+        Ok(self.custom_screen(side)?.fade.active())
     }
 
     fn custom_draw_window(&mut self, side: u8) -> ApiResult<()> {
@@ -1186,7 +1164,7 @@ impl CoreApi for Battle {
     }
 
     fn custom_draw_cursor(&mut self, side: u8) -> ApiResult<()> {
-        self.custom_screen_mut(side)?.look.draw_cursor();
+        self.custom_screen_mut(side)?.look.draw(crate::custom::Draw::Cursor);
         Ok(())
     }
 
@@ -1196,33 +1174,13 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn custom_draw_form_list_cursor(&mut self, side: u8) -> ApiResult<()> {
-        self.custom_screen_mut(side)?.look.draw_form_list_cursor();
-        Ok(())
-    }
-
     fn custom_show_chip_window(&mut self, side: u8) -> ApiResult<()> {
-        self.with_custom_screen(side, |screen, view, folder, _, _| screen.show_chip_window(folder, view))
-            .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
+        self.custom_screen_mut(side)?.show_chip_window();
+        Ok(())
     }
 
     fn custom_set_form_list_tab(&mut self, side: u8, on: bool) -> ApiResult<()> {
         self.custom_screen_mut(side)?.look.form_list_tab = on;
-        Ok(())
-    }
-
-    fn custom_describe(&mut self, side: u8, form: Option<nettai_content_api::FormHandle>) -> ApiResult<()> {
-        let joy = self.custom.sides[side as usize & 1].joypad;
-        let described = self
-            .with_custom_screen(side, |screen, view, _, _, _| {
-                // (Three lines for a form the content has no description of.)
-                let lines = form.map_or(3, |f| view.library.form_description_lines(f));
-                screen.describe_form(&joy, lines, form, view.library.layout().chatbox_end_clears_tiles)
-            })
-            .ok_or_else(|| ApiError::Other("no custom screen is open".into()))?;
-        if !described {
-            return Err(ApiError::Other("custom.describe: no window is up".into()));
-        }
         Ok(())
     }
 

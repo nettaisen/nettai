@@ -185,7 +185,8 @@ Each with what it was and what it is now.
 - **C4.** `NaviData::cross_hp` is `switch_hp`.
 - **C5.** `cross_doubles` and `Boost::Cross` are `charge_doubles` and `Boost::Charged`.
 - **C6.** The form list window: `ScreenLook::{form_list_tab, form_list_cursor}` and `custom.draw_form_list_cursor`,
-  `custom.set_form_list_tab`.
+  `custom.set_form_list_tab`. (Since 2026-11-01 the list's cursor and its drawing are each player's layer's, and
+  `custom.draw_form_list_cursor` is gone: docs/design/custom-screen-actions.md.)
 - **C7.** The renderer's Cross window draws the `FormList` view by its names: `form_list_stage` and
   `FormListStage`, `form_list_map`, `form_names`, `form_list_cursor_parts`, `version_forms`, `form_name_picture`,
   `lookups::form_name`, `Lookup::{FormName, FormDescription}`. The offered forms are the view's
@@ -201,9 +202,10 @@ Each with what it was and what it is now.
   `crosses = [...]`. `Defs::fact_name` gives the field that holds a role.
 - **C10.** The navi's forms table lists a version's forms under `<version>.form_list`.
 - **C11.** The views find the rules' state fields they show by role, never by a game's name for them: each is the
-  field the declaration gives the view's role (`schema.role("form_list.cursor", "u8")`; `Schema::find_role`, at any
-  depth). The form list's `form_list.{offered, count, marked, cursor, chosen, chosen_place}` (EXE6's `offered`,
-  `offered_count`, `marked`, `window_cursor`, `cross_chosen`, `chosen`), the form offer's
+  field the declaration gives the view's role (`schema.role("form_list.count", "u8")`; `Schema::find_role`, at any
+  depth). The form list's `form_list.{offered, count, marked, chosen, chosen_place}` (EXE6's `offered`,
+  `offered_count`, `marked`, `cross_chosen`, `chosen`; `form_list.cursor`, EXE6's `window_cursor`, went to the
+  player's layer on 2026-11-01), the form offer's
   `form_offer.{form, alternate, turns}` (EXE5's `offer`, `offer_chaos`, `turns`), the flights'
   `offer_flight.{step, count}` and `chip_flight.{step, count, button}` (EXE5's `unite_*`, MeddySoul's `mix_*`). The
   games keep their names. The custom screen's `CROSSES` is `FORM_LIST_ENTRIES`.

@@ -1,32 +1,37 @@
 //! The custom screen (EXE6 rules): between turns each player deals chips
-//! from their folder, picks some with their joypad (and maybe Beast Out or
-//! a Cross), and presses OK; the hand is built and sent over the link, and
-//! the fight resumes once both players' results are in.
+//! from their folder, picks some (and maybe Beast Out or a Cross), and
+//! presses OK; the hand is built and sent over the link, and the fight
+//! resumes once both players' results are in.
 //!
 //! In the original each console runs only its own player's screen and
 //! receives the other's result over the link. Here both screens run inside
-//! the simulation, each driven by its player's joypad, and a result
-//! arrives once its words have gone over, one a tick, so the fight resumes
-//! when the original's would have over a link that delivered at once. See
-//! docs/engine/custom-screen.md.
+//! the simulation, each driven by its player's choices (`ScreenChoice`, in
+//! the tick's input), and a result arrives once its words have gone over,
+//! one a tick, so the fight resumes when the original's would have over a
+//! link that delivered at once. The cursor and what only shows are each
+//! player's own screen layer's ([`layer`]), outside the simulation: it
+//! turns their keys into the choices, as the original's screen read them.
+//! See docs/engine/custom-screen.md and docs/design/custom-screen-actions.md.
 
 pub mod builder;
 pub mod chatbox;
 pub mod folder;
+pub mod layer;
 pub mod library;
 pub mod look;
 pub mod screen;
 
 pub use folder::{BattleFolder, FolderChip, SavedFolder};
+pub use layer::{Layer, Lockstep};
 pub use library::Library;
-pub use look::{ChipShade, Drawn, ScreenLook};
+pub use look::{ChipShade, Draw, Drawn, ScreenLook, WindowLook};
 pub use screen::{ButtonCell, ButtonPlace, Phase, PlayerView, Request, RoundMemory, Screen, Slot, SlotKind, SlotState};
 
 use crate::battle::{Battle, CustomResult, battle_flags};
 use crate::console::{Console, ConsoleSetup};
 use nettai_content_api::ChipHandle;
 use crate::hand::ChipHand;
-use crate::input::Joypad;
+use crate::input::ScreenChoice;
 use crate::kinds::player::Emotion;
 use crate::setup::{NaviStats, effects};
 use crate::transform::TransformRequest;
@@ -42,7 +47,8 @@ pub struct PlayerSetup {
     /// The shuffled battle folder.
     pub folder: BattleFolder,
     /// The joypad's auto-repeat beat (0-4) on the round's first tick; each
-    /// console counts its own.
+    /// console counts its own. The simulation reads no key of the screen:
+    /// the player's layer does ([`layer::Layer`]), from here.
     pub joypad_phase: u8,
     /// What the player's console brings besides: its RNG (RNG1), which
     /// ChpShufl's re-deal draws from (`crate::console`). In netplay it is
@@ -77,9 +83,6 @@ pub struct Sent {
 /// One player's custom-screen state through a round.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Side {
-    /// The joypad the screen reads: the player's buttons this tick, not
-    /// delayed by the link like the fight's.
-    pub joypad: Joypad,
     pub folder: BattleFolder,
     pub round: RoundMemory,
     pub program_advances: ProgramAdvancesUsed,
@@ -111,7 +114,6 @@ pub struct Side {
 impl Side {
     pub fn new(setup: &PlayerSetup) -> Side {
         Side {
-            joypad: Joypad::new(setup.joypad_phase),
             folder: setup.folder,
             round: RoundMemory::default(),
             program_advances: ProgramAdvancesUsed::default(),
@@ -219,19 +221,11 @@ pub trait Extras {
     /// chip)`: a chip of the hand picked, or its pick taken back.
     fn chip_picked(&mut self, screen: &mut Screen, folder: &mut BattleFolder, chip: ChipHandle);
     fn chip_taken_back(&mut self, screen: &mut Screen, chip: ChipHandle);
-    /// A window's `update` (a tick of it, on the screen's joypad): whether
-    /// it stays up.
-    fn window_update(
-        &mut self,
-        screen: &mut Screen,
-        folder: &mut BattleFolder,
-        console: &mut Console,
-        joy: &Joypad,
-        window: crate::content::WindowHandle,
-    ) -> bool;
-    /// `custom.keys(side)`: choosing, a tick with keys: whether the rules
-    /// took them.
-    fn keys(&mut self, screen: &mut Screen, folder: &mut BattleFolder, joy: &Joypad) -> bool;
+    /// A window's `update` (a tick of it): whether it stays up.
+    fn window_update(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console, window: crate::content::WindowHandle) -> bool;
+    /// `custom.choose_form(side, entry)`: the player chose entry `entry` of
+    /// the rules' form list (EXE6's Cross window's, `sub_8028A78`'s A).
+    fn choose_form(&mut self, screen: &mut Screen, folder: &mut BattleFolder, entry: u8);
     /// `custom.take_back(side)`: B with nothing picked: whether the rules
     /// took something back.
     fn take_back(&mut self, screen: &mut Screen, folder: &BattleFolder) -> bool;
@@ -274,13 +268,11 @@ impl Extras for NoExtras {
 
     fn chip_taken_back(&mut self, _: &mut Screen, _: ChipHandle) {}
 
-    fn window_update(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: &Joypad, _: crate::content::WindowHandle) -> bool {
+    fn window_update(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: crate::content::WindowHandle) -> bool {
         false
     }
 
-    fn keys(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &Joypad) -> bool {
-        false
-    }
+    fn choose_form(&mut self, _: &mut Screen, _: &mut BattleFolder, _: u8) {}
 
     fn take_back(&mut self, _: &mut Screen, _: &BattleFolder) -> bool {
         false
@@ -314,6 +306,21 @@ impl Side {
         }
     }
 
+    /// The side's screen as its player's layer reads it ([`layer::Presented`]),
+    /// for a screen run outside the battle's own loop (exe6-compat's check of
+    /// the traces' screens): what it reads of the battle, `ctx`, and the
+    /// rules' form list (`Battle::form_list`). None: no screen.
+    pub fn presented<'a>(&'a self, ctx: &'a Context, form_list: Option<crate::rules::FormList>) -> Option<layer::Presented<'a>> {
+        Some(layer::Presented {
+            screen: self.screen.as_ref()?,
+            folder: &self.folder,
+            view: self.view(ctx, self.folder.regular_pending),
+            turn: ctx.turn,
+            time_left: self.time_left(ctx.time_limit),
+            form_list,
+        })
+    }
+
     /// The custom screen opens (`sub_8026840`) on the player's console:
     /// the status bit goes up and the player's screen deals. The round's
     /// first screen forgets the previous round's Crosses and Beast Out.
@@ -333,13 +340,7 @@ impl Side {
         }
         let mut folder = self.folder;
         let regular = folder.regular_pending;
-        // (Palette 11 keeps the last chip window's element colors from
-        // screen to screen.)
-        let last_chip = self.screen.and_then(|s| s.look.chip_window.last_chip).filter(|_| ctx.turn != 1);
-        let mut screen = Screen::open(&mut folder, &self.view(ctx, regular), ctx.turn, console, extras);
-        if screen.look.chip_window.last_chip.is_none() {
-            screen.look.chip_window.last_chip = last_chip;
-        }
+        let screen = Screen::open(&mut folder, &self.view(ctx, regular), ctx.turn, console, extras);
         // sub_802A646: once the tag pair is among the chips a screen can
         // deal, a re-deal no longer keeps it apart (BattleState+0x44).
         if console.tag_pair.is_some_and(|t| t < screen.hand_size) {
@@ -349,17 +350,18 @@ impl Side {
         self.screen = Some(screen);
     }
 
-    /// One tick of the player's screen on their joypad and console.
-    /// `damage`: a chip's damage for this player now (`sub_80109A4`), for
-    /// the hand built at OK.
-    pub fn tick(&mut self, ctx: &Context, console: &mut Console, damage: impl Fn(ChipHandle) -> u16) -> Option<Request> {
-        self.tick_with(ctx, console, damage, &mut NoExtras)
+    /// One tick of the player's screen with their choice of the tick, on
+    /// their console. `damage`: a chip's damage for this player now
+    /// (`sub_80109A4`), for the hand built at OK.
+    pub fn tick(&mut self, ctx: &Context, choice: Option<ScreenChoice>, console: &mut Console, damage: impl Fn(ChipHandle) -> u16) -> Option<Request> {
+        self.tick_with(ctx, choice, console, damage, &mut NoExtras)
     }
 
     /// [`Side::tick`], asking the side's rules.
     pub fn tick_with(
         &mut self,
         ctx: &Context,
+        choice: Option<ScreenChoice>,
         console: &mut Console,
         damage: impl Fn(ChipHandle) -> u16,
         extras: &mut dyn Extras,
@@ -369,7 +371,7 @@ impl Side {
         let mut folder = self.folder;
         let settling = screen.phase == Phase::Settling;
         // The round's time limit (nettai's own): the tick the screen has
-        // counted its last, it reads no keys and closes as if OK were
+        // counted its last, it takes no choice and closes as if OK were
         // pressed.
         let counts = ctx.time_limit.is_some() && screen.phase.counts_time();
         if counts {
@@ -380,7 +382,7 @@ impl Side {
         let request = if time_up {
             screen.tick_time_up(&view, &mut folder, console, extras)
         } else {
-            screen.tick(&self.joypad, &view, &mut folder, console, extras)
+            screen.tick(choice, &view, &mut folder, console, extras)
         };
         match request {
             Some(Request::Confirm) => self.confirm(ctx, &mut screen, &mut folder, console, damage, extras),
@@ -409,7 +411,8 @@ impl Side {
         }
         // EXE4's selection says it runs from its first tick (its state 0,
         // 0x08020348: the screen's settling tick) to OK (0x08020652); its
-        // description, SELECT's hiding and L's message leave it set.
+        // description, SELECT's hiding and L's message (its player's layer's)
+        // leave it set.
         if ctx.library.layout().status_until == crate::content::StatusUntil::Sending {
             if settling {
                 self.selecting = true;
@@ -606,16 +609,22 @@ impl Battle {
                 Some(&(_, d)) => d,
                 None => content.chip(id).damage,
             };
-            let request = s.tick_with(&ctx, &mut console, damage, &mut SideExtras { b: self, side, emotion: ctx.emotion });
+            let choice = self.screen_choices[side as usize];
+            let request = s.tick_with(&ctx, choice, &mut console, damage, &mut SideExtras { b: self, side, emotion: ctx.emotion });
             // What the screen asked of the sound driver, which only its
-            // player hears, in the order it asked.
+            // player hears, in the order it asked. (Its layer's, the
+            // cursor's and the dark chip hover's, come after these: where
+            // they go among the tick's cues, `Battle::screen_cues_at`.)
             if let Some(screen) = &s.screen {
                 for call in screen.look.drawn.calls() {
                     match call {
-                        look::ScreenCall::Sound(look::ScreenSound::Rules(id)) => self.play_sound_for(side, id),
-                        // (A sound some game hasn't, the hover's among them,
-                        // plays none there: `SoundRole::optional`.)
-                        look::ScreenCall::Sound(sound) => self.sound_for(side, sound.role().expect("a screen sound of a role")),
+                        // (A sound some game hasn't plays none there:
+                        // `SoundRole::optional`.)
+                        look::ScreenCall::Sound(sound) => {
+                            if let Some(id) = self.screen_sound(sound) {
+                                self.play_sound_for(side, id);
+                            }
+                        }
                         look::ScreenCall::Volume { music, screen } => {
                             let [m, s] = self.content.rules().custom_screen.hover.players;
                             self.play_sound_for(side, crate::sound::SoundCue::Volume { player: m, volume: music });
@@ -623,6 +632,7 @@ impl Battle {
                         }
                     }
                 }
+                self.screen_cues_at[side as usize] = Some(self.sound_cues_for(side).len());
             }
             self.custom.sides[side as usize] = s;
             self.consoles[side as usize] = console;
@@ -669,6 +679,43 @@ impl Battle {
             for hud in &mut self.chip_hud {
                 *hud = crate::hud::ChipHud { icons: true, window: true, from_close: true, ..*hud };
             }
+        }
+    }
+
+    /// What side `side`'s custom screen reads of its player (its view):
+    /// their navi's stats, the emotion it reads, what they sent this round,
+    /// the battle's facts. For the player's layer (`layer::Layer`), which
+    /// reads the screen as the screen does.
+    pub fn screen_view(&self, side: u8) -> PlayerView<'_> {
+        let i = side as usize & 1;
+        let s = &self.custom.sides[i];
+        PlayerView {
+            library: &*self.content,
+            stats: &self.stats[i],
+            emotion: s.emotion,
+            class_uses: &s.class_uses,
+            round: &s.round,
+            regular_pending: s.folder.regular_pending,
+            own_gauges: self.round.flags & battle_flags::OWN_GAUGES != 0,
+            random_battle: self.setup.settings.effects & effects::RANDOM != 0,
+            battle_mode: self.round.mode_copy,
+            party: &self.party[i],
+            switch_request: self.switch_inputs[i],
+            late_turns: self.late_turns(),
+            run_key: !self.setup.host_keys.run,
+        }
+    }
+
+    /// The sound a custom screen's sound is in the content: its role's (a
+    /// role a game may leave unfilled plays none there), or the rules' own.
+    pub fn screen_sound(&self, sound: look::ScreenSound) -> Option<crate::SoundId> {
+        match sound.role() {
+            Some(role) if role.optional() => self.roles().try_sound(role),
+            Some(role) => Some(self.roles().sound(role)),
+            None => match sound {
+                look::ScreenSound::Rules(id) => Some(id),
+                _ => None,
+            },
         }
     }
 
@@ -733,33 +780,27 @@ impl SideExtras<'_> {
     /// Run `f` with the side's screen (and folder) back in the battle, for
     /// `custom.*` to reach, and take them back after.
     fn with_screen<R>(&mut self, screen: &mut Screen, folder: Option<&mut BattleFolder>, f: impl FnOnce(&mut Battle) -> R) -> R {
-        self.with_screen_console(screen, folder, None, None, f)
+        self.with_screen_console(screen, folder, None, f)
     }
 
     /// [`SideExtras::with_screen`], with the side's console (its camera)
-    /// and the screen's joypad (`custom.pressed`; a checker ticks a side of
-    /// its own) back in the battle too.
+    /// back in the battle too.
     fn with_screen_console<R>(
         &mut self,
         screen: &mut Screen,
         folder: Option<&mut BattleFolder>,
         console: Option<&mut Console>,
-        joy: Option<&Joypad>,
         f: impl FnOnce(&mut Battle) -> R,
     ) -> R {
         let side = self.side as usize & 1;
-        let (old_screen, old_folder, old_console, old_emotion, old_joypad) = (
+        let (old_screen, old_folder, old_console, old_emotion) = (
             self.b.custom.sides[side].screen,
             self.b.custom.sides[side].folder,
             self.b.consoles[side],
             self.b.custom.sides[side].emotion,
-            self.b.custom.sides[side].joypad,
         );
         self.b.custom.sides[side].screen = Some(*screen);
         self.b.custom.sides[side].emotion = self.emotion;
-        if let Some(j) = joy {
-            self.b.custom.sides[side].joypad = *j;
-        }
         if let Some(f) = &folder {
             self.b.custom.sides[side].folder = **f;
         }
@@ -778,7 +819,6 @@ impl SideExtras<'_> {
         self.b.custom.sides[side].folder = old_folder;
         self.b.consoles[side] = old_console;
         self.b.custom.sides[side].emotion = old_emotion;
-        self.b.custom.sides[side].joypad = old_joypad;
         r
     }
 }
@@ -824,9 +864,7 @@ impl Extras for SideExtras<'_> {
 
     fn button_pressed(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console, button: crate::content::ButtonHandle) {
         let side = self.side;
-        self.with_screen_console(screen, Some(folder), Some(console), None, |b| {
-            b.call_button(side, button, nettai_content_api::RulesHook::ButtonPressed)
-        });
+        self.with_screen_console(screen, Some(folder), Some(console), |b| b.call_button(side, button, nettai_content_api::RulesHook::ButtonPressed));
     }
 
     fn button_taken_back(&mut self, screen: &mut Screen, button: crate::content::ButtonHandle) {
@@ -839,9 +877,7 @@ impl Extras for SideExtras<'_> {
 
     fn dealing(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console) {
         let side = self.side;
-        self.with_screen_console(screen, Some(folder), Some(console), None, |b| {
-            b.rules_call_custom(side, nettai_content_api::RulesHook::CustomDeal)
-        });
+        self.with_screen_console(screen, Some(folder), Some(console), |b| b.rules_call_custom(side, nettai_content_api::RulesHook::CustomDeal));
     }
 
     fn opened(&mut self, screen: &mut Screen) {
@@ -874,22 +910,14 @@ impl Extras for SideExtras<'_> {
         self.with_screen(screen, None, |b| b.rules_call_custom_chip(side, nettai_content_api::RulesHook::CustomChipTakenBack, chip));
     }
 
-    fn window_update(
-        &mut self,
-        screen: &mut Screen,
-        folder: &mut BattleFolder,
-        console: &mut Console,
-        joy: &Joypad,
-        window: crate::content::WindowHandle,
-    ) -> bool {
+    fn window_update(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console, window: crate::content::WindowHandle) -> bool {
         let side = self.side;
-        self.with_screen_console(screen, Some(folder), Some(console), Some(joy), |b| b.call_window(side, window))
-            == nettai_content_api::Value::Bool(true)
+        self.with_screen_console(screen, Some(folder), Some(console), |b| b.call_window(side, window)) == nettai_content_api::Value::Bool(true)
     }
 
-    fn keys(&mut self, screen: &mut Screen, folder: &mut BattleFolder, joy: &Joypad) -> bool {
+    fn choose_form(&mut self, screen: &mut Screen, folder: &mut BattleFolder, entry: u8) {
         let side = self.side;
-        self.with_screen_console(screen, Some(folder), None, Some(joy), |b| b.rules_ask_custom(side, nettai_content_api::RulesHook::CustomKeys))
+        self.with_screen(screen, Some(folder), |b| b.rules_call_custom_entry(side, nettai_content_api::RulesHook::CustomChooseForm, entry));
     }
 
     fn take_back(&mut self, screen: &mut Screen, folder: &BattleFolder) -> bool {

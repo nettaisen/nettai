@@ -102,7 +102,6 @@ fn scramble(b: &mut Battle, viewer: u8, rng: &mut SplitMix64) {
     side.program_advances.0 ^= rng.next_u64();
     side.class_uses.standard = side.class_uses.standard.wrapping_add(3);
     if let Some(screen) = &mut side.screen {
-        screen.cursor = rng.below(10) as u8;
         screen.form = None;
     }
     let setup = &mut b.setup.players[them];

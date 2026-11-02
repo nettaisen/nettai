@@ -100,6 +100,7 @@ struct Round {
 fn round(p: &Played, net: &Arc<Net>, a: &Args, m: &nettai_match::Match, seed: u32, searcher: u8, ai_seed: u64) -> Round {
     let content = &p.game.content;
     let mut b: Battle = Set::of(content, m, seed).start();
+    let mut layers = [nettai_battle::custom::Layer::new(0, &b), nettai_battle::custom::Layer::new(1, &b)];
     let make = |s: u8| {
         let ai = NetAi::of(net.clone(), a.level, ai_seed ^ s as u64, Fingerprinter::made(p.fingerprints.clone())).expect("the AI");
         ai.with_search((s == searcher).then_some(a.search)).expect("the lookahead's thread")
@@ -128,10 +129,10 @@ fn round(p: &Played, net: &Arc<Net>, a: &Args, m: &nettai_match::Match, seed: u3
         let mut press = [0u16; 2];
         for s in 0..2u8 {
             let at = Instant::now();
-            press[s as usize] = if custom { ais[s as usize].custom_screen(&b, s) } else { ais[s as usize].fight(&b, s, 0) };
+            press[s as usize] = if custom { ais[s as usize].custom_screen(&b, s, &layers[s as usize]) } else { ais[s as usize].fight(&b, s, 0) };
             took[s as usize] += at.elapsed();
         }
-        if !env::step_battle(&mut b, press) {
+        if !env::step_layered(&mut b, &mut layers, press) {
             break 0;
         }
         t += 1;

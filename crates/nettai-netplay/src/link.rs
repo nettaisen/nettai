@@ -30,6 +30,9 @@ pub enum Delivery<I> {
     RoundEnd,
     /// They left the match.
     MatchEnd,
+    /// Their present delay, from their next tick's input on (`Element::Delay`:
+    /// presentation, for a replay).
+    Delay(u8),
 }
 
 /// Why the other player's stream can't go on.
@@ -156,6 +159,12 @@ impl<I: WireInput> InputLink<I> {
         self.out.push(Element::MatchEnd);
     }
 
+    /// This player's present delay, from their next tick on
+    /// (`Element::Delay`).
+    pub fn push_delay(&mut self, delay: u8) {
+        self.out.push(Element::Delay(delay));
+    }
+
     /// The datagram to send now: the unconfirmed tail of this player's
     /// stream, the ack of the other's, and the tick advantage.
     pub fn datagram(&mut self, now: u64) -> Vec<u8> {
@@ -213,6 +222,7 @@ impl<I: WireInput> InputLink<I> {
                 }
                 Element::RoundEnd => delivered.push(Delivery::RoundEnd),
                 Element::MatchEnd => delivered.push(Delivery::MatchEnd),
+                Element::Delay(d) => delivered.push(Delivery::Delay(d)),
             }
         }
         Ok(())

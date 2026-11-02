@@ -28,21 +28,38 @@
 //! input  := "TICK", then a record per tick to the end of the file
 //! record := control (a byte), then what its bits announce, in their order:
 //!           bit 0: side 0's input (u32) follows, bit 1: side 1's,
+//!           bit 5: side 0's screen delay (a byte) follows, bit 6: side 1's,
 //!           bit 2: the battle's digest after the tick (u64) follows,
 //!           bit 3: a round ended on the tick (a digest always comes with it),
 //!           bit 4: the set ended on it (a round did too; nothing comes after);
-//!           bits 5 to 7 are 0
+//!           bit 7 is 0
 //! string := length (LEB128), UTF-8
 //! ```
 //!
 //! Numbers are little-endian. A side's input is its tick's word
 //! (`nettai_battle::PlayerTick::word`): the GBA's buttons in the low ten
 //! bits, the party switch request in bits 10 and 11 (the member + 1, 0
-//! none), the microphone's level in bits 12 to 19. It is written when it
-//! changes: before the first tick nothing is
-//! held, and it carries across a round's end. A writer flushes each record
-//! as it is written, so a file cut short (a crash) holds every tick before
-//! the cut, and a reader says it was cut ([`End::Cut`]).
+//! none), the microphone's level in bits 12 to 19, the custom screen's
+//! choice in bits 20 to 25 (`ScreenChoice::code`, 0 none). It is written
+//! when it changes: before the first tick nothing is held, and it carries
+//! across a round's end. A writer flushes each record as it is written, so
+//! a file cut short (a crash) holds every tick before the cut, and a reader
+//! says it was cut ([`End::Cut`]).
+//!
+//! **The screens' presentation track.** Where each player's custom screen
+//! cursor was, what it hovered and what they had up over the chips (R's
+//! description, L's message, SELECT's hiding, the form list) is no part of
+//! the simulation: each player's own screen layer kept it, outside it
+//! (`nettai_battle::custom::layer`), driven by their buttons. A viewer shows
+//! both players' screens by running each side's layer again from the words'
+//! buttons. A player's layer read their buttons a few ticks before their word
+//! landed (their input delay: netplay's present delay, live play's input
+//! delay; none for a side played with no delay, a bot's, a trace's): the
+//! record keeps it as the side's screen delay ([`Tick::delays`]), written
+//! when it changes (0 before the first tick), and the layer's input before
+//! tick `u` is the buttons of the word that landed on tick `u + delay`. It
+//! is presentation alone: no part of the input the simulation takes, nor of
+//! its digest.
 //!
 //! **What a replay says of each side** is its player's name (the info) and
 //! its setup (the match: the navi, the folder and whatever else its game's
@@ -214,12 +231,20 @@ impl Info {
     }
 }
 
-/// One tick: both players' input by side (each a tick word: the buttons
-/// and the switch request, [`INPUT_MASK`]), and what a recording marks of
-/// it.
+/// One tick: both players' input by side (each a tick word: the buttons,
+/// the switch request, the microphone's level and the custom screen's
+/// choice, [`INPUT_MASK`]), each side's screen delay, and what a recording
+/// marks of it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Tick {
     pub inputs: [u32; 2],
+    /// Each side's screen delay that tick's word was decided with: the
+    /// ticks between the tick whose battle its player's custom screen layer
+    /// read and the tick the word lands on (their input delay: 0 for a side
+    /// played with none, a bot's, a trace's, lockstep). Presentation: the
+    /// layer's input before tick `u` is the buttons of the word that landed
+    /// on tick `u + delay` (the crate's docs).
+    pub delays: [u8; 2],
     /// The battle's digest after the tick, where it was taken.
     pub digest: Option<u64>,
     /// A round of the set ended on this tick (its digest is taken).
@@ -257,11 +282,14 @@ const INPUT_1: u8 = 1 << 1;
 const DIGEST: u8 = 1 << 2;
 const ROUND_ENDED: u8 = 1 << 3;
 const SET_ENDED: u8 = 1 << 4;
-const KNOWN: u8 = INPUT_0 | INPUT_1 | DIGEST | ROUND_ENDED | SET_ENDED;
+const DELAY_0: u8 = 1 << 5;
+const DELAY_1: u8 = 1 << 6;
+const KNOWN: u8 = INPUT_0 | INPUT_1 | DIGEST | ROUND_ENDED | SET_ENDED | DELAY_0 | DELAY_1;
 
 /// The bits a side's input may hold: the GBA's ten buttons, the switch
-/// request and the microphone level (`nettai_battle::input::TICK_WORD`).
-pub const INPUT_MASK: u32 = 0xF_FFFF;
+/// request, the microphone level and the custom screen's choice
+/// (`nettai_battle::input::TICK_WORD`).
+pub const INPUT_MASK: u32 = 0x3FF_FFFF;
 
 // ---- Writing ------------------------------------------------------------------
 
@@ -269,8 +297,10 @@ pub const INPUT_MASK: u32 = 0xF_FFFF;
 /// at once, then a record a tick, each flushed as it is written.
 pub struct Writer<W: Write> {
     out: W,
-    /// The input after the last tick written, by side.
+    /// The input after the last tick written, by side, and the screen
+    /// delays.
     inputs: [u32; 2],
+    delays: [u8; 2],
     /// The set's end was written: nothing comes after it.
     ended: bool,
 }
@@ -299,7 +329,7 @@ impl<W: Write> Writer<W> {
         b.extend_from_slice(b"TICK");
         out.write_all(&b)?;
         out.flush()?;
-        Ok(Writer { out, inputs: [0; 2], ended: false })
+        Ok(Writer { out, inputs: [0; 2], delays: [0; 2], ended: false })
     }
 
     /// The next tick, written and flushed. Refused (nothing written): a
@@ -327,6 +357,12 @@ impl<W: Write> Writer<W> {
                 rest.extend_from_slice(&t.inputs[side].to_le_bytes());
             }
         }
+        for side in 0..2 {
+            if t.delays[side] != self.delays[side] {
+                control |= [DELAY_0, DELAY_1][side];
+                rest.push(t.delays[side]);
+            }
+        }
         if let Some(d) = t.digest {
             control |= DIGEST;
             rest.extend_from_slice(&d.to_le_bytes());
@@ -337,6 +373,7 @@ impl<W: Write> Writer<W> {
         self.out.write_all(&record)?;
         self.out.flush()?;
         self.inputs = t.inputs;
+        self.delays = t.delays;
         self.ended = t.set_ended;
         Ok(())
     }
@@ -512,6 +549,7 @@ impl Replay {
         }
         let mut ticks = Vec::new();
         let mut inputs = [0u32; 2];
+        let mut delays = [0u8; 2];
         let end = loop {
             if b.rest.is_empty() {
                 break End::Open;
@@ -522,7 +560,7 @@ impl Replay {
                 return Err(format!("tick {n}: its record's bits {control:#04x} are none a writer writes"));
             }
             let record = |b: &mut Bytes| -> Result<Option<Tick>, String> {
-                let mut t = Tick { inputs, ..Tick::default() };
+                let mut t = Tick { inputs, delays, ..Tick::default() };
                 for side in 0..2 {
                     if control & [INPUT_0, INPUT_1][side] != 0 {
                         let Ok(word) = b.u32() else { return Ok(None) };
@@ -530,6 +568,12 @@ impl Replay {
                             return Err(format!("tick {n}: side {side}'s input {word:#06x} is past a tick word's bits"));
                         }
                         t.inputs[side] = word;
+                    }
+                }
+                for side in 0..2 {
+                    if control & [DELAY_0, DELAY_1][side] != 0 {
+                        let Ok(d) = b.u8() else { return Ok(None) };
+                        t.delays[side] = d;
                     }
                 }
                 if control & DIGEST != 0 {
@@ -548,6 +592,7 @@ impl Replay {
             };
             let Some(t) = record(&mut b)? else { break End::Cut };
             inputs = t.inputs;
+            delays = t.delays;
             ticks.push(t);
             if t.set_ended {
                 if !b.rest.is_empty() {

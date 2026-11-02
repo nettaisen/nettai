@@ -234,7 +234,7 @@ fn opened(content: &Arc<Content>, game: &str, megaman: &nettai_match::Side, stag
     let mut session = Session::new(Box::new(live));
     let opening = session.battle.round.mode;
     for _ in 0..OPENING {
-        if session.battle.round.mode != opening || !session.step(0) {
+        if session.battle.round.mode != opening || !session.step(nettai_battle::PlayerTick::default()) {
             break;
         }
     }

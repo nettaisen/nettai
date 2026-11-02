@@ -12,13 +12,18 @@
 //!   layout (`Screen::target_from`) and presses A, or opens the form list
 //!   and chooses in it. The network never presses a key of the screen
 //!   itself. A choice that changes nothing (a screen that refuses it) is
-//!   masked for the rest of that screen.
+//!   masked for the rest of that screen. Its keys go through its side's
+//!   custom screen layer (`nettai_battle::custom::Layer`), which holds the
+//!   cursor and the form list and makes the screen's choices of them, as a
+//!   player's keys do: the navigator reads where the cursor is there.
 
 use crate::spec;
 use nettai_battle::Battle;
 use nettai_battle::battle::mode;
 use nettai_battle::content::{CustomScreenLayout, ScreenKey, WindowHandle, WindowView};
+use nettai_battle::custom::layer::{ListStage, Sub};
 use nettai_battle::custom::screen::{ButtonCell, MAX_SELECTIONS, OK_SLOT, Phase, SLOTS, Screen, SlotKind, SlotState};
+use nettai_battle::custom::Layer;
 use nettai_battle::input::keys;
 use std::collections::VecDeque;
 
@@ -63,12 +68,13 @@ pub const KEYS: [u16; 7] = [keys::UP, keys::DOWN, keys::LEFT, keys::RIGHT, keys:
 
 const MOVES: [(u16, ScreenKey); 4] = [(keys::UP, ScreenKey::Up), (keys::DOWN, ScreenKey::Down), (keys::LEFT, ScreenKey::Left), (keys::RIGHT, ScreenKey::Right)];
 
-/// How many presses of a direction take the cursor from where it is to
-/// each slot, by the screen's own moves (none: it can't get there).
-pub fn steps(screen: &Screen, layout: &CustomScreenLayout) -> [Option<u8>; SLOTS] {
+/// How many presses of a direction take the cursor from where it is
+/// (`cursor`, its layer's) to each slot, by the screen's own moves (none:
+/// it can't get there).
+pub fn steps(screen: &Screen, cursor: u8, layout: &CustomScreenLayout) -> [Option<u8>; SLOTS] {
     let mut out = [None; SLOTS];
-    out[screen.cursor as usize] = Some(0);
-    let mut queue = VecDeque::from([screen.cursor]);
+    out[cursor as usize] = Some(0);
+    let mut queue = VecDeque::from([cursor]);
     while let Some(at) = queue.pop_front() {
         let here = out[at as usize].unwrap_or(0);
         for (_, key) in MOVES {
@@ -89,13 +95,13 @@ fn move_bit(at: u8, dir: usize) -> u64 {
 }
 const _: () = assert!(SLOTS * MOVES.len() <= 64);
 
-/// The first direction of the shortest way from the cursor to `target`
-/// (its place in `MOVES`), leaving out the moves in `blocked`.
-fn toward(screen: &Screen, layout: &CustomScreenLayout, target: u8, blocked: u64) -> Option<usize> {
+/// The first direction of the shortest way from the cursor (`cursor`) to
+/// `target` (its place in `MOVES`), leaving out the moves in `blocked`.
+fn toward(screen: &Screen, cursor: u8, layout: &CustomScreenLayout, target: u8, blocked: u64) -> Option<usize> {
     let mut first: [Option<usize>; SLOTS] = [None; SLOTS];
     let mut seen = [false; SLOTS];
-    seen[screen.cursor as usize] = true;
-    let mut queue = VecDeque::from([screen.cursor]);
+    seen[cursor as usize] = true;
+    let mut queue = VecDeque::from([cursor]);
     while let Some(at) = queue.pop_front() {
         for (dir, (_, key)) in MOVES.into_iter().enumerate() {
             if blocked & move_bit(at, dir) != 0 {
@@ -113,20 +119,22 @@ fn toward(screen: &Screen, layout: &CustomScreenLayout, target: u8, blocked: u64
     None
 }
 
-/// Whether a screen takes a decision now: it is choosing chips. A window
-/// of the rules is the navigator's alone.
-pub fn chooses(screen: &Screen) -> bool {
-    screen.phase == Phase::Choosing
+/// Whether a screen takes a decision now: it is choosing chips, its
+/// layer (`layer`) with nothing up over them. A window of the rules, the
+/// form list and the layer's other states (a description, SELECT's hiding)
+/// are the navigator's alone.
+pub fn chooses(screen: &Screen, layer: &Layer) -> bool {
+    screen.phase == Phase::Choosing && !layer.is_up()
 }
 
-/// The slots a pointer may be at (§4.2): while the screen is choosing, a
-/// chip it can still pick (selectable, the selection not full) or a
-/// button of the rules with uses left, or OK, that the cursor can reach and
-/// the screen hasn't refused (`refused`, a bit a slot); with `only_ok`, OK
-/// alone. Otherwise none.
-pub fn legal_slots(screen: &Screen, steps: &[Option<u8>; SLOTS], refused: u16, only_ok: bool) -> [bool; SLOTS] {
+/// The slots a pointer may be at (§4.2): while the screen is choosing
+/// (`choosing`: [`chooses`]), a chip it can still pick (selectable, the
+/// selection not full) or a button of the rules with uses left, or OK,
+/// that the cursor can reach and the screen hasn't refused (`refused`, a
+/// bit a slot); with `only_ok`, OK alone. Otherwise none.
+pub fn legal_slots(screen: &Screen, choosing: bool, steps: &[Option<u8>; SLOTS], refused: u16, only_ok: bool) -> [bool; SLOTS] {
     let mut out = [false; SLOTS];
-    if screen.phase != Phase::Choosing {
+    if !choosing {
         return out;
     }
     for (i, s) in screen.slots.iter().enumerate() {
@@ -154,15 +162,19 @@ pub struct Opener {
     pub cursor: u8,
 }
 
-/// The opener among the windows the key probe's keys opened
-/// (`env::probe_keys`, by [`KEYS`]), the cursor at `cursor`: the first key
-/// whose window is a form list's (its view the list's, or the list's
-/// opening).
-pub fn opener(b: &Battle, cursor: u8, opened: &[Option<WindowHandle>; KEYS.len()]) -> Option<Opener> {
-    KEYS.iter().zip(opened).find_map(|(&key, w)| {
-        let view = b.content.defs.window((*w)?).view;
-        matches!(view, Some(WindowView::FormListOpening | WindowView::FormList)).then_some(Opener { key, cursor })
-    })
+/// What a key the key probe pressed opened: the rules' form list (its
+/// layer's), or a window of the rules (the battle's).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Opened {
+    FormList,
+    Window(WindowHandle),
+}
+
+/// The opener among what the key probe's keys opened (`env::probe_keys`,
+/// by [`KEYS`]), the cursor at `cursor`: the first key that opened the form
+/// list.
+pub fn opener(cursor: u8, opened: &[Option<Opened>; KEYS.len()]) -> Option<Opener> {
+    KEYS.iter().zip(opened).find_map(|(&key, o)| (*o == Some(Opened::FormList)).then_some(Opener { key, cursor }))
 }
 
 /// The entries of the rules' form list (EXE6's Crosses) an action may
@@ -186,15 +198,15 @@ pub fn legal_forms(b: &Battle, side: u8, steps: &[Option<u8>; SLOTS], nav: &Navi
 /// list it gave up on, or opened on its way to a slot.
 pub const CLOSING_KEY: u16 = keys::B;
 
-/// The screen actions allowed now on side `side`'s screen in `b` (§4.2):
-/// while it is choosing, the legal slots, then the legal entries of the
-/// form list; with `only_ok` (the screen's decisions spent), OK alone.
-/// Otherwise none.
-pub fn legal_screen(b: &Battle, side: u8, nav: &Navigator, only_ok: bool) -> [bool; spec::SCREEN_ACTIONS] {
+/// The screen actions allowed now on side `side`'s screen in `b`, its
+/// layer `layer` (§4.2): while it is choosing, the legal slots, then the
+/// legal entries of the form list; with `only_ok` (the screen's decisions
+/// spent), OK alone. Otherwise none.
+pub fn legal_screen(b: &Battle, side: u8, layer: &Layer, nav: &Navigator, only_ok: bool) -> [bool; spec::SCREEN_ACTIONS] {
     let mut out = [false; spec::SCREEN_ACTIONS];
-    let Some(screen) = b.custom.sides[side as usize].screen.as_ref().filter(|s| chooses(s)) else { return out };
-    let steps = steps(screen, &b.game_rules().custom_screen);
-    out[..SLOTS].copy_from_slice(&legal_slots(screen, &steps, nav.refused, only_ok));
+    let Some(screen) = b.custom.sides[side as usize].screen.as_ref().filter(|s| chooses(s, layer)) else { return out };
+    let steps = steps(screen, layer.cursor, &b.game_rules().custom_screen);
+    out[..SLOTS].copy_from_slice(&legal_slots(screen, true, &steps, nav.refused, only_ok));
     if !only_ok {
         out[SLOTS..].copy_from_slice(&legal_forms(b, side, &steps, nav));
     }
@@ -214,15 +226,43 @@ struct Picked {
 }
 
 impl Picked {
-    fn of(screen: &Screen) -> Picked {
+    fn of(screen: &Screen, cursor: u8) -> Picked {
         Picked {
             selected: screen.selected,
             selection: screen.selection,
             states: screen.slots.map(|s| s.state),
             phase: std::mem::discriminant(&screen.phase),
             form: screen.form,
-            cursor: screen.cursor,
+            cursor,
         }
+    }
+}
+
+/// What is up over a screen's chips: a window of the rules (the battle's:
+/// a form chosen, or another), the form list's stages (its layer's), or
+/// another of the layer's own states (a description, SELECT's hiding, L's
+/// message).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Over {
+    Nothing,
+    ListOpening,
+    List,
+    ListClosing,
+    Chosen,
+    Window,
+    Busy,
+}
+
+fn over(b: &Battle, screen: &Screen, layer: &Layer) -> Over {
+    if let Phase::Window { window, .. } = screen.phase {
+        return if b.content.defs.window(window).view == Some(WindowView::FormChosen) { Over::Chosen } else { Over::Window };
+    }
+    match layer.sub {
+        Sub::None => Over::Nothing,
+        Sub::List(ListStage::Opening(_)) => Over::ListOpening,
+        Sub::List(ListStage::Up(_)) => Over::List,
+        Sub::List(ListStage::Closing(_)) => Over::ListClosing,
+        _ => Over::Busy,
     }
 }
 
@@ -329,8 +369,9 @@ impl Navigator {
         };
     }
 
-    /// This tick's buttons on side `side`'s screen in `b`.
-    pub fn buttons(&mut self, b: &Battle, side: u8) -> u16 {
+    /// This tick's buttons on side `side`'s screen in `b`, its layer
+    /// `layer` (where the cursor and the form list are).
+    pub fn buttons(&mut self, b: &Battle, side: u8, layer: &Layer) -> u16 {
         let s = &b.custom.sides[side as usize];
         let Some(screen) = s.screen.as_ref().filter(|_| b.round.mode == mode::CUSTOM) else {
             return 0;
@@ -343,29 +384,36 @@ impl Navigator {
             self.release -= 1;
             if self.release == 0
                 && let Some((slot, before)) = self.pressed.take()
-                && Picked::of(screen) == before
+                && Picked::of(screen, layer.cursor) == before
             {
                 // (A pick that changed nothing: the screen refuses it.)
                 self.refused |= 1 << slot;
             }
             return 0;
         }
+        let up = over(b, screen, layer);
         if let Some((at, dir)) = self.moved.take()
-            && matches!(screen.phase, Phase::Window { .. })
+            && !matches!(up, Over::Nothing | Over::Busy)
         {
             self.blocked |= move_bit(at, dir);
         }
-        if let Phase::Window { window, .. } = screen.phase {
-            let view = b.content.defs.window(window).view;
-            return match self.doing {
-                Doing::Listing(entry) => self.in_list(b, side, entry, view),
-                _ if view == Some(WindowView::FormList) => self.press(CLOSING_KEY),
-                _ => 0,
-            };
+        match up {
+            Over::Nothing => {}
+            // (A description, the window hidden, L's message: the original's
+            // states other than the choosing's, which read no navigator's.)
+            Over::Busy => return 0,
+            up => {
+                return match self.doing {
+                    Doing::Listing(entry) => self.in_list(b, side, layer, entry, up),
+                    _ if up == Over::List => self.press(CLOSING_KEY),
+                    _ => 0,
+                };
+            }
         }
-        if !chooses(screen) {
+        if screen.phase != Phase::Choosing {
             return 0;
         }
+        let cursor = layer.cursor;
         let layout = &b.game_rules().custom_screen;
         match self.doing {
             Doing::Idle => 0,
@@ -376,12 +424,12 @@ impl Navigator {
                     return 0;
                 }
                 self.tries += 1;
-                if screen.cursor == target {
+                if cursor == target {
                     self.doing = Doing::Idle;
-                    self.pressed = Some((target, Picked::of(screen)));
+                    self.pressed = Some((target, Picked::of(screen, cursor)));
                     return self.press(keys::A);
                 }
-                self.walk(screen, layout, target).unwrap_or_else(|| {
+                self.walk(screen, cursor, layout, target).unwrap_or_else(|| {
                     self.refused |= 1 << target;
                     self.doing = Doing::Idle;
                     0
@@ -395,11 +443,11 @@ impl Navigator {
                 }
                 let opener = self.opener.filter(|_| !l.opened && !l.leaving && self.tries < MOST_PRESSES);
                 let walked = opener.and_then(|o| {
-                    if screen.cursor == o.cursor {
+                    if cursor == o.cursor {
                         self.listing.opened = true;
                         Some(self.press(o.key))
                     } else {
-                        self.walk(screen, layout, o.cursor)
+                        self.walk(screen, cursor, layout, o.cursor)
                     }
                 });
                 self.tries += 1;
@@ -417,21 +465,21 @@ impl Navigator {
 
     /// A press toward slot `target` along the screen's moves, leaving out
     /// the moves that opened a window; none: there is no way there.
-    fn walk(&mut self, screen: &Screen, layout: &CustomScreenLayout, target: u8) -> Option<u16> {
-        let dir = toward(screen, layout, target, self.blocked)?;
-        self.moved = Some((screen.cursor, dir));
+    fn walk(&mut self, screen: &Screen, cursor: u8, layout: &CustomScreenLayout, target: u8) -> Option<u16> {
+        let dir = toward(screen, cursor, layout, target, self.blocked)?;
+        self.moved = Some((cursor, dir));
         Some(self.press(MOVES[dir].0))
     }
 
-    /// A tick in a window of the rules while choosing entry `entry` of the
-    /// form list, the window's view `view`.
-    fn in_list(&mut self, b: &Battle, side: u8, entry: u8, view: Option<WindowView>) -> u16 {
-        match view {
-            Some(WindowView::FormChosen) => {
+    /// A tick with something up over the chips (`up`: the form list, a
+    /// window of the rules) while choosing entry `entry` of the form list.
+    fn in_list(&mut self, b: &Battle, side: u8, layer: &Layer, entry: u8, up: Over) -> u16 {
+        match up {
+            Over::Chosen => {
                 self.listing.chosen = true;
                 0
             }
-            Some(WindowView::FormList) => {
+            Over::List => {
                 let Some(list) = b.form_list(side) else { return self.back_out() };
                 if list.chosen.is_some() {
                     self.listing.chosen = true;
@@ -443,15 +491,16 @@ impl Navigator {
                     return self.back_out();
                 }
                 self.tries += 1;
-                if list.cursor == entry {
+                let at = layer.list_cursor;
+                if at == entry {
                     self.listing.pressed = true;
                     return self.press(keys::A);
                 }
-                if l.last == Some(list.cursor) {
+                if l.last == Some(at) {
                     self.listing.dir += 1;
                 }
                 let Some(&(key, _)) = MOVES.get(self.listing.dir as usize) else { return self.back_out() };
-                self.listing.last = Some(list.cursor);
+                self.listing.last = Some(at);
                 self.press(key)
             }
             // (The list opening or closing, the rules' other windows: they
@@ -480,14 +529,14 @@ impl Navigator {
 /// that no policy plays): every chip it can pick, in slot order, then OK,
 /// pointed at through the navigator. A chip that would stand alone as a
 /// modifier is passed over. In a window, nothing: the navigator's.
-pub fn scripted_pointer(b: &Battle, side: u8, nav: &Navigator) -> i32 {
+pub fn scripted_pointer(b: &Battle, side: u8, layer: &Layer, nav: &Navigator) -> i32 {
     let s = &b.custom.sides[side as usize];
     let Some(screen) = s.screen.as_ref() else { return OK_SLOT as i32 };
-    if !chooses(screen) {
+    if !chooses(screen, layer) {
         return -1;
     }
     let layout = &b.game_rules().custom_screen;
-    let legal = legal_slots(screen, &steps(screen, layout), nav.refused, false);
+    let legal = legal_slots(screen, true, &steps(screen, layer.cursor, layout), nav.refused, false);
     let last = screen.selection().last().and_then(|&slot| screen.chip_in(slot, &s.folder)).map(|c| c.id);
     let pick = (0..SLOTS).find(|&i| {
         legal[i]

@@ -37,8 +37,9 @@ pub fn tick_input(inputs: [&PlayerInput; 2]) -> TickInput {
     TickInput { players: [inputs[0].tick, inputs[1].tick], events }
 }
 
-/// A player's input on the wire: the tick's word (the buttons and the
-/// switch request), and the events as flags
+/// A player's input on the wire: the tick's word (the buttons, the switch
+/// request, the microphone's level and the custom screen's choice), and the
+/// events as flags
 /// ([`flags`]).
 impl WireInput for PlayerInput {
     fn encode(&self) -> (u32, u8) {
@@ -76,9 +77,10 @@ impl Game for Battle {
         self
     }
 
-    /// Buttons carry on; events happen once.
+    /// Buttons (and the microphone's level) carry on; events, a switch
+    /// request and a custom screen's choice happen once.
     fn predict(last: &PlayerInput) -> PlayerInput {
-        PlayerInput { tick: last.tick, events: TickEvents::default() }
+        PlayerInput { tick: PlayerTick { switch_to: None, choice: None, ..last.tick }, events: TickEvents::default() }
     }
 }
 
@@ -154,13 +156,14 @@ mod tests {
     use nettai_battle::input::keys;
 
     /// A player's input goes through a link and comes out the same: the
-    /// buttons, and the link closing.
+    /// buttons, a custom screen's choice, and the link closing.
     #[test]
     fn a_player_input_crosses_the_link() {
         let inputs = [
             PlayerInput { tick: PlayerTick::buttons(keys::A | keys::LEFT), events: TickEvents::default() },
             PlayerInput { tick: PlayerTick::buttons(0), events: TickEvents { link_closed: true } },
             PlayerInput { tick: PlayerTick::buttons(keys::L), events: TickEvents::default() },
+            PlayerInput { tick: PlayerTick::buttons(keys::A).with_choice(Some(nettai_battle::ScreenChoice::Pick(2))), events: TickEvents::default() },
         ];
         let (mut a, mut b) = (InputLink::<PlayerInput>::new(64), InputLink::<PlayerInput>::new(64));
         for (i, input) in inputs.iter().enumerate() {
@@ -177,9 +180,21 @@ mod tests {
             })
             .collect();
         assert_eq!(got, inputs);
-        // A frame's header, then a byte or two a tick.
-        assert!(datagram.len() < 16, "{} bytes", datagram.len());
+        // A frame's header, then a byte or two a tick (four with a choice).
+        assert!(datagram.len() < 18, "{} bytes", datagram.len());
         // A flag no event has is refused.
         assert!(PlayerInput::decode(0, 2).is_err());
+    }
+
+    /// A predicted input carries the buttons on, and nothing that happens
+    /// once: no event, switch request or choice.
+    #[test]
+    fn a_prediction_carries_the_buttons_alone() {
+        let last = PlayerInput {
+            tick: PlayerTick { held: keys::B, switch_to: Some(2), mic_level: 3, choice: Some(nettai_battle::ScreenChoice::Ok) },
+            events: TickEvents { link_closed: true },
+        };
+        let p = <Battle as Game>::predict(&last);
+        assert_eq!(p, PlayerInput { tick: PlayerTick { held: keys::B, switch_to: None, mic_level: 3, choice: None }, events: TickEvents::default() });
     }
 }

@@ -26,6 +26,13 @@
 //! next with [`Peer::end_round`], which marks the stream; the other
 //! player's inputs after their mark are the next round's, and those before
 //! it that went past the end are dropped.
+//!
+//! Present delays: each peer tells the other its present delay (its
+//! player's input delay) with its first tick and whenever it changes
+//! (`protocol::Element::Delay`), and keeps both players' as they went
+//! ([`Peer::local_delay`], [`Peer::remote_delay`]): no input and no part of
+//! the simulation, but what a replay needs to show each player's custom
+//! screen as they saw it (nettai-replay's `Tick::delays`).
 
 use std::collections::VecDeque;
 
@@ -125,6 +132,22 @@ impl PeerStats {
     }
 }
 
+/// A player's present delay from one of their ticks on: their `tick`th
+/// input (from 0) of the round `round` (the rounds before it, counted from
+/// 0).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct DelayMark {
+    pub round: u32,
+    pub tick: u32,
+    pub delay: u8,
+}
+
+/// A player's present delay as of their `tick`th input of round `round`, by
+/// the marks of it in order: the last at or before it; 0 before any.
+fn delay_at(marks: &[DelayMark], round: u32, tick: u32) -> u8 {
+    marks.iter().rev().find(|m| (m.round, m.tick) <= (round, tick)).map_or(0, |m| m.delay)
+}
+
 /// One peer: its player's session and its end of the link.
 pub struct Peer<G: Game, O: Observer<G> = ()>
 where
@@ -147,6 +170,14 @@ where
     decided: Option<G::Input>,
     delivered: Vec<Delivery<G::Input>>,
     stats: PeerStats,
+    /// This player's inputs decided in its round, and the other's delivered
+    /// in theirs; each one's present delay as they told it, and the last
+    /// this peer sent.
+    local_ticks: u32,
+    remote_ticks: u32,
+    local_delays: Vec<DelayMark>,
+    remote_delays: Vec<DelayMark>,
+    announced: Option<u8>,
 }
 
 impl<G: Game, O: Observer<G>> Peer<G, O>
@@ -168,6 +199,11 @@ where
             decided: None,
             delivered: Vec::new(),
             stats: PeerStats::default(),
+            local_ticks: 0,
+            remote_ticks: 0,
+            local_delays: Vec::new(),
+            remote_delays: Vec::new(),
+            announced: None,
         }
     }
 
@@ -210,6 +246,27 @@ where
         self.remote_left
     }
 
+    /// This player's present delay as of their `tick`th input (from 0) of
+    /// round `round` (counted from 0: [`Peer::round`] while it is played):
+    /// the ticks between the frame that decided it and the tick it lands
+    /// on. Presentation, for a replay.
+    pub fn local_delay(&self, round: u32, tick: u32) -> u8 {
+        delay_at(&self.local_delays, round, tick)
+    }
+
+    /// The other player's present delay as of their `tick`th input of round
+    /// `round`, as they told it (`protocol::Element::Delay`); 0 before they
+    /// told any. Presentation, for a replay: their custom screen layer read
+    /// their buttons that many ticks before the tick their word lands on.
+    pub fn remote_delay(&self, round: u32, tick: u32) -> u8 {
+        delay_at(&self.remote_delays, round, tick)
+    }
+
+    /// Both players' present delays as told, in order ([`DelayMark`]).
+    pub fn delays(&self) -> (&[DelayMark], &[DelayMark]) {
+        (&self.local_delays, &self.remote_delays)
+    }
+
     /// Take a datagram from the other peer, received at `now`. An error
     /// ends the match: a malformed datagram (the other isn't a peer of this
     /// protocol), a gap past the horizon, or the other's inputs running
@@ -223,6 +280,7 @@ where
         for d in delivered.drain(..) {
             match d {
                 Delivery::Input { input, tick_advantage } => {
+                    self.remote_ticks += 1;
                     if self.remote_round == self.round {
                         self.session.add_remote_input(0, input, tick_advantage);
                     } else if self.remote_round > self.round {
@@ -233,11 +291,13 @@ where
                 }
                 Delivery::RoundEnd => {
                     self.remote_round += 1;
+                    self.remote_ticks = 0;
                     if self.remote_round > self.round + 1 && result.is_ok() {
                         result = Err(LinkError::Malformed(protocol::invalid("the other player ended a round this one hasn't started")));
                     }
                 }
                 Delivery::MatchEnd => self.remote_left = true,
+                Delivery::Delay(delay) => self.remote_delays.push(DelayMark { round: self.remote_round, tick: self.remote_ticks, delay }),
             }
         }
         self.delivered = delivered;
@@ -274,10 +334,19 @@ where
     }
 
     /// The next tick's local input (`local_frontier`): sent with this
-    /// frame's datagram, simulated by the next [`Peer::advance`].
+    /// frame's datagram, simulated by the next [`Peer::advance`]. The first,
+    /// and the first after the present delay changed, go after the delay
+    /// (`protocol::Element::Delay`).
     pub fn decide(&mut self, input: G::Input) {
         assert!(self.decided.is_none(), "an input is decided already");
+        let delay = self.config.present_delay.min(u8::MAX as u32) as u8;
+        if self.announced != Some(delay) {
+            self.link.push_delay(delay);
+            self.announced = Some(delay);
+            self.local_delays.push(DelayMark { round: self.round, tick: self.local_ticks, delay });
+        }
         self.link.push(&input, self.session.local_tick_advantage());
+        self.local_ticks += 1;
         self.decided = Some(input);
     }
 
@@ -332,7 +401,8 @@ where
 
     /// Present `ticks` behind the newest local input from the next frame on
     /// (getgud's `Session::set_present_delay`), this round and the rounds
-    /// after.
+    /// after; the next input decided tells the other peer
+    /// (`protocol::Element::Delay`).
     pub fn set_present_delay(&mut self, ticks: u32) {
         self.config.present_delay = ticks;
         self.session.set_present_delay(ticks);
@@ -346,6 +416,7 @@ where
         assert!(self.decided.is_none(), "a round ends between frames");
         self.link.push_round_end();
         self.round += 1;
+        self.local_ticks = 0;
         self.session = next.session(self.config.present_delay);
         self.drift = 0;
         self.stalled = false;
@@ -397,5 +468,41 @@ mod tests {
         };
         assert!(matches!(result, Err(LinkError::Malformed(_))), "{result:?}");
         assert!(sent <= 2 * protocol::HORIZON as u64 + 100, "{sent}");
+    }
+
+    /// Each peer tells the other its present delay with its first tick and
+    /// when it changes; both keep both players' by round and tick, out of
+    /// the input: a delay changed between two ticks applies from the
+    /// second, and carries into the next round.
+    #[test]
+    fn the_present_delays_go_to_the_other_peer() {
+        let mut a = Peer::new(BattleWorld::new(standin(), 0), PeerConfig::new(4, 8));
+        let mut b = Peer::new(BattleWorld::new(standin(), 1), PeerConfig::new(2, 8));
+        let mut now = 0;
+        let frame = |a: &mut Peer<StandInBattle>, b: &mut Peer<StandInBattle>, now: u64| {
+            a.decide(0);
+            b.decide(0);
+            let (da, db) = (a.datagram(now), b.datagram(now));
+            a.receive(&db, now).unwrap();
+            b.receive(&da, now).unwrap();
+            a.advance(|_| ());
+            b.advance(|_| ());
+        };
+        for _ in 0..3 {
+            frame(&mut a, &mut b, now);
+            now += 1;
+        }
+        a.set_present_delay(1);
+        for _ in 0..3 {
+            frame(&mut a, &mut b, now);
+            now += 1;
+        }
+        assert_eq!([0, 2, 3, 5].map(|t| b.remote_delay(0, t)), [4, 4, 1, 1]);
+        assert_eq!([0, 2, 3, 5].map(|t| a.local_delay(0, t)), [4, 4, 1, 1]);
+        assert_eq!((a.remote_delay(0, 0), a.remote_delay(0, 5)), (2, 2));
+        assert_eq!(b.remote_delay(1, 0), 1, "it carries into the next round");
+        assert_eq!(b.delays().1, [DelayMark { round: 0, tick: 0, delay: 4 }, DelayMark { round: 0, tick: 3, delay: 1 }]);
+        // (The ticks' inputs are the players' alone.)
+        assert_eq!(b.session().remote_queue_length(0), 0);
     }
 }

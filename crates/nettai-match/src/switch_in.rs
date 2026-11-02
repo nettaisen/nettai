@@ -82,14 +82,14 @@ fn fighting_sides(content: &std::sync::Arc<nettai_battle::Content>, left: &str, 
     let text = format!("game = \"exe5\"\n\n[[round]]\nstage = \"{stage}\"\n\n[left]\n{left}\n\n[right]\n{right}\n");
     let m = crate::parse(content, &text).unwrap_or_else(|p| panic!("{p:?}"));
     let mut b = Battle::new(m.round(content, 0x5EED), content.clone());
-    let mut last = [0u16; 2];
+    let mut last = [None; 2];
     for _ in 0..3000 {
         if b.round.mode == nettai_battle::battle::mode::FIGHTING && b.fight.state == nettai_battle::battle::fight::FIGHTING {
             return b;
         }
         let input = [0, 1].map(|side| {
-            last[side] = nettai_battle::scenario::custom_buttons(&b, side, last[side]);
-            PlayerTick::buttons(last[side])
+            last[side] = nettai_battle::scenario::custom_choice(&b, side, last[side]);
+            PlayerTick::buttons(0).with_choice(last[side])
         });
         b.tick(&input, Default::default());
     }

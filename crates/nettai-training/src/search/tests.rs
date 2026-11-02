@@ -75,21 +75,22 @@ fn lookahead_costs_by_game() {
         let mut b = nettai_match::Set::of(&c, &m, 7).start();
         // (Into the fight: the first custom screens chosen as the scripted players choose.)
         let mut navs = [act::Navigator::default(), act::Navigator::default()];
+        let mut layers = [nettai_battle::custom::Layer::new(0, &b), nettai_battle::custom::Layer::new(1, &b)];
         for t in 0..6000 {
             let mut press = [0u16; 2];
             if b.round.mode == nettai_battle::battle::mode::CUSTOM {
                 for s in 0..2u8 {
                     let nav = &mut navs[s as usize];
                     if nav.idle() {
-                        let p = act::scripted_pointer(&b, s, nav);
+                        let p = act::scripted_pointer(&b, s, &layers[s as usize], nav);
                         nav.point(p);
                     }
-                    press[s as usize] = nav.buttons(&b, s);
+                    press[s as usize] = nav.buttons(&b, s, &layers[s as usize]);
                 }
             } else {
                 navs = [act::Navigator::default(), act::Navigator::default()];
             }
-            step_battle(&mut b, press);
+            crate::env::step_layered(&mut b, &mut layers, press);
             if crate::env::fight_runs(&b) && t > 300 {
                 break;
             }

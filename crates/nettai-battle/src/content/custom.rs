@@ -215,6 +215,29 @@ pub struct CustomScreenLayout {
     /// What the chip window shows for the damage of a chip whose flags
     /// have `damage_shown_variable`. Presentation.
     pub variable_damage_shows: VariableDamageShows,
+    /// The rules' form list's window (EXE6's Cross window), where the rules
+    /// keep a form list (their state's `form_list.*` fields): its browsing
+    /// is each player's own layer's (`custom::layer`), the choice the rules'
+    /// (`custom.choose_form`). None: the screen has none.
+    pub form_list: Option<FormListRules>,
+}
+
+/// The rules' form list's window as each player's layer shows it (EXE6's
+/// Cross window: `sub_8028B74`'s UP, `sub_8027834`, `sub_802794A`,
+/// `sub_802790C`). Presentation.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FormListRules {
+    /// The slots whose UP opens it (EXE6's top row and OK).
+    pub opens_from: Vec<u8>,
+    /// Its opening's ticks (the window's map steps every 3, and on the last
+    /// it is up, its first tick run at once: EXE6's 12) and its closing's
+    /// (the chips' window again on the last: EXE6's 6).
+    pub opening: u16,
+    pub closing: u16,
+    /// Its sounds as it opens (EXE6's 0x7A) and closes (0x7D).
+    pub open_sound: crate::sound::SoundId,
+    pub close_sound: crate::sound::SoundId,
 }
 
 /// What the chip window shows for the damage of a chip whose flags have
@@ -412,6 +435,7 @@ impl Default for CustomScreenLayout {
             chatbox_end_clears_tiles: false,
             chatbox_character_ends_tick: false,
             variable_damage_shows: VariableDamageShows::Damage,
+            form_list: None,
         }
     }
 }

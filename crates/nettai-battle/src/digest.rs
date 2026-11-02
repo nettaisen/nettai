@@ -189,6 +189,8 @@ impl Hash for Battle {
             inputs,
             switch_inputs,
             mic_levels,
+            screen_choices,
+            screen_cues_at: _,
             hands,
             transform_requests,
             turn_transforms,
@@ -235,6 +237,7 @@ impl Hash for Battle {
         inputs.hash(h);
         switch_inputs.hash(h);
         mic_levels.hash(h);
+        screen_choices.hash(h);
         hands.hash(h);
         transform_requests.hash(h);
         turn_transforms.hash(h);

@@ -10,9 +10,9 @@ use crate::battle::{Battle, TickEvents, mode};
 use crate::behavior::Behaviors;
 use crate::content::{ChipCode, Content, testing};
 use nettai_content_api::ChipHandle;
-use crate::custom::screen::{OK_SLOT, Phase, SlotKind, SlotState};
+use crate::custom::screen::{Phase, SlotKind, SlotState};
 use crate::custom::{BattleFolder, FolderChip, PlayerSetup};
-use crate::input::{PlayerTick, keys};
+use crate::input::{PlayerTick, ScreenChoice, keys};
 use crate::setup::{BattleSettings, NaviStats, NaviWeapons, RoundSetup, SetScore};
 use std::sync::Arc;
 
@@ -119,24 +119,18 @@ pub fn setup_with_handles(chips: &[ChipHandle]) -> RoundSetup {
     s
 }
 
-/// A player's buttons on the custom screen: A on the chip under the
-/// cursor, RIGHT to the next one, until four are picked; then START and A
-/// on OK. A and START are released between presses.
-pub fn custom_buttons(b: &Battle, side: usize, last: u16) -> u16 {
-    let Some(screen) = b.custom.sides[side].screen.as_ref().filter(|s| s.phase == Phase::Choosing) else { return 0 };
-    let here = &screen.slots[screen.cursor as usize];
-    let press = |k: u16| if last & (keys::A | keys::START) != 0 { 0 } else { k };
-    let pickable = screen.slots.iter().any(|x| matches!(x.kind, SlotKind::Chip { .. }) && x.state == SlotState::Selectable);
-    if screen.selected < 4 && pickable {
-        if matches!(here.kind, SlotKind::Chip { .. }) && here.state == SlotState::Selectable {
-            press(keys::A)
-        } else {
-            keys::RIGHT
-        }
-    } else if screen.cursor != OK_SLOT {
-        press(keys::START)
-    } else {
-        press(keys::A)
+/// A player's choice on the custom screen: the first chip that can be
+/// picked, until four are; then OK. A tick with a choice is followed by one
+/// without, as a key is let go between presses (`last`: the tick before's).
+pub fn custom_choice(b: &Battle, side: usize, last: Option<ScreenChoice>) -> Option<ScreenChoice> {
+    let screen = b.custom.sides[side].screen.as_ref().filter(|s| s.phase == Phase::Choosing)?;
+    if last.is_some() {
+        return None;
+    }
+    let pickable = (0..10u8).find(|&s| matches!(screen.slots[s as usize].kind, SlotKind::Chip { .. }) && screen.slots[s as usize].state == SlotState::Selectable);
+    match pickable {
+        Some(slot) if screen.selected < 4 => Some(ScreenChoice::Pick(slot)),
+        _ => Some(ScreenChoice::Ok),
     }
 }
 
@@ -178,7 +172,7 @@ pub fn record_on_content(setup: RoundSetup, content: Arc<Content>, ticks: usize,
     // Per side: a held direction and how long to keep it.
     let mut held = [0u16; 2];
     let mut hold_for = [0u32; 2];
-    let mut last = [0u16; 2];
+    let mut last = [None; 2];
     for _ in 0..ticks {
         let events = TickEvents::default();
         let in_custom = b.round.mode == mode::CUSTOM;
@@ -199,9 +193,9 @@ pub fn record_on_content(setup: RoundSetup, content: Arc<Content>, ticks: usize,
                 hold_for[side] = 2 + (r >> 4) % 12;
             }
             hold_for[side] -= 1;
-            let buttons = if in_custom { custom_buttons(&b, side, last[side]) } else { held[side] };
-            input[side] = PlayerTick::buttons(buttons);
-            last[side] = buttons;
+            let choice = if in_custom { custom_choice(&b, side, last[side]) } else { None };
+            input[side] = PlayerTick::buttons(if in_custom { 0 } else { held[side] }).with_choice(choice);
+            last[side] = choice;
         }
         b.tick(&input, events.clone());
         tape.push(Tick { input, events });

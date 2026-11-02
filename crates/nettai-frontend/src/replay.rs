@@ -19,7 +19,8 @@ use std::io::Write;
 use std::sync::Arc;
 
 use nettai_battle::content::Content;
-use nettai_battle::{Battle, BattleResult, RoundEnd, TickInput};
+use nettai_battle::custom::Layer;
+use nettai_battle::{Battle, BattleResult, PlayerTick, RoundEnd, TickInput};
 use nettai_match::{After, Match, Set};
 // (What a host reads of a replay, without naming nettai-replay.)
 pub use nettai_replay::{End, Info, MatchKind, Mismatch, ReadError, Replay, Tick};
@@ -182,6 +183,9 @@ pub struct ReplayPlayer {
     /// The side the simulation's setup states.
     local_side: u8,
     end: End,
+    /// Both sides' custom screen layers, run again from the recorded words'
+    /// buttons (made with the round's first tick).
+    layers: Option<[Layer; 2]>,
 }
 
 /// The set a replay plays on `content`: its match, read and checked, from
@@ -218,7 +222,7 @@ impl ReplayPlayer {
             return Err(Refused::NoSide(viewer));
         }
         let local_side = set.first().local_side;
-        Ok(ReplayPlayer { set, ticks: replay.ticks.clone(), at: 0, round: 1, viewer, local_side, end: replay.end })
+        Ok(ReplayPlayer { set, ticks: replay.ticks.clone(), at: 0, round: 1, viewer, local_side, end: replay.end, layers: None })
     }
 
     /// The tick last played.
@@ -231,17 +235,47 @@ impl Driver for ReplayPlayer {
     fn start(&mut self) -> Battle {
         self.at = 0;
         self.round = 1;
+        self.layers = None;
         let mut b = self.set.start();
         b.setup.local_side = self.viewer;
         b
     }
 
-    fn next(&mut self, b: &Battle, _: u16) -> Option<Step> {
+    fn next(&mut self, b: &Battle, _: PlayerTick) -> Option<Step> {
         let t = *self.ticks.get(self.at)?;
+        // Each side's layer as it ran: before this tick it read the buttons of the word that landed the side's
+        // delay later (what it chose then is the recording's, in its words).
+        let mut layers = self.layers.take().unwrap_or_else(|| [Layer::new(0, b), Layer::new(1, b)]);
+        for (side, layer) in layers.iter_mut().enumerate() {
+            let read = self.ticks.get(self.at + t.delays[side] as usize).map_or(0, |r| r.inputs[side] as u16 & 0x3FF);
+            layer.input(PlayerTick::buttons(read), b);
+        }
+        self.layers = Some(layers);
         self.at += 1;
-        // (The buttons are the whole input, as a netplay peer's are.)
+        // (The words are the whole input, as a netplay peer's are.)
         let TickInput { players, events } = nettai_netplay::standin::tick_input(b, t.inputs);
         Some(Step { input: players, events, frame: Some(self.at as u32) })
+    }
+
+    fn layers(&self) -> [Option<&Layer>; 2] {
+        match &self.layers {
+            Some([a, b]) => [Some(a), Some(b)],
+            None => [None, None],
+        }
+    }
+
+    fn follow(&mut self, b: &Battle) {
+        for layer in self.layers.iter_mut().flatten() {
+            layer.follow(b);
+        }
+    }
+
+    fn set_layers(&mut self, layers: [Option<Layer>; 2]) -> bool {
+        self.layers = match layers {
+            [Some(a), Some(b)] => Some([a, b]),
+            _ => None,
+        };
+        true
     }
 
     fn check(&self, b: &Battle) -> Vec<String> {
@@ -277,6 +311,7 @@ impl Driver for ReplayPlayer {
         if let After::Round(next) = &mut after {
             next.setup.local_side = self.viewer;
             self.round += 1;
+            self.layers = None;
         }
         Some(after)
     }
@@ -320,7 +355,7 @@ pub fn play_out(content: &Arc<Content>, replay: &Replay) -> Result<Outcome, Refu
     let mut d = ReplayPlayer::new(content, replay, Some(0))?;
     let mut b = d.start();
     let mut out = Outcome { ticks: 0, rounds: Vec::new(), result: None, end: d.end, diverged: None, stopped: None };
-    while let Some(step) = d.next(&b, 0) {
+    while let Some(step) = d.next(&b, PlayerTick::default()) {
         let ticked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.tick(&step.input, step.events)));
         out.ticks += 1;
         if let Err(e) = ticked {
@@ -416,7 +451,7 @@ mod tests {
             let mut s = Session::new(Box::new(short_set::Scripted { live, winners: winners.to_vec() }));
             s.record(Recorder::new(Box::new(sink.clone()), content, &m, &Info::of(MatchKind::Offline, 0)).unwrap()).unwrap();
             let mut scores = Vec::new();
-            while s.step(0) {
+            while s.step(nettai_battle::PlayerTick::default()) {
                 assert!(s.ticks < 60_000, "{case}: the set doesn't end ({})", s.driver.position());
                 if s.new_round {
                     let r = &s.battle.round;
@@ -451,7 +486,7 @@ mod tests {
             assert_eq!(out, want, "{case}");
             let mut p = Session::new(Box::new(ReplayPlayer::new(content, &replay, Some(0)).unwrap()));
             let mut ends = Vec::new();
-            while p.step(0) {
+            while p.step(nettai_battle::PlayerTick::default()) {
                 if p.new_round {
                     ends.push(p.ticks);
                 }
@@ -485,7 +520,7 @@ mod tests {
         assert_eq!((out.diverged, out.end, out.ticks, out.result), (None, End::Set, s.ticks, s.result));
         let mut p = Session::new(Box::new(ReplayPlayer::new(&content, &replay, Some(0)).unwrap()));
         assert_eq!(p.battle.setup.settings.background, played[0], "the first round on its background");
-        while p.step(0) {}
+        while p.step(nettai_battle::PlayerTick::default()) {}
         assert_eq!((p.diverged, p.result), (None, s.result));
     }
 
@@ -541,7 +576,7 @@ mod tests {
                 let mut p = Session::new(Box::new(ReplayPlayer::new(&content, &replay, Some(side)).unwrap()));
                 assert_eq!(p.battle.setup.local_side, side);
                 let mut rounds = 0;
-                while p.step(0) {
+                while p.step(nettai_battle::PlayerTick::default()) {
                     rounds += p.new_round as u32;
                     assert_eq!(p.battle.setup.local_side, side, "{game}: shown from side {side}");
                 }
@@ -571,8 +606,8 @@ mod tests {
         let started = web_time::Instant::now();
         while s.ticks < 60_000 {
             let mashed = masher.buttons();
-            let keys = if s.battle.round.mode == mode::CUSTOM { short_set::shooter(&s.battle, 0, s.ticks as u32) } else { mashed };
-            if !s.step(keys) {
+            let input = if s.battle.round.mode == mode::CUSTOM { short_set::shooter(&s.battle, 0, s.ticks as u32) } else { nettai_battle::PlayerTick::buttons(mashed) };
+            if !s.step(input) {
                 break;
             }
         }

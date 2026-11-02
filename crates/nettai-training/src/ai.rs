@@ -45,6 +45,7 @@ use crate::observe::{self, AttackHistory, Extra, Names, Obs};
 use crate::search::{Search, Worker};
 use crate::spec;
 use nettai_battle::battle::mode;
+use nettai_battle::custom::Layer;
 use nettai_battle::input::keys;
 use nettai_battle::setup::SetScore;
 use nettai_battle::{Battle, Content};
@@ -560,7 +561,7 @@ impl NetAi {
         &self.knobs
     }
 
-    fn extra(&self, r: &Round) -> Extra {
+    fn extra(&self, r: &Round, layer: Option<&Layer>) -> Extra {
         Extra {
             delay: self.knobs.delay,
             log: r.log,
@@ -568,12 +569,15 @@ impl NetAi {
             refused: r.nav.refused,
             screen_decisions: r.decisions,
             only_ok: r.decisions >= self.screen_decisions,
+            layer: layer.copied(),
         }
     }
 
     /// This tick's buttons for side `side` of `b` (both of the trait's
-    /// calls: the tick is one tick of the round either way).
-    fn tick(&mut self, b: &Battle, side: u8) -> u16 {
+    /// calls: the tick is one tick of the round either way), its custom
+    /// screen layer `layer` (on the custom screen: its buttons go through
+    /// it, and it holds the cursor its navigator walks).
+    fn tick(&mut self, b: &Battle, side: u8, layer: Option<&Layer>) -> u16 {
         let key = (b.setup.content.0, b.setup.score);
         if self.round.as_ref().is_none_or(|r| r.key != key) {
             // (A new round: the GRU's state, the ring and the screen's from nothing.)
@@ -602,13 +606,13 @@ impl NetAi {
             self.fingerprints.want(folders_chips(b));
         }
         let mut r = self.round.take().expect("a round");
-        let held = self.play(b, side, &mut r);
+        let held = self.play(b, side, layer, &mut r);
         r.t += 1;
         self.round = Some(r);
         held
     }
 
-    fn play(&mut self, b: &Battle, side: u8, r: &mut Round) -> u16 {
+    fn play(&mut self, b: &Battle, side: u8, layer: Option<&Layer>, r: &mut Round) -> u16 {
         let (k, d) = (self.k, self.knobs.delay as u32);
         // The tick the battle just ran: its attacks into the log, as the env
         // keeps it after each tick.
@@ -660,7 +664,7 @@ impl NetAi {
         let names = &self.names.as_ref().expect("names").0;
         // The view a later decision will need (the env's ring).
         if r.t > 0 && (r.t + d).is_multiple_of(k) {
-            let extra = self.extra(r);
+            let extra = self.extra(r, layer);
             let at = (((r.t + d) / k) as usize) % r.ring.len();
             let slot = &mut r.ring[at];
             slot.0 = Some(r.t);
@@ -682,7 +686,7 @@ impl NetAi {
                 let obs = if delayed {
                     &slot.1
                 } else {
-                    let extra = self.extra(r);
+                    let extra = self.extra(r, layer);
                     observe::encode(b, side, names, &extra, &mut self.obs);
                     &self.obs
                 };
@@ -705,7 +709,7 @@ impl NetAi {
                 &slot.1
             } else {
                 // (A decision earlier than the delay: what it sees now.)
-                let extra = self.extra(r);
+                let extra = self.extra(r, layer);
                 observe::encode(b, side, names, &extra, &mut self.obs);
                 &self.obs
             };
@@ -727,17 +731,17 @@ impl NetAi {
             }
         }
         // (The custom screen is open only while the fight doesn't run.)
-        if custom && r.nav.idle() && screen.is_some_and(|s| act::chooses(&s)) {
+        if let Some(layer) = layer.filter(|l| custom && r.nav.idle() && screen.is_some_and(|s| act::chooses(&s, l))) {
             if r.probe.is_none() {
-                r.probe = Some(env::probe(b, side, &mut r.nav));
+                r.probe = Some(env::probe(b, layer, side, &mut r.nav));
             }
-            let extra = self.extra(r);
+            let extra = self.extra(r, Some(layer));
             let names = &self.names.as_ref().expect("names").0;
             observe::encode(b, side, names, &extra, &mut self.obs);
             // (No decision on a view without a chip's fingerprint: the screen
             // waits, and asks again next tick.)
             if !waits(&self.fingerprints, &self.obs) {
-                let legal = act::legal_screen(b, side, &r.nav, extra.only_ok);
+                let legal = act::legal_screen(b, side, layer, &r.nav, extra.only_ok);
                 let out = self.net.forward(&self.obs, &mut self.mem, Heads::Screen);
                 let logits = out.screen.expect("the screen's head");
                 match net::choose(&logits, &legal, &self.knobs, &mut self.rng) {
@@ -763,8 +767,8 @@ impl NetAi {
         r.in_screen = custom;
         if self.error.is_some() {
             0
-        } else if custom {
-            r.nav.buttons(b, side)
+        } else if let Some(layer) = layer.filter(|_| custom) {
+            r.nav.buttons(b, side, layer)
         } else if fight_runs(b) {
             // (It opens the custom screen as the env did in training, a while after the gauge is full: the user,
             // "allow the dummy to go into custom screen". The player may open it first.)
@@ -811,11 +815,11 @@ pub fn setup_chips(content: &Content, setup: &nettai_battle::setup::RoundSetup) 
 
 impl Ai for NetAi {
     fn fight(&mut self, b: &Battle, side: u8, _theirs: u16) -> u16 {
-        self.tick(b, side)
+        self.tick(b, side, None)
     }
 
-    fn custom_screen(&mut self, b: &Battle, side: u8) -> u16 {
-        self.tick(b, side)
+    fn custom_screen(&mut self, b: &Battle, side: u8, layer: &Layer) -> u16 {
+        self.tick(b, side, Some(layer))
     }
 
     fn reset(&mut self) {
@@ -889,8 +893,8 @@ impl Ai for WaitingAi {
         self.ai().map_or(0, |ai| ai.fight(b, side, theirs))
     }
 
-    fn custom_screen(&mut self, b: &Battle, side: u8) -> u16 {
-        self.ai().map_or(0, |ai| ai.custom_screen(b, side))
+    fn custom_screen(&mut self, b: &Battle, side: u8, layer: &Layer) -> u16 {
+        self.ai().map_or(0, |ai| ai.custom_screen(b, side, layer))
     }
 
     fn reset(&mut self) {

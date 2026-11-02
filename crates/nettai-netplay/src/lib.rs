@@ -27,10 +27,12 @@
 //!   every tick it simulates, every rewind and every tick that settles;
 //! - [`battle`]: [`nettai_battle::Battle`] as a game, on the engine's per-tick
 //!   input record, and the sound cue feed;
-//! - [`standin`]: a battle stepped on the buttons alone, for synthetic
-//!   matches;
+//! - [`standin`]: a battle stepped on the tick words alone (the buttons,
+//!   a switch request, a custom screen's choice), for live netplay and
+//!   synthetic matches;
 //! - [`protocol`]: nettai's rennet protocol: the elements a player's stream
-//!   carries (ticks, round and match markers), the per-frame
+//!   carries (ticks, round and match markers, the sender's present delay),
+//!   the per-frame
 //!   meta (the tick advantage), their byte-minimal codecs, the horizon;
 //! - [`wire`]: byte codecs for the engine types that travel (a recorded
 //!   custom-screen result, a player's folder and Crosses);

@@ -474,6 +474,15 @@ pub struct Battle {
     /// packet's +5: 0x020022E8), which the side's rules may hear
     /// (`mic_heard`). Nothing in nettai sets it.
     pub mic_levels: [u8; 2],
+    /// Each side's choice on its custom screen this tick (`PlayerTick::
+    /// choice`), which its screen takes if it chooses.
+    pub screen_choices: [Option<crate::input::ScreenChoice>; 2],
+    /// Where each side's custom screen's own cues of the last tick end in
+    /// the cues its player hears (`sound_cues_for`), if its screen ticked:
+    /// its layer's, the cursor's and the dark chip hover's, which the
+    /// original made in the same call, go there (`screen_cues_at`).
+    /// Output only, as the cues are.
+    pub screen_cues_at: [Option<usize>; 2],
     pub hands: [ChipHand; 2],
     /// Both players' transformation requests from the last custom screen.
     pub transform_requests: [TransformRequest; 2],
@@ -799,6 +808,8 @@ impl Battle {
             inputs: [InputRecord::default(); 2],
             switch_inputs: [None; 2],
             mic_levels: [0; 2],
+            screen_choices: [None; 2],
+            screen_cues_at: [None; 2],
             hands,
             transform_requests: [TransformRequest::NONE; 2],
             turn_transforms: [TransformRequest::NONE; 2],
@@ -1052,6 +1063,15 @@ impl Battle {
         &self.sound[side as usize]
     }
 
+    /// Where `side`'s custom screen's own cues of the last tick end among
+    /// [`Battle::sound_cues_for`]'s, if its screen ticked: the cues its
+    /// player's layer made of the tick (`custom::Layer::cues`: the
+    /// cursor's, a sub-screen's, the dark chip hover's), which the original
+    /// made in the same call after the screen's state, go in there.
+    pub fn screen_cues_at(&self, side: u8) -> Option<usize> {
+        self.screen_cues_at[side as usize & 1]
+    }
+
     /// The players who asked for the pause on the last tick, by side, in a
     /// round whose host answers it (`HostKeys::pause`): each pressed START
     /// where the original's fight reads it (`sub_800A046`: fighting, the
@@ -1076,6 +1096,7 @@ impl Battle {
         for heard in &mut self.sound {
             heard.clear();
         }
+        self.screen_cues_at = [None; 2];
         self.pause_asked = [false; 2];
         if self.is_stopped() {
             return;
@@ -1100,22 +1121,22 @@ impl Battle {
         self.fade.step(self.content.rules().effects.fade_clear);
     }
 
-    /// Both custom screens' joypads read this tick's buttons. (The
-    /// original's consoles exchanged packets over the link here,
-    /// `sub_801FF18`; the engine has no link: each tick's buttons are both
-    /// players', and each console knows the other's custom screen at
-    /// once.)
-    fn read_joypads(&mut self, input: &[PlayerTick; 2]) {
-        for (side, t) in self.custom.sides.iter_mut().zip(input) {
-            side.joypad.update(t.held);
-        }
+    /// Both custom screens' choices of this tick. (The original's consoles
+    /// exchanged packets over the link here, `sub_801FF18`; the engine has
+    /// no link: each tick's input is both players', and each console knows
+    /// the other's custom screen at once.)
+    fn read_choices(&mut self, input: &[PlayerTick; 2]) {
+        self.screen_choices = [input[0].choice, input[1].choice];
     }
 
     fn tick_running(&mut self, input: &[PlayerTick; 2]) {
         // Both players' buttons, and whether each one's custom screen is
         // open (status bit 2) and, where its screen says so, its selection
-        // runs (bit 0: EXE4's), reach the fight.
-        self.read_joypads(input);
+        // runs (bit 0: EXE4's), reach the fight. (Its record takes the
+        // buttons through the custom screen too, which takes its player's
+        // choices instead: a button held across its close isn't a new
+        // press on the fight's first tick.)
+        self.read_choices(input);
         for p in 0..2 {
             self.inputs[p].update(input[p].held & 0x3FF | keys::PRESENT);
             let side = &self.custom.sides[p];
@@ -1153,7 +1174,7 @@ impl Battle {
     /// then close the link session (mode 0, `sub_8007B9C`). Once it has
     /// closed (mode 4) the round is over (`sub_8007CA0`).
     fn tick_end(&mut self, input: &[PlayerTick; 2], events: &TickEvents) {
-        self.read_joypads(input);
+        self.read_choices(input);
         if self.round.mode != 0 {
             if self.outcome.is_none() {
                 self.finish_round();
@@ -2679,14 +2700,14 @@ mod tests {
     /// runs (fighting state 8) and reads keys.
     fn fighting(host_keys: crate::setup::HostKeys) -> Battle {
         let mut b = Battle::new(RoundSetup { host_keys, ..crate::scenario::setup() }, crate::scenario::content());
-        let mut last = [0u16; 2];
+        let mut last = [None; 2];
         for _ in 0..2000 {
             if b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING {
                 return b;
             }
             let input = [0, 1].map(|side| {
-                last[side] = crate::scenario::custom_buttons(&b, side, last[side]);
-                PlayerTick::buttons(last[side])
+                last[side] = crate::scenario::custom_choice(&b, side, last[side]);
+                PlayerTick::buttons(0).with_choice(last[side])
             });
             b.tick(&input, TickEvents::default());
         }

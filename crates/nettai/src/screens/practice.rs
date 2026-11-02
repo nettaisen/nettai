@@ -1573,7 +1573,7 @@ impl Screen for Practice {
         // (The round's number is counted as the round opens: before its first tick it is the one before.)
         let round = battle.round.round.max(1);
         // (Under the menu the battle takes no button, and the dummy's go nowhere: nothing is shown held.)
-        let held = if session.inputs && !b.menu_open() { [0, 1].map(|side| battle.custom.sides[side].joypad.held) } else { [0; 2] };
+        let held = if session.inputs && !b.menu_open() { [0, 1].map(|side| battle.inputs[side].held & 0x3FF) } else { [0; 2] };
         let (new_round, pressed) = (session.round != Some(round), session.held != held);
         if !new_round && !pressed {
             return;

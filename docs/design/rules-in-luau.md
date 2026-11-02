@@ -407,8 +407,9 @@ by the binding.
 | `validate(side)` | only when a tool asks (`Battle::validate`: a match's checks, a netplay offer, the build screens) | what is wrong with the side's setup, each a typed problem |
 
 **The custom screen** (§4.4): `custom.open(side) -> Offer`, a button's `available(side)` and `press(side)`, a
-window's `update(side, pad)`, `custom.keys(side, pad) -> handled`, `custom.hand_size(side) -> n`,
-`custom.chip_check(side, chip) -> chip`, `custom.confirm(side)`.
+window's `update(side)`, `custom.choose_form(side, entry)`, `custom.hand_size(side) -> n`,
+`custom.chip_check(side, chip) -> chip`, `custom.confirm(side)`. (The screen takes each player's choices and reads
+no key: the keys and the cursor are the player's layer's, docs/design/custom-screen-actions.md.)
 
 **The navi framework** (kinds/player):
 
@@ -472,12 +473,15 @@ Each side's screen is simulated from its own player's joypad (as now) and reads 
 - `SlotKind::Button(ButtonHandle)`: a slot the side's layout gives to a system's button (EXE6's Beast Out button,
   ChpShufl's re-deal, DustCross's scrap). A button's `available(side)` decides its state at the open and after
   each pick; `press(side)` what A does, which may start the shared machinery (`custom.sacrifice`, `custom.redeal`).
-- `Phase::Window(WindowHandle)`: a system's window, whose `update(side, pad)` runs every tick and returns stay,
-  back to choosing, or a pick. EXE6's Cross window and its Beast Out animations are windows. A window may also stand
+- `Phase::Window(WindowHandle)`: a system's window, whose `update(side)` runs every tick and returns stay or
+  back to choosing. EXE6's Cross chosen and its Beast Out animations are windows (the Cross window's browsing is
+  each player's layer's since 2026-11-01). A window may also stand
   for the whole screen, if a game's screen shares little with the core (EXE5's Team Battle screen, which EXE5 runs
   instead of the shared one under battle flag 0x40, exe5-map.md §4, is decided when it is read).
-- `custom.keys(side, pad)` is asked first in the choosing phase, for keys the chip window gives no meaning (EXE6: Up
-  at the top row or on OK opens the Cross window). Systems are asked in order; the first that handles a key takes it.
+- `custom.choose_form(side, entry)` takes a player's choice of an entry of the rules' form list (EXE6's Cross),
+  which their layer showed them by the layout's `form_list` (UP at the top row or on OK opens it). (Until
+  2026-11-01, `custom.keys(side, pad)`, asked first in the choosing phase for keys the chip window gives no
+  meaning, opened the window in the rules.)
 - The result: the framework's part (the hand, the navi stats, the transform record) and each system's `result`
   fields. exe6-compat writes EXE6's transform record into them.
 
@@ -1769,6 +1773,12 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
   - EXE5's replays as main's: 402 match, 18 replay, 223,414 of 948,097 frames.
 ### S6b2, the Cross window (2026-10-03)
 
+(Since 2026-11-01 the window's browsing, UP opening it, its keys and cursor, its opening and closing, and a Cross's
+description, is each player's layer's; the rules keep the Cross chosen, `custom.choose_form` and its window, and
+`custom.keys`, `custom.cursor`, `set_cursor`, `pressed`, `repeated`, `describe` and `draw_form_list_cursor` are
+gone: docs/design/custom-screen-actions.md, docs/engine/custom-screen.md §4. What follows is as it was built
+then.)
+
 - **The Cross window is the cross system's** (content/exe6/rules/cross/window.luau):
   - as the screen opens (`custom.open`): the Crosses offered (`sub_8029EF8`, `sub_8029F70`) and the window's Cross
     tab (`sub_8029EC8`, `sub_8026840`), with nettai's Cross list (window.luau's `cross_at`, `owns_cross` and the
@@ -2782,8 +2792,9 @@ swing bug, and the rollback tests (the stored emotion is state).
 The frontend matched on names content gave (a window `cross_opening` of system `cross`, a button `soul`, a state
 field `offered`, a fact `version`). It reads typed values now (§4.8):
 
-- **The engine** (`content/views.rs`): `WindowView` (`form_list_opening`, `form_list`, `form_list_closing`,
-  `form_chosen`, `offer_flight`, `chip_flight`) and `ButtonView` (`form_offer`, `chip_picture`), each a window's or
+- **The engine** (`content/views.rs`): `WindowView` (`form_chosen`, `offer_flight`, `chip_flight`; the form list's
+  own three, `form_list_opening`, `form_list` and `form_list_closing`, went with its browsing to the player's layer
+  on 2026-11-01) and `ButtonView` (`form_offer`, `chip_picture`), each a window's or
   a button's `view` in its definition, read at load (`WindowDef::view`, `ButtonDef::view`; an unknown name is the
   load's error, with the system's module and the window or button); `ViewFields`, the state fields a view shows,
   found by name in the view's own system at load (`SystemDef::views`); `PlayerFact` (`version`, `beast_out`,

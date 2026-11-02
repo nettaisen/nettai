@@ -1,5 +1,6 @@
 use super::*;
 use crate::testing::content;
+use nettai_battle::custom::Layer;
 use nettai_battle::custom::screen::{OK_SLOT, SLOTS, SlotKind};
 use nettai_netplay::rng::SplitMix64;
 
@@ -203,8 +204,8 @@ fn envs_of_one_deal_deal_the_same_rounds() {
 }
 
 /// Side 1's first custom screen of a round of random builds of `game`,
-/// choosing.
-pub(crate) fn at_the_custom_screen(game: &str, seed: u32) -> Battle {
+/// choosing, and both sides' custom screen layers.
+pub(crate) fn at_the_custom_screen(game: &str, seed: u32) -> (Battle, [Layer; 2]) {
     let c = content(game);
     let maker = Maker::new(&c).unwrap();
     let mut picks = Picks::new(seed);
@@ -212,22 +213,23 @@ pub(crate) fn at_the_custom_screen(game: &str, seed: u32) -> Battle {
     let sides = [maker.random(&mut picks, &none, 0.75, crate::builds::Combos::NONE).unwrap().side, maker.random(&mut picks, &none, 0.75, crate::builds::Combos::NONE).unwrap().side];
     let m = maker.round_with(sides, None, seed).unwrap();
     let mut b = Set::of(&c, &m, seed).start();
+    let mut layers = [Layer::new(0, &b), Layer::new(1, &b)];
     for _ in 0..900 {
         if b.round.mode == mode::CUSTOM && b.custom.sides[1].screen.is_some_and(|s| s.phase == Phase::Choosing) {
-            return b;
+            return (b, layers);
         }
-        step_battle(&mut b, [0, 0]);
+        step_layered(&mut b, &mut layers, [0, 0]);
     }
     panic!("{game}: no custom screen");
 }
 
 /// Point side 1's navigator at `action` in `b` and press until it is idle
-/// again; the ticks it took.
-fn navigate(b: &mut Battle, nav: &mut Navigator, action: i32) -> u32 {
+/// again, through the sides' layers; the ticks it took.
+fn navigate(b: &mut Battle, layers: &mut [Layer; 2], nav: &mut Navigator, action: i32) -> u32 {
     nav.point(action);
     for t in 0..200 {
-        let held = nav.buttons(b, 1);
-        step_battle(b, [0, held]);
+        let held = nav.buttons(b, 1, &layers[1]);
+        step_layered(b, layers, [0, held]);
         if nav.idle() {
             return t + 1;
         }
@@ -242,14 +244,14 @@ fn navigate(b: &mut Battle, nav: &mut Navigator, action: i32) -> u32 {
 fn the_navigator_reaches_every_slot_it_may_point_at() {
     for game in GAMES {
         for seed in 1..4 {
-            let b = at_the_custom_screen(game, seed);
+            let (b, layers) = at_the_custom_screen(game, seed);
             let screen = b.custom.sides[1].screen.unwrap();
-            let legal = act::legal_screen(&b, 1, &Navigator::default(), false);
+            let legal = act::legal_screen(&b, 1, &layers[1], &Navigator::default(), false);
             assert!(legal[OK_SLOT as usize], "{game}: OK");
             for slot in (0..SLOTS).filter(|&s| legal[s]) {
-                let mut copy = b.clone();
+                let (mut copy, mut copied) = (b.clone(), layers);
                 let mut nav = Navigator::default();
-                let ticks = navigate(&mut copy, &mut nav, slot as i32);
+                let ticks = navigate(&mut copy, &mut copied, &mut nav, slot as i32);
                 let after = copy.custom.sides[1].screen.unwrap();
                 assert_eq!(nav.refused, 0, "{game} seed {seed}: slot {slot} refused");
                 match screen.slots[slot].kind {
@@ -269,7 +271,7 @@ fn the_navigator_reaches_every_slot_it_may_point_at() {
 /// OK.
 #[test]
 fn a_refused_pick_is_masked() {
-    let mut b = at_the_custom_screen("exe4", 1);
+    let (mut b, mut layers) = at_the_custom_screen("exe4", 1);
     let content = b.content.clone();
     let screen = b.custom.sides[1].screen.unwrap();
     let (slot, chip) = screen.dealt(&b.custom.sides[1].folder).next().expect("a chip dealt");
@@ -277,11 +279,11 @@ fn a_refused_pick_is_masked() {
     let SlotKind::Chip { index, .. } = screen.slots[slot as usize].kind else { panic!("a chip's slot") };
     b.custom.sides[1].folder.chips[index as usize] = Some(FolderChip::new(chip.id, code));
     let mut nav = Navigator::default();
-    navigate(&mut b, &mut nav, slot as i32);
+    navigate(&mut b, &mut layers, &mut nav, slot as i32);
     assert_eq!(nav.refused, 1 << slot, "the refused pick");
-    let legal = act::legal_screen(&b, 1, &nav, false);
+    let legal = act::legal_screen(&b, 1, &layers[1], &nav, false);
     assert!(!legal[slot as usize] && legal[OK_SLOT as usize]);
-    navigate(&mut b, &mut nav, OK_SLOT as i32);
+    navigate(&mut b, &mut layers, &mut nav, OK_SLOT as i32);
     assert!(!matches!(b.custom.sides[1].screen.unwrap().phase, Phase::Choosing));
 }
 
@@ -292,39 +294,40 @@ fn a_refused_pick_is_masked() {
 fn past_its_decisions_a_screen_allows_ok_alone() {
     for game in GAMES {
         for seed in 1..6 {
-            let b = at_the_custom_screen(game, seed);
+            let (b, layers) = at_the_custom_screen(game, seed);
             let mut nav = Navigator::default();
-            probe(&b, 1, &mut nav);
-            let past = act::legal_screen(&b, 1, &nav, true);
+            probe(&b, &layers[1], 1, &mut nav);
+            let past = act::legal_screen(&b, 1, &layers[1], &nav, true);
             assert_eq!((0..spec::SCREEN_ACTIONS).filter(|&a| past[a]).collect::<Vec<_>>(), [OK_SLOT as usize], "{game} seed {seed}");
         }
     }
     let mut windows = 0;
     for seed in 1..12 {
-        let mut b = at_the_custom_screen("exe6", seed);
+        let (mut b, mut layers) = at_the_custom_screen("exe6", seed);
         let mut nav = Navigator::default();
-        probe(&b, 1, &mut nav);
+        probe(&b, &layers[1], 1, &mut nav);
         let Some(o) = nav.opener else { continue };
-        open_the_list(&mut b, o);
-        assert!(act::legal_screen(&b, 1, &nav, false).iter().all(|&l| !l), "seed {seed}: an action in a window");
+        open_the_list(&mut b, &mut layers, o);
+        assert!(act::legal_screen(&b, 1, &layers[1], &nav, false).iter().all(|&l| !l), "seed {seed}: an action in a window");
         windows += 1;
     }
     assert!(windows > 0, "no seed's screen had a form list");
 }
 
 /// Press opener `o`'s key on side 1's screen in `b`, the cursor where it
-/// was found, till the form list is up.
-fn open_the_list(b: &mut Battle, o: act::Opener) {
-    assert_eq!(b.custom.sides[1].screen.unwrap().cursor, o.cursor);
+/// was found, till the form list is up (its layer's).
+fn open_the_list(b: &mut Battle, layers: &mut [Layer; 2], o: act::Opener) {
+    assert_eq!(layers[1].cursor, o.cursor);
     for held in [o.key, o.key, 0] {
-        step_battle(b, [0, held]);
+        step_layered(b, layers, [0, held]);
     }
     for _ in 0..30 {
-        let Some(Phase::Window { window, .. }) = b.custom.sides[1].screen.map(|s| s.phase) else { panic!("the list didn't open") };
-        if b.content.defs.window(window).view == Some(nettai_battle::content::WindowView::FormList) {
-            return;
+        match layers[1].list_stage() {
+            Some(nettai_battle::custom::layer::ListStage::Up(_)) => return,
+            Some(_) => {}
+            None => panic!("the list didn't open"),
         }
-        step_battle(b, [0, 0]);
+        step_layered(b, layers, [0, 0]);
     }
     panic!("the list never came up");
 }
@@ -338,10 +341,10 @@ fn open_the_list(b: &mut Battle, o: act::Opener) {
 fn the_navigator_chooses_every_entry_of_the_form_list() {
     let mut chosen = 0;
     for seed in 1..12 {
-        let b = at_the_custom_screen("exe6", seed);
+        let (b, layers) = at_the_custom_screen("exe6", seed);
         let mut nav = Navigator::default();
-        probe(&b, 1, &mut nav);
-        let legal = act::legal_screen(&b, 1, &nav, false);
+        probe(&b, &layers[1], 1, &mut nav);
+        let legal = act::legal_screen(&b, 1, &layers[1], &nav, false);
         let entries: Vec<usize> = (0..spec::FORM_ENTRIES).filter(|&k| legal[SLOTS + k]).collect();
         if entries.is_empty() {
             continue;
@@ -351,18 +354,18 @@ fn the_navigator_chooses_every_entry_of_the_form_list() {
         let far = (0..SLOTS).rev().find(|&s| legal[s] && s != OK_SLOT as usize && matches!(b.custom.sides[1].screen.unwrap().slots[s].kind, SlotKind::Chip { .. }));
         for first in [None, far].into_iter().flatten().map(Some).chain([None]) {
             for &k in &entries {
-                let mut copy = b.clone();
+                let (mut copy, mut copied) = (b.clone(), layers);
                 let mut nav = nav;
                 if let Some(slot) = first {
-                    navigate(&mut copy, &mut nav, slot as i32);
+                    navigate(&mut copy, &mut copied, &mut nav, slot as i32);
                 }
-                let ticks = navigate(&mut copy, &mut nav, (SLOTS + k) as i32);
+                let ticks = navigate(&mut copy, &mut copied, &mut nav, (SLOTS + k) as i32);
                 let after = copy.custom.sides[1].screen.unwrap();
-                assert!(act::chooses(&after), "seed {seed} entry {k}: the screen isn't choosing ({ticks} ticks)");
+                assert!(act::chooses(&after, &copied[1]), "seed {seed} entry {k}: the screen isn't choosing ({ticks} ticks)");
                 assert_eq!(nav.refused_forms, 0, "seed {seed} entry {k}: refused");
                 assert!(after.form.is_some(), "seed {seed} entry {k}: no form");
                 assert_eq!(copy.form_list(1).unwrap().chosen, Some(list.offered[k]), "seed {seed} entry {k}");
-                let again = act::legal_screen(&copy, 1, &nav, false);
+                let again = act::legal_screen(&copy, 1, &copied[1], &nav, false);
                 assert!(again[SLOTS..].iter().all(|&l| !l), "seed {seed}: an entry allowed with a Cross chosen");
                 assert!(again[OK_SLOT as usize]);
                 chosen += 1;
@@ -378,18 +381,18 @@ fn the_navigator_chooses_every_entry_of_the_form_list() {
 #[test]
 fn an_entry_the_list_does_not_take_is_refused() {
     for seed in 1..12 {
-        let mut b = at_the_custom_screen("exe6", seed);
+        let (mut b, mut layers) = at_the_custom_screen("exe6", seed);
         let mut nav = Navigator::default();
-        probe(&b, 1, &mut nav);
+        probe(&b, &layers[1], 1, &mut nav);
         let Some(o) = nav.opener else { continue };
-        if !act::legal_screen(&b, 1, &nav, false)[SLOTS] {
+        if !act::legal_screen(&b, 1, &layers[1], &nav, false)[SLOTS] {
             continue;
         }
         nav.opener = Some(act::Opener { key: keys::RIGHT, ..o });
-        navigate(&mut b, &mut nav, SLOTS as i32);
+        navigate(&mut b, &mut layers, &mut nav, SLOTS as i32);
         assert_eq!(nav.refused_forms, 1);
-        assert!(act::chooses(&b.custom.sides[1].screen.unwrap()));
-        assert!(!act::legal_screen(&b, 1, &nav, false)[SLOTS]);
+        assert!(act::chooses(&b.custom.sides[1].screen.unwrap(), &layers[1]));
+        assert!(!act::legal_screen(&b, 1, &layers[1], &nav, false)[SLOTS]);
         return;
     }
     panic!("no seed's screen offered a Cross");
@@ -444,18 +447,18 @@ fn the_key_probe_finds_a_window_where_there_is_one() {
         let mut found = [false; act::KEYS.len()];
         let mut openers = 0;
         for seed in 1..12 {
-            let mut b = at_the_custom_screen(game, seed);
+            let (mut b, mut layers) = at_the_custom_screen(game, seed);
             let digest = b.digest();
             let mut nav = Navigator::default();
-            let p = probe(&b, 1, &mut nav);
+            let p = probe(&b, &layers[1], 1, &mut nav);
             assert_eq!(b.digest(), digest);
-            assert_eq!(p, probe_keys(&b, 1).map(|w| w.is_some()));
+            assert_eq!(p, probe_keys(&b, &layers[1], 1).map(|w| w.is_some()));
             for k in 0..p.len() {
                 found[k] |= p[k];
             }
             // (The opener's key, pressed, opens the list.)
             if let Some(o) = nav.opener {
-                open_the_list(&mut b, o);
+                open_the_list(&mut b, &mut layers, o);
                 openers += 1;
             }
         }

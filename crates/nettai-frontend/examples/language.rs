@@ -17,7 +17,7 @@
 //! The game's ROMs are read as the tools read them (`$NETTAI_ROMS`, else the Legacy Collection Steam installed).
 
 use nettai_battle::battle::mode;
-use nettai_battle::custom::Phase;
+use nettai_battle::custom::layer::Sub;
 use nettai_battle::input::keys;
 use nettai_frontend::Player;
 use nettai_frontend::driver::LivePlayer;
@@ -94,9 +94,9 @@ fn run() -> Result<String, String> {
         differ += (pictures[0] != pictures[1]) as u32;
         // What is on screen at each change is what the check is for.
         if tick == IN_DESCRIPTION {
-            let phase = players[0].battle().custom.sides[0].screen.as_ref().map(|s| &s.phase);
-            if !matches!(phase, Some(Phase::Description { .. })) {
-                return Err(format!("no chip description is open at tick {tick} ({phase:?})"));
+            let up = players[0].session().driver.layers()[0].map(|l| l.sub);
+            if !matches!(up, Some(Sub::Description { .. })) {
+                return Err(format!("no chip description is open at tick {tick} ({up:?})"));
             }
         }
         if tick == IN_FIGHT {

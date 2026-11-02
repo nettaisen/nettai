@@ -48,14 +48,14 @@ pub(crate) fn round_match(content: &Arc<Content>, partners: &[&str]) -> Match {
 pub(crate) fn fighting(content: &Arc<Content>, partners: &[&str]) -> Battle {
     let m = round_match(content, partners);
     let mut b = Battle::new(m.round(content, 0x5EED), content.clone());
-    let mut last = [0u16; 2];
+    let mut last = [None; 2];
     for _ in 0..3000 {
         if b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING {
             return b;
         }
         let input = [0, 1].map(|side| {
-            last[side] = nettai_battle::scenario::custom_buttons(&b, side, last[side]);
-            PlayerTick::buttons(last[side])
+            last[side] = nettai_battle::scenario::custom_choice(&b, side, last[side]);
+            PlayerTick::buttons(0).with_choice(last[side])
         });
         b.tick(&input, Default::default());
     }
@@ -389,8 +389,7 @@ fn k_bomb_fires_from_megaman_to_numberman() {
 /// recording: 0x8D at tick 875, 0x173 at 933).
 #[test]
 fn d_hero_fires_after_a_paused_switch() {
-    use nettai_battle::custom::screen::{OK_SLOT, Phase};
-    use nettai_battle::input::keys;
+    use nettai_battle::custom::screen::Phase;
     let content = exe5_content();
     let m = round_match(&content, &["protoman"]);
     let mut b = Battle::new(m.round(&content, 0x5EED), content.clone());
@@ -412,19 +411,14 @@ fn d_hero_fires_after_a_paused_switch() {
     }
     // MegaMan leaves in Full Synchro.
     b.stats[0].mood = 0xFF;
-    b.custom.sides[0].screen.as_mut().unwrap().cursor = OK_SLOT;
-    b.tick(&[PlayerTick::buttons(keys::A), Default::default()], Default::default());
+    b.tick(&[PlayerTick::default().with_choice(Some(nettai_battle::ScreenChoice::Ok)), Default::default()], Default::default());
     let before = hp(&b, 1);
     let (mut controllers, mut navis) = (0, 0);
     let names = content.assets.names(nettai_content_api::AssetKind::Sound);
     let (mut landed, mut telop) = (None, None);
     for t in 0..1500 {
-        if b.custom.sides[1].built.is_none()
-            && let Some(s) = b.custom.sides[1].screen.as_mut()
-            && s.phase == Phase::Choosing
-        {
-            s.cursor = OK_SLOT;
-            b.tick(&[Default::default(), PlayerTick::buttons(keys::A)], Default::default());
+        if b.custom.sides[1].built.is_none() && b.custom.sides[1].screen.is_some_and(|s| s.phase == Phase::Choosing) {
+            b.tick(&[Default::default(), PlayerTick::default().with_choice(Some(nettai_battle::ScreenChoice::Ok))], Default::default());
             continue;
         }
         b.tick(&Default::default(), Default::default());

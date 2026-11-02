@@ -25,7 +25,7 @@ use crate::screens::ScreenId;
 use crate::shell::{App, Shell};
 use nettai_battle::Content;
 use nettai_battle::battle::mode;
-use nettai_frontend::driver::{InFight, LivePlayer, OnCustomScreen, Opponent, bot_buttons};
+use nettai_frontend::driver::{InFight, LivePlayer, OnCustomScreen, Opponent, bot_tick};
 use nettai_frontend::replay::{Info, MatchKind, Recorder, Replay};
 use nettai_frontend::session::Session;
 use nettai_ui::{AppWindow, ExportState, ReplaysView, Theme};
@@ -77,8 +77,8 @@ fn record(content: &Arc<Content>, game: &str, seed: u32, most: u64) -> Result<Re
             held = [0, keys::UP, keys::DOWN, keys::LEFT, keys::RIGHT][(random >> 8) as usize % 5];
             held |= if (random >> 16) % 3 == 0 { keys::A } else { 0 } | if (random >> 24) % 2 == 0 { keys::B } else { 0 };
         }
-        let buttons = if s.battle.round.mode == mode::CUSTOM { bot_buttons(&s.battle, 0, s.ticks as u32) } else { held };
-        if !s.step(buttons) {
+        let input = if s.battle.round.mode == mode::CUSTOM { bot_tick(&s.battle, 0, s.ticks as u32) } else { nettai_battle::PlayerTick::buttons(held) };
+        if !s.step(input) {
             break;
         }
     }

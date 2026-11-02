@@ -1548,12 +1548,17 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
     }
     let local = b.setup.local_side as usize & 1;
     let mut rng1_since: Option<(u32, u32, u32)> = None;
+    // (Each side's buttons through its custom screen layer, in lockstep: the
+    // choices on the ticks the original's screens took the keys.)
+    let mut layers = nettai_battle::custom::Lockstep::new(&b);
     for i in 0..frames.len() {
         let (input, events) = round.tick_inputs(i, &frames);
+        let input = layers.input(&b, &input);
         if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.tick(&input, events))) {
             replay.stopped = Some(Stop::Panic { frame: frames[i].frame, message: panic_message(&*e) });
             return replay;
         }
+        layers.follow(&b);
         let differences = compare_at(&b, round, &frames, i, compat);
         if !differences.is_empty() {
             replay.stopped = Some(Stop::Differs { frame: frames[i].frame, differences });

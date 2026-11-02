@@ -304,7 +304,7 @@ impl Preload {
                 let Some(battle) = &self.battle else { return };
                 // The first picture, as the player will draw it: every
                 // lookup it makes, and its text at the host's size.
-                let frame = self.renderer.render(battle);
+                let frame = self.renderer.render(battle, [None, None]);
                 let (w, h) = self.size;
                 let mut pixels = vec![0u32; w * h];
                 nettai_render::present::present(&frame, self.text.as_mut(), &mut pixels, w, h);
@@ -439,7 +439,7 @@ fn fraction<'a>(steps: impl Iterator<Item = &'a Step>) -> f32 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::driver::{InFight, LivePlayer, Opponent, bot_buttons};
+    use crate::driver::{InFight, LivePlayer, Opponent, bot_tick};
     use nettai_battle::battle::mode;
 
     /// A set of EXE6's content, picked from a seed (1000 HP each, so the
@@ -473,8 +473,11 @@ mod tests {
         masher.buster = true;
         for tick in 0..ticks {
             let b = player.battle();
-            let keys = if b.round.mode == mode::CUSTOM { bot_buttons(b, 0, tick) } else { masher.buttons() };
-            assert!(player.tick(keys), "tick {tick}: {:?}", player.stopped());
+            let input = if b.round.mode == mode::CUSTOM { bot_tick(b, 0, tick) } else { nettai_battle::PlayerTick::buttons(masher.buttons()) };
+            if let Some(c) = input.choice {
+                player.choose(c);
+            }
+            assert!(player.tick(input.held), "tick {tick}: {:?}", player.stopped());
             player.frame();
         }
         assert!(player.battle().round.turn >= 1, "the fight ran");

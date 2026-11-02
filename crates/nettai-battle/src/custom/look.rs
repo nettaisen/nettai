@@ -1,48 +1,34 @@
-//! What a player's custom screen shows that the simulation never reads:
-//! the counters its window and sprites animate by, and the screen fades
-//! its console runs (presentation; the state digest leaves it out, like
-//! `Look`). A frontend draws the screen from this and the `Screen` itself
-//! (nettai-render `custom`). See docs/engine/custom-screen.md §9.
+//! What a player's custom screen shows that the simulation never reads
+//! (presentation; the state digest leaves it out, like `Look`): what the
+//! screen's decisions leave drawn ([`ScreenLook`]: the picked column, the
+//! slots as last drawn, the face, the Program Advance's colors), and what
+//! each tick asks of the window's drawing ([`Draw`]) and of the sound
+//! driver. The window's counters, the cursor, the chip window and the dark
+//! chips' hover are its player's screen layer's (`super::layer`, outside
+//! the simulation: [`WindowLook`], [`ChipWindow`], [`Hover`]), which draws
+//! by those asks and by what its own player does. A frontend draws the
+//! screen from both (nettai-render `custom`). See
+//! docs/engine/custom-screen.md §9 and docs/design/custom-screen-actions.md
+//! §4.
 
 use crate::battle::{Fade, FadeMode};
 use crate::SoundId;
 use crate::content::{HoverRules, HoverSound, SoundRole};
 
 /// The original's presentation state of a screen (the control block at
-/// `0x020364C0`).
+/// `0x020364C0`), as far as the screen's decisions make it: the layer
+/// (`super::layer`) keeps the rest.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ScreenLook {
-    /// `+0x40`: while the window slides in or out its offset (0x78 off the
-    /// screen, 0 in place); while the chips are chosen a frame counter, which
-    /// the cursor and the Regular chip's frame blink by; the sub-screens'
-    /// own timers otherwise.
+    /// `+0x40` as the screen's own states and its rules' windows set it
+    /// (`custom.frame`): a window's own timer. What is drawn by it (the
+    /// cursor's blink, the Regular chip's frame, a slide's offset) is the
+    /// layer's, which counts it through the choosing as the original does
+    /// (`WindowLook::frame`), by the tick's [`Draw`]s.
     pub frame: u32,
-    /// `+0xF`: the emblem's spin after a pick (0 at rest, else its step,
-    /// up to 0x14).
-    pub spin: u8,
-    /// The emblem's affine matrix as last set (`sub_802FE7A`): its angle
-    /// and scale (`byte_8029CAC`).
-    pub emblem_matrix: (u8, u8),
-    /// The late turns' block is on the window (`sub_8029D34` draws it,
-    /// `sub_8029D80` takes it off).
-    pub turn_limit: bool,
-    /// The Regular chip's frame the sprite's tiles hold (`sub_802899C`
-    /// copies one every 8 frames).
-    pub regular_frame: u8,
-    /// The screen fade the screen runs on its console (Beast Out's, the
-    /// Program Advance's, a dark chip's).
-    pub fade: Fade,
-    /// The console's second fade record (`loc_8006274`), which only a dark
-    /// chip's hover runs: the window and the screen's sprites.
-    pub window_fade: Fade,
-    /// `+0x12`, `+0x13`: the cursor's dark-chip hover (`sub_802A2B0`; EXE4's
-    /// `+0x54`, `+0x58`, `+0x5D`).
-    pub shade: ChipShade,
-    /// What this tick drew.
+    /// What this tick asked of the window's drawing and of the sound
+    /// driver.
     pub drawn: Drawn,
-    /// What the chip window shows: what it was drawn for last
-    /// (`sub_8028476`).
-    pub chip_window: ChipWindow,
     /// The window has the form list's tab (EXE6's Cross tab: MegaMan, with
     /// a Cross he owns and hasn't used this round, `sub_8029EC8`).
     pub form_list_tab: bool,
@@ -55,10 +41,6 @@ pub struct ScreenLook {
     /// Change, 0x080236C0, takes the pick without drawing; its blink draws
     /// the cell empty from the next tick, 0x08023712).
     pub column_kept: Option<u8>,
-    /// The hover's sound's counter (the screen's `+0x14`: every tick, 0 to
-    /// 63; EXE4's `+0x5C`, down from each turn of the hover: the rules'
-    /// `hover.sound`).
-    pub hover_count: u8,
     /// The chips the slots' tiles show, as checked when the screen last
     /// drew them (`sub_8028250`, on opening and after every pick or take
     /// back: the chips OK takes out of the folder stay drawn).
@@ -79,6 +61,108 @@ pub struct ScreenLook {
     pub pa_palette: u8,
 }
 
+/// What a tick asks of the window's drawing, in the order it asks: the
+/// layer (`super::layer`) does it on the window's counters and sprites
+/// ([`WindowLook`]) as the original's routines did, and on its chip window
+/// and hover. A choosing tick asks only what its decision changed; the
+/// choosing's own drawing (and its sub-screens', the layer's) is the
+/// layer's.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Draw {
+    /// `+0x40` set: a slide's offset, a sub-screen's timer.
+    SetFrame(u32),
+    /// `+0x40` counted on, a tick.
+    CountFrame,
+    /// The emblem's spin starts (a pick, `sub_8028CCC`; Beast Out,
+    /// `sub_8027738`).
+    Spin,
+    /// `sub_8029C08`: the emblem at the window's offset `x`.
+    Emblem(u32),
+    /// `sub_802899C`: the Regular chip's frame, while the folder still has
+    /// its Regular chip (`pending`); `counted`: the tick's count is done
+    /// ([`WindowLook::draw_regular`]).
+    Regular { pending: bool, counted: bool },
+    /// `sub_8029D34`: the last turns' block, by the frame.
+    TurnLimit,
+    /// `sub_8029D80`: the block taken off.
+    TurnLimitOff,
+    /// `sub_8028820`: the cursor, by the frame.
+    Cursor,
+    /// The chip window's element icon where the cursor rests on a chip
+    /// (EXE4's 0x0801EECC under its chips' state's own test).
+    ElementOnChip,
+    /// EXE4's 0x0801EECC: the chip window's element icon as a sprite.
+    Element,
+    /// The chip a button holds, over the button (EXE5's 0x080254F4), or
+    /// not.
+    Held(bool),
+    /// `sub_8028476`: the chip window drawn again, for the slot under the
+    /// cursor, as the screen stands at the tick's end.
+    ChipWindow,
+    /// The screen's fade (its first record) started: what the layer draws
+    /// of its first record is the fade started last, this or its hover's.
+    FadeStarted,
+    /// `sub_80062D0`, `sub_80062D6`: both fade records cleared (EXE4's OK,
+    /// a window cancelled by the time limit): the hover's too.
+    FadesCleared,
+    /// The hover over a dark chip ends at once (the time limit: where it
+    /// would not run again, `Screen::tick_time_up`).
+    HoverCleared,
+    /// The slots were laid out again (EXE5 DS's switch, `sub_8027E2C`): the
+    /// cursor goes to the first slot there.
+    LaidOut,
+}
+
+/// The counters and sprites of the window as the original draws them
+/// (the control block's `+0x40`, `+0xF` and the sprites a tick queues),
+/// which the player's screen layer keeps (`super::layer`): from the
+/// screen's [`Draw`]s, and through the choosing and its sub-screens by its
+/// own drawing, as the original's states drew.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct WindowLook {
+    /// `+0x40`: while the window slides in or out its offset (0x78 off the
+    /// screen, 0 in place); while the chips are chosen a frame counter, which
+    /// the cursor and the Regular chip's frame blink by; the sub-screens'
+    /// own timers otherwise.
+    pub frame: u32,
+    /// `+0xF`: the emblem's spin after a pick (0 at rest, else its step,
+    /// up to 0x14).
+    pub spin: u8,
+    /// The emblem's affine matrix as last set (`sub_802FE7A`): its angle
+    /// and scale (`byte_8029CAC`).
+    pub emblem_matrix: (u8, u8),
+    /// The late turns' block is on the window (`sub_8029D34` draws it,
+    /// `sub_8029D80` takes it off).
+    pub turn_limit: bool,
+    /// The Regular chip's frame the sprite's tiles hold (`sub_802899C`
+    /// copies one every 8 frames).
+    pub regular_frame: u8,
+    /// What this tick drew.
+    pub drawn: Shown,
+}
+
+/// The sprites a tick of the screen queued.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Shown {
+    /// The cursor (`sub_8028820`), in its first or second frame.
+    pub cursor: Option<u8>,
+    /// The form list window's cursor (EXE6's Cross window's, `sub_80289E4`),
+    /// in its first or second frame.
+    pub form_list_cursor: Option<u8>,
+    /// The emblem (`sub_8029C08`): the window's offset it was drawn at, and
+    /// the spin it was drawn with.
+    pub emblem: Option<(u32, u8)>,
+    /// The Regular chip's frame (`sub_802899C`).
+    pub regular: bool,
+    /// The chip window's element icon where it is a sprite (EXE4's
+    /// 0x0801EECC, which each state calls under its own test; a screen whose
+    /// window's map holds the icon draws none).
+    pub element: bool,
+    /// The icon of the chip a button holds, over the button (EXE5's Arm
+    /// Change, 0x080254F4).
+    pub held: bool,
+}
+
 /// The shade the cursor's hover over a dark chip casts on the screen
 /// (`sub_802A2B0`, `+0x12`), with the step of its volume ramp (`+0x13`, a
 /// halfword's offset in the original).
@@ -93,15 +177,6 @@ pub enum ChipShade {
     /// 0xC: the fades run back.
     Clearing { step: u8 },
 }
-
-/// The console's two fade records as a screen finds them, clear (and as
-/// `sub_80062D0` and `sub_80062D6` leave them, zeroed).
-const CLEAR_FADE: Fade = Fade { mode: FadeMode::HalfOutBack, level: 0, speed: 0, target: 0, active: false, stepped: false };
-const CLEAR_WINDOW_FADE: Fade =
-    Fade { mode: FadeMode::ShadeWindowBack, level: 0, speed: 0, target: 0, active: false, stepped: false };
-
-/// The dark-chip hover's fades' speed.
-const SHADE_FADE_SPEED: u8 = 0xA;
 
 
 /// What the chip window was last drawn for (`sub_8028476`): the slot
@@ -124,30 +199,15 @@ pub struct ChipWindow {
     pub uses: u8,
 }
 
-/// The sprites a tick of the screen queued.
+/// What a tick of the screen asked: of the window's drawing (the layer
+/// draws it), and of the sound driver.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Drawn {
-    /// The cursor (`sub_8028820`), in its first or second frame.
-    pub cursor: Option<u8>,
-    /// The form list window's cursor (EXE6's Cross window's, `sub_80289E4`),
-    /// in its first or second frame.
-    pub form_list_cursor: Option<u8>,
-    /// The emblem (`sub_8029C08`): the window's offset it was drawn at, and
-    /// the spin it was drawn with.
-    pub emblem: Option<(u32, u8)>,
-    /// The Regular chip's frame (`sub_802899C`).
-    pub regular: bool,
-    /// The chip window's element icon where it is a sprite (EXE4's
-    /// 0x0801EECC, which each state calls under its own test; a screen whose
-    /// window's map holds the icon draws none).
-    pub element: bool,
-    /// The icon of the chip a button holds, over the button (EXE5's Arm
-    /// Change, 0x080254F4).
-    pub held: bool,
-    /// What the tick asked of the sound driver, in the order it asked (its
-    /// player hears it): the sounds of the tick's state, then the dark
-    /// chip hover's, whose routine runs after the state's and sets its
-    /// volumes before it sounds.
+    /// What it asked of the drawing, in order.
+    pub draws: [Option<Draw>; 16],
+    /// What it asked of the sound driver, in the order it asked (its player
+    /// hears it): the sounds of the tick's state. (The dark chip hover's,
+    /// whose routine runs after the state's, are the layer's.)
     pub calls: [Option<ScreenCall>; 8],
 }
 
@@ -191,6 +251,11 @@ impl ScreenSound {
 }
 
 impl Drawn {
+    /// What the tick asked of the window's drawing, in order.
+    pub fn draws(&self) -> impl Iterator<Item = Draw> + '_ {
+        self.draws.iter().flatten().copied()
+    }
+
     /// What the tick asked of the sound driver, in order.
     pub fn calls(&self) -> impl Iterator<Item = ScreenCall> + '_ {
         self.calls.iter().flatten().copied()
@@ -204,8 +269,8 @@ impl Drawn {
         })
     }
 
-    /// The volumes a dark chip's hover set this tick (the music's, the
-    /// screen's player's), if it set them.
+    /// The volumes the tick set (the music's, the screen's player's), if
+    /// it set them.
     pub fn volume(&self) -> Option<(u16, u16)> {
         self.calls().find_map(|c| match c {
             ScreenCall::Volume { music, screen } => Some((music, screen)),
@@ -306,23 +371,34 @@ impl ScreenLook {
         }
     }
 
-    pub fn new(late_turns: bool, form_list_tab: bool, last_chip: Option<super::FolderChip>) -> ScreenLook {
+    /// The tick asks the layer to draw, after what it asked before.
+    pub(crate) fn draw(&mut self, draw: Draw) {
+        let slot = self.drawn.draws.iter_mut().find(|s| s.is_none());
+        debug_assert!(slot.is_some(), "a tick asks of the drawing at most {} times", self.drawn.draws.len());
+        if let Some(slot) = slot {
+            *slot = Some(draw);
+        }
+    }
+
+    /// `+0x40` set (a slide's offset, a sub-screen's timer).
+    pub(crate) fn set_frame(&mut self, frame: u32) {
+        self.frame = frame;
+        self.draw(Draw::SetFrame(frame));
+    }
+
+    /// `+0x40` counted on, a tick.
+    pub(crate) fn count_frame(&mut self) {
+        self.frame = self.frame.wrapping_add(1);
+        self.draw(Draw::CountFrame);
+    }
+
+    pub fn new(late_turns: bool, form_list_tab: bool) -> ScreenLook {
         ScreenLook {
             frame: 0,
-            spin: 0,
-            // sub_8026A50: the emblem's matrix starts unrotated, at scale 1.
-            emblem_matrix: (0, 0x40),
-            turn_limit: false,
-            regular_frame: 0,
-            fade: CLEAR_FADE,
-            window_fade: CLEAR_WINDOW_FADE,
-            shade: ChipShade::Clear,
             drawn: Drawn::default(),
-            chip_window: ChipWindow { slot: 0, picks: 0, last_chip, framed: None, uses: 0 },
             form_list_tab,
             column: [None; 5],
             column_kept: None,
-            hover_count: 0,
             slot_chips: [None; 12],
             slot_picked: [false; 12],
             face: None,
@@ -342,23 +418,172 @@ impl ScreenLook {
         }
     }
 
+    /// `sub_8029C08`: the emblem over the picked column, at the window's
+    /// offset `x` (Beast Out's states pass 0).
+    pub(crate) fn draw_emblem(&mut self, x: u32) {
+        self.draw(Draw::Emblem(x));
+    }
+
+    /// `sub_802899C`: the Regular chip's frame while the folder still has
+    /// its Regular chip (`counted`: this tick's count is done).
+    pub(crate) fn draw_regular(&mut self, regular_pending: bool, counted: bool) {
+        self.draw(Draw::Regular { pending: regular_pending, counted });
+    }
+
+    /// The chip a button holds (`Screen::hold`), drawn over it.
+    pub(crate) fn draw_held(&mut self, held: bool) {
+        self.draw(Draw::Held(held));
+    }
+
+    /// `sub_8029D34`: the last turns' block.
+    pub(crate) fn draw_turn_limit(&mut self) {
+        self.draw(Draw::TurnLimit);
+    }
+}
+
+/// The console's two fade records as a screen finds them, clear (and as
+/// `sub_80062D0` and `sub_80062D6` leave them, zeroed).
+pub(crate) const CLEAR_FADE: Fade = Fade { mode: FadeMode::HalfOutBack, level: 0, speed: 0, target: 0, active: false, stepped: false };
+const CLEAR_WINDOW_FADE: Fade =
+    Fade { mode: FadeMode::ShadeWindowBack, level: 0, speed: 0, target: 0, active: false, stepped: false };
+
+/// The dark-chip hover's fades' speed.
+const SHADE_FADE_SPEED: u8 = 0xA;
+
+impl WindowLook {
+    /// The look a screen opens with (`sub_8026A50`: the emblem's matrix
+    /// unrotated, at scale 1).
+    pub fn new() -> WindowLook {
+        WindowLook { emblem_matrix: (0, 0x40), ..WindowLook::default() }
+    }
+
+    /// Draw as the screen asked: `late_turns`, the battle's last turns
+    /// (the block blinks); `on_chip`, the cursor rests on a chip.
+    pub fn apply(&mut self, d: Draw, late_turns: bool, on_chip: bool) {
+        match d {
+            Draw::SetFrame(f) => self.frame = f,
+            Draw::CountFrame => self.frame = self.frame.wrapping_add(1),
+            Draw::Spin => self.spin = 1,
+            Draw::Emblem(x) => self.draw_emblem(x),
+            Draw::Regular { pending, counted } => self.draw_regular(pending, counted),
+            Draw::TurnLimit => self.draw_turn_limit(late_turns),
+            Draw::TurnLimitOff => self.turn_limit = false,
+            Draw::Cursor => self.draw_cursor(),
+            Draw::ElementOnChip if on_chip => self.draw_element(),
+            Draw::Element => self.draw_element(),
+            Draw::Held(held) => self.drawn.held = held,
+            Draw::ElementOnChip | Draw::ChipWindow | Draw::FadeStarted | Draw::FadesCleared | Draw::HoverCleared | Draw::LaidOut => {}
+        }
+    }
+
+    /// `sub_8029C08`: the emblem over the picked column, at the window's
+    /// offset `x` (Beast Out's states pass 0), not drawn while the window
+    /// is further out than 0x67; its spin steps on.
+    pub fn draw_emblem(&mut self, x: u32) {
+        if x > EMBLEM_HIDDEN_PAST {
+            return;
+        }
+        self.drawn.emblem = Some((x, self.spin));
+        if self.spin == 0 {
+            return;
+        }
+        let step = self.spin;
+        self.spin = if step >= SPIN_STEPS { 0 } else { step + 1 };
+        if step < SPIN_STEPS {
+            self.emblem_matrix = SPIN[step as usize - 1];
+        }
+    }
+
+    /// `sub_8028820`: the cursor, in the frame the counter gives.
+    pub fn draw_cursor(&mut self) {
+        self.drawn.cursor = Some(((self.frame >> 3) & 1) as u8);
+    }
+
+    /// EXE4's 0x0801EECC: the chip window's element icon as a sprite.
+    pub fn draw_element(&mut self) {
+        self.drawn.element = true;
+    }
+
+    /// `sub_80289E4`: the form list window's cursor, by the same counter.
+    pub fn draw_form_list_cursor(&mut self) {
+        self.drawn.form_list_cursor = Some(((self.frame >> 3) & 1) as u8);
+    }
+
+    /// `sub_802899C`: the Regular chip's frame while the folder still has
+    /// its Regular chip, its tiles changed every 8 frames: on a tick whose
+    /// frame, before it counts on, is a multiple of 8 (`counted`: this
+    /// tick's count is done, EXE4's 0x0801EF12 testing 1).
+    pub fn draw_regular(&mut self, regular_pending: bool, counted: bool) {
+        if !regular_pending {
+            return;
+        }
+        if self.frame.wrapping_sub(counted as u32) & 7 == 0 {
+            self.regular_frame = ((self.frame >> 3) & 1) as u8;
+        }
+        self.drawn.regular = true;
+    }
+
+    /// `sub_8029D34`: in the last turns the block blinks, off 4 frames of
+    /// every 32.
+    pub fn draw_turn_limit(&mut self, late_turns: bool) {
+        if late_turns {
+            self.turn_limit = self.frame & 0x1F < 0x1C;
+        }
+    }
+}
+
+/// The cursor's hover over a dark chip (`sub_802A2B0`), which the player's
+/// screen layer runs after each tick's state: its shade, the console's two
+/// fade records as it runs them, and its sound's counter.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Hover {
+    /// `+0x12`, `+0x13` (EXE4's `+0x54`, `+0x58`, `+0x5D`).
+    pub shade: ChipShade,
+    /// The console's first fade record as the hover runs it (modes 0x54 and
+    /// 0x50): the screen's own fades run on it too in the original, on the
+    /// battle's side here (`Screen::fade`); what is shown is the one started
+    /// last.
+    pub fade: Fade,
+    /// The console's second fade record (`loc_8006274`), which only the
+    /// hover runs: the window and the screen's sprites.
+    pub window_fade: Fade,
+    /// The hover's sound's counter (the screen's `+0x14`: every tick, 0 to
+    /// 63; EXE4's `+0x5C`, down from each turn of the hover: the rules'
+    /// `hover.sound`).
+    pub count: u8,
+}
+
+impl Default for Hover {
+    fn default() -> Hover {
+        Hover { shade: ChipShade::Clear, fade: CLEAR_FADE, window_fade: CLEAR_WINDOW_FADE, count: 0 }
+    }
+}
+
+impl Hover {
     /// `sub_80062D0`, `sub_80062D6`: both fade records cleared at once (EXE4's
     /// OK, 0x08020656: the rules' `fades_clear_at_ok`).
-    pub(crate) fn clear_fades(&mut self) {
+    pub fn clear_fades(&mut self) {
         self.fade = CLEAR_FADE;
         self.window_fade = CLEAR_WINDOW_FADE;
+    }
+
+    /// The fades' step a tick (`SetScreenFade`'s records: a fade toward
+    /// clear ends as the rules' do).
+    pub fn step_fades(&mut self, clear: crate::content::FadeClear) {
+        self.fade.step(clear);
+        self.window_fade.step(clear);
     }
 
     /// The hover over a dark chip ends at once, its music and the
     /// screen's player at the volumes its clearing ramp ends on (the
     /// round's time limit, nettai's own, closing the screen where the hover
     /// would not run again: `Screen::tick_time_up`).
-    pub(crate) fn clear_hover(&mut self, rules: &HoverRules) {
+    pub fn clear(&mut self, rules: &HoverRules, calls: &mut Vec<ScreenCall>) {
         if self.shade == ChipShade::Clear {
             return;
         }
         if let Some(&[music, screen]) = rules.to_clear.iter().rev().find_map(|v| v.as_ref()) {
-            self.call(ScreenCall::Volume { music, screen });
+            calls.push(ScreenCall::Volume { music, screen });
         }
         self.shade = ChipShade::Clear;
     }
@@ -375,36 +600,39 @@ impl ScreenLook {
     /// on a tick with both, the volumes are set before the sound is asked
     /// for); or EXE4's `+0x5C`, from each turn of the hover, stepped before
     /// it while the shade has settled, sounding on its first such tick and
-    /// every `every` after.
-    pub(crate) fn hover(&mut self, on_shading: Option<bool>, rules: &HoverRules) {
+    /// every `every` after. Whether it started a fade.
+    pub fn hover(&mut self, on_shading: Option<bool>, rules: &HoverRules, calls: &mut Vec<ScreenCall>) -> bool {
         match rules.sound {
             HoverSound::FromOpening { every } => {
-                self.hover_state(on_shading, rules);
-                self.hover_count = (self.hover_count + 1) % every;
-                if self.hover_count == 0 && self.shade != ChipShade::Clear {
-                    self.play(ScreenSound::Shade);
+                let turned = self.hover_state(on_shading, rules, calls);
+                self.count = (self.count + 1) % every;
+                if self.count == 0 && self.shade != ChipShade::Clear {
+                    calls.push(ScreenCall::Sound(ScreenSound::Shade));
                 }
+                turned
             }
             HoverSound::WhileDark { every } => {
                 if self.shade == ChipShade::Shaded {
-                    self.hover_count = self.hover_count.wrapping_sub(1);
-                    if self.hover_count == 0 {
-                        self.play(ScreenSound::Shade);
-                        self.hover_count = every;
+                    self.count = self.count.wrapping_sub(1);
+                    if self.count == 0 {
+                        calls.push(ScreenCall::Sound(ScreenSound::Shade));
+                        self.count = every;
                     }
                 }
-                if self.hover_state(on_shading, rules) {
-                    self.hover_count = 1;
+                let turned = self.hover_state(on_shading, rules, calls);
+                if turned {
+                    self.count = 1;
                 }
+                turned
             }
         }
     }
 
     /// The hover's state a tick; whether it turned.
-    fn hover_state(&mut self, on_shading: Option<bool>, rules: &HoverRules) -> bool {
-        let ramp = |look: &mut ScreenLook, ticks: &[Option<[u16; 2]>], step: u8| -> bool {
+    fn hover_state(&mut self, on_shading: Option<bool>, rules: &HoverRules, calls: &mut Vec<ScreenCall>) -> bool {
+        let ramp = |calls: &mut Vec<ScreenCall>, ticks: &[Option<[u16; 2]>], step: u8| -> bool {
             if let Some(Some([music, screen])) = ticks.get(step as usize) {
-                look.call(ScreenCall::Volume { music: *music, screen: *screen });
+                calls.push(ScreenCall::Volume { music: *music, screen: *screen });
             }
             step as usize + 1 < ticks.len()
         };
@@ -423,81 +651,26 @@ impl ScreenLook {
             }
             // sub_802A30C
             ChipShade::Shading { step } => {
-                (if ramp(self, &rules.to_dark, step) { ChipShade::Shading { step: step + 1 } } else { ChipShade::Shaded }, false)
+                (if ramp(calls, &rules.to_dark, step) { ChipShade::Shading { step: step + 1 } } else { ChipShade::Shaded }, false)
             }
             // sub_802A362
             ChipShade::Clearing { step } => {
-                (if ramp(self, &rules.to_clear, step) { ChipShade::Clearing { step: step + 1 } } else { ChipShade::Clear }, false)
+                (if ramp(calls, &rules.to_clear, step) { ChipShade::Clearing { step: step + 1 } } else { ChipShade::Clear }, false)
             }
             d => (d, false),
         };
         self.shade = shade;
         turned
     }
-
-    /// `sub_8029C08`: the emblem over the picked column, at the window's
-    /// offset `x` (Beast Out's states pass 0), not drawn while the window
-    /// is further out than 0x67; its spin steps on.
-    pub(crate) fn draw_emblem(&mut self, x: u32) {
-        if x > EMBLEM_HIDDEN_PAST {
-            return;
-        }
-        self.drawn.emblem = Some((x, self.spin));
-        if self.spin == 0 {
-            return;
-        }
-        let step = self.spin;
-        self.spin = if step >= SPIN_STEPS { 0 } else { step + 1 };
-        if step < SPIN_STEPS {
-            self.emblem_matrix = SPIN[step as usize - 1];
-        }
-    }
-
-    /// `sub_8028820`: the cursor, in the frame the counter gives.
-    pub(crate) fn draw_cursor(&mut self) {
-        self.drawn.cursor = Some(((self.frame >> 3) & 1) as u8);
-    }
-
-    /// EXE4's 0x0801EECC: the chip window's element icon as a sprite.
-    pub(crate) fn draw_element(&mut self) {
-        self.drawn.element = true;
-    }
-
-    /// `sub_80289E4`: the form list window's cursor, by the same counter.
-    pub(crate) fn draw_form_list_cursor(&mut self) {
-        self.drawn.form_list_cursor = Some(((self.frame >> 3) & 1) as u8);
-    }
-
-    /// `sub_802899C`: the Regular chip's frame while the folder still has
-    /// its Regular chip, its tiles changed every 8 frames: on a tick whose
-    /// frame, before it counts on, is a multiple of 8 (`counted`: this
-    /// tick's count is done, EXE4's 0x0801EF12 testing 1).
-    pub(crate) fn draw_regular(&mut self, regular_pending: bool, counted: bool) {
-        if !regular_pending {
-            return;
-        }
-        if self.frame.wrapping_sub(counted as u32) & 7 == 0 {
-            self.regular_frame = ((self.frame >> 3) & 1) as u8;
-        }
-        self.drawn.regular = true;
-    }
-
-    /// The chip a button holds (`Screen::hold`), drawn over it (EXE5's
-    /// 0x080254F4: slot 8 an Arm Change button, picked).
-    pub(crate) fn draw_held(&mut self, held: bool) {
-        self.drawn.held = held;
-    }
-
-    /// `sub_8029D34`: in the last turns the block blinks, off 4 frames of
-    /// every 32.
-    pub(crate) fn draw_turn_limit(&mut self) {
-        if self.late_turns {
-            self.turn_limit = self.frame & 0x1F < 0x1C;
-        }
-    }
 }
 
 impl std::hash::Hash for ScreenLook {
     /// Presentation: left out of the state digest.
     fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
+}
+
+impl Default for WindowLook {
+    fn default() -> WindowLook {
+        WindowLook { frame: 0, spin: 0, emblem_matrix: (0, 0), turn_limit: false, regular_frame: 0, drawn: Shown::default() }
+    }
 }

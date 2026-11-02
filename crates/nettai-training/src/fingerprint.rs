@@ -377,6 +377,7 @@ impl Sandbox {
         let m = maker.round([side.clone(), side], 1000, 1)?;
         let mut b = nettai_match::Set::of(content, &m, 1).start();
         let mut navs = [crate::act::Navigator::default(); 2];
+        let mut layers = [nettai_battle::custom::Layer::new(0, &b), nettai_battle::custom::Layer::new(1, &b)];
         for _ in 0..2000 {
             if crate::env::fight_runs(&b) && idle(&b, 0) && idle(&b, 1) {
                 let normal = b.game_rules().panels.roles.normal;
@@ -401,10 +402,10 @@ impl Sandbox {
                     if navs[s].idle() {
                         navs[s].point(nettai_battle::custom::screen::OK_SLOT as i32);
                     }
-                    held[s] = navs[s].buttons(&b, s as u8);
+                    held[s] = navs[s].buttons(&b, s as u8, &layers[s]);
                 }
             }
-            if !step_battle(&mut b, held) {
+            if !crate::env::step_layered(&mut b, &mut layers, held) {
                 return Err(format!("{}: the sandbox stopped: {:?}", content.game(), b.round_end()));
             }
         }

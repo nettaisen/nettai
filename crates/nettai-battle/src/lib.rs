@@ -40,7 +40,7 @@ pub mod transform;
 
 pub use battle::{Battle, BattleResult, CustomResult, RoundEnd, TickEvents};
 pub use content::{Content, ContentHash};
-pub use input::PlayerTick;
+pub use input::{PlayerTick, ScreenChoice};
 pub use rng::Rng;
 pub use rollback::{Snapshot, TickInput};
 pub use setup::{BattleSettings, HostKeys, NaviStats, RoundSetup, SetScore, Stage};

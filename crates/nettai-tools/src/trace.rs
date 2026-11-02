@@ -1,5 +1,8 @@
 //! The recording replay: a golden trace's recorded inputs drive the battle,
-//! and each tick is compared with what the original recorded. This is the
+//! each side's buttons through its custom screen layer in lockstep (the
+//! choices on the ticks the original's screens took the keys:
+//! `custom::Lockstep`), and each tick is compared with what the original
+//! recorded. This is the
 //! program's boundary with the compat crates: a recording is the original's
 //! own numbers, which each game's compat crate reads, so the recording's
 //! game picks the reader here.
@@ -7,7 +10,8 @@
 use exe6_compat::Compat;
 use exe6_compat::trace::{self, Frame, Round};
 use nettai_battle::content::Content;
-use nettai_battle::Battle;
+use nettai_battle::custom::{Layer, Lockstep};
+use nettai_battle::{Battle, PlayerTick};
 use nettai_frontend::driver::{Driver, FeedShift, Step};
 use std::sync::Arc;
 
@@ -24,6 +28,8 @@ pub struct TracePlayer {
     pub round_number: usize,
     /// The console the frames are drawn for, where not the traced one's.
     viewer: Option<u8>,
+    /// Both sides' layers (made with the first tick).
+    layers: Option<Lockstep>,
 }
 
 /// `b` drawn for `viewer`'s console, where one is given (the simulation's
@@ -46,7 +52,7 @@ impl TracePlayer {
             .take_while(|(_, f)| f.state[0] == 4 || f.state[0] == 8)
             .map(|(i, _)| i)
             .collect();
-        TracePlayer { compat: Compat::exe6_for(&content), round, content, frames, pos: 0, round_number, viewer: None }
+        TracePlayer { compat: Compat::exe6_for(&content), round, content, frames, pos: 0, round_number, viewer: None, layers: None }
     }
 
     /// Every round of a trace file, on `content`, drawn for `viewer`'s
@@ -77,10 +83,11 @@ impl TracePlayer {
 impl Driver for TracePlayer {
     fn start(&mut self) -> Battle {
         self.pos = 0;
+        self.layers = None;
         drawn_for(self.round.start(self.content.clone(), self.compat), self.viewer)
     }
 
-    fn next(&mut self, _b: &Battle, _keys: u16) -> Option<Step> {
+    fn next(&mut self, b: &Battle, _: PlayerTick) -> Option<Step> {
         let &i = self.frames.get(self.pos)?;
         let f = &self.round.frames[i];
         // The frame before it too: the link's events are read from it (the
@@ -92,8 +99,22 @@ impl Driver for TracePlayer {
         let at = window.len();
         window.push(f);
         let (input, events) = self.round.tick_inputs(at, &window);
+        let input = self.layers.get_or_insert_with(|| Lockstep::new(b)).input(b, &input);
         self.pos += 1;
         Some(Step { input, events, frame: Some(f.frame) })
+    }
+
+    fn layers(&self) -> [Option<&Layer>; 2] {
+        match &self.layers {
+            Some(l) => [Some(&l.layers[0]), Some(&l.layers[1])],
+            None => [None, None],
+        }
+    }
+
+    fn follow(&mut self, b: &Battle) {
+        if let Some(l) = &mut self.layers {
+            l.follow(b);
+        }
     }
 
     fn check(&self, b: &Battle) -> Vec<String> {
@@ -212,6 +233,8 @@ pub struct Exe5TracePlayer {
     /// The drawn console's version (its setup line's).
     version: &'static str,
     viewer: Option<u8>,
+    /// Both sides' layers (made with the first tick).
+    layers: Option<Lockstep>,
 }
 
 impl Exe5TracePlayer {
@@ -237,7 +260,7 @@ impl Exe5TracePlayer {
                 .take_while(|(_, f)| f.state[0] == 4 || f.state[0] == 8)
                 .map(|(i, _)| i)
                 .collect();
-            out.push(Exe5TracePlayer { round, content: content.clone(), compat, frames, pos: 0, round_number: i + 1, version, viewer });
+            out.push(Exe5TracePlayer { round, content: content.clone(), compat, frames, pos: 0, round_number: i + 1, version, viewer, layers: None });
         }
         Ok(out)
     }
@@ -250,11 +273,12 @@ impl Exe5TracePlayer {
 impl Driver for Exe5TracePlayer {
     fn start(&mut self) -> Battle {
         self.pos = 0;
+        self.layers = None;
         // (`load` saw the setup define.)
         drawn_for(self.round.start(self.content.clone(), self.compat).unwrap_or_else(|e| panic!("round {}: {e}", self.round_number)), self.viewer)
     }
 
-    fn next(&mut self, _b: &Battle, _keys: u16) -> Option<Step> {
+    fn next(&mut self, b: &Battle, _: PlayerTick) -> Option<Step> {
         let &i = self.frames.get(self.pos)?;
         // The frame before too: the link's session closes on the tick the
         // end state moves on.
@@ -265,8 +289,22 @@ impl Driver for Exe5TracePlayer {
         let at = window.len();
         window.push(&self.round.frames[i]);
         let (input, events) = self.round.tick_inputs(at, &window);
+        let input = self.layers.get_or_insert_with(|| Lockstep::new(b)).input(b, &input);
         self.pos += 1;
         Some(Step { input, events, frame: Some(self.round.frames[i].frame) })
+    }
+
+    fn layers(&self) -> [Option<&Layer>; 2] {
+        match &self.layers {
+            Some(l) => [Some(&l.layers[0]), Some(&l.layers[1])],
+            None => [None, None],
+        }
+    }
+
+    fn follow(&mut self, b: &Battle) {
+        if let Some(l) = &mut self.layers {
+            l.follow(b);
+        }
     }
 
     fn check(&self, b: &Battle) -> Vec<String> {
@@ -315,6 +353,8 @@ pub struct Exe4TracePlayer {
     /// The recording console's version (its setup line's).
     version: &'static str,
     viewer: Option<u8>,
+    /// Both sides' layers (made with the first tick).
+    layers: Option<Lockstep>,
 }
 
 impl Exe4TracePlayer {
@@ -339,7 +379,7 @@ impl Exe4TracePlayer {
                 .take_while(|(_, f)| f.state[0] == 4 || f.state[0] == 8)
                 .map(|(i, _)| i)
                 .collect();
-            out.push(Exe4TracePlayer { round, content: content.clone(), compat, frames, pos: 0, round_number: i + 1, version, viewer });
+            out.push(Exe4TracePlayer { round, content: content.clone(), compat, frames, pos: 0, round_number: i + 1, version, viewer, layers: None });
         }
         Ok(out)
     }
@@ -352,11 +392,12 @@ impl Exe4TracePlayer {
 impl Driver for Exe4TracePlayer {
     fn start(&mut self) -> Battle {
         self.pos = 0;
+        self.layers = None;
         // (`load` saw the setup define.)
         drawn_for(self.round.start(self.content.clone(), self.compat).unwrap_or_else(|e| panic!("round {}: {e}", self.round_number)), self.viewer)
     }
 
-    fn next(&mut self, _b: &Battle, _keys: u16) -> Option<Step> {
+    fn next(&mut self, b: &Battle, _: PlayerTick) -> Option<Step> {
         let &i = self.frames.get(self.pos)?;
         // The frame before too: the link's session closes on the tick the
         // end state moves on.
@@ -367,8 +408,22 @@ impl Driver for Exe4TracePlayer {
         let at = window.len();
         window.push(&self.round.frames[i]);
         let (input, events) = self.round.tick_inputs(at, &window);
+        let input = self.layers.get_or_insert_with(|| Lockstep::new(b)).input(b, &input);
         self.pos += 1;
         Some(Step { input, events, frame: Some(self.round.frames[i].frame) })
+    }
+
+    fn layers(&self) -> [Option<&Layer>; 2] {
+        match &self.layers {
+            Some(l) => [Some(&l.layers[0]), Some(&l.layers[1])],
+            None => [None, None],
+        }
+    }
+
+    fn follow(&mut self, b: &Battle) {
+        if let Some(l) = &mut self.layers {
+            l.follow(b);
+        }
     }
 
     fn check(&self, b: &Battle) -> Vec<String> {

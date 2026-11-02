@@ -19,16 +19,10 @@ use nettai_content_api::{FieldPath, FieldType, Registry, Schema};
 /// window's `view`; a window with none shows the screen as it is).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum WindowView {
-    /// A list of forms to choose from, unfolding (EXE6's Cross window as it
-    /// opens, `sub_8027834`).
-    FormListOpening,
-    /// The list up: its entries' names, the one under the cursor in its own
-    /// look (EXE6's Cross window, `sub_802794A`; its descriptions too).
-    FormList,
-    /// The list folding away (`sub_802790C`).
-    FormListClosing,
-    /// A form of the list chosen: the screen whitens and the form's face is
-    /// put on (`sub_8027A58`).
+    /// A form of the rules' form list chosen: the screen whitens and the
+    /// form's face is put on (EXE6's Cross chosen, `sub_8027A58`). (The list
+    /// itself, unfolding, up and folding away, is each player's layer's:
+    /// `custom::layer`, the layout's `form_list`.)
     FormChosen,
     /// The form a button offers flies to the picked column as its icon
     /// (EXE5's soul's choice, the screen's state 9).
@@ -40,9 +34,6 @@ pub enum WindowView {
 
 impl WindowView {
     pub const ALL: &'static [WindowView] = &[
-        WindowView::FormListOpening,
-        WindowView::FormList,
-        WindowView::FormListClosing,
         WindowView::FormChosen,
         WindowView::OfferFlight,
         WindowView::ChipFlight,
@@ -51,9 +42,6 @@ impl WindowView {
     /// Its name in a window's definition.
     pub fn name(self) -> &'static str {
         match self {
-            WindowView::FormListOpening => "form_list_opening",
-            WindowView::FormList => "form_list",
-            WindowView::FormListClosing => "form_list_closing",
             WindowView::FormChosen => "form_chosen",
             WindowView::OfferFlight => "offer_flight",
             WindowView::ChipFlight => "chip_flight",
@@ -243,15 +231,14 @@ impl StatRole {
 /// its role (`schema.role`): the places of the forms offered among the
 /// player's (`form_list.offered`, a u8 array) and how many
 /// (`form_list.count`), which entries are marked (`form_list.marked`, a
-/// bool array), the entry under the cursor (`form_list.cursor`), and
-/// whether one is chosen (`form_list.chosen`, a bool) and its place
-/// (`form_list.chosen_place`).
+/// bool array), and whether one is chosen (`form_list.chosen`, a bool) and
+/// its place (`form_list.chosen_place`). (The entry under the list's cursor
+/// is the player's layer's: `custom::layer`.)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FormListFields {
     pub offered: FieldPath,
     pub count: FieldPath,
     pub marked: FieldPath,
-    pub cursor: FieldPath,
     pub chosen_set: FieldPath,
     pub chosen: FieldPath,
 }
@@ -367,12 +354,11 @@ impl ViewFields {
             let who = format!("window `{name}`");
             let f = |field: &str, want: Want| find(&who, view.name(), field, want);
             match view {
-                WindowView::FormListOpening | WindowView::FormList | WindowView::FormListClosing | WindowView::FormChosen => {
+                WindowView::FormChosen => {
                     fields.form_list = Some(FormListFields {
                         offered: f("form_list.offered", Want::U8s)?,
                         count: f("form_list.count", Want::U8)?,
                         marked: f("form_list.marked", Want::Bools)?,
-                        cursor: f("form_list.cursor", Want::U8)?,
                         chosen_set: f("form_list.chosen", Want::Bool)?,
                         chosen: f("form_list.chosen_place", Want::U8)?,
                     });

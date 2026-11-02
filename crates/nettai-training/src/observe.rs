@@ -22,6 +22,8 @@ use nettai_battle::battle::{fight, mode};
 use nettai_battle::collision::{ATTACK_OF, f1};
 use nettai_battle::content::{ChipClass, ChipModifier, ChipUsage, Content, DamageFormula, ExtraChipFlags, Trap};
 use nettai_battle::custom::builder::{self, Pick};
+use nettai_battle::custom::Layer;
+use nettai_battle::custom::layer::Sub;
 use nettai_battle::custom::screen::{MAX_SELECTIONS, Phase, SLOTS, Screen, SlotKind, SlotState};
 use nettai_battle::field::pflags;
 use nettai_battle::hud::CustomGauge;
@@ -241,7 +243,9 @@ impl AttackHistory {
 /// What a viewer's player knows that the battle doesn't hold for it: its
 /// reaction delay, the attacks of the last ticks, which keys open a window
 /// on its custom screen (the key probe, §4.2), the slots its screen
-/// refused, and how many decisions it has made on the screen.
+/// refused, how many decisions it has made on the screen, and its own
+/// custom screen layer (where its cursor and the form list's are, what it
+/// has up over the chips; none: a fight's view, no screen up).
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Extra {
     pub delay: u16,
@@ -251,6 +255,7 @@ pub struct Extra {
     pub screen_decisions: u16,
     /// Only OK may be pointed at (the screen's decisions are spent).
     pub only_ok: bool,
+    pub layer: Option<Layer>,
 }
 
 /// Viewer `me`'s side: its own, the other's, or neither.
@@ -332,7 +337,7 @@ pub fn encode(b: &Battle, viewer: u8, names: &Names, extra: &Extra, out: &mut Ob
     encode_objects(&v, out);
     encode_chips(&v, extra, out);
     encode_rules(&v, out);
-    encode_forms(&v, out);
+    encode_forms(&v, extra, out);
 }
 
 /// Whether the viewer sees object `r`: it is shown to it this tick
@@ -384,9 +389,13 @@ fn encode_general(v: &View, extra: &Extra, out: &mut Obs) {
     let side = &b.custom.sides[v.me as usize];
     let screen = side.screen.filter(|_| b.round.mode == mode::CUSTOM);
     if let Some(s) = &screen {
-        let i = match s.phase {
-            Phase::Choosing => 0,
-            Phase::Window { .. } => 1,
+        // (The form list is a window of the original's; a description,
+        // SELECT's hiding and L's message are its states besides: the
+        // layer's, over a screen choosing.)
+        let up = extra.layer.map_or(Sub::None, |l| l.sub);
+        let i = match (s.phase, up) {
+            (Phase::Choosing, Sub::None) => 0,
+            (Phase::Choosing, Sub::List(_)) | (Phase::Window { .. }, _) => 1,
             _ if side.sent.is_some() => 3,
             _ => 2,
         };
@@ -928,8 +937,10 @@ fn encode_chips(v: &View, extra: &Extra, out: &mut Obs) {
     let side = &b.custom.sides[v.me as usize];
     if let Some(screen) = side.screen.filter(|_| b.round.mode == mode::CUSTOM) {
         let layout = &b.game_rules().custom_screen;
-        let steps = crate::act::steps(&screen, layout);
-        let legal = crate::act::legal_slots(&screen, &steps, extra.refused, extra.only_ok);
+        let cursor = extra.layer.map_or(0, |l| l.cursor);
+        let choosing = screen.phase == Phase::Choosing && extra.layer.is_none_or(|l| !l.is_up());
+        let steps = crate::act::steps(&screen, cursor, layout);
+        let legal = crate::act::legal_slots(&screen, choosing, &steps, extra.refused, extra.only_ok);
         let base = picks(b, v.me, &screen, None);
         let base_built = would_build(b, v.me, &base);
         let base_damage = hand_damage(&base_built);
@@ -957,7 +968,7 @@ fn encode_chips(v: &View, extra: &Extra, out: &mut Obs) {
                 SlotState::Selected => 2,
             };
             one_hot(row, at + 6, 3, state);
-            row[at + 9] = flag(screen.cursor as usize == slot);
+            row[at + 9] = flag(cursor as usize == slot);
             row[at + 10] = screen.selection().iter().position(|&p| p as usize == slot).map_or(0.0, |p| (p + 1) as f32 / 5.0);
             row[at + 11] = s.uses_left as f32 / 3.0;
             row[at + 12] = flag(s.marks != 0);
@@ -1086,7 +1097,7 @@ fn place<'s>(schema: &'s Schema, s: &Scalar) -> Option<nettai_content_api::Place
     }
 }
 
-fn encode_forms(v: &View, out: &mut Obs) {
+fn encode_forms(v: &View, extra: &Extra, out: &mut Obs) {
     let b = v.b;
     let content = &*b.content;
     let mut n = 0;
@@ -1124,7 +1135,7 @@ fn encode_forms(v: &View, out: &mut Obs) {
         if let Some(list) = b.form_list(v.me) {
             for k in 0..(list.count as usize).min(list.forms.len()) {
                 if let Some(f) = list.forms[k] {
-                    let w = [k as f32 / 5.0, flag(list.marked[k]), flag(list.cursor as usize == k), flag(list.chosen == Some(k as u8))];
+                    let w = [k as f32 / 5.0, flag(list.marked[k]), flag(extra.layer.map_or(0, |l| l.list_cursor) as usize == k), flag(list.chosen == Some(k as u8))];
                     put(out, f, 2, Some(w));
                 }
             }

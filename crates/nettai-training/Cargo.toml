@@ -40,3 +40,7 @@ nettai-replay = { path = "../nettai-replay" }
 [[example]]
 name = "lost_rounds"
 required-features = ["live"]
+
+[[example]]
+name = "search_duel"
+required-features = ["live"]

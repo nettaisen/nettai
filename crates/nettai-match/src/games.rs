@@ -531,7 +531,7 @@ fn an_unowned_soul_cant_be_chosen() {
             m.sides[0].set_fact(&content, "souls", &forms(&content, "exe5", names)).unwrap();
         }
         let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
-        let mut last = 0u16;
+        let mut last = None;
         for _ in 0..400 {
             let screen = b.custom.sides[0].screen.as_ref().filter(|s| s.phase == Phase::Choosing);
             if let Some(s) = screen
@@ -541,9 +541,9 @@ fn an_unowned_soul_cant_be_chosen() {
                 let soul = matches!(slot.kind, SlotKind::Button { button, .. } if content.defs.button(button).name == "soul");
                 return (soul, soul && slot.state == SlotState::Selectable);
             }
-            let a = if screen.is_some() && last == 0 { nettai_battle::input::keys::A } else { 0 };
+            let a = (screen.is_some() && last.is_none()).then_some(nettai_battle::ScreenChoice::Pick(0));
             last = a;
-            b.tick(&[nettai_battle::input::PlayerTick::buttons(a), Default::default()], Default::default());
+            b.tick(&[nettai_battle::input::PlayerTick::default().with_choice(a), Default::default()], Default::default());
         }
         panic!("no chip picked");
     };
@@ -561,7 +561,7 @@ fn an_unowned_soul_cant_be_chosen() {
 #[test]
 fn the_soul_takes_the_chips_place() {
     use nettai_battle::custom::screen::{Phase, SPECIAL_SLOT, SlotKind, SlotState};
-    use nettai_battle::input::{PlayerTick, keys};
+    use nettai_battle::input::PlayerTick;
     let content = exe5_content();
     let sword = crate::ids::chip(&content, "exe5", "sword").unwrap();
     let proto = crate::ids::form(&content, "exe5", "protosoul").unwrap();
@@ -571,8 +571,8 @@ fn the_soul_takes_the_chips_place() {
     let screen = |b: &nettai_battle::Battle| b.custom.sides[0].screen.expect("a screen");
     // A tick with `key` pressed, then ticks without until the screen is
     // back to choosing.
-    let press = |b: &mut nettai_battle::Battle, key: u16| {
-        b.tick(&[PlayerTick::buttons(key), Default::default()], Default::default());
+    let press = |b: &mut nettai_battle::Battle, choice: nettai_battle::ScreenChoice| {
+        b.tick(&[PlayerTick::default().with_choice(Some(choice)), Default::default()], Default::default());
         for _ in 0..200 {
             b.tick(&[PlayerTick::buttons(0), Default::default()], Default::default());
             if b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing) {
@@ -588,26 +588,24 @@ fn the_soul_takes_the_chips_place() {
         b.tick(&[PlayerTick::buttons(0), Default::default()], Default::default());
     }
     // The first Sword picked: the soul is on offer.
-    press(&mut b, keys::A);
+    press(&mut b, nettai_battle::ScreenChoice::Pick(0));
     let s = screen(&b);
     assert_eq!((s.selection(), s.slots[SPECIAL_SLOT as usize].state), (&[0u8][..], SlotState::Selectable));
     assert!(matches!(s.slots[SPECIAL_SLOT as usize].kind, SlotKind::Button { .. }));
     // Given: the soul first in the selection, the Sword's slot still picked.
-    b.custom.sides[0].screen.as_mut().unwrap().cursor = SPECIAL_SLOT;
-    press(&mut b, keys::A);
+    press(&mut b, nettai_battle::ScreenChoice::Press(SPECIAL_SLOT));
     let s = screen(&b);
     assert_eq!(s.selection(), &[SPECIAL_SLOT][..]);
     assert_eq!((s.slots[0].state, s.slots[SPECIAL_SLOT as usize].state), (SlotState::Selected, SlotState::Selected));
     assert_eq!(s.trade.map(|t| (t.button, t.chip)), Some((SPECIAL_SLOT, 0)));
     // B: the Sword back in its place, the soul on offer again.
-    press(&mut b, keys::B);
+    press(&mut b, nettai_battle::ScreenChoice::TakeBack);
     let s = screen(&b);
     assert_eq!((s.selection(), s.trade), (&[0u8][..], None));
     assert_eq!(s.slots[SPECIAL_SLOT as usize].state, SlotState::Selectable);
     // Given again, and OK: the turn's form, its turns, the Sword gone.
-    press(&mut b, keys::A);
-    b.custom.sides[0].screen.as_mut().unwrap().cursor = nettai_battle::custom::screen::OK_SLOT;
-    b.tick(&[PlayerTick::buttons(keys::A), Default::default()], Default::default());
+    press(&mut b, nettai_battle::ScreenChoice::Press(SPECIAL_SLOT));
+    b.tick(&[PlayerTick::default().with_choice(Some(nettai_battle::ScreenChoice::Ok)), Default::default()], Default::default());
     let (hand, transform) = b.custom.sides[0].built.clone().expect("OK built the hand");
     assert_eq!((transform.form, transform.turns, transform.alternate), (Some(proto), 3, false));
     assert!(hand.is_some(), "the soul is a pick");
@@ -626,7 +624,7 @@ fn the_soul_takes_the_chips_place() {
 #[test]
 fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
     use nettai_battle::Battle;
-    use nettai_battle::custom::screen::{OK_SLOT, Phase, SlotKind};
+    use nettai_battle::custom::screen::{Phase, SlotKind};
     use nettai_battle::input::{PlayerTick, keys};
     use nettai_content_api::{FieldValue, Registry};
     let content = exe5_content();
@@ -651,10 +649,10 @@ fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
         s.in_custom && s.screen.is_some_and(|s| s.phase == Phase::Choosing)
     };
     let tick = |b: &mut Battle, left: u16, right: u16| b.tick(&[PlayerTick::buttons(left), PlayerTick::buttons(right)], Default::default());
-    // A tick with `key` pressed by the left side, then ticks without until
-    // its screen is back to choosing.
-    let press = |b: &mut Battle, key: u16| {
-        tick(b, key, 0);
+    // A tick with the left side's choice, then ticks without until its
+    // screen is back to choosing.
+    let press = |b: &mut Battle, choice: nettai_battle::ScreenChoice| {
+        b.tick(&[PlayerTick::default().with_choice(Some(choice)), Default::default()], Default::default());
         for _ in 0..200 {
             tick(b, 0, 0);
             if choosing(b, 0) {
@@ -681,17 +679,14 @@ fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
     }
     // A Sword picked, and the first capsule mixed into it: its sequence's
     // end is in the state.
-    press(&mut b, keys::A);
-    b.custom.sides[0].screen.as_mut().unwrap().cursor = 8;
-    press(&mut b, keys::A);
+    press(&mut b, nettai_battle::ScreenChoice::Pick(0));
+    press(&mut b, nettai_battle::ScreenChoice::Press(8));
     assert_eq!((field(&b, "mix_capsule"), field(&b, "mix_step")), (FieldValue::U8(1), FieldValue::U8(24)));
     assert!(b.custom.sides[0].screen.unwrap().slots[0].attached.is_some(), "the capsule is in the Sword");
     // OK on both screens, and the fight: the turn's start reverts a soul
     // with no turns left.
-    for side in 0..2 {
-        b.custom.sides[side].screen.as_mut().unwrap().cursor = OK_SLOT;
-    }
-    tick(&mut b, keys::A, keys::A);
+    let ok = PlayerTick::default().with_choice(Some(nettai_battle::ScreenChoice::Ok));
+    b.tick(&[ok, ok], Default::default());
     for _ in 0..600 {
         if !b.custom.sides[0].in_custom && !b.custom.sides[1].in_custom {
             break;
@@ -1234,8 +1229,8 @@ fn a_team_navis_own_chip_in_a_party_takes_its_bonus() {
 /// block whole, 20 ticks landing, 21 settling).
 #[test]
 fn a_switch_on_the_custom_screen_is_the_turns() {
-    use nettai_battle::custom::screen::{OK_SLOT, Phase};
-    use nettai_battle::input::{PlayerTick, keys};
+    use nettai_battle::custom::screen::Phase;
+    use nettai_battle::input::PlayerTick;
     let content = exe5_content();
     let left = exe5(&TANGO_EXE5, r#"party = [{ navi = "protoman" }]"#);
     let m = parse(&content, &left, &exe5(&TANGO_EXE5, "")).unwrap_or_else(|p| panic!("{p:?}"));
@@ -1249,7 +1244,7 @@ fn a_switch_on_the_custom_screen_is_the_turns() {
     }
     assert!(choosing(&b));
     // A pick, then the switch: the pick is dropped.
-    b.tick(&[PlayerTick::buttons(keys::A), Default::default()], Default::default());
+    b.tick(&[PlayerTick::default().with_choice(Some(nettai_battle::ScreenChoice::Pick(0))), Default::default()], Default::default());
     b.tick(&Default::default(), Default::default());
     assert_eq!(b.custom.sides[0].screen.unwrap().selected, 1);
     ask_switch(&mut b, 1);
@@ -1268,18 +1263,13 @@ fn a_switch_on_the_custom_screen_is_the_turns() {
     ask_switch(&mut b, 1);
     assert_eq!(b.custom.sides[0].screen.unwrap().phase, Phase::Choosing);
     // OK: the turn's switch to ProtoMan.
-    b.custom.sides[0].screen.as_mut().unwrap().cursor = OK_SLOT;
-    b.tick(&[PlayerTick::buttons(keys::A), Default::default()], Default::default());
+    b.tick(&[PlayerTick::default().with_choice(Some(nettai_battle::ScreenChoice::Ok)), Default::default()], Default::default());
     let (_, transform) = b.custom.sides[0].built.clone().expect("OK built the hand");
     assert_eq!(transform.navi_switch.map(|n| crate::ids::local(&content.defs.navi(n).key).to_string()), Some("protoman".into()));
     // The other side's OK; then the turn starts with the paused switch.
     for _ in 0..600 {
-        if b.custom.sides[1].built.is_none()
-            && let Some(s) = b.custom.sides[1].screen.as_mut()
-            && s.phase == Phase::Choosing
-        {
-            s.cursor = OK_SLOT;
-            b.tick(&[Default::default(), PlayerTick::buttons(keys::A)], Default::default());
+        if b.custom.sides[1].built.is_none() && b.custom.sides[1].screen.is_some_and(|s| s.phase == Phase::Choosing) {
+            b.tick(&[Default::default(), PlayerTick::default().with_choice(Some(nettai_battle::ScreenChoice::Ok))], Default::default());
             continue;
         }
         b.tick(&Default::default(), Default::default());
@@ -1382,20 +1372,20 @@ fn a_shout_helps_once_a_battle() {
 #[test]
 fn a_deleted_navis_emotion_swing_goes_on() {
     use nettai_battle::battle::{fight, mode};
-    use nettai_battle::input::keys;
     let content = exe5_content();
     let m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
     let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
-    let step = |b: &mut nettai_battle::Battle, held: u16| {
-        let input = nettai_battle::TickInput { players: [nettai_battle::PlayerTick::buttons(held); 2], events: Default::default() };
+    let step = |b: &mut nettai_battle::Battle, ok: bool| {
+        let tick = nettai_battle::PlayerTick::default().with_choice(ok.then_some(nettai_battle::ScreenChoice::Ok));
+        let input = nettai_battle::TickInput { players: [tick; 2], events: Default::default() };
         b.step(&input);
         assert!(!b.is_stopped(), "the engine stopped: {:?}", b.round_end());
     };
     // To the fight, OK pressed on the first custom screen.
     let mut t = 0;
     while !(b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING) {
-        let held = if b.round.mode == mode::CUSTOM { [keys::START, 0, keys::A, 0][t % 4] } else { 0 };
-        step(&mut b, held);
+        let ok = b.round.mode == mode::CUSTOM && t % 4 == 2;
+        step(&mut b, ok);
         t += 1;
         assert!(t < 2000, "no fight");
     }
@@ -1404,7 +1394,7 @@ fn a_deleted_navis_emotion_swing_goes_on() {
     let navi = b.player(1).unwrap();
     b.objects.get_mut(navi).hp = 0;
     for _ in 0..3 {
-        step(&mut b, 0);
+        step(&mut b, false);
     }
     assert_eq!(b.round.alive[1], 0, "the navi left its side's list");
     assert!(b.round.alive_actors[1].iter().all(|s| s.is_none()));
@@ -1413,6 +1403,6 @@ fn a_deleted_navis_emotion_swing_goes_on() {
         if !b.objects.is_allocated(navi) {
             break;
         }
-        step(&mut b, 0);
+        step(&mut b, false);
     }
 }

@@ -113,16 +113,19 @@ impl Session {
     }
 
     /// Run one tick (one wall-clock frame of a driver that runs the battle
-    /// itself). Returns false (and records why) when the battle can't go
-    /// on. (The tick that ends a set runs and is shown as any other; it is
-    /// the step after it that returns false.)
-    pub fn step(&mut self, keys: u16) -> bool {
+    /// itself) with the local player's input (`input`: their buttons, a
+    /// switch asked, a custom screen choice of their own; their keys reach
+    /// their custom screen through their layer, the driver's). Returns false
+    /// (and records why) when the battle can't go on. (The tick that ends a
+    /// set runs and is shown as any other; it is the step after it that
+    /// returns false.)
+    pub fn step(&mut self, input: nettai_battle::PlayerTick) -> bool {
         if self.stopped.is_some() {
             return false;
         }
         self.ended = None;
         IN_ENGINE.with(|f| f.set(true));
-        let ran = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.driver.run_frame(keys, &mut self.battle)));
+        let ran = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.driver.run_frame(input, &mut self.battle)));
         IN_ENGINE.with(|f| f.set(false));
         if let Some(r) = &mut self.recorder {
             let mut settled = Vec::new();
@@ -157,7 +160,7 @@ impl Session {
         self.sound = None;
         // (A training session's options, on the battle the last tick left: nothing from a driver without any.)
         self.driver.prepare(&mut self.battle);
-        let Some(step) = self.driver.next(&self.battle, keys) else {
+        let Some(step) = self.driver.next(&self.battle, input) else {
             self.stop(StopReason::Finished, format!("end of input at {}", self.driver.position()));
             self.finished = true;
             return false;
@@ -172,6 +175,8 @@ impl Session {
             self.stop(StopReason::Internal, format!("engine stopped at {}: {}", self.driver.position(), panic_message(e.as_ref())));
             return false;
         }
+        // (The players' layers draw what the tick did, on the round it was of.)
+        self.driver.follow(&self.battle);
         self.ask_pause(self.battle.pause_requests());
         if self.diverged.is_none() {
             let diffs = self.driver.check(&self.battle);
@@ -189,7 +194,7 @@ impl Session {
                 _ => (false, false),
             };
             let digest = (round_ended || r.digest_due()).then(|| self.battle.digest());
-            r.tick(&nettai_replay::Tick { inputs: step.input.map(|p| p.word()), digest, round_ended, set_ended });
+            r.tick(&nettai_replay::Tick { inputs: step.input.map(|p| p.word()), delays: self.driver.delays(), digest, round_ended, set_ended });
         }
         match after {
             None => {}
@@ -197,7 +202,7 @@ impl Session {
                 // (The ended round's last tick is still heard; what is
                 // shown is the next round, at its start, as a netplay
                 // peer shows it.)
-                self.sound = Some(heard(&self.battle).iter().map(|&cue| CueAction::Play(cue)).collect());
+                self.sound = Some(heard(&self.battle, self.driver.layers()).into_iter().map(CueAction::Play).collect());
                 self.ended = Some(Box::new(std::mem::replace(&mut self.battle, *next)));
                 self.new_round = true;
             }
@@ -231,9 +236,15 @@ impl Session {
 
 /// The last tick's sound cues as the console `b` is shown from hears
 /// them: the viewer's (`setup.local_side`, which a replay shown from the
-/// other side sets), not the simulation's own side's.
-pub fn heard(b: &Battle) -> &[nettai_battle::sound::SoundCue] {
-    b.sound_cues_for(b.setup.local_side)
+/// other side sets), not the simulation's own side's; with that side's
+/// layer's (its cursor's, its sub-screens', the dark chip hover's) where its
+/// screen's own end (`Battle::screen_cues_at`).
+pub fn heard(b: &Battle, layers: [Option<&nettai_battle::custom::Layer>; 2]) -> Vec<nettai_battle::sound::SoundCue> {
+    let side = b.setup.local_side;
+    match layers[side as usize & 1] {
+        Some(layer) => layer.heard(b),
+        None => b.sound_cues_for(side).to_vec(),
+    }
 }
 
 /// What a panic said (an engine's stop: [`in_engine`]).
@@ -321,12 +332,12 @@ mod tests {
             assert_eq!((s.finished, s.result), (true, Some(BattleResult::Won)), "{game}");
             assert_eq!(s.stopped.as_deref(), Some("the match is over: you won"), "{game}");
             let ticks = s.ticks;
-            assert!(!s.step(0) && s.ticks == ticks, "{game}");
+            assert!(!s.step(nettai_battle::PlayerTick::default()) && s.ticks == ticks, "{game}");
             s.restart();
             assert_eq!((s.finished, s.result, s.stopped.as_deref()), (false, None, None), "{game}");
             assert_eq!(s.driver.position(), "live round 1 tick 0", "{game}");
             assert_eq!((s.battle.round.round, s.battle.round.wins), (0, 0), "{game}");
-            assert!(s.step(0), "{game}");
+            assert!(s.step(nettai_battle::PlayerTick::default()), "{game}");
         }
     }
 }

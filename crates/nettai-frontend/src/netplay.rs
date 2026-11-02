@@ -58,7 +58,8 @@ use web_time::Instant;
 
 use nettai_battle::content::Content;
 use nettai_battle::cues::{CueAction, CueTracker};
-use nettai_battle::{Battle, BattleResult};
+use nettai_battle::custom::Layer;
+use nettai_battle::{Battle, BattleResult, PlayerTick};
 use nettai_match::{After, Match, Set, Side};
 use nettai_netplay::protocol::TICK_WORD;
 use nettai_netplay::standin::StandInBattle;
@@ -214,8 +215,10 @@ struct Record {
     /// The digests of frames the latest simulation of which took one, by
     /// frame (a frame due one, and the round's end).
     digests: std::collections::BTreeMap<u32, u64>,
-    /// The ticks settled since the player last took them.
+    /// The ticks settled since the player last took them, and each one's
+    /// frame in the round (its sides' screen delays are the peer's to say).
     settled: Vec<nettai_replay::Tick>,
+    frames: Vec<u32>,
 }
 
 /// Frames a cue a re-simulation makes again may move and still be the one
@@ -232,7 +235,7 @@ impl Watch {
             actions: Vec::new(),
             end: None,
             settled_end: None,
-            record: before.map(|before| Record { before, digests: Default::default(), settled: Vec::new() }),
+            record: before.map(|before| Record { before, digests: Default::default(), settled: Vec::new(), frames: Vec::new() }),
             seen: 0,
             pause_asked: false,
         }
@@ -276,7 +279,8 @@ impl Observer<StandInBattle> for Watch {
             let due = ended || crate::replay::digest_due(r.before + frame as u64);
             let digest = r.digests.remove(&frame).filter(|_| due);
             let inputs = inputs.map(|&b| b & nettai_replay::INPUT_MASK);
-            r.settled.push(nettai_replay::Tick { inputs, digest, round_ended: ended, set_ended: false });
+            r.settled.push(nettai_replay::Tick { inputs, delays: [0; 2], digest, round_ended: ended, set_ended: false });
+            r.frames.push(frame);
         }
         if ended {
             self.settled_end = self.end.take();
@@ -314,6 +318,10 @@ pub struct NetPlayer<C: Channel> {
     heard: usize,
     /// When a frame last came from the other player.
     last_frame: Instant,
+    /// The player's own custom screen layer, of the round's battle as it is
+    /// shown (made with the round's first frame): the other player's isn't
+    /// here.
+    layer: Option<Layer>,
     /// The set being played.
     set: Set,
     options: NetOptions,
@@ -342,7 +350,23 @@ impl<C: Channel> NetPlayer<C> {
         let config = PeerConfig::new(options.input_delay, options.max_lead);
         let world = BattleWorld::with_observer(StandInBattle::new(set.start()), side, Watch::new(side as u8, None));
         let start = Instant::now();
-        NetPlayer { channel, side, peer: Peer::new(world, config), heard: 0, last_frame: start, set, options, start, over: None, recording: None, skew: 0, lead: 0, down: false, reconnects: 0 }
+        NetPlayer {
+            channel,
+            side,
+            peer: Peer::new(world, config),
+            heard: 0,
+            last_frame: start,
+            layer: None,
+            set,
+            options,
+            start,
+            over: None,
+            recording: None,
+            skew: 0,
+            lead: 0,
+            down: false,
+            reconnects: 0,
+        }
     }
 
     /// The side this player plays.
@@ -399,7 +423,7 @@ impl<C: Channel> NetPlayer<C> {
     }
 
     /// One wall-clock frame.
-    fn frame(&mut self, keys: u16, shown: &mut Battle) -> Result<Ran, Stop> {
+    fn frame(&mut self, input: PlayerTick, shown: &mut Battle) -> Result<Ran, Stop> {
         // (A channel's error is its transport giving the connection up.)
         let lost = |e: String| Stop::new(StopReason::ConnectionLost, format!("netplay stopped: {e}"));
         let now = self.now();
@@ -441,7 +465,10 @@ impl<C: Channel> NetPlayer<C> {
         (self.skew, self.lead) = (session.skew(), session.local_queue_length() as u32);
         let decided = self.over.is_none() && self.peer.wait().is_none();
         if decided {
-            self.peer.decide(u32::from(keys) & TICK_WORD);
+            // The player's input through their layer, against the battle as they see it.
+            let side = self.side as u8;
+            let input = self.layer.get_or_insert_with(|| Layer::new(side, shown)).input(input, shown);
+            self.peer.decide(input.word() & TICK_WORD);
         }
         let datagram = self.peer.datagram(now);
         self.channel.send(&datagram).map_err(lost)?;
@@ -451,14 +478,31 @@ impl<C: Channel> NetPlayer<C> {
                 shown.clone_from(advanced.frame.state.battle());
                 shown.setup.local_side = side;
             });
+            if let Some(layer) = &mut self.layer {
+                layer.follow(shown);
+            }
             ran.advanced = true;
             ran.pause_requests[self.side] = std::mem::take(&mut self.peer.session_mut().world_mut().observer_mut().pause_asked);
             // What settled: the ticks, for a recording; the round's end at
             // the tick it ended on, and how the set goes on from it (the
             // next round is the shared simulation's, side 0's; the result
             // is this player's). (The world has told the sound.)
+            let round = self.peer.round();
+            let (mine, theirs) = (self.side, 1 - self.side);
+            let delays: Vec<(u8, u8)> = {
+                let watch = self.peer.session().world().observer();
+                let frames = watch.record.as_ref().map_or(&[][..], |r| &r.frames[..]);
+                frames.iter().map(|&f| (self.peer.local_delay(round, f), self.peer.remote_delay(round, f))).collect()
+            };
             let watch = self.peer.session_mut().world_mut().observer_mut();
             if let (Some(r), Some((_, recorded))) = (&mut watch.record, &mut self.recording) {
+                // (Each side's screen delay, for the replay to run its layer again: the peer's own and what the
+                // other told.)
+                for (t, (local, remote)) in r.settled.iter_mut().zip(delays) {
+                    t.delays[mine] = local;
+                    t.delays[theirs] = remote;
+                }
+                r.frames.clear();
                 recorded.append(&mut r.settled);
             }
             let ended = watch.settled_end.take();
@@ -484,6 +528,7 @@ impl<C: Channel> NetPlayer<C> {
                         self.peer.end_round(world);
                         self.heard = 0;
                         self.show(&battle, shown);
+                        self.layer = None;
                         ran.new_round = true;
                     }
                     // The engine stopped the settled battle: on both peers
@@ -512,12 +557,18 @@ impl<C: Channel> Driver for NetPlayer<C> {
     }
 
     /// (A netplay match runs its own frames.)
-    fn next(&mut self, _: &Battle, _: u16) -> Option<Step> {
+    fn next(&mut self, _: &Battle, _: PlayerTick) -> Option<Step> {
         None
     }
 
-    fn run_frame(&mut self, keys: u16, shown: &mut Battle) -> Option<Result<Ran, Stop>> {
-        Some(self.frame(keys, shown))
+    fn run_frame(&mut self, input: PlayerTick, shown: &mut Battle) -> Option<Result<Ran, Stop>> {
+        Some(self.frame(input, shown))
+    }
+
+    fn layers(&self) -> [Option<&Layer>; 2] {
+        let mut out = [None, None];
+        out[self.side & 1] = self.layer.as_ref();
+        out
     }
 
     /// From the set's start: each tick as it settles (both peers' files
@@ -527,7 +578,7 @@ impl<C: Channel> Driver for NetPlayer<C> {
             return false;
         }
         self.recording = Some((0, Vec::new()));
-        self.peer.session_mut().world_mut().observer_mut().record = Some(Record { before: 0, digests: Default::default(), settled: Vec::new() });
+        self.peer.session_mut().world_mut().observer_mut().record = Some(Record { before: 0, digests: Default::default(), settled: Vec::new(), frames: Vec::new() });
         true
     }
 
@@ -783,7 +834,7 @@ mod tests {
         /// frame on `keys` (told the battle it shows); the lobby is polled;
         /// and what the lobby has to say, the player's frame with it, is
         /// sent.
-        fn frame(&mut self, keys: impl FnOnce(&Battle) -> u16) -> Stands {
+        fn frame(&mut self, keys: impl FnOnce(&Battle) -> PlayerTick) -> Stands {
             use crate::lobby::Status;
             let now = Instant::now();
             while let Some(d) = self.link.recv().unwrap() {
@@ -791,9 +842,12 @@ mod tests {
             }
             self.lobby.set_link_down(self.link.down_for().map(|elapsed| Reconnecting { elapsed, gives_up_in: self.link.gives_up_in() }));
             if let Some(player) = &mut self.player {
-                let keys = keys(player.battle());
+                let input = keys(player.battle());
+                if let Some(c) = input.choice {
+                    player.choose(c);
+                }
                 // (One that has stopped runs no more: a test looks at why.)
-                let _ = player.tick(keys);
+                let _ = player.tick(input.held);
             }
             let stands = match self.lobby.poll(now) {
                 Status::Pending => Stands::Agreeing,
@@ -815,7 +869,7 @@ mod tests {
 
     /// Frames of both seats, each match's player on the keys `keys` gives
     /// its side, until `done` (told how each lobby stands).
-    fn until(seats: &mut [Seat; 2], what: &str, keys: impl Fn(&Battle, usize, u32) -> u16, mut done: impl FnMut(&[Seat; 2], &[Stands; 2]) -> bool) {
+    fn until(seats: &mut [Seat; 2], what: &str, keys: impl Fn(&Battle, usize, u32) -> PlayerTick, mut done: impl FnMut(&[Seat; 2], &[Stands; 2]) -> bool) {
         let start = Instant::now();
         for frame in 0u32.. {
             let stands = [0, 1].map(|i| seats[i].frame(|b| keys(b, i, frame)));
@@ -833,8 +887,8 @@ mod tests {
     }
 
     /// No keys: a player that presses nothing.
-    fn idle(_: &Battle, _: usize, _: u32) -> u16 {
-        0
+    fn idle(_: &Battle, _: usize, _: u32) -> PlayerTick {
+        PlayerTick::default()
     }
 
     /// Two players meet on WebRTC links: one asks the signaling server for
@@ -949,7 +1003,7 @@ mod tests {
         until(&mut seats, "the joiner sees the host loaded", idle, |s, _| s[1].lobby.their_loaded());
         let loading = [Stands::Loading, Stands::Loading];
         for _ in 0..50 {
-            assert_eq!([seats[0].frame(|_| 0), seats[1].frame(|_| 0)], loading, "a match starts once both have loaded");
+            assert_eq!([seats[0].frame(|_| PlayerTick::default()), seats[1].frame(|_| PlayerTick::default())], loading, "a match starts once both have loaded");
             std::thread::sleep(Duration::from_millis(2));
         }
         // The joiner's, a step a frame, said as it goes (a loading screen's
@@ -960,7 +1014,7 @@ mod tests {
             if !more {
                 break;
             }
-            assert_eq!([seats[0].frame(|_| 0), seats[1].frame(|_| 0)], loading, "a match starts once both have loaded");
+            assert_eq!([seats[0].frame(|_| PlayerTick::default()), seats[1].frame(|_| PlayerTick::default())], loading, "a match starts once both have loaded");
             std::thread::sleep(Duration::from_millis(1));
         }
         assert!(preloads[1].done());
@@ -984,7 +1038,7 @@ mod tests {
         assert_eq!(seeds[0], seeds[1]);
         let playing = [Stands::Playing, Stands::Playing];
         for _ in 0..300 {
-            assert_eq!([seats[0].frame(|_| 0), seats[1].frame(|_| 0)], playing);
+            assert_eq!([seats[0].frame(|_| PlayerTick::default()), seats[1].frame(|_| PlayerTick::default())], playing);
             for (i, seat) in seats.iter().enumerate() {
                 assert!(seat.player().stop_reason().is_none(), "side {i}: {:?}", seat.player().stopped());
             }
@@ -1019,7 +1073,7 @@ mod tests {
         // ends, told.
         seats[1].lobby.leave();
         until(&mut seats, "the host is told the joiner left", idle, |_, stands| stands[0] != Stands::Agreeing);
-        assert_eq!([seats[0].frame(|_| 0), seats[1].frame(|_| 0)], [Stands::Failed(Reason::OpponentLeft), Stands::Failed(Reason::Left)]);
+        assert_eq!([seats[0].frame(|_| PlayerTick::default()), seats[1].frame(|_| PlayerTick::default())], [Stands::Failed(Reason::OpponentLeft), Stands::Failed(Reason::Left)]);
     }
 
     /// The player who is back in the lobby first leaves the other what it
@@ -1060,7 +1114,7 @@ mod tests {
             let now = Instant::now();
             for side in 0..2 {
                 let Some((player, shown)) = &mut players[side] else { continue };
-                let keys = if side == 0 { short_set::shooter(shown, side, frame) } else { crate::driver::bot_buttons(shown, side, frame) };
+                let keys = if side == 0 { short_set::shooter(shown, side, frame) } else { crate::driver::bot_tick(shown, side, frame) };
                 player.run_frame(keys, shown).unwrap().unwrap();
                 results[side] = player.result();
             }
@@ -1138,7 +1192,7 @@ mod tests {
         let m = short_set::of(&content, "exe6", 7);
         let single = Settings::new("exe6", 1, nettai_match::testing::rulesets("exe6").preset("unrestricted").unwrap().clone());
         let (mut seats, _) = meet(&content, &server, [single.clone(), single.clone()], m.sides.clone());
-        let keys = |b: &Battle, side: usize, frame: u32| if side == 0 { short_set::shooter(b, side, frame) } else { crate::driver::bot_buttons(b, side, frame) };
+        let keys = |b: &Battle, side: usize, frame: u32| if side == 0 { short_set::shooter(b, side, frame) } else { crate::driver::bot_tick(b, side, frame) };
         let (agreeing, loading, starting, playing) =
             ([Stands::Agreeing, Stands::Agreeing], [Stands::Loading, Stands::Loading], [Stands::Start, Stands::Start], [Stands::Playing, Stands::Playing]);
 
@@ -1193,7 +1247,7 @@ mod tests {
         let late = frame_datagram(first[0].seed, &[0, 0, 0]);
         for _ in 0..20 {
             seats[0].lobby.receive(Instant::now(), &late);
-            assert_eq!([seats[0].frame(|_| 0), seats[1].frame(|_| 0)], loading, "a frame of the match before starts nothing");
+            assert_eq!([seats[0].frame(|_| PlayerTick::default()), seats[1].frame(|_| PlayerTick::default())], loading, "a frame of the match before starts nothing");
             std::thread::sleep(Duration::from_millis(2));
         }
         seats[1].lobby.set_loaded();
@@ -1226,7 +1280,7 @@ mod tests {
         assert!(seats.iter().all(|seat| !seat.lobby.ready() && !seat.lobby.their_ready() && *seat.lobby.settings() == single));
         seats[0].lobby.leave();
         until(&mut seats, "the joiner is told the host left", keys, |_, stands| stands[1] != Stands::Agreeing);
-        assert_eq!([seats[0].frame(|_| 0), seats[1].frame(|_| 0)], [Stands::Failed(Reason::Left), Stands::Failed(Reason::OpponentLeft)]);
+        assert_eq!([seats[0].frame(|_| PlayerTick::default()), seats[1].frame(|_| PlayerTick::default())], [Stands::Failed(Reason::Left), Stands::Failed(Reason::OpponentLeft)]);
     }
 
     /// Two players on WebRTC links through a room of a signaling server (in
@@ -1279,7 +1333,7 @@ mod tests {
                 if over[side].is_some() {
                     continue;
                 }
-                let keys = if side == 0 { short_set::shooter(&s.battle, side, frame) } else { crate::driver::bot_buttons(&s.battle, side, frame) };
+                let keys = if side == 0 { short_set::shooter(&s.battle, side, frame) } else { crate::driver::bot_tick(&s.battle, side, frame) };
                 assert!(s.step(keys), "side {side}: {:?}", s.stopped);
                 if let Some(down) = s.driver.net_status().and_then(|n| n.reconnecting) {
                     // (Of the link's 30 seconds.)
@@ -1430,7 +1484,8 @@ mod tests {
             shuttle.carry(frame);
             for side in 0..2 {
                 let Some(p) = &mut playing[side] else { continue };
-                let left = match p.player.run_frame(p.masher.buttons(), &mut p.shown).unwrap() {
+                let mashed = p.masher.input(&p.shown, side as u8);
+                let left = match p.player.run_frame(mashed, &mut p.shown).unwrap() {
                     Ok(ran) => {
                         p.plays += ran.sound.iter().filter(|a| matches!(a, CueAction::Play(_))).count();
                         if ran.advanced {
@@ -1528,14 +1583,15 @@ mod tests {
             for side in 0..2 {
                 let (player, shown) = &mut players[side];
                 let fighting = shown.round.mode == mode::FIGHTING && shown.fight.state == fight::FIGHTING;
-                let keys = match (shown.round.mode == mode::CUSTOM, side) {
-                    (true, _) => crate::driver::bot_buttons(shown, side, frame),
+                let input = match (shown.round.mode == mode::CUSTOM, side) {
+                    (true, _) => crate::driver::bot_tick(shown, side, frame),
                     // Side 0 moves about; side 1 presses START now and then.
-                    (false, 0) => masher.buttons() & MOVES,
-                    (false, _) if fighting && frame % 40 == 0 => keys::START,
-                    (false, _) => 0,
+                    (false, 0) => PlayerTick::buttons(masher.buttons() & MOVES),
+                    (false, _) if fighting && frame % 40 == 0 => PlayerTick::buttons(keys::START),
+                    (false, _) => PlayerTick::default(),
                 };
-                let ran = player.run_frame(keys, shown).unwrap().unwrap();
+                let keys = input.held;
+                let ran = player.run_frame(input, shown).unwrap().unwrap();
                 // (A frame simulates the tick of the input the frame before
                 // took: the press is said then.)
                 assert!(!ran.pause_requests[1 - side], "side {side}, frame {frame}: told of the other player's START");
@@ -1610,7 +1666,7 @@ mod tests {
             for side in 0..2 {
                 let Some((player, shown, out, after)) = &mut playing[side] else { continue };
                 assert!(frame < 40_000, "{game} side {side}: the set doesn't end ({})", player.position());
-                let keys = if side == 0 { short_set::shooter(shown, side, frame) } else { crate::driver::bot_buttons(shown, side, frame) };
+                let keys = if side == 0 { short_set::shooter(shown, side, frame) } else { crate::driver::bot_tick(shown, side, frame) };
                 // The host changes its input delay during the first round
                 // (the joiner keeps none): its own, kept for the round
                 // after, and the settled states still agree.

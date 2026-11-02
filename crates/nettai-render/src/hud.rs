@@ -719,7 +719,9 @@ fn transform_hides(b: &Battle, state: &HudState, local: u8) -> (bool, bool) {
 /// `custom_gauge`, the custom gauge (`Renderer::custom_gauge`). `smooth`
 /// is the smooth motion: the gauge's fill drawn between whole
 /// pixels. `scratch` is a layer to lay a piece out in before it is put in
-/// its place (the right seat's chip name, right-aligned).
+/// its place (the right seat's chip name, right-aligned). `screen_layer` is
+/// the seat's side's custom screen layer (`nettai_battle::custom::Layer`:
+/// its SELECT's hiding, its hover's fade).
 #[allow(clippy::too_many_arguments)]
 pub fn draw<'a>(
     b: &Battle,
@@ -727,7 +729,7 @@ pub fn draw<'a>(
     graphics: &crate::graphics::Graphics<'a>,
     state: &HudState,
     shared: &'a SharedGlyphs,
-    (seat, view): (Seat, &View),
+    (seat, view, screen_layer): (Seat, &View, Option<&nettai_battle::custom::Layer>),
     custom_gauge: bool,
     smooth: Smooth,
     (layer, scratch): (&mut Layer, &mut Layer),
@@ -757,7 +759,7 @@ pub fn draw<'a>(
     // the right of a screen of both, at the top right: the box flipped, its
     // digits in their cells' mirrored place.
     keep_to(seat, Anchor::TOP_LEFT, (&mut *layer, &mut *scratch), list, text);
-    let shift = crate::custom::hud_shift(b, local);
+    let shift = crate::custom::hud_shift(b, screen_layer, local);
     if let Some(r) = player.filter(|_| !hide_boxes && !b.hud_hidden.hp_box) {
         let shown = state.hp.map(|h| h.shown).unwrap_or(b.objects.get(r).hp);
         let pal = &hud.hp_palettes[color.min(2)];
@@ -1239,7 +1241,7 @@ pub fn draw<'a>(
     if let Some(r) = player.filter(|_| !over && !hidden && !hide_mugshot && !matches!(flicker, 5 | 6)) {
         keep_to(seat, Anchor::TOP_LEFT, (&mut *layer, &mut *scratch), list, text);
         let mut group = Vec::new();
-        let mut items = mugshot_parts(b, hud, graphics, state, r, (shift, seat), (shared, text), &mut group, problems);
+        let mut items = mugshot_parts(b, hud, graphics, state, r, (shift, seat, screen_layer), (shared, text), &mut group, problems);
         if window.flickers != 0 && (flicker + 1) & 2 != 0 {
             for part in &mut group {
                 part.palette = [0; 16];
@@ -1803,7 +1805,7 @@ fn mugshot_parts<'a>(
     graphics: &crate::graphics::Graphics<'a>,
     state: &HudState,
     r: ObjectRef,
-    (x, seat): (i32, Seat),
+    (x, seat, screen_layer): (i32, Seat, Option<&nettai_battle::custom::Layer>),
     (shared, text): (&'a SharedGlyphs, &TextSink),
     out: &mut Vec<SpritePart<'a>>,
     problems: &mut Problems,
@@ -1828,7 +1830,7 @@ fn mugshot_parts<'a>(
     if !navi.changes_form() {
         let Some((tiles, palettes, number)) = crate::lookups::navi_face(graphics, &b.content, stats.navi, problems) else { return items };
         let full_synchro = live && emotion_role(b, side as u8) == Some(EmotionRole::FullSynchro);
-        let pal = window_faded(b, side as u8, palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default());
+        let pal = window_faded(b, screen_layer, side as u8, palettes.get(full_synchro as usize).or(palettes.first()).copied().unwrap_or_default());
         let tiles = face_with_ring(hud, number, tiles, &pal, (at.0, flip), text, &mut items);
         out.push(SpritePart { hflip: flip, ..block(tiles, 32, 16, pal, at.0, EMOTION_WINDOW_Y) });
         out.push(box_part(hud.shapes.navi_box.as_ref(), &hud.navi_box, &pal, (at.1, flip), text, &mut items));
@@ -1851,7 +1853,7 @@ fn mugshot_parts<'a>(
     ) else { return items };
     // (The white of a change to Full Synchro: `byte_801CD80`.)
     let pal = if state.mood.is_some_and(|m| m.white) { [0x7FFF; 16] } else { palettes.first().copied().unwrap_or_default() };
-    let pal = window_faded(b, side as u8, pal);
+    let pal = window_faded(b, screen_layer, side as u8, pal);
     let face_hud = hud;
     let gfx = match picture {
         Some(m) => face_with_ring(face_hud, m, gfx, &pal, (at.0, flip), text, &mut items),
@@ -2026,8 +2028,8 @@ fn count_number(counts: &nettai_assets::letters::CountLetters, n: usize, palette
 /// the custom screen's second fade record leaves it: a dark chip's hover
 /// darkens sprite palettes 10-13 (`custom::window_fade`), the window's face
 /// among them.
-fn window_faded(b: &Battle, side: u8, palette: Palette) -> Palette {
-    match crate::custom::window_fade(b, side) {
+fn window_faded(b: &Battle, screen_layer: Option<&nettai_battle::custom::Layer>, side: u8, palette: Palette) -> Palette {
+    match crate::custom::window_fade(b, screen_layer, side) {
         Some(f) => palette.map(|c| crate::compose::apply_fade(c, f)),
         None => palette,
     }
@@ -2824,7 +2826,7 @@ mod tests {
             let state = HudState::default();
             let shared = shared_glyphs(&b, &assets, &graphics, &state, seat, &text, &mut problems);
             let view = crate::render::Renderer::view(&b);
-            draw(&b, &assets, &graphics, &state, &shared, (seat, &view), false, Smooth::default(), (&mut layer, &mut scratch), &mut list, &mut text, &mut problems);
+            draw(&b, &assets, &graphics, &state, &shared, (seat, &view, None), false, Smooth::default(), (&mut layer, &mut scratch), &mut list, &mut text, &mut problems);
             let pal = assets.hud.hp_palettes[0];
             assert_eq!((at(&layer, lit, 0), at(&layer, dark, 0)), (pal[2], CLEAR), "{seat:?}: the outer frame cell's lit half");
             assert_eq!(at(&layer, digits + 8, 0), pal[1], "{seat:?}: the digits' cells");

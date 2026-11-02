@@ -2140,13 +2140,19 @@ pub enum Stop {
 /// Replay a round on `content`: its setup, then each battle frame ticked
 /// and compared, up to the first difference.
 pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Replay {
-    run_round_seeing(round, content, compat, &mut |_, _| {})
+    run_round_seeing(round, content, compat, &mut |_, _, _| {})
 }
 
 /// [`run_round`], showing `see` the battle after each battle frame (its
-/// frame number), before the frame's comparison: what a frame dump draws
-/// (a DS recording, which the frontend's trace player doesn't play).
-pub fn run_round_seeing(round: &Round, content: &Arc<Content>, compat: &Compat, see: &mut dyn FnMut(u32, &Battle)) -> Replay {
+/// frame number) and both sides' custom screen layers, before the frame's
+/// comparison: what a frame dump draws (a DS recording, which the
+/// frontend's trace player doesn't play).
+pub fn run_round_seeing(
+    round: &Round,
+    content: &Arc<Content>,
+    compat: &Compat,
+    see: &mut dyn FnMut(u32, &Battle, [Option<&nettai_battle::custom::Layer>; 2]),
+) -> Replay {
     // (A DS recording's link carries a custom screen's result in fewer
     // ticks than the GBA's words: the replay's content says the DS's.)
     let ds_content;
@@ -2191,13 +2197,16 @@ pub fn run_round_seeing(round: &Round, content: &Arc<Content>, compat: &Compat, 
     // compared has no frame left to agree on, and is left.
     let local = b.setup.local_side as usize & 1;
     let mut rng1_since: Option<(u32, u32, u32)> = None;
+    // (Each side's buttons through its custom screen layer, in lockstep: the
+    // choices on the ticks the original's screens took the keys.)
+    let mut layers = nettai_battle::custom::Lockstep::new(&b);
     for i in 0..frames.len() {
         // (A DS link stall: the frame routine ran without the battle's
         // update, its tick count held, waiting on the other console's
         // packet. The engine has no link: it has no such frame.)
         if round.stalled(i, &frames) {
             ds_main_loop(&mut b, DS_MAIN_LOOP_DRAWS);
-            see(frames[i].frame, &b);
+            see(frames[i].frame, &b, [Some(&layers.layers[0]), Some(&layers.layers[1])]);
             replay.matched += 1;
             continue;
         }
@@ -2208,11 +2217,13 @@ pub fn run_round_seeing(round: &Round, content: &Arc<Content>, compat: &Compat, 
             // then, MegaMan's hurt voice's test, reads the DS's values.)
             ds_main_loop(&mut b, DS_MAIN_LOOP_DRAWS - 1);
         }
+        let input = layers.input(&b, &input);
         if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.tick(&input, events))) {
             replay.stopped = Some(Stop::Panic { frame: frames[i].frame, message: panic_message(&*e) });
             return replay;
         }
-        see(frames[i].frame, &b);
+        layers.follow(&b);
+        see(frames[i].frame, &b, [Some(&layers.layers[0]), Some(&layers.layers[1])]);
         let differences = compare_at(&b, round, &frames, i, compat);
         if !differences.is_empty() {
             replay.stopped = Some(Stop::Differs { frame: frames[i].frame, differences });

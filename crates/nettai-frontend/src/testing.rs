@@ -53,8 +53,9 @@ pub fn recorded_with(content: &Arc<Content>, game: &str, seed: u32, mut also: im
     s.record(Recorder::new(Box::new(sink.clone()), content, &m, &info).unwrap()).unwrap();
     loop {
         let tick = s.ticks as u32;
-        let keys = short_set::shooter(&s.battle, 0, tick) | also(&s.battle, tick);
-        if !s.step(keys) {
+        let mut input = short_set::shooter(&s.battle, 0, tick);
+        input.held |= also(&s.battle, tick);
+        if !s.step(input) {
             break;
         }
     }

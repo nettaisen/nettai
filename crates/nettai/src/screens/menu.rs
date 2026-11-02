@@ -121,14 +121,23 @@ impl Screen for Menu {
         if shell.still {
             // The screenshot pass: the reel played to one tick and held there, so two shots of the menu differ
             // only where the menu does.
-            while reel.ticks < STILL_AT && reel.stage.player.tick(demo_buttons(reel.stage.player.battle(), reel.ticks)) {
+            while reel.ticks < STILL_AT && {
+                let input = demo_input(reel.stage.player.battle(), reel.ticks);
+                if let Some(choice) = input.choice {
+                    reel.stage.player.choose(choice);
+                }
+                reel.stage.player.tick(input.held)
+            } {
                 reel.ticks += 1;
             }
             reel.stage.surface.stale |= reel.ticks <= STILL_AT;
             reel.ticks = STILL_AT + 1;
         } else {
-            let buttons = if reel.pressed { demo_buttons(reel.stage.player.battle(), reel.ticks) } else { 0 };
-            reel.ticks += reel.stage.advance(now, buttons, &mut Vec::new());
+            let input = if reel.pressed { demo_input(reel.stage.player.battle(), reel.ticks) } else { Default::default() };
+            if let Some(choice) = input.choice {
+                reel.stage.player.choose(choice);
+            }
+            reel.ticks += reel.stage.advance(now, input.held, &mut Vec::new());
         }
         reel.stage.samples.clear();
         // (START in a reel's fight opens nothing.)
@@ -201,13 +210,13 @@ pub fn clock_seed() -> u32 {
     web_time::SystemTime::now().duration_since(web_time::UNIX_EPOCH).map(|d| d.subsec_nanos() ^ d.as_secs() as u32).unwrap_or(1)
 }
 
-/// What the reel presses for its left side: the custom screen as the library's own opponent presses it; in the
+/// What the reel does for its left side: the custom screen as the library's own opponent chooses on it; in the
 /// fight, the buster, a chip now and then, a step up or down (through every row in turn).
-fn demo_buttons(b: &nettai_battle::Battle, tick: u32) -> u16 {
+fn demo_input(b: &nettai_battle::Battle, tick: u32) -> nettai_battle::PlayerTick {
     use nettai_battle::battle::mode;
     use nettai_battle::input::keys;
     if b.round.mode == mode::CUSTOM {
-        return nettai_frontend::driver::bot_buttons(b, 0, tick);
+        return nettai_frontend::driver::bot_tick(b, 0, tick);
     }
     let mut k = 0;
     if tick % 9 < 2 {
@@ -220,5 +229,5 @@ fn demo_buttons(b: &nettai_battle::Battle, tick: u32) -> u16 {
     if (45..48).contains(&(tick % 90)) {
         k |= if (tick / 90) % 4 < 2 { keys::UP } else { keys::DOWN };
     }
-    k
+    nettai_battle::PlayerTick::buttons(k)
 }

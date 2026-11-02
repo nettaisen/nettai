@@ -241,7 +241,12 @@ observation. One network then plays every reaction speed.
 
 The network chooses what the screen ends up holding and never presses one of its keys (the user, 2026-10-24: "why
 can't you submit the whole custom screen without any cursor movement so you can avoid any issues?"). Each decision
-is one choice, which the navigator carries out to its end before the next is asked:
+is one choice, which the navigator carries out to its end before the next is asked. (Since 2026-11-01 the screen
+takes choices and reads no key, docs/design/custom-screen-actions.md: the cursor the navigator walks, the form list
+and its cursor are its side's layer's, `custom::Layer`, through which its keys go and become the screen's choices,
+as a player's do; the env keeps a layer per side, and the key probe copies the side's layer with the battle. The
+observation reads the cursor from the layer. Choosing directly, without the navigator, is a later change with its
+own observation and retraining.)
 
 - **A slot.** One of the 12 screen slots: a chip, OK, or a button of the rules (ChpShufl's re-deal, DustCross's
   scrap, Beast Out, EXE5's and EXE4's soul, Arm Change). A slot is allowed while the screen is choosing, if it is a
@@ -255,8 +260,9 @@ is one choice, which the navigator carries out to its end before the next is ask
   go one, and presses A, held a tick and let go a tick. A pick after which the screen is the same (the picks, the
   slots' states, the phase, the form, the cursor) is refused for the rest of that screen (EXE4 refuses a chip in a
   code it doesn't come in).
-- **An entry of the form list.** One of the 5 entries of the rules' form list (`Battle::form_list`, behind the
-  window views `form_list_opening`, `form_list`, `form_chosen`: EXE6's Crosses), allowed while no entry is chosen,
+- **An entry of the form list.** One of the 5 entries of the rules' form list (`Battle::form_list`; the list's
+  window and cursor are the side's layer's, `Layer::list_stage`, `Layer::list_cursor`, its choice the screen's
+  `ScreenChoice::ChooseForm`: EXE6's Crosses), allowed while no entry is chosen,
   for an entry that holds a form, isn't marked (a Cross used this battle) and wasn't refused on this screen, where
   the key probe found the key that opens the list. The navigator walks the cursor back to where the probe was made,
   presses that key, presses a direction in the list till its cursor is on the entry (a direction that doesn't move

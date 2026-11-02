@@ -281,7 +281,7 @@ use nettai_battle::content::Content;
 use nettai_battle::console::{Console, ConsoleSetup};
 use crate::unlocks::Unlocks;
 use crate::GameVersion;
-use nettai_battle::custom::{Context, PlayerSetup, Request, Side};
+use nettai_battle::custom::{Context, Layer, PlayerSetup, Request, Side};
 use nettai_battle::hand::ChipHand;
 use nettai_battle::input::PlayerTick;
 use nettai_battle::kinds::player::Emotion;
@@ -1165,9 +1165,16 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> (usi
     // compared has no frame left to agree on, and is left.
     let local = b.setup.local_side as usize & 1;
     let mut rng1_since: Option<(usize, u32, u32)> = None;
+    // (Each side's buttons through its custom screen layer, in lockstep: the
+    // choices on the ticks the original's screens took the keys.)
+    let mut layers = nettai_battle::custom::Lockstep::new(&b);
     for i in 0..frames.len() {
         let (input, events) = round.tick_inputs(i, &frames);
+        let input = layers.input(&b, &input);
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.tick(&input, events)));
+        if result.is_ok() {
+            layers.follow(&b);
+        }
         if let Err(e) = result {
             let msg = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()));
             return (i, Some((frames[i].frame, vec![format!("engine panicked: {}", msg.unwrap_or_default())])));
@@ -1231,7 +1238,9 @@ pub struct ScreenCheck {
 }
 
 /// Run every custom screen of a round on its own, from the players'
-/// recorded buttons, and compare what each player sends with the trace:
+/// recorded buttons through their layers (`custom::Layer`, in lockstep:
+/// the choices on the ticks the original's screens took the keys), and
+/// compare what each player sends with the trace:
 /// the hand (as installed), the transformation, when their status bit
 /// arrives cleared, and when the fight resumes. The fight is not
 /// simulated: each screen reads its navi's stats from the trace, and the
@@ -1246,6 +1255,7 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
     // screen reads, set from the trace as it opens.
     let mut battle = Battle::new(setup.clone(), content.clone());
     let mut sides: [Side; 2] = std::array::from_fn(|p| Side::new(&setup.players[p]));
+    let mut layers: [Layer; 2] = std::array::from_fn(|p| Layer::on_beat(p as u8, setup.players[p].joypad_phase));
     // Each console's RNG as far as the screens alone go: its draws outside
     // them (camera shakes, the emotion window) aren't simulated here. The
     // recording console's are in the trace instead, which samples its RNG
@@ -1292,18 +1302,32 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
                 now: f.frame,
             }
         };
-        for (p, side) in sides.iter_mut().enumerate() {
-            side.joypad.update(round.fed(i, &frames, p));
-        }
         let custom = f.state[0] == 4 && f.state[1] == 8;
         let prev_init = i.checked_sub(1).map(|j| frames[j].state[3]);
-        if custom && f.state[3] == 1 && prev_init == Some(0) {
+        let opening = custom && f.state[3] == 1 && prev_init == Some(0);
+        // Each player's buttons through their layer, against their screen as
+        // the frame before left it (none before it opens, nor in the fight).
+        let mut choices = [None; 2];
+        for p in 0..2 {
+            let ctx = context(p);
+            let shown = (custom && !opening).then(|| sides[p].presented(&ctx, battle.form_list(p as u8))).flatten();
+            choices[p] = layers[p].input_on(PlayerTick::buttons(round.fed(i, &frames, p)), shown.as_ref()).choice;
+        }
+        let follow = |layers: &mut [Layer; 2], sides: &[Side; 2], battle: &Battle| {
+            for p in 0..2 {
+                let ctx = context(p);
+                let shown = custom.then(|| sides[p].presented(&ctx, battle.form_list(p as u8))).flatten();
+                layers[p].follow_on(shown.as_ref());
+            }
+        };
+        if opening {
             for (p, side) in sides.iter_mut().enumerate() {
                 let ctx = context(p);
                 battle.stats[p] = ctx.stats;
                 battle.round.turn = ctx.turn;
                 side.open_with(&ctx, &mut consoles[p], &mut battle.custom_extras(p as u8, ctx.emotion));
             }
+            follow(&mut layers, &sides, &battle);
             open = Some((f.frame, [None; 2], [None; 2]));
             continue;
         }
@@ -1318,7 +1342,7 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
                     let d = content.chip(id).damage;
                     if d < 1000 { d } else { 0 }
                 };
-                let request = side.tick_with(&ctx, &mut consoles[p], damage, &mut battle.custom_extras(p as u8, ctx.emotion));
+                let request = side.tick_with(&ctx, choices[p], &mut consoles[p], damage, &mut battle.custom_extras(p as u8, ctx.emotion));
                 if request == Some(Request::Confirm) {
                     confirmed[p] = Some(f.frame);
                 }
@@ -1327,6 +1351,7 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
                 }
             }
         }
+        follow(&mut layers, &sides, &battle);
         let resumes = frames.get(i + 1).is_some_and(|n| custom && n.state[1] == 0x0C);
         if !resumes {
             continue;

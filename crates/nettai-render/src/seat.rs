@@ -145,8 +145,8 @@ impl Seat {
     /// all but where the other console's window is as it leaves over it
     /// (`Screen` beside a `Window`). A frame wider than the original's
     /// (`size`) is halved at the original's middle, and a window keeps to
-    /// its edge.
-    pub fn clip(self, b: &Battle, seats: &[Seat], size: Size) -> Option<[i16; 2]> {
+    /// its edge. `layers`: each side's custom screen layer.
+    pub fn clip(self, b: &Battle, layers: crate::custom::Layers, seats: &[Seat], size: Size) -> Option<[i16; 2]> {
         let (middle, width) = (size.middle() as i16, size.width as i16);
         match self.shows {
             Shows::Half => Some(if self.mirrored() { [middle, width] } else { [0, middle] }),
@@ -154,7 +154,7 @@ impl Seat {
                 let other = seats.iter().find(|s| s.side != self.side && s.shows == Shows::Window)?;
                 let (_, screen) = crate::custom::screen_of(b, other.side)?;
                 // (Its window's columns: 120 less the scroll in from its edge.)
-                let edge = (WIDTH as i32 / 2 - crate::custom::placement(screen).scroll as i32).max(0) as i16;
+                let edge = (WIDTH as i32 / 2 - crate::custom::placement(screen, layers[other.side as usize & 1]).scroll as i32).max(0) as i16;
                 Some(if other.mirrored() { [0, width - edge] } else { [edge, width] })
             }
             _ => None,

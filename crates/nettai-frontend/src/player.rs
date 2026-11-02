@@ -144,6 +144,8 @@ pub struct Player {
     /// The member of the local side's party the player asked to switch to ([`Player::ask_switch`]), until a tick
     /// carries it.
     switch: Option<u8>,
+    /// The custom screen choice the player made of their own ([`Player::choose`]), until a tick carries it.
+    choice: Option<nettai_battle::ScreenChoice>,
     speed: usize,
     clock: Clock,
     /// What had been made before the player was: this thread's runtimes
@@ -195,6 +197,7 @@ impl Player {
             paused: false,
             held: false,
             switch: None,
+            choice: None,
             speed: NORMAL,
             clock: Clock::new(),
             before,
@@ -287,6 +290,15 @@ impl Player {
         self.switch = Some(member);
     }
 
+    /// Choose on the local player's custom screen (`nettai_battle::ScreenChoice`: a chip picked, a button pressed,
+    /// OK, a take-back, an entry of the form list chosen), as a pointer does it (their keys choose through their
+    /// layer, as the buttons given each tick): the next tick that runs carries it, once, whichever the buttons; a
+    /// later choice before it runs replaces it. Whether the screen takes it is the battle's (it does while it
+    /// chooses, and refuses what can't be picked).
+    pub fn choose(&mut self, choice: nettai_battle::ScreenChoice) {
+        self.choice = Some(choice);
+    }
+
     /// Run one tick with `buttons` held, whatever the clock or the pause
     /// say: a host that paces itself, or a frame's step while paused. (A
     /// driver that runs the battle itself, netplay's, runs one wall-clock
@@ -305,14 +317,15 @@ impl Player {
             }
             return true;
         }
-        // (The tick's word: the buttons, and the switch asked for until a tick that ran carried it. A driver that
-        // runs the battle itself may wait this frame: the ask waits with it.)
-        let switch = nettai_battle::PlayerTick { held: 0, switch_to: self.switch, mic_level: 0 }.word() as u16;
-        if !self.session.step((buttons & 0x3FF) | switch) {
+        // (The tick's input: the buttons, and the switch asked for and the choice made until a tick that ran
+        // carried them. A driver that runs the battle itself may wait this frame: they wait with it.)
+        let input = nettai_battle::PlayerTick { held: buttons & 0x3FF, switch_to: self.switch, mic_level: 0, choice: self.choice };
+        if !self.session.step(input) {
             return false;
         }
         if self.session.fresh {
             self.switch = None;
+            self.choice = None;
         }
         if self.session.new_round {
             self.renderer.reset();
@@ -326,13 +339,22 @@ impl Player {
             // only?"). Drawing alone: neither peer's battle sees it.)
             self.renderer.scenery_frame(&self.session.battle);
         }
+        let real_time = self.real_time();
         if let Some(audio) = &mut self.audio {
             match &self.session.sound {
                 // What a driver that runs the battle itself made of the
                 // frame (netplay: plays, and cancels of cues played on a
                 // wrong prediction), or a round's last cues.
-                Some(actions) => audio.handle_actions(actions.iter().copied()),
-                None => audio.handle(crate::session::heard(&self.session.battle)),
+                Some(actions) => {
+                    audio.handle_actions(actions.iter().copied());
+                    // (Netplay's frame: the local player's layer's sounds of it, the cursor's, its sub-screens' and
+                    // the dark chip hover's, at once: no tick of the battle's makes them, and none is taken back.)
+                    let shown = self.session.battle.setup.local_side as usize & 1;
+                    if let Some(layer) = self.session.driver.layers()[shown].filter(|_| self.session.fresh && real_time) {
+                        audio.handle(&layer.cues(&self.session.battle));
+                    }
+                }
+                None => audio.handle(&crate::session::heard(&self.session.battle, self.session.driver.layers())),
             }
             audio.tick(&mut self.samples);
             if self.samples.len() > MOST_SAMPLES {
@@ -507,6 +529,7 @@ impl Player {
         self.renderer.reset();
         self.clock.rest();
         self.switch = None;
+        self.choice = None;
         true
     }
 
@@ -514,7 +537,7 @@ impl Player {
 
     /// The battle's picture now, with nothing over it: the renderer's frame size (`Renderer::frame_size`).
     pub fn frame(&mut self) -> Frame {
-        self.renderer.render(&self.session.battle)
+        self.renderer.render(&self.session.battle, self.session.driver.layers())
     }
 
     /// The picture into the host's pixels: `buffer` holds `width` x
@@ -665,6 +688,12 @@ impl Player {
         &self.session.battle
     }
 
+    /// Each side's custom screen layer the driver keeps (`nettai_battle::custom::Layer`: the cursor and what only
+    /// shows), by side; none for a side it keeps none of (netplay's other player).
+    pub fn layers(&self) -> [Option<&nettai_battle::custom::Layer>; 2] {
+        self.session.driver.layers()
+    }
+
     /// The clock the stage's scenery is drawn on now: the battle's own, and
     /// the frames it moved on while held ([`Player::set_held`]).
     pub fn stage_clock(&self) -> nettai_render::stage::StageClock {
@@ -693,7 +722,17 @@ impl Player {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::driver::{LivePlayer, Ran, Step, Stop, folder_of, live_setup};
+    use crate::driver::{LivePlayer, Ran, Step, Stop, bot_tick, folder_of, live_setup};
+    use nettai_battle::PlayerTick;
+
+    /// A tick of `p` with `input`: its choice made as a pointer makes one
+    /// (`Player::choose`), its buttons held.
+    fn tick_with(p: &mut Player, input: PlayerTick) -> bool {
+        if let Some(c) = input.choice {
+            p.choose(c);
+        }
+        p.tick(input.held)
+    }
     use crate::game::Enhancements;
     use nettai_battle::content::testing;
     use std::sync::Arc;
@@ -756,14 +795,14 @@ mod tests {
         let graphics = Arc::new(nettai_assets::Bundle::default());
         let mut p = Player::with(Renderer::new(graphics.clone()), None, None, live());
         let fighting = |p: &Player| p.battle().round.mode == mode::FIGHTING && p.battle().fight.state == fight::FIGHTING;
-        // Through the custom screen as the opponent's is pressed: a chip,
-        // START to OK, A.
+        // Through the custom screen by keys, as a player presses them (through their layer): a chip, START to OK,
+        // A.
         let mut starts = 0;
         for tick in 0..3000u32 {
             if fighting(&p) {
                 break;
             }
-            let buttons = crate::driver::bot_buttons(p.battle(), 0, tick);
+            let buttons = bot_keys(&p, tick);
             starts += (buttons & keys::START != 0) as u32;
             assert!(p.tick(buttons));
         }
@@ -870,8 +909,14 @@ mod tests {
         fn start(&mut self) -> Battle {
             self.0.start()
         }
-        fn next(&mut self, b: &Battle, keys: u16) -> Option<Step> {
-            self.0.next(b, keys)
+        fn next(&mut self, b: &Battle, input: PlayerTick) -> Option<Step> {
+            self.0.next(b, input)
+        }
+        fn layers(&self) -> [Option<&nettai_battle::custom::Layer>; 2] {
+            self.0.layers()
+        }
+        fn follow(&mut self, b: &Battle) {
+            self.0.follow(b);
         }
         fn position(&self) -> String {
             self.0.position()
@@ -986,7 +1031,6 @@ mod tests {
     /// the frame has none of the motion's parts.
     #[test]
     fn the_smooth_motion_is_the_battles_alone_and_moves_nothing_the_original_doesnt() {
-        use crate::driver::bot_buttons;
         use nettai_battle::battle::{fight, mode};
         let content = testing::content();
         let mut graphics = crate::testing::graphics(&content, 0x001F);
@@ -1013,8 +1057,8 @@ mod tests {
         let mut original = player(Enhancements::NONE);
         let (mut nudged_gauge, mut lifted, mut overlaid, mut fought) = (0, 0, 0, 0);
         for tick in 0..3000u32 {
-            let k = bot_buttons(on.battle(), 0, tick);
-            assert!(on.tick(k) && off.tick(k) && original.tick(k));
+            let k = bot_tick(on.battle(), 0, tick);
+            assert!(tick_with(&mut on, k) && tick_with(&mut off, k) && tick_with(&mut original, k));
             let frame = on.frame();
             let t = on.battle().round.ticks;
             let plain = off.frame();
@@ -1032,7 +1076,7 @@ mod tests {
             let mut again = renderer(Enhancements::ALL);
             again.hud_state = on.renderer().hud_state.clone();
             let copy = on.battle().clone();
-            let redrawn = again.render(&copy);
+            let redrawn = again.render(&copy, on.session.driver.layers());
             assert!(
                 redrawn.pixels == frame.pixels && redrawn.nudge == frame.nudge && redrawn.lift == frame.lift && redrawn.overlays == frame.overlays,
                 "tick {t}: drawn again"
@@ -1066,7 +1110,6 @@ mod tests {
     /// the hold's frames.
     #[test]
     fn held_the_battle_stands_and_its_scenery_moves_on() {
-        use crate::driver::bot_buttons;
         let content = testing::content();
         let mut graphics = crate::testing::graphics(&content, 0x001F);
         crate::testing::scrolling_background(&mut graphics);
@@ -1077,8 +1120,8 @@ mod tests {
         let player = || Player::with(Renderer::with_graphics(graphics.game_graphics()), None, None, set());
         let (mut never, mut held) = (player(), player());
         let both = |never: &mut Player, held: &mut Player, tick: u32| {
-            let k = bot_buttons(never.battle(), 0, tick);
-            assert!(never.tick(k) && held.tick(k));
+            let k = bot_tick(never.battle(), 0, tick);
+            assert!(tick_with(never, k) && tick_with(held, k));
         };
         // Held for no tick: nothing of the frame changes.
         for tick in 0..120 {
@@ -1134,10 +1177,16 @@ mod tests {
         fn start(&mut self) -> Battle {
             self.inner.start()
         }
-        fn next(&mut self, b: &Battle, keys: u16) -> Option<Step> {
-            self.inner.next(b, keys)
+        fn next(&mut self, b: &Battle, input: PlayerTick) -> Option<Step> {
+            self.inner.next(b, input)
         }
-        fn run_frame(&mut self, _keys: u16, _shown: &mut Battle) -> Option<Result<Ran, Stop>> {
+        fn layers(&self) -> [Option<&nettai_battle::custom::Layer>; 2] {
+            self.inner.layers()
+        }
+        fn follow(&mut self, b: &Battle) {
+            self.inner.follow(b);
+        }
+        fn run_frame(&mut self, _input: PlayerTick, _shown: &mut Battle) -> Option<Result<Ran, Stop>> {
             let frame = self.frames;
             self.frames += 1;
             (self.from..self.from + self.len).contains(&frame).then(|| Ok(Ran::default()))
@@ -1155,7 +1204,6 @@ mod tests {
     /// battle goes on as one never stalled, the scenery on from where the stall left it, nothing jumping back.
     #[test]
     fn a_stall_keeps_the_scenery_moving() {
-        use crate::driver::bot_buttons;
         let content = testing::content();
         let mut graphics = crate::testing::graphics(&content, 0x001F);
         crate::testing::scrolling_background(&mut graphics);
@@ -1168,8 +1216,8 @@ mod tests {
         let mut stalled = Player::with(Renderer::with_graphics(graphics.game_graphics()), None, None, stalling);
         assert!(stalled.real_time());
         for tick in 0..120 {
-            let k = bot_buttons(never.battle(), 0, tick);
-            assert!(never.tick(k) && stalled.tick(k));
+            let k = bot_tick(never.battle(), 0, tick);
+            assert!(tick_with(&mut never, k) && tick_with(&mut stalled, k));
         }
         // Stalled: no tick of the battle's, the scenery a frame on each, drawn anew.
         let (ticks, digest, clock) = (stalled.ticks(), stalled.battle().digest(), stalled.stage_clock());
@@ -1187,10 +1235,32 @@ mod tests {
         // On again: as the battle never stalled, the scenery 60 frames ahead and moving a frame a tick.
         for tick in 120..240 {
             let before = stalled.stage_clock();
-            let k = bot_buttons(never.battle(), 0, tick);
-            assert!(never.tick(k) && stalled.tick(k));
+            let k = bot_tick(never.battle(), 0, tick);
+            assert!(tick_with(&mut never, k) && tick_with(&mut stalled, k));
             assert_eq!(stalled.battle().digest(), never.battle().digest(), "tick {tick}: as never stalled");
             assert_eq!(stalled.stage_clock().background, before.background + 1, "tick {tick}: no jump");
+        }
+    }
+
+    /// Keys that pick the first chip and press OK as a player does,
+    /// walking the local player's layer's cursor (`p`'s driver's): A on a
+    /// chip under it that can be picked while none is, else START to OK and
+    /// A, a press every other tick.
+    fn bot_keys(p: &Player, tick: u32) -> u16 {
+        use nettai_battle::battle::mode;
+        use nettai_battle::custom::{Phase, SlotKind, SlotState, screen::OK_SLOT};
+        use nettai_battle::input::keys;
+        let b = p.battle();
+        let s = &b.custom.sides[0];
+        let Some(screen) = s.screen.as_ref().filter(|x| s.in_custom && b.round.mode == mode::CUSTOM && x.phase == Phase::Choosing) else { return 0 };
+        let Some(layer) = p.session.driver.layers()[0].filter(|l| !l.is_up() && tick % 2 == 1) else { return 0 };
+        let here = &screen.slots[layer.cursor as usize];
+        if screen.selected == 0 && matches!(here.kind, SlotKind::Chip { .. }) && here.state == SlotState::Selectable {
+            keys::A
+        } else if layer.cursor != OK_SLOT {
+            keys::START
+        } else {
+            keys::A
         }
     }
 }

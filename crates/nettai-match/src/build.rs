@@ -1918,8 +1918,8 @@ mod tests {
     /// at OK: ProtoSoul given for a Sword.
     #[test]
     fn exe5s_soul_time_is_the_battles() {
-        use nettai_battle::custom::screen::{OK_SLOT, Phase, SPECIAL_SLOT};
-        use nettai_battle::input::{PlayerTick, keys};
+        use nettai_battle::custom::screen::{Phase, SPECIAL_SLOT};
+        use nettai_battle::input::PlayerTick;
         let content = exe5_content();
         let builds = Builds::of(&content, "exe5").unwrap();
         let mut plain = builds.new_build(&content, "protoman").unwrap();
@@ -1953,8 +1953,8 @@ mod tests {
             let m = Match { sides: [side.clone(), plain.clone()], ..m };
             let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
             let choosing = |b: &nettai_battle::Battle| b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing);
-            let press = |b: &mut nettai_battle::Battle, key: u16| {
-                b.tick(&[PlayerTick::buttons(key), Default::default()], Default::default());
+            let press = |b: &mut nettai_battle::Battle, choice: nettai_battle::ScreenChoice| {
+                b.tick(&[PlayerTick::default().with_choice(Some(choice)), Default::default()], Default::default());
                 for _ in 0..200 {
                     b.tick(&[PlayerTick::buttons(0), Default::default()], Default::default());
                     if choosing(b) {
@@ -1969,11 +1969,9 @@ mod tests {
                 }
                 b.tick(&[PlayerTick::buttons(0), Default::default()], Default::default());
             }
-            press(&mut b, keys::A);
-            b.custom.sides[0].screen.as_mut().unwrap().cursor = SPECIAL_SLOT;
-            press(&mut b, keys::A);
-            b.custom.sides[0].screen.as_mut().unwrap().cursor = OK_SLOT;
-            b.tick(&[PlayerTick::buttons(keys::A), Default::default()], Default::default());
+            press(&mut b, nettai_battle::ScreenChoice::Pick(0));
+            press(&mut b, nettai_battle::ScreenChoice::Press(SPECIAL_SLOT));
+            b.tick(&[PlayerTick::default().with_choice(Some(nettai_battle::ScreenChoice::Ok)), Default::default()], Default::default());
             let (_, transform) = b.custom.sides[0].built.clone().expect("OK built the hand");
             assert_eq!(transform.form, ids::form(&content, "exe5", "protosoul"));
             transform.turns as i64

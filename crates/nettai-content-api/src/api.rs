@@ -1549,10 +1549,10 @@ pub trait CoreApi {
     fn take_over(&mut self, side: u8, ticks: u16);
     /// The side's custom screen, in a custom hook of the rules (its button's
     /// functions; docs/design/rules-in-luau.md §4.4): the refusal sound;
-    /// the shared machinery for the button under the cursor (the picked
-    /// chips scrapped: EXE6's DustCross; the chips not picked dealt again:
-    /// EXE6's ChpShufl); whether the last pick is a chip; the state of the
-    /// button under the cursor ("selectable", "unavailable", "selected").
+    /// the shared machinery for the button pressed, in its `pressed` (the
+    /// picked chips scrapped: EXE6's DustCross; the chips not picked dealt
+    /// again: EXE6's ChpShufl); whether the last pick is a chip; the state
+    /// of the button pressed ("selectable", "unavailable", "selected").
     fn custom_refuse(&mut self, side: u8) -> ApiResult<()>;
     /// `custom.folder(side)`: the side's battle folder as its screen has
     /// it, its 30 places in order, each chip with its code's number (A 0,
@@ -1587,8 +1587,9 @@ pub trait CoreApi {
     fn custom_last_pick_is_chip(&self, side: u8) -> ApiResult<bool>;
     fn custom_cursor_state(&self, side: u8) -> ApiResult<&'static str>;
     /// More of the side's custom screen, for the rules' buttons and windows
-    /// (§4.4). `by` (`custom_set_form`, `custom_form_taken`) is the calling
-    /// button's or window's name, whose pick holds the turn's form.
+    /// (§4.4): `custom_pick`, the button pressed is picked (in its
+    /// `pressed`). `by` (`custom_set_form`, `custom_form_taken`) is the
+    /// calling button's or window's name, whose pick holds the turn's form.
     fn custom_pick(&mut self, side: u8) -> ApiResult<()>;
     fn custom_play(&mut self, side: u8, sound: &str) -> ApiResult<()>;
     /// A sound of the rules' own the screen plays in its order, which only
@@ -1596,8 +1597,7 @@ pub trait CoreApi {
     /// window's, Beast Out's).
     fn custom_play_sound(&mut self, side: u8, sound: u16) -> ApiResult<()>;
     fn custom_set_column_icon(&mut self, side: u8, chip: Option<crate::ChipHandle>) -> ApiResult<()>;
-    /// `ticks`: the ticks it has had already (EXE6's Cross window, whose
-    /// first tick its opening's last runs).
+    /// `ticks`: the ticks it has had already.
     fn custom_open_window(&mut self, side: u8, window: &str, ticks: u16) -> ApiResult<()>;
     fn custom_window_tick(&self, side: u8) -> ApiResult<u16>;
     fn custom_shake(&mut self, side: u8, magnitude: u16, ticks: u16) -> ApiResult<()>;
@@ -1651,34 +1651,27 @@ pub trait CoreApi {
     /// The held chip's icon in the column cell it left, shown or not
     /// (`custom.set_held_icon`: EXE5's Arm Change's blink, 0x080236EC).
     fn custom_set_held_icon(&mut self, side: u8, button: &str, shown: bool) -> ApiResult<()>;
-    /// The screen's fade is still running (`custom.fading`).
+    /// The screen's fade (`custom.fade`'s, the screen's own) is still
+    /// running (`custom.fading`). (The dark chips' hover runs the same
+    /// record in the original, which the rules here don't wait on: it is the
+    /// player's layer's.)
     fn custom_fading(&self, side: u8) -> ApiResult<bool>;
-    /// The screen's cursor (its slot), and moving it; whether a key (its
-    /// name: "a", "b", "select", "start", "right", "left", "up", "down",
-    /// "r", "l") is pressed this tick, or repeats (`Joypad::repeat`).
-    fn custom_cursor(&self, side: u8) -> ApiResult<u8>;
-    fn custom_set_cursor(&mut self, side: u8, slot: u8) -> ApiResult<()>;
-    fn custom_pressed(&self, side: u8, key: &str) -> ApiResult<bool>;
-    fn custom_repeated(&self, side: u8, key: &str) -> ApiResult<bool>;
     /// The screen's drawing, for a window of the rules: the window's sprites
     /// (`sub_80279C8`: the emblem, the Regular chip's frame and the last
     /// turns' block), the Regular chip's frame alone (`sub_802899C`), the
     /// screen's cursor where it is (`sub_8028820`: EXE4's shuffle draws the
-    /// button's, 0x08020E08), the Cross window's cursor (`sub_80289E4`), the
-    /// chip window showing the slot under the cursor (`sub_8028476`), and
-    /// the window's Cross tab (`sub_8026840`).
+    /// button's, 0x08020E08), the chip window showing the slot under the
+    /// cursor (`sub_8028476`), and the window's form list tab
+    /// (`sub_8026840`). Where the cursor is is the player's layer's, which
+    /// draws them.
     fn custom_draw_window(&mut self, side: u8) -> ApiResult<()>;
     fn custom_draw_regular(&mut self, side: u8) -> ApiResult<()>;
     fn custom_draw_cursor(&mut self, side: u8) -> ApiResult<()>;
     /// The icon of the chip a button holds (`custom_hold_last_pick`), over
     /// the button (EXE5's 0x080254F4): nothing while none holds one.
     fn custom_draw_held(&mut self, side: u8) -> ApiResult<()>;
-    fn custom_draw_form_list_cursor(&mut self, side: u8) -> ApiResult<()>;
     fn custom_show_chip_window(&mut self, side: u8) -> ApiResult<()>;
     fn custom_set_form_list_tab(&mut self, side: u8, on: bool) -> ApiResult<()>;
-    /// R in a window of the rules: `form`'s description (`sub_8026E78`; three
-    /// lines without one), back to the window when it closes.
-    fn custom_describe(&mut self, side: u8, form: Option<crate::FormHandle>) -> ApiResult<()>;
     /// The rules' buttons' states asked again (`sub_8028F48`).
     fn custom_refresh_buttons(&mut self, side: u8) -> ApiResult<()>;
     /// What the screen reads of its player that isn't the rules' setup: the

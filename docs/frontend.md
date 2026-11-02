@@ -366,15 +366,32 @@ Frame numbers are the trace's.
 
 **Live play** (a match, docs/app.md's Practice or `nettai-tool --match FILE`):
 you are the left navi; the right one is an opponent's (`driver::Opponent`,
-its buttons alone, as a player's are). What it does is two choices, each
+its input alone, as a player's is). What it does is two choices, each
 made alone and changed at any tick of the set (`Player::set_opponent`,
 `LivePlayer::set_opponent`; a practice menu's two rows):
 
 - **in the fight** (`InFight`): it stands still (the default), moves around
   at random and never attacks, or attacks at random: it moves, shoots and
   charges, uses its chips and presses L and R (never START);
-- **on its custom screen** (`OnCustomScreen`): it picks nothing and presses
-  OK, or picks the first chip it can and presses OK (the default).
+- **on its custom screen** (`OnCustomScreen`): it chooses OK with nothing
+  picked, or the first chip it can and then OK (the default): the bot
+  chooses (`driver::bot_tick`, `ok_tick`: a `ScreenChoice` every other
+  tick, nothing held), with no cursor of its own to walk.
+
+**Each side's layer.** The custom screen takes choices; the cursor and what
+only shows are each player's own layer's (`nettai_battle::custom::Layer`,
+docs/engine/custom-screen.md §0). A driver keeps the layers of the sides it
+plays (`Driver::layers`, by side) and puts each side's input through its
+side's layer before the tick (the keys become the screen's choices); the
+session has the layers follow the battle after it (`Driver::follow`). Live
+play keeps both (the local player's keys go through theirs as they see the
+battle, before the input delay: their cursor moves at once and their
+choices land the delay later; the opponent's through its own); netplay the
+local player's alone (the other's isn't drawn live); a replay both, run
+again (§8); a recording's driver both, in lockstep (`custom::Lockstep`).
+A new round's battle gets new layers. A host's own choice (a pointer's)
+goes in with `Player::choose`, beside `Player::ask_switch`: the next tick
+that runs carries it once, whichever the buttons.
 
 In the fight a second pad of the host's may also drive it (`InFight::SecondPad`, the host
 saying what the pad holds each frame with `LivePlayer::set_second_pad`), in
@@ -384,8 +401,9 @@ still.
 Or the host's AI plays it (`InFight::Ai` in the fight, `OnCustomScreen::Ai`
 on its custom screen): an `Ai` the host gives with `LivePlayer::set_ai`,
 asked for the opponent's buttons a tick at a time (`fight`, with what the
-local player holds; `custom_screen`) and told when the set starts over
-(`reset`). The library has no AI of its own: the app's is nettai-training's
+local player holds; `custom_screen`, with its side's layer, where its cursor
+is: its buttons go through that layer as a player's do) and told when the
+set starts over (`reset`). The library has no AI of its own: the app's is nettai-training's
 `NetAi` (the practice dummy's Fights). With none given it stands still and
 picks the first chip it can.
 
@@ -514,9 +532,10 @@ gives the same setup.
 
 The custom screen is the engine's (docs/engine/custom-screen.md), drawn. The
 keys are the game's (A picks, B takes back, START goes to OK, UP from the top
-row opens the Cross window, R describes, SELECT hides), but for the two a
-match's host answers in the battle's place (`nettai_match::HOST_KEYS`, in
-every match's setup: `RoundSetup::host_keys`):
+row opens the Cross window, R describes, SELECT hides), read by the player's
+layer, which makes the screen's choices of them, but for the two a match's
+host answers in the battle's place (`nettai_match::HOST_KEYS`, in every
+match's setup: `RoundSetup::host_keys`):
 
 - **START in the fight** pauses nothing: the game's own pause never runs.
   The player says who pressed it (`Player::take_pause_requests`, by side),
@@ -1036,7 +1055,11 @@ neither shows while the battle holds it (`objects::palette_flash`).
 **The custom screen** (`custom.rs`): the local player's screen as the
 original draws it on its console (`sub_8026A28` and its states), from the
 engine's `Screen` and its presentation state (`Screen::look`,
-docs/engine/custom-screen.md §9) and the game's custom screen graphics:
+docs/engine/custom-screen.md §9), that side's layer (the cursor, the window's
+counters and sprites, the chip window, the hover's shade, SELECT's hiding,
+the chatbox, the Cross window and its cursor: `Renderer::render(b, layers)`,
+the layers by side, `custom::Layers`; a side with none draws its screen
+without them) and the game's custom screen graphics:
 
 - the window on the HUD layer: the original's 15x20 map (with or without
   the Cross tab) and its patches, composed from the tile numbers the map
@@ -1113,8 +1136,12 @@ docs/engine/custom-screen.md §9) and the game's custom screen graphics:
   second.
 
 The screen's sounds are the engine's cues for its player
-(docs/engine/audio.md §1): they play through the audio crate like the
-battle's.
+(docs/engine/audio.md §1), with its layer's (the cursor's, the sub-screens',
+the dark chip hover's: `Layer::cues`) where the screen's end
+(`Battle::screen_cues_at`; `session::heard(b, layers)` and `Layer::heard`
+give the console's tick so): they play through the audio crate like the
+battle's. In netplay the local layer's play at once each frame (no tick of
+the world's makes them, so none is taken back).
 
 **The chatbox** (`chatbox.rs`) the custom screen runs (R: a chip's or a
 Cross's description; L: the no-running message, in a recording of the
@@ -2611,7 +2638,10 @@ can use too: in a room of the signaling server, natively or in a browser, or
 directly, natively), and the lobby its frame polls, so it stays responsive
 while it waits (nettai's `netplay` and `lobby`: docs/app.md §4). A host may
 bring a driver of its own (`Driver`): nettai-tools' replays the original's
-recordings.
+recordings. A driver takes each tick's local input as a `PlayerTick` (`next`,
+`run_frame`: the buttons, a switch asked, a choice of the host's own), keeps
+the layers of the sides it plays (`layers`, `follow`, `set_layers`) and says
+each side's screen delay for a replay (`delays`): §2, "Each side's layer".
 
 **The player** (`Player`) is what the host drives. It owns the session, the
 renderer, the enhanced mode's text renderer and the battle's audio:
@@ -2652,7 +2682,10 @@ renderer, the enhanced mode's text renderer and the battle's audio:
   60 to 100 uneven frames a second, 42 to 52 of the battle's 59.73 pictures
   a second were shown before, every one after. A host that paces
   itself calls `tick(buttons)` instead, once per frame of its own clock; the
-  embedding example does.
+  embedding example does. The buttons reach the custom screen through the
+  local player's layer, as keys; `choose(choice)` gives a custom screen
+  choice of the host's own (a pointer's), and `ask_switch(member)` a party
+  switch, each carried once by the next tick that runs.
 - `frame()` is the battle's 240x160 picture with nothing over it;
   `present(buffer, width, height)` scales it by the largest whole factor that
   fits and draws the enhanced mode's text (the game's own) at the buffer's
@@ -2753,8 +2786,8 @@ the battle's cues. The verification workspace runs it against both games
 ## 8. Replays
 
 A replay is one set, all its rounds, as it was played: the match and every
-tick's buttons, both players'. The simulation is a function of those alone, so
-playing them again makes the same set, round by round; nothing it makes is
+tick's word, both players' (their buttons and custom screen choices: `PlayerTick::word`). The simulation is a
+function of those alone, so playing them again makes the same set, round by round; nothing it makes is
 kept (who won, the score) but the ticks a round and the set ended on, and the
 battle's digest now and then, to tell a replay that reproduces from one that
 doesn't. A replay plays only on the content it was made with and an engine
@@ -2776,7 +2809,20 @@ setups (`Agreement::open_setups`, §2), so the info is all the agreement's and a
 host passes the setting on by recording at all. Live play
 writes each tick as it runs; netplay each as it settles
 (confirmed, never a prediction), so both players' replays of a match hold the
-same match and ticks, and differ only in who recorded. Each tick is flushed as
+same match and ticks, and differ only in who recorded.
+
+**Each side's layer, again.** A replay keeps no cursor: it keeps each side's
+screen delay with its words (`nettai_replay::Tick::delays`, written when it
+changes: the ticks between the tick a side's layer read and the tick its word
+landed; live play's input delay for the local player, 0 for a bot or an AI,
+and in netplay each peer's own and the other's as it told it, rollback.md
+§4.6). Playing back runs each side's layer again (`ReplayPlayer` keeps both):
+before tick u it reads the buttons of the side's word that landed on tick
+u + delay, against the battle as it stands, and its choices are dropped (the
+words have them). So a replay shows both players' cursors, chip windows,
+descriptions and Cross windows as they were shown to each, in the both-sides
+view, the other console's inset and a video too. (A bot that chooses with no
+cursor shows its layer's cursor where it started.) Each tick is flushed as
 it is written: a crash leaves every tick before it, and the file reads as cut
 short. A round of netplay ends on the tick it ended on, which both peers know
 however late they see it settle (rollback.md §4.6, "Rounds"), so the replay's
@@ -2871,7 +2917,9 @@ first time: a note that was sounding sounds on from where it was, the music
 is where it was in its loop, and nothing of the ticks passed over is heard (no
 burst), nor anything of where the viewer came from (no note left hanging).
 The simulation is asked nothing a tick doesn't ask: a seek restores a state
-the replay passed through and plays the recorded buttons on from it.
+the replay passed through and plays the recorded buttons on from it. A kept
+state holds both sides' layers too (`Driver::set_layers` puts them back), so
+the cursors after a seek are where playing straight there leaves them.
 
 A viewer has no pause of the battle's. A match's host answers START in a
 fight (§2), so a replay holds the presses and reports each again as it plays

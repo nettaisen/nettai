@@ -35,7 +35,7 @@
 
 use nettai_battle::battle::mode;
 use nettai_frontend::Player;
-use nettai_frontend::driver::{InFight, LivePlayer, OnCustomScreen, Opponent, bot_buttons};
+use nettai_frontend::driver::{InFight, LivePlayer, OnCustomScreen, Opponent, bot_tick};
 use nettai_frontend::game::{self, Loaded, Options};
 use nettai_frontend::player::time_of;
 use nettai_frontend::replay::{Info, MatchKind, Recorder, Replay, ReplayPlayer};
@@ -226,8 +226,8 @@ fn run() -> Result<String, String> {
     let mut masher = nettai_netplay_masher(seed as u64);
     while s.ticks < ticks {
         let mashed = masher.buttons();
-        let keys = if s.battle.round.mode == mode::CUSTOM { bot_buttons(&s.battle, 0, s.ticks as u32) } else { mashed };
-        if !s.step(keys) {
+        let input = if s.battle.round.mode == mode::CUSTOM { bot_tick(&s.battle, 0, s.ticks as u32) } else { nettai_battle::PlayerTick::buttons(mashed) };
+        if !s.step(input) {
             break;
         }
     }

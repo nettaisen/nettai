@@ -20,7 +20,11 @@ fn each_game_plays_from_its_content_alone() {
             s.buster = true;
         }
         let mut ticks = 0;
-        while ticks < 3600 && nettai_training::env::step_battle(&mut b, [sides[0].buttons(), sides[1].buttons()]) {
+        while ticks < 3600 {
+            let input = [sides[0].input(&b, 0), sides[1].input(&b, 1)];
+            if !nettai_training::env::step_ticks(&mut b, input) {
+                break;
+            }
             ticks += 1;
         }
         if let Some(RoundEnd::Error(why)) = b.round_end() {

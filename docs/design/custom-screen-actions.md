@@ -4,7 +4,14 @@ The user asked "what if the custom screen had mouse support?", turned down steer
 synthesized button presses ("that's kind of gross"), and proposed the other way around: "should it be the other way
 around where the cursor on the custom screen is purely visual?" This note says what that takes, from an audit of the
 simulation, the input path and formats, the renderer and verification (the audits' notes with file:line for every
-claim are in nettai-verify's docs/custom-screen-actions/). Nothing here is built yet.
+claim are in nettai-verify's docs/custom-screen-actions/).
+
+**Status (2026-11-01): checkpoint A is built** (keys and pads through the layer; mouse and touch are checkpoint B).
+The layer is `custom::layer::Layer` in nettai-battle (with `custom::Lockstep` for both sides in lockstep), a type of
+its own that `Battle` never holds: the code moved there uses the screen's crate-private parts (its slots'
+neighbors and lists, the chip checks, the chatbox), and every crate that needs it (the frontend, the tools, the
+compat crates, the renderer) already depends on nettai-battle. docs/engine/custom-screen.md §0, §3, §9 describe it
+as built.
 
 ## 0. Summary
 
@@ -80,7 +87,11 @@ uses), and its offered dark chips and JunkSoul's chips as ordinary `pick`s. Abou
 - **Replays** (nettai-replay): the input mask grows to the action's bits. A replay still has to show both players'
   cursors (the viewer, the both-sides spectator view, video export), so it also records each side's local layer as a
   presentation track: the cursor, the hovered chip, an open description or list, on the ticks they change. Not in
-  the digest; the viewer's seek keyframes keep the layer's state as they keep the HUD's.
+  the digest; the viewer's seek keyframes keep the layer's state as they keep the HUD's. *As built (A):* the track
+  is each side's screen delay (`Tick::delays`, control bits 5 and 6, written when it changes), and the viewer runs
+  each side's layer again from its words' buttons, the word that landed `delay` ticks on; a netplay peer learns the
+  other's delay from a marker in its stream (`protocol::Element::Delay`) and records both. Pointer input (B) will
+  need its events in the track too.
 - **State and digest**: `custom::Side` loses its joypad, the screen its cursor, the rules' state EXE6's list cursor;
   the decision fades move out of `ScreenLook` into hashed state (§8.1).
 
