@@ -243,6 +243,11 @@ pub struct FormListRules {
     /// does, from anywhere, and closes it (docs/design/custom-screen-actions.md §5).
     #[serde(default)]
     pub tab: Option<String>,
+    /// The window label at its foot that says B closes it (EXE6's `b-exit`,
+    /// B:EXIT): a pointer's click there, while it is up, closes it as B does
+    /// (docs/design/custom-screen-actions.md §5).
+    #[serde(default)]
+    pub exit: Option<String>,
 }
 
 /// What the chip window shows for the damage of a chip whose flags have

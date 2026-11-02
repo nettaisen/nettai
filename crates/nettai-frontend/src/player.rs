@@ -345,7 +345,7 @@ impl Player {
         }
         // (The tick's input: the buttons, and the switch asked for and the choice made until a tick that ran
         // carried them. A driver that runs the battle itself may wait this frame: they wait with it.)
-        let input = nettai_battle::PlayerTick { held: buttons & 0x3FF, switch_to: self.switch, mic_level: 0, choice: self.choice };
+        let input = nettai_battle::PlayerTick { held: buttons & 0x3FF, switch_to: self.switch, choice: self.choice, ..Default::default() };
         if !self.session.step(input) {
             return false;
         }

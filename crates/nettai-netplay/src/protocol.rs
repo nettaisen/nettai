@@ -10,12 +10,13 @@
 //!
 //! - [`Element::Tick`]: one tick of the player's input, its word
 //!   (`nettai_battle::PlayerTick::word`: their held buttons, a party switch
-//!   request, a microphone level and their custom screen's choice) and a few
-//!   flags for the tick's events. A tick with no flags, switch, level or
-//!   choice and only A, B and the directions held is one byte; any other
-//!   buttons or a switch, two; a level, three; a choice, four; flags, up to
-//!   five. A player makes a few dozen choices a screen: the mean frame
-//!   hardly grows.
+//!   request, a microphone level, their custom screen's choice and their
+//!   pointer's gesture on it) and a few flags for the tick's events. A tick
+//!   with no flags, switch, level, choice or gesture and only A, B and the
+//!   directions held is one byte; any other buttons or a switch, two; a
+//!   level, three; a choice, four; a gesture, four or five; flags, five or
+//!   six. A player makes a few dozen choices a screen, and a pointer a
+//!   gesture as it moves onto another target: the mean frame hardly grows.
 //! - [`Element::RoundEnd`] and [`Element::MatchEnd`]: the in-band markers.
 //!   The sender's round is over, and what follows is the next round's
 //!   input; the sender left the match.
@@ -37,8 +38,8 @@
 //!
 //! ```text
 //! head & 1 == 0   a tick: head >> 1 = buttons (10 bits, in WIRE_ORDER) | switch << 10 (2 bits: the member
-//!                 + 1, 0 none) | microphone level << 12 (8 bits) | choice << 20 (6 bits: `ScreenChoice::code`,
-//!                 0 none) | flags << 26
+//!                 + 1, 0 none) | microphone level << 12 (8 bits) | choice << 20 (5 bits: `ScreenChoice::code`,
+//!                 0 none) | gesture << 25 (7 bits: `Gesture::code`, 0 none) | flags << 32
 //! head & 1 == 1   head >> 1: 0 the round's end, 1 the match's end, 2 + d the sender's present delay d (0-255)
 //! ```
 
@@ -52,7 +53,8 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// on that the content's hash doesn't say:
 ///
 /// - the stream's elements and their wire form (this module): a tick is its
-///   buttons, its switch request, its microphone level, its custom screen's choice and its flags
+///   buttons, its switch request, its microphone level, its custom screen's choice, its pointer's gesture and its
+///   flags
 ///   (`battle::flags`: the link closing), and the round's and the match's end and the sender's present delay are
 ///   markers;
 /// - the lobby and the handshake (nettai-frontend's `lobby`): the lobby's
@@ -116,9 +118,9 @@ pub type Frame = rennet::Frame<Netplay>;
 pub enum Element {
     /// One tick of the player's input: its word (`PlayerTick::word`: the
     /// buttons they hold, the GBA's bits, `nettai_battle::input::keys`,
-    /// their switch request, their microphone's level and their custom
-    /// screen's choice) and the game's flags for the tick's events
-    /// ([`WireInput`]).
+    /// their switch request, their microphone's level, their custom
+    /// screen's choice and their pointer's gesture on it) and the game's
+    /// flags for the tick's events ([`WireInput`]).
     Tick { word: u32, flags: u8 },
     /// The sender's round is over: the elements after it are the next
     /// round's.
@@ -150,12 +152,8 @@ pub fn buttons_from_wire(wire: u16) -> u16 {
 /// The buttons a tick carries (the GBA's ten).
 pub const BUTTONS: u16 = 0x3FF;
 
-/// A tick's word: the buttons, the switch request, the microphone level and
-/// the custom screen's choice (`nettai_battle::input::TICK_WORD`).
-pub const TICK_WORD: u32 = nettai_battle::input::TICK_WORD;
-
-/// Where a tick's flags go in its head (past the word).
-const FLAGS_AT: u32 = 26;
+/// Where a tick's flags go in its head (past the word's 32 bits).
+const FLAGS_AT: u32 = 32;
 
 const ROUND_END: u64 = 0;
 const MATCH_END: u64 = 1;
@@ -166,7 +164,6 @@ impl rennet::Codec for Element {
     fn encode<W: Write>(&self, w: &mut W) -> io::Result<()> {
         match *self {
             Element::Tick { word, flags } => {
-                assert_eq!(word & !TICK_WORD, 0, "a tick carries the ten buttons, the switch, the level and the choice only: {word:#09x}");
                 let value = buttons_to_wire(word as u16 & BUTTONS) as u64 | ((word & !(BUTTONS as u32)) as u64) | (flags as u64) << FLAGS_AT;
                 write_uvarint(w, value << 1)
             }
@@ -195,7 +192,7 @@ impl rennet::Codec for Element {
         let kind = head >> 1;
         let element = if head & 1 == 0 {
             let flags = u8::try_from(kind >> FLAGS_AT).map_err(|_| invalid("tick flags out of range"))?;
-            Element::Tick { word: buttons_from_wire(kind as u16 & BUTTONS) as u32 | (kind as u32 & TICK_WORD & !(BUTTONS as u32)), flags }
+            Element::Tick { word: buttons_from_wire(kind as u16 & BUTTONS) as u32 | (kind as u32 & !(BUTTONS as u32)), flags }
         } else {
             match kind {
                 ROUND_END => Element::RoundEnd,
@@ -239,10 +236,11 @@ pub trait WireInput: Sized {
 }
 
 /// A tick word alone (the stand-in battle's input: buttons, the switch
-/// request, the microphone level and the custom screen's choice).
+/// request, the microphone level, the custom screen's choice and the
+/// pointer's gesture).
 impl WireInput for u32 {
     fn encode(&self) -> (u32, u8) {
-        (*self & TICK_WORD, 0)
+        (*self, 0)
     }
 
     fn decode(word: u32, flags: u8) -> io::Result<u32> {
@@ -260,6 +258,7 @@ pub(crate) fn invalid(msg: &str) -> io::Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use nettai_battle::custom::layer::{Gesture, Target};
     use nettai_battle::{PlayerTick, ScreenChoice};
     use rennet::Codec;
 
@@ -285,23 +284,26 @@ mod tests {
     }
 
     /// Ticks with A, B and the directions are a byte, other buttons or a
-    /// switch two, a level three, a choice four, flags up to five; markers
-    /// one.
+    /// switch two, a level three, a choice four, a gesture four or five,
+    /// flags five or six; markers one.
     #[test]
     fn element_sizes() {
         assert_eq!(bytes(Element::Tick { word: 0, flags: 0 }), [0x00]);
         assert_eq!(bytes(Element::Tick { word: (keys::A) as u32, flags: 0 }), [0x02]);
         assert_eq!(bytes(Element::Tick { word: (keys::DOWN | keys::LEFT | keys::B) as u32, flags: 0 }).len(), 1);
         assert_eq!(bytes(Element::Tick { word: (keys::L) as u32, flags: 0 }).len(), 2);
-        assert_eq!(bytes(Element::Tick { word: BUTTONS as u32, flags: 1 }).len(), 4);
-        assert_eq!(bytes(Element::Tick { word: BUTTONS as u32, flags: 0xFF }).len(), 5);
+        assert_eq!(bytes(Element::Tick { word: BUTTONS as u32, flags: 1 }).len(), 5);
+        assert_eq!(bytes(Element::Tick { word: BUTTONS as u32, flags: 0xFF }).len(), 6);
         assert_eq!(bytes(Element::Tick { word: 0x1E << 12, flags: 0 }).len(), 3);
         assert_eq!(bytes(Element::Tick { word: 1 << 10, flags: 0 }).len(), 2);
         let choice = |c: ScreenChoice| c.code() << 20;
         assert_eq!(bytes(Element::Tick { word: choice(ScreenChoice::Pick(0)), flags: 0 }).len(), 4);
         assert_eq!(bytes(Element::Tick { word: keys::A as u32 | choice(ScreenChoice::ChooseForm(4)), flags: 0 }).len(), 4);
-        assert_eq!(bytes(Element::Tick { word: TICK_WORD, flags: 0 }).len(), 4);
-        assert_eq!(bytes(Element::Tick { word: TICK_WORD, flags: 0xFF }).len(), 5);
+        let gesture = |g: Gesture| g.code() << 25;
+        assert_eq!(bytes(Element::Tick { word: gesture(Gesture::Hover(Target::Slot(2))), flags: 0 }).len(), 4);
+        assert_eq!(bytes(Element::Tick { word: keys::A as u32 | gesture(Gesture::Click(Some(Target::Slot(10)))), flags: 0 }).len(), 5);
+        assert_eq!(bytes(Element::Tick { word: u32::MAX, flags: 0 }).len(), 5);
+        assert_eq!(bytes(Element::Tick { word: u32::MAX, flags: 0xFF }).len(), 6);
         assert_eq!(bytes(Element::RoundEnd), [0x01]);
         assert_eq!(bytes(Element::MatchEnd), [0x03]);
         assert_eq!(bytes(Element::Delay(0)), [0x05]);
@@ -313,7 +315,9 @@ mod tests {
     #[test]
     fn elements_roundtrip() {
         let ok = ScreenChoice::Ok.code() << 20;
-        for word in [0, keys::A as u32, (keys::START | keys::L) as u32, BUTTONS as u32, TICK_WORD, keys::A as u32 | 1 << 10, 0xFF << 12, ok, ok | 0xFF << 12 | keys::B as u32]
+        let click = Gesture::Click(Some(Target::Slot(10))).code() << 25;
+        for word in
+            [0, keys::A as u32, (keys::START | keys::L) as u32, BUTTONS as u32, u32::MAX, keys::A as u32 | 1 << 10, 0xFF << 12, ok, ok | 0xFF << 12 | keys::B as u32, ok | click]
         {
             for flags in [0, 1, 0x7F, 0xFF] {
                 roundtrip(Element::Tick { word, flags });
@@ -325,8 +329,14 @@ mod tests {
             roundtrip(Element::Delay(d));
         }
         // A tick's word through the wire is the player's tick: its choice
-        // too.
-        let t = PlayerTick { held: keys::A | keys::UP, switch_to: Some(1), mic_level: 7, choice: Some(ScreenChoice::Press(11)) };
+        // and its gesture too.
+        let t = PlayerTick {
+            held: keys::A | keys::UP,
+            switch_to: Some(1),
+            mic_level: 7,
+            choice: Some(ScreenChoice::Press(11)),
+            gesture: Some(Gesture::Describe(Target::FormExit)),
+        };
         let b = bytes(Element::Tick { word: t.word(), flags: 0 });
         let Some(Element::Tick { word, .. }) = Element::decode(&mut &b[..]).unwrap() else { panic!() };
         assert_eq!(PlayerTick::from_word(word), t);

@@ -191,14 +191,20 @@ impl Player {
 
     /// One tick with these buttons held, through the layer.
     fn step(&mut self, held: u16) -> Option<Request> {
+        self.step_input(PlayerTick::buttons(held)).0
+    }
+
+    /// One tick of this input through the layer: what the screen asked, and
+    /// the tick's input as the layer gave it.
+    fn step_input(&mut self, input: PlayerTick) -> (Option<Request>, PlayerTick) {
         self.tick += 1;
         let mut buttons = self.buttons();
         let ctx = context_of(&self.lib, self.stats, self.turn, self.run_key, self.time_limit, self.tick);
-        let input = self.layer.input_on(PlayerTick::buttons(held), presented(&self.side, &ctx, self.turn, self.time_limit).as_ref());
+        let input = self.layer.input_on(input, presented(&self.side, &ctx, self.turn, self.time_limit).as_ref());
         let lib = &self.lib;
         let r = self.side.tick_with(&ctx, input.choice, &mut self.console, |id| lib.chip(id).damage, &mut buttons);
         self.layer.follow_on(presented(&self.side, &ctx, self.turn, self.time_limit).as_ref());
-        r
+        (r, input)
     }
 
     /// What the player sees.
@@ -1307,6 +1313,54 @@ fn the_pointer_hovers_picks_takes_back_and_describes() {
     p.layer.point(Gesture::Click(Some(Target::Slot(OK_SLOT))));
     p.step(0);
     assert_ne!(p.phase(), Phase::Choosing);
+}
+
+/// The tick's input carries the gesture the layer took (none from an empty
+/// queue), and a gesture given with the input is the tick's: a layer given
+/// another's ticks, buttons and gestures, as a replay gives them, shows what
+/// it showed on every tick, and the screen takes the same choices.
+#[test]
+fn a_layer_given_the_ticks_gestures_shows_what_the_pointers_did() {
+    use super::layer::{Gesture, Target};
+    let chips = [(SHOT, 0), (SHOT, 1), (SHOT, 2), (WAVE, 0), (MEGA, 2)];
+    let (mut live, mut again) = (Player::new(&chips), Player::new(&chips));
+    for p in [&mut live, &mut again] {
+        p.open();
+    }
+    let script: [(u32, Option<Gesture>, u16); 12] = [
+        (12, Some(Gesture::Hover(Target::Slot(3))), 0),
+        (13, Some(Gesture::Hover(Target::Slot(1))), 0),
+        (14, Some(Gesture::Click(Some(Target::Slot(0)))), 0),
+        (16, None, keys::RIGHT),
+        (20, Some(Gesture::Click(Some(Target::Slot(1)))), 0),
+        (22, Some(Gesture::Describe(Target::Pick(0))), 0),
+        (40, Some(Gesture::Click(None)), 0),
+        (60, Some(Gesture::Hover(Target::Slot(4))), 0),
+        (61, Some(Gesture::Click(Some(Target::Pick(0)))), 0),
+        (70, Some(Gesture::Describe(Target::Slot(2))), 0),
+        (90, None, keys::A),
+        (110, Some(Gesture::Click(Some(Target::Slot(OK_SLOT)))), 0),
+    ];
+    let mut taken = 0;
+    for tick in 0..130 {
+        let mut held = 0;
+        for &(_, gesture, keys) in script.iter().filter(|s| s.0 == tick) {
+            if let Some(g) = gesture {
+                live.layer.point(g);
+            }
+            held = keys;
+        }
+        let (_, given) = live.step_input(PlayerTick::buttons(held));
+        assert_eq!(given.gesture.is_some(), script.iter().any(|s| s.0 == tick && s.1.is_some()), "tick {tick}");
+        taken += given.gesture.is_some() as u32;
+        let (_, replayed) = again.step_input(PlayerTick { gesture: given.gesture, ..PlayerTick::buttons(given.held) });
+        assert_eq!(replayed, given, "tick {tick}");
+        let shown = |l: &Layer| (l.cursor, l.sub, l.list_cursor, l.chip_window, l.look, l.hover, l.calls().collect::<Vec<_>>());
+        assert_eq!(shown(&again.layer), shown(&live.layer), "tick {tick}");
+        assert_eq!(again.screen().selection(), live.screen().selection(), "tick {tick}");
+    }
+    assert_eq!(taken, 10);
+    assert_ne!(live.phase(), Phase::Choosing, "OK sent the hand");
 }
 
 /// The take-backs a click on a pick asks for end at a choice of the keys'.

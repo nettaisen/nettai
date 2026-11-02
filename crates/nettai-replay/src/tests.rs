@@ -173,11 +173,6 @@ fn a_file_that_doesnt_read_is_refused_as_what_it_is() {
     let mut tag = bytes.clone();
     tag[5..9].copy_from_slice(b"HEAP");
     assert_eq!(refused(&tag), "no head where it goes (\"HEAP\" there)");
-    // The first tick's record: side 0's input, then side 1's, past a tick
-    // word's bits.
-    let mut held = bytes.clone();
-    held[start + 5..start + 9].copy_from_slice(&0x400_0000u32.to_le_bytes());
-    assert_eq!(refused(&held), "tick 0: side 1's input 0x4000000 is past a tick word's bits");
 }
 
 /// A writer refuses what a reader would.
@@ -187,7 +182,6 @@ fn a_writer_refuses_what_isnt_a_set() {
     let end = Tick { round_ended: true, ..Tick::default() };
     assert!(w.tick(&end).is_err());
     assert!(w.tick(&Tick { set_ended: true, digest: Some(0), ..Tick::default() }).is_err());
-    assert!(w.tick(&Tick { inputs: [0x400_0000, 0], ..Tick::default() }).is_err());
     w.tick(&Tick { set_ended: true, digest: Some(9), ..end }).unwrap();
     assert!(w.ended());
     assert!(w.tick(&Tick::default()).is_err());
@@ -238,11 +232,12 @@ fn a_head_reads_whatever_follows_it() {
 
 /// A side's screen delay is written as it changes, a byte after the inputs
 /// (control bit 5 for side 0, 6 for side 1), and carried by the reader; a
-/// word with a custom screen's choice (bits 20 to 25) is within the mask.
+/// word with a custom screen's choice (bits 20 to 24) and a pointer's
+/// gesture (bits 25 to 31, to the word's top) reads back.
 #[test]
-fn screen_delays_and_choices_read_back() {
-    // (A held, and B's choice: take back.)
-    let choice: u32 = 1 | 26 << 20;
+fn screen_delays_choices_and_gestures_read_back() {
+    // (A held, B's choice, take back, and the highest gesture's number.)
+    let choice: u32 = 1 | 26 << 20 | 0x7F << 25;
     let ticks = [
         Tick { inputs: [0, 0], delays: [4, 0], ..Tick::default() },
         Tick { inputs: [choice, 0], delays: [4, 0], ..Tick::default() },
@@ -259,5 +254,4 @@ fn screen_delays_and_choices_read_back() {
     assert_eq!(bytes[start + 7..start + 10], [0x60, 2, 7]);
     let r = Replay::read(&bytes).unwrap();
     assert_eq!(r.ticks, ticks);
-    assert_eq!(INPUT_MASK, 0x3FF_FFFF);
 }

@@ -243,12 +243,13 @@ impl Driver for ReplayPlayer {
 
     fn next(&mut self, b: &Battle, _: PlayerTick) -> Option<Step> {
         let t = *self.ticks.get(self.at)?;
-        // Each side's layer as it ran: before this tick it read the buttons of the word that landed the side's
-        // delay later (what it chose then is the recording's, in its words).
+        // Each side's layer as it ran: before this tick it read the buttons (and the switch request it let
+        // through) of the word that landed the side's delay later, and took the pointer's gesture that word
+        // carries (what it chose then is the recording's, in its words).
         let mut layers = self.layers.take().unwrap_or_else(|| [Layer::new(0, b), Layer::new(1, b)]);
         for (side, layer) in layers.iter_mut().enumerate() {
-            let read = self.ticks.get(self.at + t.delays[side] as usize).map_or(0, |r| r.inputs[side] as u16 & 0x3FF);
-            layer.input(PlayerTick::buttons(read), b);
+            let read = self.ticks.get(self.at + t.delays[side] as usize).map_or_else(PlayerTick::default, |r| PlayerTick::from_word(r.inputs[side]));
+            layer.input(PlayerTick { choice: None, ..read }, b);
         }
         self.layers = Some(layers);
         self.at += 1;

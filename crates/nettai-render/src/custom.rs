@@ -2338,7 +2338,8 @@ fn shape_box(x: i32, y: i32, shape: &CursorShape) -> [i32; 4] {
 /// button at a place of its own about its cursor's cells (a button two
 /// cells wide halved); the column's picks; the form list's tab (the window
 /// label its rules name, where the window's map shows it) and, while its
-/// window is up, its entries alone. None while the window isn't at rest.
+/// window is up, its entries and its exit label (the rules' too) alone.
+/// None while the window isn't at rest.
 fn targets(v: &View, w: &Window, place: Placement) -> Vec<(Target, Rect)> {
     let mut out = Vec::new();
     if place.scroll != 0 || place.from != 0 || place.to != COLUMNS {
@@ -2347,17 +2348,24 @@ fn targets(v: &View, w: &Window, place: Placement) -> Vec<(Target, Rect)> {
     let a = v.assets;
     let rect = |[x0, y0, x1, y1]: [i32; 4]| Rect::new(x0, y0, x1 - x0, y1 - y0);
     let rules = v.b.content.rules().custom_screen.form_list.as_ref();
-    if let Some(tab) = rules.and_then(|r| r.tab.as_deref()) {
-        let drawn = a.labels.iter().filter(|l| l.name == tab).filter_map(|l| w.tiles_rect(place, l.first..l.last + 1));
-        if let Some(r) = drawn.reduce(|r, s| [r[0].min(s[0]), r[1].min(s[1]), r[2].max(s[2]), r[3].max(s[3])]) {
-            out.push((Target::FormTab, rect(r)));
-        }
+    // (A window label the rules name, where the window's map shows it: the
+    // box of its tiles' cells.)
+    let label = |name: Option<&str>| {
+        let name = name?;
+        let drawn = a.labels.iter().filter(|l| l.name == name).filter_map(|l| w.tiles_rect(place, l.first..l.last + 1));
+        drawn.reduce(|r, s| [r[0].min(s[0]), r[1].min(s[1]), r[2].max(s[2]), r[3].max(s[3])]).map(rect)
+    };
+    if let Some(r) = label(rules.and_then(|r| r.tab.as_deref())) {
+        out.push((Target::FormTab, r));
     }
     if let Some(stage) = v.layer.and_then(|l| l.list_stage()) {
         if let (ListStage::Up(_), Some(list)) = (stage, v.b.form_list(v.side)) {
             let [x0, y0] = w.layout.form_names_at.map(i32::from);
             for k in 0..list.count.min(5) {
                 out.push((Target::Form(k), Rect::new(8 * x0, 8 * (y0 + 2 * k as i32), 8 * 9, 16)));
+            }
+            if let Some(r) = label(rules.and_then(|r| r.exit.as_deref())) {
+                out.push((Target::FormExit, r));
             }
         }
         return out;

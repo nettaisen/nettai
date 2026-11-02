@@ -40,7 +40,8 @@
 //! (`nettai_battle::PlayerTick::word`): the GBA's buttons in the low ten
 //! bits, the party switch request in bits 10 and 11 (the member + 1, 0
 //! none), the microphone's level in bits 12 to 19, the custom screen's
-//! choice in bits 20 to 25 (`ScreenChoice::code`, 0 none). It is written
+//! choice in bits 20 to 24 (`ScreenChoice::code`, 0 none), the pointer's
+//! gesture on it in bits 25 to 31 (`Gesture::code`, 0 none). It is written
 //! when it changes: before the first tick nothing is held, and it carries
 //! across a round's end. A writer flushes each record as it is written, so
 //! a file cut short (a crash) holds every tick before the cut, and a reader
@@ -50,15 +51,19 @@
 //! cursor was, what it hovered and what they had up over the chips (R's
 //! description, L's message, SELECT's hiding, the form list) is no part of
 //! the simulation: each player's own screen layer kept it, outside it
-//! (`nettai_battle::custom::layer`), driven by their buttons. A viewer shows
-//! both players' screens by running each side's layer again from the words'
-//! buttons. A player's layer read their buttons a few ticks before their word
-//! landed (their input delay: netplay's present delay, live play's input
-//! delay; none for a side played with no delay, a bot's, a trace's): the
-//! record keeps it as the side's screen delay ([`Tick::delays`]), written
-//! when it changes (0 before the first tick), and the layer's input before
-//! tick `u` is the buttons of the word that landed on tick `u + delay`. It
-//! is presentation alone: no part of the input the simulation takes, nor of
+//! (`nettai_battle::custom::layer`), driven by their buttons and their
+//! pointer's gestures (a hover onto another target, a click, a describe).
+//! A viewer shows both players' screens by running each side's layer again
+//! from the words' buttons and gestures: each word carries the gesture its
+//! player's layer took on the tick it read the word's buttons (the
+//! simulation reads none). A player's layer read them a few ticks before
+//! their word landed (their input delay: netplay's present delay, live
+//! play's input delay; none for a side played with no delay, a bot's, a
+//! trace's): the record keeps it as the side's screen delay
+//! ([`Tick::delays`]), written when it changes (0 before the first tick),
+//! and the layer's input before tick `u` is the buttons and the gesture of
+//! the word that landed on tick `u + delay`. The delay and the gestures are
+//! presentation alone: no part of the input the simulation takes, nor of
 //! its digest.
 //!
 //! **What a replay says of each side** is its player's name (the info) and
@@ -232,9 +237,9 @@ impl Info {
 }
 
 /// One tick: both players' input by side (each a tick word: the buttons,
-/// the switch request, the microphone's level and the custom screen's
-/// choice, [`INPUT_MASK`]), each side's screen delay, and what a recording
-/// marks of it.
+/// the switch request, the microphone's level, the custom screen's choice
+/// and the pointer's gesture on it), each side's screen delay, and what a
+/// recording marks of it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Tick {
     pub inputs: [u32; 2],
@@ -242,8 +247,8 @@ pub struct Tick {
     /// ticks between the tick whose battle its player's custom screen layer
     /// read and the tick the word lands on (their input delay: 0 for a side
     /// played with none, a bot's, a trace's, lockstep). Presentation: the
-    /// layer's input before tick `u` is the buttons of the word that landed
-    /// on tick `u + delay` (the crate's docs).
+    /// layer's input before tick `u` is the buttons and the gesture of the
+    /// word that landed on tick `u + delay` (the crate's docs).
     pub delays: [u8; 2],
     /// The battle's digest after the tick, where it was taken.
     pub digest: Option<u64>,
@@ -285,11 +290,6 @@ const SET_ENDED: u8 = 1 << 4;
 const DELAY_0: u8 = 1 << 5;
 const DELAY_1: u8 = 1 << 6;
 const KNOWN: u8 = INPUT_0 | INPUT_1 | DIGEST | ROUND_ENDED | SET_ENDED | DELAY_0 | DELAY_1;
-
-/// The bits a side's input may hold: the GBA's ten buttons, the switch
-/// request, the microphone level and the custom screen's choice
-/// (`nettai_battle::input::TICK_WORD`).
-pub const INPUT_MASK: u32 = 0x3FF_FFFF;
 
 // ---- Writing ------------------------------------------------------------------
 
@@ -334,7 +334,7 @@ impl<W: Write> Writer<W> {
 
     /// The next tick, written and flushed. Refused (nothing written): a
     /// tick after the set's end, a round's end without its digest, the
-    /// set's end without a round's, input past a tick word's bits.
+    /// set's end without a round's.
     pub fn tick(&mut self, t: &Tick) -> io::Result<()> {
         let invalid = |why: &str| Err(io::Error::new(io::ErrorKind::InvalidInput, why.to_string()));
         if self.ended {
@@ -345,9 +345,6 @@ impl<W: Write> Writer<W> {
         }
         if t.set_ended && !t.round_ended {
             return invalid("the set's end without a round's");
-        }
-        if t.inputs.iter().any(|&b| b & !INPUT_MASK != 0) {
-            return invalid("input past a tick word's bits");
         }
         let mut control = 0;
         let mut rest = Vec::with_capacity(16);
@@ -507,8 +504,8 @@ impl Replay {
     /// of this layout that is damaged: a head, info or match cut short or
     /// running on, and a tick's record no writer writes (unknown bits, a
     /// round's end without its digest, the set's end without a round's,
-    /// input past a tick word's bits, anything after the set's end). A record cut
-    /// short ends the input there ([`End::Cut`]).
+    /// anything after the set's end). A record cut short ends the input
+    /// there ([`End::Cut`]).
     pub fn read(bytes: &[u8]) -> Result<Replay, ReadError> {
         if bytes.get(..4) != Some(MAGIC.as_slice()) {
             return Err(ReadError::NotAReplay);
@@ -564,9 +561,6 @@ impl Replay {
                 for side in 0..2 {
                     if control & [INPUT_0, INPUT_1][side] != 0 {
                         let Ok(word) = b.u32() else { return Ok(None) };
-                        if word & !INPUT_MASK != 0 {
-                            return Err(format!("tick {n}: side {side}'s input {word:#06x} is past a tick word's bits"));
-                        }
                         t.inputs[side] = word;
                     }
                 }

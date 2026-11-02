@@ -32,7 +32,7 @@
 use super::chatbox::{Chatbox, Script};
 use super::folder::BattleFolder;
 use super::look::{ChipWindow, Draw, Hover, ScreenCall, ScreenSound, Shown, WindowLook};
-use super::screen::{OK_SLOT, Phase, PlayerView, Screen, SlotKind, checked};
+use super::screen::{FORM_LIST_ENTRIES, MAX_SELECTIONS, OK_SLOT, Phase, PlayerView, SLOTS, Screen, SlotKind, checked};
 use crate::battle::{Battle, TickEvents, mode};
 use crate::rules::FormList;
 use crate::content::{CustomScreenLayout, FormListRules, HoverRuns, ScreenKey, SlotMoves};
@@ -119,10 +119,50 @@ pub enum Target {
     /// The form list's tab (EXE6's CROSSSELECT label), which opens and
     /// closes it.
     FormTab,
+    /// The form list's exit label, while its window is up (EXE6's B:EXIT),
+    /// which closes it as B does.
+    FormExit,
+}
+
+/// The targets a gesture's number tells apart ([`Target::index`]).
+const TARGETS: u32 = SLOTS as u32 + MAX_SELECTIONS as u32 + FORM_LIST_ENTRIES as u32 + 2;
+
+impl Target {
+    /// The target's number among them all, 0 to 23: the slots, the picks,
+    /// the form list's entries, its tab and its exit.
+    const fn index(self) -> u32 {
+        const PICKS: u32 = SLOTS as u32;
+        const FORMS: u32 = PICKS + MAX_SELECTIONS as u32;
+        const TAB: u32 = FORMS + FORM_LIST_ENTRIES as u32;
+        match self {
+            Target::Slot(s) => s as u32 % SLOTS as u32,
+            Target::Pick(k) => PICKS + k as u32 % MAX_SELECTIONS as u32,
+            Target::Form(k) => FORMS + k as u32 % FORM_LIST_ENTRIES as u32,
+            Target::FormTab => TAB,
+            Target::FormExit => TAB + 1,
+        }
+    }
+
+    /// The target of a number ([`Target::index`]), if one has it.
+    const fn of_index(i: u32) -> Option<Target> {
+        const PICKS: u32 = SLOTS as u32;
+        const FORMS: u32 = PICKS + MAX_SELECTIONS as u32;
+        const TAB: u32 = FORMS + FORM_LIST_ENTRIES as u32;
+        Some(match i {
+            i if i < PICKS => Target::Slot(i as u8),
+            i if i < FORMS => Target::Pick((i - PICKS) as u8),
+            i if i < TAB => Target::Form((i - FORMS) as u8),
+            i if i == TAB => Target::FormTab,
+            i if i == TAB + 1 => Target::FormExit,
+            _ => return None,
+        })
+    }
 }
 
 /// A pointer's gesture on the custom screen (the mouse's, a finger's), for
-/// the layer's next tick (docs/design/custom-screen-actions.md §5).
+/// the layer's next tick (docs/design/custom-screen-actions.md §5). The
+/// tick's input carries the one the layer took (`PlayerTick::gesture`), for
+/// a replay to give its layer again.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Gesture {
     /// The pointer is over a target: the cursor goes there, and no choice
@@ -133,6 +173,48 @@ pub enum Gesture {
     Click(Option<Target>),
     /// Right-click, a long press: R on the target.
     Describe(Target),
+}
+
+impl Gesture {
+    /// The gesture's number in a tick word's seven bits (none is 0): a
+    /// hover's 1 + its target's number ([`Target::index`]), then a click's
+    /// on each target, a click on none, a describe's.
+    pub const fn code(self) -> u32 {
+        match self {
+            Gesture::Hover(t) => 1 + t.index(),
+            Gesture::Click(Some(t)) => 1 + TARGETS + t.index(),
+            Gesture::Click(None) => 1 + 2 * TARGETS,
+            Gesture::Describe(t) => 2 + 2 * TARGETS + t.index(),
+        }
+    }
+
+    /// The gesture a number names; none for 0 and the numbers no gesture
+    /// has.
+    pub const fn from_code(code: u32) -> Option<Gesture> {
+        if code == 0 {
+            return None;
+        }
+        let i = code - 1;
+        if i < TARGETS {
+            return match Target::of_index(i) {
+                Some(t) => Some(Gesture::Hover(t)),
+                None => None,
+            };
+        }
+        if i < 2 * TARGETS {
+            return match Target::of_index(i - TARGETS) {
+                Some(t) => Some(Gesture::Click(Some(t))),
+                None => None,
+            };
+        }
+        if i == 2 * TARGETS {
+            return Some(Gesture::Click(None));
+        }
+        match Target::of_index(i - 2 * TARGETS - 1) {
+            Some(t) => Some(Gesture::Describe(t)),
+            None => None,
+        }
+    }
 }
 
 /// The most gestures a layer keeps for its next ticks.
@@ -294,11 +376,6 @@ impl Layer {
         }
     }
 
-    /// The gesture the last tick took, if it took one (a recording's).
-    pub fn gesture(&self) -> Option<Gesture> {
-        self.gesture
-    }
-
     pub fn side(&self) -> u8 {
         self.side
     }
@@ -396,11 +473,12 @@ impl Layer {
 
     /// The first half of a tick: the player's input of the tick (`input`:
     /// their buttons, as they hold them now; a switch request; a choice of
-    /// their own, a pointer's) against the battle as presented, `b`, before
-    /// it ticks. The tick's input, with the choice its keys made (a choice
-    /// given stays) and a switch request held back while the layer has
-    /// something up over the chips (the original's screen reads it only
-    /// while choosing).
+    /// their own; a pointer's gesture, a recording's) against the battle as
+    /// presented, `b`, before it ticks. The tick's input, with the choice its
+    /// keys made (a choice given stays), a switch request held back while
+    /// the layer has something up over the chips (the original's screen reads
+    /// it only while choosing), and the gesture the tick took: the one given,
+    /// else the pointer's next ([`Layer::point`]).
     pub fn input(&mut self, input: PlayerTick, b: &Battle) -> PlayerTick {
         self.input_on(input, b.presented(self.side).as_ref())
     }
@@ -411,14 +489,21 @@ impl Layer {
         self.calls = [None; 8];
         self.look.drawn = Shown::default();
         self.plan = Plan::default();
-        // (The pointer's next gesture: this tick's, taken by what it is for
-        // or dropped with the tick.)
-        self.gesture = self.gestures[0];
-        self.gestures.rotate_left(1);
-        self.gestures[GESTURES - 1] = None;
+        // (The tick's gesture: one given with the input, a recording's; else
+        // the pointer's next. What it is for takes it, or it is dropped with
+        // the tick; the tick's input carries it either way.)
+        self.gesture = match input.gesture {
+            Some(g) => Some(g),
+            None => {
+                let next = self.gestures[0];
+                self.gestures.rotate_left(1);
+                self.gestures[GESTURES - 1] = None;
+                next
+            }
+        };
         self.pointer_chose = false;
-        let mut out = PlayerTick { choice: None, ..input };
-        let Some(p) = p else { return input };
+        let mut out = PlayerTick { choice: None, gesture: self.gesture, ..input };
+        let Some(p) = p else { return PlayerTick { gesture: self.gesture, ..input } };
         let screen = p.screen;
         if self.turn != Some(p.turn) {
             // (A screen it hasn't followed from its opening: a layer made
@@ -704,8 +789,8 @@ impl Layer {
     /// The tick's gesture in the form list's window, while it reads keys: a
     /// hover moves its cursor and a click on an entry chooses it, until one
     /// is chosen; a click on the chosen one takes it back (and the picks
-    /// after it, one a tick); a click on the tab closes the window, as B
-    /// does; a describe is R on the entry. None: it takes nothing, and the
+    /// after it, one a tick); a click on the tab or the exit label closes
+    /// the window, as B does; a describe is R on the entry. None: it takes nothing, and the
     /// keys have the tick.
     fn point_in_list(&mut self, p: &Presented, layout: &CustomScreenLayout) -> Option<Option<ScreenChoice>> {
         let gesture = self.gesture?;
@@ -735,7 +820,8 @@ impl Layer {
                     Some(None)
                 }
             }
-            Gesture::Click(Some(Target::FormTab)) => {
+            // (The tab again, or the exit label: as B.)
+            Gesture::Click(Some(Target::FormTab | Target::FormExit)) => {
                 self.sub = Sub::List(ListStage::Closing(0));
                 Some(None)
             }

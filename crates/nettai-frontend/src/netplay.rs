@@ -61,7 +61,6 @@ use nettai_battle::cues::{CueAction, CueTracker};
 use nettai_battle::custom::Layer;
 use nettai_battle::{Battle, BattleResult, PlayerTick};
 use nettai_match::{After, Match, Set, Side};
-use nettai_netplay::protocol::TICK_WORD;
 use nettai_netplay::standin::StandInBattle;
 use nettai_netplay::{BattleWorld, Game, Observer, Peer, PeerConfig};
 
@@ -278,8 +277,7 @@ impl Observer<StandInBattle> for Watch {
         if let Some(r) = &mut self.record {
             let due = ended || crate::replay::digest_due(r.before + frame as u64);
             let digest = r.digests.remove(&frame).filter(|_| due);
-            let inputs = inputs.map(|&b| b & nettai_replay::INPUT_MASK);
-            r.settled.push(nettai_replay::Tick { inputs, delays: [0; 2], digest, round_ended: ended, set_ended: false });
+            r.settled.push(nettai_replay::Tick { inputs: inputs.map(|&w| w), delays: [0; 2], digest, round_ended: ended, set_ended: false });
             r.frames.push(frame);
         }
         if ended {
@@ -468,7 +466,7 @@ impl<C: Channel> NetPlayer<C> {
             // The player's input through their layer, against the battle as they see it.
             let side = self.side as u8;
             let input = self.layer.get_or_insert_with(|| Layer::new(side, shown)).input(input, shown);
-            self.peer.decide(input.word() & TICK_WORD);
+            self.peer.decide(input.word());
         }
         let datagram = self.peer.datagram(now);
         self.channel.send(&datagram).map_err(lost)?;
