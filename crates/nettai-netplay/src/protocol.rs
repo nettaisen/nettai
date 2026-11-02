@@ -23,8 +23,8 @@
 //! - [`Element::Delay`]: the sender's present delay (its player's input
 //!   delay), from the next tick on: no input and no part of the
 //!   simulation, but what the other peer's replay needs to show the
-//!   sender's custom screen as they saw it (their screen layer read their
-//!   buttons that many ticks before their word lands: nettai-replay's
+//!   sender's custom screen as they saw it (their screen layer read the
+//!   battle one tick more than that before their word lands: nettai-replay's
 //!   `Tick::delays`). Sent before a peer's first tick and before the first
 //!   tick after it changes ([`crate::peer::Peer::set_present_delay`]). One
 //!   byte.
@@ -127,9 +127,9 @@ pub enum Element {
     RoundEnd,
     /// The sender left the match.
     MatchEnd,
-    /// The sender's present delay from its next tick on (presentation: the
-    /// ticks between the frame its player's custom screen layer read and the
-    /// tick their word lands on).
+    /// The sender's present delay from its next tick on (presentation: one
+    /// tick less than the ticks between the battle its player's custom
+    /// screen layer read and the tick their word lands on).
     Delay(u8),
 }
 

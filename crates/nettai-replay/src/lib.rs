@@ -57,9 +57,9 @@
 //! from the words' buttons and gestures: each word carries the gesture its
 //! player's layer took on the tick it read the word's buttons (the
 //! simulation reads none). A player's layer read them a few ticks before
-//! their word landed (their input delay: netplay's present delay, live
-//! play's input delay; none for a side played with no delay, a bot's, a
-//! trace's): the record keeps it as the side's screen delay
+//! their word landed (their input delay: netplay's present delay and one,
+//! live play's input delay; none for a side played with no delay, a bot's,
+//! a trace's): the record keeps it as the side's screen delay
 //! ([`Tick::delays`]), written when it changes (0 before the first tick),
 //! and the layer's input before tick `u` is the buttons and the gesture of
 //! the word that landed on tick `u + delay`. The delay and the gestures are
@@ -245,8 +245,9 @@ pub struct Tick {
     pub inputs: [u32; 2],
     /// Each side's screen delay that tick's word was decided with: the
     /// ticks between the tick whose battle its player's custom screen layer
-    /// read and the tick the word lands on (their input delay: 0 for a side
-    /// played with none, a bot's, a trace's, lockstep). Presentation: the
+    /// read and the tick the word lands on (live play's input delay,
+    /// netplay's present delay and one; 0 for a side played with none, a
+    /// bot's, a trace's, lockstep). Presentation: the
     /// layer's input before tick `u` is the buttons and the gesture of the
     /// word that landed on tick `u + delay` (the crate's docs).
     pub delays: [u8; 2],

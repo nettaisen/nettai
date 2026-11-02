@@ -248,8 +248,9 @@ where
 
     /// This player's present delay as of their `tick`th input (from 0) of
     /// round `round` (counted from 0: [`Peer::round`] while it is played):
-    /// the ticks between the frame that decided it and the tick it lands
-    /// on. Presentation, for a replay.
+    /// the ticks between the battle presented with it and the tick it lands
+    /// on (a frontend's custom screen layer read the battle presented the
+    /// frame before, one tick further back). Presentation, for a replay.
     pub fn local_delay(&self, round: u32, tick: u32) -> u8 {
         delay_at(&self.local_delays, round, tick)
     }
@@ -257,7 +258,8 @@ where
     /// The other player's present delay as of their `tick`th input of round
     /// `round`, as they told it (`protocol::Element::Delay`); 0 before they
     /// told any. Presentation, for a replay: their custom screen layer read
-    /// their buttons that many ticks before the tick their word lands on.
+    /// the battle one tick more than that before the tick their word lands
+    /// on.
     pub fn remote_delay(&self, round: u32, tick: u32) -> u8 {
         delay_at(&self.remote_delays, round, tick)
     }

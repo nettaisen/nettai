@@ -320,6 +320,8 @@ pub struct NetPlayer<C: Channel> {
     /// shown (made with the round's first frame): the other player's isn't
     /// here.
     layer: Option<Layer>,
+    /// The round's tick whose battle is shown (getgud's presented frame's).
+    shown_tick: u32,
     /// The set being played.
     set: Set,
     options: NetOptions,
@@ -355,6 +357,7 @@ impl<C: Channel> NetPlayer<C> {
             heard: 0,
             last_frame: start,
             layer: None,
+            shown_tick: 0,
             set,
             options,
             start,
@@ -463,18 +466,29 @@ impl<C: Channel> NetPlayer<C> {
         (self.skew, self.lead) = (session.skew(), session.local_queue_length() as u32);
         let decided = self.over.is_none() && self.peer.wait().is_none();
         if decided {
-            // The player's input through their layer, against the battle as they see it.
+            // The player's input through their layer, against the battle as they see it, where the word lands
+            // the screen delay past the battle shown (the present delay and one: the frame this word makes shows
+            // the battle the present delay behind it), as a replay runs the layer again. Elsewhere (a round's
+            // first frames, until the delay's words are in; the battle shown held back, waiting for the other
+            // player's input; a delay made longer) the frame's buttons pass it by, and a gesture waits.
             let side = self.side as u8;
-            let input = self.layer.get_or_insert_with(|| Layer::new(side, shown)).input(input, shown);
+            let session = self.peer.session();
+            let screen_delay = session.present_delay() + 1;
+            let input = if session.local_frontier() == self.shown_tick + screen_delay {
+                self.layer.get_or_insert_with(|| Layer::new(side, shown)).input(input, shown)
+            } else {
+                input
+            };
             self.peer.decide(input.word());
         }
         let datagram = self.peer.datagram(now);
         self.channel.send(&datagram).map_err(lost)?;
         if decided {
             let side = self.side as u8;
-            self.peer.advance(|advanced| {
+            self.shown_tick = self.peer.advance(|advanced| {
                 shown.clone_from(advanced.frame.state.battle());
                 shown.setup.local_side = side;
+                advanced.frame.tick
             });
             if let Some(layer) = &mut self.layer {
                 layer.follow(shown);
@@ -494,11 +508,11 @@ impl<C: Channel> NetPlayer<C> {
             };
             let watch = self.peer.session_mut().world_mut().observer_mut();
             if let (Some(r), Some((_, recorded))) = (&mut watch.record, &mut self.recording) {
-                // (Each side's screen delay, for the replay to run its layer again: the peer's own and what the
-                // other told.)
+                // (Each side's screen delay, for the replay to run its layer again, of the peer's present delay
+                // and the other's as told: one more, as the layer's input reads it.)
                 for (t, (local, remote)) in r.settled.iter_mut().zip(delays) {
-                    t.delays[mine] = local;
-                    t.delays[theirs] = remote;
+                    t.delays[mine] = local.saturating_add(1);
+                    t.delays[theirs] = remote.saturating_add(1);
                 }
                 r.frames.clear();
                 recorded.append(&mut r.settled);
@@ -527,6 +541,7 @@ impl<C: Channel> NetPlayer<C> {
                         self.heard = 0;
                         self.show(&battle, shown);
                         self.layer = None;
+                        self.shown_tick = 0;
                         ran.new_round = true;
                     }
                     // The engine stopped the settled battle: on both peers
@@ -785,6 +800,86 @@ mod tests {
         assert_eq!((a.info.side, b.info.side), (0, 1));
         let out = play_out(&content, &a).unwrap();
         assert_eq!((out.diverged, out.stopped, out.result, out.rounds), (None, None, Some(BattleResult::Won), vec![Some(0), Some(0)]));
+    }
+
+    /// A netplay set with one player on the pointer (side 0: its custom
+    /// screens by gestures alone, the buster in the fight; side 1 the
+    /// shooter's bot, its navi at 1 HP), over a link with latency, at input
+    /// delays of 2 and 6: the other player's recording, played back, shows
+    /// the pointer player's custom screen on every tick as they first saw
+    /// it (their layer's cursor, what was up over the chips, the form list,
+    /// the chip window, the hover, the sounds), the gestures carried in
+    /// their words.
+    #[test]
+    fn the_other_players_replay_shows_a_pointer_players_cursor() {
+        use crate::driver::short_set::{pointing, shooter};
+        use crate::replay::{ReplayPlayer, testing::Shared};
+        use crate::session::Session;
+        use nettai_battle::battle::mode;
+        let content = exe6_test_content();
+        let base_hp = nettai_battle::content::PlayerFact::BaseHp.name();
+        let mine = [0, 1].map(|s| {
+            let mut d = side(&content, 3 + s as u32);
+            if s == 1 {
+                d.set_fact(&content, base_hp, &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(1))]).unwrap();
+            }
+            d
+        });
+        let (mut shuttle, hands) = Shuttle::new();
+        let sinks = [Shared::default(), Shared::default()];
+        let mut playing: Vec<Session> = Vec::new();
+        for (side, (hand, agreement)) in hands.into_iter().zip(agreed(&content, &triple("exe6"), mine)).enumerate() {
+            let recorder = crate::replay::Recorder::of_agreement(Box::new(sinks[side].clone()), &content, &agreement, 1_790_000_000).unwrap();
+            let options = NetOptions { input_delay: [2, 6][side], ..NetOptions::default() };
+            let mut s = Session::new(Box::new(NetPlayer::new(hand, side, agreement.set, options)));
+            s.record(recorder).unwrap();
+            playing.push(s);
+        }
+        // What side 0's player saw after each tick shown, by the round and its tick.
+        let mut seen = std::collections::HashMap::new();
+        let start = Instant::now();
+        for frame in 1..40_000u32 {
+            shuttle.carry(frame);
+            for (side, s) in playing.iter_mut().enumerate() {
+                let keys = if side == 0 && s.battle.round.mode == mode::CUSTOM {
+                    if let (Some(g), Some(layer)) = (pointing(&s.battle, 0, frame), s.driver.layer_mut(0)) {
+                        layer.point(g);
+                    }
+                    PlayerTick::default()
+                } else {
+                    shooter(&s.battle, side, frame)
+                };
+                assert!(s.step(keys), "side {side}: {:?}", s.stopped);
+                if side == 0 && s.fresh {
+                    let r = &s.battle.round;
+                    seen.entry((r.round, r.frames)).or_insert_with(|| format!("{:?}", crate::replay::tests::layers_shown(s)[0]));
+                }
+            }
+            if playing.iter().all(|s| s.driver.result().is_some()) {
+                break;
+            }
+            let next = start + Duration::from_micros(500) * frame;
+            std::thread::sleep(next.saturating_duration_since(Instant::now()));
+        }
+        assert_eq!(playing.iter().map(|s| s.driver.result()).collect::<Vec<_>>(), [Some(BattleResult::Won), Some(BattleResult::Lost)]);
+        let theirs = nettai_replay::Replay::read(&sinks[1].bytes()).unwrap();
+        let gestures = theirs.ticks.iter().filter(|t| PlayerTick::from_word(t.inputs[0]).gesture.is_some()).count();
+        assert!(gestures > 10, "{gestures} gestures");
+        let mut p = Session::new(Box::new(ReplayPlayer::new(&content, &theirs, Some(1)).unwrap()));
+        let (mut compared, mut choosing) = (0, 0);
+        while p.step(PlayerTick::default()) {
+            let r = &p.battle.round;
+            let shown = format!("{:?}", crate::replay::tests::layers_shown(&p)[0]);
+            if let Some(live) = seen.get(&(r.round, r.frames)) {
+                assert_eq!(&shown, live, "round {} tick {}", r.round, r.frames);
+                compared += 1;
+                choosing += (r.mode == mode::CUSTOM) as u32;
+            }
+        }
+        assert_eq!((p.diverged, p.result), (None, Some(BattleResult::Lost)));
+        // (Every tick but the few the pointer player never saw: their peer, waiting at a round's start for the
+        // other's first input, shows the battle past them once it comes.)
+        assert!(compared + 20 >= p.ticks && choosing > 100, "{compared} of {} ticks compared, {choosing} choosing", p.ticks);
     }
 
     /// A player's channel on a WebRTC link (nettai-rtc's, as the program's

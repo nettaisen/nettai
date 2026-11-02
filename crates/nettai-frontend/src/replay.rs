@@ -409,7 +409,7 @@ pub(crate) mod testing {
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::testing::Shared;
     use super::*;
     use crate::driver::{LivePlayer, short_set};
