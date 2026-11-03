@@ -1797,8 +1797,8 @@ component PickRow inherits Rectangle {
     }
 }
 
-// A choice of a grid of pictures (Practice's Arena and Background): its picture, and its name under it on two
-// lines at most. The cell is what is focused (the grid is a page of cells, the arrows going to the cell beside in
+// A choice of a grid of pictures (Practice's Arena and Background): its picture, and its name under it on one line,
+// cut short with an ellipsis where it is too long. The cell is what is focused (the grid is a page of cells, the arrows going to the cell beside in
 // their direction); the chosen one's picture is outlined in the cursor's color over a tint. Random has no
 // picture: a question mark in its place. (Copied into the grid, its one use: docs/app.md §14.)
 component PlaceCell inherits Rectangle {
@@ -1855,7 +1855,9 @@ component PlaceCell inherits Rectangle {
         font-weight: root.chosen ? 600 : 400;
         horizontal-alignment: center;
         vertical-alignment: top;
-        wrap: word-wrap;
+        // (One line: wrapped in a box that holds one, Slint 1.18 put an ellipsis after each glyph run of the line it
+        // kept, "EXE4 く…うちゅう…".)
+        wrap: no-wrap;
         overflow: elide;
     }
 

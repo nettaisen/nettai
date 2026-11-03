@@ -3408,7 +3408,7 @@ back from the editor, keeps what the player set. None of it is in the settings.
     round names its background or not (nettai's `a_background_chosen_keeps_the_arenas`).
 - **The grid** (`Shell::pick_grid`, the shell's `PickerLayer` with `picker-grid`; `Look::Grid`): every choice
   as a cell, its picture 120 by 56 (seven fifteenths of the cell's width: the field's band, which a display of
-  two pixels a unit shows pixel for pixel) over its name on two lines at most, Random first with a question mark. It
+  two pixels a unit shows pixel for pixel) over its name on one line (an ellipsis where it is too long), Random first with a question mark. It
   opens under the select (over it where there is more room), five cells to a row, 8 apart, in 8 of padding with
   the scrollbar's 12 at the right (656 wide), showing as many rows as there are up to five and as fit
   (`Grid::rows`); on a phone a sheet from the bottom, three to a row sharing its width, three fifths of the window
