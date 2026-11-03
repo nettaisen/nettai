@@ -130,6 +130,8 @@ pub(super) fn song(bytes: &[u8], like: &Song, max_tracks: usize) -> Result<Song,
                             9 => Some(Command::EchoLength(v)),
                             _ => None,
                         },
+                        // (A track's priority, as mid2agb's PRIO.)
+                        33 | 39 => Some(Command::Priority(v)),
                         _ => None,
                     }
                 }
@@ -347,6 +349,14 @@ mod tests {
             [Command::Voice(3), Command::Volume(100), Command::Tempo(60), note(24, 60, 90), note(24, 64, 80), Command::Wait(36), note(3, 67, 70), Command::Wait(18), Command::Fine]
         );
         assert_eq!(s.tracks[1].commands, [Command::Pan(20), Command::Wait(48), note(6, 36, 127), Command::Wait(6), Command::Fine]);
+    }
+
+    /// Controller 33 or 39 is the track's priority (PRIO), as mid2agb reads them.
+    #[test]
+    fn controllers_33_and_39_are_the_tracks_priority() {
+        let bytes = midi(vec![vec![(0, cc(0, 33, 2)), (0, on(0, 60, 64)), (24, cc(0, 39, 1)), (0, off(0, 60))]]);
+        let s = song(&bytes, &like(), 16).unwrap();
+        assert_eq!(s.tracks[0].commands, [Command::Priority(2), note(6, 60, 64), Command::Wait(6), Command::Priority(1), Command::Fine]);
     }
 
     /// A chord's notes are in the order the file starts them, whichever ends first.
