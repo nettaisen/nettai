@@ -2297,7 +2297,13 @@ write ids and names without their game.) The resolved value is a handle into the
   animations and frames in each (drawing takes the pack's frame by the simulation's animation and frame), or the
   load fails naming what is wrong. Compat maps the content's names to the original's numbers on its own
   (compat/assets.toml), with no pack either.
-- **A sprite is defined by content, with its timing** (As built 2026-10-27). A battle times its sprites' animations
+- **A sprite is a name; its timing is its sheet's** (As built 2026-11-03, superseding what follows; the user:
+  "sprite assets themselves are just bare sheets with animations"). `asset.sprite("wide-wave")` names a sprite, as
+  `asset.sound` names a sound, and no module defines one. An action that waits for an animation states that
+  animation's length in steps and compares it with the sprite's (`me.sprite.steps >= OPEN_STEPS`; an effect's
+  `steps`), so a battle reads no sprite timing; how long a frame shows is the sheet's (the ROM's, or a game's
+  `sprites.toml`'s), drawing's alone (docs/design/asset-formats.md §3.3).
+- **A sprite is defined by content, with its timing** (As built 2026-10-27; superseded 2026-11-03, above). A battle times its sprites' animations
   (an effect lasts as long as its animation, an attack waits for its last frame), so the timing is game data:
   a module that returns the sprite, its name (what the pack holds its pictures under) and its animations, each its
   frames' durations in ticks, its last frame ending it, `loop = true` where it plays again. Whoever shows the
