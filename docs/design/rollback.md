@@ -878,7 +878,10 @@ by default, "you don't even need a google default right? direct connect doesn't 
   refuses them once that time has passed. They go
   with each of the URLs in `CHINA_TURN_URLS` (its `stun:` URL needs none, and the clients give it none). The
   same rules hold as for Cloudflare's: only for a room both players are in, counted against the same limit.
-  Without those two secrets, a client in China is given Cloudflare's.
+  Without those two secrets, a client in China is given Cloudflare's. So it is with the Worker's switch
+  `CHINA_TURN` (a var in `wrangler.toml`) at `"off"`, the secrets kept for `"on"` again: the user, "disable the
+  chinese turn server support for now, route it all through cloudflare. the signaling worker should have a flag
+  to turn it off and on". It is off since 2026-11-02.
 - **TURN only for a room both players are in, and only so often.** The credentials cost the key's owner what is
   relayed on them, and anyone could open a socket to `/rooms` (the security audit's finding; the user: "fix the
   open turn credentials as well"). So servers are given only once the room's two places are taken: a welcome

@@ -43,6 +43,10 @@
 #
 # Without them, players in China are given Cloudflare's, as everyone else is.
 #
+#   3. The switch CHINA_TURN, below: "on" gives players in China the coturn,
+#      "off" gives them Cloudflare's as everyone else (the secrets stay set
+#      for when it is on again). Change it here and deploy.
+#
 # The app's default server is wss://matchmaking.nettai.n1gp.net
 # (crates/nettai/src/screens/play/session.rs, DEFAULT_SIGNAL). To serve it
 # from this Worker, give the Worker that hostname as a custom domain (its zone,
@@ -53,6 +57,11 @@ routes = [{ pattern = "matchmaking.nettai.n1gp.net", custom_domain = true }]
 name = "nettai-signal"
 main = "src/index.ts"
 compatibility_date = "2025-10-01"
+
+# Players in mainland China on the owner's coturn ("on") or on Cloudflare's
+# TURN as everyone else ("off"): see "TURN in mainland China" above.
+[vars]
+CHINA_TURN = "off"
 
 [[durable_objects.bindings]]
 name = "ROOMS"

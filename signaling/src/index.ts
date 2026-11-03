@@ -52,10 +52,11 @@
 //   and TURN server there, a coturn (the secrets CHINA_TURN_URLS and
 //   CHINA_TURN_SECRET), with credentials the server makes itself, which
 //   also last TURN_TTL_SECONDS. Their username names the match and the
-//   client's place in it by an opaque tag (`chinaServers`). Without those
-//   secrets, Cloudflare's, as any other client is given. The two players of
-//   a room may be given different servers: each relays through its own, and
-//   the two relays reach each other.
+//   client's place in it by an opaque tag (`chinaServers`). Only while the
+//   switch CHINA_TURN (a var in wrangler.toml) is "on": "off", or without
+//   those secrets, Cloudflare's, as any other client is given. The two
+//   players of a room may be given different servers: each relays through
+//   its own, and the two relays reach each other.
 // - TURN credentials cost the key's owner what is relayed on them, so they
 //   go only to a room with both its places taken (a room one client made
 //   alone is no match, and a socket opened to collect credentials gets
@@ -101,6 +102,11 @@ export interface Env {
 	/** The coturn's shared secret, its `static-auth-secret`, a secret (`npx
 	 * wrangler secret put CHINA_TURN_SECRET`). */
 	CHINA_TURN_SECRET?: string;
+	/** Whether clients in China are given the China servers, a var
+	 * (wrangler.toml's `CHINA_TURN`): "on"; "off" (or anything else), and
+	 * they are given Cloudflare's, the China secrets kept for when it is on
+	 * again. */
+	CHINA_TURN?: string;
 	/** How often a client may be given TURN credentials (a rate limit
 	 * binding, wrangler.toml's TURN_PER_MINUTE a minute): none, no limit. */
 	TURN_LIMIT?: RateLimit;
@@ -168,13 +174,15 @@ const CHINA = "CN";
 
 /** The STUN and TURN servers for a client of a room both players are in
  * (the comment at the top): for a client in `country` China, the China
- * servers when the owner has set them; else Cloudflare's TURN service's,
+ * servers when the owner has set them and CHINA_TURN is "on"; else
+ * Cloudflare's TURN service's,
  * with credentials made for it; or STUN alone. `client` is who the limit
  * counts it against (`clientOf`), `place` its room and role (the China
  * servers' usernames say them). Never fails, and never says a secret: a
  * failure's log is its kind or its HTTP status. */
 async function iceServers(env: Env, client: string, country: string, place: Place): Promise<IceServer[]> {
-	const china = country === CHINA && env.CHINA_TURN_URLS && env.CHINA_TURN_SECRET ? { urls: env.CHINA_TURN_URLS, secret: env.CHINA_TURN_SECRET } : undefined;
+	const chinaOn = env.CHINA_TURN === "on" && env.CHINA_TURN_URLS && env.CHINA_TURN_SECRET;
+	const china = country === CHINA && chinaOn ? { urls: env.CHINA_TURN_URLS!, secret: env.CHINA_TURN_SECRET! } : undefined;
 	if (!china && (!env.CLOUDFLARE_TURN_KEY_ID || !env.CLOUDFLARE_TURN_KEY_API_TOKEN)) {
 		return STUN;
 	}
