@@ -3190,12 +3190,15 @@ export type RolesSpec = {
     -- battle's, a link battle that is no set, in a game with another song
     -- for it: the link battle's otherwise), the winner's (in special
     -- battles, and otherwise) and the loser's. A stage's music is its own.
+    -- And the title screen's, which no rule starts: the app plays it
+    -- across its menus.
     music: {
         link_battle: Sound?,
         link_battle_single: Sound?,
         winner_special: Sound?,
         winner: Sound?,
         loser: Sound?,
+        title_screen: Sound?,
     }?,
     -- The sprites of the engine's own kinds: the charge glows, the Full
     -- Synchro aura, the status visuals, the ice block and the bubble, the

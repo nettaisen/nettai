@@ -450,7 +450,8 @@ impl SoundRole {
 
 definition_roles! {
     /// The music the rules start themselves, by role (`music`): sound
-    /// assets. (A stage's music is its own.)
+    /// assets. (A stage's music is its own.) And the title screen's, which
+    /// no rule starts.
     MusicRole {
         /// A link battle's, whatever its stage's.
         LinkBattle = "link_battle",
@@ -464,14 +465,18 @@ definition_roles! {
         WinnerSpecial = "winner_special",
         Winner = "winner",
         Loser = "loser",
+        /// The title screen's: the song the game's start screen plays. No
+        /// rule plays it: the app plays it across its menus.
+        TitleScreen = "title_screen",
     }
 }
 
 impl MusicRole {
     /// Whether a game may leave the role unfilled: one for a song some
-    /// game hasn't.
+    /// game hasn't, or one no battle plays (a game with no title screen's
+    /// song has none on the app's menus).
     pub fn optional(self) -> bool {
-        matches!(self, MusicRole::LinkBattleSingle)
+        matches!(self, MusicRole::LinkBattleSingle | MusicRole::TitleScreen)
     }
 }
 
