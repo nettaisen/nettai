@@ -54,6 +54,10 @@ pub struct Pick {
     /// 0x0801F11C leaves out, its chip of family 15) nor an offer that says
     /// it isn't (EXE4's chip offered again, 0x0801F118).
     pub listed: bool,
+    /// Whether the Program Advance animation shows its code: a chip's, not
+    /// one a picked button puts in the hand (EXE4's soul's, which
+    /// 0x0801E710 shows without one, as every chip from 0x160 on).
+    pub coded: bool,
 }
 
 /// One entry of the hand being built (the work area `dword_2033000`).
@@ -80,11 +84,24 @@ pub struct Built {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct FormedAdvance {
     pub chip: ChipHandle,
-    /// Chips picked (all listed).
+    /// Chips picked: every one the hand holds, those its selection doesn't
+    /// list too (EXE4's soul's chip, a chip offered again).
     pub picks: u8,
     /// Where the recipe's chips start among them, and how many.
     pub start: u8,
     pub len: u8,
+    /// What the animation lists, the picks in order (EXE4's 0x0801F390
+    /// copies the whole hand to the screen's +0x34 for it, a unison's soul
+    /// chip first: the recipe's rows are where `start` counts them).
+    pub names: [Option<AdvanceName>; 6],
+}
+
+/// A name in the Program Advance animation: a pick's chip, and its code
+/// where the animation shows one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct AdvanceName {
+    pub chip: ChipHandle,
+    pub code: Option<crate::content::ChipCode>,
 }
 
 /// Build a hand from the picked chips, in pick order (`sub_8029110`),
@@ -138,8 +155,9 @@ pub fn build(
                     *e = Entry { bonus: e.bonus, ..EMPTY };
                 }
             }
+            let names = std::array::from_fn(|i| picks.get(i).map(|p| AdvanceName { chip: p.chip.id, code: p.coded.then_some(p.chip.code) }));
             program_advance =
-                Some(FormedAdvance { chip: result, picks: picks.len() as u8, start: start as u8, len: len as u8 });
+                Some(FormedAdvance { chip: result, picks: picks.len() as u8, start: start as u8, len: len as u8, names });
         }
         fold_modifiers(&mut entries, library);
     }
@@ -369,7 +387,7 @@ mod tests {
     }
 
     fn pick(id: ChipId, code: u8) -> Pick {
-        Pick { chip: FolderChip::new(ChipHandle(id), ChipCode(code)), regular: false, marks: 0, listed: true }
+        Pick { chip: FolderChip::new(ChipHandle(id), ChipCode(code)), regular: false, marks: 0, listed: true, coded: true }
     }
 
     fn built(picks: &[Pick]) -> Built {
@@ -422,6 +440,23 @@ mod tests {
         let b = built(&[pick(CANNON, 5), pick(QUIET, 0), pick(CANNON, 9), pick(QUIET, 3), pick(CANNON, 1)]);
         assert_eq!(b.program_advance.map(|p| (p.chip, p.picks, p.start, p.len)), Some((ChipHandle(0x141), 5, 1, 3)));
         assert_eq!(b.hand.ids[..4], ids([CANNON, 0x141, CANNON, NONE]));
+    }
+
+    #[test]
+    fn the_animation_lists_a_unisons_soul_chip_where_the_recipe_counts_it() {
+        // EXE4's unison: the soul's chip first in the hand, which the
+        // selection leaves out; then a code run and a chip after it. The
+        // recipe starts at the second pick, and the animation's names are
+        // every pick (0x0801F390's copy of the hand), the soul's without
+        // its code: its rows and the recipe's start agree.
+        let soul = Pick { listed: false, coded: false, ..pick(0x160, 0) };
+        let b = built(&[soul, pick(CANNON, 0), pick(CANNON, 1), pick(CANNON, 2), pick(QUIET, 3)]);
+        let pa = b.program_advance.expect("a Program Advance");
+        assert_eq!((pa.chip, pa.picks, pa.start, pa.len), (ChipHandle(0x140), 5, 1, 3));
+        let name = |id: ChipId, code: Option<u8>| Some(AdvanceName { chip: ChipHandle(id), code: code.map(ChipCode) });
+        assert_eq!(pa.names, [name(0x160, None), name(CANNON, Some(0)), name(CANNON, Some(1)), name(CANNON, Some(2)), name(QUIET, Some(3)), None]);
+        // (The selection, which the sent list reads, lists the chips alone.)
+        assert_eq!(b.hand.selection.iter().flatten().count(), 4);
     }
 
     #[test]

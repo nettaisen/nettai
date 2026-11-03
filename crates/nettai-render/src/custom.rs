@@ -1401,9 +1401,9 @@ impl Window {
         if pa.len == 0 {
             return Vec::new();
         }
-        let side = &v.b.custom.sides[v.side as usize];
-        let picks: Vec<FolderChip> =
-            side.built.as_ref().and_then(|(h, _)| h.as_ref()).map(|h| h.selection.iter().flatten().copied().collect()).unwrap_or_default();
+        // (The picks as the animation lists them: every one the hand holds,
+        // a unison's soul chip too, which the selection leaves out.)
+        let picks: Vec<_> = pa.names.iter().flatten().copied().collect();
         let in_recipe = |k: usize| (pa.start as usize..(pa.start + pa.len) as usize).contains(&k);
         let row = |k: usize| ADVANCE_FIRST_ROW + 3 * k as i32;
         let palette = |k: usize| if in_recipe(k) { 10 } else { 13 };
@@ -1415,7 +1415,8 @@ impl Window {
         };
         let mut out = Vec::new();
         for k in shown {
-            self.put_advance_name(v, k, picks[k], text, problems);
+            let n = picks[k];
+            self.put_advance_text(v, k, n.chip, text.strings.chip_name(&v.b.content, n.chip), n.code.map(|c| c.0), text, problems);
             out.push((k, row(k), palette(k)));
         }
         if matches!(anim.step, S::Result) && anim.timer >= 0x10 {
@@ -1428,13 +1429,6 @@ impl Window {
             self.palettes[10][..4].copy_from_slice(c);
         }
         out
-    }
-
-    /// A pick's name and code into name `k`'s tiles. (The original leaves
-    /// the code off a chip numbered 0x160 or more, `sub_802B80C`, EXE5's
-    /// 0x08027BC6: no recipe of either game names one.)
-    fn put_advance_name(&mut self, v: &View, k: usize, c: FolderChip, text: &TextSink, problems: &mut Problems) {
-        self.put_advance_text(v, k, c.id, text.strings.chip_name(&v.b.content, c.id), Some(c.code.0), text, problems);
     }
 
     /// A name (chip `chip`'s, and a pick's code in its last cell) into name

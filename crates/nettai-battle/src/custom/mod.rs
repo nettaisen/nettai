@@ -459,8 +459,9 @@ impl Side {
                 // whether it is listed.)
                 let offer = screen.offers[slot as usize].filter(|_| matches!(kind, SlotKind::Offered(_)));
                 let marks = screen.slots[slot as usize].marks | offer.map_or(0, |o| o.marks);
-                let listed = !matches!(kind, SlotKind::Button { .. }) && offer.is_none_or(|o| o.listed);
-                Some(Pick { chip: screen::checked(chip, &view), regular, marks, listed })
+                let button = matches!(kind, SlotKind::Button { .. });
+                let listed = !button && offer.is_none_or(|o| o.listed);
+                Some(Pick { chip: screen::checked(chip, &view), regular, marks, listed, coded: !button })
             })
             .collect();
         let mut pa_used = self.program_advances;

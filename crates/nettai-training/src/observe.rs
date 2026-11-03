@@ -896,7 +896,7 @@ fn picks(b: &Battle, side: u8, screen: &Screen, extra: Option<u8>) -> Vec<Pick> 
             let chip = screen.chip_in(slot, folder)?;
             let offer = screen.offers[slot as usize].filter(|_| matches!(kind, SlotKind::Offered(_)));
             let marks = screen.slots[slot as usize].marks | offer.map_or(0, |o| o.marks);
-            Some(Pick { chip, regular: matches!(kind, SlotKind::Chip { regular: true, .. }), marks, listed: offer.is_none_or(|o| o.listed) })
+            Some(Pick { chip, regular: matches!(kind, SlotKind::Chip { regular: true, .. }), marks, listed: offer.is_none_or(|o| o.listed), coded: true })
         })
         .collect()
 }
