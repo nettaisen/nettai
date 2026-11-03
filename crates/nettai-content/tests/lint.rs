@@ -98,11 +98,12 @@ fn exe6_content_has_no_definition_errors() {
 
 /// The strings tables (content/<game>/locales) name only definitions the content
 /// has, and every chip, navi and form of EXE6 has its name in the own
-/// language's; so do the library orders (content/<game>/library.toml). The loader reads them apart from the modules; the own
-/// language's strings shape the records (a description's lines), and the
-/// hash covers that shape alone: text that keeps it changes nothing.
+/// language's; so do the library orders (content/<game>/library.toml). The
+/// loader reads them apart from the modules; the own language's strings shape
+/// the records (a description's lines), which only the custom screen's
+/// drawing reads, so the hash leaves the text and its shape out.
 #[test]
-fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
+fn the_strings_name_the_contents_definitions_and_are_not_hashed() {
     let dir = std::path::Path::new(CONTENT);
     let langs = nettai_content::locale::languages(dir);
     assert!(langs.contains(&"en".to_string()) && langs.contains(&"ja".to_string()), "{langs:?}");
@@ -150,7 +151,7 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
     assert!(errors.is_empty(), "{}", errors.join("\n"));
     // The own strings' shape is in the records: MagPanel's one line.
     let magpanl = c.defs.chip_by_key("magpanl").expect("magpanl");
-    assert_eq!(c.chip(magpanl).description_lines, 1);
+    assert_eq!(*c.chip(magpanl).description_lines, 1);
     // Every chip has its whole name in the own language.
     assert_eq!(c.strings.chip("hicannon").and_then(|s| s.long_name.as_deref()), Some("High Cannon"));
     let mut short = c.strings.clone();
@@ -166,10 +167,12 @@ fn the_strings_name_the_contents_definitions_and_only_their_shape_is_hashed() {
         s.long_name = Some("Renamed".into());
     }
     assert_eq!(define(renamed).hash(), c.hash());
-    // Another shape: another content.
+    // Another shape: other records, the same content.
     let mut reshaped = base.strings.clone();
     reshaped.chips.get_mut("magpanl").unwrap().description = Some("one\ntwo".into());
-    assert_ne!(define(reshaped).hash(), c.hash());
+    let reshaped = define(reshaped);
+    assert_eq!(*reshaped.chip(magpanl).description_lines, 2);
+    assert_eq!(reshaped.hash(), c.hash());
 }
 
 /// docs/design/content-model-v2.md §4.0: content is one game, its ids

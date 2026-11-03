@@ -2904,10 +2904,10 @@ games keep every sprite timed as the test content's navi is.)
   the module sources (the functions' code), the roles, and the assets the simulation reads (asset names and
   every sprite's animation timing, the content's own: §6.3). Compat is not in it: it changes no simulation. Nor is display text: no
   definition holds any; the content root's `locales/<lang>.toml` do (text-rendering.md §10). The own language's
-  (`en.toml`) shape what the battle reads (a description's lines, the no-running message's characters per line and
-  which move the speaker's mouth), which the define phase counts into the records the hash covers; the strings
-  themselves, and the other languages' tables, which only a frontend reads, are out. Pixels, palettes and audio stay
-  out, as today.
+  (`en.toml`) shape what the custom screen's drawing reads (a description's lines, the no-running message's
+  characters per line and which move the speaker's mouth), which the define phase counts into the records as `Shown`
+  values the hash skips; the strings themselves, and the other languages' tables, are out too. Pixels, palettes and
+  audio stay out, as today.
 - **The VM stays out of battles.** A runtime VM is a per-thread cache keyed by the content hash, rebuilt by the
   same define phase, and it checks it reads the content's definitions. `Battle` holds no handle to it, so a battle
   and its snapshots are `Send` by construction (§7.3). Definitions are frozen; definers fail after loading; the

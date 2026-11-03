@@ -668,7 +668,7 @@ fn the_tag_pair_index_follows_the_folder_as_picks_leave_it() {
 /// taking keys.
 fn describing(lines: usize) -> Player {
     let mut p = Player::new(&[(SHOT, 0), (SHOT, 1)]);
-    p.lib.chips[0].1.description_lines = lines as u8;
+    p.lib.chips[0].1.description_lines = crate::content::Shown(lines as u8);
     p.open();
     p.wait(10);
     p.step(0);
@@ -1208,7 +1208,7 @@ fn time_up_confirms_the_chips_picked_so_far() {
 fn time_up_closes_what_is_over_the_chips_then_confirms() {
     for key in [keys::SELECT, keys::R, keys::L] {
         let mut p = timed(Some(60));
-        p.lib.chips[0].1.description_lines = 2;
+        p.lib.chips[0].1.description_lines = crate::content::Shown(2);
         p.press(keys::A);
         p.press(key);
         assert!(matches!(p.up(), Up::Hidden(_) | Up::Description | Up::RunMessage { .. }), "{key:#x}");

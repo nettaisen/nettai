@@ -68,6 +68,25 @@ pub use views::*;
 use nettai_content_api::{ChipHandle, FormHandle, NaviHandle, StageHandle, WeaponHandle};
 use serde::{Deserialize, Serialize};
 
+/// A definition's value that only what shows reads (the custom screen's
+/// layer, a frontend), outside the simulation: out of the content's hash,
+/// so that what it is made from (the strings it is counted from) can change
+/// and the content stays the same content.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct Shown<T>(pub T);
+
+impl<T> std::hash::Hash for Shown<T> {
+    fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
+}
+
+impl<T> std::ops::Deref for Shown<T> {
+    type Target = T;
+    fn deref(&self) -> &T {
+        &self.0
+    }
+}
+
 /// An attack's primary element (a chip's element, a navi's or form's).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -387,11 +406,11 @@ impl Content {
         let w = &self.strings;
         for d in &mut self.defs.chips {
             let description = w.chip(&d.key).and_then(|c| c.description.as_deref());
-            d.record.description_lines = strings::description_lines(description);
+            d.record.description_lines = Shown(strings::description_lines(description));
         }
         for d in &mut self.defs.forms {
             let description = w.form(&d.key).and_then(|f| f.description.as_deref());
-            d.record.description_lines = strings::description_lines(description);
+            d.record.description_lines = Shown(strings::description_lines(description));
         }
         // (Which characters move a speaker's mouth is the game's rule; a
         // content with no rules has no chatbox to show one.)
@@ -399,8 +418,9 @@ impl Content {
         for d in &mut self.defs.navis {
             let message = w.navi(&d.key).and_then(|n| n.run_message.as_deref()).unwrap_or("");
             let m = &mut d.record.run_message;
-            (m.counts, m.talking) =
+            let (counts, talking) =
                 if message.is_empty() { (Vec::new(), [0; 3]) } else { (strings::message_counts(message), strings::talking(message, &talks)) };
+            (m.counts, m.talking) = (Shown(counts), Shown(talking));
         }
     }
 

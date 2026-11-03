@@ -395,7 +395,7 @@ mod tests {
         let navi = c.defs.navis.iter().position(|d| d.record.fresh.is_some() && !d.record.run_message.counts.is_empty()).expect("a navi with a message");
         let named = format!("navi {} has no no-running message", c.defs.navis[navi].key);
         assert!(!before.iter().any(|p| p.starts_with(&named)), "{before:?}");
-        c.defs.navis[navi].record.run_message.counts.clear();
+        c.defs.navis[navi].record.run_message.counts.0.clear();
         let found = silent(&c);
         assert_eq!(found.len(), before.len() + 1, "{found:?}");
         assert!(found.iter().any(|p| p.starts_with(&named)), "{found:?}");

@@ -335,9 +335,9 @@ pub struct ChipData {
     /// takes keys a tick later for each line after the first
     /// (docs/engine/custom-screen.md §3.5). A chip without one counts as
     /// three, what nearly every chip has. The define phase counts it from
-    /// the content's own strings.
+    /// the content's own strings. Shown alone: out of the hash.
     #[serde(skip_deserializing, default = "super::strings::three_lines")]
-    pub description_lines: u8,
+    pub description_lines: super::Shown<u8>,
     /// The palette of the chip's picture on the custom screen, 16 BGR555
     /// colors, for a chip whose palette no ROM holds (the extracted picture
     /// has a black one): presentation only.

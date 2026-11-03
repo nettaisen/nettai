@@ -340,9 +340,10 @@ pub struct FormData {
     /// The lines of a Cross's description, which R shows in the Cross
     /// window (its text is the content's strings): the box takes keys a
     /// tick later for each, as for a chip's; none counts as three. The
-    /// define phase counts it from the content's own strings.
+    /// define phase counts it from the content's own strings. Shown alone:
+    /// out of the hash.
     #[serde(skip, default = "super::strings::three_lines")]
-    pub description_lines: u8,
+    pub description_lines: super::Shown<u8>,
     /// The damage it adds to a family's damaging chips (`sub_800EF34`).
     #[serde(default)]
     pub chip_bonus: Option<FormChipBonus>,
@@ -579,13 +580,15 @@ fn faces<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<Faces>, D::Err
 #[serde(deny_unknown_fields)]
 pub struct RunMessage {
     /// The characters in each of its lines (up to three), which set how
-    /// long it prints (docs/engine/custom-screen.md §3.5).
+    /// long it prints (docs/engine/custom-screen.md §3.5). Shown alone (the
+    /// custom screen's layer): out of the hash.
     #[serde(skip)]
-    pub counts: Vec<u8>,
+    pub counts: super::Shown<Vec<u8>>,
     /// Which characters move the speaker's mouth, by line: bit k for the
-    /// line's character k (`strings::talking`). Presentation.
+    /// line's character k (`strings::talking`). Shown alone: out of the
+    /// hash.
     #[serde(skip)]
-    pub talking: [u32; 3],
+    pub talking: super::Shown<[u32; 3]>,
     /// Who says it: the portrait beside the box (a sprite whose
     /// animations are its faces: still, idle, talking). Presentation.
     #[serde(default)]

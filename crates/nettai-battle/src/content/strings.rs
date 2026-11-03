@@ -9,16 +9,17 @@
 //! none for (docs/design/text-rendering.md §10.5); a mark is one character
 //! as the battle counts them.
 //!
-//! The battle reads one thing of the content's own language's strings
-//! (`Content::strings`): their shape. A description's lines and a no-running
-//! message's characters per line time the custom screen's chatbox (docs/
-//! engine/custom-screen.md §3.5), and the message's characters say which
-//! move the speaker's mouth. The define phase counts them into the records
-//! (`ChipData::description_lines`, `FormData::description_lines`,
-//! `RunMessage::counts` and `talking`), which the content's hash covers; the
-//! strings themselves are presentation, left out of it. Another language's
-//! table is a frontend's alone: it changes neither the battle nor the hash,
-//! so two players of different languages play one netbattle.
+//! The custom screen's drawing reads one thing of the content's own
+//! language's strings (`Content::strings`): their shape. A description's
+//! lines and a no-running message's characters per line time its chatbox
+//! (docs/engine/custom-screen.md §3.5), and the message's characters say
+//! which move the speaker's mouth. The define phase counts them into the
+//! records (`ChipData::description_lines`, `FormData::description_lines`,
+//! `RunMessage::counts` and `talking`), as `Shown` values: the custom
+//! screen's layer reads them, no tick does, so the content's hash leaves them
+//! out as it leaves the strings. Text in any language changes neither the
+//! battle nor the hash, so two players of different languages, or of
+//! differently worded tables, play one netbattle.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -256,8 +257,8 @@ pub fn description_lines(description: Option<&str>) -> u8 {
 }
 
 /// A description's lines where none is known: three.
-pub fn three_lines() -> u8 {
-    3
+pub fn three_lines() -> super::Shown<u8> {
+    super::Shown(3)
 }
 
 /// A no-running message's characters by line (up to three), which time

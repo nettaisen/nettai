@@ -646,7 +646,7 @@ impl Layer {
         if let Some(c) = chip {
             // (A button that shows a chip, EXE5's capsules, 0x0802487C:
             // the slot's kinds 6 and 7, the chip's description.)
-            let lines = view.library.chip(c).description_lines;
+            let lines = *view.library.chip(c).description_lines;
             self.describe(lines, Some(c), None, false, layout.chatbox_end_clears_tiles);
             self.play(ScreenSound::Description);
         }

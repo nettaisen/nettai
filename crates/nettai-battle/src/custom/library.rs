@@ -114,11 +114,11 @@ impl Library for Content {
     }
 
     fn run_message_talking(&self, navi: NaviHandle) -> [u32; 3] {
-        self.navi(navi).run_message.talking
+        *self.navi(navi).run_message.talking
     }
 
     fn form_description_lines(&self, form: FormHandle) -> u8 {
-        self.form(form).description_lines
+        *self.form(form).description_lines
     }
 
     fn layout(&self) -> &CustomScreenLayout {
@@ -155,7 +155,7 @@ pub(crate) mod testing {
     /// A chip record with only what the custom screen reads.
     pub fn chip(class: ChipClass, codes: &[ChipCode], flags: u8, damage: u16) -> ChipData {
         ChipData {
-            description_lines: 3,
+            description_lines: crate::content::Shown(3),
             codes: codes.to_vec(),
             element: Element::Null,
             rarity: 0,

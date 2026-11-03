@@ -2125,7 +2125,7 @@ mod tests {
             let Sub::Description { from_list: true, form, chatbox, .. } = up else { panic!("{key}: no description: {up:?}") };
             let want = form_of(&content, key);
             assert_eq!(form, Some(want), "{key}");
-            let breaks = content.form(want).description_lines - 1;
+            let breaks = *content.form(want).description_lines - 1;
             assert_eq!(chatbox.script(), custom::chatbox::Script::Description { breaks }, "{key}");
         }
     }

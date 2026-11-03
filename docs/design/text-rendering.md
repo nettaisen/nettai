@@ -1080,11 +1080,12 @@ the US's (the user's choice).
   `content::strings::Strings` is one table; nettai-content's `locale` reads them. A definition holds none: the define
   phase refuses a `name`, `description` or `description_lines` field (core.d.luau's specs have none).
 - **The content's own language** (`locale::OWN`, English for EXE6) is part of the content: the loader puts its table
-  in `Content::strings`, and the define phase counts what the battle reads of it into the records: a description's
-  lines (`ChipData::description_lines`, `FormData::description_lines`) and a no-running message's characters per line
-  and which of them move the speaker's mouth (`RunMessage::counts`, `talking`). The hash covers the records, so it
-  covers that shape; the strings themselves are presentation, out of it (renaming every chip changes nothing; a
-  description with another number of lines changes the content). Nothing in the definitions duplicates the strings.
+  in `Content::strings`, and the define phase counts what the custom screen's drawing reads of it into the records: a
+  description's lines (`ChipData::description_lines`, `FormData::description_lines`) and a no-running message's
+  characters per line and which of them move the speaker's mouth (`RunMessage::counts`, `talking`). Only the custom
+  screen's layer reads them, outside the battle's state and digest, so they are `Shown` values the hash skips: neither
+  the strings nor their shape is in it (renaming every chip changes nothing, nor does a description with another
+  number of lines). Nothing in the definitions duplicates the strings.
 - **Another language's table is a frontend's alone.** It changes neither the battle nor `Content::hash()`, so two
   players can each read their own language in one netbattle. A translated description may have another number of
   lines than the own one; the battle keeps the own one's timing.
