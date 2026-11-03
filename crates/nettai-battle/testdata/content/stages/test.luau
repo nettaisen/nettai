@@ -17,7 +17,6 @@ local function stage(actors: { StageActor }): StageDef
         layout = PLAIN,
         panel_pattern = 0x38,
         music = asset.sound("test-stage-music"),
-        background = asset.background("test-background"),
         mode = 0,
         battle_number = 0,
         -- A link battle.

@@ -420,7 +420,7 @@ fn assets_resolve_by_name_while_content_loads() {
     let e = define_named(&[("m", "return asset.banner('finish', {})")]).unwrap_err();
     assert!(e.contains("asset.banner takes a name alone"), "{e}");
     let e = define_named(&[("m", "return asset.sound('throw', 3)")]).unwrap_err();
-    assert!(e.contains("asset.sound takes a name alone, or a name and what it is made from"), "{e}");
+    assert!(e.contains("asset.sound takes a name alone (a song of the content's own is its music.toml's)"), "{e}");
     let e = define_named(&[("m", "return { f = function() return asset.sound('throw') end }")]);
     assert!(e.is_ok(), "calling it later is the runtime's error, not the define phase's");
 }
@@ -481,184 +481,19 @@ fn a_custom_sprite_is_defined_by_its_module() {
     }
 }
 
-/// docs/design/asset-formats.md §7: a sound made from a MIDI file of the
-/// content's own is defined, once, by its module, with its file and the
-/// ROMs' sound whose instruments it plays on.
+/// A game's backgrounds and songs of its own are its `backgrounds.toml`'s and `music.toml`'s, presentation the content
+/// hash leaves out (docs/design/asset-formats.md §8): no module names a background, and `asset.sound` names a sound
+/// alone, not one it makes.
 #[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
 #[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
-fn a_custom_sound_is_defined_by_its_module() {
-    let (_, assets) = define_assets(&[
-        ("music/theme", "return asset.sound('my-theme', { file = './theme.mid', voices = asset.sound('virus-battle') })"),
-        ("stages", "return { music = require('./music/theme') }"),
-    ])
-    .unwrap();
-    assert_eq!(assets.names.sounds, ["my-theme", "virus-battle"]);
-    assert_eq!(
-        assets.custom.sounds["my-theme"],
-        nettai_content_api::CustomSound {
-            module: "test:music/theme".into(),
-            file: "test:music/theme.mid".into(),
-            voices: "virus-battle".into(),
-            instruments: Default::default()
-        }
-    );
-    // Instruments of its own, by program: a recording, its key, its loop, its envelope.
-    let (_, assets) = define_assets(&[(
-        "music/theme",
-        "return asset.sound('t', { file = './t.mid', voices = asset.sound('v'), instruments = { [41] = { file = './strings.wav', key = 69, loop = 1024, envelope = { release = 200 } }, [0] = { file = './kick.wav' } } })",
-    )])
-    .unwrap();
-    let inst = &assets.custom.sounds["t"].instruments;
-    assert_eq!(
-        inst[&41],
-        nettai_content_api::CustomInstrument { file: "test:music/strings.wav".into(), key: 69, loop_start: Some(1024), envelope: [255, 0, 255, 200] }
-    );
-    assert_eq!(inst[&0], nettai_content_api::CustomInstrument { file: "test:music/kick.wav".into(), ..Default::default() });
-    for (inst, wrong) in [
-        ("{ [128] = { file = './a.wav' } }", "`instruments` is keyed by program, 0 to 127, not 128"),
-        ("{ [1] = './a.wav' }", "instrument 1 is a string, not a table"),
-        ("{ [1] = { key = 60 } }", "instrument 1: an instrument names its `file`"),
-        ("{ [1] = { file = './a.mp3' } }", "`file` \"./a.mp3\" is a .wav file"),
-        ("{ [1] = { file = './a.wav', key = 200 } }", "`key` is 200, not a whole number from 0 to 127"),
-        ("{ [1] = { file = './a.wav', envelope = { hold = 3 } } }", "`envelope` has its `attack`, `decay`, `sustain` and `release`, not hold"),
-        ("{ [1] = { file = './a.wav', pan = 3 } }", "an instrument has its `file`, `key`, `loop` and `envelope`, not pan"),
-    ] {
-        let e = define_named(&[("m", &format!("return asset.sound('t', {{ file = './t.mid', voices = asset.sound('v'), instruments = {inst} }})"))]).unwrap_err();
-        assert!(e.contains(wrong), "{inst}: {e}");
-    }
-    let twice = "return asset.sound('t', { file = './t.mid', voices = asset.sound('v') })";
-    let e = define_named(&[("a", twice), ("b", twice)]).unwrap_err();
-    assert!(e.contains("sound \"t\" is defined twice: in test/a.luau and in test/b.luau"), "{e}");
-    for (made, wrong) in [
-        ("{ voices = asset.sound('v') }", "names its `file`"),
-        ("{ file = './t.mid' }", "its `voices` (`asset.sound(name)`)"),
-        ("{ file = './t.mid', voices = 'v' }", "`voices` is a string, not a sound"),
-        ("{ file = './t.mid', voices = asset.background('v') }", "`voices` is a table, not a sound"),
-        ("{ file = './t.wav', voices = asset.sound('v') }", "`file` \"./t.wav\" is a .mid file"),
-        ("{ file = './t.mid', voices = asset.sound('v'), loop = true }", "has its `file`, its `voices` and its `instruments`, not loop"),
-    ] {
-        let e = define_named(&[("m", &format!("return asset.sound('t', {made})"))]).unwrap_err();
-        assert!(e.contains(wrong), "{made}: {e}");
-    }
-}
-
-/// docs/design/asset-formats.md §7: a background made from a picture of the
-/// content's own is defined, once, by its module, with its file (a path as a
-/// `require` writes one, resolved to its pack's) and its scroll; naming it
-/// elsewhere is the same asset.
-#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
-#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
-fn a_custom_background_is_defined_by_its_module() {
-    let (_, assets) = define_assets(&[
-        ("backgrounds/sky", "return asset.background('sky', { file = './sky/sky.png', scroll = { 16, -8 } })"),
-        ("backgrounds/still/init", "return asset.background('still', { file = '@self/still.png' })"),
-        (
-            "stages",
-            "local _ = require('./backgrounds/still')\n\
-             if asset.background('sky') ~= require('./backgrounds/sky') then error('one value per asset') end\n\
-             return { a = asset.background('comp') }",
-        ),
-    ])
-    .unwrap();
-    assert_eq!(assets.names.backgrounds, ["comp", "sky", "still"]);
-    let custom = &assets.custom.backgrounds;
-    assert_eq!(custom.keys().collect::<Vec<_>>(), ["sky", "still"], "the ROMs' are named alone");
-    assert_eq!(
-        custom["sky"],
-        nettai_content_api::CustomBackground {
-            module: "test:backgrounds/sky".into(),
-            file: "test:backgrounds/sky/sky.png".into(),
-            scroll: (16, -8),
-            ..Default::default()
-        }
-    );
-    assert_eq!((custom["still"].file.as_str(), custom["still"].scroll), ("test:backgrounds/still/still.png", (0, 0)));
-    // An animated one has its pictures' durations, and one may speed up to its scroll.
-    let (_, assets) = define_assets(&[(
-        "backgrounds/sea",
-        "return asset.background('sea', { file = './sea.png', scroll = { 0, 32 }, speed_up = 90, frames = { 8, 8, 12, loop = true } })",
-    )])
-    .unwrap();
-    let sea = &assets.custom.backgrounds["sea"];
-    assert_eq!((sea.frames.as_slice(), sea.looping, sea.speed_up, sea.scroll), (&[8, 8, 12][..], true, Some(90), (0, 32)));
-    // Defined once, by its module.
-    let twice = "return asset.background('sky', { file = './sky.png' })";
-    let e = define_named(&[("a", twice), ("b", twice)]).unwrap_err();
-    assert!(e.contains("background \"sky\" is defined twice: in test/a.luau and in test/b.luau"), "{e}");
-    // What a definition can't be is said.
-    for (made, wrong) in [
-        ("{ scroll = { 1, 1 } }", "names its `file` (an indexed PNG)"),
-        ("{ file = './sky.bmp' }", "`file` \"./sky.bmp\" is a .png file"),
-        ("{ file = 'sky.png' }", "content paths start with ./, ../, @self/ or @<pack>/"),
-        ("{ file = '../../sky.png' }", "leaves pack test"),
-        ("{ file = './sky.png', scroll = { 1 } }", "`scroll` is { x, y }"),
-        ("{ file = './sky.png', scroll = { 1, 40000 } }", "`scroll` is { x, y }"),
-        ("{ file = './sky.png', speed = 3 }", "its `file`, `scroll`, `speed_up` and `frames`, not speed"),
-        ("{ file = './sky.png', speed_up = 30 }", "`speed_up` is how many frames it takes to reach its `scroll`, and it has none"),
-        ("{ file = './sky.png', scroll = { 1, 0 }, speed_up = 0 }", "`speed_up` is 0, not a whole number of frames from 1 to 65535"),
-        ("{ file = './sky.png', frames = {} }", "`frames` has no frame"),
-        ("{ file = './sky.png', frames = { 8, 0 } }", "frame 1 is 0, not a whole number of frames"),
-        ("{ file = './sky.png', frames = { 8, last = true } }", "`frames` holds its pictures' durations (1, 2, ...) and `loop`, not last"),
-        ("{ file = './sky.png', frames = 8 }", "`frames` is a integer, not a list of durations"),
-        ("{ file = 3 }", "`file` is a integer, not a path"),
-    ] {
-        let e = define_named(&[("backgrounds/sky", &format!("return asset.background('sky', {made})"))]).unwrap_err();
-        assert!(e.contains(wrong), "{made}: {e}");
-    }
-    let e = define_named(&[("m", "return asset.background('sky', './sky.png')")]).unwrap_err();
-    assert!(e.contains("asset.background takes a name alone, or a name and what it is made from ({ file = ... })"), "{e}");
-    // A game's root lists those no stage names (the background pool's), as a list of the backgrounds' definitions.
-    let sky = ("backgrounds/sky", "return asset.background('sky', { file = './sky.png' })");
-    let (_, assets) = define_assets(&[sky, ("backgrounds/init", "return { require('@self/sky') }"), ("init", "return { backgrounds = require('@self/backgrounds') }")])
-        .unwrap();
-    assert_eq!(assets.custom.backgrounds.keys().collect::<Vec<_>>(), ["sky"]);
-    for list in ["{ asset.background('comp') }", "{ sky = require('@self/backgrounds/sky') }", "require('@self/backgrounds/sky')", "3"] {
-        let e = define_named(&[sky, ("init", &format!("return {{ backgrounds = {list} }}"))]).unwrap_err();
-        assert!(e.contains("`backgrounds` is a list of the game's backgrounds' definitions"), "{list}: {e}");
-    }
-}
-
-/// A background's definition names its music (docs/app.md §1, "The battle's music"): one of the ROMs' named with
-/// its music alone, a custom one with its picture too, its music a song of the ROMs' or one of the content's own.
-/// The game's root lists them; each is defined once, whichever way.
-#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
-#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
-fn a_background_names_its_music() {
-    let (_, assets) = define_assets(&[
-        ("sounds/my_theme", "return asset.sound('my-theme', { file = './my_theme.mid', voices = asset.sound('virus-battle') })"),
-        ("backgrounds/sky", "return asset.background('sky', { file = './sky.png', music = require('../sounds/my_theme') })"),
-        (
-            "backgrounds/init",
-            "return {\n\
-                 asset.background('acdc-area', { music = asset.sound('virus-battle') }),\n\
-                 asset.background('duo', { music = asset.sound('final-battle') }),\n\
-                 require('@self/sky'),\n\
-             }",
-        ),
-        ("stages", "return { a = asset.background('acdc-area') }"),
-        ("init", "return { backgrounds = require('@self/backgrounds') }"),
-    ])
-    .unwrap();
-    let music: Vec<(&str, &str)> = assets.background_music.0.iter().map(|(b, m)| (b.as_str(), m.as_str())).collect();
-    assert_eq!(music, [("acdc-area", "virus-battle"), ("duo", "final-battle"), ("sky", "my-theme")]);
-    assert_eq!(assets.custom.backgrounds.keys().collect::<Vec<_>>(), ["sky"], "the ROMs' have their music alone");
-    assert_eq!(assets.names.backgrounds, ["acdc-area", "duo", "sky"]);
-    // Defined once: two definitions of one, its music or its picture, are an error.
-    let e = define_named(&[
-        ("a", "return asset.background('duo', { music = asset.sound('final-battle') })"),
-        ("b", "return asset.background('duo', { music = asset.sound('boss-battle') })"),
-    ])
-    .unwrap_err();
-    assert!(e.contains("background \"duo\" is defined twice: in test/a.luau and in test/b.luau"), "{e}");
-    for (made, wrong) in [
-        ("{}", "a background's definition names its `music`, or for one made from a picture its `file`"),
-        ("{ music = 'virus-battle' }", "`music` is a sound (`asset.sound(name)`), not a string"),
-        ("{ music = asset.sprite('bomb', {}) }", "`music` is a sound (`asset.sound(name)`), not a table"),
-        ("{ music = asset.sound('virus-battle'), scroll = { 1, 1 } }", "a background's made from a picture: it names its `file`"),
-    ] {
-        let e = define_named(&[("backgrounds/duo", &format!("return asset.background('duo', {made})"))]).unwrap_err();
-        assert!(e.contains(wrong), "{made}: {e}");
-    }
+fn modules_make_no_backgrounds_or_songs() {
+    let err = |m: &str| define_assets(&[("stages", m)]).unwrap_err();
+    let named = err("return { a = asset.background('comp') }");
+    assert!(named.contains("asset.background: no module names a background (a game's are its backgrounds.toml's)"), "{named}");
+    let made = err("return { a = asset.sound('my-theme', { file = './theme.mid', voices = asset.sound('virus-battle') }) }");
+    assert!(made.contains("asset.sound takes a name alone (a song of the content's own is its music.toml's)"), "{made}");
+    let (_, assets) = define_assets(&[("stages", "return { a = asset.sound('virus-battle') }")]).unwrap();
+    assert_eq!((&assets.names.sounds[..], assets.names.backgrounds.is_empty()), (&["virus-battle".to_string()][..], true));
 }
 
 /// A game's rules are one definition, its rules (rules/init.luau), which

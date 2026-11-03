@@ -108,10 +108,6 @@ pub struct LinkPick {
     /// (a practice's 0x44: the first 68). The rounds after pick among all of
     /// `stages` (both games pass the count 0x60 for them).
     pub first_round_stages: usize,
-    /// The backgrounds, by the pick's index (EXE6's `byte_8120A20`, 21
-    /// entries, some there twice and so twice as likely; EXE5's 27, each
-    /// once). None: a link battle shows its stage's own.
-    pub backgrounds: Vec<super::BackgroundId>,
     /// The stages a match may name: the game's link battle stages, whether
     /// a random pick reaches them or not (EXE6's and EXE5's: each a
     /// settings record with the link effect that isn't the random
@@ -1863,12 +1859,6 @@ pub struct Rules {
     /// What a link battle picks at random (the section `link_pick`; none
     /// stated: nothing).
     pub link_pick: LinkPick,
-    /// The game's battle themes (the section `battle_themes`; none stated:
-    /// none): songs a player may pick as a battle's music in place of its
-    /// game's own, in the order a list shows them. Presentation, which no
-    /// battle reads: a host plays the pick in place of
-    /// [`Content::battle_music`](super::Content::battle_music).
-    pub battle_themes: Vec<crate::sound::SoundId>,
     /// The sine table (`math_sinTable`, which `math_cosTable` continues):
     /// 256 steps a turn, 1.0 = 0x100, over a turn and a half, so that the
     /// cosine of step `a` is entry `a + 64`.

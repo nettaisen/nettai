@@ -26,7 +26,7 @@ pub fn add(c: &nettai_battle::Content, graphics: &mut Bundle, sound: &mut m4a::S
     // (A custom song plays on a ROM song's instruments: the ROMs' sounds, before any custom one is added.)
     let rom_sounds = index.sounds.clone();
     for (name, def) in &c.custom_assets.sounds {
-        let at = format!("{}.luau: sound {name:?}", keys::module_path(&def.module));
+        let at = format!("{}: sound {name:?}", def.source);
         let like = rom_sounds
             .get(&def.voices)
             .and_then(|&n| sound.song(m4a::SongId(n)))
@@ -60,7 +60,7 @@ pub fn add(c: &nettai_battle::Content, graphics: &mut Bundle, sound: &mut m4a::S
         sound.validate().map_err(|e| format!("the sound with the content's songs: {e}"))?;
     }
     for (name, def) in &c.custom_assets.backgrounds {
-        let at = format!("{}.luau: background {name:?}", keys::module_path(&def.module));
+        let at = format!("{}: background {name:?}", def.source);
         let bg = read(dirs, &def.file).and_then(|bytes| background::background(&bytes, def)).map_err(|e| format!("{at}: {}: {e}", def.file))?;
         let id = u8::try_from(graphics.backgrounds.len()).map_err(|_| format!("{at}: a game has at most 256 backgrounds"))?;
         graphics.backgrounds.push(Some(bg));
@@ -161,7 +161,7 @@ mod tests {
         // A file that isn't there.
         c.custom_assets.backgrounds.get_mut("sky").unwrap().file = "g:backgrounds/gone.png".into();
         let e = add(&c, &mut Bundle::default(), &mut sound(), &mut AssetIndex::default()).unwrap_err();
-        assert!(e.starts_with("g/backgrounds/x.luau: background \"sky\": g:backgrounds/gone.png: "), "{e}");
+        assert!(e.starts_with("g/backgrounds.toml: background \"sky\": g:backgrounds/gone.png: "), "{e}");
         std::fs::remove_dir_all(&dir).unwrap();
     }
 }

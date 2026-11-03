@@ -60,14 +60,25 @@ impl std::fmt::Display for AssetKind {
 
 /// The assets a content names, by kind: each kind's names in byte order,
 /// each once. A handle is a name's place among its kind's. The define phase
-/// makes it from what the game's modules name.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+/// makes it from what the game's modules name, and the backgrounds from what
+/// its `backgrounds.toml` names ([`Presentation`]).
+///
+/// Its hash leaves the backgrounds out: no tick reads one, and a game's
+/// backgrounds are presentation (docs/design/asset-formats.md §8).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct AssetNames {
     pub sprites: Vec<String>,
     pub sounds: Vec<String>,
     pub banners: Vec<String>,
     pub backgrounds: Vec<String>,
     pub mugshots: Vec<String>,
+}
+
+impl std::hash::Hash for AssetNames {
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
+        let AssetNames { sprites, sounds, banners, backgrounds: _, mugshots } = self;
+        (sprites, sounds, banners, mugshots).hash(h);
+    }
 }
 
 impl AssetNames {
@@ -160,20 +171,19 @@ pub struct SpriteAnimation {
 }
 
 /// What the define phase made of the assets content names: their names
-/// (the handles), each sprite's definition, by handle, the assets the
-/// content makes from files of its own and the backgrounds' music.
+/// (the handles), each sprite's definition, by handle, and the sprites the
+/// content makes from files of its own.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct DefinedAssets {
     pub names: AssetNames,
     pub sprites: Vec<SpriteDef>,
     pub custom: CustomAssets,
-    pub background_music: BackgroundMusic,
 }
 
-/// Each background's music (`asset.background("acdc-area", { music =
-/// asset.sound("virus-battle") })`; docs/app.md §1, "The battle's music"):
-/// the song a round drawn on it plays where no other is picked, by the
-/// background's name and the sound's. A background is defined once.
+/// Each background's music (a game's `backgrounds.toml`: `acdc-area = {
+/// music = "virus-battle" }`; docs/app.md §1, "The battle's music"): the
+/// song a round drawn on it plays where no other is picked, by the
+/// background's name and the sound's.
 ///
 /// Presentation: no tick reads it, so it is left out of a content's hash,
 /// as the custom assets are.
@@ -184,11 +194,49 @@ impl std::hash::Hash for BackgroundMusic {
     fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
 }
 
+/// What a game's backgrounds and music are, as its `backgrounds.toml` and
+/// `music.toml` state them (docs/design/asset-formats.md §8): read with its
+/// content, from its pack's folder, and made the content's in its define
+/// phase (the backgrounds' names, the custom backgrounds and songs, each
+/// background's music).
+///
+/// Presentation: no tick reads any of it (a round's background and its
+/// music are drawn and played alone), so it is left out of a content's
+/// hash, and content that differs in its backgrounds or music alone plays
+/// as the same.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Presentation {
+    /// The background a link battle's stage is drawn on (every stage
+    /// record's, the same one in each game): a round's where it states none
+    /// and none is picked, and where its own isn't here.
+    pub stage_background: Option<String>,
+    /// The backgrounds a link battle picks one of at random (the original's
+    /// table, a background there twice twice as likely).
+    pub link_battle: Vec<String>,
+    /// Every background the file defines, in its order: its music and, for
+    /// one of the content's own, its picture.
+    pub backgrounds: Vec<String>,
+    /// Each background's music.
+    pub music: BackgroundMusic,
+    /// The backgrounds made from pictures of the content's own.
+    pub custom_backgrounds: BTreeMap<String, CustomBackground>,
+    /// The songs a player may pick as a battle's music, by name, in the
+    /// order a list shows them.
+    pub battle_themes: Vec<String>,
+    /// The songs made from MIDI files of the content's own.
+    pub songs: BTreeMap<String, CustomSound>,
+}
+
+impl std::hash::Hash for Presentation {
+    fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
+}
+
 /// The assets content makes from files of its own, not the ROMs'
 /// (docs/design/asset-formats.md §7, "Custom assets"): each defined once,
-/// by its module, with its file (`asset.background("my-stage", { file =
-/// "./my_stage.png" })`), and added to the game's assets as they load,
-/// after its ROMs' (`nettai_content::custom`). By name.
+/// with its file (a sprite by its module, `asset.sprite(name, animations,
+/// { file = "./bomb.png" })`; a background by the game's
+/// `backgrounds.toml`, a song by its `music.toml`), and added to the game's
+/// assets as they load, after its ROMs' (`nettai_content::custom`). By name.
 ///
 /// Presentation: no tick reads one, so it is left out of a content's hash
 /// (the modules that state it are in it).
@@ -209,12 +257,12 @@ impl CustomAssets {
     }
 }
 
-/// A background made from a picture of the content's own
-/// (`asset.background(name, { file = ..., scroll = ... })`).
+/// A background made from a picture of the content's own (a game's
+/// `backgrounds.toml`: `[backgrounds.my-stage]`, `file = "backgrounds/my_stage.png"`).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CustomBackground {
-    /// The module that defines it (`exe6:backgrounds/my_stage`).
-    pub module: String,
+    /// The file that defines it, for what is said of it (`exe6/backgrounds.toml`).
+    pub source: String,
     /// Its picture: an indexed PNG, by its pack and its path in the pack
     /// (`exe6:backgrounds/my_stage.png`; `packs::Dirs::asset_file`).
     pub file: String,
@@ -257,13 +305,13 @@ pub struct CustomSprite {
     pub shadow: Option<String>,
 }
 
-/// A song made from a MIDI file of the content's own (`asset.sound(name, {
-/// file = ..., voices = asset.sound(...) })`), played on the instruments
-/// of a song the ROMs have.
+/// A song made from a MIDI file of the content's own (a game's
+/// `music.toml`: `[songs.my-theme]`, `file = "music/my_theme.mid"`, `voices =
+/// "virus-battle"`), played on the instruments of a song the ROMs have.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CustomSound {
-    /// The module that defines it.
-    pub module: String,
+    /// The file that defines it, for what is said of it (`exe6/music.toml`).
+    pub source: String,
     /// Its notes: a standard MIDI file, by its pack and its path in the
     /// pack (as [`CustomBackground::file`]).
     pub file: String,

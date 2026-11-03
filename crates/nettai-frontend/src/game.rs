@@ -420,12 +420,11 @@ impl Loaded {
         self.graphics.renderer(self.enhancements, self.font.clone())
     }
 
-    /// The game's battle themes (its rules' `battle_themes`), by their songs'
-    /// asset names, in its order: what a player may pick as a battle's music,
-    /// in this game's battles or another's ([`Loaded::theme`]).
+    /// The game's battle themes (its `music.toml`'s `themes`), by their
+    /// songs' asset names, in its order: what a player may pick as a battle's
+    /// music, in this game's battles or another's ([`Loaded::theme`]).
     pub fn battle_themes(&self) -> Vec<&str> {
-        let names = self.game.content.assets.names(nettai_content_api::AssetKind::Sound);
-        self.game.content.battle_themes().iter().filter_map(|t| names.get(t.0 as usize).copied()).collect()
+        self.game.content.battle_themes().iter().map(String::as_str).collect()
     }
 
     /// Battle theme `song` (a song asset's name, one of
@@ -433,12 +432,11 @@ impl Loaded {
     /// a battle's music in place of its own ([`Sound::parts`]). None where
     /// the game has no such theme, or no sound loaded.
     pub fn theme(&self, song: &str) -> Option<nettai_audio::Theme> {
-        let assets = &self.game.content.assets;
-        let handle = assets.handle(nettai_content_api::AssetKind::Sound, song)?;
-        if !self.game.content.battle_themes().contains(&nettai_battle::sound::SoundId(handle)) {
+        if !self.game.content.battle_themes().iter().any(|t| t == song) {
             return None;
         }
-        let song = self.game.numbers.sound(handle)?;
+        // (By its name in the game's assets: a theme is presentation, which no module need name.)
+        let song = self.game.index.number(nettai_content_api::AssetKind::Sound, song)?;
         let bank = self.sound.as_ref()?.bank.clone();
         Some(nettai_audio::Theme { bank, song })
     }

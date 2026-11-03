@@ -718,11 +718,11 @@ the Regular memory, the custom level and the mood, and for a game that has them 
 of battle mode 9's A button. What may be left out reads as nothing for
 every game: a feature's section the game hasn't (`berserk`, `lockon`, `navicust`, `banners`), a table
 that is empty without it (`elements`, `buster`, `math`, `custom_screen`), and in a section a list or an attribute
-of one entry that is none unless stated (a panel type's `burn`). One section is presentation no battle reads:
-`battle_themes` (rules/battle_themes.luau), the game's songs a player may pick as a battle's music, in this game's
-battles or another's, as a list of songs (`asset.sound`) in the order a list shows them; each is named in the
-locales' text table `battle_themes` by its song's asset name, and the app shows it after the game's name
-(docs/app.md §1, "The battle's music"). The backgrounds need no section: every game's are one pool any battle
+of one entry that is none unless stated (a panel type's `burn`). The game's battle themes, the songs a player may
+pick as a battle's music, are no section: they are presentation no battle reads, stated in the game's music.toml
+beside its backgrounds' music in its backgrounds.toml, out of the content's hash (docs/design/asset-formats.md
+§8); each is named in the locales' text table `battle_themes` by its song's asset name, and the app shows it after
+the game's name (docs/app.md §1, "The battle's music"). The backgrounds need no section: every game's are one pool any battle
 may be drawn on (docs/app.md §1, "The battle's background"), which the loader reads from each game's own
 language's `[backgrounds]` (which names every background the game's pack has: the content check holds it to that)
 into `Content::background_pool`, presentation left out of the content's hash. A rule that picks
@@ -2273,7 +2273,8 @@ by the tools that interoperate with the real game:
 
 Content refers to an asset by name, written in full (its pack's game first, rules-in-luau.md §7.2), resolved
 while loading: `asset.sprite("exe6:bomb")`, `asset.sound("exe6:bomb-hit")`, `asset.banner("exe6:program-advance")`,
-`asset.background("exe6:netbattle-blue")`, `asset.mugshot("exe6:heatcross")`. An unknown name, or one without its
+`asset.mugshot("exe6:heatcross")` (a background is no module's: a game's are its backgrounds.toml's,
+docs/design/asset-formats.md §8). An unknown name, or one without its
 game, is a load error naming the module. (The examples elsewhere in this document predate the flat namespace and
 write ids and names without their game.) The resolved value is a handle into the asset registry; state holds it
 (`sprite:load(BOMB)`), and a cue carries it (`battle.play_sound(SOUND)`).

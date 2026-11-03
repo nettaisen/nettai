@@ -8,9 +8,14 @@
 //!   them ([`index`]), loaded alone into the engine's
 //!   `nettai_battle::Content` ([`load::load_battle`]); what a game's assets
 //!   hold of it, for drawing and sound, is [`load::asset_numbers`].
-//! - Custom assets: the backgrounds, sprites and songs a game's modules make
-//!   from files of their own, added to its assets after its ROMs'
-//!   ([`custom`]).
+//! - Custom assets: the backgrounds, sprites and songs a game makes from
+//!   files of its own (a sprite by its module, a background by its
+//!   `backgrounds.toml`, a song by its `music.toml`), added to its assets
+//!   after its ROMs' ([`custom`]).
+//! - Backgrounds and music: a game's `backgrounds.toml` and `music.toml`,
+//!   each background's music, its battle themes and the backgrounds its
+//!   link battles draw on ([`presentation`]); presentation, out of the
+//!   content's hash.
 //! - Display text: the content's `locales/<language>/*.toml`, by
 //!   definition key; the own language's is the content's strings, which the
 //!   battle counts the chatbox's timing from, the others a frontend's alone
@@ -36,5 +41,6 @@ pub mod lint;
 pub mod load;
 pub mod locale;
 pub mod look;
+pub mod presentation;
 pub mod report;
 pub mod store;

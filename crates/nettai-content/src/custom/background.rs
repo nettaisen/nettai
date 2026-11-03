@@ -137,7 +137,7 @@ pub(crate) mod tests {
     use crate::custom::indexed_png;
 
     pub(crate) fn def() -> CustomBackground {
-        CustomBackground { module: "g:backgrounds/x".into(), file: "g:backgrounds/x.png".into(), scroll: (16, -8), ..Default::default() }
+        CustomBackground { source: "g/backgrounds.toml".into(), file: "g:backgrounds/x.png".into(), scroll: (16, -8), ..Default::default() }
     }
 
     /// A 16x8 picture: a tile, then the same tile flipped across.

@@ -202,11 +202,18 @@ pub struct Content {
     /// [`Content::define`], and added to the game's assets as they load
     /// (`nettai_content::custom`). Presentation, left out of the hash.
     pub custom_assets: nettai_content_api::CustomAssets,
-    /// Each background's music (`asset.background(name, { music = ... })`):
-    /// what a round drawn on it plays where the player picked none
-    /// ([`Content::background_music`]). Made by [`Content::define`].
+    /// Each background's music (its `backgrounds.toml`'s): what a round
+    /// drawn on it plays where the player picked none
+    /// ([`Content::music_of_background`]). Made by [`Content::define`].
     /// Presentation, left out of the hash.
     pub background_music: nettai_content_api::BackgroundMusic,
+    /// The game's backgrounds and music as its `backgrounds.toml` and
+    /// `music.toml` state them (the loader reads them with its locales):
+    /// what [`Content::define`] makes its backgrounds' names, its custom
+    /// backgrounds and songs and its backgrounds' music of, its battle
+    /// themes and the backgrounds its link battles pick and draw their
+    /// stages on. Presentation, left out of the hash.
+    pub presentation: nettai_content_api::Presentation,
     /// The pack's scripts (see `scripts`).
     pub scripts: Scripts,
     /// What the content defines: the registries and their handles, and the
@@ -310,7 +317,7 @@ impl Content {
         self.assets = assets.names;
         self.animations = Animations { sprites: assets.sprites };
         self.custom_assets = assets.custom;
-        self.background_music = assets.background_music;
+        self.present();
         // What the load read is the content's modules from here on (those
         // it read from the packs' folders with those held in memory).
         for (name, source) in compiled.sources() {
@@ -337,18 +344,35 @@ impl Content {
         Ok(())
     }
 
-    /// Each background's music is one of the game's battle themes (its rules'
-    /// `battle_themes`): what a host plays in place of the battle's own music
-    /// is a theme, a song of the content's own one it names there.
+    /// The game's backgrounds and music, as its presentation states them
+    /// ([`Content::presentation`]): its backgrounds' names (those its
+    /// `backgrounds.toml` names and its own in the background pool, each
+    /// once, in byte order: their places are their handles), its custom
+    /// backgrounds and songs, and each background's music.
+    fn present(&mut self) {
+        let p = &self.presentation;
+        let game = self.game().to_string();
+        let mut names: Vec<String> = p.backgrounds.iter().chain(&p.link_battle).chain(&p.stage_background).cloned().collect();
+        names.extend(self.background_pool.iter().filter(|(g, _)| *g == game).map(|(_, n)| n.to_string()));
+        names.sort();
+        names.dedup();
+        self.assets.backgrounds = names;
+        self.custom_assets.backgrounds = p.custom_backgrounds.clone();
+        self.custom_assets.sounds = p.songs.clone();
+        self.background_music = p.music.clone();
+    }
+
+    /// Each background's music is one of the game's battle themes (its
+    /// `music.toml`'s `themes`): what a host plays in place of the battle's
+    /// own music is a theme, a song of the content's own one it names there.
     fn check_background_music(&self) -> Result<(), nettai_content_api::ContentError> {
         if self.rules.is_none() {
             return Ok(());
         }
         for (background, sound) in &self.background_music.0 {
-            let theme = self.music_of_background(background).is_some_and(|s| self.battle_themes().contains(&s));
-            if !theme {
+            if !self.battle_themes().contains(sound) {
                 return Err(nettai_content_api::ContentError::new(format!(
-                    "background {background:?}: its music {sound:?} is none of the rules' battle_themes (a background's music is a battle theme)"
+                    "backgrounds.toml: background {background:?}: its music {sound:?} is none of music.toml's themes (a background's music is a battle theme)"
                 )));
             }
         }
@@ -401,18 +425,36 @@ impl Content {
         self.rules.as_ref().expect("the content states its rules (rules, defined)")
     }
 
-    /// The game's battle themes ([`Rules::battle_themes`]; none where the
-    /// content states no rules).
-    pub fn battle_themes(&self) -> &[crate::sound::SoundId] {
-        self.rules.as_ref().map_or(&[], |r| &r.battle_themes)
+    /// The game's battle themes (its `music.toml`'s `themes`), by their
+    /// songs' names, in the order a list shows them: songs a player may pick
+    /// as a battle's music in place of its game's own. Presentation, which no
+    /// battle reads: a host plays the pick in place of
+    /// [`Content::battle_music`].
+    pub fn battle_themes(&self) -> &[String] {
+        &self.presentation.battle_themes
     }
 
     /// The music of the game's background `background` (its name in the
-    /// game; [`Content::background_music`]'s): one of its battle themes. None
-    /// where its definition states none.
-    pub fn music_of_background(&self, background: &str) -> Option<crate::sound::SoundId> {
-        let sound = self.background_music.0.get(background)?;
-        self.assets.handle(nettai_content_api::AssetKind::Sound, sound).map(crate::sound::SoundId)
+    /// game; [`Content::background_music`]'s): one of its battle themes, by
+    /// its song's name. None where its `backgrounds.toml` states none.
+    pub fn music_of_background(&self, background: &str) -> Option<&str> {
+        self.background_music.0.get(background).map(String::as_str)
+    }
+
+    /// The background the game's link battle stages are drawn on (its
+    /// `backgrounds.toml`'s `stage`): a round's where it states none and
+    /// none is picked, and where its own isn't here. None: it names none.
+    pub fn stage_background(&self) -> Option<BackgroundId> {
+        let name = self.presentation.stage_background.as_deref()?;
+        self.background_handle(self.game(), name)
+    }
+
+    /// The backgrounds a link battle picks one of at random (its
+    /// `backgrounds.toml`'s `link_battle`: the original's table, one there
+    /// twice twice as likely), by their handles.
+    pub fn link_battle_backgrounds(&self) -> Vec<BackgroundId> {
+        let game = self.game();
+        self.presentation.link_battle.iter().filter_map(|n| self.background_handle(game, n)).collect()
     }
 
     /// The game's tables, to change (tests, which play a rule another way).

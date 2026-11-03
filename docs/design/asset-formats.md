@@ -354,23 +354,27 @@ plays a version's own songs yet: a console plays the bank's.
 ## 7. Custom assets
 
 A game's content may add assets the ROMs don't have, made from files of its own (the user, 2026-10-31: "add a new
-background, new music, new sprites, etc. but in content rather than from extraction"). Each is defined once, by a
-module of the game's that returns it, with its file beside it, and whoever uses it requires that module, as a sprite
-is defined (§3.3):
+background, new music, new sprites, etc. but in content rather than from extraction"). Each is defined once, with
+its file in the game's folder: a sprite by a module of the game's that returns it (whoever uses it requires that
+module, as a sprite is defined, §3.3), a background by the game's `backgrounds.toml` and a song by its `music.toml`
+(§8: presentation, which no module states):
 
-```luau
--- backgrounds/my_stage.luau
-return asset.background("my-stage", { file = "./my_stage.png", scroll = { 16, 8 } })
+```toml
+# backgrounds.toml
+[backgrounds.my-stage]
+file = "backgrounds/my_stage.png"
+scroll = [16, 8]
+music = "my-theme"
 ```
 
-A name defined with a file is custom; one named alone (`asset.background("comp")`) is the ROMs'. A custom asset
+A name defined with a file is custom; one named alone is the ROMs'. A custom asset
 may take the name of one of the ROMs' (the user: "do all the rest", after replacing them was offered): it stands in
 their place wherever the name is used, a reskin (MegaMan's sprite, a stage's background, the battle theme). It is
 added at a number of its own all the same and the name moved to it, so another name the ROMs' asset has (two names
 of one sheet) keeps the ROMs' one, and a replaced sprite is not held to the ROMs' timing. The define phase keeps the
 definitions
-(`Content::custom_assets`, nettai-content-api's `CustomAssets`; presentation, left out of the content's hash, as the
-modules that state them are in it), and as a game's assets load, after the recipe has extracted the ROMs', each is
+(`Content::custom_assets`, nettai-content-api's `CustomAssets`; presentation, left out of the content's hash; a
+sprite's module is in it, the two files aren't), and as a game's assets load, after the recipe has extracted the ROMs', each is
 made into the model the ROMs' are extracted into and added under its name, numbered past the ROMs'
 (`nettai_content::custom::add`, through `nettai_content::load::assets`, which every loader calls: the app, the tools,
 `nettai-content check` and the background pool's other games). A frontend then draws and plays it as it does theirs.
@@ -380,8 +384,9 @@ Custom assets are GBA-shaped, as the ROMs' are (the user chose GBA-shaped pictur
 recorded audio and indexed PNG over Aseprite; a recording is an instrument's, played by the song): they play by the same rules, through the same renderer and sound
 driver, and look and sound like the game's own.
 
-**Backgrounds.** `asset.background(name, { file, scroll, speed_up, frames })`. `file` is an indexed PNG, by a path
-as a `require` writes one (`./`, `../`, `@self/` in an init.luau, `@<pack>/`) with its `.png`: any bit depth, each
+**Backgrounds.** `[backgrounds.<name>]` in `backgrounds.toml`, with `file`, `scroll = [x, y]`, `speed_up`,
+`frames` and `loop`. `file` is an indexed PNG, by its path in the game's folder (`backgrounds/my_stage.png`) with
+its `.png`: any bit depth, each
 side whole 8x8 tiles, its pixels the colors of one 16 of its palette (colors 0 to 15, or 16 to 31, ...), color 0 of
 the 16 the backdrop. Its colors become BGR555 (each channel's top five bits), its pixels tiles numbered from 0x400
 (past every number a GBA map reaches, so past every game's field's tiles, whichever game's field it is drawn with),
@@ -391,9 +396,9 @@ it moves each frame, in 1/16 pixel (a ROM background's `scroll`); none, it stand
 frames it takes to get to that speed from standing still: the ROMs' speeding scroll (`Speeding`), its top `scroll`
 and its step the top over `speed_up` (in the model's 1/65536 pixel, at least 1).
 
-`frames = { 8, 8, 12, loop = true }` makes it an animation, as the ROMs' backgrounds' graphics animations are
+`frames = [8, 8, 12]` makes it an animation, as the ROMs' backgrounds' graphics animations are
 (`GfxAnim`): the picture is as many pictures, one below another, each shown for its duration in frames (60 a
-second) in turn on the background's clock, then from the first again with `loop`, else the last stays. Each picture
+second) in turn on the background's clock, then from the first again with `loop = true`, else the last stays. Each picture
 may be in another 16 of the palette's colors. Each place of the map has its tiles in turn, a run, and each run is
 kept once (flipped as a whole); the runs that stay the same are numbered first, and the tiles of the runs that
 change are what a tile animation replaces, so only they are held for every picture. Where the pictures' 16s
@@ -402,13 +407,7 @@ The ROMs' brightening and darkening palette shift (EXE4's) is not taken: a pictu
 
 A background is in the background pool when the game's own language's `[backgrounds]` names it (with its name as a
 player sees it), and the content check holds that table to the assets, the custom ones too (docs/app.md §1, "The
-battle's background"). A module runs only when something requires it: a background no stage requires is listed in
-the game's root, `backgrounds = require("@self/backgrounds")`, where backgrounds/init.luau returns a list of them
-(`packs::BACKGROUNDS`). A background's definition names its `music` too, one of the game's battle themes (a song of
-the content's own named one in its rules' `battle_themes`), which a round drawn on it plays where the player picked
-none (docs/app.md §1, "The battle's music"): `asset.background("my-stage", { file = "./my_stage.png", music =
-require("../sounds/my_theme") })`. One of the ROMs' backgrounds is defined with its music alone, in the same list
-(`asset.background("acdc-area", { music = asset.sound("virus-battle") })`).
+battle's background"). Its entry names its `music` too (§8).
 
 **Sprites.** `asset.sprite(name, animations, { file, frame, origin, shadow })`, beside `parts` where content reads
 them; the animations time it, as a ROM sprite's do. `file` is an indexed PNG of cells `frame = { width, height }`
@@ -428,8 +427,9 @@ sprite's colors (each of its colors one of the first 16), centered on the object
 stands in for it. Sprites are numbered from the category past the ROMs' last, from index 0, in their names' order.
 The timing check against the ROMs (`Extraction::timing_differences`) passes them by: no ROM times them.
 
-**Songs.** `asset.sound(name, { file, voices })`. `file` is a standard MIDI file (format 0 or 1, timed in ticks a
-beat), and `voices` the ROMs' sound (`asset.sound("virus-battle")`) whose instruments it plays on: the song takes
+**Songs.** `[songs.<name>]` in `music.toml`, with `file` and `voices`. `file` is a standard MIDI file (format 0 or
+1, timed in ticks a beat), by its path in the game's folder (`music/my_theme.mid`), and `voices` the ROMs' sound
+(`"virus-battle"`) whose instruments it plays on: the song takes
 that song's voicegroup, music player, priority and reverb, so a new battle theme plays on the battle music's player
 and replaces it as the game's own would. The file is made into the driver's song as the GBA's own mid2agb makes one
 (`nettai_content::custom::song`), and the `m4a` driver and the mixer play it as they play the ROMs':
@@ -444,7 +444,8 @@ and replaces it as the game's own would. The file is made into the driver's song
 - the controllers volume (7), pan (10), modulation (1), bend range (20, or RPN 0's data entry), LFO speed (21),
   modulation type (22), tune (24) and LFO delay (26), and pitch bend (its top 7 bits), are the driver's commands of
   the same; controller 30 picks an extended command that 29 or 31 then sets, as mid2agb's: 8 the pseudo-echo's
-  volume (XCMD xIECV), 9 its length (xIECL), the channel's pick its own; any other event is passed by;
+  volume (XCMD xIECV), 9 its length (xIECL), the channel's pick its own; controller 33 or 39 is the track's priority
+  (PRIO), as mid2agb's; any other event is passed by;
 - the markers (or texts, or cue points) "[" and "]", or "loopStart" and "loopEnd", are where it loops: each track
   jumps back to where it was at the start when it reaches the end, and a note past the end is cut there, what
   follows it left out. Without them each track ends at the song's last note.
@@ -452,7 +453,8 @@ and replaces it as the game's own would. The file is made into the driver's song
 Songs are numbered past the ROMs' song table. Sound effects are songs too: a MIDI file played on an effect's
 voices is a new effect.
 
-`instruments = { [41] = { file, key, loop, envelope } }` are instruments of the song's own, by program, in place of
+`[songs.<name>.instruments.41]`, with `file`, `key`, `loop` and `envelope = { release = 200 }`, are instruments of
+the song's own, by program, in place of
 those programs of `voices`' voicegroup: the song gets a copy of that voicegroup with them (a program past its end
 has silent ones before it), so the song it borrows from is unchanged. `file` is a WAV recording (`hound`): its
 channels mixed to one and made the driver's signed 8-bit samples (an integer sample's top bits, a float scaled),
@@ -461,4 +463,35 @@ Direct Sound sample by its rate at key 60. `loop` is the sample it loops from to
 `envelope` its `attack`, `decay`, `sustain` and `release` as the driver takes a Direct Sound voice's, 0 to 255 (those
 left out 255, 0, 255 and 0: the recording as it is, cut at the note's end). The bank with the content's songs is
 checked as a whole (`SoundBank::validate`).
+
+## 8. Backgrounds and music
+
+A game's backgrounds and music are presentation: no tick reads a round's background or the music it plays. They
+are stated in two files in the game's folder, read with its locales (`nettai_content::presentation`), not by its
+modules, so the content's hash, which takes every module's code, leaves them out: content that differs in its
+backgrounds or music alone (another background's music, a background of its own, a theme) is the same content (the
+user, 2026-11-02: "should backgrounds and music be defined statically as toml then so they don't count as content
+hash?").
+
+`backgrounds.toml`:
+
+- `stage`, the background the game's link battle stages are drawn on (every stage record's, the same one in each
+  game): a round's where it states none and none is picked, and where the one it states isn't here (another game's
+  whose ROMs a player hasn't);
+- `link_battle`, the backgrounds a link battle picks one of at random (the original's table, by the pick's index:
+  one there twice is twice as likely), which a match left to the game's own pick draws from (`nettai_match::pick`);
+- `[backgrounds]`, each background's entry: its `music`, the battle theme a round drawn on it plays where the player
+  picked none (docs/app.md §1, "The battle's music"), and for one made from a picture of the game's own its `file`
+  and the rest (§7).
+
+`music.toml`:
+
+- `themes`, the songs a player may pick as a battle's music in place of its game's own, in any game's battle, in the
+  order a list shows them (each named in the locales' `battle_themes`);
+- `[songs]`, the songs made from MIDI files of the game's own (§7).
+
+Every background a round of the game may be drawn on has its music, one of the game's themes (the define phase holds
+it to that). The define phase names the game's backgrounds from these files and its own part of the background pool
+(their names in byte order are their handles; `AssetNames::backgrounds`, out of the hash), so no module names a
+background: `asset.background` is no more, and `asset.sound` names a sound alone.
 

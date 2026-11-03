@@ -589,7 +589,6 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 r#"
         stages = {},
         first_round_stages = 0,
-        backgrounds = {},
         match_stages = {},"#,
             ),
             (
@@ -752,7 +751,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 129, "every field of every section");
+        assert_eq!(fields, 128, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

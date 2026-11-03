@@ -19,7 +19,6 @@ use crate::games::{Games, Ready};
 use crate::shell::Shell;
 use nettai_audio::RoundMusic;
 use nettai_battle::content::BackgroundId;
-use nettai_content_api::AssetKind;
 use nettai_frontend::preload::SoundParts;
 use slint::ComponentHandle;
 use std::cell::RefCell;
@@ -184,7 +183,6 @@ pub fn round_music(games: &Games, ready: &Ready, music: &Music) -> Option<Arc<Ro
             None => continue,
         };
         let Some(song) = of.game.content.music_of_background(name) else { continue };
-        let Some(song) = of.game.content.assets.name(AssetKind::Sound, song.0) else { continue };
         let key = (game.to_string(), song.to_string());
         if !made.contains_key(&key) {
             let Some(theme) = of.theme(song) else { continue };
@@ -218,15 +216,24 @@ mod tests {
         let mut bank = (*nettai_frontend::testing::bank(&content)).clone();
         // (Sound 0's song is a held note on the music player, sound 1's a short one on player 1.)
         let (held, short) = (bank.songs[0].clone(), bank.songs[1].clone());
-        let music: Vec<u16> = content.battle_music().into_iter().chain(content.battle_themes().iter().copied()).map(|m| m.0).collect();
         let assets = nettai_frontend::testing::numbered_by_handle(&content);
         let songs = nettai_audio::Songs::of(&assets);
-        let numbers = songs.0.iter().map(|s| s.song as usize + 1).max().unwrap_or(0);
+        // (The sounds by name: those the content names at their handles' numbers, the themes it doesn't name past
+        // them, as the game's assets number them all.)
+        let mut index = nettai_content_api::AssetIndex::default();
+        for (h, name) in content.assets.sounds.iter().enumerate() {
+            index.sounds.insert(name.clone(), h as u16);
+        }
+        for theme in content.battle_themes() {
+            let n = index.sounds.len() as u16;
+            index.sounds.entry(theme.clone()).or_insert(n);
+        }
+        let music: Vec<u16> =
+            content.battle_music().into_iter().map(|m| m.0).chain(content.battle_themes().iter().filter_map(|t| index.sounds.get(t).copied())).collect();
+        let numbers = songs.0.iter().map(|s| s.song as usize + 1).max().unwrap_or(0).max(index.sounds.len());
         bank.songs = vec![short; numbers];
-        for (handle, at) in songs.0.iter().enumerate() {
-            if music.contains(&(handle as u16)) {
-                bank.songs[at.song as usize] = held.clone();
-            }
+        for n in &music {
+            bank.songs[*n as usize] = held.clone();
         }
         let bank = Arc::new(bank);
         Loaded {
@@ -237,7 +244,7 @@ mod tests {
                 graphics: Default::default(),
                 sound: bank.clone(),
                 numbers: Arc::new(assets),
-                index: Default::default(),
+                index: Arc::new(index),
                 others: Default::default(),
                 timing_differences: Vec::new(),
                 report: Default::default(),
@@ -333,11 +340,8 @@ mod tests {
                 .collect();
             (playing, player.battle().digest())
         };
-        // (A song by its game's number: its handle, in the made-up assets.)
-        let number = |game: &str, song: &str| {
-            let c = all.read(game).unwrap().content().clone();
-            SongId(c.assets.handle(nettai_content_api::AssetKind::Sound, song).unwrap())
-        };
+        // (A song by its game's number, in the made-up assets.)
+        let number = |game: &str, song: &str| SongId(all.read(game).unwrap().loaded.game.index.number(nettai_content_api::AssetKind::Sound, song).unwrap());
         let own = SongId(content.defs.roles().link_battle_music(true).0);
         let (playing, digest) = play(&Music::Background);
         assert_eq!(playing, [Some(own)], "BN6's own");
@@ -377,10 +381,7 @@ mod tests {
             let audio = p.audio().unwrap();
             (0..3).map_while(|n| audio.driver_of(BankId(n))).map(|d| d.player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| m.song())).collect()
         };
-        let number = |game: &str, song: &str| {
-            let c = all.read(game).unwrap().content().clone();
-            SongId(c.assets.handle(nettai_content_api::AssetKind::Sound, song).unwrap())
-        };
+        let number = |game: &str, song: &str| SongId(all.read(game).unwrap().loaded.game.index.number(nettai_content_api::AssetKind::Sound, song).unwrap());
         let own = number("exe6", "virus-battle");
         let theme = Music::Theme { game: "exe5".into(), song: "final-battle".into() };
         let (mut changed, mut straight) = (player(&Music::Background), player(&Music::Background));
@@ -414,10 +415,7 @@ mod tests {
         let all = games(&["exe4", "exe5", "exe6"]);
         let six = all.read("exe6").unwrap();
         let content = six.content().clone();
-        let number = |game: &str, song: &str| {
-            let c = all.read(game).unwrap().content().clone();
-            SongId(c.assets.handle(nettai_content_api::AssetKind::Sound, song).unwrap())
-        };
+        let number = |game: &str, song: &str| SongId(all.read(game).unwrap().loaded.game.index.number(nettai_content_api::AssetKind::Sound, song).unwrap());
         // The music each driver plays once the round on `background` has started, and the battle's digest.
         let play = |background: &str, music: &Music| {
             let mut m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
@@ -458,10 +456,9 @@ mod tests {
     fn every_background_has_its_music() {
         for content in [nettai_match::testing::exe4_content(), nettai_match::testing::exe5_content(), nettai_match::testing::exe6_content()] {
             let game = content.game().to_string();
-            let sounds = content.assets.names(nettai_content_api::AssetKind::Sound);
             for (of, name) in content.background_pool.iter().filter(|(g, _)| *g == game) {
                 let music = content.music_of_background(name).unwrap_or_else(|| panic!("{of}:{name} names no music"));
-                assert!(content.battle_themes().contains(&music), "{of}:{name}: {} is a battle theme", sounds[music.0 as usize]);
+                assert!(content.battle_themes().iter().any(|t| t == music), "{of}:{name}: {music} is a battle theme");
             }
         }
     }
@@ -476,7 +473,7 @@ mod tests {
         let all = games(&["exe4", "exe5", "exe6"]);
         let six = all.read("exe6").unwrap();
         let content = six.content().clone();
-        let number = |song: &str| SongId(content.assets.handle(nettai_content_api::AssetKind::Sound, song).unwrap());
+        let number = |song: &str| SongId(six.loaded.game.index.number(nettai_content_api::AssetKind::Sound, song).unwrap());
         let mut m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
         let folders = [0, 1].map(|side| m.sides[side].folder(&content).saved().unwrap());
         let mut set_on = |background: &str| {

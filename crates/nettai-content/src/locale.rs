@@ -448,8 +448,7 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, assets: Option<&netta
         Some(p) => p.backgrounds.keys().map(String::as_str).filter(|n| !AssetNames::is_placeholder(AssetKind::Background, n)).collect(),
         None => c.assets.backgrounds.iter().chain(&own_names).map(String::as_str).collect(),
     };
-    let sounds = c.assets.names(AssetKind::Sound);
-    let themes: Vec<&str> = c.battle_themes().iter().filter_map(|t| sounds.get(t.0 as usize).copied()).collect();
+    let themes: Vec<&str> = c.battle_themes().iter().map(String::as_str).collect();
     let holdable = c.rules.as_ref().map(|r| r.emotion.holdable().into_iter().map(|(e, _)| r.emotion.name(e)).collect::<Vec<_>>()).unwrap_or_default();
     for game in c.scripts.games() {
         let pack = dir.join(&game);

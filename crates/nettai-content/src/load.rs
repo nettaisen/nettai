@@ -96,7 +96,15 @@ pub fn battle_content(content: &Path, game: &str) -> Result<(nettai_battle::Cont
     // (Every game's backgrounds, from the content: the pool a round may be
     // drawn on, past the game's own.)
     let background_pool = crate::locale::background_pool(&read.dir);
-    let c = nettai_battle::Content { scripts, strings: read.strings, background_pool, ..Default::default() };
+    // (Its backgrounds and music: presentation, read as its locales are.)
+    let presentation = match crate::presentation::read(&read.dir.join(game), game) {
+        Ok(p) => p,
+        Err(e) => {
+            report.error(read.dir.display().to_string(), e);
+            return Err(report);
+        }
+    };
+    let c = nettai_battle::Content { scripts, strings: read.strings, background_pool, presentation, ..Default::default() };
     Ok((c, report))
 }
 

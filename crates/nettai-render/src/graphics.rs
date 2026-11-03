@@ -109,7 +109,7 @@ impl OtherGame {
 /// extracted from its own ROMs when first wanted ([`OtherGame`]). A host has
 /// those of the games whose ROMs it has (nettai-frontend's `Game::graphics`);
 /// a background of a game it hasn't, or not extracted (yet), isn't here, and
-/// a round on it is drawn on its stage's own ([`Graphics::round_background`]).
+/// a round on it is drawn on the one the game's stages are ([`Graphics::round_background`]).
 #[derive(Clone, Default)]
 pub struct OtherBackgrounds(BTreeMap<String, Arc<OtherGame>>);
 
@@ -331,13 +331,14 @@ impl<'a> Graphics<'a> {
 
     /// The background a round of `settings` is drawn on: its own
     /// (`settings.background`), or, where that is another game's that isn't
-    /// here (a player without that game's ROMs: [`OtherBackgrounds`]), its
-    /// stage's own, the background the game itself draws the stage on.
+    /// here (a player without that game's ROMs: [`OtherBackgrounds`]), the
+    /// one the game draws its link battle stages on
+    /// ([`Content::stage_background`]).
     pub fn round_background(&self, c: &Content, settings: &BattleSettings) -> BackgroundId {
         let id = settings.background;
         match c.is_own_background(id) || self.background(c, id).is_some() {
             true => id,
-            false => c.stage(settings.stage).background,
+            false => c.stage_background().unwrap_or(id),
         }
     }
 }
@@ -398,13 +399,13 @@ mod tests {
     }
 
     /// A round drawn on another game's background (the background pool's) draws it from that game's
-    /// backgrounds beside the game's graphics; a round whose other background isn't here is drawn on its stage's
-    /// own; the game's own backgrounds draw from its graphics as ever.
+    /// backgrounds beside the game's graphics; a round whose other background isn't here is drawn on the
+    /// one the game's stages are; the game's own backgrounds draw from its graphics as ever.
     #[test]
     fn another_games_background_draws_from_its_own_game() {
         let mut c = content();
         let stage = c.stage_by_key(testing::LINK_BATTLE);
-        let own = c.stage(stage).background;
+        let own = c.stage_background().expect("the test content's stage background");
         let assets = testing::asset_numbers(&c);
         let number = assets.number(AssetKind::Background, own.0).expect("the stage's background's number") as usize;
         c.background_pool = nettai_battle::content::BackgroundPool::new([("zzz".to_string(), "far-area".to_string()), ("zzz".to_string(), "gone".to_string())]);
@@ -430,14 +431,14 @@ mod tests {
 
     /// Another game's backgrounds are extracted the first time they are wanted, on a thread of their own, and
     /// once: wanted again, or by other graphics that share them, nothing is extracted again. Until then none is
-    /// drawn (a round on one, its stage's own); a game's own given in their place is never extracted; a failure is
+    /// drawn (a round on one, the game's stages'); a game's own given in their place is never extracted; a failure is
     /// ready too, and says why.
     #[test]
     fn another_games_backgrounds_are_extracted_once_when_wanted() {
         use std::sync::atomic::{AtomicUsize, Ordering};
         let mut c = content();
         let stage = c.stage_by_key(testing::LINK_BATTLE);
-        let own = c.stage(stage).background;
+        let own = c.stage_background().expect("the test content's stage background");
         c.background_pool = nettai_battle::content::BackgroundPool::new([("zzz".to_string(), "far-area".to_string())]);
         let far = c.background_handle("zzz", "far-area").unwrap();
         let made = Arc::new(AtomicUsize::new(0));

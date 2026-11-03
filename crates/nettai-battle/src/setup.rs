@@ -16,11 +16,12 @@ pub struct BattleSettings {
 }
 
 impl BattleSettings {
-    /// A round on `stage` as its record gives it (its background and
-    /// effects).
+    /// A round on `stage` as its record gives it (its effects), drawn on
+    /// the background the game's link battle stages are
+    /// ([`Content::stage_background`]; none: the first).
     pub fn on(content: &Content, stage: StageHandle) -> BattleSettings {
         let s = content.stage(stage);
-        BattleSettings { stage, background: s.background, effects: s.effects }
+        BattleSettings { stage, background: content.stage_background().unwrap_or_default(), effects: s.effects }
     }
 
     /// The music a round of these settings starts as it opens

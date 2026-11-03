@@ -294,11 +294,15 @@ pub const SECTIONS: [(&str, &str); 4] = [("chips", "Chip"), ("navis", "NaviDef")
 /// The root's field that is the game's rules.
 pub const RULES: &str = "rules";
 
-/// The root's field that lists the game's backgrounds' definitions (`asset.background(name, { music = ... })`, and
-/// a custom one's `{ file = ... }`: docs/design/asset-formats.md §7): each background's music, and the custom
-/// backgrounds the background pool offers past the stages'. A module runs only when something requires it, so a
-/// background no stage requires is reached from here.
-pub const BACKGROUNDS: &str = "backgrounds";
+/// A game pack's file of its backgrounds (docs/design/asset-formats.md §8): the background its link battle stages
+/// are drawn on, those its link battles pick from, each background's music and those made from pictures of the
+/// pack's own. Presentation, read with the pack's locales: no module states any of it, so the content hash leaves it
+/// out ([`nettai_content_api::Presentation`](crate::Presentation)).
+pub const BACKGROUNDS_FILE: &str = "backgrounds.toml";
+
+/// A game pack's file of its music (docs/design/asset-formats.md §8): the songs a player may pick as a battle's
+/// music, and those made from MIDI files of the pack's own. Presentation, as [`BACKGROUNDS_FILE`].
+pub const MUSIC_FILE: &str = "music.toml";
 
 /// The sections module source `source` gives definitions of: those a
 /// top-level local of its is written as (`local chip: Chip = {`, a series'

@@ -53,13 +53,13 @@ impl Picks {
 
 
 /// The backgrounds a round of the game picks from at random as `pick`
-/// says: a link battle's, its rules' (`link_pick.backgrounds`: EXE6's
+/// says: a link battle's (its `backgrounds.toml`'s `link_battle`: EXE6's
 /// table, some there twice and so twice as likely; none, a link battle
-/// shows its stage's own), or the background pool's, every game's or the
-/// match's game's alone, each once.
+/// shows the one its stages are drawn on), or the background pool's, every
+/// game's or the match's game's alone, each once.
 fn random_backgrounds(content: &Content, pick: BackgroundPick) -> Vec<BackgroundId> {
     match pick {
-        BackgroundPick::Game => content.rules().link_pick.backgrounds.clone(),
+        BackgroundPick::Game => content.link_battle_backgrounds(),
         BackgroundPick::Pool => content.pool_backgrounds(),
         BackgroundPick::GamePool => content.game_pool_backgrounds(),
     }
@@ -84,9 +84,10 @@ fn picks_live(content: &Content) -> bool {
 /// battle stage that isn't there is never picked (EXE5's records 76 to 87;
 /// a match may still name one). The first round's is one of the first
 /// `link_pick.first_round_stages` (EXE5's first 68: a practice's count).
-/// The background is one of the rules' `link_pick.backgrounds` (where they
-/// state none, the stage's own). Refused: a stage left to rules that pick
-/// none, a background named that the game hasn't.
+/// The background is one of the game's link battle backgrounds (where it
+/// states none, the one its stages are drawn on). Refused: a stage left to
+/// rules that pick none, a background named that the game hasn't, a round
+/// with no background to draw on.
 pub fn places(content: &Content, game: &str, rounds: &[RoundSettings], picks: &mut Picks) -> Result<Vec<Stage>, String> {
     places_from(content, game, rounds, BackgroundPick::Game, picks)
 }
@@ -114,7 +115,7 @@ pub fn places_from(content: &Content, game: &str, rounds: &[RoundSettings], back
         let background = match (&round.background, drawn_background) {
             (Some(name), _) => crate::background(content, game, name).ok_or_else(|| crate::no_background(&at, game, name))?,
             (None, Some(drawn)) => drawn,
-            (None, None) => content.stage(stage).background,
+            (None, None) => content.stage_background().ok_or_else(|| format!("{at}: {game} states no background its link battles are drawn on"))?,
         };
         out.push(Stage { stage, background });
     }
@@ -212,8 +213,8 @@ impl Side {
         let stage = *crate::link_battle_stages(content, game).first().ok_or_else(|| format!("{game} has no link battle stage"))?;
         crate::playable(content, game)?;
         // (Its folder is picked on a round on the game's first link battle
-        // stage, with its own background.)
-        let rounds = [RoundSettings::at(content, Stage { stage, background: content.stage(stage).background })];
+        // stage, with the background its stages are drawn on.)
+        let rounds = [RoundSettings::at(content, Stage { stage, background: content.stage_background().unwrap_or_default() })];
         if !picks_live(content) {
             return plain_side(content, game, &rounds, picks);
         }

@@ -75,6 +75,10 @@ fn read(games: &[&str]) -> nettai_battle::Content {
     let read = nettai_content::index::read(std::path::Path::new(CONTENT), &games, &mut r).unwrap_or_else(|| panic!("{r}"));
     let mut c = nettai_battle::Content::default();
     c.scripts = read.scripts();
+    // (Its game's backgrounds and music, as the loader reads them.)
+    if let [game] = &games[..] {
+        c.presentation = nettai_content::presentation::read(&read.dir.join(game), game).unwrap_or_else(|e| panic!("{e}"));
+    }
     c.strings = read.strings;
     c
 }

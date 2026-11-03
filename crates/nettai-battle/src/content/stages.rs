@@ -23,9 +23,6 @@ pub struct StageData {
     pub panel_pattern: u8,
     /// Its music, outside link battles (none: the round starts no music).
     pub music: Option<SoundId>,
-    /// The background a round on it shows unless its settings say
-    /// otherwise.
-    pub background: super::BackgroundId,
     /// Battle mode (0 = netbattle).
     pub mode: u8,
     pub battle_number: u8,
@@ -111,12 +108,6 @@ pub(crate) fn read(
         )),
         _ => return Err(what("`music` is a sound (asset.sound(...)), or nothing".into())),
     };
-    let background = match spec.field("background") {
-        Data::Asset(AssetKind::Background, name) => super::BackgroundId(
-            assets.handle(AssetKind::Background, name).ok_or_else(|| what(format!("the content names no background {name:?}")))?,
-        ),
-        _ => return Err(what("needs a `background` (asset.background(...))".into())),
-    };
     let effects = match spec.field("effects") {
         Data::Nil => 0,
         Data::Int(i) => u32::try_from(*i).map_err(|_| what(format!("`effects` {i:#x} is not a flags word")))?,
@@ -166,7 +157,6 @@ pub(crate) fn read(
         layout,
         panel_pattern: byte(spec.field("panel_pattern"), "panel_pattern")?,
         music,
-        background,
         mode: byte(spec.field("mode"), "mode")?,
         battle_number: byte(spec.field("battle_number"), "battle_number")?,
         effects,

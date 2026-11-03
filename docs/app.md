@@ -314,8 +314,8 @@ then "can you make backgrounds paired with music?", each background with the the
 on it, "Everywhere" (Practice, matches, replays and their videos).
 
 - *What plays without a pick* is each round's background's music (`music::round_music`, nettai-audio's
-  `RoundMusic`): the theme its definition names (`asset.background("acdc-area", { music =
-  asset.sound("virus-battle") })`, in its game's backgrounds/init.luau; `Content::music_of_background`), one of its
+  `RoundMusic`): the theme its entry names (`acdc-area = { music = "virus-battle" }`, in its game's
+  backgrounds.toml; `Content::music_of_background`), one of its
   game's battle themes (the content refuses another: a song of the content's own is named a theme too, and so is
   offered in the list), with its own game's bank as a picked theme is. A round's music switches as the round
   starts (`BattleAudio::round`, told each tick's round's background before its cues: the round's first tick starts
@@ -329,7 +329,7 @@ on it, "Everywhere" (Practice, matches, replays and their videos).
   in EXE4 a single battle's `link_battle_single` (`virus-battle`, 0x14) or a set's `link_battle` (`boss-battle`,
   0x15), as its battle start picks by the battle's type. The stage's own music is a battle's outside a link (none
   the app plays). The round's end stops it (`StopMusic`), and the result plays the winner's or the loser's music.
-- *The themes* are each game's content: its rules' `battle_themes`, songs of its own in the order the list shows
+- *The themes* are each game's content: its music.toml's `themes`, songs of its own in the order the list shows
   them, named in its locales' text table `battle_themes` by the song's asset name (docs/design/content-model-v2.md
   §3.8). Each is the music the original's battle settings records start for a kind of battle (their music byte,
   found by the records' shape in each ROM, the same in every ROM of a game):
@@ -350,7 +350,7 @@ on it, "Everywhere" (Practice, matches, replays and their videos).
 
   The names shown are the game's name in the language, then the theme's ("BN4 Tournament Battle", "EXE4
   トーナメントバトル"). The app names no song and no game: it lists what the games' contents state.
-- *The backgrounds' music* (each game's backgrounds/init.luau, its comments the evidence): a background's is the
+- *The backgrounds' music* (each game's backgrounds.toml, its comments the evidence): a background's is the
   theme most of the original's battles on it start, counting the random encounters of the maps that draw it (all
   virus battles, but for a conditional navi) and the battles their scripts start or that state it; a background
   only link battles draw (EXE4's eight homepages, EXE6's Lan's HP) has a link battle's, the virus battles'. By
@@ -434,8 +434,8 @@ and of whether it stays the match's or becomes each player's own, "Shared, as no
   match's game alone (`BackgroundPick::GamePool`, `Content::game_pool_backgrounds`; `screens::play::settings`; the
   user: "in actual pvp mode, don't choose from the entire background pool, only choose from the background pool
   for that game"); the lobby's settings carry which pick (one byte: game, pool, game's pool).
-  Where the original's own pick is asked for, it stays the game's rule (`BackgroundPick::Game`: its rules'
-  `link_pick.backgrounds`, EXE6's `byte_8120A20`): the library's lobby and match files unless they say
+  Where the original's own pick is asked for, it stays the game's (`BackgroundPick::Game`: its backgrounds.toml's
+  `link_battle`, EXE6's `byte_8120A20`): the library's lobby and match files unless they say
   otherwise, `pick::live`'s random matches, the lab's replays and traces (their backgrounds stated) and the
   engine's tests. Either draws one number for each round's background, so the arenas are the same whichever.
 - *Shared*: the lobby's settings carry what a background left to the seed is drawn from and a round's

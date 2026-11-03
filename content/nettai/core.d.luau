@@ -1816,79 +1816,24 @@ export type SpriteExtra = {
 declare extern type Sound with
     name: string
 end
--- A song made from a MIDI file of the content's own, not the ROMs' (docs/design/asset-formats.md §7), defined
--- once, by a module of its own that returns it; whoever plays it requires that module:
---
---     -- music/my_theme.luau
---     return asset.sound("my-theme", { file = "./my_theme.mid", voices = asset.sound("virus-battle") })
---
--- `file` is a standard MIDI file beside the module (a path as a `require` writes one, with its `.mid`), read as the
--- GBA's mid2agb reads one: each channel a track, a program change the instrument of that number, the controllers
--- volume (7), pan (10), modulation (1), bend range (20, or RPN 0), LFO speed (21), modulation type (22), tune (24)
--- and LFO delay (26), pitch bend, tempo, and the markers "[" and "]" (or "loopStart" and "loopEnd"), where it loops
--- from and back. `voices` is the ROMs' sound whose instruments it plays on: its voicegroup, player, priority and
--- reverb. `instruments` puts recordings of its own in place of programs of that voicegroup, by program:
---
---     instruments = { [41] = { file = "./strings.wav", key = 69, loop = 1024, envelope = { release = 200 } } }
---
--- `file` is a WAV recording (mixed to one channel, played as the GBA's 8-bit samples), `key` the key it sounds at
--- (MIDI's numbers, else 60, middle C), `loop` the sample it loops from to its end (else it plays once), and
--- `envelope` the driver's attack, decay, sustain and release, 0 to 255 (else 255, 0, 255, 0: as recorded, cut at
--- the note's end). A name the ROMs have too is this one wherever it is named (the ROMs' stays under any other).
-export type InstrumentFile = {
-    file: string,
-    key: number?,
-    loop: number?,
-    envelope: { attack: number?, decay: number?, sustain: number?, release: number? }?,
-}
-export type SoundFile = { file: string, voices: Sound, instruments: { [number]: InstrumentFile }? }
 declare extern type Banner with
     name: string
 end
 declare extern type Background with
     name: string
 end
--- A background's definition, made once, by the module that returns it; whoever shows it requires that module (or
--- names it alone, `asset.background("comp")`), and the game's root lists those no stage requires
--- (`backgrounds = require("@self/backgrounds")`). `music` is the song a round drawn on it plays where the player
--- picked none (docs/app.md §1, "The battle's music"): the theme its game's battles on it start, or a song of the
--- content's own:
---
---     asset.background("acdc-area", { music = asset.sound("virus-battle") })
---
--- A background made from a picture of the content's own, not the ROMs' (docs/design/asset-formats.md §7), names its
--- `file`:
---
---     -- backgrounds/my_stage.luau
---     return asset.background("my-stage", { file = "./my_stage.png", scroll = { 16, 8 }, music = require("../sounds/my_theme") })
---
--- `file` is an indexed PNG beside the module (a path as a `require` writes one, with its `.png`): its pixels the
--- colors of one 16 of its palette (0 to 15, or 16 to 31, ...), color 0 of the 16 the backdrop, its width and height
--- whole tiles (multiples of 8); it repeats both ways. `scroll` is how far it moves each frame, in 1/16 pixel (none:
--- it stands still), and `speed_up` how many frames it takes to get to that speed from standing still (none: it
--- moves at it from the first). With `frames`, the picture is as many pictures, one below another, each shown for
--- its duration in frames in turn (60 a second), and again from the first with `loop = true` (else the last stays);
--- each may be in another 16 of the palette's colors:
---
---     return asset.background("sea", { file = "./sea.png", scroll = { 0, 16 }, frames = { 8, 8, 8, loop = true } })
---
--- A name the ROMs have too is this one wherever it is named (the ROMs' stays under any other name it has).
-export type BackgroundDef = {
-    music: Sound?,
-    file: string?,
-    scroll: { number }?,
-    speed_up: number?,
-    frames: { [number]: number, loop: boolean? }?,
-}
+-- No module names a background, and none makes a song: a game's backgrounds (the one its link battle stages are
+-- drawn on, those its link battles pick, each background's music, those made from pictures of its own) are its
+-- `backgrounds.toml`'s, and its battle themes and songs made from MIDI files of its own its `music.toml`'s
+-- (docs/design/asset-formats.md §8). Presentation that no tick reads, out of the content hash.
 declare extern type Mugshot with
     name: string
 end
 
 declare asset: {
     sprite: (name: string, animations: { SpriteAnimation }, extra: SpriteExtra?) -> SpriteAsset,
-    sound: (name: string, made: SoundFile?) -> Sound,
+    sound: (name: string) -> Sound,
     banner: (name: string) -> Banner,
-    background: (name: string, def: BackgroundDef?) -> Background,
     mugshot: (name: string) -> Mugshot,
 }
 
@@ -2331,8 +2276,8 @@ export type RulesSpec = {
     -- What a link battle picks at random with its settings, for whoever
     -- makes a random match (the engine picks none): `stages`, the stage for
     -- each index of the pick (a stage as often as an index reaches it;
-    -- none: no random pick), and `backgrounds`, the background for each
-    -- (none: the stage's own).
+    -- none: no random pick). (Its backgrounds are the game's
+    -- backgrounds.toml's `link_battle`.)
     link_pick: RuleSection,
     fresh_stats: RuleSection,
     panels: RuleSection,
@@ -2340,10 +2285,6 @@ export type RulesSpec = {
     reactions: RuleSection,
     status: RuleSection,
     -- The sections a game may leave out.
-    -- The game's battle themes: songs a player may pick as a battle's music in place of its game's own, in any
-    -- game's battle (the app's Music, docs/app.md §9), in the order a list shows them. Each is named in the
-    -- locales' text table `battle_themes` by its asset name. Presentation: the engine plays none of them by this.
-    battle_themes: { Sound }?,
     banners: any?,
     buster: any?,
     custom_screen: any?,
@@ -2849,7 +2790,6 @@ export type StageDef = {
     layout: { string },
     panel_pattern: number,
     music: Sound?,
-    background: Background,
     mode: number,
     battle_number: number,
     effects: number?,

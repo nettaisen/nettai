@@ -1040,9 +1040,9 @@ fn menu_place(w: &EmotionWhen) -> u8 {
 /// effects (the user, of EXE6's netbattle-95 and 96 and EXE5's 93 and 94, which differ in effects alone, by a bit
 /// nothing reads: "they should count as duplicates too").
 fn same_arena(a: &StageData, b: &StageData) -> bool {
-    let StageData { layout, panel_pattern, music, background, mode, battle_number, effects: _, actors } = a;
+    let StageData { layout, panel_pattern, music, mode, battle_number, effects: _, actors } = a;
     let count = |list: &[ActorEntry], e: &ActorEntry| list.iter().filter(|x| *x == e).count();
-    (layout, panel_pattern, music, background, mode, battle_number) == (&b.layout, &b.panel_pattern, &b.music, &b.background, &b.mode, &b.battle_number)
+    (layout, panel_pattern, music, mode, battle_number) == (&b.layout, &b.panel_pattern, &b.music, &b.mode, &b.battle_number)
         && actors.len() == b.actors.len()
         && actors.iter().all(|e| count(actors, e) == count(&b.actors, e))
 }

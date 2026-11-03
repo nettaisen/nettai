@@ -381,7 +381,6 @@ const FRESH_STATS: [&str; 4] = ["reg_up", "custom_level", "mood", "mode9_a"];
 #[serde(deny_unknown_fields)]
 struct LinkPickSection {
     first_round_stages: usize,
-    backgrounds: Vec<super::BackgroundId>,
 }
 
 /// The names the elements section uses for the weakness table's rows.
@@ -391,7 +390,6 @@ const ELEMENT_NAMES: [&str; 6] = ["null", "fire", "aqua", "elec", "wood", "drain
 /// schemas).
 pub(crate) const SECTIONS: &[&str] = &[
     "banners",
-    "battle_themes",
     "buster",
     "chip_use",
     "custom_screen",
@@ -431,7 +429,6 @@ struct Stated {
     effects: Option<super::rules::EffectsRules>,
     fresh_stats: Option<super::rules::FreshStatsRules>,
     link_pick: Option<LinkPickSection>,
-    battle_themes: Option<Vec<crate::sound::SoundId>>,
 }
 
 impl Stated {
@@ -492,10 +489,9 @@ impl Stated {
             }),
             chip_use: Some(r.chip_use),
             flow: Some(r.flow),
-            link_pick: Some(LinkPickSection { first_round_stages: r.link_pick.first_round_stages, backgrounds: r.link_pick.backgrounds.clone() }),
+            link_pick: Some(LinkPickSection { first_round_stages: r.link_pick.first_round_stages }),
             effects: Some(r.effects.clone()),
             fresh_stats: Some(r.fresh_stats),
-            battle_themes: Some(r.battle_themes.clone()),
         }
     }
 
@@ -560,10 +556,8 @@ impl Stated {
             link_pick: super::rules::LinkPick {
                 stages: Vec::new(),
                 first_round_stages: link_pick.first_round_stages,
-                backgrounds: link_pick.backgrounds,
                 match_stages: Vec::new(),
             },
-            battle_themes: self.battle_themes.unwrap_or_default(),
             sine: self.sine.unwrap_or_default(),
             push_vectors: reactions.push,
             push_reading: reactions.push_reading,
@@ -820,26 +814,6 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 });
             }
             "buster" => stated.buster = Some(r.read(spec, &at).map_err(e)?),
-            "battle_themes" => {
-                // (Songs alone: an asset of another kind is no theme.)
-                let items: &[Data] = match spec {
-                    Data::List(items) => items,
-                    Data::Map(entries) if entries.is_empty() => &[],
-                    _ => return Err(e(format!("{at}: a list of songs (asset.sound)"))),
-                };
-                let mut themes = Vec::with_capacity(items.len());
-                for (i, item) in items.iter().enumerate() {
-                    let Data::Asset(nettai_content_api::AssetKind::Sound, _) = item else {
-                        return Err(e(format!("{at}[{}]: a song (asset.sound), not {item:?}", i + 1)));
-                    };
-                    let theme = crate::sound::SoundId(r.read(item, &format!("{at}[{}]", i + 1)).map_err(e)?);
-                    if themes.contains(&theme) {
-                        return Err(e(format!("{at}[{}]: the same song as another theme", i + 1)));
-                    }
-                    themes.push(theme);
-                }
-                stated.battle_themes = Some(themes);
-            }
             "banners" => stated.holding_banners = Some(r.read::<BannersSection>(spec, &at).map_err(e)?.holding),
             "status" => stated.status = Some(r.read(spec, &at).map_err(e)?),
             "chip_use" => stated.chip_use = Some(r.read(spec, &at).map_err(e)?),
@@ -849,7 +823,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 // they have their handles; stated all the same. Both
                 // fields are asked for here: a section with one alone
                 // reads as an empty table once the stages are out.)
-                for field in ["stages", "first_round_stages", "backgrounds", "match_stages"] {
+                for field in ["stages", "first_round_stages", "match_stages"] {
                     if matches!(spec.field(field), Data::Nil) {
                         return Err(e(format!("{at}: missing field `{field}`")));
                     }

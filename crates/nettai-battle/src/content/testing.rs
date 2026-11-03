@@ -427,7 +427,13 @@ pub fn build() -> Content {
 /// testdata/content/rules; its sprites, and their made-up timing, its
 /// modules': testdata/content/sprites.luau and sprite_timing.luau.)
 fn make() -> Content {
-    Content { scripts: scripts(), strings: strings(), ..Default::default() }
+    // (Its stages are drawn on its one background.)
+    let presentation = nettai_content_api::Presentation {
+        stage_background: Some("test-background".into()),
+        backgrounds: vec!["test-background".into()],
+        ..Default::default()
+    };
+    Content { scripts: scripts(), strings: strings(), presentation, ..Default::default() }
 }
 
 /// The test content's strings (testdata/content/locales/en.toml): its

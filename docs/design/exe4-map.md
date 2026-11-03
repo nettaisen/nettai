@@ -2317,8 +2317,8 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
       holy-inner-top/aqua compare every fight frame pixel for pixel, gusts and all (frontend-compare/exe4.txt).
 20. **The link pick.** 0x0803AA6C draws `PosRNG2() % count` (0x44 for a single battle, 0x60 for a triple one: by the
     battle type, 0x08007D68) into the first 96 records, then `PosRNG2() % 24` into the backgrounds (0x0803AAA4). A
-    set's first battle picks its rounds' places at once (0x08007D68). **Done:** `link_pick.backgrounds` (the table's
-    24, by their names), `first_round_stages` (a random match is a triple battle's: every round among the first 0x60).
+    set's first battle picks its rounds' places at once (0x08007D68). **Done:** the backgrounds (the table's 24, by their names:
+    backgrounds.toml's `link_battle` since 2026-11-02), `first_round_stages` (a random match is a triple battle's: every round among the first 0x60).
     No RNG field: nettai picks a match's places before the battle with its own generator (docs/frontend.md §2), so
     only the odds are the game's, which the lists state. a95f's sweep (1,000 seeds, tools/chiplab/gen_exe4.py
     `STAGES`) drew from all 96 records: no panel type 11; its obstacles are the four of item 19 (the boulder #0x6E, the

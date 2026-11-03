@@ -38,6 +38,10 @@ pub fn defined(games: &[&str]) -> Result<Content, String> {
 fn defined_of(read: nettai_content::index::Read) -> Result<Content, String> {
     let mut c = Content::default();
     c.scripts = read.scripts();
+    // (Its game's backgrounds and music, as the loader reads them.)
+    if let Some(game) = read.games().first() {
+        c.presentation = nettai_content::presentation::read(&read.dir.join(game), game)?;
+    }
     c.strings = read.strings;
     c.background_pool = nettai_content::locale::background_pool(&read.dir);
     c.define().map_err(|e| e.message)?;

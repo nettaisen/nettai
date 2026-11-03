@@ -335,7 +335,10 @@ impl LuauContent {
     /// `plan` was made from, and bind the functions `plan` names.
     pub fn load(pack: &Pack, plan: &BindPlan, options: Options) -> Result<LuauContent, ContentError> {
         let (lua, defined, modules, _, assets) = open(pack, options)?;
-        if assets.names != plan.assets {
+        // (The content's backgrounds are its backgrounds.toml's, which no module names.)
+        let mut named = plan.assets.clone();
+        named.backgrounds.clear();
+        if assets.names != named {
             return Err(ContentError::new(
                 "loading Luau content: the scripts name other assets than the content was made from".to_string(),
             ));
