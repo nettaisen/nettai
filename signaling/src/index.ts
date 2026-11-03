@@ -49,7 +49,7 @@
 // - A client in mainland China (by Cloudflare's lookup of its IP address,
 //   country CN; Hong Kong, Macau and Taiwan have codes of their own) is
 //   given the China servers instead, and only those: the owner's own STUN
-//   and TURN server there, a coturn (the secrets CHINA_TURN_URLS and
+//   and TURN server for them, a coturn (the secrets CHINA_TURN_URLS and
 //   CHINA_TURN_SECRET), with credentials the server makes itself, which
 //   also last TURN_TTL_SECONDS. Their username names the match and the
 //   client's place in it by an opaque tag (`chinaServers`). Only while the
@@ -95,7 +95,7 @@ export interface Env {
 	 * put CLOUDFLARE_TURN_KEY_API_TOKEN`). */
 	CLOUDFLARE_TURN_KEY_API_TOKEN?: string;
 	/** The China servers' URLs, separated by spaces or commas: the `stun:`
-	 * and `turn:` URLs of the owner's coturn in mainland China, a secret
+	 * and `turn:` URLs of the owner's coturn for mainland China, a secret
 	 * (`npx wrangler secret put CHINA_TURN_URLS`). None, and clients in
 	 * China are given Cloudflare's. */
 	CHINA_TURN_URLS?: string;

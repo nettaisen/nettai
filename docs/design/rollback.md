@@ -863,7 +863,8 @@ by default, "you don't even need a google default right? direct connect doesn't 
   Worker, by its kind or HTTP status; the secrets are sent to Cloudflare's API and nowhere else, and never
   logged.
 - **Mainland China has its own servers.** Cloudflare's TURN service is slow or blocked from mainland China, so a
-  client there is given only the owner's own STUN and TURN server in China, a coturn, and none of Cloudflare's.
+  client there is given only the owner's own STUN and TURN server for China, a coturn (in Hong Kong since
+  2026-11-03: the user, "replace the china turn proxy with the hong kong turn proxy"), and none of Cloudflare's.
   The Worker tells by Cloudflare's lookup of the client's IP address (`request.cf.country` is `CN`; Hong Kong,
   Macau and Taiwan have codes of their own, and a player on a VPN abroad counts as abroad), and each socket keeps
   its country, so the client that waited is given its own region's servers when the other comes. The two players
@@ -881,7 +882,7 @@ by default, "you don't even need a google default right? direct connect doesn't 
   Without those two secrets, a client in China is given Cloudflare's. So it is with the Worker's switch
   `CHINA_TURN` (a var in `wrangler.toml`) at `"off"`, the secrets kept for `"on"` again: the user, "disable the
   chinese turn server support for now, route it all through cloudflare. the signaling worker should have a flag
-  to turn it off and on". It is off since 2026-11-02.
+  to turn it off and on". It was off from 2026-11-02, and on again with the Hong Kong server from 2026-11-03.
 - **TURN only for a room both players are in, and only so often.** The credentials cost the key's owner what is
   relayed on them, and anyone could open a socket to `/rooms` (the security audit's finding; the user: "fix the
   open turn credentials as well"). So servers are given only once the room's two places are taken: a welcome

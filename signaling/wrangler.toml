@@ -26,9 +26,10 @@
 #
 # TURN in mainland China. A player Cloudflare places there (its lookup of
 # the IP address says CN; Hong Kong, Macau and Taiwan aren't CN) is given
-# only the owner's own coturn there instead. The Worker makes that coturn's
-# credentials itself, with the secret it shares with it (coturn's TURN REST
-# scheme): they last as long as Cloudflare's, and coturn refuses them after.
+# only the owner's own coturn for them instead (in Hong Kong since
+# 2026-11-03). The Worker makes that coturn's credentials itself, with the
+# secret it shares with it (coturn's TURN REST scheme): they last as long as
+# Cloudflare's, and coturn refuses them after.
 #
 #   1. In the coturn's turnserver.conf: `use-auth-secret`,
 #      `static-auth-secret=SECRET` (a long random string, such as
@@ -61,7 +62,7 @@ compatibility_date = "2025-10-01"
 # Players in mainland China on the owner's coturn ("on") or on Cloudflare's
 # TURN as everyone else ("off"): see "TURN in mainland China" above.
 [vars]
-CHINA_TURN = "off"
+CHINA_TURN = "on"
 
 [[durable_objects.bindings]]
 name = "ROOMS"
