@@ -3773,7 +3773,7 @@ dependencies = [
 
 [[package]]
 name = "nettai"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "block2 0.6.2",
  "cc",
@@ -3927,7 +3927,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-extract"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "log",
  "m4a",
@@ -3961,7 +3961,7 @@ dependencies = [
 
 [[package]]
 name = "nettai-frontend"
-version = "0.23.0"
+version = "0.24.0"
 dependencies = [
  "log",
  "m4a",
