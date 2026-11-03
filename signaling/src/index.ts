@@ -48,11 +48,13 @@
 //   longer.
 // - A client in mainland China (by Cloudflare's lookup of its IP address,
 //   country CN; Hong Kong, Macau and Taiwan have codes of their own) is
-//   given the China servers instead, and only those: the owner's own STUN
-//   and TURN server for them, a coturn (the secrets CHINA_TURN_URLS and
-//   CHINA_TURN_SECRET), with credentials the server makes itself, which
-//   also last TURN_TTL_SECONDS. Their username names the match and the
-//   client's place in it by an opaque tag (`chinaServers`). Only while the
+//   given the China servers instead, and only those: a STUN server in
+//   mainland China (CHINA_STUN, not the coturn's own, which is abroad) and
+//   the owner's own TURN server for them, a coturn (the secrets
+//   CHINA_TURN_URLS and CHINA_TURN_SECRET), with credentials the server
+//   makes itself, which also last TURN_TTL_SECONDS. Their username names the
+//   match and the client's place in it by an opaque tag (`chinaServers`).
+//   Without TURN credentials, CHINA_STUN alone. Only while the
 //   switch CHINA_TURN (a var in wrangler.toml) is "on": "off", or without
 //   those secrets, Cloudflare's, as any other client is given. The two
 //   players of a room may be given different servers: each relays through
@@ -94,10 +96,10 @@ export interface Env {
 	/** The Cloudflare TURN key's API token, a secret (`npx wrangler secret
 	 * put CLOUDFLARE_TURN_KEY_API_TOKEN`). */
 	CLOUDFLARE_TURN_KEY_API_TOKEN?: string;
-	/** The China servers' URLs, separated by spaces or commas: the `stun:`
-	 * and `turn:` URLs of the owner's coturn for mainland China, a secret
-	 * (`npx wrangler secret put CHINA_TURN_URLS`). None, and clients in
-	 * China are given Cloudflare's. */
+	/** The `turn:` URLs of the owner's coturn for mainland China, separated
+	 * by spaces or commas, a secret (`npx wrangler secret put
+	 * CHINA_TURN_URLS`). Their STUN server is CHINA_STUN, not the coturn's.
+	 * None, and clients in China are given Cloudflare's. */
 	CHINA_TURN_URLS?: string;
 	/** The coturn's shared secret, its `static-auth-secret`, a secret (`npx
 	 * wrangler secret put CHINA_TURN_SECRET`). */
@@ -161,6 +163,10 @@ const CODE_TRIES = 8;
 /** Cloudflare's public STUN server: what a client is given when there are no
  * TURN credentials. */
 const STUN: IceServer[] = [{ urls: ["stun:stun.cloudflare.com:3478"] }];
+/** The STUN server for clients in mainland China (Xiaomi's), with or
+ * without the China TURN server: one in the mainland answers them better
+ * than the coturn's own, which is abroad. */
+const CHINA_STUN: IceServer[] = [{ urls: ["stun:stun.miwifi.com:3478"] }];
 /** How long a welcome's TURN credentials last: a long sitting of matches
  * with one opponent and its reconnections (nettai-rtc's
  * signal::TURN_CREDENTIALS_LAST). */
@@ -176,7 +182,8 @@ const CHINA = "CN";
  * (the comment at the top): for a client in `country` China, the China
  * servers when the owner has set them and CHINA_TURN is "on"; else
  * Cloudflare's TURN service's,
- * with credentials made for it; or STUN alone. `client` is who the limit
+ * with credentials made for it; or STUN alone (the China client's
+ * CHINA_STUN). `client` is who the limit
  * counts it against (`clientOf`), `place` its room and role (the China
  * servers' usernames say them). Never fails, and never says a secret: a
  * failure's log is its kind or its HTTP status. */
@@ -186,42 +193,43 @@ async function iceServers(env: Env, client: string, country: string, place: Plac
 	if (!china && (!env.CLOUDFLARE_TURN_KEY_ID || !env.CLOUDFLARE_TURN_KEY_API_TOKEN)) {
 		return STUN;
 	}
+	const stun = china ? CHINA_STUN : STUN;
 	try {
 		if (env.TURN_LIMIT && !(await env.TURN_LIMIT.limit({ key: client })).success) {
 			console.error("no TURN credentials: a client asked for more than its limit");
-			return STUN;
+			return stun;
 		}
 	} catch (e) {
 		console.error(`no TURN credentials: ${e instanceof Error ? e.name : "an error"} asking the TURN limit`);
-		return STUN;
+		return stun;
 	}
 	return china ? chinaServers(china.urls, china.secret, place) : cloudflareServers(env.CLOUDFLARE_TURN_KEY_ID!, env.CLOUDFLARE_TURN_KEY_API_TOKEN!);
 }
 
-/** The China servers (`CHINA_TURN_URLS`), all with one username and
+/** The China servers: CHINA_STUN (no credentials), and the TURN servers of
+ * `CHINA_TURN_URLS`, all with one username and
  * credential made here by coturn's TURN REST scheme (its `use-auth-secret`),
  * with no call to it: the username is `EXPIRY:MATCH-ROLE`, EXPIRY when they
  * expire (Unix seconds, TURN_TTL_SECONDS from now), MATCH the room's tag
  * (`matchTag`, the same for both players) and ROLE the client's place, and
  * the credential is base64(HMAC-SHA1(secret, username)). coturn names the
  * username in its log (its refusals; with `verbose`, every session), and
- * counts a `user-quota` by what follows the `:`. A `stun:` URL
- * among them needs none, and the clients give it none. Never fails: STUN
+ * counts a `user-quota` by what follows the `:`. Never fails: CHINA_STUN
  * alone, logged, when the URLs are empty or the credential can't be made. */
 async function chinaServers(urls: string, secret: string, place: Place): Promise<IceServer[]> {
 	const list = urls.split(/[\s,]+/).filter((u) => u !== "");
 	if (list.length === 0) {
 		console.error("no TURN credentials: CHINA_TURN_URLS names no server");
-		return STUN;
+		return CHINA_STUN;
 	}
 	try {
 		const match = await matchTag(secret, place.room);
 		const username = `${Math.floor(Date.now() / 1000) + TURN_TTL_SECONDS}:${match}-${place.role}`;
 		const mac = await hmac("SHA-1", secret, username);
-		return [{ urls: list, username, credential: btoa(String.fromCharCode(...mac)) }];
+		return [...CHINA_STUN, { urls: list, username, credential: btoa(String.fromCharCode(...mac)) }];
 	} catch (e) {
 		console.error(`no TURN credentials: ${e instanceof Error ? e.name : "an error"} making the China server's`);
-		return STUN;
+		return CHINA_STUN;
 	}
 }
 

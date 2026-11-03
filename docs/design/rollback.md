@@ -863,8 +863,11 @@ by default, "you don't even need a google default right? direct connect doesn't 
   Worker, by its kind or HTTP status; the secrets are sent to Cloudflare's API and nowhere else, and never
   logged.
 - **Mainland China has its own servers.** Cloudflare's TURN service is slow or blocked from mainland China, so a
-  client there is given only the owner's own STUN and TURN server for China, a coturn (in Hong Kong since
+  client there is given only a STUN server in the mainland (the Worker's `CHINA_STUN`, Xiaomi's
+  `stun.miwifi.com`; the user, "for china in the nettai signaling server, you should use china stun servers instead
+  of the turn server's stun server") and the owner's own TURN server for China, a coturn (in Hong Kong since
   2026-11-03: the user, "replace the china turn proxy with the hong kong turn proxy"), and none of Cloudflare's.
+  Without TURN credentials (the limit, or the secrets unset), that STUN server alone.
   The Worker tells by Cloudflare's lookup of the client's IP address (`request.cf.country` is `CN`; Hong Kong,
   Macau and Taiwan have codes of their own, and a player on a VPN abroad counts as abroad), and each socket keeps
   its country, so the client that waited is given its own region's servers when the other comes. The two players
@@ -877,7 +880,7 @@ by default, "you don't even need a google default right? direct connect doesn't 
   which takes a place back); and the client's place, `host` or `join`. coturn names it in its log (its refusals;
   with `verbose`, every session) and counts a `user-quota` by what follows the `:`. The credential is base64(HMAC-SHA1(secret, username)); coturn checks both and
   refuses them once that time has passed. They go
-  with each of the URLs in `CHINA_TURN_URLS` (its `stun:` URL needs none, and the clients give it none). The
+  with each of the URLs in `CHINA_TURN_URLS`, the coturn's `turn:` URLs. The
   same rules hold as for Cloudflare's: only for a room both players are in, counted against the same limit.
   Without those two secrets, a client in China is given Cloudflare's. So it is with the Worker's switch
   `CHINA_TURN` (a var in `wrangler.toml`) at `"off"`, the secrets kept for `"on"` again: the user, "disable the
@@ -915,7 +918,7 @@ by default, "you don't even need a google default right? direct connect doesn't 
   secret put CLOUDFLARE_TURN_KEY_API_TOKEN` in `signaling/` (for `wrangler dev`, the same names in
   `signaling/.dev.vars`, which git ignores); then `npx wrangler deploy`. For China, set the coturn up with
   `use-auth-secret`, a `static-auth-secret` and UDP on its port, and give the Worker `CHINA_TURN_URLS` (its
-  `stun:` and `turn:` URLs, separated by spaces) and `CHINA_TURN_SECRET` (that secret) the same way. No secret is
+  `turn:` URLs, separated by spaces) and `CHINA_TURN_SECRET` (that secret) the same way. No secret is
   ever in the repository. Deploying, the secrets and the custom domain are the owner's steps, never an agent's.
 
 **The server only while it is needed.** The user's request: "the signaling server session should last just long

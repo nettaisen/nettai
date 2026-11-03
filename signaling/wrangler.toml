@@ -26,8 +26,9 @@
 #
 # TURN in mainland China. A player Cloudflare places there (its lookup of
 # the IP address says CN; Hong Kong, Macau and Taiwan aren't CN) is given
-# only the owner's own coturn for them instead (in Hong Kong since
-# 2026-11-03). The Worker makes that coturn's credentials itself, with the
+# a STUN server in the mainland (CHINA_STUN in src/index.ts, not the
+# coturn's own) and the owner's own coturn for TURN instead (in Hong Kong
+# since 2026-11-03). The Worker makes that coturn's credentials itself, with the
 # secret it shares with it (coturn's TURN REST scheme): they last as long as
 # Cloudflare's, and coturn refuses them after.
 #
@@ -37,9 +38,8 @@
 #      desktop app relays over UDP only).
 #   2. Give the Worker its URLs and that secret, as secrets:
 #        npx wrangler secret put CHINA_TURN_URLS
-#          its STUN and TURN URLs, separated by spaces, such as
-#          stun:turn.example.cn:3478 turn:turn.example.cn:3478?transport=udp
-#          (with no stun: URL, those players have no STUN server)
+#          its TURN URLs, separated by spaces, such as
+#          turn:turn.example.cn:3478?transport=udp
 #        npx wrangler secret put CHINA_TURN_SECRET
 #
 # Without them, players in China are given Cloudflare's, as everyone else is.
