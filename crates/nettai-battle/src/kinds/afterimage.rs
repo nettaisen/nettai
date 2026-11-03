@@ -222,7 +222,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let look = vars(b, r).plain;
     let s = b.objects.sprite_mut(r);
     s.set_animation(anim, &b.content);
-    s.update(&b.content);
+    s.update();
     // The spawner's shadow and color shader (the Beast rush's: a ground
     // shadow, 0x83E0 less green), and the fourth parameter's flip.
     s.look.shadow = look.shadow.shadow();
@@ -247,7 +247,7 @@ fn init_plain(b: &mut Battle, r: ObjectRef) {
     let s = b.objects.sprite_mut(r);
     s.load(SpriteId(u16::from_be_bytes([hi, lo])));
     s.set_animation(anim, &b.content);
-    s.update(&b.content);
+    s.update();
     s.look.shadow = plain.shadow.shadow();
     s.look.set_palette(plain.palette);
     s.look.set_flip(flip);
@@ -294,7 +294,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         return destroy(b, r);
     }
     b.objects.get_mut(r).timer = timer;
-    b.objects.sprite_mut(r).update(&b.content);
+    b.objects.sprite_mut(r).update();
     let steady = vars(b, r).plain.steady;
     let o = b.objects.get_mut(r);
     o.set_visible(true);

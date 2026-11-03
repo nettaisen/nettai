@@ -9,13 +9,11 @@
 //! from the game. It has just what battles of two such navis need:
 //! stepping, the chips below, custom screens, rocks and the round's flow.
 //!
-//! Its sprites are defined as any content's are, by modules
-//! (`asset.sprite(name, animations)`): its own (testdata/content/
-//! sprites.luau), and EXE6's that the EXE6 modules require, each defined in
-//! place of EXE6's module for it, all with the made-up timing of
-//! testdata/content/sprite_timing.luau. Its asset handles are the names its
-//! modules give; the numbers a frontend's test draws them by are made up
-//! ([`asset_index`], [`asset_numbers`]).
+//! Its sprites are named as any content's are (`asset.sprite(name)`): its
+//! own (testdata/content/sprites.luau), and EXE6's that the EXE6 modules
+//! name. Its asset handles are the names its modules give; the numbers a
+//! frontend's test draws them by are made up ([`asset_index`],
+//! [`asset_numbers`]).
 //!
 //! Its scripts are this repository's EXE6 scripts (content/exe6, the source
 //! overlay), read from the repository, and its own modules
@@ -424,8 +422,8 @@ pub fn build() -> Content {
 
 /// The content set, not yet defined. (The navis and the base form are
 /// definitions: testdata/content/navis/test.luau; its rules are its rules':
-/// testdata/content/rules; its sprites, and their made-up timing, its
-/// modules': testdata/content/sprites.luau and sprite_timing.luau.)
+/// testdata/content/rules; its sprites its modules': testdata/content/
+/// sprites.luau.)
 fn make() -> Content {
     // (Its stages are drawn on its one background.)
     let presentation = nettai_content_api::Presentation {
@@ -1439,30 +1437,9 @@ pub fn scripts() -> Scripts {
             add_shared(&mut scripts);
             scripts.add_game(ROOT, all);
             scripts.read_from(ROOT, OVERLAY);
-            // EXE6's sprites, which its modules require from their own
-            // modules: each defined in memory with the test content's
-            // made-up timing (testdata/content/sprite_timing.luau; one it
-            // hasn't times none, and holds a single frame), not EXE6's.
-            for (path, source) in modules_under(OVERLAY) {
-                let Some(name) = sprite_defined_in(&source) else { continue };
-                let up = match path.matches('/').count() {
-                    0 => "./".to_string(),
-                    n => "../".repeat(n),
-                };
-                let module = format!("return asset.sprite({name:?}, require(\"{up}sprite_timing\")[{name:?}] or {{}})\n");
-                scripts.modules.insert(Scripts::name(ROOT, &path), module);
-            }
             scripts
         })
         .clone()
-}
-
-/// The sprite a module defines (`asset.sprite("name", animations)`), if it
-/// defines one.
-fn sprite_defined_in(source: &str) -> Option<&str> {
-    let (_, rest) = source.split_once("asset.sprite(\"")?;
-    let (name, rest) = rest.split_once('"')?;
-    rest.trim_start().starts_with(',').then_some(name)
 }
 
 /// The test content's rules: what its rules state

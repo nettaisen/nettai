@@ -535,7 +535,6 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         shake = "battle_rng",
         spark_steps_at_start = true,
         hit_marker_steps = { weakness = 18, bug = 18 },
-        bubble_pop_steps = 5,
         retype = "is_and_hits",
         damage_word = { damage = 0x7FF, flags = { { bit = 0x4000, status = "damage_word_paralysis", hit_modifier = 0, stop = true }, { bit = 0x800, bug = 0x1118 } } },
         palette_flash = "mode_runs_through_pause",
@@ -753,7 +752,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 128, "every field of every section");
+        assert_eq!(fields, 129, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

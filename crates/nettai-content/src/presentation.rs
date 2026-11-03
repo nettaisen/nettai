@@ -1,6 +1,6 @@
-//! A game's backgrounds and music (docs/design/asset-formats.md §8): `backgrounds.toml` and `music.toml` in its
-//! pack's folder, read with its content as its locales are ([`read`]) and made the content's in its define phase
-//! (`nettai_battle::Content::presentation`).
+//! A game's backgrounds, music and sprites of its own (docs/design/asset-formats.md §8): `backgrounds.toml`,
+//! `music.toml` and `sprites.toml` in its pack's folder, read with its content as its locales are ([`read`]) and
+//! made the content's in its define phase (`nettai_battle::Content::presentation`).
 //!
 //! ```toml
 //! # backgrounds.toml
@@ -34,10 +34,24 @@
 //! envelope = { release = 200 }
 //! ```
 //!
+//! ```toml
+//! # sprites.toml
+//! [sprites.my-bomb]                                # one made from a picture of the pack's own
+//! file = "sprites/my_bomb.png"
+//! frame = [32, 32]                                 # a cell's size (none: one row of as many cells as frames)
+//! origin = [16, 28]                                # where in a cell the object stands (none: the bottom's middle)
+//! shadow = "sprites/my_bomb_shadow.png"
+//! animations = [[6, 4, 3, 2], { frames = [3, 2], loop = true }]   # each frame's steps, in its cells' order
+//!
+//! [sprites.explosion]                              # a ROM's sprite, timed otherwise
+//! animations = [[2, 2, 2, 2, 2, 2], [4, 4]]
+//! ```
+//!
 //! A file's path is the pack's (`backgrounds/my_stage.png`, from its folder). No module states any of this and
-//! no tick reads it, so it is out of the content's hash: content that differs in its backgrounds or music alone is
-//! the same content.
-use nettai_content_api::{BackgroundMusic, CustomBackground, CustomInstrument, CustomSound, Presentation, packs};
+//! no tick reads it, so it is out of the content's hash: content that differs in its backgrounds, music or sprites'
+//! looks alone is the same content. (How long an action takes is its module's: the battle counts a sprite's steps,
+//! and drawing finds the frame they reach.)
+use nettai_content_api::{BackgroundMusic, CustomBackground, CustomInstrument, CustomSound, CustomSprite, Presentation, SpriteAnimation, packs};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -82,6 +96,35 @@ struct SongEntry {
     instruments: BTreeMap<String, InstrumentEntry>,
 }
 
+#[derive(Deserialize, Default)]
+#[serde(deny_unknown_fields)]
+struct SpritesFile {
+    #[serde(default)]
+    sprites: BTreeMap<String, SpriteEntry>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct SpriteEntry {
+    file: Option<String>,
+    frame: Option<[u16; 2]>,
+    origin: Option<[i16; 2]>,
+    shadow: Option<String>,
+    animations: Vec<AnimationEntry>,
+}
+
+/// An animation: its frames' durations, or a table of them that may loop.
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum AnimationEntry {
+    Frames(Vec<u8>),
+    Table {
+        frames: Vec<u8>,
+        #[serde(rename = "loop", default)]
+        looping: bool,
+    },
+}
+
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct InstrumentEntry {
@@ -101,8 +144,8 @@ struct EnvelopeEntry {
     release: Option<u8>,
 }
 
-/// Game `game`'s backgrounds and music, from its pack's folder `pack` (none there: none). An error says which file
-/// and what is wrong with it.
+/// Game `game`'s backgrounds, music and sprites of its own, from its pack's folder `pack` (none there: none). An
+/// error says which file and what is wrong with it.
 pub fn read(pack: &Path, game: &str) -> Result<Presentation, String> {
     let text = |file: &str| -> Result<Option<String>, String> {
         let path = pack.join(file);
@@ -116,7 +159,51 @@ pub fn read(pack: &Path, game: &str) -> Result<Presentation, String> {
     })?;
     let music = text(packs::MUSIC_FILE)?
         .map_or(Ok(MusicFile::default()), |t| toml::from_str::<MusicFile>(&t).map_err(|e| format!("{game}/{}: {e}", packs::MUSIC_FILE)))?;
-    parse(game, backgrounds, music)
+    let sprites = text(packs::SPRITES_FILE)?
+        .map_or(Ok(SpritesFile::default()), |t| toml::from_str::<SpritesFile>(&t).map_err(|e| format!("{game}/{}: {e}", packs::SPRITES_FILE)))?;
+    let mut p = parse(game, backgrounds, music)?;
+    p.sprites = parse_sprites(game, sprites)?;
+    Ok(p)
+}
+
+/// What `sprites.toml` states, checked: each sprite's entry and the files it names.
+fn parse_sprites(game: &str, s: SpritesFile) -> Result<BTreeMap<String, CustomSprite>, String> {
+    let source = format!("{game}/{}", packs::SPRITES_FILE);
+    let mut out = BTreeMap::new();
+    for (name, e) in s.sprites {
+        let at = format!("{source}: sprite {name:?}");
+        let mut made = CustomSprite { source: source.clone(), ..Default::default() };
+        for (i, a) in e.animations.into_iter().enumerate() {
+            let (frames, looping) = match a {
+                AnimationEntry::Frames(f) => (f, false),
+                AnimationEntry::Table { frames, looping } => (frames, looping),
+            };
+            if frames.is_empty() || frames.contains(&0) {
+                return Err(format!("{at}: animation {i} is its frames' durations, each a number of steps from 1"));
+            }
+            made.animations.push(SpriteAnimation { frames, looping });
+        }
+        if made.animations.is_empty() {
+            return Err(format!("{at}: a sprite states its `animations` (each its frames' durations)"));
+        }
+        match e.file {
+            Some(file) => {
+                made.file = Some(pack_file(game, &at, &file, "png")?);
+                made.frame = e.frame.map(|[w, h]| (w, h));
+                if made.frame.is_some_and(|(w, h)| w == 0 || h == 0) {
+                    return Err(format!("{at}: `frame` is a cell's width and height in pixels, each from 1"));
+                }
+                made.origin = e.origin.map(|[x, y]| (x, y));
+                made.shadow = e.shadow.map(|f| pack_file(game, &format!("{at}: shadow"), &f, "png")).transpose()?;
+            }
+            None if e.frame.is_some() || e.origin.is_some() || e.shadow.is_some() => {
+                return Err(format!("{at}: `frame`, `origin` and `shadow` are a sprite's made from a picture: it names its `file` (an indexed PNG)"));
+            }
+            None => {}
+        }
+        out.insert(name, made);
+    }
+    Ok(out)
 }
 
 /// What the two files state, checked: each background's entry, each song's, the files they name.
@@ -280,5 +367,51 @@ envelope = { release = 200 }
         assert!(err("", "themes = [\"a\", \"a\"]").contains("names \"a\" twice"));
         assert!(err("", "[songs.x]\nfile = \"x.mid\"\nvoices = \"v\"\n[songs.x.instruments.128]\nfile = \"s.wav\"").contains("0 to 127"));
         assert!(read_str("colour = 1", "").unwrap_err().contains("unknown field"));
+    }
+
+    fn sprites_str(s: &str) -> Result<BTreeMap<String, CustomSprite>, String> {
+        parse_sprites("g", toml::from_str::<SpritesFile>(s).map_err(|e| e.to_string())?)
+    }
+
+    /// A sprite of the pack's own, its picture and its animations' timing, and a ROM's timed otherwise.
+    #[test]
+    fn sprites_toml_states_pictures_and_timing() {
+        let s = sprites_str(
+            r#"
+[sprites.drone]
+file = "sprites/drone.png"
+frame = [32, 24]
+origin = [16, 20]
+shadow = "sprites/drone_shadow.png"
+animations = [[3, 3], { frames = [2, 2, 4], loop = true }]
+[sprites.explosion]
+animations = [[1, 1]]
+"#,
+        )
+        .unwrap();
+        let anim = |frames: &[u8], looping| SpriteAnimation { frames: frames.to_vec(), looping };
+        assert_eq!(
+            s["drone"],
+            CustomSprite {
+                source: "g/sprites.toml".into(),
+                file: Some("g:sprites/drone.png".into()),
+                frame: Some((32, 24)),
+                origin: Some((16, 20)),
+                shadow: Some("g:sprites/drone_shadow.png".into()),
+                animations: vec![anim(&[3, 3], false), anim(&[2, 2, 4], true)],
+            }
+        );
+        assert_eq!((s["explosion"].file.as_ref(), &s["explosion"].animations[..]), (None, &[anim(&[1, 1], false)][..]));
+        let err = |t: &str| sprites_str(t).unwrap_err();
+        assert!(err("[sprites.x]
+animations = [[0]]").contains("from 1"));
+        assert!(err("[sprites.x]
+animations = []").contains("states its `animations`"));
+        assert!(err("[sprites.x]
+frame = [8, 8]
+animations = [[1]]").contains("it names its `file`"));
+        assert!(err("[sprites.x]
+file = \"x.gif\"
+animations = [[1]]").contains("is a .png file"));
     }
 }

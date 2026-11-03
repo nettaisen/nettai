@@ -402,13 +402,10 @@ named_fields! {
         HiddenParts = "hidden_parts", U32, rw;
         /// The animation the sprite plays.
         Animation = "animation", U8, ro;
-        /// The current frame's flags (0x80 last, 0x40 loop), only on the
-        /// tick the frame ends.
-        FrameFlags = "frame_flags", U8, ro;
-        /// The animation has played to its end.
-        Finished = "finished", Bool, ro;
         /// How many times the sprite has stepped since its animation
-        /// started (or since it was loaded).
+        /// started (or since it was loaded): what an action that waits for
+        /// an animation counts (a sprite's timing is its sheet's, drawing's
+        /// alone).
         Steps = "steps", U32, ro;
     }
 }
@@ -2203,9 +2200,11 @@ pub trait CoreApi {
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8);
     /// Advance the animation one tick (no gating).
     fn sprite_step(&mut self, o: ObjectRef);
-    /// `sub_80030BA`: where part `n` of the current frame sits, in pixels
-    /// from the object, unflipped; (0, 0) when the frame has fewer parts.
-    fn sprite_part_offset(&self, o: ObjectRef, n: u8) -> (i32, i32);
+    /// Draw `o`'s sprite where part `.1` of object `.0`'s sprite sits in its
+    /// frame (that part's offset added to `o`'s position, mirrored with the
+    /// owner's flip), or (none) where `o` is: what rides on another's sprite
+    /// (`sub_80030BA`'s place). Presentation: no tick reads it.
+    fn sprite_attach(&mut self, o: ObjectRef, to: Option<(ObjectRef, u8)>);
     fn sprite_get(&self, o: ObjectRef, f: SpriteField) -> Value;
     fn sprite_set(&mut self, o: ObjectRef, f: SpriteField, v: Value) -> ApiResult<()>;
     /// Field `f` as side `side`'s console draws it: the consoles draw some

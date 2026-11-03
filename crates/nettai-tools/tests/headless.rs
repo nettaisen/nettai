@@ -28,7 +28,7 @@ fn assets() -> Bundle {
     let mut palette = [0u16; 16];
     palette[1] = SHADOW;
     palette[2] = BODY;
-    let frame = SpriteFrame { tileset: 0, palette_set: 0, parts: 0 };
+    let frame = SpriteFrame { tileset: 0, palette_set: 0, parts: 0, duration: 1, flags: nettai_assets::FRAME_LAST };
     let megaman = SpriteSheet {
         category: 0,
         index: 0,

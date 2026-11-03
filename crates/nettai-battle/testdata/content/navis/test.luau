@@ -121,6 +121,8 @@ local function navi(sprite: string, ai_index: number, megaman: boolean, hooks: H
         -- (The navi with hooks: its charge glow shows 16 pixels higher in its animation 9.)
         charge_glow_lift = if hooks then { anims = { 9 }, pixels = 16 } else nil,
         sprite = sprites[sprite],
+        -- Made up, short: its warp out (animation 4) lasts 3 steps, its hold (animation 0xA) comes round every 36.
+        animation_steps = { warp_out = 3, hold = 36, hold_loops = true },
         element = "null",
         buster_bonus = 1,
         move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },

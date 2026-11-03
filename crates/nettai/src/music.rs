@@ -246,7 +246,6 @@ mod tests {
                 numbers: Arc::new(assets),
                 index: Arc::new(index),
                 others: Default::default(),
-                timing_differences: Vec::new(),
                 report: Default::default(),
             },
             graphics: nettai_frontend::testing::graphics(&content, 0x7FFF),

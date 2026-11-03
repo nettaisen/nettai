@@ -1,8 +1,8 @@
 //! Custom sprites: an indexed PNG of a cell per frame, each cut into hardware-sprite parts after its shadow.
 
 use super::picture::Indexed;
-use nettai_assets::{Palette, SpriteFrame, SpritePart, SpriteSheet, Tiles};
-use nettai_content_api::CustomSprite;
+use nettai_assets::{FRAME_LAST, FRAME_LOOP, Palette, SpriteFrame, SpritePart, SpriteSheet, Tiles};
+use nettai_content_api::{CustomSprite, SpriteAnimation};
 use std::collections::HashMap;
 
 /// The shapes a hardware sprite (a part) has, width by height in pixels.
@@ -15,11 +15,12 @@ const BLOCK: usize = 32;
 /// The most parts a frame has, its shadow too (the sprite draw's mask: nettai-render's objects).
 const MOST_PARTS: usize = 32;
 
-/// Sprite `def`, made from its picture, the PNG `bytes` (and its shadow's, `shadow`), for a sprite whose animations
-/// have `frames` frames each: each frame a cell of the picture, cut into parts (its shadow first, an empty one where
-/// the sprite has none), its tiles each part's in turn, row by row; frames alike share their tiles and parts. Its
-/// palettes are the picture's, 16 colors each. Its numbers are its caller's to give.
-pub(super) fn sprite(bytes: &[u8], shadow: Option<&[u8]>, def: &CustomSprite, frames: &[usize]) -> Result<SpriteSheet, String> {
+/// Sprite `def`, made from its picture, the PNG `bytes` (and its shadow's, `shadow`): each frame of its animations a
+/// cell of the picture, cut into parts (its shadow first, an empty one where the sprite has none), its tiles each
+/// part's in turn, row by row; frames alike share their tiles and parts; each frame timed as its animation says.
+/// Its palettes are the picture's, 16 colors each. Its numbers are its caller's to give.
+pub(super) fn sprite(bytes: &[u8], shadow: Option<&[u8]>, def: &CustomSprite) -> Result<SpriteSheet, String> {
+    let frames: Vec<usize> = def.animations.iter().map(|a| a.frames.len()).collect();
     let picture = Indexed::read(bytes)?;
     picture.colors_below(16)?;
     let count: usize = frames.iter().sum();
@@ -75,11 +76,34 @@ pub(super) fn sprite(bytes: &[u8], shadow: Option<&[u8]>, def: &CustomSprite, fr
                 n
             }
         };
-        each.push(SpriteFrame { tileset: n, palette_set: 0, parts: n });
+        each.push(SpriteFrame { tileset: n, palette_set: 0, parts: n, ..Default::default() });
     }
     let mut each = each.into_iter();
     sheet.animations = frames.iter().map(|&n| each.by_ref().take(n).collect()).collect();
+    retime(&mut sheet, &def.animations)?;
     Ok(sheet)
+}
+
+/// `sheet`'s frames timed by `animations` (as many, each of as many frames): each frame's duration, the last's
+/// flag, and the loop's.
+pub(super) fn retime(sheet: &mut SpriteSheet, animations: &[SpriteAnimation]) -> Result<(), String> {
+    let theirs: Vec<usize> = sheet.animations.iter().map(Vec::len).collect();
+    let ours: Vec<usize> = animations.iter().map(|a| a.frames.len()).collect();
+    if theirs != ours {
+        return Err(format!("its animations have {ours:?} frames, and its sheet's {theirs:?}"));
+    }
+    for (frames, a) in sheet.animations.iter_mut().zip(animations) {
+        let n = frames.len();
+        for (k, (f, &d)) in frames.iter_mut().zip(&a.frames).enumerate() {
+            f.duration = d;
+            f.flags = match (k + 1 == n, a.looping) {
+                (false, _) => 0,
+                (true, false) => FRAME_LAST,
+                (true, true) => FRAME_LAST | FRAME_LOOP,
+            };
+        }
+    }
+    Ok(())
 }
 
 /// A sprite's shadow, the PNG `bytes`: its part (centered on the object's place) and its tiles, its colors those of
@@ -147,8 +171,11 @@ mod tests {
     use super::*;
     use crate::custom::indexed_png;
 
-    fn sprite_def(frame: Option<(u16, u16)>, origin: Option<(i16, i16)>) -> CustomSprite {
-        CustomSprite { module: "g:x".into(), file: "g:x.png".into(), frame, origin, shadow: None }
+    /// A sprite of the picture `g:x.png`, its animations `frames` frames each (each frame 2 steps, the last looping).
+    fn sprite_def(frame: Option<(u16, u16)>, origin: Option<(i16, i16)>, frames: &[usize]) -> CustomSprite {
+        let n = frames.len();
+        let animations = frames.iter().enumerate().map(|(i, &k)| SpriteAnimation { frames: vec![2; k], looping: i + 1 == n }).collect();
+        CustomSprite { source: "g/sprites.toml".into(), file: Some("g:x.png".into()), frame, origin, shadow: None, animations }
     }
 
     /// A picture of `cells` cells of `w` x `h` in a row, cell `k` drawn by `draw(k, x, y)`.
@@ -170,10 +197,12 @@ mod tests {
             1 => u8::from((20..28).contains(&x) && (8..16).contains(&y)) * 3,
             _ => u8::from((4..44).contains(&x) && (14..24).contains(&y)) * (1 + (x % 2) as u8),
         });
-        let sheet = sprite(&png, None, &sprite_def(Some((48, 24)), None), &[2, 1]).unwrap();
+        let sheet = sprite(&png, None, &sprite_def(Some((48, 24)), None, &[2, 1])).unwrap();
         assert_eq!(sheet.animations.len(), 2);
         let frames: Vec<u16> = sheet.animations.iter().flatten().map(|f| f.tileset).collect();
         assert_eq!(frames, [0, 1, 0], "the first and last frames are alike");
+        let timing: Vec<(u8, u8)> = sheet.animations.iter().flatten().map(|f| (f.duration, f.flags)).collect();
+        assert_eq!(timing, [(2, 0), (2, FRAME_LAST), (2, FRAME_LAST | FRAME_LOOP)], "each frame timed as its animation says");
         assert_eq!(sheet.palette_sets, [vec![std::array::from_fn(|i| nettai_assets::bgr555([i as u8 * 8, 255 - i as u8 * 8, 0])), std::array::from_fn(|i| nettai_assets::bgr555([(16 + i as u8) * 8, 255 - (16 + i as u8) * 8, 0]))]]);
         let bar = &sheet.part_lists[0];
         let shape = |p: &SpritePart| (p.tile, p.x, p.y, p.width, p.height);
@@ -190,7 +219,7 @@ mod tests {
         assert_eq!(second_row[..16], [1, 2].repeat(8)[..]);
         assert_eq!(second_row[16..], [0; 48]);
         // One row of as many cells as frames needs no `frame`; another origin moves the parts.
-        let sheet = sprite(&png, None, &sprite_def(None, Some((0, 0))), &[3]).unwrap();
+        let sheet = sprite(&png, None, &sprite_def(None, Some((0, 0)), &[3])).unwrap();
         assert_eq!(sheet.part_lists[1][1].x, 20);
     }
 
@@ -200,15 +229,15 @@ mod tests {
         let png = strip(1, 16, 16, |_, x, _| u8::from(x == 3) * 2);
         let colors: Vec<[u8; 3]> = (0..32).map(|i| [i * 8, 255 - i * 8, 0]).collect();
         let shadow = indexed_png(16, 8, png::BitDepth::Four, &[[0u8, 1].repeat(8), [1u8; 16].to_vec()].concat().repeat(4), &[[9, 9, 9], colors[2]]);
-        let sheet = sprite(&png, Some(&shadow), &sprite_def(None, None), &[1]).unwrap();
+        let sheet = sprite(&png, Some(&shadow), &sprite_def(None, None, &[1])).unwrap();
         let parts = &sheet.part_lists[0];
         assert_eq!((parts[0].x, parts[0].y, parts[0].width, parts[0].height, parts[0].tile), (-8, -4, 16, 8, 0));
         assert_eq!(parts[1].tile, 2, "the body's tiles after the shadow's two");
         assert_eq!(sheet.tilesets[0].get(0).unwrap()[..10], [0, 2, 0, 2, 0, 2, 0, 2, 2, 2], "the shadow's color 1 is the sprite's 2");
         let odd = indexed_png(8, 8, png::BitDepth::Eight, &[1; 64], &[[0, 0, 0], [1, 2, 3]]);
-        let e = sprite(&png, Some(&odd), &sprite_def(None, None), &[1]).unwrap_err();
+        let e = sprite(&png, Some(&odd), &sprite_def(None, None, &[1])).unwrap_err();
         assert!(e.contains("its shadow: color 1 (0x0000) isn't one of the sprite's first 16"), "{e}");
-        let e = sprite(&png, Some(&indexed_png(24, 8, png::BitDepth::Eight, &[0; 192], &[[0; 3]])), &sprite_def(None, None), &[1]).unwrap_err();
+        let e = sprite(&png, Some(&indexed_png(24, 8, png::BitDepth::Eight, &[0; 192], &[[0; 3]])), &sprite_def(None, None, &[1])).unwrap_err();
         assert!(e.contains("24x8 pixels, not a shape a hardware sprite has"), "{e}");
     }
 
@@ -216,13 +245,13 @@ mod tests {
     #[test]
     fn a_sprite_says_what_its_picture_isnt() {
         let png = strip(3, 16, 16, |k, x, _| u8::from(k == 2 && x == 0));
-        let e = |frames: &[usize], frame| sprite(&png, None, &sprite_def(frame, None), frames).unwrap_err();
+        let e = |frames: &[usize], frame| sprite(&png, None, &sprite_def(frame, None, frames)).unwrap_err();
         assert!(e(&[5], None).contains("48 pixels wide, not one row of 5 frames"));
         assert_eq!(e(&[2], Some((16, 16))), "cell 2 isn't blank, and the animations have 2 frames (cells 0 to 1)");
         assert_eq!(e(&[4], Some((16, 16))), "3 cells of 16x16, and the animations have 4 frames");
         assert_eq!(e(&[3], Some((20, 16))), "48x16 pixels, not whole 20x16 cells");
         let far = strip(1, 200, 8, |_, x, _| u8::from(x == 199));
-        let e = sprite(&far, None, &sprite_def(None, Some((0, 0))), &[1]).unwrap_err();
+        let e = sprite(&far, None, &sprite_def(None, Some((0, 0)), &[1])).unwrap_err();
         assert_eq!(e, "frame 0 (cell 0): a pixel across 199 from the origin (a part is within 128 of it)");
     }
 }

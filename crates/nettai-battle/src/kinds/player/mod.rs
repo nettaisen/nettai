@@ -1570,5 +1570,5 @@ pub(crate) fn update_sprite(b: &mut Battle, r: ObjectRef) {
         b.objects.sprite_mut(r).set_animation(anim, &b.content);
         b.objects.get_mut(r).anim_loaded = anim;
     }
-    b.objects.sprite_mut(r).update(&b.content);
+    b.objects.sprite_mut(r).update();
 }

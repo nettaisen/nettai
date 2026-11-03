@@ -304,6 +304,11 @@ pub const BACKGROUNDS_FILE: &str = "backgrounds.toml";
 /// music, and those made from MIDI files of the pack's own. Presentation, as [`BACKGROUNDS_FILE`].
 pub const MUSIC_FILE: &str = "music.toml";
 
+/// A game pack's file of its sprites' looks (docs/design/asset-formats.md §8): those made from pictures of the
+/// pack's own, with their animations' timing, and the ROMs' sprites it times otherwise. Presentation, as
+/// [`BACKGROUNDS_FILE`]: a sprite's timing is its sheet's, which no tick reads.
+pub const SPRITES_FILE: &str = "sprites.toml";
+
 /// The sections module source `source` gives definitions of: those a
 /// top-level local of its is written as (`local chip: Chip = {`, a series'
 /// `local chips: { [string]: Chip } = {`, or one declared to be one further

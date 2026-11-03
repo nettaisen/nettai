@@ -339,8 +339,8 @@ impl Hash for Object {
 /// A sprite's animation state, without its [`Look`](crate::object::sprite::Look).
 impl Hash for Sprite {
     fn hash<H: Hasher>(&self, h: &mut H) {
-        let Sprite { id, anim, frame, count, frame_flags, steps, look: _ } = self;
-        (id, anim, frame, count, frame_flags, steps).hash(h);
+        let Sprite { id, anim, steps, started, look: _ } = self;
+        (id, anim, steps, started).hash(h);
     }
 }
 

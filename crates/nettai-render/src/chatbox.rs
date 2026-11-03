@@ -147,11 +147,8 @@ pub fn prepare<'a>(
                 crate::lookups::animation(sheet, &b.content, id, look.anim, &who, problems);
                 note_true_face(b, navi, crate::custom::console_version(b, graphics, side), problems);
             }
-            // (Its animation timed as the content times its sprite.)
-            let timing: Vec<(u8, u8)> =
-                (0u16..).map_while(|f| b.content.animations.frame(id, look.anim, f)).map(|f| (f.duration, f.flags)).collect();
-            let frame = if timing.is_empty() { 0 } else { frame_after(&timing, look.updates) };
-            sheet.map(|sheet| (sheet, look, frame))
+            // (Its animation timed as its sheet times it.)
+            sheet.map(|sheet| (sheet, look, sheet.frame_index(look.anim, u32::from(look.updates), true)))
         }
         _ => None,
     };
@@ -395,7 +392,7 @@ fn draw_box(g: &Graphics, shapes: &[Option<nettai_assets::shapes::MapDrawing>], 
 }
 
 /// The portrait's parts at frame `k` of its animation (where the
-/// sprite's updates have stepped it, [`frame_after`]), drawn with its
+/// sprite's updates have stepped it, `SpriteSheet::frame_index`), drawn with its
 /// first palette plus the tint (`sub_8002818`), the last part in front.
 fn portrait_parts(sheet: &SpriteSheet, look: PortraitLook, k: usize) -> Vec<SpritePart<'_>> {
     let Some(&frame) = sheet.animations.get(look.anim as usize).and_then(|f| f.get(k)) else { return Vec::new() };
@@ -416,37 +413,6 @@ fn portrait_parts(sheet: &SpriteSheet, look: PortraitLook, k: usize) -> Vec<Spri
         .collect();
     out.reverse();
     out
-}
-
-/// The frame an animation is at after `updates` updates of the sprite
-/// (`sub_3006792`): each takes a tick off the frame's time, and while that
-/// leaves it spent moves on (to the next frame, or at the last back to the
-/// first if it loops, flag 0x40, else holding it) and takes a tick off the
-/// new frame's time too. A frame shows for its time in updates, the first
-/// counting from the update on the tick the animation is set.
-pub fn frame_after(frames: &[(u8, u8)], updates: u16) -> usize {
-    let (mut k, mut left) = (0usize, frames[0].0 as i32);
-    for _ in 0..updates {
-        loop {
-            left -= 1;
-            if left >= 0 {
-                break;
-            }
-            let flags = frames[k].1;
-            if flags & 0x80 != 0 {
-                if flags & 0x40 != 0 {
-                    k = 0;
-                    left = frames[0].0 as i32;
-                } else {
-                    left = 1;
-                }
-            } else {
-                k = (k + 1).min(frames.len() - 1);
-                left = frames[k].0 as i32;
-            }
-        }
-    }
-    k
 }
 
 /// A color with the tint added, each channel saturating
@@ -483,16 +449,6 @@ mod tests {
     use super::*;
     use crate::strings::DisplayText;
     use nettai_battle::Content;
-
-    #[test]
-    fn an_animation_steps_by_its_frames_times_and_loops_or_holds() {
-        // MegaMan's talking face: 7, 6, then loops from the start.
-        let talking = [(7, 0), (6, 0xC0)];
-        let at = |n| frame_after(&talking, n);
-        assert_eq!((at(1), at(7), at(8), at(13), at(14)), (0, 0, 1, 1, 0));
-        // A still face holds its one frame.
-        assert_eq!(frame_after(&[(6, 0x80)], 100), 0);
-    }
 
     /// The units of a translation shown tick by tick until the chatbox
     /// waits for a key, while it shows text.

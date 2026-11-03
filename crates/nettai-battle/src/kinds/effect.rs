@@ -116,6 +116,14 @@ pub fn xy_unknown(b: &Battle, r: ObjectRef) -> bool {
     matches!(&b.objects.get(r).vars, crate::kinds::Vars::Effect(v) if v.xy_unknown)
 }
 
+/// Whether `r`'s X and Y aren't the original's, for comparing them with its
+/// recordings: an effect whose X and Y the engine doesn't know, or an
+/// object drawn riding on another's sprite (`Look::attach`: the original
+/// adds the part's place in the other's frame, which is drawing's here).
+pub fn xy_not_the_originals(b: &Battle, r: ObjectRef) -> bool {
+    xy_unknown(b, r) || b.objects.sprite(r).look.attach.is_some()
+}
+
 /// `sub_80E060E`: make an effect's visibility follow `owner`.
 pub fn follow(b: &mut Battle, r: ObjectRef, owner: ObjectRef) {
     let o = b.objects.get_mut(r);
@@ -139,7 +147,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let sprite = b.objects.sprite_mut(r);
     sprite.load(id);
     sprite.set_animation(anim, &b.content);
-    sprite.update(&b.content);
+    sprite.update();
     let look = &mut sprite.look;
     look.shadow = Shadow::WithSprite;
     look.set_palette(palette.wrapping_add(palette_add));
@@ -175,10 +183,9 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         if (b.objects.get(r).timer as i16) <= 0 {
             let steps = b.content.effect(look(b, r).expect("an effect with its look")).steps;
             destroy = b.objects.sprite(r).steps >= u32::from(steps);
-            crate::object::sprite::check_played(b, r, destroy, steps);
         }
     }
-    b.objects.sprite_mut(r).update(&b.content);
+    b.objects.sprite_mut(r).update();
     if destroy {
         let o = b.objects.get_mut(r);
         o.set_visible(false);

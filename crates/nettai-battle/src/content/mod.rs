@@ -205,21 +205,17 @@ pub struct Content {
     /// tables): the engine has no game's rules of its own to give them. A
     /// game pack that states none doesn't load. Read by [`Content::rules`].
     pub rules: Option<Rules>,
-    /// Every sprite's animation timing, as the content defines it
-    /// (`asset.sprite(name, animations)`), by handle: made by
-    /// [`Content::define`].
-    pub animations: Animations,
-    /// The assets the content names (`asset.sound("throw")`, a sprite where
-    /// its module defines it), whose places are their handles: made by
+    /// The assets the content names (`asset.sound("throw")`,
+    /// `asset.sprite("bomb")`), whose places are their handles: made by
     /// [`Content::define`] (docs/design/content-model-v2.md §6.3). No asset
     /// is read: what number the game's assets give each is a frontend's
     /// (`nettai_content_api::AssetNumbers`).
     pub assets: nettai_content_api::AssetNames,
     /// The assets the content makes from files of its own, not its ROMs'
-    /// (`asset.background(name, { file = ... })`, a sprite's `file`, a
-    /// sound's): made by
-    /// [`Content::define`], and added to the game's assets as they load
-    /// (`nettai_content::custom`). Presentation, left out of the hash.
+    /// (its `backgrounds.toml`'s, `music.toml`'s and `sprites.toml`'s, which
+    /// also times a ROM's sprite otherwise): made by [`Content::define`], and
+    /// added to the game's assets as they load (`nettai_content::custom`).
+    /// Presentation, left out of the hash.
     pub custom_assets: nettai_content_api::CustomAssets,
     /// Each background's music (its `backgrounds.toml`'s): what a round
     /// drawn on it plays where the player picked none
@@ -332,10 +328,8 @@ impl Content {
         let nettai_luau::DefinePhase { definitions, compiled, assets, mut recipes } =
             nettai_luau::define(&self.scripts.pack_to_define(), nettai_luau::Options::default())?;
         self.scripts.recipe = self.scripts.games().first().and_then(|g| recipes.remove(g));
-        // The assets the modules name, and the sprites they define.
+        // The assets the modules name.
         self.assets = assets.names;
-        self.animations = Animations { sprites: assets.sprites };
-        self.custom_assets = assets.custom;
         self.present();
         // What the load read is the content's modules from here on (those
         // it read from the packs' folders with those held in memory).
@@ -378,6 +372,7 @@ impl Content {
         self.assets.backgrounds = names;
         self.custom_assets.backgrounds = p.custom_backgrounds.clone();
         self.custom_assets.sounds = p.songs.clone();
+        self.custom_assets.sprites = p.sprites.clone();
         self.background_music = p.music.clone();
     }
 

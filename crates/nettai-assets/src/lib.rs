@@ -190,8 +190,10 @@ pub struct SpriteSheet {
     pub animations: Vec<Vec<SpriteFrame>>,
 }
 
-/// One animation frame: what it draws. How long it shows, and whether its
-/// animation loops, are the content's (its sprite's definition).
+/// One animation frame: what it draws, how long it shows, and whether its
+/// animation ends or loops after it. Its timing is the sheet's alone: the
+/// battle counts a sprite's steps, and drawing finds the frame those reach
+/// ([`SpriteSheet::frame_index`]).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct SpriteFrame {
     /// Index into `tilesets`.
@@ -200,6 +202,76 @@ pub struct SpriteFrame {
     pub palette_set: u16,
     /// Index into `part_lists`.
     pub parts: u16,
+    /// Steps it shows for.
+    pub duration: u8,
+    /// [`FRAME_LAST`] on its animation's last frame, with [`FRAME_LOOP`]
+    /// where the animation plays again from its first.
+    pub flags: u8,
+}
+
+/// A frame's flag: its animation's last.
+pub const FRAME_LAST: u8 = 0x80;
+/// A last frame's flag: after it, its animation plays again from its first.
+pub const FRAME_LOOP: u8 = 0x40;
+
+impl SpriteSheet {
+    /// The frame of animation `anim` a sprite shows after `steps` steps
+    /// (`sub_3006792`, each a tick off the frame's time): from the
+    /// animation's start (`started`), or else from a sprite just loaded,
+    /// whose blank timing moves on to the second frame at its first step.
+    /// Past the animation's frames (or the sheet's animations) every frame
+    /// is one step long and the last. Its index may be past the last
+    /// frame, as the game's can be.
+    pub fn frame_index(&self, anim: u8, steps: u32, started: bool) -> usize {
+        let frames = self.animations.get(anim as usize).map_or(&[][..], Vec::as_slice);
+        frame_index(frames, steps, started)
+    }
+}
+
+/// [`SpriteSheet::frame_index`] of an animation of `frames`.
+pub fn frame_index(frames: &[SpriteFrame], steps: u32, started: bool) -> usize {
+    let timing = |i: usize| frames.get(i).map_or((1, FRAME_LAST), |f| (f.duration, f.flags & (FRAME_LAST | FRAME_LOOP)));
+    let (mut frame, (mut count, mut flags)) = (0, if started { timing(0) } else { (0, 0) });
+    // A looping animation comes back to its state after its first restart once a round: count its rounds off.
+    let mut round: Option<(u32, u32)> = None;
+    let mut step = 0;
+    while step < steps {
+        loop {
+            let old = count;
+            count = old.wrapping_sub(1);
+            if old != 0 {
+                break;
+            }
+            if flags & FRAME_LAST != 0 {
+                if flags & FRAME_LOOP != 0 {
+                    frame = 0;
+                    (count, flags) = timing(0);
+                    if frames.iter().all(|f| f.duration == 0) {
+                        // (The game would spin here forever: show the first.)
+                        return 0;
+                    }
+                    match round {
+                        None => round = Some((step, 0)),
+                        Some((first, 0)) => {
+                            let len = step - first;
+                            round = Some((first, len));
+                            // Skip whole rounds.
+                            let left = steps - step - 1;
+                            step += left / len * len;
+                        }
+                        Some(_) => {}
+                    }
+                } else {
+                    count = 1;
+                }
+            } else {
+                frame += 1;
+                (count, flags) = timing(frame);
+            }
+        }
+        step += 1;
+    }
+    frame
 }
 
 /// One hardware sprite of a frame. The first part of every frame is the
@@ -907,5 +979,64 @@ mod tests {
         };
         assert_eq!(font(0, 1, 3).ink(), 1, "EXE6's and EXE5's");
         assert_eq!(font(1, 3, 2).ink(), 3, "EXE4's");
+    }
+}
+
+#[cfg(test)]
+mod frame_tests {
+    use super::*;
+
+    fn timed(t: &[(u8, u8)]) -> Vec<SpriteFrame> {
+        t.iter().map(|&(duration, flags)| SpriteFrame { duration, flags, ..Default::default() }).collect()
+    }
+
+    /// The frame `steps` steps reach, as `sub_3006792` steps a sprite one at a time (the reference).
+    fn stepped(frames: &[SpriteFrame], steps: u32, started: bool) -> usize {
+        let timing = |i: usize| frames.get(i).map_or((1u8, FRAME_LAST), |f| (f.duration, f.flags & (FRAME_LAST | FRAME_LOOP)));
+        let (mut frame, (mut count, mut flags)) = (0, if started { timing(0) } else { (0, 0) });
+        for _ in 0..steps {
+            loop {
+                let old = count;
+                count = old.wrapping_sub(1);
+                if old != 0 {
+                    break;
+                }
+                if flags & FRAME_LAST != 0 {
+                    if flags & FRAME_LOOP != 0 {
+                        frame = 0;
+                        (count, flags) = timing(0);
+                    } else {
+                        count = 1;
+                    }
+                } else {
+                    frame += 1;
+                    (count, flags) = timing(frame);
+                }
+            }
+        }
+        frame
+    }
+
+    /// An animation steps by its frames' times, and loops or holds; a sprite just loaded moves on to its second
+    /// frame at its first step; past the animation every frame is a step long.
+    #[test]
+    fn an_animation_steps_by_its_frames_times_and_loops_or_holds() {
+        // MegaMan's talking face: 7, 6, then loops from the start.
+        let talking = timed(&[(7, 0), (6, 0xC0)]);
+        let at = |n| frame_index(&talking, n, true);
+        assert_eq!((at(1), at(7), at(8), at(13), at(14)), (0, 0, 1, 1, 0));
+        // A still face holds its one frame.
+        assert_eq!(frame_index(&timed(&[(6, 0x80)]), 100, true), 0);
+        // Just loaded: the second frame at once.
+        assert_eq!(frame_index(&timed(&[(3, 0), (3, 0x80)]), 1, false), 1);
+        // Against the step-by-step reference, far into loops too.
+        let shapes = [timed(&[(2, 0), (3, 0), (1, 0xC0)]), timed(&[(4, 0x80)]), timed(&[(1, 0), (0, 0), (2, 0xC0)]), timed(&[(3, 0xC0)]), timed(&[])];
+        for frames in &shapes {
+            for started in [true, false] {
+                for steps in (0..200).chain([1000, 12345]) {
+                    assert_eq!(frame_index(frames, steps, started), stepped(frames, steps, started), "{frames:?} {steps} {started}");
+                }
+            }
+        }
     }
 }

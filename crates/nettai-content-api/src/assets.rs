@@ -148,22 +148,11 @@ impl AssetNames {
     }
 }
 
-/// A sprite as content defines it (`asset.sprite(name, animations,
-/// { parts = ... })`): its animations as the battle times them, and where
-/// the parts content reads sit.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
-pub struct SpriteDef {
-    pub animations: Vec<SpriteAnimation>,
-    /// The parts content reads (`sprite:part_offset(n)`), by part number
-    /// (from 0): where the part sits in each frame (by animation, then
-    /// frame), in pixels from the object, unflipped. A sprite states those
-    /// alone; a part it doesn't state is at (0, 0).
-    pub parts: BTreeMap<u8, Vec<Vec<(i8, i8)>>>,
-}
-
-/// An animation: its frames' durations, in ticks and in order (its last
-/// frame ends it), and whether it loops (plays again from its first frame
-/// once its last is over) or holds its last frame.
+/// An animation of a sprite of the content's own (its `sprites.toml`): its
+/// frames' durations, in steps and in order (its last frame ends it), and
+/// whether it loops (plays again from its first frame once its last is
+/// over) or holds its last frame. Drawing's alone: the battle counts a
+/// sprite's steps.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct SpriteAnimation {
     pub frames: Vec<u8>,
@@ -171,13 +160,10 @@ pub struct SpriteAnimation {
 }
 
 /// What the define phase made of the assets content names: their names
-/// (the handles), each sprite's definition, by handle, and the sprites the
-/// content makes from files of its own.
+/// (the handles).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct DefinedAssets {
     pub names: AssetNames,
-    pub sprites: Vec<SpriteDef>,
-    pub custom: CustomAssets,
 }
 
 /// Each background's music (a game's `backgrounds.toml`: `acdc-area = {
@@ -225,6 +211,9 @@ pub struct Presentation {
     pub battle_themes: Vec<String>,
     /// The songs made from MIDI files of the content's own.
     pub songs: BTreeMap<String, CustomSound>,
+    /// The sprites made from pictures of the content's own, and the ROMs'
+    /// sprites it times otherwise (its `sprites.toml`), by name.
+    pub sprites: BTreeMap<String, CustomSprite>,
 }
 
 impl std::hash::Hash for Presentation {
@@ -233,13 +222,12 @@ impl std::hash::Hash for Presentation {
 
 /// The assets content makes from files of its own, not the ROMs'
 /// (docs/design/asset-formats.md §7, "Custom assets"): each defined once,
-/// with its file (a sprite by its module, `asset.sprite(name, animations,
-/// { file = "./bomb.png" })`; a background by the game's
-/// `backgrounds.toml`, a song by its `music.toml`), and added to the game's
-/// assets as they load, after its ROMs' (`nettai_content::custom`). By name.
+/// with its file (a background by the game's `backgrounds.toml`, a song by
+/// its `music.toml`, a sprite by its `sprites.toml`), and added to the
+/// game's assets as they load, after its ROMs' (`nettai_content::custom`).
+/// By name.
 ///
-/// Presentation: no tick reads one, so it is left out of a content's hash
-/// (the modules that state it are in it).
+/// Presentation: no tick reads one, so it is left out of a content's hash.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CustomAssets {
     pub backgrounds: BTreeMap<String, CustomBackground>,
@@ -281,18 +269,19 @@ pub struct CustomBackground {
     pub looping: bool,
 }
 
-/// A sprite made from a picture of the content's own
-/// (`asset.sprite(name, animations, { file = ..., frame = ..., origin =
-/// ..., shadow = ... })`): its frames, in its animations' order, each a
-/// cell of the picture. Its timing is its [`SpriteDef`]'s, as a ROM
-/// sprite's is.
+/// A sprite of the content's own (a game's `sprites.toml`: `[sprites.my-bomb]`,
+/// `file = "sprites/my_bomb.png"`, `animations = [[6, 4, 3, 2]]`): its
+/// frames, in its animations' order, each a cell of its picture, and how
+/// long each shows. One without a picture is a ROM's sprite timed otherwise
+/// (its animations as many, each of as many frames, as the ROM's).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CustomSprite {
-    /// The module that defines it.
-    pub module: String,
+    /// The file that defines it, for what is said of it (`exe6/sprites.toml`).
+    pub source: String,
     /// Its frames: an indexed PNG of cells, by its pack and its path in the
-    /// pack (as [`CustomBackground::file`]).
-    pub file: String,
+    /// pack (as [`CustomBackground::file`]); none: the ROM's sprite of its
+    /// name, timed by `animations`.
+    pub file: Option<String>,
     /// A cell's width and height in pixels; none: the picture is one row of
     /// as many cells as the animations have frames.
     pub frame: Option<(u16, u16)>,
@@ -303,6 +292,8 @@ pub struct CustomSprite {
     /// the ground or hide): an indexed PNG, by its pack and its path, drawn
     /// centered on the object's place; none: no shadow.
     pub shadow: Option<String>,
+    /// Its animations: how many frames each has, and how long each shows.
+    pub animations: Vec<SpriteAnimation>,
 }
 
 /// A song made from a MIDI file of the content's own (a game's

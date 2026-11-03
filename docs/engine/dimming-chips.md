@@ -717,8 +717,9 @@ small per-aim tables of §8 and §7 are the kinds' constants. Collision types: r
 
 Framework (Rust): `sub_801A7CC` is `Object:raise_barrier` (the barrier byte by behavior: plain 1, bubble 8,
 regenerating 0xA), with the charge glow's clobbered link (§3.4); `dimming.hide_user_sparing` (`sub_80E1352` with
-mask 0xF); @exelib/overlays' `add_parts_of`/`remove_parts_of` (BugFix's glow); and `Sprite:part_offset`
-(`sub_80030BA`: where a part of the current frame sits, which the pack's sprite layouts give; the propeller, §7.3).
+mask 0xF); @exelib/overlays' `add_parts_of`/`remove_parts_of` (BugFix's glow); and `Sprite:attach`
+(`sub_80030BA`'s place: the propeller is drawn where the plane's part 1 sits in its frame, §7.3; drawing's, so the
+trace comparison skips the propeller's X and Y, `effect::xy_not_the_originals`).
 The looks by identity (BugFix's glow, `sub_800F26C` §9.3) and the hand's damage test (§10.2) are Luau over the
 definitions and the hand's entries (@exelib/looks, @exelib/chip_hand). AntiNavi is done (§2).
 

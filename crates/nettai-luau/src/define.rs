@@ -44,10 +44,7 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::ffi::c_void;
 use std::rc::Rc;
 
-use nettai_content_api::{
-    AssetKind, AssetNames, CustomAssets, CustomSprite, Data, DataKey, DefinedAssets, Definition, Definitions, Registry, SpriteDef, keys,
-    valid_key,
-};
+use nettai_content_api::{AssetKind, AssetNames, Data, DataKey, DefinedAssets, Definition, Definitions, Registry, keys, valid_key};
 use mlua::{Lua, Table, Value as LuaValue};
 
 /// What a tag constructor says of a table: its type, and where it was
@@ -119,7 +116,7 @@ type Ptr = *const c_void;
 
 /// Asset values (docs/design/content-model-v2.md §6.3): one frozen table
 /// per asset, `{ name = "bomb" }` with its kind's metatable, made when
-/// content first names the asset (a sprite: where its module defines it).
+/// content first names the asset.
 /// The binding finds an asset by its table's identity, as it finds a
 /// definition. The handles are made once loading is done ([`AssetTables::finish`]):
 /// each kind's names in byte order, whatever order the modules named them in.
@@ -127,11 +124,6 @@ pub(crate) struct AssetTables {
     metas: Vec<(AssetKind, Table)>,
     /// Each asset content has named, by kind and name.
     named: BTreeMap<(AssetKind, String), Table>,
-    /// The sprites content defines, by name: the module that defines each,
-    /// and its definition.
-    sprites: BTreeMap<String, (String, SpriteDef)>,
-    /// The sprites content makes from files of its own, by name.
-    custom: CustomAssets,
     /// The names, once loading is done: their places are the handles.
     pub names: AssetNames,
     pub by_ptr: HashMap<Ptr, (AssetKind, u16)>,
@@ -151,8 +143,6 @@ impl AssetTables {
         Ok(AssetTables {
             metas,
             named: BTreeMap::new(),
-            sprites: BTreeMap::new(),
-            custom: CustomAssets::default(),
             names: AssetNames::default(),
             by_ptr: HashMap::new(),
             by_handle: HashMap::new(),
@@ -173,23 +163,6 @@ impl AssetTables {
         Ok(t)
     }
 
-    /// Sprite `name` as module `module` defines it: its value. A sprite is
-    /// defined once.
-    fn define_sprite(&mut self, lua: &Lua, module: &str, name: &str, def: SpriteDef, custom: Option<CustomSprite>) -> mlua::Result<Table> {
-        if let Some((other, _)) = self.sprites.get(name) {
-            return Err(mlua::Error::runtime(format!(
-                "{module}: sprite {name:?} is defined twice: in {}.luau and in {}.luau (a sprite is defined once, by its module: require it)",
-                keys::module_path(other),
-                keys::module_path(module)
-            )));
-        }
-        self.sprites.insert(name.to_string(), (module.to_string(), def));
-        if let Some(custom) = custom {
-            self.custom.sprites.insert(name.to_string(), custom);
-        }
-        self.named(lua, AssetKind::Sprite, name)
-    }
-
     /// Loading is done: every name content gave, each kind's in byte order,
     /// are the handles.
     pub fn finish(&mut self) {
@@ -201,12 +174,9 @@ impl AssetTables {
         }
     }
 
-    /// What the define phase made of the assets: their names and the
-    /// sprites' definitions, by handle. (Every sprite named is defined: a
-    /// sprite is named only by its definition.)
+    /// What the define phase made of the assets: their names, by handle.
     pub fn defined(&self) -> DefinedAssets {
-        let sprites = self.names.sprites.iter().map(|n| self.sprites[n].1.clone()).collect();
-        DefinedAssets { names: self.names.clone(), sprites, custom: self.custom.clone() }
+        DefinedAssets { names: self.names.clone() }
     }
 
     /// The value of asset `h` of `kind`.
@@ -223,158 +193,10 @@ impl AssetTables {
     }
 }
 
-/// A sprite's definition, as content writes it (`asset.sprite(name,
-/// animations, { parts = ... })`, core.d.luau's `SpriteAnimation` and
-/// `SpriteParts`): its animations, each its frames' durations in ticks (1
-/// to 255) with `loop = true` where it loops; and the parts content reads,
-/// by part number, each animation's frames' `{ x, y }`, as many as the
-/// animations' frames.
-fn sprite_def(at: &str, module: &str, animations: &LuaValue, extra: &LuaValue) -> Result<(SpriteDef, Option<CustomSprite>), String> {
-    let int = |v: &LuaValue, what: &str, lo: i64, hi: i64| -> Result<i64, String> {
-        let n = match v {
-            LuaValue::Integer(i) => i64::from(*i),
-            LuaValue::Number(n) if n.fract() == 0.0 && n.abs() < 1e15 => *n as i64,
-            v => return Err(format!("{at}: {what} is a {}, not an integer", v.type_name())),
-        };
-        if !(lo..=hi).contains(&n) {
-            return Err(format!("{at}: {what} is {n}, not {lo} to {hi}"));
-        }
-        Ok(n)
-    };
-    let LuaValue::Table(list) = animations else {
-        return Err(format!(
-            "{at}: asset.sprite(name, animations) takes the sprite's animations (a list, each its frames' durations), not {} (a sprite is defined once, by its module: require it)",
-            animations.type_name()
-        ));
-    };
-    let mut def = SpriteDef::default();
-    for (k, v) in fields(list, at)? {
-        if k != DataKey::Int(def.animations.len() as i64 + 1) {
-            return Err(format!("{at}: the animations are a list (1, 2, ...), not keyed {k}"));
-        }
-        let what = format!("animation {}", def.animations.len());
-        let LuaValue::Table(anim) = v else { return Err(format!("{at}: {what} is a {}, not a table of durations", v.type_name())) };
-        let mut a = nettai_content_api::SpriteAnimation::default();
-        for (k, v) in fields(&anim, at)? {
-            match k {
-                DataKey::Int(i) if i == a.frames.len() as i64 + 1 => {
-                    a.frames.push(int(&v, &format!("{what}'s frame {}", a.frames.len()), 1, 255)? as u8)
-                }
-                DataKey::Str(s) if s == "loop" => match v {
-                    LuaValue::Boolean(b) => a.looping = b,
-                    v => return Err(format!("{at}: {what}'s `loop` is a {}, not a boolean", v.type_name())),
-                },
-                k => return Err(format!("{at}: {what} holds its frames' durations (1, 2, ...) and `loop`, not {k}")),
-            }
-        }
-        if a.frames.is_empty() {
-            return Err(format!("{at}: {what} has no frame"));
-        }
-        def.animations.push(a);
-    }
-    let mut custom = CustomSprite { module: module.to_string(), ..Default::default() };
-    let pair = |v: &LuaValue, what: &str, lo: i64, hi: i64| -> Result<(i64, i64), String> {
-        let wrong = || format!("{at}: `{what}` is {{ x, y }}, each an integer from {lo} to {hi}");
-        let LuaValue::Table(t) = v else { return Err(wrong()) };
-        match &fields(t, at)?[..] {
-            [(DataKey::Int(1), x), (DataKey::Int(2), y)] => Ok((int(x, what, lo, hi).map_err(|_| wrong())?, int(y, what, lo, hi).map_err(|_| wrong())?)),
-            _ => Err(wrong()),
-        }
-    };
-    let path = |v: &LuaValue, what: &str| -> Result<String, String> {
-        let LuaValue::String(p) = v else { return Err(format!("{at}: `{what}` is a {}, not a path", v.type_name())) };
-        asset_file(at, module, &p.to_str().map_err(|e| format!("{at}: `{what}` isn't UTF-8 ({e})"))?, "png").map_err(|e| e.replace("`file`", &format!("`{what}`")))
-    };
-    match extra {
-        LuaValue::Nil => {}
-        LuaValue::Table(t) => {
-            for (k, v) in fields(t, at)? {
-                match &k {
-                    DataKey::Str(s) if s == "file" => {
-                        custom.file = path(&v, "file")?;
-                        continue;
-                    }
-                    DataKey::Str(s) if s == "shadow" => {
-                        custom.shadow = Some(path(&v, "shadow")?);
-                        continue;
-                    }
-                    DataKey::Str(s) if s == "frame" => {
-                        let (w, h) = pair(&v, "frame", 1, 255)?;
-                        custom.frame = Some((w as u16, h as u16));
-                        continue;
-                    }
-                    DataKey::Str(s) if s == "origin" => {
-                        let (x, y) = pair(&v, "origin", -255, 510)?;
-                        custom.origin = Some((x as i16, y as i16));
-                        continue;
-                    }
-                    DataKey::Str(s) if s == "parts" => {}
-                    k => {
-                        return Err(format!(
-                            "{at}: a sprite's third argument holds its `parts`, and for a sprite made from a picture its `file`, `frame`, `origin` and `shadow`, not {k}"
-                        ));
-                    }
-                }
-                let LuaValue::Table(parts) = v else { return Err(format!("{at}: `parts` is a {}, not a table", v.type_name())) };
-                for (k, v) in fields(&parts, at)? {
-                    let DataKey::Int(n) = k else { return Err(format!("{at}: `parts` is keyed by part number, not {k}")) };
-                    let n = int(&LuaValue::Integer(n as _), "a part's number", 0, 31)? as u8;
-                    let what = format!("part {n}");
-                    let LuaValue::Table(by_anim) = v else { return Err(format!("{at}: {what} is a {}, not a table", v.type_name())) };
-                    let mut offsets = Vec::new();
-                    for (i, (k, v)) in fields(&by_anim, at)?.into_iter().enumerate() {
-                        let frames = def.animations.get(i).map_or(0, |a| a.frames.len());
-                        let what = format!("{what}, animation {i}");
-                        let LuaValue::Table(by_frame) = v else { return Err(format!("{at}: {what} is a {}, not a table", v.type_name())) };
-                        if k != DataKey::Int(i as i64 + 1) {
-                            return Err(format!("{at}: {what}: a part's offsets are a list by animation"));
-                        }
-                        let mut anim = Vec::new();
-                        for (j, (k, v)) in fields(&by_frame, at)?.into_iter().enumerate() {
-                            let LuaValue::Table(xy) = v else { return Err(format!("{at}: {what}, frame {j} is a {}, not {{ x, y }}", v.type_name())) };
-                            let xy = fields(&xy, at)?;
-                            if k != DataKey::Int(j as i64 + 1) || xy.len() != 2 || xy[0].0 != DataKey::Int(1) || xy[1].0 != DataKey::Int(2) {
-                                return Err(format!("{at}: {what}, frame {j}: an offset is {{ x, y }}, in a list by frame"));
-                            }
-                            let c = |v: &LuaValue| int(v, &format!("{what}, frame {j}'s offset"), -128, 127).map(|n| n as i8);
-                            anim.push((c(&xy[0].1)?, c(&xy[1].1)?));
-                        }
-                        if anim.len() != frames {
-                            return Err(format!("{at}: {what} has {} offsets, and the animation {frames} frames", anim.len()));
-                        }
-                        offsets.push(anim);
-                    }
-                    if offsets.len() != def.animations.len() {
-                        return Err(format!("{at}: {what} has offsets for {} animations, and the sprite has {}", offsets.len(), def.animations.len()));
-                    }
-                    def.parts.insert(n, offsets);
-                }
-            }
-        }
-        v => return Err(format!("{at}: a sprite's third argument is a table (`{{ parts = ... }}`), not {}", v.type_name())),
-    }
-    if custom.file.is_empty() {
-        if custom != (CustomSprite { module: module.to_string(), ..Default::default() }) {
-            return Err(format!("{at}: `frame`, `origin` and `shadow` are a sprite's made from a picture: it names its `file` (an indexed PNG)"));
-        }
-        return Ok((def, None));
-    }
-    Ok((def, Some(custom)))
-}
-
-/// The file `path` names, written in module `module`, as a custom asset's file is named: its pack, then its path in
-/// the pack (`exe6:backgrounds/my_stage.png`), its extension `extension`.
-fn asset_file(at: &str, module: &str, path: &str, extension: &str) -> Result<String, String> {
-    if !path.rsplit_once('.').is_some_and(|(_, ext)| ext == extension) {
-        return Err(format!("{at}: `file` {path:?} is a .{extension} file"));
-    }
-    keys::resolve(module, path).map_err(|e| format!("{at}: `file`: {}", e.replace("require(", "file(")))
-}
-
 /// Install `asset`: a resolver per asset kind, working while content
-/// loads. A sprite is defined where its module makes it
-/// (`asset.sprite("bomb", animations)`); any other asset is named
-/// (`asset.sound("throw")`).
+/// loads: an asset is named (`asset.sound("throw")`, `asset.sprite("bomb")`).
+/// How a sprite animates is its sheet's (a ROM's, or a game's
+/// `sprites.toml`'s), which no tick reads.
 pub(crate) fn install_assets(
     lua: &Lua,
     tables: &Rc<RefCell<AssetTables>>,
@@ -394,7 +216,7 @@ pub(crate) fn install_assets(
         let tables = Rc::downgrade(tables);
         let module = module.clone();
 
-        let f = lua.create_function(move |lua, (name, animations, extra): (LuaValue, LuaValue, LuaValue)| {
+        let f = lua.create_function(move |lua, (name, extra): (LuaValue, mlua::MultiValue)| {
             let what = format!("asset.{kind}");
             let at = module().ok_or_else(|| mlua::Error::runtime(format!("{what}: assets are named while content loads")))?;
             let tables = tables.upgrade().ok_or_else(|| mlua::Error::runtime(format!("{what}: content has loaded")))?;
@@ -402,12 +224,12 @@ pub(crate) fn install_assets(
                 return Err(mlua::Error::runtime(format!("{at}: {what} takes a name, not {}", name.type_name())));
             };
             let name = name.to_str()?.to_string();
-            if kind == AssetKind::Sprite {
-                let (def, custom) = sprite_def(&format!("{at}: sprite {name:?}"), &at, &animations, &extra).map_err(mlua::Error::runtime)?;
-                return tables.borrow_mut().define_sprite(lua, &at, &name, def, custom);
-            }
-            if !animations.is_nil() || !extra.is_nil() {
-                let made = if kind == AssetKind::Sound { " (a song of the content's own is its music.toml's)" } else { "" };
+            if extra.iter().any(|v| !v.is_nil()) {
+                let made = match kind {
+                    AssetKind::Sound => " (a song of the content's own is its music.toml's)",
+                    AssetKind::Sprite => " (how a sprite animates is its sheet's: a sprite of the content's own, or a ROM's retimed, is its sprites.toml's)",
+                    _ => "",
+                };
                 return Err(mlua::Error::runtime(format!("{at}: {what} takes a name alone{made}")));
             }
             tables.borrow_mut().named(lua, kind, &name)

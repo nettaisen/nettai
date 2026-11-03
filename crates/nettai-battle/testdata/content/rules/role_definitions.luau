@@ -8,11 +8,11 @@
 local sprites = require("../sprites")
 
 local function effect(): Effect
-    return new.effect { sprite = sprites["test-burst"], anim = 0, palette = 0 }
+    return new.effect { sprite = sprites["test-burst"], anim = 0, palette = 0, steps = 9 }
 end
 
 local function spark(): Spark
-    return new.spark { sprite = sprites["test-spark"], anim = 0, palette = 0 }
+    return new.spark { sprite = sprites["test-spark"], anim = 0, palette = 0, steps = 4 }
 end
 
 -- A collision type's flag words: an attack, an object and a body of each

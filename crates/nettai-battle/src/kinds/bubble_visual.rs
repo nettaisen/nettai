@@ -68,7 +68,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let flip = o.alliance ^ o.flip;
     let s = b.objects.sprite_mut(r);
     s.set_animation(ANIM_FLOAT, &b.content);
-    s.update(&b.content);
+    s.update();
     s.look.set_flip(flip);
     let o = b.objects.get_mut(r);
     o.state = state::UPDATE;
@@ -120,7 +120,6 @@ fn pop(b: &mut Battle, r: ObjectRef) {
     }
     let steps = b.game_rules().effects.bubble_pop_steps.expect("a bubble in a game whose rules state no `effects.bubble_pop_steps`");
     let finished = b.objects.sprite(r).steps >= u32::from(steps);
-    crate::object::sprite::check_played(b, r, finished, steps);
     if finished {
         b.objects.free(r);
     }

@@ -1,9 +1,9 @@
 //! Custom assets (docs/design/asset-formats.md §7): what a game's content makes from files of its own rather than
-//! its ROMs (`Content::custom_assets`, which its modules define: `asset.background("my-stage", { file =
-//! "./my_stage.png" })`). Each is made into the model the ROMs' assets are extracted into and added to the game's
-//! assets after them, under its name, numbered past the ROMs' ([`add`]); a frontend then draws it as it draws theirs.
-//! One with the name of a ROM asset stands in its place: the name is the custom one's (another name the ROM asset has
-//! keeps it).
+//! its ROMs (`Content::custom_assets`, which its `backgrounds.toml`, `music.toml` and `sprites.toml` state). Each is
+//! made into the model the ROMs' assets are extracted into and added to the game's assets after them, under its name,
+//! numbered past the ROMs' ([`add`]); a frontend then draws it as it draws theirs. One with the name of a ROM asset
+//! stands in its place: the name is the custom one's (another name the ROM asset has keeps it). A sprite of
+//! `sprites.toml` without a picture times a ROM's sprite otherwise, in place.
 //! They are GBA-shaped, as the ROMs' are: pictures indexed, 16 colors to a palette, cut into 8x8 tiles; songs the M4A
 //! driver's, from MIDI files, with instruments of their own from WAV recordings.
 
@@ -15,7 +15,7 @@ mod sprite;
 pub use background::BACKGROUND_FIRST_TILE;
 
 use nettai_assets::Bundle;
-use nettai_content_api::{AssetIndex, AssetKind, SpriteNumber, keys, packs};
+use nettai_content_api::{AssetIndex, SpriteNumber, keys, packs};
 
 /// Add content `c`'s custom assets to its game's assets as its ROMs gave them: their graphics `graphics`, their sound
 /// `sound` and their index `index`, each at a number of its own past theirs, under its name (one the ROMs have too is
@@ -73,16 +73,17 @@ pub fn add(c: &nettai_battle::Content, graphics: &mut Bundle, sound: &mut m4a::S
         Some(last) => last.checked_add(1).map(|c| (c, 0)),
     };
     for (name, def) in &c.custom_assets.sprites {
-        let at = format!("{}.luau: sprite {name:?}", keys::module_path(&def.module));
-        let frames: Vec<usize> = c
-            .assets
-            .handle(AssetKind::Sprite, name)
-            .and_then(|h| c.animations.sprites.get(h as usize))
-            .map(|d| d.animations.iter().map(|a| a.frames.len()).collect())
-            .unwrap_or_default();
+        let at = format!("{}: sprite {name:?}", def.source);
+        let Some(file) = &def.file else {
+            // A ROM's sprite timed otherwise: its frames as the ROM's, their durations the file's.
+            let id = index.sprites.get(name).ok_or_else(|| format!("{at}: no sprite the ROMs have is named so (one of the content's own names its `file`)"))?;
+            let sheet = graphics.sprites.iter_mut().find(|s| (s.category, s.index) == (id.category, id.index));
+            let sheet = sheet.ok_or_else(|| format!("{at}: the ROMs' sheet {:02x}-{:02x} isn't there", id.category, id.index))?;
+            sprite::retime(sheet, &def.animations).map_err(|e| format!("{at}: {e}"))?;
+            continue;
+        };
         let shadow = def.shadow.as_ref().map(|f| read(dirs, f).map_err(|e| format!("{at}: {f}: {e}"))).transpose()?;
-        let mut sheet =
-            read(dirs, &def.file).and_then(|bytes| sprite::sprite(&bytes, shadow.as_deref(), def, &frames)).map_err(|e| format!("{at}: {}: {e}", def.file))?;
+        let mut sheet = read(dirs, file).and_then(|bytes| sprite::sprite(&bytes, shadow.as_deref(), def)).map_err(|e| format!("{at}: {file}: {e}"))?;
         let (category, n) = next.ok_or_else(|| format!("{at}: no sprite numbers are left past the ROMs'"))?;
         (sheet.category, sheet.index) = (category, n);
         graphics.sprites.push(sheet);

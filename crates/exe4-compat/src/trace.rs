@@ -1408,7 +1408,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
                 None => format!("type {} {key} (no EXE4 number)", type_of_pool(o.pool)),
             };
             let (garbage, zf) = skip(i, x.flags);
-            let xy = nettai_battle::kinds::effect::xy_unknown(b, o);
+            let xy = nettai_battle::kinds::effect::xy_not_the_originals(b, o);
             let action = match compat.navi_action(b, o) {
                 Ok(n) => format!("{n:#04x}"),
                 Err(e) => format!("? ({e})"),
@@ -1447,7 +1447,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
         .enumerate()
         .map(|(i, o)| {
             let (garbage, zf) = skip(i, o.flags);
-            let xy = order.get(i).is_some_and(|&r| nettai_battle::kinds::effect::xy_unknown(b, r));
+            let xy = order.get(i).is_some_and(|&r| nettai_battle::kinds::effect::xy_not_the_originals(b, r));
             vec![
                 ("kind", format!("type {} #{:#04x}", o.kind, o.index)),
                 ("flags", format!("{:#04x}", o.flags)),

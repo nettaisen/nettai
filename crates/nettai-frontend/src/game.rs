@@ -97,11 +97,6 @@ pub struct Game {
     /// the game's own, extracted with it, and each other game's, extracted
     /// from its own ROMs the first time one of them is wanted ([`others`]).
     pub others: Arc<OtherBackgrounds>,
-    /// Where the content times its sprites otherwise than the ROMs
-    /// (`nettai_extract::Extraction::timing_differences`), each named:
-    /// none, and the content's timing is the ROMs'. A battle is timed by
-    /// the content's whatever this says.
-    pub timing_differences: Vec<String>,
     pub report: Report,
 }
 
@@ -212,7 +207,7 @@ impl ContentLoaded {
         for warning in &own.warnings {
             report.note(format!("{name}'s assets"), warning.clone());
         }
-        let numbers = match nettai_content::load::asset_numbers(&content, &own.index, &own.graphics) {
+        let numbers = match nettai_content::load::asset_numbers(&content, &own.index) {
             Ok((numbers, r)) => {
                 report.issues.extend(r.issues);
                 numbers
@@ -222,7 +217,6 @@ impl ContentLoaded {
                 return Err(failed(report));
             }
         };
-        let timing_differences = own.timing_differences(&content.assets, &content.animations.sprites, &numbers);
         // The background pool's: the game's own, extracted now (and kept for the run: another game's pool has them
         // too), and each other game's, when first wanted.
         let mut others = OtherBackgrounds::default();
@@ -244,7 +238,6 @@ impl ContentLoaded {
             numbers: Arc::new(numbers),
             index: Arc::new(index),
             others: Arc::new(others),
-            timing_differences,
             report,
         })
     }

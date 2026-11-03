@@ -31,11 +31,12 @@ game's `depends.lock` names its support packs' commits. It needs no ROMs. `netta
 
 A game can have backgrounds, sprites and songs of its own, beside the ones extracted from its ROMs: pictures as
 indexed PNGs in the GBA's colors, songs as MIDI files (with WAV recordings for instruments). One given the name of
-a ROM asset replaces it wherever that name is used (a reskin). A game's backgrounds and music are presentation, so
-they are stated in two files of its folder, not in its modules, and changing them leaves the content's hash (what
-two players compare to play together) as it was: `backgrounds.toml` (the background its link battle stages are
-drawn on, those its link battles pick one of at random, and each background's music) and `music.toml` (the battle
-themes a player may pick, and songs of its own). A background is 16 colors, each side a multiple of 8 pixels:
+a ROM asset replaces it wherever that name is used (a reskin). A game's backgrounds, music and sprites' looks are
+presentation, so they are stated in three files of its folder, not in its modules, and changing them leaves the
+content's hash (what two players compare to play together) as it was: `backgrounds.toml` (the background its link
+battle stages are drawn on, those its link battles pick one of at random, and each background's music),
+`music.toml` (the battle themes a player may pick, and songs of its own) and `sprites.toml` (sprites of its own,
+and the ROMs' sprites timed otherwise). A background is 16 colors, each side a multiple of 8 pixels:
 
 ```toml
 # content/exe6/backgrounds.toml
@@ -50,19 +51,28 @@ music = "virus-battle"              # one of music.toml's themes
 picture may use its own 16 colors). To offer it in the background pool, name it in the game's `locales/en.toml`
 under `[backgrounds]`. `nettai-content check` then loads it with the game's assets.
 
-A sprite is a sheet of equal cells, one per frame in the order its animations list them, color 0 clear:
+A sprite is a sheet of equal cells, one per frame in the order its animations list them, color 0 clear, with each
+frame's duration in steps:
 
-```luau
--- content/exe6/objects/drone/drone_sprite.luau
-return asset.sprite("drone", { { 4, 4, 4, 4, loop = true }, { 3, 3 } }, {
-    file = "./drone.png",            -- 6 cells: the first animation's 4, then the second's 2
-    frame = { 32, 32 },              -- each cell's size (left out: one row of cells)
-    origin = { 16, 30 },             -- where the object stands in a cell (left out: the bottom middle)
-    shadow = "./drone_shadow.png",   -- optional: drawn on the ground under it
-})
+```toml
+# content/exe6/sprites.toml
+[sprites.drone]
+file = "sprites/drone.png"              # 6 cells: the first animation's 4, then the second's 2
+frame = [32, 32]                        # each cell's size (left out: one row of cells)
+origin = [16, 30]                       # where the object stands in a cell (left out: the bottom middle)
+shadow = "sprites/drone_shadow.png"     # optional: drawn on the ground under it
+animations = [{ frames = [4, 4, 4, 4], loop = true }, [3, 3]]
 ```
 
-Whatever shows it requires that module, as with the ROMs' sprites.
+Modules name it as they name the ROMs' sprites, `asset.sprite("drone")`. A sprite's timing is how it is drawn and
+nothing else: the battle counts an object's sprite's steps (`me.sprite.steps`), and an action that waits for an
+animation states that animation's length itself (`if me.sprite.steps >= OPEN_STEPS then`). So an entry with
+`animations` alone retimes a ROM sprite, without changing anything a battle does:
+
+```toml
+[sprites.explosion]
+animations = [[3, 3, 3, 3, 3, 3]]       # as many animations and frames as the ROM's
+```
 
 A song is a MIDI file played on the instruments of one of the game's songs, read the way the GBA's mid2agb reads
 one (a program change picks that song's instrument of that number), stated in the game's `music.toml`:

@@ -153,21 +153,14 @@ fn extract(a: &Args, c: &nettai_battle::Content, r: &mut Report) -> Option<netta
     }
 }
 
-/// The game's assets against its content `c`: every asset the content names is there, and each sprite the content
-/// defines with as many animations, each of as many frames (`nettai_content::load::asset_numbers`: else the game
-/// doesn't load); and the content times its sprites as the ROMs time them, each difference an error.
+/// The game's assets against its content `c`: every asset the content names is there
+/// (`nettai_content::load::asset_numbers`: else the game doesn't load).
 fn check_assets(c: &nettai_battle::Content, assets: &nettai_extract::Extraction, r: &mut Report) {
     let at = format!("{}'s assets", c.game());
-    match nettai_content::load::asset_numbers(c, &assets.index, &assets.graphics) {
-        Ok((numbers, found)) => {
+    match nettai_content::load::asset_numbers(c, &assets.index) {
+        Ok((_, found)) => {
             r.issues.extend(found.issues);
-            let differences = assets.timing_differences(&c.assets, &c.animations.sprites, &numbers);
-            for d in &differences {
-                r.error(format!("{}'s timing", c.game()), d.clone());
-            }
-            if differences.is_empty() {
-                r.note(at, format!("every asset the content names is there; its {} sprites timed as the ROMs time them", c.animations.sprites.len()));
-            }
+            r.note(at, format!("every asset the content names is there ({} sprites)", c.assets.sprites.len()));
         }
         Err(found) => r.issues.extend(found.issues),
     }

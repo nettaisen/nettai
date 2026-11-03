@@ -1,34 +1,37 @@
-//! Sprite animation timing. Nothing is drawn here; the engine steps
-//! animations because some behaviors end when an animation does (effect
-//! lifetimes, some chip attacks). Frame durations come from the content's
-//! sprite definitions.
+//! A sprite as the battle has it: which sprite is loaded, which animation
+//! plays and how many times it has stepped. How long a frame shows is the
+//! sheet's alone (drawing finds the frame the steps reach:
+//! `nettai_assets::SpriteSheet::frame_index`): an action that waits for an
+//! animation states its own length in steps.
 //! `Look` records how behaviors ask for the sprite to be drawn, for a
 //! frontend.
 
-use crate::content::{AnimFrame, Content, SpriteId};
-
-/// Frame flag: this is the animation's last frame.
-pub const FRAME_LAST: u8 = 0x80;
-/// Frame flag: after the last frame, loop to the first.
-pub const FRAME_LOOP: u8 = 0x40;
+use crate::content::{Content, SpriteId};
+use crate::object::ObjectRef;
 
 /// An object's sprite: which sprite is loaded and where its animation is.
 #[derive(Clone, Debug, Default)]
 pub struct Sprite {
     pub id: Option<SpriteId>,
     pub anim: u8,
-    /// Index of the current frame within the animation.
-    pub frame: u16,
-    /// Ticks left on the current frame.
-    pub count: u8,
-    /// The current frame's flags.
-    pub frame_flags: u8,
     /// How many times the sprite has stepped since its animation started
     /// (or since it was loaded): what behaviors time their actions by.
     pub steps: u32,
+    /// Its animation was started since it was loaded (else it steps from
+    /// the blank timing loading leaves).
+    pub started: bool,
     /// How the sprite is drawn (presentation only; loading a sprite resets
     /// it).
     pub look: Look,
+}
+
+/// Where a sprite's animation is: its animation, its steps, and whether it
+/// was started (`Sprite`'s fields), which drawing finds the frame of.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Place {
+    pub anim: u8,
+    pub steps: u32,
+    pub started: bool,
 }
 
 /// How a sprite is drawn. Nothing in the simulation reads this; behaviors
@@ -67,12 +70,16 @@ pub struct Look {
     pub priority: u8,
     /// Parts not drawn: bit 31 - i hides part i (`sprite_setUnk0x2c`).
     pub hidden_parts: u32,
-    /// The frame (animation, frame) whose first part's palette offset the
-    /// sprite is drawn with, added to `palette` (the sprite's +5,
-    /// `oObjectSprite_Unk_05`): the frame each step ends on, and in EXE6
-    /// the frame an animation starts on too (the arena's
-    /// `effects.load_sets_part_palette`). None after loading: 0.
-    pub part_palette: Option<(u8, u16)>,
+    /// Where the animation was whose frame's first part's palette offset
+    /// the sprite is drawn with, added to `palette` (the sprite's +5,
+    /// `oObjectSprite_Unk_05`): where each step ends, and in EXE6 where an
+    /// animation starts too (the arena's `effects.load_sets_part_palette`).
+    /// None after loading: 0.
+    pub part_palette: Option<Place>,
+    /// Drawn where part `.1` of object `.0`'s sprite is in its frame (that
+    /// part's offset added to its position, mirrored with the owner's flip):
+    /// what rides on another's sprite (AirRaid's propeller on its plane).
+    pub attach: Option<(ObjectRef, u8)>,
     /// What the other side's console draws differently.
     pub other: OtherLook,
 }
@@ -111,6 +118,7 @@ impl Default for Look {
             priority: 2,
             hidden_parts: 0,
             part_palette: None,
+            attach: None,
             other: OtherLook::default(),
         }
     }
@@ -208,97 +216,34 @@ pub enum Shadow {
     WithSprite,
 }
 
-/// While actions move from the sprites' timing to their own step counts:
-/// `played` (the sprite of `r` has stepped `steps` times) must say what
-/// the animation's end says. (Removed once nothing reads the timing.)
-pub fn check_played(b: &crate::battle::Battle, r: crate::object::ObjectRef, played: bool, steps: u16) {
-    let s = b.objects.sprite(r);
-    let ended = s.frame_parameters() & FRAME_LAST != 0;
-    if played != ended {
-        let name = s.id.map_or("none".to_string(), |id| b.content.assets.name(nettai_content_api::AssetKind::Sprite, id.0).unwrap_or("?").to_string());
-        panic!(
-            "sprite {name} animation {}: {} steps {} the animation's end, but it {} (at step {})",
-            s.anim,
-            steps,
-            if played { "reach" } else { "don't reach" },
-            if ended { "has ended" } else { "hasn't ended" },
-            s.steps
-        );
-    }
-}
-
 impl Sprite {
-    fn frame_at(&self, content: &Content, i: u16) -> AnimFrame {
-        // (An animation the sprite hasn't, or a frame past its last, is a
-        // single held frame.)
-        self.id.and_then(|id| content.animations.frame(id, self.anim, i)).unwrap_or(AnimFrame { duration: 1, flags: FRAME_LAST })
-    }
-
     /// Load a sprite (resets the animation state).
     pub fn load(&mut self, id: SpriteId) {
         *self = Sprite { id: Some(id), ..Sprite::default() };
     }
 
-    /// Start animation `anim` from its first frame (timing from
-    /// `content`): `sprite_loadAnimationData`, which in EXE6 (`sub_3006730`)
-    /// also takes the frame's palette offset and in EXE5 (0x03006898)
-    /// leaves it to the next step.
+    /// Where its animation is.
+    pub fn place(&self) -> Place {
+        Place { anim: self.anim, steps: self.steps, started: self.started }
+    }
+
+    /// Start animation `anim` from its first frame: `sprite_loadAnimationData`,
+    /// which in EXE6 (`sub_3006730`) also takes the frame's palette offset
+    /// and in EXE5 (0x03006898) leaves it to the next step (`content`'s
+    /// rules say which).
     pub fn set_animation(&mut self, anim: u8, content: &Content) {
-        self.steps = 0;
-        self.restart(anim, content);
-    }
-
-    /// `set_animation` without restarting the step count (a looping
-    /// animation's return to its first frame).
-    fn restart(&mut self, anim: u8, content: &Content) {
         self.anim = anim;
-        self.frame = 0;
-        let f = self.frame_at(content, 0);
-        self.count = f.duration;
-        self.frame_flags = f.flags;
+        self.steps = 0;
+        self.started = true;
         if content.rules().effects.load_sets_part_palette {
-            self.look.part_palette = Some((anim, 0));
+            self.look.part_palette = Some(self.place());
         }
     }
 
-    /// Advance one tick (timing from `content`), ending on the palette
-    /// offset of the frame it is on (`sub_3006792`'s end, EXE5's 0x03006948).
-    pub fn update(&mut self, content: &Content) {
+    /// Advance one step, ending on the palette offset of the frame it is on
+    /// (`sub_3006792`'s end, EXE5's 0x03006948).
+    pub fn update(&mut self) {
         self.steps = self.steps.saturating_add(1);
-        self.step(content);
-        self.look.part_palette = Some((self.anim, self.frame));
-    }
-
-    fn step(&mut self, content: &Content) {
-        loop {
-            let old = self.count;
-            self.count = old.wrapping_sub(1);
-            if old != 0 {
-                return;
-            }
-            if self.frame_flags & FRAME_LAST != 0 {
-                if self.frame_flags & FRAME_LOOP != 0 {
-                    self.restart(self.anim, content);
-                } else {
-                    self.count = 1;
-                }
-            } else {
-                self.frame += 1;
-                let f = self.frame_at(content, self.frame);
-                self.count = f.duration;
-                self.frame_flags = f.flags;
-            }
-        }
-    }
-
-    /// The current frame's flags as behaviors see them: the last-frame and
-    /// loop bits only show once the frame's time is up.
-    pub fn frame_parameters(&self) -> u8 {
-        if self.count == 0 { self.frame_flags } else { self.frame_flags & !(FRAME_LAST | FRAME_LOOP) }
-    }
-
-    /// Whether a non-looping animation has finished.
-    pub fn finished(&self) -> bool {
-        self.frame_parameters() & FRAME_LAST != 0
+        self.look.part_palette = Some(self.place());
     }
 }

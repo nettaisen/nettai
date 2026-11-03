@@ -111,7 +111,8 @@ fn state(b: &Battle) -> Vec<String> {
         .collect::<Vec<_>>();
     vec![
         format!("identity {:?}", o.identity),
-        format!("look {:?}", b.objects.sprite(r).look),
+        // (Its look, but how long its animation has played, which time alone tells apart.)
+        format!("look {:?}", nettai_battle::object::sprite::Look { part_palette: b.objects.sprite(r).look.part_palette.map(|p| nettai_battle::object::sprite::Place { steps: 0, ..p }), ..b.objects.sprite(r).look }),
         format!("collision {:?}", b.collision.get(o.collision.unwrap())),
         format!("status {:#x}", a.status & !status::SWITCHED),
         format!("weapons {:?}", (a.buster, a.charge_shot, a.a_charge, a.alt_a_charge, a.back_special, a.ai_index, a.identity)),

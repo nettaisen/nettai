@@ -69,7 +69,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let flip = o.alliance ^ o.flip;
     let s = b.objects.sprite_mut(r);
     s.set_animation(anim, &b.content);
-    s.update(&b.content);
+    s.update();
     s.look.set_flip(flip);
     let o = b.objects.get_mut(r);
     o.state = state::UPDATE;

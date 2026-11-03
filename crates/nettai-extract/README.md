@@ -77,8 +77,6 @@ of it (`nettai_content::load::recipe`), `RomSource::read` and `Recipe::extract` 
 - `Recipe::extract_reporting` is the same, telling a callback how far it is (0 to 1); `Recipe::extract_recording_reads`
   gives every range of each ROM the extraction read, with the recipe's file and line of each read (the
   verification's read map).
-- `Extraction::timing_differences(names, sprites, numbers)` compares the content's sprite definitions with the
-  ROMs' timing: each frame's duration, the loop on the last frame, the flags and the part offsets a sprite states.
 - `songs_played_otherwise(a, b)`: the songs two releases' banks play otherwise (the verification's cross-ROM sweep).
 
 An asset the names name that the recipe can't find is an error naming it; there are no placeholders. Extraction

@@ -16,7 +16,7 @@ use nettai_assets::{Palette, Tiles};
 use nettai_battle::Battle;
 use nettai_battle::object::sprite::Shadow;
 use nettai_battle::kinds::EngineKind;
-use nettai_battle::object::{Object, Pool, flags};
+use nettai_battle::object::{Object, ObjectRef, Pool, flags};
 
 /// Where the camera looks and whether the field is shown mirrored (the
 /// right-hand player sees their side on the left).
@@ -408,7 +408,7 @@ pub fn describe(b: &Battle, view: &View) -> Vec<String> {
             let s = b.objects.sprite(r);
             let p = project((o.pos.x, o.pos.y, o.pos.z), view);
             let sprite = match s.id {
-                Some(id) => format!("{} anim {} frame {}", sprite_name(b, id), s.anim, s.frame),
+                Some(id) => format!("{} anim {} step {}{}", sprite_name(b, id), s.anim, s.steps, if s.started { "" } else { " (not started)" }),
                 None => "no sprite".to_string(),
             };
             let mut notes = Vec::new();
@@ -457,6 +457,25 @@ pub fn describe(b: &Battle, view: &View) -> Vec<String> {
     lines
 }
 
+/// Where object `r` is drawn: where it is, plus, for one that rides on another's sprite (`Look::attach`), the
+/// place of that part in the other's frame (`sub_80030BA`'s offset, X mirrored by `r`'s facing).
+fn drawn_at(b: &Battle, graphics: &crate::graphics::Graphics<'_>, r: ObjectRef) -> nettai_battle::object::Vec3 {
+    let o = b.objects.get(r);
+    let mut pos = o.pos;
+    let Some((owner, n)) = b.objects.sprite(r).look.attach else { return pos };
+    let s = b.objects.sprite(owner);
+    let offset = s.id.and_then(|id| graphics.sprite(id)).and_then(|sheet| {
+        let frames = sheet.animations.get(s.anim as usize)?;
+        let frame = frames.get(sheet.frame_index(s.anim, s.steps, s.started)).or(frames.last())?;
+        sheet.part_lists.get(frame.parts as usize)?.get(n as usize).map(|p| (i32::from(p.x), i32::from(p.y)))
+    });
+    let (x, y) = offset.unwrap_or((0, 0));
+    let dir = nettai_battle::kinds::common::facing(o.alliance, o.flip);
+    pos.x = pos.x.wrapping_add(x * dir * 0x1_0000);
+    pos.y = pos.y.wrapping_add(y * 0x1_0000);
+    pos
+}
+
 /// Queue every visible object's sprite the frame's sprite draw has room
 /// for ([`SpriteDraw`]); returns what the draw took. Visible: to one of
 /// `viewers` (by side: the console's own, or on a screen of both either
@@ -502,17 +521,17 @@ pub fn queue_objects<'a>(
                 let Some(frames) = crate::lookups::animation(sheet, &b.content, id, s.anim, &kind, problems) else { continue };
                 (sheet, frames)
             };
-            let Some(frame) = frames.get(s.frame as usize).or(frames.last()) else { continue };
+            let Some(frame) = frames.get(sheet.frame_index(s.anim, s.steps, s.started)).or(frames.last()) else { continue };
             let Some((parts, tiles, set)) = crate::lookups::frame_parts(sheet, frame) else { continue };
             let look = b.look_for(r, view.side());
             // The palette offset the sprite holds: the first part's of the
             // frame it last took one from (`Look::part_palette`; EXE5's
             // frame load leaves the last step's).
-            let first_palette = look.part_palette.map_or(0, |(anim, frame)| {
+            let first_palette = look.part_palette.map_or(0, |at| {
                 sheet
                     .animations
-                    .get(anim as usize)
-                    .and_then(|frames| frames.get(frame as usize).or(frames.last()))
+                    .get(at.anim as usize)
+                    .and_then(|frames| frames.get(sheet.frame_index(at.anim, at.steps, at.started)).or(frames.last()))
                     .and_then(|f| sheet.part_lists.get(f.parts as usize))
                     .and_then(|parts| parts.first())
                     .map_or(0, |p| p.palette)
@@ -530,8 +549,9 @@ pub fn queue_objects<'a>(
             if nowhere {
                 continue;
             }
-            let p = project((o.pos.x, o.pos.y, o.pos.z), view);
-            let fine = project_fine((o.pos.x, o.pos.y, o.pos.z), view);
+            let pos = drawn_at(b, graphics, r);
+            let p = project((pos.x, pos.y, pos.z), view);
+            let fine = project_fine((pos.x, pos.y, pos.z), view);
             let hflip = look.hflip ^ view.mirror;
             let vflip = look.vflip;
 

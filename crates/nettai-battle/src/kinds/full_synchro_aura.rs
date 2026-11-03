@@ -118,7 +118,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.load(sprite);
     s.look.shadow = Shadow::WithSprite;
     s.set_animation(anim, &b.content);
-    s.update(&b.content);
+    s.update();
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     o.set_visible(true);

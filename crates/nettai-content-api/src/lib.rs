@@ -50,7 +50,7 @@ pub use api::AfterimageSpec;
 pub use api::{Drive, Fly, Follow, Held};
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
 pub use api::{ObstacleHold, ObstaclePush};
-pub use assets::{AssetIndex, AssetKind, AssetNames, AssetNumbers, BackgroundMusic, CustomAssets, CustomBackground, CustomInstrument, CustomSound, CustomSprite, DefinedAssets, Presentation, SpriteAnimation, SpriteDef};
+pub use assets::{AssetIndex, AssetKind, AssetNames, AssetNumbers, BackgroundMusic, CustomAssets, CustomBackground, CustomInstrument, CustomSound, CustomSprite, DefinedAssets, Presentation, SpriteAnimation};
 pub use data::{Data, Key as DataKey};
 pub use definitions::{Definition, Definitions, GAME_LISTS};
 pub use packs::{PackKind, PackManifest};

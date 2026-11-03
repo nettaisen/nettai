@@ -5,9 +5,8 @@ use std::path::Path;
 use std::sync::Arc;
 
 /// Each game's assets, extracted from its full set by its recipe, load with its content (every asset the content
-/// names is there, each sprite with the content's animations and frames: `nettai_content::load::asset_numbers`), its
-/// content times its sprites as the ROMs do, and they answer every lookup the content audit (nettai-tool's
-/// `--audit-content`) makes, in each language the content has strings in.
+/// names is there: `nettai_content::load::asset_numbers`), and they answer every lookup the content audit
+/// (nettai-tool's `--audit-content`) makes, in each language the content has strings in.
 #[test]
 #[ignore = "requires the original ROMs: $NETTAI_ROMS, else the Legacy Collection installed through Steam"]
 fn full_sets_pass_the_content_audit() {
@@ -15,7 +14,6 @@ fn full_sets_pass_the_content_audit() {
     for game in games() {
         let loaded = Game::load(&roms(), Some(&content()), &game, &[]).unwrap_or_else(|e| panic!("{game}: {e}\n{}", e.report));
         assert!(!loaded.report.has_errors(), "{game}: {}", loaded.report);
-        assert_eq!(loaded.timing_differences, Vec::<String>::new(), "{game}: the content times its sprites otherwise than the ROMs");
         let own = nettai_content::locale::OWN;
         let mut languages = vec![(own.to_string(), None)];
         for lang in nettai_content::locale::languages(&loaded.dir).into_iter().filter(|l| l != own) {

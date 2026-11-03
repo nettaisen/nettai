@@ -4212,8 +4212,7 @@ failure). What was read is kept for the game's first load, which goes on from it
 written to disk) and its content's recipe extracts them (`nettai_extract::Recipe`; docs/design/extraction-recipes.md):
 the recipe loads with the content the game plays, at run time, not compiled into the app, so content that names a
 new asset, or extracts one otherwise, is played with it at once. The assets are then checked against the content
-(§20, "Assets that can't draw it"), and the content's sprite timing compared with the ROMs' (a difference is said in
-the log). The background pool's other games (a few backgrounds from each, §1) aren't extracted with it: each other
+(§20, "Assets that can't draw it"). The background pool's other games (a few backgrounds from each, §1) aren't extracted with it: each other
 game's backgrounds are extracted, by its own content's recipe (that content loaded for it,
 `nettai_content::load::extract`), the first time a round or a picture wants one (a
 practice set's round on one, Practice's Background grid), on a thread of their own, and kept for the run, shared by
@@ -4667,14 +4666,12 @@ alone: no ROM is read for it) is checked against the one its index gave (`conten
 that plays another is taken out of the store (the reason in the log), and the game loads its next newest; with none,
 it can't be played.
 
-**Assets that can't draw it.** A game's content times its sprites and names its assets itself (docs/design/
-content-model-v2.md §6.3); the assets extracted from its ROMs draw and play them. As the game loads, they are checked
-against the content (`nettai_content::load::asset_numbers`): they have every asset the content names, and each sprite
-the content defines with as many animations, each of as many frames (a frame is drawn by the battle's animation and
-frame). Assets that haven't are a load failure naming the sprite or asset (content whose recipe doesn't extract what
-it names). Where the content times a sprite otherwise than the ROMs do, the log says so (the content's timing plays).
-Before a bundle is published, `nettai-content check <game>` holds the same to it, and fails on a timing that isn't
-the ROMs' (docs/tools.md, "The content check").
+**Assets that can't draw it.** A game's content names its assets itself (docs/design/content-model-v2.md §6.3); the
+assets extracted from its ROMs draw and play them. As the game loads, they are checked against the content
+(`nettai_content::load::asset_numbers`): they have every asset the content names. Assets that haven't are a load
+failure naming the asset (content whose recipe doesn't extract what it names). A sprite's timing is its sheet's (the
+ROM's, or the game's `sprites.toml`'s), drawing's alone: the battle counts steps. Before a bundle is published,
+`nettai-content check <game>` holds the same to it (docs/tools.md, "The content check").
 
 **Replays** (§16). A replay plays on the content its head names: the game's own where the hashes match, else the
 store's bundle that plays its hash, or the one the game's index lists for it, downloaded while the replay is

@@ -76,12 +76,15 @@ tile sets serve several frames. Parts are therefore kept exactly (`SpriteSheet`)
 
 ### 3.3 Timing
 
-The battle is timed by the content: each sprite's animations, each frame's duration and whether it loops, are its
-module's (`asset.sprite`, content-model-v2.md §6.3). A frame drawn is looked up by the battle's animation and frame,
-so the sheet has the frames each animation draws and no timing. The extraction keeps the ROMs' timing beside the
-sheets, for one use: `Extraction::timing_differences` compares the content's with it (each frame's duration, the
-loop on the last frame, flags the content can't state, the parts a sprite states), and `nettai-content check <game>`
-fails on any difference.
+A sheet carries its own timing: each frame's duration in steps and its flag byte (0x80 on an animation's last
+frame, 0x40 with it where the animation loops), the ROM's (`SpriteFrame::duration`, `flags`). The battle holds no
+timing: an object's sprite is its sheet, its animation, how many times it has stepped since that started
+(`Sprite::steps`) and whether it was started since the sheet was loaded, and an action that waits for an animation
+states that animation's length in steps itself (`me.sprite.steps >= OPEN_STEPS`, an effect's `steps`). Drawing
+finds the frame those reach (`SpriteSheet::frame_index`, `sub_3006792` a step at a time). So a sheet may be timed
+otherwise (a game's `sprites.toml`, §7) and nothing a battle does changes; the battle's digest holds the steps, not
+the frames. What rides on another's sprite (AirRaid's propeller) is drawn at that part's place in the other's frame
+(`Look::attach`), which the battle doesn't hold either.
 
 ## 4. Field, backgrounds, HUD and the custom screen
 
@@ -342,10 +345,8 @@ plays a version's own songs yet: a console plays the bank's.
 ## 6. Checks
 
 - **As a game loads**: its assets against its content (`nettai_content::load::asset_numbers`): every asset the
-  content names, each sprite the content defines with as many animations, each of as many frames. A game whose assets
-  aren't so doesn't load.
-- **`nettai-content check <game>`**: the same, the content's sprite timing against the ROMs'
-  (`Extraction::timing_differences`), and the strings' backgrounds against the assets'.
+  content names is there. A game whose assets aren't so doesn't load.
+- **`nettai-content check <game>`**: the same, and the strings' backgrounds against the assets'.
 - **`nettai-tool --match FILE --audit-content`**: every lookup the drawing code and the audio make for everything the
   content defines, in every language (docs/tools.md).
 - **Frames and sound**: the verification workspace compares frames drawn from the extracted assets with mGBA's, and
@@ -409,8 +410,11 @@ A background is in the background pool when the game's own language's `[backgrou
 player sees it), and the content check holds that table to the assets, the custom ones too (docs/app.md §1, "The
 battle's background"). Its entry names its `music` too (§8).
 
-**Sprites.** `asset.sprite(name, animations, { file, frame, origin, shadow })`, beside `parts` where content reads
-them; the animations time it, as a ROM sprite's do. `file` is an indexed PNG of cells `frame = { width, height }`
+**Sprites.** `[sprites.<name>]` in `sprites.toml`, with `file`, `frame`, `origin`, `shadow` and `animations` (each
+its frames' durations in steps, `[4, 4]`, or `{ frames = [4, 4], loop = true }`); modules name it
+`asset.sprite("<name>")`. An entry with `animations` alone times the ROMs' sprite of that name otherwise (as many
+animations, each of as many frames, as the ROM's), and changes nothing a battle does (§3.3). `file` is an indexed
+PNG of cells `frame = [width, height]`
 (none: one row of as many cells as the animations have frames), read left to right, then down: one per frame, the
 animations' in order, cells past them blank. Color 0 is clear and every pixel one of the first 16 colors; each 16 of
 its palette is a palette of the sprite's set, the first what it is drawn in and the others what an object may pick
@@ -425,7 +429,6 @@ do), and frames that are alike share theirs. Every frame's first part is the sha
 ground or hides (`Look::shadow`): `shadow` is an indexed PNG of a hardware sprite's shape (8x8 to 64x64) in the
 sprite's colors (each of its colors one of the first 16), centered on the object's place; none, an empty 8x8 part
 stands in for it. Sprites are numbered from the category past the ROMs' last, from index 0, in their names' order.
-The timing check against the ROMs (`Extraction::timing_differences`) passes them by: no ROM times them.
 
 **Songs.** `[songs.<name>]` in `music.toml`, with `file` and `voices`. `file` is a standard MIDI file (format 0 or
 1, timed in ticks a beat), by its path in the game's folder (`music/my_theme.mid`), and `voices` the ROMs' sound
@@ -494,4 +497,9 @@ Every background a round of the game may be drawn on has its music, one of the g
 it to that). The define phase names the game's backgrounds from these files and its own part of the background pool
 (their names in byte order are their handles; `AssetNames::backgrounds`, out of the hash), so no module names a
 background: `asset.background` is no more, and `asset.sound` names a sound alone.
+
+`sprites.toml` (since 2026-11-03: the user, "move all the sprite timings into their point of use ... so sprite
+assets themselves are just bare sheets with animations"): `[sprites]`, each sprite of the game's own, with its
+picture and its animations' timing, and each ROM sprite it times otherwise (§7). A sprite's timing is drawing's
+alone (§3.3), so `asset.sprite` names a sprite alone too, and these entries are out of the hash with the rest.
 

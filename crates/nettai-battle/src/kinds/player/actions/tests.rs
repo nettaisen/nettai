@@ -1078,15 +1078,17 @@ fn erasecross_beast_drop_falls_on_the_enemy() {
     let p = [p0, p1];
     assert_eq!(start_weapon(&mut b, p0, "erasecross-beast/drop"), "erasecross-beast/drop/action");
     let mut t = 0;
-    // The arms go up for their animation; the drop at the next's end.
-    run_to(&mut b, p, &mut t, 9, 0);
+    // The arms go up (3 steps); the drop at the end of the next (8 steps).
+    run_to(&mut b, p, &mut t, 11, 0);
+    assert!(of_kind(&b, "erasecross-beast/drop").is_empty());
+    run_to(&mut b, p, &mut t, 12, 0);
     let drop = of_kind(&b, "erasecross-beast/drop");
     assert_eq!(drop.len(), 1);
     assert_eq!(b.objects.get(drop[0]).panel, PanelPos { x: 5, y: 2 });
     // It lands 3 ticks later: 70 damage and 30 per buster Attack point.
-    run_to(&mut b, p, &mut t, 13, 0);
+    run_to(&mut b, p, &mut t, 16, 0);
     assert_eq!(b.objects.get(p1).hp, 900);
-    run_to(&mut b, p, &mut t, 30, 0);
+    run_to(&mut b, p, &mut t, 33, 0);
     assert_eq!(act(&b, p0), IDLE);
     assert!(of_kind(&b, "erasecross-beast/drop").is_empty());
 }
@@ -1941,8 +1943,8 @@ fn a_plus_chip_on_its_own_raises_a_sparkle() {
     let (x, y) = crate::kinds::player::panel_coordinates(2, 2);
     let o = b.objects.get(s);
     assert_eq!((o.pos.x, o.pos.y, o.pos.z), (x + (4 << 16), y, 50 << 16));
-    // Gone after its animation (12 ticks in the test content).
-    for _ in 0..13 {
+    // Gone after its rise (16 of its sprite's steps).
+    for _ in 0..17 {
         tick(&mut b, p0, p1, 0);
     }
     assert!(!b.objects.is_allocated(s) || b.local_kind_key(s) != "rising-bubble");

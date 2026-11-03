@@ -665,11 +665,6 @@ fn spawn_load(id: &str, lang: &str, options: game::Options, read: Option<Box<Con
                 tell(Step::Progress(loading.fraction() * READ * 0.9));
             }
             let loaded = loading.finish().expect("every part is loaded");
-            // (The content's sprites timed otherwise than the ROMs time them: the content's timing plays, and the
-            // log says where they differ.)
-            for difference in &loaded.game.timing_differences {
-                crate::errors::log(&format!("{id}'s sprite timing"), difference);
-            }
             // What it plays is what it is published as (a stored bundle's, the first time it is loaded).
             crate::contents::verify(&loaded.game.dir, loaded.game.content.hash())?;
             // The language shown, where the content has it and it isn't its own.

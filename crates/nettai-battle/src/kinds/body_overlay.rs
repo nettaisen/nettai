@@ -116,7 +116,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.look.shadow = Shadow::WithSprite;
     s.look.set_palette(if own_palette { 0 } else { owner_palette });
     s.set_animation(anim, &b.content);
-    s.update(&b.content);
+    s.update();
     let o = b.objects.get_mut(r);
     o.flags &= !flags::NO_SPRITE_UPDATE;
     // A halfword store: the animation, and 0 as the loaded one.

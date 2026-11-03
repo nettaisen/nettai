@@ -914,7 +914,7 @@ fn compare_with(b: &Battle, f: &Frame, known: Known, compat: &Compat) -> Vec<Str
     let order: Vec<nettai_battle::object::ObjectRef> = b.objects.in_order().collect();
     let unknown: Vec<Unknown> = order
         .iter()
-        .map(|&o| Unknown { xy: nettai_battle::kinds::effect::xy_unknown(b, o), z_fraction: spark_z_fraction_unknown(b, compat, o) })
+        .map(|&o| Unknown { xy: nettai_battle::kinds::effect::xy_not_the_originals(b, o), z_fraction: spark_z_fraction_unknown(b, compat, o) })
         .collect();
     // The traced console's game (its round's setup's): a Gregar or a
     // Japanese console's objects keep its own ROM's addresses where the

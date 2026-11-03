@@ -168,10 +168,9 @@ the lookups a frame makes, through the same functions:
 game's content and checks its definitions (the lints), its strings, its library order and its look; then it
 extracts the game's assets from its ROMs by its recipe (`--roms DIR`: the Legacy Collection's folder or one of ROM
 files; default `$NETTAI_ROMS`, else the collection where Steam installed it) and holds them to the content: every
-asset the content names is there and each sprite it defines has as many animations, each of as many frames
-(`nettai_content::load::asset_numbers`: else the game doesn't load), the content times its sprites as the ROMs time
-them (`Extraction::timing_differences`: each frame's duration, the loop on the last frame, the flags and the part
-offsets a sprite states; each difference an error), and the strings' backgrounds are the assets'. ROMs that can't
+asset the content names is there (`nettai_content::load::asset_numbers`: else the game doesn't load), and the
+strings' backgrounds are the assets'. (A sprite's timing is its sheet's alone: nothing to hold to the content.)
+ROMs that can't
 be found or extracted are an error. What the extraction noticed is said as notes. It exits 1 if there was an
 error. (Its `publish` and `lock` commands publish a game's content: docs/design/content-deployment.md.)
 
@@ -192,5 +191,4 @@ one loads the game (`nettai_content::load::load_battle`) and makes it of the con
   `extract`; `Recipe::extract_reporting`,
   the same telling a callback how far it is (0 to 1), for a bar (`an_extraction_reports_how_far_it_is`); and
   `Recipe::extract_recording_reads`, every range of each ROM the extraction read (the verification's read map).
-- `Extraction::timing_differences`, the content's sprite timing against the ROMs' (the content check's).
 - `songs_played_otherwise(a, b)`: the songs two releases' banks play otherwise (the verification's cross-ROM sweep).

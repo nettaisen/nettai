@@ -69,11 +69,11 @@ fn a_support_pack_has_no_game_context() {
     };
     // A game's module names its assets, defines, and reaches its systems'
     // library; and passes a look to the support pack's maker.
-    let maker = "return function(look: any) return new.effect { sprite = look.sprite, anim = 0 } end";
+    let maker = "return function(look: any) return new.effect { sprite = look.sprite, anim = 0, steps = 3 } end";
     load(&[
         (
             "game:x",
-            "local make = require('@lib/m')\nlocal _ = rules.state\nreturn make({ sprite = asset.sprite('bomb', { { 3 } }) })",
+            "local make = require('@lib/m')\nlocal _ = rules.state\nreturn make({ sprite = asset.sprite('bomb') })",
         ),
         ("lib:m", maker),
     ])
@@ -373,112 +373,34 @@ fn define_assets(modules: &[(&str, &str)]) -> Result<(Definitions, nettai_conten
 }
 
 /// docs/design/content-model-v2.md §6.3: content names its assets while it
-/// loads, one value per asset, and defines its sprites (`asset.sprite(name,
-/// animations)`) where their modules are; the define phase interns the
-/// names, each kind's in byte order, and keeps each sprite's definition.
+/// loads, one value per asset (a sprite too: how it animates is its sheet's);
+/// the define phase interns the names, each kind's in byte order.
 #[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
 #[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn assets_resolve_by_name_while_content_loads() {
-    let (d, assets) = define_assets(&[
-        ("sprites/explosion", "return asset.sprite('explosion', { { 3, 3 }, { 2, 2, 4, loop = true } })"),
-        ("sprites/bomb", "return asset.sprite('bomb', {})"),
-        (
-            "lib/effects",
-            "local SOUND = asset.sound('throw')\n\
-             if asset.sound('throw') ~= SOUND then error('one value per asset') end\n\
-             local _ = require('./../sprites/bomb')\n\
-             return { explosion = new.effect { sprite = require('./../sprites/explosion'), anim = 1, sound = SOUND } }",
-        ),
-    ])
+    let (d, assets) = define_assets(&[(
+        "lib/effects",
+        "local SOUND = asset.sound('throw')\n\
+         if asset.sound('throw') ~= SOUND then error('one value per asset') end\n\
+         if asset.sprite('explosion') ~= asset.sprite('explosion') then error('one value per sprite') end\n\
+         local _ = asset.sprite('bomb')\n\
+         return { explosion = new.effect { sprite = asset.sprite('explosion'), anim = 1, steps = 8, sound = SOUND } }",
+    )])
     .unwrap();
     let e = &d.of(Registry::Effect)[0];
     assert_eq!(e.spec.field("sprite"), &Data::Asset(nettai_content_api::AssetKind::Sprite, "explosion".into()));
     assert_eq!(e.spec.field("sound"), &Data::Asset(nettai_content_api::AssetKind::Sound, "throw".into()));
     assert_eq!(assets.names.sprites, ["bomb", "explosion"], "in byte order, whatever order they loaded in");
     assert_eq!(assets.names.sounds, ["throw"]);
-    let anim = |frames: &[u8], looping| nettai_content_api::SpriteAnimation { frames: frames.to_vec(), looping };
-    assert_eq!(assets.sprites[1].animations, [anim(&[3, 3], false), anim(&[2, 2, 4], true)]);
-    assert!(assets.sprites[0].animations.is_empty() && assets.sprites[0].parts.is_empty());
-    // A sprite is defined once, by its module.
-    let e = define_named(&[("a", "return asset.sprite('bomb', { { 1 } })"), ("b", "return asset.sprite('bomb', { { 1 } })")]).unwrap_err();
-    assert!(e.contains("sprite \"bomb\" is defined twice: in test/a.luau and in test/b.luau"), "{e}");
-    let e = define_named(&[("chips/x/chip", "return { s = asset.sprite('bomb') }")]).unwrap_err();
-    assert!(e.contains("chips/x/chip: sprite \"bomb\": asset.sprite(name, animations) takes the sprite's animations"), "{e}");
-    // An animation is its frames' durations, 1 to 255, and `loop`.
-    for (animations, wrong) in [
-        ("{ { 0 } }", "frame 0 is 0, not 1 to 255"),
-        ("{ { 3, 256 } }", "frame 1 is 256, not 1 to 255"),
-        ("{ {} }", "animation 0 has no frame"),
-        ("{ { 3, last = true } }", "holds its frames' durations (1, 2, ...) and `loop`, not last"),
-        ("{ { 3, loop = 1 } }", "`loop` is a integer, not a boolean"),
-        ("{ [2] = { 3 } }", "the animations are a list"),
-    ] {
-        let e = define_named(&[("m", &format!("return asset.sprite('bomb', {animations})"))]).unwrap_err();
-        assert!(e.contains(wrong), "{animations}: {e}");
-    }
-    // Other assets are named alone.
+    // Every asset is named alone.
+    let e = define_named(&[("m", "return asset.sprite('bomb', { { 3, 3 } })")]).unwrap_err();
+    assert!(e.contains("asset.sprite takes a name alone (how a sprite animates is its sheet's"), "{e}");
     let e = define_named(&[("m", "return asset.banner('finish', {})")]).unwrap_err();
     assert!(e.contains("asset.banner takes a name alone"), "{e}");
     let e = define_named(&[("m", "return asset.sound('throw', 3)")]).unwrap_err();
     assert!(e.contains("asset.sound takes a name alone (a song of the content's own is its music.toml's)"), "{e}");
     let e = define_named(&[("m", "return { f = function() return asset.sound('throw') end }")]);
     assert!(e.is_ok(), "calling it later is the runtime's error, not the define phase's");
-}
-
-/// A sprite states the parts content reads (`sprite:part_offset(n)`): by
-/// part number, each animation's frames' offsets, as many as its frames.
-#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
-#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
-fn a_sprite_states_the_parts_content_reads() {
-    let define_parts = |parts: &str| {
-        define_assets(&[("m", &format!("return asset.sprite('plane', {{ {{ 6, loop = true }}, {{ 8, 2 }} }}, {{ parts = {parts} }})"))])
-    };
-    let (_, assets) = define_parts("{ [1] = { { { 18, -20 } }, { { 18, -20 }, { 14, -20 } } } }").unwrap();
-    assert_eq!(assets.sprites[0].parts[&1], [vec![(18, -20)], vec![(18, -20), (14, -20)]]);
-    let e = define_parts("{ [1] = { { { 18, -20 } }, { { 18, -20 } } } }").unwrap_err();
-    assert!(e.contains("part 1, animation 1 has 1 offsets, and the animation 2 frames"), "{e}");
-    let e = define_parts("{ [1] = { { { 18, -20 } } } }").unwrap_err();
-    assert!(e.contains("part 1 has offsets for 1 animations, and the sprite has 2"), "{e}");
-    let e = define_parts("{ [1] = { { { 200, 0 } }, { { 0, 0 }, { 0, 0 } } } }").unwrap_err();
-    assert!(e.contains("offset is 200, not -128 to 127"), "{e}");
-}
-
-/// docs/design/asset-formats.md §7: a sprite made from a picture of the
-/// content's own is defined as any sprite is, with its file, its cells' size,
-/// its origin and its shadow beside its parts.
-#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
-#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
-fn a_custom_sprite_is_defined_by_its_module() {
-    let (_, assets) = define_assets(&[
-        (
-            "objects/drone/drone_sprite",
-            "return asset.sprite('drone', { { 4, 4, loop = true }, { 3 } }, { file = './drone.png', frame = { 32, 24 }, origin = { 16, 22 }, shadow = './shadow.png', parts = { [1] = { { { 0, -8 }, { 0, -9 } }, { { 0, -8 } } } } })",
-        ),
-        ("sprites/bomb", "return asset.sprite('bomb', { { 1 } })"),
-    ])
-    .unwrap();
-    assert_eq!(assets.custom.sprites.keys().collect::<Vec<_>>(), ["drone"], "the ROMs' sprites are timed alone");
-    assert_eq!(
-        assets.custom.sprites["drone"],
-        nettai_content_api::CustomSprite {
-            module: "test:objects/drone/drone_sprite".into(),
-            file: "test:objects/drone/drone.png".into(),
-            frame: Some((32, 24)),
-            origin: Some((16, 22)),
-            shadow: Some("test:objects/drone/shadow.png".into()),
-        }
-    );
-    assert_eq!(assets.sprites[1].parts[&1][0], [(0, -8), (0, -9)], "its parts as any sprite's");
-    for (extra, wrong) in [
-        ("{ frame = { 32, 24 } }", "`frame`, `origin` and `shadow` are a sprite's made from a picture: it names its `file`"),
-        ("{ file = './d.png', frame = { 0, 24 } }", "`frame` is { x, y }, each an integer from 1 to 255"),
-        ("{ file = './d.png', origin = { 1 } }", "`origin` is { x, y }"),
-        ("{ file = './d.png', shadow = './s.gif' }", "`shadow` \"./s.gif\" is a .png file"),
-        ("{ file = './d.png', speed = 2 }", "its `file`, `frame`, `origin` and `shadow`, not speed"),
-    ] {
-        let e = define_named(&[("m", &format!("return asset.sprite('drone', {{ {{ 1 }} }}, {extra})"))]).unwrap_err();
-        assert!(e.contains(wrong), "{extra}: {e}");
-    }
 }
 
 /// A game's backgrounds and songs of its own are its `backgrounds.toml`'s and `music.toml`'s, presentation the content

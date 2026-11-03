@@ -295,14 +295,10 @@ declare extern type Sprite with
     hidden_parts: number
     -- The animation playing (read-only).
     animation: number
-    -- The current frame's flags (0x80 last, 0x40 loop), on the tick the
-    -- frame ends (read-only).
-    frame_flags: number
-    -- The animation has played to its end (read-only).
-    finished: boolean
     -- How many times the sprite has stepped since its animation started
-    -- (or since it was loaded): what actions time themselves by
-    -- (read-only).
+    -- (or since it was loaded): what an action that waits for an animation
+    -- counts, stating the animation's length itself (read-only). How long
+    -- each frame shows is the sheet's, drawing's alone.
     steps: number
     -- `sprite_load`: load a sprite (resets the animation and the look) and
     -- let it animate (the object's `no_sprite_update` off). (@exelib/looks
@@ -312,10 +308,11 @@ declare extern type Sprite with
     function set_animation(self, anim: number): ()
     -- Advance the animation one tick (no gating).
     function step(self): ()
-    -- `sub_80030BA`: where part n (from 0) of the current frame sits, in
-    -- pixels from the object, unflipped; (0, 0) when the frame has fewer
-    -- parts. Objects attach to them.
-    function part_offset(self, n: number): (number, number)
+    -- Drawn where part `part` (from 0) of `owner`'s sprite sits in its frame
+    -- (`sub_80030BA`'s place: the part's offset added to this object's
+    -- position, mirrored with the owner's flip); nil: where the object is.
+    -- Presentation: what rides on another's sprite. (Loading a sprite drops it.)
+    function attach(self, owner: Object?, part: number?): ()
     -- The game's flip value: bit 0 horizontal, bit 1 vertical.
     function set_flip(self, flip: number): ()
     -- A field as side `side`'s console (0 or 1) draws it: the consoles draw some fields of a sprite each its own
@@ -1766,57 +1763,16 @@ declare int: {
 
 -- ---- Definitions and assets (docs/design/content-model-v2.md §3) -----------------------------
 
--- Assets, named while content loads (`asset.sound("throw")`) by the names the game's asset pack holds them
--- under (a game's compat/assets.toml's): one value per asset. A sprite is defined, once, by a module of its own
--- that returns it, with its animations as the battle times them, and whoever shows it requires that module:
---
---     -- chips/widewave/wide_wave_sprite.luau
---     return asset.sprite("wide-wave", {
---         { 3, 3, 3 },
---         { 3, 3, 3, 3, loop = true },
---     })
---
--- Each animation is its frames' durations in ticks (1 to 255), in order: its last frame ends it, and holds,
--- or with `loop = true` the animation plays again from its first. A module that reads where one of the
--- sprite's parts sits (`sprite:part_offset(n)`) has the sprite state that part's offsets (`parts`), and
--- only that part's. The content alone says which assets a battle has: the asset pack is what a frontend
--- draws and plays them with. Only a game's modules have `asset`; a support pack's take theirs from their
--- callers. (`SpriteAsset`, since `Sprite` is an object's sprite.)
+-- Assets, named while content loads (`asset.sound("throw")`, `asset.sprite("wide-wave")`) by the names the game's
+-- assets have (a game's compat/assets.toml's): one value per asset, the same wherever it is named. How a sprite
+-- animates is its sheet's (the ROM's, or a game's `sprites.toml`'s: docs/design/asset-formats.md §7, which also
+-- makes sprites of the content's own pictures and times a ROM's otherwise), drawing's alone: the battle counts an
+-- object's sprite's steps (`sprite.steps`), and an action that waits for an animation states that animation's
+-- length in steps itself. The content alone says which assets a battle has. Only a game's modules have `asset`; a
+-- support pack's take theirs from their callers. (`SpriteAsset`, since `Sprite` is an object's sprite.)
 declare extern type SpriteAsset with
     name: string
 end
--- An animation of a sprite: its frames' durations in ticks, and `loop = true` where it loops.
-export type SpriteAnimation = { [number]: number, loop: boolean? }
--- The parts of a sprite content reads, by part number (from 0, as `sprite:part_offset(n)` counts them): for
--- each animation, each frame's `{ x, y }`, in pixels from the object, unflipped.
-export type SpriteParts = { [number]: { { { number } } } }
--- A sprite's third argument: the parts content reads; and for a sprite made from a picture of the content's own,
--- not the ROMs' (docs/design/asset-formats.md §7), the picture:
---
---     -- objects/drone/drone_sprite.luau
---     return asset.sprite("drone", { { 4, 4, 4, 4, loop = true }, { 3, 3 } }, {
---         file = "./drone.png",
---         frame = { 32, 32 },
---         origin = { 16, 30 },
---         shadow = "./drone_shadow.png",
---     })
---
--- `file` is an indexed PNG (a path as a `require` writes one, with its `.png`) of cells `frame` wide and tall, read
--- left to right, then down: one for each frame, the animations' in order, and any cells past them blank. Without
--- `frame`, it is one row of them. Color 0 is clear; each pixel is a color of the first 16, which the sprite draws
--- in; each further 16 of its palette is another palette an object may pick. `origin` is where in a cell the object
--- stands (else the middle of the cell's bottom edge); each frame's pixels within 128 of it. `shadow` is an
--- indexed PNG in the sprite's colors (each of its colors one of the first 16), an 8 to 64 pixel shape a hardware
--- sprite has (8x8, 16x8, 32x16, 64x64, ...), centered on the object's place, which an object may draw on the
--- ground or hide (else none). A name the ROMs have too is this one wherever it is named (a reskin: the ROMs'
--- sheet stays under any other name it has).
-export type SpriteExtra = {
-    parts: SpriteParts?,
-    file: string?,
-    frame: { number }?,
-    origin: { number }?,
-    shadow: string?,
-}
 declare extern type Sound with
     name: string
 end
@@ -1835,7 +1791,7 @@ declare extern type Mugshot with
 end
 
 declare asset: {
-    sprite: (name: string, animations: { SpriteAnimation }, extra: SpriteExtra?) -> SpriteAsset,
+    sprite: (name: string) -> SpriteAsset,
     sound: (name: string) -> Sound,
     banner: (name: string) -> Banner,
     mugshot: (name: string) -> Mugshot,

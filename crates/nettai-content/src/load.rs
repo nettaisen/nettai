@@ -8,7 +8,6 @@
 //! for whoever draws and plays them, is [`asset_numbers`].
 
 use crate::report::Report;
-use nettai_assets::Bundle;
 use nettai_content_api::{AssetIndex, AssetNumbers, packs};
 use nettai_extract::{Extraction, Recipe, RomSource};
 use std::path::Path;
@@ -108,13 +107,11 @@ pub fn battle_content(content: &Path, game: &str) -> Result<(nettai_battle::Cont
     Ok((c, report))
 }
 
-/// What a game's assets, extracted from its ROMs (their index `index`, their graphics `graphics`), hold of `content`'s
-/// (docs/frontend.md §1): each handle's number there, for whoever draws and plays them. Drawing looks a sprite's frame
-/// up by the simulation's animation and frame, so each sprite the content defines must be the graphics' with as
-/// many animations, each of as many frames (their durations are the content's: they time the battle); and every
-/// other asset the content names must be in the index. Assets that aren't so are an error naming each one missing or
-/// otherwise.
-pub fn asset_numbers(content: &nettai_battle::Content, index: &AssetIndex, graphics: &Bundle) -> Result<(AssetNumbers, Report), Report> {
+/// What a game's assets, extracted from its ROMs (their index `index`), hold of `content`'s (docs/frontend.md §1):
+/// each handle's number there, for whoever draws and plays them. Every asset the content names must be in the index
+/// (a sprite's timing is its sheet's: the battle counts its steps, and drawing finds the frame they reach). Assets
+/// that aren't are an error naming each one missing.
+pub fn asset_numbers(content: &nettai_battle::Content, index: &AssetIndex) -> Result<(AssetNumbers, Report), Report> {
     let mut report = Report::default();
     let at = format!("{}'s assets", content.game());
     let numbers = match AssetNumbers::new(&content.assets, index) {
@@ -126,66 +123,28 @@ pub fn asset_numbers(content: &nettai_battle::Content, index: &AssetIndex, graph
             return Err(report);
         }
     };
-    for (h, name) in content.assets.sprites.iter().enumerate() {
-        let ours: Vec<usize> = content.animations.sprites.get(h).map_or(Vec::new(), |d| d.animations.iter().map(|a| a.frames.len()).collect());
-        let id = numbers.sprites[h];
-        let theirs: Vec<usize> = graphics.sprite(id.category, id.index).map_or(Vec::new(), |s| s.animations.iter().map(Vec::len).collect());
-        if ours != theirs {
-            report.error(
-                &at,
-                format!(
-                    "sprite {name}: the content's animations have {ours:?} frames, and its sheet's {theirs:?} (drawing takes the sheet's frame by the content's animation and frame)"
-                ),
-            );
-        }
-    }
-    if report.has_errors() {
-        return Err(report);
-    }
     Ok((numbers, report))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use nettai_assets::{SpriteFrame, SpriteSheet};
 
-    /// The test content's sprites as sheets numbered as `nettai_battle::content::testing::asset_index` numbers them,
-    /// each sprite's animations with `frames(name, animation)` frames (none: as the content's).
-    fn graphics_of(c: &nettai_battle::Content, frames: impl Fn(&str, usize) -> Option<usize>) -> Bundle {
-        let index = nettai_battle::content::testing::asset_index();
-        let mut sprites: Vec<SpriteSheet> = Vec::new();
-        for (h, name) in c.assets.sprites.iter().enumerate() {
-            let id = index.sprites[name];
-            let animations = c.animations.sprites[h].animations.iter().enumerate().map(|(i, a)| vec![SpriteFrame::default(); frames(name, i).unwrap_or(a.frames.len())]).collect();
-            // (Several names may be one sheet: the last one's frames stand.)
-            sprites.retain(|s| (s.category, s.index) != (id.category, id.index));
-            sprites.push(SpriteSheet { category: id.category, index: id.index, animations, ..Default::default() });
-        }
-        sprites.sort_by_key(|s| (s.category, s.index));
-        Bundle { sprites, ..Default::default() }
-    }
-
-    /// docs/frontend.md §1: a game's assets draw a content when they have every asset the content names, each sprite
-    /// with the content's animations and as many frames in each (their durations the content's own); its numbers are
-    /// the index's. Else the error names what is wrong.
+    /// docs/frontend.md §1: a game's assets draw a content when they have every asset the content names; its numbers
+    /// are the index's. Else the error names what is missing.
     #[test]
     fn the_assets_draw_the_content_they_have_the_assets_of() {
         let c = nettai_battle::content::testing::content();
         let index = nettai_battle::content::testing::asset_index();
         let navi = c.assets.handle(nettai_content_api::AssetKind::Sprite, "test-navi").unwrap();
-        let (numbers, report) = asset_numbers(&c, &index, &graphics_of(&c, |_, _| None)).unwrap_or_else(|r| panic!("{r}"));
+        let (numbers, report) = asset_numbers(&c, &index).unwrap_or_else(|r| panic!("{r}"));
         assert!(!report.has_errors(), "{report}");
         assert_eq!(numbers.sprite(navi), Some(nettai_battle::content::testing::NAVI_SPRITE));
         assert_eq!(numbers, nettai_battle::content::testing::asset_numbers(&c));
-        // A sprite whose animation has another number of frames.
-        let other = graphics_of(&c, |name, i| (name == "test-navi" && i == 3).then_some(5));
-        let r = asset_numbers(&c, &index, &other).unwrap_err();
-        assert!(r.to_string().contains("sprite test-navi: the content's animations have"), "{r}");
         // An asset the index hasn't.
         let mut fewer = index.clone();
         fewer.sounds.remove("test-stage-music");
-        let r = asset_numbers(&c, &fewer, &other).unwrap_err();
+        let r = asset_numbers(&c, &fewer).unwrap_err();
         assert!(r.to_string().contains("no sound test-stage-music, which the content names"), "{r}");
     }
 }

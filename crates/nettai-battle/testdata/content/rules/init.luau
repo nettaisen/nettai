@@ -111,6 +111,10 @@ local rules_: Rules = {
             special_volley = "u16",
             charged_sword_rush = "bool",
         },
+        navi = {
+            -- EXE6's: how many of its sprite's steps its warp out and its hold last.
+            animation_steps = { warp_out = "u8", hold = "u8", hold_loops = "bool" },
+        },
     },
     actions = { forms.action, beast.rush_action, beast.cross_special_action },
     buttons = { beast_out = beast.custom.button },

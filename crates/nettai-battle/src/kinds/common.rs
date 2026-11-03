@@ -40,7 +40,7 @@ pub fn update_sprite_even_paused(b: &mut Battle, r: ObjectRef) {
         b.objects.sprite_mut(r).set_animation(anim, &b.content);
         b.objects.get_mut(r).anim_loaded = anim;
     }
-    b.objects.sprite_mut(r).update(&b.content);
+    b.objects.sprite_mut(r).update();
 }
 
 /// The burn of the panel under `r`: its type's `burn` (EXE5's lava,
@@ -228,7 +228,7 @@ pub fn update_sprite_while_paused(b: &mut Battle, r: ObjectRef) {
         b.objects.sprite_mut(r).set_animation(anim, &b.content);
         b.objects.get_mut(r).anim_loaded = anim;
     }
-    b.objects.sprite_mut(r).update(&b.content);
+    b.objects.sprite_mut(r).update();
 }
 
 /// `sub_801BC24`: load a newly requested animation (without stepping it),
@@ -249,7 +249,7 @@ pub fn load_or_step_sprite(b: &mut Battle, r: ObjectRef) {
         b.objects.get_mut(r).anim_loaded = anim;
         return;
     }
-    b.objects.sprite_mut(r).update(&b.content);
+    b.objects.sprite_mut(r).update();
 }
 
 /// `sub_801BCD0`: load a newly requested animation and step the sprite,
@@ -264,5 +264,5 @@ pub fn step_sprite(b: &mut Battle, r: ObjectRef) {
         b.objects.sprite_mut(r).set_animation(anim, &b.content);
         b.objects.get_mut(r).anim_loaded = anim;
     }
-    b.objects.sprite_mut(r).update(&b.content);
+    b.objects.sprite_mut(r).update();
 }

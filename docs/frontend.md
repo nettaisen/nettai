@@ -102,14 +102,11 @@ are its own (docs/design/content-model-v2.md §6.3), so a headless host
 reads no ROM, and the hash is the same whatever draws it. A frontend checks
 the assets against the content as it loads the game
 (`nettai_content::load::asset_numbers`): they have every asset the content
-names, and each sprite the content defines with as many animations, each of
-as many frames (drawing takes the graphics' frame by the simulation's
-animation and frame; the content's timing times the battle), else the load
-fails naming the sprite or the asset; what the game numbers each asset is
-then what it draws and plays by (`AssetNumbers`). Where the content times a
-sprite otherwise than the ROMs do, the game says so
-(`Game::timing_differences`; `nettai-content check <game>` fails on it:
-docs/tools.md). A game whose ROMs can't be found or read can't load
+names, else the load fails naming the asset; what the game numbers each asset
+is then what it draws and plays by (`AssetNumbers`). A sprite's timing is its
+sheet's (the ROM's, or the game's `sprites.toml`'s): the simulation counts a
+sprite's steps, and drawing finds the frame they reach
+(`SpriteSheet::frame_index`). A game whose ROMs can't be found or read can't load
 (`Failed::Assets`, the reason in its report). `NETTAI_LOAD_TIMES=1` prints
 how long each part took.
 

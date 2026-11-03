@@ -64,7 +64,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             // (EXE5's spark, 0x080E0870, doesn't step at its start: the
             // arena's `effects` section.)
             if steps {
-                sprite.update(&b.content);
+                sprite.update();
             }
             let o = b.objects.get_mut(r);
             o.flags &= !flags::NO_SPRITE_UPDATE;
@@ -83,7 +83,6 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             };
             let steps = b.content.spark(look.expect("a hit spark with its look")).steps;
             let finished = b.objects.sprite(r).steps >= u32::from(steps);
-            crate::object::sprite::check_played(b, r, finished, steps);
             if finished {
                 let o = b.objects.get_mut(r);
                 o.set_visible(false);
@@ -92,7 +91,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
                 o.phase = 0;
                 o.phase_init = 0;
             }
-            b.objects.sprite_mut(r).update(&b.content);
+            b.objects.sprite_mut(r).update();
         }
         _ => b.objects.free(r),
     }

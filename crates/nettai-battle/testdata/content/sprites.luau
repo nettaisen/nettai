@@ -1,11 +1,9 @@
 --!strict
--- The test content's own sprites, by name, each defined here with its made-up timing (sprite_timing.luau): the
--- navis', and one for every effect, every hit spark and every look the rules' roles name.
-
-local timing = require("./sprite_timing")
+-- The test content's own sprites, by name: the navis', and one for every effect, every hit spark and every look the
+-- rules' roles name. (How a sprite animates is its sheet's, drawing's alone.)
 
 local function sprite(name: string): SpriteAsset
-    return asset.sprite(name, timing[name] or {})
+    return asset.sprite(name)
 end
 
 return {

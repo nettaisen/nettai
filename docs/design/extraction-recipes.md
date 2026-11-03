@@ -459,8 +459,8 @@ declare sprite: {
 ```
 
 `sprite::archive`, `sheet` and `portrait_sheet`, unchanged. The walk of the sprite list (the categories, where each
-ends, which slots a version or a release fills) is exelib's and the recipe's. A sheet's frames' durations, flags and
-parts reach the content hash (§5.5).
+ends, which slots a version or a release fills) is exelib's and the recipe's. A sheet's frames carry their durations
+and flags (the ROM's timing, drawing's alone: docs/design/asset-formats.md §3.3).
 
 ### 3.6 GFX animations
 
@@ -818,13 +818,11 @@ starts (docs/app.md §17).
 ### 5.5 The content hash and the assets
 
 As built 2026-10-27: `Content::hash` covers no asset. The asset handles are the names the content's modules give and
-each sprite's timing is its module's definition (content-model-v2.md §6.3), so the hash is the content's alone: a
-battle, the training pool and a bundle's publishing read no ROM, and the assets are only what a frontend draws and
-plays with, checked against the content as a game loads (`nettai_content::load::asset_numbers`: every asset the
-content names, each sprite with the content's animations and frames). The content's timing is held to the ROMs' by
-`nettai-content check <game>` (`Extraction::timing_differences`: each frame's duration, the loop on the last frame,
-the flags and the part offsets a sprite states; each difference an error), and a frontend notes a difference as it
-loads (`Game::timing_differences`). The recipe loads with the content since 2026-10-29 (§4.2), and still outside
+a battle reads no sprite timing (an action states its own length in steps; since 2026-11-03 a sprite's timing is its
+sheet's, drawing's alone: asset-formats.md §3.3), so the hash is the content's alone: a battle, the training pool
+and a bundle's publishing read no ROM, and the assets are only what a frontend draws and plays with, checked
+against the content as a game loads (`nettai_content::load::asset_numbers`: every asset the content names). The
+recipe loads with the content since 2026-10-29 (§4.2), and still outside
 the hash: its modules are among the content's (a runtime loads them, as the root requires them) but the hash passes
 them over, since they make assets, which no battle reads. What follows is how it was before.
 

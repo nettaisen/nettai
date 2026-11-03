@@ -320,19 +320,11 @@ fn field(c: &Content, graphics: &Graphics, p: &mut Problems) {
 }
 
 /// A sprite the content names: its sheet, every animation with its frames,
-/// as many as the engine's timing for it has, and each frame's own palette
-/// (its first part's, which an object's palette 0 picks).
+/// and each frame's own palette (its first part's, which an object's
+/// palette 0 picks).
 fn sprite(c: &Content, graphics: &Graphics, id: SpriteId, p: &mut Problems) {
     let who = || "(named by the content)".to_string();
     let Some(sheet) = lookups::sprite(graphics, c, id, &who, p) else { return };
-    let timed = c.animations.sprites.get(id.index()).map_or(0, |d| d.animations.len());
-    if timed > sheet.animations.len() {
-        p.note(format!(
-            "{} has {} animations in the game's graphics, and {timed} in its timing (the content's)",
-            lookups::sprite_name(c, id),
-            sheet.animations.len()
-        ));
-    }
     for anim in 0..sheet.animations.len().min(0x100) {
         let Some(frames) = lookups::animation(sheet, c, id, anim as u8, &who, p) else { continue };
         for f in frames {

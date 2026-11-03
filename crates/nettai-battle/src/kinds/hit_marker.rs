@@ -47,7 +47,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     o.anim_loaded = anim;
     let s = b.objects.sprite_mut(r);
     s.set_animation(anim, &b.content);
-    s.update(&b.content);
+    s.update();
     let o = b.objects.get_mut(r);
     o.set_visible(true);
     o.vel = o.pos;
@@ -77,7 +77,6 @@ fn follow(b: &mut Battle, r: ObjectRef) {
         marks.weakness
     };
     let finished = b.objects.sprite(r).steps >= u32::from(steps);
-    crate::object::sprite::check_played(b, r, finished, steps);
     if finished {
         let o = b.objects.get_mut(r);
         o.set_visible(false);
@@ -86,5 +85,5 @@ fn follow(b: &mut Battle, r: ObjectRef) {
         o.phase = 0;
         o.phase_init = 0;
     }
-    b.objects.sprite_mut(r).update(&b.content);
+    b.objects.sprite_mut(r).update();
 }
