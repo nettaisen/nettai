@@ -300,6 +300,10 @@ declare extern type Sprite with
     frame_flags: number
     -- The animation has played to its end (read-only).
     finished: boolean
+    -- How many times the sprite has stepped since its animation started
+    -- (or since it was loaded): what actions time themselves by
+    -- (read-only).
+    steps: number
     -- `sprite_load`: load a sprite (resets the animation and the look) and
     -- let it animate (the object's `no_sprite_update` off). (@exelib/looks
     -- loads the sprite an identity or a navi in a form is drawn with.)
@@ -3048,8 +3052,9 @@ export type Parts = {
 }
 export type Identity = IdentitySpec
 
--- A one-shot effect's or hit spark's look.
-export type EffectSpec = { sprite: SpriteAsset, anim: number?, palette: number? }
+-- A one-shot effect's or hit spark's look, and for how many of its
+-- sprite's steps it shows (its animation's length, in steps).
+export type EffectSpec = { sprite: SpriteAsset, anim: number?, palette: number?, steps: number }
 export type Effect = EffectSpec
 export type Spark = EffectSpec
 

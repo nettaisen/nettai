@@ -2,7 +2,7 @@
 
 use crate::battle::Battle;
 use crate::content::EffectSprite;
-use crate::object::{ObjectRef, Vec3, flags, sprite::FRAME_LAST, state};
+use crate::object::{ObjectRef, Vec3, flags, state};
 use nettai_content_api::SparkHandle;
 
 /// `AddRandomVarianceToTwoCoords`: jitter x and z by up to ±mask/2 pixels
@@ -54,7 +54,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
                 crate::kinds::Vars::Spark(v) => v.look,
                 _ => None,
             };
-            let EffectSprite { sprite: id, anim, palette } = b.content.spark(look.expect("a hit spark spawned with its look"));
+            let EffectSprite { sprite: id, anim, palette, .. } = b.content.spark(look.expect("a hit spark spawned with its look"));
             let steps = b.game_rules().effects.spark_steps_at_start;
             let sprite = b.objects.sprite_mut(r);
             sprite.load(id);
@@ -77,7 +77,14 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             o.phase_init = 0;
         }
         state::UPDATE => {
-            if b.objects.sprite(r).frame_parameters() & FRAME_LAST != 0 {
+            let look = match &b.objects.get(r).vars {
+                crate::kinds::Vars::Spark(v) => v.look,
+                _ => None,
+            };
+            let steps = b.content.spark(look.expect("a hit spark with its look")).steps;
+            let finished = b.objects.sprite(r).steps >= u32::from(steps);
+            crate::object::sprite::check_played(b, r, finished, steps);
+            if finished {
                 let o = b.objects.get_mut(r);
                 o.set_visible(false);
                 o.state = state::DESTROY;

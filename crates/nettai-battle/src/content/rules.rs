@@ -199,6 +199,18 @@ pub struct ChipUseRules {
     pub refused_keeps_chip: bool,
 }
 
+/// How many of its sprite's steps each mark over a navi shows
+/// (`EffectsRules::hit_marker_steps`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct HitMarkerSteps {
+    /// A damaging weakness hit's "!!".
+    pub weakness: u16,
+    /// An HP bug hit's mark: none for a game whose rules never show it.
+    #[serde(default)]
+    pub bug: Option<u16>,
+}
+
 /// The rule section `effects` (docs/design/exe5-map.md §15.3 items 15 and
 /// 16), the arena's: the battle's shared effects where games' touch the
 /// simulation differently. A game states every one.
@@ -211,6 +223,13 @@ pub struct EffectsRules {
     /// `sub_80E0864`); EXE5's (0x080E0870) doesn't, so it lasts a tick
     /// longer.
     pub spark_steps_at_start: bool,
+    /// How many of its sprite's steps the mark over a navi a hit told
+    /// something about (`kinds::hit_marker`) shows, by mark.
+    pub hit_marker_steps: HitMarkerSteps,
+    /// How many of its sprite's steps a bubble's pop (`kinds::bubble_visual`)
+    /// shows before it goes: none for a game without the bubble.
+    #[serde(default)]
+    pub bubble_pop_steps: Option<u16>,
     /// How an object's collision types are set again (`sub_801A082`).
     pub retype: RetypeRule,
     /// How an object's damage word decodes (`sub_8019F44`).

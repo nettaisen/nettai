@@ -6,7 +6,6 @@
 
 use crate::battle::Battle;
 use crate::object::{ObjectRef, Vec3, flags, state};
-use crate::object::sprite::FRAME_LAST;
 
 
 /// Its animation (Param1).
@@ -71,7 +70,15 @@ fn follow(b: &mut Battle, r: ObjectRef) {
     // The whole-pixel halves (Z16, Y16) go up by one.
     o.pos.z = o.pos.z.wrapping_add(0x1_0000);
     o.pos.y = o.pos.y.wrapping_add(0x1_0000);
-    if b.objects.sprite(r).frame_parameters() & FRAME_LAST != 0 {
+    let marks = b.game_rules().effects.hit_marker_steps;
+    let steps = if b.objects.get(r).params[0] == Mark::Bug as u8 {
+        marks.bug.expect("an HP bug's mark in a game whose rules state no `effects.hit_marker_steps.bug`")
+    } else {
+        marks.weakness
+    };
+    let finished = b.objects.sprite(r).steps >= u32::from(steps);
+    crate::object::sprite::check_played(b, r, finished, steps);
+    if finished {
         let o = b.objects.get_mut(r);
         o.set_visible(false);
         o.state = state::DESTROY;

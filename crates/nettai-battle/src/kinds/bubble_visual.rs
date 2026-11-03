@@ -118,7 +118,10 @@ fn pop(b: &mut Battle, r: ObjectRef) {
         o.anim = ANIM_POP;
         return;
     }
-    if b.objects.sprite(r).frame_parameters() & crate::object::sprite::FRAME_LAST != 0 {
+    let steps = b.game_rules().effects.bubble_pop_steps.expect("a bubble in a game whose rules state no `effects.bubble_pop_steps`");
+    let finished = b.objects.sprite(r).steps >= u32::from(steps);
+    crate::object::sprite::check_played(b, r, finished, steps);
+    if finished {
         b.objects.free(r);
     }
 }

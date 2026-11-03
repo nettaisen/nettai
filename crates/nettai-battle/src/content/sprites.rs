@@ -49,11 +49,13 @@ impl Animations {
     }
 }
 
-/// A one-shot effect's look: which sprite animation it plays.
+/// A one-shot effect's look: which sprite animation it plays, and for how
+/// many of its sprite's steps it shows.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct EffectSprite {
     pub sprite: SpriteId,
     pub anim: u8,
     pub palette: u8,
+    pub steps: u16,
 }

@@ -1749,7 +1749,11 @@ impl Defs {
                 }
                 _ => return Err(what("needs a `sprite` (asset.sprite(...))".into())),
             };
-            Ok(super::EffectSprite { sprite, anim: byte(d, "anim")?, palette: byte(d, "palette")? })
+            let steps = match d.spec.field("steps") {
+                Data::Int(n) => u16::try_from(*n).map_err(|_| what(format!("`steps` {n} is not 0 to 65535")))?,
+                _ => return Err(what("needs its `steps` (how many of its sprite's steps it shows)".into())),
+            };
+            Ok(super::EffectSprite { sprite, anim: byte(d, "anim")?, palette: byte(d, "palette")?, steps })
         };
         let effects = definitions.of(Registry::Effect).iter().map(look).collect::<Result<Vec<_>, _>>()?;
         let sparks = definitions.of(Registry::Spark).iter().map(look).collect::<Result<Vec<_>, _>>()?;

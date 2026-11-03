@@ -534,6 +534,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 r#"
         shake = "battle_rng",
         spark_steps_at_start = true,
+        hit_marker_steps = { weakness = 18, bug = 18 },
+        bubble_pop_steps = 5,
         retype = "is_and_hits",
         damage_word = { damage = 0x7FF, flags = { { bit = 0x4000, status = "damage_word_paralysis", hit_modifier = 0, stop = true }, { bit = 0x800, bug = 0x1118 } } },
         palette_flash = "mode_runs_through_pause",

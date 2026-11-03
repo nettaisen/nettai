@@ -407,6 +407,9 @@ named_fields! {
         FrameFlags = "frame_flags", U8, ro;
         /// The animation has played to its end.
         Finished = "finished", Bool, ro;
+        /// How many times the sprite has stepped since its animation
+        /// started (or since it was loaded).
+        Steps = "steps", U32, ro;
     }
 }
 

@@ -2634,6 +2634,7 @@ impl CoreApi for Battle {
             SpriteField::Animation => Value::Int(s.anim as i64),
             SpriteField::FrameFlags => Value::Int(s.frame_parameters() as i64),
             SpriteField::Finished => Value::Bool(s.finished()),
+            SpriteField::Steps => Value::Int(s.steps as i64),
         }
     }
 

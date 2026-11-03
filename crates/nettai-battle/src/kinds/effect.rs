@@ -135,7 +135,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 
 fn init(b: &mut Battle, r: ObjectRef) {
     let [_, flip, palette_add, priority] = b.objects.get(r).params;
-    let EffectSprite { sprite: id, anim, palette } = b.content.effect(look(b, r).expect("an effect spawned with its look"));
+    let EffectSprite { sprite: id, anim, palette, .. } = b.content.effect(look(b, r).expect("an effect spawned with its look"));
     let sprite = b.objects.sprite_mut(r);
     sprite.load(id);
     sprite.set_animation(anim, &b.content);
@@ -171,8 +171,12 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         if let (true, Some(owner)) = (follow, o.related[0]) {
             b.copy_visibility(owner, r);
         }
-        let finished = b.objects.sprite(r).frame_parameters() & crate::object::sprite::FRAME_LAST != 0;
-        destroy = finished && (b.objects.get(r).timer as i16) <= 0;
+        // (Untimed, or its time up: it goes once it has shown for its steps.)
+        if (b.objects.get(r).timer as i16) <= 0 {
+            let steps = b.content.effect(look(b, r).expect("an effect with its look")).steps;
+            destroy = b.objects.sprite(r).steps >= u32::from(steps);
+            crate::object::sprite::check_played(b, r, destroy, steps);
+        }
     }
     b.objects.sprite_mut(r).update(&b.content);
     if destroy {
