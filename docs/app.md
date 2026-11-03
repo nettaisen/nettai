@@ -257,12 +257,12 @@ going on and its scenery moving as the game's pause moves it (§15).
   starts at once. No rule plays it; the games' contents name it `encounter` (`compat/assets.toml`). (EXE5's and EXE6's song
   0x0F, `transmission`, was looked at first and isn't used: the user, "it shouldn't be the transmission sound, it
   should be the encounter sound".)
-- The title music is the selected game's too: the song its assets name `title-screen` (no sound of the content's:
-  the assets' index gives its number, and it plays as one sound more past the content's), on a driver of its own. It
-  plays across the menu screens, fades in, fades out as a battle starts, and crossfades with the next game's as
-  the game changes. Each game's content names its own (`content/<game>/compat/assets.toml`): the song its start
-  screen's first state sets, song 1 in EXE6 and EXE5 and song 0 in EXE4, read from the routine in all twelve
-  ROMs. A game whose assets' index names no such sound has none. (Practice's entry played the battle's music in its place, and handed it to the battle and back,
+- The title music is the selected game's too: the song its rules' music role `title_screen` names, on a driver of
+  its own. It plays across the menu screens, fades in, fades out as a battle starts, and crossfades with the next
+  game's as the game changes. No rule plays it, as none plays `encounter`. Each game's content fills the role
+  (`content/<game>/rules/roles.luau`, the asset `title-screen`, numbered in `compat/assets.toml`): the song its
+  start screen's first state sets, song 1 in EXE6 and EXE5 and song 0 in EXE4, read from the routine in all twelve
+  ROMs. The role is optional: a game that leaves it unfilled has no title music. (Practice's entry played the battle's music in its place, and handed it to the battle and back,
   until the entry went: docs/design/app-ui.md §2.57.)
 - While a battle runs, both are ticked with the battle's ticks and their samples added to the battle's, sample
   for sample; with no battle running they run on their own clock at the same rate. (At first the menus' sound ran
@@ -489,9 +489,6 @@ drivers, and each side's navi, forms and chips. Once a game is loaded this is a 
 fill at once; they show the truth, and the cards stay up half a second so they can be read. A battle made ready
 loads no runtime and reads nothing while it plays, and the app holds itself to that: when a battle ends it asks
 the library what was loaded late (`Player::late`) and writes any runtime or read to the log.
-
-**What is missing.** The app looks the title music up by its asset name, `title-screen`, where the menus'
-sounds go through the rules' sound roles: a role for it would be the content's to add.
 
 ## 2. The shell and the screens
 

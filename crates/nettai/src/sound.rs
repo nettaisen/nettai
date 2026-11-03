@@ -3,23 +3,19 @@
 //! The menus' sounds are the selected game's own: its custom screen's cursor, pick and taking back, its
 //! refusal, and the sound its battles start with as the screen breaks into one (the jack-in's), as its rules'
 //! sound roles name them (the app names no sound of a game's graphics). The title music is the
-//! game's too: the song its assets' index names `title-screen` (no sound of the content's: played as one more past the
-//! content's sounds), played across the menu screens, faded out as a battle starts, and crossfaded with the next
-//! game's as the game changes (docs/design/app-ui.md §6).
+//! game's too, the song its rules' music role `title_screen` names, played across the menu screens, faded out as a
+//! battle starts, and crossfaded with the next game's as the game changes (docs/design/app-ui.md §6).
 //!
 //! The device gets one stream at the battle's rate. While a battle runs, the menus' sounds are ticked with
 //! its ticks and added to its samples; with none running they run on their own clock at the same rate
 //! (docs/app.md §1, "The sound").
 
-use nettai_audio::{BattleAudio, Output, SoundCue, SoundId};
-use nettai_battle::content::SoundRole;
+use nettai_audio::{BattleAudio, Output, SoundCue};
+use nettai_battle::content::{MusicRole, SoundRole};
 use nettai_frontend::game::Loaded;
 use nettai_frontend::player::FRAME_RATE;
 use std::time::Duration;
 use web_time::Instant;
-
-/// The name a game's assets' index gives its title screen's music.
-const TITLE_MUSIC: &str = "title-screen";
 
 /// How long the title music takes to fade out, and to fade in.
 const FADE: f32 = 0.9;
@@ -145,19 +141,14 @@ impl Sound {
         }
         let Some(sound) = &game.sound else { return };
         let content = &game.game.content;
-        let roles = &content.defs.roles().sounds;
-        let cue = |role| roles.get(&role).map(|&id| SoundCue::Effect(id));
+        let roles = content.defs.roles();
+        let cue = |role| roles.try_sound(role).map(SoundCue::Effect);
         // The music of the game before fades out under this one's.
         if let Some(old) = self.menu.take().filter(|m| m.playing) {
             self.leaving = Some((old.music, self.fade));
         }
         self.fade = 0.0;
-        // (The title music is no sound of the content's: the game's song, one more sound past the content's.)
-        let mut music = sound.songs.clone();
-        let title = game.game.index.sounds.get(TITLE_MUSIC).map(|&id| {
-            music.0.push(nettai_audio::BankSong { bank: Default::default(), song: id });
-            SoundCue::Music(SoundId(music.0.len() as u16 - 1))
-        });
+        let title = roles.try_music(MusicRole::TitleScreen).map(SoundCue::Music);
         self.menu = Some(Menu {
             effects: BattleAudio::new(sound.bank.clone(), sound.songs.clone()),
             cursor: cue(SoundRole::CustomCursor),
@@ -165,7 +156,7 @@ impl Sound {
             back: cue(SoundRole::CustomBack),
             refused: cue(SoundRole::Refused),
             jack_in: cue(SoundRole::Encounter),
-            music: BattleAudio::new(sound.bank.clone(), music),
+            music: BattleAudio::new(sound.bank.clone(), sound.songs.clone()),
             title,
             playing: false,
         });
