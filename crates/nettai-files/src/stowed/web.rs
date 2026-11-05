@@ -1,7 +1,7 @@
-//! The page's storage (the origin private file system): stowed files written to it and read from it, each by a thread
-//! of its own whose event loop awaits the browser.
+//! The browser's stowed files: kept in the page's storage (the origin private file system), written to it and read
+//! from it, each by a thread of its own whose event loop awaits the browser.
 
-use super::memory;
+use crate::tree;
 use std::collections::BTreeSet;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -47,7 +47,7 @@ pub fn listed(path: PathBuf) {
 
 /// `path` as the page's storage has it: within the data folder (the folder whose changes are kept).
 fn in_storage(path: &Path) -> io::Result<String> {
-    let root = memory::watched().ok_or_else(|| io::Error::other("no data folder is kept"))?;
+    let root = tree::watched().ok_or_else(|| io::Error::other("no data folder is kept"))?;
     let within = path.strip_prefix(&root).map_err(|_| io::Error::other(format!("{} isn't in the data folder", path.display())))?;
     Ok(within.components().map(|c| c.as_os_str().to_string_lossy().into_owned()).collect::<Vec<_>>().join("/"))
 }
@@ -55,9 +55,9 @@ fn in_storage(path: &Path) -> io::Result<String> {
 pub fn stow(path: &Path, bytes: Vec<u8>) -> io::Result<()> {
     let at = in_storage(path)?;
     if let Some(dir) = path.parent() {
-        memory::create_dir_all(dir)?;
+        tree::create_dir_all(dir)?;
     }
-    memory::write(path, &bytes)?;
+    tree::write(path, &bytes)?;
     listed(path.to_path_buf());
     let name = path.display().to_string();
     nettai_threads::spawn_async("stowing", move || {
@@ -74,7 +74,7 @@ pub fn stow(path: &Path, bytes: Vec<u8>) -> io::Result<()> {
 
 pub fn stowed(dir: &Path) -> Vec<PathBuf> {
     let mut out: BTreeSet<PathBuf> = nettai_threads::lock(&KNOWN).map(|k| k.iter().filter(|p| p.parent() == Some(dir)).cloned().collect()).unwrap_or_default();
-    if let Ok(read) = memory::read_dir(dir) {
+    if let Ok(read) = tree::read_dir(dir) {
         out.extend(read.flatten().map(|e| e.path()).filter(|p| crate::is_file(p)));
     }
     out.into_iter().collect()
@@ -94,7 +94,7 @@ pub fn fetch(paths: &[PathBuf]) -> io::Result<()> {
             let mut result = Ok(());
             for (path, at) in at {
                 match nettai_fetch(&at).await {
-                    Ok(bytes) => memory::preload(&path, js_sys::Uint8Array::new(&bytes).to_vec()),
+                    Ok(bytes) => tree::preload(&path, js_sys::Uint8Array::new(&bytes).to_vec()),
                     Err(why) => {
                         result = Err(io::Error::new(io::ErrorKind::NotFound, format!("{}: {why:?}", path.display())));
                         break;

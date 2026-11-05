@@ -1,11 +1,7 @@
-//! The desktop and a phone: the system's files, `std::fs`'s; the stowed files are files like any other.
+//! The desktop and a phone: the stowed files are files like any other.
 
 use std::io;
 use std::path::{Path, PathBuf};
-
-pub mod fs {
-    pub use std::fs::*;
-}
 
 pub fn stow(path: &Path, bytes: Vec<u8>) -> io::Result<()> {
     if let Some(dir) = path.parent() {
