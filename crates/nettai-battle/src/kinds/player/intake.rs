@@ -8,7 +8,7 @@ use super::{
     form_of, navi_of, refresh_abilities, reload_base_weapons, set_flag2, stats, stats_mut,
 };
 use crate::battle::{Battle, battle_flags};
-use crate::collision::{CollisionData, f1, timer};
+use crate::collision::{CollisionData, f1, timer, types};
 use crate::content::{EffectRole, SparkRole, StatusRole, StatusTimer};
 use crate::object::{ObjectRef, Vec3};
 
@@ -183,14 +183,14 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
     }
     let regrowing = matches!(barrier, 4 | 8 | 0xA) && barrier_hp16(c) == 0;
     match rule.wind {
-        crate::content::BarrierWind::Pops if !regrowing && (c.acc.raw_elements & 0x20 != 0 || c.acc.raw_hit_flags & 0xA20 != 0) => {
+        crate::content::BarrierWind::Pops if !regrowing && (c.acc.raw_elements & 0x20 != 0 || c.acc.raw_hit_flags & (types::WIND | types::PULL | types::PUSHING) != 0) => {
             // Popped (wind): absorbs everything until its visual clears it.
             barrier = 0x10;
             c.barrier = 0x10;
             set_barrier_hp16(c, 0);
             c.barrier_saved_hmf = c.hit_mod_final;
         }
-        crate::content::BarrierWind::TakesAway if !regrowing && c.acc.raw_hit_flags & 0x20 != 0 => {
+        crate::content::BarrierWind::TakesAway if !regrowing && c.acc.raw_hit_flags & types::WIND != 0 => {
             // Gone at once (EXE4's 0x08012E1E); the rest of the tick goes on
             // by the type it had.
             c.barrier = 0;
@@ -416,7 +416,7 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
                 return;
             }
             let ffc = coll(b, r).acc.hit_flags;
-            if ffc & 0x2000 != 0 && ffc & rules.sword_spares == 0 {
+            if ffc & types::SWORD != 0 && ffc & rules.sword_spares == 0 {
                 ai_mut(b, r).requests |= ANTI_SWORD_TRIGGERED;
                 zero_trapped_hit(b, r);
                 return;
@@ -431,7 +431,7 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
         zero_trapped_hit(b, r);
         return;
     }
-    if coll(b, r).acc.hit_flags & 0xFF80_0000 == 0 {
+    if coll(b, r).acc.hit_flags & (types::ATTACKS | types::OBJECTS | types::BODIES | types::OTHER_BODIES | types::NEUTRAL) == 0 {
         return;
     }
     let sum: u32 = coll(b, r).acc.element_damage[..5].iter().map(|&d| d as u32).sum();
@@ -624,11 +624,12 @@ pub(crate) fn take_status(b: &mut Battle, r: ObjectRef, s: nettai_content_api::S
     }
 }
 
-/// `sub_801A2CC`: chip destruction, a hit (self bit 0x10) that destroys the
-/// chip the navi names and, of a player's hand, what its game's intake
-/// rules say (`chip_destruction`): the next chip, or the hand.
+/// `sub_801A2CC`: chip destruction, a hit (`types::CHIP_DESTRUCTION`)
+/// that destroys the chip the navi names and, of a player's hand, what its
+/// game's intake rules say (`chip_destruction`): the next chip, or the
+/// hand.
 fn lose_chip(b: &mut Battle, r: ObjectRef) {
-    if coll(b, r).acc.hit_flags & 0x10 == 0 {
+    if coll(b, r).acc.hit_flags & types::CHIP_DESTRUCTION == 0 {
         return;
     }
     b.objects.get_mut(r).chip = None;
@@ -765,7 +766,7 @@ fn pierce_ends_flash(b: &mut Battle, r: ObjectRef) {
     }
     let c = coll_mut(b, r);
     let ffc = c.acc.hit_flags;
-    if c.status_timers[timer::FLASH] != 0 && ffc & 4 != 0 && ffc & 0x1000 == 0 {
+    if c.status_timers[timer::FLASH] != 0 && ffc & types::PIERCING != 0 && ffc & types::BREAKS_GUARD == 0 {
         c.status_timers[timer::FLASH] = 0;
     }
 }

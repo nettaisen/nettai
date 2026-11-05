@@ -19,7 +19,7 @@ use crate::names;
 use crate::spec::{self, chips, forms, general, objects, panels, rules, LOG_TICKS};
 use nettai_battle::Battle;
 use nettai_battle::battle::{fight, mode};
-use nettai_battle::collision::{ATTACK_OF, f1};
+use nettai_battle::collision::{ATTACK_OF, f1, types};
 use nettai_battle::content::{ChipClass, ChipModifier, ChipUsage, Content, DamageFormula, ExtraChipFlags, Trap};
 use nettai_battle::custom::builder::{self, Pick};
 use nettai_battle::custom::Layer;
@@ -486,9 +486,6 @@ fn encode_general(v: &View, extra: &Extra, out: &mut Obs) {
 
 /// The type bits of a panel that are its bodies, by side.
 const BODY_OF: [u32; 2] = [pflags::BODY_SIDE0, pflags::BODY_SIDE1];
-/// A panel's blocker and neutral object bits (field-collision-damage.md §3.3).
-const BLOCKER: u32 = 0x0008_0000;
-const NEUTRAL: u32 = 0x0080_0000;
 
 fn encode_panels(v: &View, extra: &Extra, out: &mut Obs) {
     let b = v.b;
@@ -529,15 +526,15 @@ fn encode_panels(v: &View, extra: &Extra, out: &mut Obs) {
             // (A stolen panel blinks as it goes back to its owner: shown.)
             row[panels::state + 5] = flag(p.return_blink & 0xFF != 0);
             row[panels::highlight] = flag(p.highlight != 0);
-            let types = b.collision.panel_self_flags(x, y);
+            let registered = b.collision.panel_self_flags(x, y);
             let bodies = v.sides(BODY_OF, p.flags);
-            let attacks = v.sides(ATTACK_OF, types);
+            let attacks = v.sides(ATTACK_OF, registered);
             let on = [
                 bodies[0],
                 bodies[1] && v.sees,
                 p.flags & pflags::FLOATING != 0,
-                types & BLOCKER != 0,
-                types & NEUTRAL != 0,
+                registered & types::BLOCKER != 0,
+                registered & types::NEUTRAL != 0,
                 attacks[0],
                 attacks[1] && v.sees,
             ];
@@ -640,23 +637,23 @@ fn encode_object(v: &View, r: ObjectRef, i: usize, out: &mut Obs) {
     if let Some(c) = collision {
         let t = c.self_flags;
         let attacks = v.sides(ATTACK_OF, t);
-        let bodies = v.sides([0x0800_0000, 0x0400_0000], t);
-        let others = v.sides([0x0200_0000, 0x0100_0000], t);
-        let types = [
+        let bodies = v.sides([types::BODY_SIDE0, types::BODY_SIDE1], t);
+        let others = v.sides([types::OTHER_BODY_SIDE0, types::OTHER_BODY_SIDE1], t);
+        let kinds = [
             true,
             attacks[0],
             attacks[1],
             bodies[0],
             bodies[1],
             others[0] || others[1],
-            t & NEUTRAL != 0,
-            t & 0x0010_0000 != 0,
-            t & BLOCKER != 0,
-            t & 0x5000 == 0x5000 || t & 0x2 != 0,
-            t & 0x4 != 0,
-            t & 0x8000 != 0,
+            t & types::NEUTRAL != 0,
+            t & types::FLOATING != 0,
+            t & types::BLOCKER != 0,
+            t & (types::NO_GUARD_SPARK | types::BREAKS_GUARD) == types::NO_GUARD_SPARK | types::BREAKS_GUARD || t & types::BREAK != 0,
+            t & types::PIERCING != 0,
+            t & types::GROUND_ONLY != 0,
         ];
-        for (k, on) in types.into_iter().enumerate() {
+        for (k, on) in kinds.into_iter().enumerate() {
             row[objects::collision + k] = flag(on);
         }
         // (The panels it is registered on now.)

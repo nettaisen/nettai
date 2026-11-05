@@ -23,7 +23,7 @@
 use nettai_content_api::RecordHandle;
 
 use crate::battle::{Battle, battle_flags};
-use crate::collision::{CollisionId, f1};
+use crate::collision::{CollisionId, f1, types};
 use crate::content::{CollisionRole, EffectRole, PushSource, SoundRole, SparkRole};
 use crate::field::{self, pflags};
 use crate::kinds::common::{self, Progress};
@@ -204,17 +204,19 @@ pub enum Removal {
 const PUSHING_HIT: u8 = 0x40;
 
 /// Collision types that break an obstacle outright when they touch it:
-/// bodies (0x0C00_0000), other obstacles (0x0080_0000), and breaking hits
-/// (type 0x2).
-const CRUSHING_HITS: u32 = 0x0C80_0002;
-const CRUSHING_HITS_BUT_BODIES: u32 = 0x0080_0002;
+/// bodies, other obstacles (neutral objects), and breaking hits.
+const CRUSHING_HITS: u32 = types::BODIES | CRUSHING_HITS_BUT_BODIES;
+const CRUSHING_HITS_BUT_BODIES: u32 = types::NEUTRAL | types::BREAK;
 
 /// What pushed it, by side: the side's attacks, objects and other bodies
 /// (`sub_800F598`, `sub_801AE56`).
-const PUSHERS: [u32; 2] = [0xA200_0000, 0x5100_0000];
+const PUSHERS: [u32; 2] = [
+    types::ATTACK_SIDE0 | types::OBJECT_SIDE0 | types::OTHER_BODY_SIDE0,
+    types::ATTACK_SIDE1 | types::OBJECT_SIDE1 | types::OTHER_BODY_SIDE1,
+];
 
 /// Hits of this type don't push a [`Push::AnyHit`] obstacle.
-const UNPUSHING_HIT: u32 = 0x1000;
+const UNPUSHING_HIT: u32 = types::BREAKS_GUARD;
 
 /// The hit modifier a [`Push::AnyHit`] obstacle takes from any hit:
 /// pushed (0x40) a panel away (0x20), flinching (0x01).
@@ -223,7 +225,7 @@ const ANY_HIT_PUSH: u8 = 0x61;
 /// Panels a slide may enter: solid ones without other bodies or obstacles
 /// on them (`sub_800F534`); a knockback's also nothing else on them and
 /// no reservation (`sub_800F50C`).
-const SLIDE_BLOCKERS: u32 = 0x0380_0000;
+const SLIDE_BLOCKERS: u32 = types::OTHER_BODIES | types::NEUTRAL;
 const KNOCKBACK_BLOCKERS: u32 = pflags::OCCUPIED;
 
 // (A slide's speed is the obstacle's game's reactions section's
@@ -407,7 +409,7 @@ fn move_end(b: &mut Battle, r: ObjectRef, c: CollisionId) {
     b.call_panel(kind, nettai_content_api::PanelCall::MoveEnd { body: r });
 }
 
-/// `sub_801AE56`: a hit from one side only (and not of type 0x1000, nor
+/// `sub_801AE56`: a hit from one side only (and not `UNPUSHING_HIT`, nor
 /// already a push) pushes it a panel away from that side.
 /// EXE5's (0x08017AD8, from its any-hit reaction 0x08017A78): the same by
 /// the hitters' flips (`hit_flags_by_flip`, 0x08017B34): one side's hits

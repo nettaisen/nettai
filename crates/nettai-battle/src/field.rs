@@ -2,7 +2,7 @@
 //! y 1..=3). See docs/engine/field-collision-damage.md §2.
 
 use crate::battle::Battle;
-use crate::collision::Collision;
+use crate::collision::{Collision, types};
 use crate::content::{PanelCondition, SoundRole};
 use crate::sound::SoundId;
 use crate::object::ObjectRef;
@@ -70,19 +70,21 @@ impl<'de> serde::Deserialize<'de> for PanelType {
 
 /// Bits of a panel's cached flags word.
 pub mod pflags {
+    use crate::collision::types;
+
     /// The panel's type, by the game's number of it.
     pub const TYPE_MASK: u32 = 0x0F;
     pub const SOLID: u32 = 0x10;
     pub const ALLIANCE_1: u32 = 0x20;
     pub const CRACKED: u32 = 0x40;
     pub const RESERVED: u32 = 0x80;
-    pub const BODY_SIDE0: u32 = 0x0800_0000;
-    pub const BODY_SIDE1: u32 = 0x0400_0000;
-    pub const FLOATING: u32 = 0x0010_0000;
+    pub const BODY_SIDE0: u32 = types::BODY_SIDE0;
+    pub const BODY_SIDE1: u32 = types::BODY_SIDE1;
+    pub const FLOATING: u32 = types::FLOATING;
     /// Bodies, neutral objects, blockers and reservations.
-    pub const OCCUPIED: u32 = 0x0F88_0080;
+    pub const OCCUPIED: u32 = BODY | types::BLOCKER | RESERVED;
     /// Any body.
-    pub const BODY: u32 = 0x0F80_0000;
+    pub const BODY: u32 = types::BODIES | types::OTHER_BODIES | types::NEUTRAL;
 }
 
 /// What a panel showed when it was last drawn (drawn only): whether it
@@ -780,7 +782,7 @@ impl Battle {
         if f & pflags::SOLID == 0 {
             return false;
         }
-        let broke = f & 0x0F08_0080 == 0;
+        let broke = f & (types::BODIES | types::OTHER_BODIES | types::BLOCKER | pflags::RESERVED) == 0;
         if broke {
             p.flags = (f & !mask) | roles.broken.0 as u32;
             p.kind = roles.broken;

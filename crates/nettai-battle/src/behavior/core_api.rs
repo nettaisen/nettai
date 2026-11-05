@@ -24,7 +24,7 @@ use nettai_content_api::{ObstacleHold, ObstaclePush};
 
 use crate::actor::{ActorData, ActorType, request, status};
 use crate::battle::{Battle, LinkedRecord};
-use crate::collision::{CollisionData, f1, timer};
+use crate::collision::{CollisionData, f1, timer, types};
 use crate::field::PanelType;
 use crate::input::keys;
 use crate::kinds::common::{self, Progress};
@@ -271,10 +271,6 @@ fn store(name: &'static str, writable: bool, ty: FieldType, v: Value) -> ApiResu
     }
     ty.store(v).map_err(|error| ApiError::Type { field: name, error })
 }
-
-/// A collision's self flags' bit its hits reach while dimmed by
-/// (`sub_3007218`'s test; setups while dimmed set it).
-const DIMMED_HITTER: u32 = 0x1_0000;
 
 fn int(v: FieldValue) -> i64 {
     match v.load() {
@@ -2741,7 +2737,7 @@ impl CoreApi for Battle {
             CollisionField::StatusFinal => return def(Registry::Status, c.status_final.map(|h| h.0)),
             CollisionField::Region => return def(Registry::Region, c.region.map(|h| h.0)),
             CollisionField::HitEffect => return def(Registry::Spark, c.hit_effect.map(|h| h.0)),
-            CollisionField::HitsWhileDimmed => return Ok(Value::Bool(c.self_flags & DIMMED_HITTER != 0)),
+            CollisionField::HitsWhileDimmed => return Ok(Value::Bool(c.self_flags & types::HITS_WHILE_DIMMED != 0)),
             CollisionField::ConfusionVisual => return Ok(c.links[crate::collision::link::CONFUSE].into()),
             CollisionField::BlindnessVisual => return Ok(c.links[crate::collision::link::BLIND].into()),
             _ => {}
@@ -2827,7 +2823,7 @@ impl CoreApi for Battle {
         let c = self.collision_of_mut(o)?;
         match (f, v) {
             (CollisionField::HitsWhileDimmed, FieldValue::Bool(on)) => {
-                c.self_flags = if on { c.self_flags | DIMMED_HITTER } else { c.self_flags & !DIMMED_HITTER };
+                c.self_flags = if on { c.self_flags | types::HITS_WHILE_DIMMED } else { c.self_flags & !types::HITS_WHILE_DIMMED };
                 return Ok(());
             }
             (CollisionField::ConfusionVisual, FieldValue::Object(r)) => {
