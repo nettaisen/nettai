@@ -8,8 +8,10 @@ build-std = ["std", "panic_abort"]
 [target.wasm32-unknown-unknown]
 runner = "wasm-bindgen-test-runner"
 # A shared memory the page makes (imported), as large as Wasm's 32-bit memory may be; the thread-local storage's
-# symbols that wasm-bindgen sets up each thread with.
+# symbols that wasm-bindgen sets up each thread with. web-sys's unstable APIs: WebCodecs (nettai-video), the folder
+# picker (nettai-dialogs).
 rustflags = [
+    "--cfg=web_sys_unstable_apis",
     "-C", "target-feature=+atomics,+bulk-memory,+mutable-globals",
     "-C", "link-arg=--shared-memory",
     "-C", "link-arg=--import-memory",

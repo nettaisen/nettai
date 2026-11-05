@@ -15,7 +15,6 @@
 mod ios;
 #[cfg(any(android, test))]
 mod android;
-mod wanted;
 
 #[cfg(ios)]
 use ios as pickers;

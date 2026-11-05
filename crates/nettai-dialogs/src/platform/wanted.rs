@@ -1,5 +1,5 @@
-//! Which files of a folder the player chose are wanted: the paths [`crate::open_folder`] takes, matched as the
-//! browser matches them (a phone reads them out of the folder: `phone`).
+//! Which files of a folder the player chose or dropped are wanted: the paths [`crate::open_folder`] takes, matched
+//! the same on a phone (`phone`) and in a browser (`web`).
 
 /// Whether `path` (in a folder chosen: its parts by `/`) is at one of `wanted` (folders by name, any case; the
 /// file's name with `*` for any letters and `?` for one, any case), as the browser finds them.
@@ -12,7 +12,19 @@ pub(crate) fn is_wanted(path: &str, wanted: &[String]) -> bool {
     })
 }
 
-/// How deep in a folder chosen a wanted file may be (`exe/data/exe4.dat`).
+/// Whether some of `wanted` is within the folder at `dir` (in a folder chosen: its parts by `/`, by name, any case):
+/// a folder to look in.
+#[cfg_attr(not(web), allow(dead_code))]
+pub(crate) fn leads_to(dir: &str, wanted: &[String]) -> bool {
+    let parts: Vec<&str> = dir.split('/').filter(|p| !p.is_empty()).collect();
+    wanted.iter().any(|w| {
+        let want: Vec<&str> = w.split('/').filter(|p| !p.is_empty()).collect();
+        want.len() > parts.len() && want.iter().zip(&parts).all(|(w, p)| w.eq_ignore_ascii_case(p))
+    })
+}
+
+/// How deep in a folder chosen a wanted file may be (`exe/data/exe4.dat`): how deep a phone lists one.
+#[cfg_attr(web, allow(dead_code))]
 pub(crate) fn depth(wanted: &[String]) -> usize {
     wanted.iter().map(|w| w.split('/').filter(|p| !p.is_empty()).count()).max().unwrap_or(0)
 }
@@ -67,6 +79,8 @@ mod tests {
         assert!(!is_wanted("exe/exe4.dat", &wanted));
         assert!(!is_wanted("exe/data/other/exe4.dat", &wanted));
         assert_eq!(depth(&wanted), 3);
+        assert!(leads_to("exe", &wanted) && leads_to("EXE/Data", &wanted) && leads_to("data", &wanted));
+        assert!(!leads_to("exe/data/deeper", &wanted) && !leads_to("other", &wanted));
     }
 
     /// Of a folder on disk, the wanted files are found at their depth, any case, and nothing else.

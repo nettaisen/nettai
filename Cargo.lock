@@ -3925,6 +3925,7 @@ dependencies = [
  "rfd",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]

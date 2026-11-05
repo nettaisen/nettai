@@ -8,7 +8,7 @@
 //! (`UIActivityViewController`), from which the player saves it to Files, AirDrops it or sends it.
 
 use super::{Answer, answer, lot};
-use super::wanted::wanted_in;
+use crate::platform::wanted::wanted_in;
 use crate::Filter;
 use objc2::rc::Retained;
 use objc2::runtime::{AnyObject, ProtocolObject};

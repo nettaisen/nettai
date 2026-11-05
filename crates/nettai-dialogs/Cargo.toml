@@ -23,6 +23,42 @@ nettai-threads = { path = "../nettai-threads" }
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
+# The page's file input, folder dialog, drops, storage, downloads and clipboard.
+web-sys = { version = "0.3", features = [
+    "Blob",
+    "Clipboard",
+    "DataTransfer",
+    "DataTransferItem",
+    "DataTransferItemList",
+    "DirectoryPickerOptions",
+    "Document",
+    "DragEvent",
+    "Element",
+    "Event",
+    "EventTarget",
+    "File",
+    "FileList",
+    "FileSystemDirectoryEntry",
+    "FileSystemDirectoryHandle",
+    "FileSystemDirectoryReader",
+    "FileSystemEntry",
+    "FileSystemFileEntry",
+    "FileSystemFileHandle",
+    "FileSystemGetDirectoryOptions",
+    "FileSystemGetFileOptions",
+    "FileSystemHandle",
+    "FileSystemHandleKind",
+    "FileSystemPermissionMode",
+    "FileSystemWritableFileStream",
+    "HtmlAnchorElement",
+    "HtmlElement",
+    "HtmlInputElement",
+    "Navigator",
+    "StorageManager",
+    "Url",
+    "Window",
+    "WritableStream",
+] }
 
 # iOS: UIKit's document picker, share sheet and pasteboard. (In the tree already, for the window.)
 [target.'cfg(target_os = "ios")'.dependencies]

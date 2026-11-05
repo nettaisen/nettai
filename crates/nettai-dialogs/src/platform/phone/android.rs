@@ -9,7 +9,7 @@
 //! it offers any file.
 
 use super::{Answer, answer, lot};
-use super::wanted::{depth, is_wanted};
+use crate::platform::wanted::{depth, is_wanted};
 use crate::Filter;
 use jni::objects::{JClass, JObject, JString, JValue};
 use jni::sys::jlong;

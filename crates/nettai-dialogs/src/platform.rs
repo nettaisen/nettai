@@ -15,6 +15,10 @@ pub(crate) mod web;
 pub(crate) mod phone;
 #[cfg(not(web))]
 pub(crate) mod native;
+// (The files wanted in a folder, matched the same on a phone and in a browser; in tests anywhere.)
+#[cfg(any(phone, web, test))]
+#[cfg_attr(not(any(phone, web)), allow(dead_code))]
+pub(crate) mod wanted;
 
 #[cfg(desktop)]
 pub(crate) use desktop as system;
