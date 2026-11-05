@@ -641,7 +641,6 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         form_tick = false,
         form_keeps_back_special = false,
         flash_hides_on_clear = true,
-        missing_collision_status = 7,
         reactions = "flash_timer_first",
         reaction_actions = "marked",
         drag = { poses = { otherwise = 1 }, ending = "stands" },
@@ -722,7 +721,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!((m.order.len(), m.order[1].when.clone(), m.role(crate::content::Emotion(1)), m.role(crate::content::Emotion(0))), (3, vec![worried], Some(crate::content::EmotionRole::WornOut), None));
         let aura = r.effects.full_synchro_aura;
         assert_eq!((aura.follows_identity, aura.steps_while_paused, aura.stops_at_a_pause_in_the_fight, aura.spawn_runs_while_paused), (true, true, false, false));
-        assert_eq!((r.form_tick, r.flash_hides_on_clear, r.missing_collision_status.0), (false, true, 7));
+        assert_eq!((r.form_tick, r.flash_hides_on_clear), (false, true));
         assert_eq!((r.pools.slots(), r.panels.reservations), ([16, 32, 8], Reservations::Unmarked));
         let f = r.fresh_stats;
         assert_eq!((f.reg_up, f.custom_level, f.mood), (7, 6, 0x70));
@@ -752,7 +751,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 129, "every field of every section");
+        assert_eq!(fields, 128, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

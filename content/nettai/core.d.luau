@@ -911,6 +911,9 @@ declare extern type Object with
     -- it holds where it is, looking locked on) and `sub_80E1662` (false: it
     -- follows its target again).
     function freeze_target_marker(self, on: boolean): ()
+    -- On a navi: the panel its lock-on marker is on (`sub_80E164A`), nil
+    -- without a marker or with the marker on no opponent.
+    function lock_on_panel(self): (number?, number?)
     -- `sub_800F2FC`: turn to face `target`'s column.
     function face_toward(self, target: Object): ()
     -- `sub_800E2FC`: heal up to the maximum HP, with the recovery sparkle
@@ -1302,8 +1305,7 @@ declare battle: {
     takeover_ticks: (side: number) -> number,
     player: (side: number) -> Object?,
     -- `sub_800EB6C` on side `viewer`'s console: its player sees `side`'s objects: its own side's always, the other
-    -- side's unless its navi is blind (a navi with no collision data yet as the game reads it then, the rules'
-    -- `missing_collision_status`).
+    -- side's unless its navi is blind or not in yet (no collision data: a round's first tick, before its init).
     sees: (viewer: number, side: number) -> boolean,
     -- A side's combatants still in, in slot order.
     alive_actors: (side: number) -> { Object },

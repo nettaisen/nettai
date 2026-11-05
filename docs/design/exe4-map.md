@@ -1827,7 +1827,8 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
   chips/0x10d-sparkman, frames 506 to 524) shows the field's panels white darkened a quarter, as the frontend draws
   them, but the background a flat (18, 9, 18) where the frontend whitens it too; and a blinded console hides the
   other side's navi's HP number (chips/0x10d-sparkman/side1, frames 653 to 754), which the frontend still draws.
-- `status.missing_collision_status`: what EXE4's console reads through a navi's missing collision data on a round's
+- `status.missing_collision_status` (dropped 2026-11-05: `Battle::sees` states it for every game, a navi not in yet
+  seeing none of the other side's objects): what EXE4's console reads through a navi's missing collision data on a round's
   first tick (its first barrier's visual's blind test, 0x0800B0CA from 0x080E24B0): recorded, a software interrupt's
   opcode, 0xE3A02004, with the blind bit, as EXE6's (modcards/011-first-barrier-100-side1 and its -rocks and
   -obstacles: side 1's visual's header flags 0x15 on frame 130, 0x17 from the next).

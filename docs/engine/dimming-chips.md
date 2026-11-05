@@ -178,8 +178,9 @@ when it is look[8..12] (0); `sub_8002EAC` (the parts keep their own facing); sou
    asks about a navi that has no collision data yet. `sub_800EB6C` reads its ObjectFlags1 through the null
    pointer, from the BIOS, which returns the opcode it last fetched (after the spawn's `ZeroFillByWord`, an
    SWI: 0xE3A02004), and that has the blind bit (0x2000): the visual is hidden on that tick, as a recorded
-   match shows. The engine's `Battle::sees` reads `f1::NULL_READ` there. An interrupt between the SWI
-   and the read would leave 0xE55EC002 (not blind); no recording shows that (unverified).
+   match shows. An interrupt between the SWI and the read leaves 0xE55EC002 (not blind), which EXE5's consoles
+   read on a stage without objects. The engine's `Battle::sees` states it: a navi with no collision data yet sees
+   none of the other side's objects, in every game (objects-and-player.md, "Flags from the open bus").
 2. Unless in action 8: position = the owner's X, Y, Z, then the whole-pixel halves of Y and Z − 2 (halfword
    stores). Then, in every action: + attach point look[4] of the sprite the owner's NameID names
    (`sub_800F26C` → `sub_8018842`: signed pixels x, y), X += x · the owner's facing, Z += y (whole pixels). In

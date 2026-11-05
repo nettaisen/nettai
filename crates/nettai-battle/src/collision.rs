@@ -60,14 +60,6 @@ pub mod f1 {
     /// Hits still reach it while the battle is dimmed (`sub_3007218`; else
     /// only hitters set up while dimmed do): ElemTrap's trap sets it.
     pub const HIT_WHILE_DIMMED: u32 = 0x0100_0000;
-    /// The status word read through an object's missing collision data
-    /// (a null pointer): BIOS memory, which game code can't read, gives
-    /// the opcode the BIOS last fetched (open bus). After a software
-    /// interrupt, such as the object spawn's fill (`ZeroFillByWord`'s
-    /// CpuSet), that is 0xE3A02004: EXE6's, the rule's default
-    /// (`content::MissingCollisionStatus`). An interrupt in between leaves
-    /// 0xE55EC002, which EXE5's console reads there.
-    pub const NULL_READ: u32 = 0xE3A0_2004;
 }
 
 /// The collision type bits of an attack of each side (side 0's, side

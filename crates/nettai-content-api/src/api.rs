@@ -2172,6 +2172,9 @@ pub trait CoreApi {
     /// `sub_80E1654` (on) and `sub_80E1662` (off): the target marker holds
     /// where it is, looking locked on, or follows its target again.
     fn freeze_target_marker(&mut self, marker: ObjectRef, on: bool) -> ApiResult<()>;
+    /// `sub_80E164A` on a navi's lock-on marker: the panel it is on, none
+    /// without a marker or with the marker on no opponent.
+    fn lock_on_panel(&self, o: ObjectRef) -> Option<PanelPos>;
     /// `sub_800F2FC`: turn to face `target`'s column.
     fn face_toward(&mut self, o: ObjectRef, target: ObjectRef) -> ApiResult<()>;
     /// `object_canMove`: not immobilized, sliding or moving.

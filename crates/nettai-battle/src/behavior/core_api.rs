@@ -2560,6 +2560,13 @@ impl CoreApi for Battle {
         Ok(())
     }
 
+    fn lock_on_panel(&self, o: ObjectRef) -> Option<PanelPos> {
+        let a = self.objects.get(o).actor?;
+        let marker = self.actors.get(a).target_marker?;
+        let is_marker = self.objects.is_allocated(marker) && self.content.defs.engine_kind(self.objects.get(marker).kind) == Some(kinds::EngineKind::TargetMarker);
+        is_marker.then(|| kinds::target_marker::target_panel(self, marker)).flatten()
+    }
+
     fn face_toward(&mut self, o: ObjectRef, target: ObjectRef) -> ApiResult<()> {
         self.actor_of(o)?;
         if !self.objects.is_allocated(target) {

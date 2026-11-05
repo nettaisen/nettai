@@ -1062,6 +1062,10 @@ impl UserData for Object {
         methods.add_method("freeze_target_marker", |_, this, on: bool| {
             with(|api, _| api.freeze_target_marker(this.0, on).map_err(api_error))
         });
+        methods.add_method("lock_on_panel", |_, this, ()| {
+            let p = with(|api, _| Ok(api.lock_on_panel(this.0)))?;
+            Ok(p.map_or((None, None), |p| (Some(p.x), Some(p.y))))
+        });
         methods.add_method("face_toward", |_, this, target: LuaValue| {
             let target = object_arg(&target, "face_toward")?.ok_or_else(|| mlua::Error::runtime("face_toward: expected an Object"))?;
             with(|api, _| api.face_toward(this.0, target).map_err(api_error))

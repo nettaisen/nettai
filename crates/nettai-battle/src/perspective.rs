@@ -107,21 +107,23 @@ impl SetScore {
 impl Battle {
     /// `sub_800EB6C` on `viewer`'s console: its player sees `alliance`'s
     /// objects unless they are the other side's and its navi
-    /// (`sub_80103BC`) is blind. A navi whose init hasn't run yet has no
-    /// collision data: the game reads its status word through the null
-    /// pointer, from the BIOS, which gives the opcode it last fetched (the
-    /// game's `missing_collision_status`: EXE6's has the blind bit,
-    /// EXE5's hasn't). It happens on a round's first tick when the other
-    /// side's navi inits first and its FirstBarrier's visual asks.
+    /// (`sub_80103BC`) is blind or not in yet. A navi whose init hasn't run
+    /// has no collision data. That happens on a round's first tick, when
+    /// the other side's navi inits first and its FirstBarrier's visual asks.
+    /// The original reads the status through the null pointer, from the
+    /// BIOS's open bus. EXE6's and EXE4's consoles, and EXE5's on a stage
+    /// with objects, read a word with the blind bit; EXE5's on a stage
+    /// without, one without it. The screen is black on that tick, and
+    /// EXE5's trace comparison skips the visual's VISIBLE bit there. nettai
+    /// takes the first in every game: not in yet, the other side unseen.
     pub fn sees(&self, viewer: u8, alliance: u8) -> bool {
         use crate::collision::f1;
         if alliance & 1 == viewer & 1 {
             return true;
         }
         let Some(navi) = self.player(viewer & 1) else { return true };
-        let missing = self.game_rules().missing_collision_status.0;
-        let status = self.objects.get(navi).collision.map_or(missing, |c| self.collision.get(c).f1);
-        status & f1::BLIND == 0
+        let Some(c) = self.objects.get(navi).collision else { return false };
+        self.collision.get(c).f1 & f1::BLIND == 0
     }
 
     /// Whether `viewer`'s player sees object `r`: its `VISIBLE` flag, or

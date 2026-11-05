@@ -13,9 +13,6 @@ return {
     form_keeps_back_special = false,
     -- The mercy flash hides the navi while its timer's bit 1 is set.
     flash_hides_on_clear = false,
-    -- A navi without collision data reads as blind (the word's blind bit,
-    -- as EXE6's open-bus value has it).
-    missing_collision_status = 0xE3A02004,
     -- A drag, the slides and a flinch, then the mercy flash's timer.
     reactions = "flash_timer_last",
     -- The reaction actions mark the action in use, ground and count.

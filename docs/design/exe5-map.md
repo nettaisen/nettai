@@ -2607,7 +2607,9 @@ asking at once whether the local navi is blind, 0x0800CDF4), before the local na
 reads its status word through the null pointer, from the BIOS. EXE6's read gives the object spawn's CpuSet opcode,
 0xE3A02004, with the blind bit (the visual hidden for a tick); EXE5's console gives an interrupt's, 0xE55EC002 (read
 at 0x0800CE18 with a scratch trap in the chip lab), without it: the visual shows at once. The status section's
-`missing_collision_status` (the engine's `Rules::missing_collision_status`, which each game states) says which; the
+`missing_collision_status` (the engine's `Rules::missing_collision_status`, which each game stated, until 2026-11-05:
+since then a navi not in yet sees none of the other side's objects in every game, the screen black on that tick and
+the comparison letting the bit go on every stage) said which; the
 replays' full object comparison caught it (navicust-compile/bug-colors, patch-cards-stats/bugstop, cards-02, cards-03,
 cards-08, clamps-hp: both sides with first barriers). Those are stages with no objects in their actor lists. On a
 stage with boulders or rocks EXE5's console reads a software interrupt's opcode instead (the visual's header flags

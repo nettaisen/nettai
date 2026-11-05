@@ -2,14 +2,15 @@
 //! same): it sits over the opponent nearest ahead of its owner, shown only
 //! to the owner's side while the owner's form is a Beast form (forms 0xB
 //! to 0x18; S7 replaces the form kind). Its panel is what EXE6's Beast Out
-//! rush and berserk read as the target (`sub_80E164A`), and its freeze is
-//! theirs (`sub_80E1654`, the framework unfreezes it as an attack's links
-//! reset: `sub_80E1662`). See docs/engine/objects-and-player.md §A.7.
+//! rush and berserk read as the target ([`target_panel`], `sub_80E164A`),
+//! and its freeze is theirs (`sub_80E1654`, the framework unfreezes it as an
+//! attack's links reset: `sub_80E1662`). With no opponent to target it is
+//! on none: hidden where it was, and no panel to lock on to. See
+//! docs/engine/objects-and-player.md §A.7.
 
 use crate::battle::Battle;
 use crate::kinds::common::{self, Progress, set_progress};
 use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
-
 
 /// Its attach point on the target.
 const TARGET_ATTACH_POINT: usize = 0x11;
@@ -19,6 +20,13 @@ const TARGET_ATTACH_POINT: usize = 0x11;
 pub struct Vars {
     /// Held in place while a chip is locked on (`sub_80E1654`).
     pub frozen: bool,
+    /// On no opponent: none was on the field's columns as it last looked
+    /// ([`target`]). The original reads the null target's position from
+    /// the BIOS's open bus, which puts the marker thousands of pixels off
+    /// the field whatever word the bus holds: hidden, on a panel that names
+    /// none, which every reader of it takes as no target. nettai says so:
+    /// the marker stays where it was, hidden, and [`target_panel`] is none.
+    pub lost: bool,
 }
 
 fn vars(b: &mut Battle, r: ObjectRef) -> &mut Vars {
@@ -57,22 +65,13 @@ pub fn unfreeze(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).anim = 0;
 }
 
-/// `sub_80E164A`: the panel the marker is on.
-pub fn panel(b: &Battle, r: ObjectRef) -> PanelPos {
-    b.objects.get(r).panel
-}
-
-/// The lock-on panel read without a marker (outside Beast Out, where the
-/// Cross special's chips rush too): the game reads it through a null
-/// pointer, from BIOS memory, whose open-bus bytes (the BIOS's last opcode
-/// fetched; after an SWI, 0xE3A02004: 0xA0, 0xE3) name no panel on the
-/// field, as any of its values would.
-pub const NO_MARKER_PANEL: PanelPos = PanelPos { x: 0xA0, y: 0xE3 };
-
-/// `sub_80E164A` on the navi's marker slot (AIData+0x40), which may be
-/// empty.
-pub fn panel_of(b: &Battle, marker: Option<ObjectRef>) -> PanelPos {
-    marker.map_or(NO_MARKER_PANEL, |m| panel(b, m))
+/// `sub_80E164A`: the panel the marker is on, none while it is on no
+/// opponent.
+pub fn target_panel(b: &Battle, r: ObjectRef) -> Option<PanelPos> {
+    match &b.objects.get(r).vars {
+        crate::kinds::Vars::TargetMarker(v) if v.lost => None,
+        _ => Some(b.objects.get(r).panel),
+    }
 }
 
 pub fn update(b: &mut Battle, r: ObjectRef) {
@@ -123,12 +122,18 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         return;
     }
     if !vars(b, r).frozen {
-        let pos = aim(b, r);
-        b.objects.get_mut(r).pos = pos;
+        match target(b, r) {
+            Some(t) => {
+                let pos = aim(b, t);
+                b.objects.get_mut(r).pos = pos;
+                vars(b, r).lost = false;
+            }
+            None => vars(b, r).lost = true,
+        }
     }
     common::set_panels_from_coordinates(b, r);
     let p = b.objects.get(r).panel;
-    if !crate::field::is_valid(p.x, p.y) {
+    if !crate::field::is_valid(p.x, p.y) || vars(b, r).lost {
         b.objects.get_mut(r).set_visible(false);
     }
     if link(b, r).is_none() {
@@ -139,10 +144,8 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 }
 
 /// Over the target: its attach point, raised 8 pixels (none for the
-/// bosses 0x173..=0x178 in their animation 0x4F). With no target, where
-/// the original's read through the null pointer puts it ([`NULL_AIM`]).
-fn aim(b: &Battle, r: ObjectRef) -> Vec3 {
-    let Some(target) = target(b, r) else { return NULL_AIM };
+/// bosses 0x173..=0x178 in their animation 0x4F).
+fn aim(b: &Battle, target: ObjectRef) -> Vec3 {
     let t = b.objects.get(target);
     let flat = b.content.identity(t.identity).marker_flat_anim == Some(t.anim);
     let (dx, dz) = if flat {
@@ -157,25 +160,11 @@ fn aim(b: &Battle, r: ObjectRef) -> Vec3 {
     }
 }
 
-/// Where the marker goes with no opponent to target: the original reads
-/// the null target's fields from BIOS memory, which gives the opcode the
-/// BIOS last fetched (open bus; `collision::f1::NULL_READ`, 0xE3A02004
-/// after a software interrupt) for each word of its position, raised as a
-/// target's is. That is thousands of pixels left of the field, so the
-/// marker is hidden and its panel is none on the field, which the Beast Out
-/// rush, berserk and Cross special take as they take `NO_MARKER_PANEL`.
-/// (The attach point the original adds, looked up by the NameID that
-/// halfword names, moves it a few pixels at most: nettai adds none.)
-pub const NULL_AIM: Vec3 = {
-    let w = crate::collision::f1::NULL_READ as i32;
-    Vec3 { x: w, y: w.wrapping_add(8 << 16), z: w.wrapping_add(8 << 16) }
-};
-
 /// `sub_80E1670`: the opposing actor to lock on to: ahead of the owner
 /// first, then behind, then in its column. None with no opponent in any
-/// of them (none on the side's alive list, as while a side's navi is gone
-/// with others still to come, or none on the field's columns), where the
-/// original returns a null pointer.
+/// of them (none on the field's columns, as while GroundCross Beast's dash
+/// waits off the field), where the original returns a null pointer
+/// ([`Vars::lost`]).
 fn target(b: &Battle, r: ObjectRef) -> Option<ObjectRef> {
     let owner = b.objects.get(owner(b, r));
     let opponents = b.round.alive_actors[(b.objects.get(r).alliance ^ 1) as usize];

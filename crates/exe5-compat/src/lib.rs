@@ -196,9 +196,9 @@ pub struct KindEntry {
     /// the visual is seen) or a software interrupt's (the bit: hidden for
     /// the tick), by where the tick's interrupt landed. With objects in
     /// the stage's actor list the recorded consoles read the second,
-    /// without them the first, which the engine keeps
-    /// (`status.missing_collision_status`); the screen is black on that
-    /// tick either way.
+    /// without them the first; the engine keeps the second in every game
+    /// (`Battle::sees`: a navi not in yet sees no other side's objects).
+    /// The screen is black on that tick either way.
     #[serde(default)]
     pub round_start_open_bus_flags: u8,
 }
