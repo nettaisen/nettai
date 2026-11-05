@@ -1,25 +1,8 @@
-//! The system's folders for the app: where apps keep their data, and where files go for a while. Each system's are
-//! its own module's (`desktop`, `ios`, `android`, `web`), chosen here.
+//! The system's folders for the app: where apps keep their data, and where files go for a while (each system's:
+//! `platform::folders`).
 
+use crate::platform::folders as system;
 use std::path::PathBuf;
-
-#[cfg(desktop)]
-mod desktop;
-#[cfg(ios)]
-mod ios;
-#[cfg(android)]
-mod android;
-#[cfg(web)]
-mod web;
-
-#[cfg(desktop)]
-use desktop as system;
-#[cfg(ios)]
-use ios as system;
-#[cfg(android)]
-use android as system;
-#[cfg(web)]
-use web as system;
 
 /// The folder the system gives apps for their data, the app's own folder to be made in it: Windows' `%APPDATA%`,
 /// macOS's `~/Library/Application Support`, Linux's `$XDG_DATA_HOME` or `~/.local/share`; on iOS the app's own

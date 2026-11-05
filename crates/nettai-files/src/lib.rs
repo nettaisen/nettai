@@ -1,11 +1,11 @@
 //! Files, the same calls on the desktop, in a browser and on a phone: `nettai_files::read`, `write`, `File` and the
 //! rest, named as `std::fs` names them; the system's folders for the app ([`folders`]); and large files kept but read
-//! in only when wanted ([`stow`], [`stowed`], [`fetch`]). Each concern chooses its system in its own module.
+//! in only when wanted ([`stow`], [`stowed`], [`fetch`]). Each system's are in `platform`, by concern.
 //!
 //! On the desktop and a phone the files are `std::fs`'s. In the browser there is no file system a program can call
-//! without waiting, so there they are a tree in memory (`tree`), one that every thread shares: the page puts the files
-//! it keeps in it before the app starts (`preload`), and takes what changed under the folder it keeps (`watch`,
-//! `changes`) to write it to its own storage (packaging/web's page: the origin private file system).
+//! without waiting, so there they are a tree in memory (`platform::tree`), one that every thread shares: the page
+//! puts the files it keeps in it before the app starts (`preload`), and takes what changed under the folder it keeps
+//! (`watch`, `changes`) to write it to its own storage (packaging/web's page: the origin private file system).
 //!
 //! `Path::exists`, `is_file` and `is_dir` ask the system's file system: [`exists`], [`is_file`] and [`is_dir`] are
 //! this crate's.
@@ -13,17 +13,14 @@
 use std::path::Path;
 
 pub mod folders;
+mod platform;
 mod stowed;
-// (In tests anywhere too: the tree's tests run on the desktop.)
-#[cfg(any(web, test))]
-#[cfg_attr(not(web), allow(dead_code))]
-mod tree;
 
 // The system's files: `std::fs` natively, the browser's tree in memory.
+#[cfg(web)]
+pub use platform::tree::*;
 #[cfg(not(web))]
 pub use std::fs::*;
-#[cfg(web)]
-pub use tree::*;
 
 #[cfg(web)]
 pub use stowed::listed;

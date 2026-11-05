@@ -1,23 +1,14 @@
 //! Files kept in the data folder that the page doesn't put in the app's files as it starts: large ones, read only
 //! when a part of the app wants them (the Legacy Collection's ROMs, which the browser keeps: nettai's `games`). They
 //! are in the data folder's [`STOWED`] folder. On the desktop and a phone they are files like any other, read as any
-//! other (`native`); in the browser they are kept in the page's storage and read from it (`web`).
+//! other; in the browser they are kept in the page's storage and read from it (each system's: `platform::stowed`).
 
+use crate::platform::stowed as system;
 use std::io;
 use std::path::{Path, PathBuf};
 
-#[cfg(not(web))]
-mod native;
 #[cfg(web)]
-mod web;
-
-#[cfg(not(web))]
-use native as system;
-#[cfg(web)]
-use web as system;
-
-#[cfg(web)]
-pub use web::listed;
+pub use system::listed;
 
 /// The data folder's folder of stowed files: the page lists them as it starts and reads none (packaging/web's page).
 /// Its name starts with a dot, so the page's keeping of what changes passes it over: what is in it is written by

@@ -538,7 +538,7 @@ impl Drop for File {
 
 #[cfg(test)]
 mod tests {
-    use crate::tree as m;
+    use crate::platform::tree as m;
     use std::io::{Read, Seek, SeekFrom, Write};
 
     /// The tree, as `std::fs` behaves: folders made and listed, files written, read, appended to and moved, and what

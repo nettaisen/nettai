@@ -1,7 +1,7 @@
 //! The browser's stowed files: kept in the page's storage (the origin private file system), written to it and read
 //! from it, each by a thread of its own whose event loop awaits the browser.
 
-use crate::tree;
+use crate::platform::tree;
 use std::collections::BTreeSet;
 use std::io;
 use std::path::{Path, PathBuf};
