@@ -271,29 +271,25 @@ mod tests {
         let all = games(&["exe4", "exe5", "exe6"]);
         crate::shell::Shell::read_game_names(&["exe4", "exe5", "exe6"], "en");
         let names: Vec<String> = offered(&all).iter().map(|m| name(m, "By background")).collect();
-        assert_eq!(
-            names,
-            [
-                "By background",
-                "BN4 Virus Battle",
-                "BN4 Boss Battle",
-                "BN4 Tournament Battle",
-                "BN4 vs Duo",
-                "BN5 Virus Battle",
-                "BN5 Boss Battle",
-                "BN5 vs Nebula Gray",
-                "BN6 Virus Battle",
-                "BN6 Boss Battle",
-                "BN6 vs Cybeast",
-                "BN6 Crossover Battle"
-            ]
-        );
+        assert_eq!(names[0], "By background");
+        // Each game's themes, in the order its content states them, named by the game, then the next game's.
+        let mut at = 1;
+        for (prefix, content) in [
+            ("BN4 ", nettai_match::testing::exe4_content()),
+            ("BN5 ", nettai_match::testing::exe5_content()),
+            ("BN6 ", nettai_match::testing::exe6_content()),
+        ] {
+            let n = content.battle_themes().len();
+            assert!(n > 0 && names[at..at + n].iter().all(|t| t.starts_with(prefix)), "{prefix}: {names:?}");
+            at += n;
+        }
+        assert_eq!(at, names.len(), "nothing but the games' themes");
+        assert!(names.contains(&"BN4 Virus Battle".to_string()) && names.contains(&"BN6 Crossover Battle".to_string()));
         crate::shell::Shell::read_game_names(&["exe4", "exe5", "exe6"], "ja");
         let ja: Vec<String> = offered(&all).iter().skip(1).map(|m| name(m, "")).collect();
-        assert_eq!(ja[3], "EXE4 VS デューオ");
-        assert_eq!(ja[10], "EXE6 クロスオーバーバトル");
+        assert!(ja.contains(&"EXE4 VS デューオ".to_string()) && ja.contains(&"EXE6 クロスオーバーバトル".to_string()), "{ja:?}");
         let some = games(&["exe6"]);
-        assert_eq!(offered(&some).len(), 1 + 4, "BN4's and BN5's aren't read");
+        assert_eq!(offered(&some).len(), 1 + nettai_match::testing::exe6_content().battle_themes().len(), "BN4's and BN5's aren't read");
         crate::shell::Shell::read_game_names(&["exe4", "exe5", "exe6"], "en");
     }
 

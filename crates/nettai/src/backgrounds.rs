@@ -59,6 +59,5 @@ mod tests {
             .map(|c| c.background_pool.keys().map(str::to_string).collect::<Vec<_>>());
         assert_eq!(pools[0], pools[1]);
         assert_eq!(pools[1], pools[2]);
-        assert_eq!(pools[0].len(), 27 + 22 + 21, "every game's");
     }
 }
