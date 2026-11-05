@@ -139,7 +139,7 @@ pub enum Gesture {
     /// down): the cursor goes there, and no choice is made.
     Over(Target),
     /// The pointer off the targets (the mouse onto none of them, or off the
-    /// picture): a cursor it put on a pick goes back to its slot.
+    /// picture): no slot is shown under the cursor ([`Layer::away`]).
     Away,
     /// Let go on the target it was pressed on, a click or a tap (none: on
     /// none, which closes a description or brings the hidden window back as
@@ -236,6 +236,14 @@ pub struct Layer {
     /// the cursor there; `cursor` keeps its slot, where a direction brings
     /// it back).
     pub pick_cursor: Option<u8>,
+    /// The pointer went off the slots and picks (onto nothing, another
+    /// target, off the picture): the cursor is on nothing, drawn nowhere
+    /// and shading no dark chip, until the pointer is over a slot or a
+    /// pick again or a key brings it back to its slot (`cursor`, which it
+    /// keeps). The chip window keeps what it last showed. It lasts from a
+    /// screen to the next: a pointer that went away in the fight is away
+    /// as the screen opens.
+    pub away: bool,
     /// What it has up over the chips.
     pub sub: Sub,
     /// The form list's cursor: the entry under it (`form_list.cursor`),
@@ -277,6 +285,7 @@ impl Layer {
             turn: None,
             cursor: 0,
             pick_cursor: None,
+            away: false,
             sub: Sub::None,
             list_cursor: 0,
             chip_window: ChipWindow::default(),
@@ -425,6 +434,10 @@ impl Layer {
         self.gesture = self.gestures[0];
         self.gestures.rotate_left(1);
         self.gestures[GESTURES - 1] = None;
+        // (Off the targets, whatever is up or open: the cursor on nothing.)
+        if self.gesture == Some(Gesture::Away) {
+            self.go_away();
+        }
         let mut out = PlayerTick { choice: None, ..input };
         let Some(p) = p else { return input };
         let screen = p.screen;
@@ -503,7 +516,7 @@ impl Layer {
     }
 
     /// A screen opened (`sub_8026840`): the cursor where it starts
-    /// (`sub_802806C`), nothing up, the form list's cursor on its first
+    /// (`sub_802806C`; on nothing still if the pointer was away), nothing up, the form list's cursor on its first
     /// entry, the window's counters and the hover as a screen starts them,
     /// and the chip window's last chip kept from the round's screen before
     /// (palette 11).
@@ -529,12 +542,19 @@ impl Layer {
     fn choose(&mut self, p: &Presented, layout: &CustomScreenLayout) -> Option<ScreenChoice> {
         let (screen, view) = (p.screen, &p.view);
         let joy = self.joypad;
+        const DIRECTIONS: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
+        // The cursor on nothing (the pointer went away): a direction, A or
+        // R brings it back to its slot and does no more. The other keys
+        // are as on its slot (B the game's, START to OK).
+        if self.away && (joy.repeat & DIRECTIONS != 0 || joy.pressed & (keys::A | keys::R) != 0) {
+            self.come_back();
+            return None;
+        }
         // The cursor on a pick (the pointer's place): a direction brings it
         // back to its slot and moves it no further; A takes the pick back
         // as a click does; R describes it. The other keys are as on its
         // slot (B the game's, START to OK).
         if let Some(k) = self.pick_cursor {
-            const DIRECTIONS: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
             if joy.repeat & DIRECTIONS != 0 {
                 self.leave_picks();
                 return None;
@@ -583,11 +603,12 @@ impl Layer {
             },
             ScreenKey::B => Some(ScreenChoice::TakeBack),
             ScreenKey::Start => {
-                if self.cursor != OK_SLOT || self.pick_cursor.is_some() {
+                if self.cursor != OK_SLOT || self.pick_cursor.is_some() || self.away {
                     self.play(ScreenSound::Cursor);
                 }
                 self.cursor = OK_SLOT;
                 self.pick_cursor = None;
+                self.away = false;
                 self.plan.chip_window = true;
                 None
             }
@@ -660,10 +681,11 @@ impl Layer {
         if s.kind.is_absent() {
             return false;
         }
-        if slot != self.cursor || self.pick_cursor.is_some() {
+        if slot != self.cursor || self.pick_cursor.is_some() || self.away {
             self.play(ScreenSound::Cursor);
             self.cursor = slot;
             self.pick_cursor = None;
+            self.away = false;
             self.plan.chip_window = true;
         }
         true
@@ -677,6 +699,7 @@ impl Layer {
         }
         self.play(ScreenSound::Cursor);
         self.pick_cursor = Some(k);
+        self.away = false;
         self.plan.chip_window = true;
     }
 
@@ -689,6 +712,21 @@ impl Layer {
         }
     }
 
+    /// The cursor onto nothing, for the pointer off the slots and picks
+    /// (silently: nothing moves into sight).
+    fn go_away(&mut self) {
+        self.pick_cursor = None;
+        self.away = true;
+    }
+
+    /// The cursor back on its slot from nothing, by a key (as a move: its
+    /// sound, the chip window drawn for the slot).
+    fn come_back(&mut self) {
+        self.away = false;
+        self.play(ScreenSound::Cursor);
+        self.plan.chip_window = true;
+    }
+
     /// The cursor onto slot `slot`, off any pick, silently (the choice's
     /// sound the screen's): where a pick taken back (`Unpick`) goes back to
     /// (B, the original's, leaves the cursor where it is), or what a choice
@@ -696,6 +734,7 @@ impl Layer {
     fn put_cursor(&mut self, slot: u8) {
         self.cursor = slot;
         self.pick_cursor = None;
+        self.away = false;
         self.plan.chip_window = true;
     }
 
@@ -714,7 +753,7 @@ impl Layer {
             },
             ScreenChoice::TakeBack | ScreenChoice::ChooseForm(_) | ScreenChoice::Unchoose => return,
         };
-        let there = slot == self.cursor && self.pick_cursor.is_none();
+        let there = slot == self.cursor && self.pick_cursor.is_none() && !self.away;
         if !there && screen.slots.get(slot as usize).is_some_and(|s| !s.kind.is_absent()) {
             self.put_cursor(slot);
         }
@@ -727,7 +766,7 @@ impl Layer {
     }
 
     /// The tick's gesture over the chips (the choosing's, nothing up): a
-    /// hover moves the cursor; a click chooses what A on it would, takes
+    /// hover moves the cursor (off the slots and picks, onto nothing); a click chooses what A on it would, takes
     /// back a pick (the cursor to the slot it goes back to), or opens the
     /// form list from its tab; a describe is R on what it is on.
     fn point_on_chips(&mut self, p: &Presented, layout: &CustomScreenLayout) -> Pointed {
@@ -736,7 +775,7 @@ impl Layer {
         match gesture {
             Gesture::Over(Target::Slot(s)) => {
                 if !self.point_cursor(s, screen) {
-                    self.leave_picks();
+                    self.go_away();
                 }
                 Pointed::Nothing
             }
@@ -745,11 +784,13 @@ impl Layer {
                 self.point_pick(k, screen);
                 Pointed::Nothing
             }
-            // (Off the picks, over something else or nothing: back to its slot.)
-            Gesture::Over(_) | Gesture::Away => {
-                self.leave_picks();
+            // (Over another target, the form list's tab: on nothing, as
+            // off the targets.)
+            Gesture::Over(_) => {
+                self.go_away();
                 Pointed::Nothing
             }
+            Gesture::Away => Pointed::Nothing,
             Gesture::Click(Some(Target::Slot(s))) => {
                 if !self.point_cursor(s, screen) {
                     return Pointed::Nothing;
@@ -1107,6 +1148,7 @@ impl Layer {
             self.sub = Sub::List(ListStage::Closing(0));
         } else if joy.pressed & keys::START != 0 {
             self.cursor = OK_SLOT;
+            self.away = false;
             self.sub = Sub::List(ListStage::Closing(0));
             self.play(ScreenSound::Cursor);
         } else if joy.pressed & keys::R != 0 {
@@ -1152,10 +1194,13 @@ impl Layer {
         self.draw_cursor(on_chip);
     }
 
-    /// The cursor as the choosing's state draws it: on a chip, with the chip
-    /// window's element icon (EXE4's chips' state, 0x08020D8C).
+    /// The cursor as the choosing's state draws it (none on nothing): on a
+    /// chip, with the chip window's element icon (EXE4's chips' state,
+    /// 0x08020D8C).
     fn draw_cursor(&mut self, on_chip: bool) {
-        self.look.draw_cursor();
+        if !self.away {
+            self.look.draw_cursor();
+        }
         if on_chip {
             self.look.draw_element();
         }
@@ -1264,8 +1309,8 @@ impl Layer {
         // every tick, or (EXE4's) on the ticks the screen began choosing.
         if !opened {
             let was = plan.was.unwrap_or(now);
-            // (The cursor on a pick is on no dark chip's slot.)
-            let shading = || now.hovers() && self.pick_cursor.is_none() && screen.shades_at(self.cursor, view, folder);
+            // (The cursor on a pick, or on nothing, is on no dark chip's slot.)
+            let shading = || now.hovers() && self.pick_cursor.is_none() && !self.away && screen.shades_at(self.cursor, view, folder);
             let hover = &layout.hover;
             let on = match hover.runs {
                 HoverRuns::EveryTick => Some(Some(shading())),
@@ -1302,6 +1347,8 @@ impl Layer {
                 }
             }
             Draw::LaidOut => self.cursor = screen.first_cursor(folder, view, false),
+            // (The cursor on nothing is drawn nowhere.)
+            Draw::Cursor if self.away => {}
             d => self.look.apply(d, screen.look.late_turns, on_chip),
         }
     }

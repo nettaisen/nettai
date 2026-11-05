@@ -5,8 +5,9 @@
 //! where (`nettai_render::Renderer::target_at`).
 //!
 //! The mouse and a finger are one: over a target (the mouse moved onto it,
-//! a press on it), the cursor goes there; off the targets (the mouse onto
-//! none, or off the picture), a cursor on a pick goes back to its slot; let
+//! a press on it), the cursor goes there; off the targets (the mouse moved
+//! on none, or off the picture), the cursor is on nothing until the pointer
+//! is over a slot again or a key brings it back; let
 //! go on the target it was pressed on, it chooses what it is (sliding off
 //! cancels, as a button does); held still on it for [`LONG_PRESS`] ticks,
 //! it describes it instead, as a right-click does. A click or a tap on no
@@ -123,9 +124,10 @@ impl ScreenPointer {
     }
 
     /// The mouse moved over `under`: over it, if it is another target than
-    /// the one it was over; off the targets, away.
+    /// the one it was over; off the targets, away, at each move (a key may
+    /// have brought the cursor back since the last).
     fn hover(&mut self, under: Option<Target>) -> Option<Gesture> {
-        if under == self.over {
+        if under.is_some() && under == self.over {
             return None;
         }
         self.over = under;
@@ -190,7 +192,8 @@ mod tests {
     }
 
     /// The mouse over a target moves the cursor there, once as it comes
-    /// onto it; off the targets, away, once; off the picture from one, away.
+    /// onto it; off the targets, away, at each move; off the picture from
+    /// one, away.
     #[test]
     fn the_mouse_hovers() {
         let mut s = ScreenPointer::default();
@@ -198,7 +201,7 @@ mod tests {
         assert_eq!(s.event(p(PointerKind::Moved, 20.0, 10.0), at), None);
         assert_eq!(s.event(p(PointerKind::Moved, 120.0, 10.0), at), Some(Gesture::Over(OK)));
         assert_eq!(s.event(p(PointerKind::Moved, 10.0, 90.0), at), Some(Gesture::Away));
-        assert_eq!(s.event(p(PointerKind::Moved, 11.0, 90.0), at), None);
+        assert_eq!(s.event(p(PointerKind::Moved, 11.0, 90.0), at), Some(Gesture::Away));
         assert_eq!(s.event(p(PointerKind::Moved, 120.0, 10.0), at), Some(Gesture::Over(OK)));
         assert_eq!(s.event(p(PointerKind::Left, 0.0, 0.0), at), Some(Gesture::Away));
         assert_eq!(s.event(p(PointerKind::Left, 0.0, 0.0), at), None);

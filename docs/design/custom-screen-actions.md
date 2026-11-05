@@ -227,9 +227,13 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
   - over a target (the mouse moved onto it, unpressed; a press on it, the mouse's button or a finger down):
     `Over`, the cursor goes there (its sound, the chip window, the dark chip's shade) with no choice; in the form
     list, its cursor (until a form is chosen, as its keys); over a pick, the cursor goes on the pick's icon in the
-    column (below); over another target, a cursor on a pick goes back to its slot;
-  - the mouse off the targets (onto none, or off the picture): `Away`, which takes a cursor on a pick back to its
-    slot;
+    column (below); over another target (the tab), the cursor is on nothing, as away;
+  - the mouse off the targets (moved on none, at each move; or off the picture): `Away`, the cursor on nothing
+    (the user: "when the mouse cursor isn't hovering over anything on the custom screen the selection should be
+    empty"; `Layer::away`): no cursor drawn, no dark chip's shade, the chip window as it was, `Layer::cursor` kept;
+    over a slot or a pick it shows again there, and a direction, A or R brings it back to its slot, that press doing
+    no more (B is the game's, START goes to OK). It lasts through the screen's closing and the next one's opening
+    (a mouse moved in the fight finds the cursor on nothing); a finger never hovers, so never makes it;
   - let go on the target it was pressed on (off it, or slid off and back, nothing; the system taking it, nothing):
     `Click`, what A on it would choose (a pick, a button's press, OK); on a button holding a chip, its `release`
     (§2; A on it is refused, as the game's); on a pick, its `unpick` (§2: that pick alone, the picks after it moving
@@ -252,7 +256,7 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
   stays as it was), with a move's sound; the renderer draws the screen's chip cursor about the pick's icon (inside
   the box `custom::targets` reports for `Pick(k)`), and the chip window shows the pick's chip as the pointer over
   its slot would (a button's pick, its picture); no dark chip's shade runs there. Over a slot the cursor moves there
-  as before; over another target, or away, it goes back to its slot, as a move. Keys while it is on a pick:
+  as before; over another target, or away, it is on nothing (above). Keys while it is on a pick:
   a direction only brings it back to its slot (that press moves it no further; held, it repeats on the slots as
   any hold does); A does what a click there does (`unpick`, §2); R describes the pick; B is the game's B, START
   goes to OK. No key moves the cursor into the column. A pick it takes back (A, a click) puts it on the slot the
@@ -285,7 +289,9 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
   screen's own (nettai-battle `custom::tests`: a pick anywhere with what it carries, `unpick` of the last as B, a
   trade's chip back where it fits or to the hand, a held chip kept through `unpick` and released, the pointer's
   clicks sending them; the cursor on a pick: its place and chip window, a direction back to its slot, A's `unpick`,
-  R, the pointer over a slot or another target, or away, bringing it back) and each game's (nettai-match `games::take_backs`: EXE5's soul, capsule and Arm Change,
+  R, the pointer over a slot bringing it back, over another target or away putting it on nothing; the cursor on
+  nothing: drawn nowhere, its slot kept through the next screen's opening, a direction, A or R bringing it back)
+  and each game's (nettai-match `games::take_backs`: EXE5's soul, capsule and Arm Change,
   EXE6's Beast Out, BeastOut chip and Cross, EXE4's offered dark chips and Double Soul, `unpick` of the last as B
   tick for tick). Choices only: the word's fields (nettai-battle `input::tests`); a layer given another's ticks
   (buttons and choices, as a replay) takes the same choices with its cursor where the pointer's was at each

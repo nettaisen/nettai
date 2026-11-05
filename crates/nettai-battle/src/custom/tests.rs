@@ -1682,17 +1682,79 @@ fn the_cursor_goes_on_a_pick_by_pointer_only() {
     assert_eq!(given.choice, Some(ScreenChoice::TakeBack));
     p.step(0);
     assert_eq!((p.screen().selection(), p.layer.pick_cursor, p.layer.cursor), (&[][..], None, 0));
-    // The pointer over another target, away, or over a slot: back on the slots.
+    // The pointer over another target or away: on nothing, silently, its
+    // slot kept; over a slot: there.
     choose(&mut p, ScreenChoice::Pick(0));
-    for (off, cursor) in [(Gesture::Over(Target::FormTab), 0), (Gesture::Away, 0), (Gesture::Over(Target::Slot(2)), 2)] {
+    for (off, cursor, away) in [(Gesture::Over(Target::FormTab), 0, true), (Gesture::Away, 0, true), (Gesture::Over(Target::Slot(2)), 2, false)] {
         p.layer.point(Gesture::Over(Target::Pick(0)));
         p.step(0);
-        assert_eq!(p.layer.pick_cursor, Some(0));
+        assert_eq!((p.layer.pick_cursor, p.layer.away), (Some(0), false));
         p.layer.point(off);
         p.step(0);
-        assert_eq!((p.layer.pick_cursor, p.layer.cursor), (None, cursor), "{off:?}");
-        assert!(p.sounds().contains(&look::ScreenSound::Cursor), "{off:?}");
+        assert_eq!((p.layer.pick_cursor, p.layer.cursor, p.layer.away), (None, cursor, away), "{off:?}");
+        assert_eq!(p.sounds().contains(&look::ScreenSound::Cursor), !away, "{off:?}");
     }
+}
+
+/// The pointer off the slots and picks puts the cursor on nothing: none
+/// drawn, no dark chip shaded, the slot kept, through the next screen's
+/// opening; over a slot, or a direction, A or R, brings it back (the key
+/// doing no more), START to OK.
+#[test]
+fn the_pointer_away_leaves_the_cursor_on_nothing() {
+    use super::layer::{Gesture, Target};
+    let mut p = Player::new(&[(SHOT, 0), (SHOT, 1), (SHOT, 2), (WAVE, 0), (MEGA, 2)]);
+    p.open();
+    p.wait(10);
+    p.step(0);
+    p.layer.point(Gesture::Over(Target::Slot(1)));
+    p.step(0);
+    assert!(p.layer.look.drawn.cursor.is_some());
+    p.layer.point(Gesture::Away);
+    p.step(0);
+    assert_eq!((p.layer.cursor, p.layer.away), (1, true));
+    assert_eq!(p.layer.look.drawn.cursor, None);
+    assert!(!p.sounds().contains(&look::ScreenSound::Cursor));
+    p.wait(4);
+    assert_eq!(p.layer.look.drawn.cursor, None);
+    // A direction, A, R: back on slot 1, nothing else.
+    for key in [keys::RIGHT, keys::A, keys::R] {
+        p.layer.point(Gesture::Away);
+        p.step(0);
+        if key == keys::RIGHT {
+            // (A direction moves from its hold's second tick.)
+            p.step(key);
+        }
+        let (_, given) = p.step_input(PlayerTick::buttons(key));
+        assert_eq!((given.choice, p.layer.cursor, p.layer.away, p.layer.sub), (None, 1, false, Sub::None), "{key:#x}");
+        assert!(p.sounds().contains(&look::ScreenSound::Cursor), "{key:#x}");
+        assert!(p.layer.look.drawn.cursor.is_some(), "{key:#x}");
+        p.step(0);
+        assert!(p.screen().selection().is_empty());
+    }
+    // B is the game's, away or not.
+    choose(&mut p, ScreenChoice::Pick(0));
+    p.layer.point(Gesture::Away);
+    p.step(0);
+    let (_, given) = p.step_input(PlayerTick::buttons(keys::B));
+    assert_eq!((given.choice, p.layer.away), (Some(ScreenChoice::TakeBack), true));
+    p.step(0);
+    // START: to OK.
+    p.step_input(PlayerTick::buttons(keys::START));
+    assert_eq!((p.layer.cursor, p.layer.away), (OK_SLOT, false));
+    p.step(0);
+    // Away as the next screen opens: on nothing there too.
+    p.layer.point(Gesture::Away);
+    p.step(0);
+    p.open();
+    p.wait(10);
+    p.step(0);
+    assert_eq!((p.layer.cursor, p.layer.away, p.layer.look.drawn.cursor), (0, true, None));
+    // Over a slot: there.
+    p.layer.point(Gesture::Over(Target::Slot(2)));
+    p.step(0);
+    assert_eq!((p.layer.cursor, p.layer.away), (2, false));
+    assert!(p.layer.look.drawn.cursor.is_some());
 }
 
 /// The pointer on a button holding a chip releases it (no key does: A on it
