@@ -21,8 +21,8 @@ pub struct CollisionId(pub u8);
 
 /// Status flags (`f1`).
 pub mod f1 {
-    pub const GUARD: u32 = 0x1;
-    pub const INVISIBLE: u32 = 0x2;
+    pub const GUARD: u32 = 1 << 0;
+    pub const INVISIBLE: u32 = 1 << 1;
     /// Submerged: collides only with collision types that have bit 0x8 or
     /// 0x1000, in both directions (`sub_3007218`). DiveMan's AI sets it
     /// while he dives (`sub_80FDEFC`). The timed form (`timer::SUBMERGED`)
@@ -30,36 +30,36 @@ pub mod f1 {
     /// its only starter, actor #0x5D variant 1 (`sub_80C49E4`), EXE6 never
     /// spawns, EXE4's PopUp does (0x080CD0E2). See
     /// field-collision-damage.md §4.10.1.
-    pub const SUBMERGED: u32 = 0x4;
-    pub const INVULNERABLE: u32 = 0x8;
-    pub const AIRSHOE: u32 = 0x10;
-    pub const FLOATSHOE: u32 = 0x20;
-    pub const MOVING: u32 = 0x40;
-    pub const DEAD: u32 = 0x100;
-    pub const FLASHING: u32 = 0x200;
-    pub const FLINCHING: u32 = 0x400;
-    pub const PARALYZED: u32 = 0x800;
-    pub const SLIDING: u32 = 0x1000;
-    pub const BLIND: u32 = 0x2000;
-    pub const IMMOBILIZED: u32 = 0x4000;
-    pub const CONFUSED: u32 = 0x8000;
-    pub const FROZEN: u32 = 0x1_0000;
-    pub const SUPERARMOR: u32 = 0x2_0000;
-    pub const UNDERSHIRT: u32 = 0x4_0000;
-    pub const MOVE_COMPLETE: u32 = 0x8_0000;
-    pub const DRAG: u32 = 0x10_0000;
-    pub const ANGER: u32 = 0x20_0000;
-    pub const USING_ACTION: u32 = 0x40_0000;
-    pub const AFFECTED_BY_ICE: u32 = 0x200_0000;
+    pub const SUBMERGED: u32 = 1 << 2;
+    pub const INVULNERABLE: u32 = 1 << 3;
+    pub const AIRSHOE: u32 = 1 << 4;
+    pub const FLOATSHOE: u32 = 1 << 5;
+    pub const MOVING: u32 = 1 << 6;
+    pub const DEAD: u32 = 1 << 8;
+    pub const FLASHING: u32 = 1 << 9;
+    pub const FLINCHING: u32 = 1 << 10;
+    pub const PARALYZED: u32 = 1 << 11;
+    pub const SLIDING: u32 = 1 << 12;
+    pub const BLIND: u32 = 1 << 13;
+    pub const IMMOBILIZED: u32 = 1 << 14;
+    pub const CONFUSED: u32 = 1 << 15;
+    pub const FROZEN: u32 = 1 << 16;
+    pub const SUPERARMOR: u32 = 1 << 17;
+    pub const UNDERSHIRT: u32 = 1 << 18;
+    pub const MOVE_COMPLETE: u32 = 1 << 19;
+    pub const DRAG: u32 = 1 << 20;
+    pub const ANGER: u32 = 1 << 21;
+    pub const USING_ACTION: u32 = 1 << 22;
+    pub const AFFECTED_BY_ICE: u32 = 1 << 25;
     /// Untouchable: `sub_3007218` drops every pair in which either side
     /// has it, so no hit reaches it and it hits nothing; poison panels
     /// don't hurt it either (`sub_801A186`). Falzar Beast Over's form flags
     /// set it (`sub_8014674`), which is why nothing can hit that form.
-    pub const UNTOUCHABLE: u32 = 0x800_0000;
-    pub const BUBBLED: u32 = 0x8000_0000;
+    pub const UNTOUCHABLE: u32 = 1 << 27;
+    pub const BUBBLED: u32 = 1 << 31;
     /// Hits still reach it while the battle is dimmed (`sub_3007218`; else
     /// only hitters set up while dimmed do): ElemTrap's trap sets it.
-    pub const HIT_WHILE_DIMMED: u32 = 0x0100_0000;
+    pub const HIT_WHILE_DIMMED: u32 = 1 << 24;
 }
 
 /// The collision type bits of an attack of each side (side 0's, side
@@ -566,7 +566,7 @@ impl Battle {
             || (f & submerged != 0 && rs & 0x1008 == 0 && !elec(rd.element))
             || (f & 0x0080_0000 != 0 && rs & 0x0C00_3000 == 0)
             || f & f1::UNTOUCHABLE != 0
-            || (self_bit && f & 0x20 != 0 && rs & 0x80 == 0)
+            || (self_bit && f & f1::FLOATSHOE != 0 && rs & 0x80 == 0)
         {
             return;
         }
@@ -578,7 +578,7 @@ impl Battle {
             || (f & submerged != 0 && hs & 0x1008 == 0 && !elec(hd.element))
             || (f & 0x0080_0000 != 0 && hs & 0x3000 == 0)
             || (!test.guard_before_untouchable && f & f1::UNTOUCHABLE != 0)
-            || (self_bit && f & 0x20 != 0 && hs & 0x80 == 0)
+            || (self_bit && f & f1::FLOATSHOE != 0 && hs & 0x80 == 0)
         {
             return;
         }
@@ -729,7 +729,7 @@ impl Battle {
             return;
         }
         let self_bit = self.content.rules().hit_test.float_shoe_needs_self_bit;
-        if self_bit && ((hd.f1 & 0x20 != 0 && rd.self_flags & 0x80 == 0) || (rd.f1 & 0x20 != 0 && hd.self_flags & 0x80 == 0)) {
+        if self_bit && ((hd.f1 & f1::FLOATSHOE != 0 && rd.self_flags & 0x80 == 0) || (rd.f1 & f1::FLOATSHOE != 0 && hd.self_flags & 0x80 == 0)) {
             return;
         }
         let bonus = self.panel_bonus(&rd, &hd);
