@@ -40,7 +40,7 @@ A **bundle** is what a game plays: the game pack and the support packs it depend
 
 - **Its files:** `bundle.toml`, then each pack's folder under its id (`exe6/`, `exelib/`), with every file the pack's
   repo tracks but its workflows (`.github/`, which build the site, §4).
-- **`bundle.toml`:** the game; the engine line it is for (`line = "0.11"`); its revision (the game's publish count
+- **`bundle.toml`:** the game; the engine line it is for (`line = "0.11"`); its revision (one past the game's newest
   within the line: `r1`, `r2`, ..., what a player sees); and each pack's commit.
 - **Its form:** a deterministic tar (paths sorted, mode 0644, no owner, time 0), gzipped.
 
@@ -110,7 +110,7 @@ signed in, does six things in order:
    exelib`, run with cargo (its Luau can't be linked beside the engine's).
 3. It builds the bundle from the submodules, the support packs at the locked commits. The line is the engine's major
    and minor version (the workspace's; the program and the checkout must share it). The revision is one past the
-   count of the line's releases, which must be r1 to rN.
+   line's newest release's; a line may have gaps where releases were deleted (the user, 2026-11-05).
 4. It computes the content hash: it unpacks the bundle as the app's store does and loads its game (the content
    alone).
 5. It refuses a bundle that is the line's newest again: the same id, or the same content hash from the same commits

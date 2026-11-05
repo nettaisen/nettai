@@ -374,17 +374,12 @@ fn revision_of(line: &str, tag_name: &str) -> Option<u32> {
     (tag(line, r) == tag_name).then_some(r)
 }
 
-/// The next revision in line `line`, given the releases' tags (every line's): one past the line's count, with the
-/// tag of its newest, if any. The line's releases must be r1 to rN.
+/// The next revision in line `line`, given the releases' tags (every line's): one past the line's newest, with that
+/// newest's tag, if any. A line may have gaps (releases deleted since: the user, 2026-11-05, "accept a gap in the
+/// numbers"), so the next never names a release that was.
 fn next_revision(line: &str, tags: &[String]) -> Result<(u32, Option<String>), String> {
-    let mut revisions: Vec<u32> = tags.iter().filter_map(|t| revision_of(line, t)).collect();
-    revisions.sort_unstable();
-    let count = revisions.len() as u32;
-    if revisions != (1..=count).collect::<Vec<_>>() {
-        let shown: Vec<String> = revisions.iter().map(|r| tag(line, *r)).collect();
-        return Err(format!("line {line}'s releases are {}, not r1 to r{count}: put them right first", shown.join(", ")));
-    }
-    Ok((count + 1, (count > 0).then(|| tag(line, count))))
+    let newest = tags.iter().filter_map(|t| revision_of(line, t)).max();
+    Ok((newest.map_or(1, |n| n + 1), newest.map(|n| tag(line, n))))
 }
 
 /// The index entry of release `tag_name` of `repo` (its `bundle.json`).
@@ -510,7 +505,7 @@ mod tests {
     }
 
     #[test]
-    fn revisions_count_the_lines_releases() {
+    fn revisions_follow_the_lines_newest() {
         assert_eq!(next_revision("0.11", &[]).unwrap(), (1, None));
         // Other lines' releases, and tags that are no release of a line, don't count.
         let t = tags(&["0.10-r1", "0.10-r2", "0.10-r3", "0.11-r1", "v0.11", "0.11-r1x", "0.110-r1", "0.11-r01"]);
@@ -520,10 +515,9 @@ mod tests {
         // (Listed newest first, as GitHub lists them.)
         let t = tags(&["0.11-r10", "0.11-r9", "0.11-r8", "0.11-r7", "0.11-r6", "0.11-r5", "0.11-r4", "0.11-r3", "0.11-r2", "0.11-r1"]);
         assert_eq!(next_revision("0.11", &t).unwrap(), (11, Some("0.11-r10".into())));
-        // A gap, or a revision twice, is refused: the count would name a release that is there.
-        let err = next_revision("0.11", &tags(&["0.11-r1", "0.11-r3"])).unwrap_err();
-        assert!(err.contains("0.11-r1, 0.11-r3, not r1 to r2"), "{err}");
-        assert!(next_revision("0.11", &tags(&["0.11-r2"])).is_err());
+        // A gap (releases deleted since) is passed over: one past the newest.
+        assert_eq!(next_revision("0.11", &tags(&["0.11-r1", "0.11-r3"])).unwrap(), (4, Some("0.11-r3".into())));
+        assert_eq!(next_revision("0.11", &tags(&["0.11-r2"])).unwrap(), (3, Some("0.11-r2".into())));
     }
 
     #[test]
