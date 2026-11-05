@@ -1191,6 +1191,34 @@ fn a_target_marker_with_no_opponent_goes_off_the_field() {
     assert!(crate::field::is_valid(m.panel.x, m.panel.y), "over the target again: {:?}", m.panel);
 }
 
+/// GroundCross Beast's dash leaves the field and waits out of sight before
+/// it lands: for those ticks the other side's lock-on marker (its navi in a
+/// Beast form) has no opponent on the field to target, and goes where the
+/// original's read through the null pointer puts it. (A battle with both
+/// navis in Beast forms stopped here.)
+#[test]
+fn the_dash_off_the_field_leaves_the_other_sides_marker_no_target() {
+    use crate::kinds::target_marker::NULL_AIM;
+    let (mut b, p0, p1) = fight();
+    let marker = crate::kinds::target_marker::spawn(&mut b, p1).expect("side 1's marker");
+    tick(&mut b, p0, p1, 0);
+    assert_ne!(b.objects.get(marker).pos, NULL_AIM);
+    start_weapon(&mut b, p0, "groundcross-beast/dash");
+    let mut off = 0;
+    for _ in 0..120 {
+        tick(&mut b, p0, p1, 0);
+        let gone = !crate::field::is_valid(b.objects.get(p0).panel.x, b.objects.get(p0).panel.y);
+        assert_eq!(b.objects.get(marker).pos == NULL_AIM, gone, "the marker off the field exactly while the dasher is");
+        off += gone as u32;
+        if act(&b, p0) == IDLE {
+            break;
+        }
+    }
+    assert!(off > 0, "the dash went off the field");
+    assert_ne!(b.objects.get(marker).pos, NULL_AIM, "back over the navi once it lands");
+    eprintln!("the marker had no target for {off} ticks");
+}
+
 /// With no navi of the opponent's for its support to come from (the side's
 /// first spawned actor gone), Rush still turns the chip back and is spent,
 /// and nothing comes: no support, no dimming. (It used to stop the battle.)
