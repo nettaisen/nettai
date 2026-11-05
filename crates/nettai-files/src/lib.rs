@@ -3,7 +3,7 @@
 //! in only when wanted ([`stow`], [`stowed`], [`fetch`]). Each system's are in `platform`, by concern.
 //!
 //! On the desktop and a phone the files are `std::fs`'s. In the browser there is no file system a program can call
-//! without waiting, so there they are a tree in memory (`platform::tree`), one that every thread shares: the page
+//! without waiting, so there they are a tree in memory (`platform::files`), one that every thread shares: the page
 //! puts the files it keeps in it before the app starts (`preload`), and takes what changed under the folder it keeps
 //! (`watch`, `changes`) to write it to its own storage (packaging/web's page: the origin private file system).
 //!
@@ -16,11 +16,7 @@ pub mod folders;
 mod platform;
 mod stowed;
 
-// The system's files: `std::fs` natively, the browser's tree in memory.
-#[cfg(web)]
-pub use platform::tree::*;
-#[cfg(not(web))]
-pub use std::fs::*;
+pub use platform::files::*;
 
 #[cfg(web)]
 pub use stowed::listed;
