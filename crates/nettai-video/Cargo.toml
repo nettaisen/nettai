@@ -25,6 +25,38 @@ mp4-atom = "0.16"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
+# WebCodecs (web-sys's unstable APIs: .cargo/config.toml).
+web-sys = { version = "0.3", features = [
+    "AudioData",
+    "AudioDataCopyToOptions",
+    "AudioDataInit",
+    "AudioDecoder",
+    "AudioDecoderConfig",
+    "AudioDecoderInit",
+    "AudioEncoder",
+    "AudioEncoderConfig",
+    "AudioEncoderInit",
+    "AudioEncoderSupport",
+    "AudioSampleFormat",
+    "CodecState",
+    "EncodedAudioChunk",
+    "EncodedAudioChunkMetadata",
+    "EncodedVideoChunk",
+    "LatencyMode",
+    "VideoColorPrimaries",
+    "VideoColorSpaceInit",
+    "VideoEncoder",
+    "VideoEncoderConfig",
+    "VideoEncoderEncodeOptions",
+    "VideoEncoderInit",
+    "VideoEncoderSupport",
+    "VideoFrame",
+    "VideoFrameBufferInit",
+    "VideoMatrixCoefficients",
+    "VideoPixelFormat",
+    "VideoTransferCharacteristics",
+    "WorkerGlobalScope",
+] }
 
 # iOS's codecs (`platform::ios`): VideoToolbox's H.264 and AudioToolbox's AAC, through objc2's bindings. (macOS
 # has the same frameworks: there the tests run the module, below.)
