@@ -230,7 +230,10 @@ One per player, beside the renderer's per-console HUD state, outside the simulat
     column (below); over another target (the tab), the cursor is on nothing, as away;
   - the mouse off the targets (moved on none, at each move; or off the picture): `Away`, the cursor on nothing
     (the user: "when the mouse cursor isn't hovering over anything on the custom screen the selection should be
-    empty"; `Layer::away`): no cursor drawn, no dark chip's shade, the chip window as it was, `Layer::cursor` kept;
+    empty"; then "can you blank it", of the chip window; `Layer::away`): no cursor drawn, no dark chip's shade, no
+    element icon (EXE4's sprite, drawn by what the window shows, not the cursor's slot), the chip window empty
+    (`ChipWindow::empty`: no name, picture, code, element or damage; the frame in the standard colors, the window's
+    ground where the picture goes), `Layer::cursor` kept;
     over a slot or a pick it shows again there, and a direction, A or R brings it back to its slot, that press doing
     no more (B is the game's, START goes to OK). It lasts through the screen's closing and the next one's opening
     (a mouse moved in the fight finds the cursor on nothing); a finger never hovers, so never makes it;

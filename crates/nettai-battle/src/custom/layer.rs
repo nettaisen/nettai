@@ -237,12 +237,11 @@ pub struct Layer {
     /// it back).
     pub pick_cursor: Option<u8>,
     /// The pointer went off the slots and picks (onto nothing, another
-    /// target, off the picture): the cursor is on nothing, drawn nowhere
-    /// and shading no dark chip, until the pointer is over a slot or a
-    /// pick again or a key brings it back to its slot (`cursor`, which it
-    /// keeps). The chip window keeps what it last showed. It lasts from a
-    /// screen to the next: a pointer that went away in the fight is away
-    /// as the screen opens.
+    /// target, off the picture): the cursor is on nothing, drawn nowhere,
+    /// shading no dark chip, the chip window empty, until the pointer is
+    /// over a slot or a pick again or a key brings it back to its slot
+    /// (`cursor`, which it keeps). It lasts from a screen to the next: a
+    /// pointer that went away in the fight is away as the screen opens.
     pub away: bool,
     /// What it has up over the chips.
     pub sub: Sub,
@@ -713,8 +712,11 @@ impl Layer {
     }
 
     /// The cursor onto nothing, for the pointer off the slots and picks
-    /// (silently: nothing moves into sight).
+    /// (silently: nothing moves into sight), the chip window emptied.
     fn go_away(&mut self) {
+        if !self.away {
+            self.plan.chip_window = true;
+        }
         self.pick_cursor = None;
         self.away = true;
     }
@@ -757,6 +759,22 @@ impl Layer {
         if !there && screen.slots.get(slot as usize).is_some_and(|s| !s.kind.is_absent()) {
             self.put_cursor(slot);
         }
+    }
+
+    /// The chip window drawn for where the cursor is: the slot's, a pick's,
+    /// or empty, on nothing.
+    fn draw_chip_window(&mut self, p: &Presented) {
+        self.chip_window.empty = self.away;
+        if !self.away {
+            p.screen.chip_window_at(self.shown_slot(p.screen), &mut self.chip_window, p.folder, &p.view);
+        }
+    }
+
+    /// Whether the chip window shows a chip, the cursor on one (on its
+    /// slot or a pick), not on nothing: EXE4's element icon, a sprite, is
+    /// drawn with it.
+    fn on_chip(&self, screen: &Screen) -> bool {
+        !self.away && matches!(screen.slots[self.shown_slot(screen) as usize].kind, SlotKind::Chip { .. } | SlotKind::Offered(_))
     }
 
     /// The slot whose chip the cursor shows: a pick's, where it is on one,
@@ -933,7 +951,7 @@ impl Layer {
         let (screen, view, folder) = (p.screen, &p.view, p.folder);
         let joy = self.joypad;
         let late = screen.look.late_turns;
-        let on_chip = matches!(screen.slots[self.cursor as usize].kind, SlotKind::Chip { .. } | SlotKind::Offered(_));
+        let on_chip = self.on_chip(screen);
         match self.sub {
             Sub::None => None,
             Sub::Hidden(stage) => {
@@ -1247,9 +1265,9 @@ impl Layer {
             self.apply(d, p, layout);
         }
         if plan.chip_window {
-            screen.chip_window_at(self.shown_slot(screen), &mut self.chip_window, folder, view);
+            self.draw_chip_window(p);
         }
-        let on_chip = matches!(screen.slots[self.shown_slot(screen) as usize].kind, SlotKind::Chip { .. } | SlotKind::Offered(_));
+        let on_chip = self.on_chip(screen);
         // A form list whose choice the screen took (its window up), or
         // whatever the layer had up as the screen stopped choosing: gone.
         if self.sub != Sub::None && screen.phase != Phase::Choosing {
@@ -1334,9 +1352,9 @@ impl Layer {
     /// What the screen asked of the drawing.
     fn apply(&mut self, d: Draw, p: &Presented, layout: &CustomScreenLayout) {
         let (screen, view, folder) = (p.screen, &p.view, p.folder);
-        let on_chip = matches!(screen.slots[self.shown_slot(screen) as usize].kind, SlotKind::Chip { .. } | SlotKind::Offered(_));
+        let on_chip = self.on_chip(screen);
         match d {
-            Draw::ChipWindow => screen.chip_window_at(self.shown_slot(screen), &mut self.chip_window, folder, view),
+            Draw::ChipWindow => self.draw_chip_window(p),
             Draw::FadeStarted => self.hover_fade_last = false,
             Draw::FadesCleared => self.hover.clear_fades(),
             Draw::HoverCleared => {

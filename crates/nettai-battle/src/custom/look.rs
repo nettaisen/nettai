@@ -197,6 +197,9 @@ pub struct ChipWindow {
     /// 0x0801FEA2: the digit stays through a shuffle, which took a use at
     /// its start and draws the window again at its end).
     pub uses: u8,
+    /// Drawn for nothing, the cursor on nothing (`Layer::away`): the window
+    /// empty, the rest as it was last drawn for a slot.
+    pub empty: bool,
 }
 
 /// What a tick of the screen asked: of the window's drawing (the layer

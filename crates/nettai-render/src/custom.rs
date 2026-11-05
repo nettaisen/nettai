@@ -1531,6 +1531,14 @@ impl Window {
             w.blank_element(a);
             w.tiles.fill(w.layout.digits, 6, w.layout.detail_blank);
         };
+        // (Drawn for nothing, the pointer away: the window empty, its frame
+        // in the standard colors, its ground where the picture goes.)
+        if cw.empty {
+            let standard = a.frame_palettes.first().copied().unwrap_or([0; 16]);
+            let ground = Picture { tiles: Tiles { pixels: vec![BLANK_8; a.pictures.ok.tiles.pixels.len()] }, palette: standard };
+            blank_details(self, &ground);
+            return;
+        }
         match v.screen.slots[slot as usize].kind {
             SlotKind::Chip { .. } | SlotKind::Offered(_) => {
                 let Some(c) = cw.last_chip else { return };

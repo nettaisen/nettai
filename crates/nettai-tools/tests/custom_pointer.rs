@@ -394,3 +394,46 @@ fn a_long_press_describes() {
     p.tick(0);
     assert!(p.battle().presented(0).unwrap().screen.selection().is_empty(), "its letting go picks nothing");
 }
+
+/// The mouse moved off the targets (the user: "when the mouse cursor isn't hovering over anything on the custom screen
+/// the selection should be empty"; "can you blank it"): the cursor on nothing, none drawn, no element icon, the chip
+/// window empty; back over a chip, all of them again. Each game, at both sizes.
+#[test]
+#[ignore = "requires the original ROMs: $NETTAI_ROMS, else the Legacy Collection installed through Steam"]
+fn the_pointer_away_shows_nothing_selected() {
+    for (name, file) in [("exe6", "custom_pointer/m6.toml"), ("exe5", "widescreen/m5.toml"), ("exe4", "widescreen/m4.toml")] {
+        let game = game(name);
+        for size in SIZES {
+            let label = format!("{name} at {}x{}", size.0, size.1);
+            let mut p = player(&game, file);
+            to_choosing(&mut p, size, &label);
+            let chip = middle(box_of(&mut p, Target::Slot(0)));
+            let off = (size.0 as f32 - 2.0, size.1 as f32 - 2.0);
+            assert_eq!(p.renderer().target_at(0, off.0 as i32, off.1 as i32), None, "{label}: nothing at {off:?}");
+            let moved = |p: &mut Player, (x, y): (f32, f32)| {
+                p.point(PointerEvent { kind: PointerKind::Moved, button: PointerButton::Primary, x, y });
+                p.tick(0);
+                draw(p, size);
+            };
+            moved(&mut p, chip);
+            let on = *p.layers()[0].unwrap();
+            assert!(!on.away && !on.chip_window.empty && on.look.drawn.cursor.is_some(), "{label}: over a chip");
+            let on_frame = p.frame();
+            moved(&mut p, off);
+            let away = *p.layers()[0].unwrap();
+            assert!(away.away && away.chip_window.empty, "{label}: away");
+            assert_eq!((away.look.drawn.cursor, away.look.drawn.element), (None, false), "{label}: no cursor, no element icon");
+            // The chip window empty: the same layer with the chip's window draws another.
+            let battle = p.battle().clone();
+            let mut shown = away;
+            shown.chip_window = on.chip_window;
+            let a = p.renderer().render(&battle, [Some(&away), None]);
+            let b = p.renderer().render(&battle, [Some(&shown), None]);
+            assert!(!differences(&a, &b).is_empty(), "{label}: the chip window emptied");
+            assert!(!differences(&on_frame, &a).is_empty(), "{label}: the frame changed");
+            moved(&mut p, chip);
+            let back = *p.layers()[0].unwrap();
+            assert!(!back.away && !back.chip_window.empty && back.look.drawn.cursor.is_some(), "{label}: over a chip again");
+        }
+    }
+}
