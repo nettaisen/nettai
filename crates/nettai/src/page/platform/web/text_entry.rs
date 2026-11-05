@@ -1,132 +1,187 @@
 //! The browser's input over a field being edited (crate::page::text_entry).
 
 use crate::page::text_entry::{Entry, Place};
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 use wasm_bindgen::prelude::*;
+use web_sys::{Event, HtmlElement, HtmlInputElement, KeyboardEvent};
 
-#[wasm_bindgen(inline_js = r##"
-let entry = null;
-function canvas() {
-    return document.querySelector("canvas");
-}
-// The input over the field at (x, y), width by height in the window's units (`windowWidth` of them across the canvas).
-function lay(input, x, y, width, height, windowWidth) {
-    const area = canvas().getBoundingClientRect();
-    const scale = area.width / windowWidth;
-    Object.assign(input.style, {
-        left: `${area.left + (x + 12) * scale}px`,
-        top: `${area.top + y * scale}px`,
-        width: `${(width - 24) * scale}px`,
-        height: `${height * scale}px`,
-        font: `${Math.round(14 * scale)}px system-ui, sans-serif`,
-    });
-}
-export function nettai_entry_place(x, y, width, height, windowWidth) {
-    if (entry) lay(entry, x, y, width, height, windowWidth);
-}
-export function nettai_entry_open(x, y, width, height, windowWidth, text, selectAll, heard) {
-    nettai_entry_close();
-    const area = canvas().getBoundingClientRect();
-    const scale = area.width / windowWidth;
-    const input = document.createElement("input");
-    input.type = "text";
-    input.value = text;
-    input.spellcheck = false;
-    input.autocomplete = "off";
-    Object.assign(input.style, {
-        position: "fixed",
-        margin: "0", padding: "0", border: "none", outline: "none", background: "transparent",
-        color: "#e8e6f0", caretColor: "#e8e6f0",
-    });
-    lay(input, x, y, width, height, windowWidth);
-    let ended = false;
-    const end = (said) => {
-        if (ended) return;
-        ended = true;
-        heard(said);
-    };
-    input.addEventListener("input", () => entry === input && heard(["changed", input.value]));
-    input.addEventListener("keydown", (e) => {
-        // (While the input method composes, its keys are its own: Enter takes its candidate.)
-        if (e.isComposing || e.keyCode === 229) return;
-        const said = { Enter: ["done", input.value], Escape: ["canceled"], ArrowUp: ["up"], ArrowDown: ["down"], Tab: [e.shiftKey ? "back" : "tab"] }[e.key];
-        if (!said) return;
-        e.preventDefault();
-        end(said);
-    });
-    // (Not as it is taken away: `entry` is let go first.)
-    input.addEventListener("blur", () => entry === input && end(["left"]));
-    document.body.appendChild(input);
-    entry = input;
-    // (After the window's own handling of what began the edit, which may focus the canvas.)
-    setTimeout(() => {
-        if (entry !== input) return;
-        input.focus();
-        if (selectAll) input.select(); else input.setSelectionRange(text.length, text.length);
-    }, 0);
-}
-export function nettai_entry_close() {
-    if (!entry) return;
-    const input = entry;
-    entry = null;
-    input.remove();
-    canvas()?.focus();
-}
-export function nettai_entry_keep(text) {
-    if (!entry || entry.value === text) return;
-    entry.value = text;
-    entry.setSelectionRange(text.length, text.length);
-}
-export function nettai_entry_open_now() {
-    return entry !== null;
-}
-"##)]
-extern "C" {
-    fn nettai_entry_open(x: f32, y: f32, width: f32, height: f32, window_width: f32, text: &str, select_all: bool, heard: &Closure<dyn FnMut(js_sys::Array)>);
-    fn nettai_entry_close();
-    fn nettai_entry_place(x: f32, y: f32, width: f32, height: f32, window_width: f32);
-    fn nettai_entry_keep(text: &str);
-    fn nettai_entry_open_now() -> bool;
-}
+/// What the open input tells.
+type Heard = Rc<RefCell<dyn FnMut(Entry)>>;
+
+/// A listener of the input's.
+type Listener = Closure<dyn FnMut(Event)>;
 
 thread_local! {
-    /// The open input's listener (kept as long as the input can call it).
-    static HEARD: RefCell<Option<Closure<dyn FnMut(js_sys::Array)>>> = const { RefCell::new(None) };
+    /// The open input, if one is.
+    static ENTRY: RefCell<Option<HtmlInputElement>> = const { RefCell::new(None) };
+    /// The open input's listeners (kept as long as the input can call them: the next open replaces them).
+    static LISTENERS: RefCell<Vec<Listener>> = const { RefCell::new(Vec::new()) };
 }
 
-pub fn open(place: Place, text: &str, select_all: bool, mut heard: impl FnMut(Entry) + 'static) {
-    let listener = Closure::<dyn FnMut(js_sys::Array)>::new(move |said: js_sys::Array| {
-        let text = || said.get(1).as_string().unwrap_or_default();
-        let entry = match said.get(0).as_string().as_deref() {
-            Some("changed") => Entry::Changed(text()),
-            Some("done") => Entry::Done(text()),
-            Some("canceled") => Entry::Canceled,
-            Some("up") => Entry::Up,
-            Some("down") => Entry::Down,
-            Some("tab") => Entry::Tab { back: false },
-            Some("back") => Entry::Tab { back: true },
-            Some("left") => Entry::Left,
-            _ => return,
-        };
-        heard(entry);
+fn document() -> Option<web_sys::Document> {
+    web_sys::window()?.document()
+}
+
+fn canvas() -> Option<web_sys::Element> {
+    document()?.query_selector("canvas").ok()?
+}
+
+/// Whether `input` is the one open.
+fn is_entry(input: &HtmlInputElement) -> bool {
+    ENTRY.with(|e| e.borrow().as_ref() == Some(input))
+}
+
+/// `heard` told `entry`, unless it is telling already (what it does may end the edit, which the input says too).
+fn tell(heard: &Heard, entry: Entry) {
+    if let Ok(mut heard) = heard.try_borrow_mut() {
+        (*heard)(entry);
+    }
+}
+
+/// `text`'s length as the input counts it (UTF-16's units).
+fn length(text: &str) -> u32 {
+    text.encode_utf16().count() as u32
+}
+
+/// `input` over the field at `place`, in the window's units (`place.window_width` of them across the canvas).
+fn lay(input: &HtmlInputElement, place: Place) {
+    let Some(area) = canvas().map(|c| c.get_bounding_client_rect()) else { return };
+    let scale = area.width() / f64::from(place.window_width);
+    let style = input.style();
+    for (name, value) in [
+        ("left", format!("{}px", area.left() + (f64::from(place.x) + 12.0) * scale)),
+        ("top", format!("{}px", area.top() + f64::from(place.y) * scale)),
+        ("width", format!("{}px", (f64::from(place.width) - 24.0) * scale)),
+        ("height", format!("{}px", f64::from(place.height) * scale)),
+        ("font", format!("{}px system-ui, sans-serif", (14.0 * scale).round())),
+    ] {
+        let _ = style.set_property(name, &value);
+    }
+}
+
+pub fn open(place: Place, text: &str, select_all: bool, heard: impl FnMut(Entry) + 'static) {
+    close();
+    let Some(document) = document() else { return };
+    let Some(body) = document.body() else { return };
+    let Ok(input) = document.create_element("input").map(JsCast::unchecked_into::<HtmlInputElement>) else { return };
+    input.set_type("text");
+    input.set_value(text);
+    input.set_spellcheck(false);
+    input.set_autocomplete("off");
+    let style = input.style();
+    for (name, value) in [
+        ("position", "fixed"),
+        ("margin", "0"),
+        ("padding", "0"),
+        ("border", "none"),
+        ("outline", "none"),
+        ("background", "transparent"),
+        ("color", "#e8e6f0"),
+        ("caret-color", "#e8e6f0"),
+    ] {
+        let _ = style.set_property(name, value);
+    }
+    lay(&input, place);
+
+    let heard: Heard = Rc::new(RefCell::new(heard));
+    // (The edit's end, told once.)
+    let end: Rc<dyn Fn(Entry)> = {
+        let (heard, ended) = (heard.clone(), Cell::new(false));
+        Rc::new(move |entry| {
+            if !ended.replace(true) {
+                tell(&heard, entry);
+            }
+        })
+    };
+    let changed = {
+        let (input, heard) = (input.clone(), heard.clone());
+        move |_: Event| {
+            if is_entry(&input) {
+                tell(&heard, Entry::Changed(input.value()));
+            }
+        }
+    };
+    let key = {
+        let (input, end) = (input.clone(), end.clone());
+        move |e: Event| {
+            let Some(e) = e.dyn_ref::<KeyboardEvent>() else { return };
+            // (While the input method composes, its keys are its own: Enter takes its candidate.)
+            if e.is_composing() || e.key_code() == 229 {
+                return;
+            }
+            let said = match e.key().as_str() {
+                "Enter" => Entry::Done(input.value()),
+                "Escape" => Entry::Canceled,
+                "ArrowUp" => Entry::Up,
+                "ArrowDown" => Entry::Down,
+                "Tab" => Entry::Tab { back: e.shift_key() },
+                _ => return,
+            };
+            e.prevent_default();
+            end(said);
+        }
+    };
+    // (Not as it is taken away: the input is let go first.)
+    let left = {
+        let input = input.clone();
+        move |_: Event| {
+            if is_entry(&input) {
+                end(Entry::Left);
+            }
+        }
+    };
+    let listeners: [(&str, Listener); 3] = [("input", Closure::new(changed)), ("keydown", Closure::new(key)), ("blur", Closure::new(left))];
+    for (kind, listener) in &listeners {
+        let _ = input.add_event_listener_with_callback(kind, listener.as_ref().unchecked_ref());
+    }
+    let _ = body.append_child(&input);
+    ENTRY.with(|e| *e.borrow_mut() = Some(input.clone()));
+    LISTENERS.with(|l| *l.borrow_mut() = listeners.into_iter().map(|(_, listener)| listener).collect());
+
+    // (After the window's own handling of what began the edit, which may focus the canvas.)
+    let at = length(text);
+    let focus = Closure::once_into_js(move || {
+        if !is_entry(&input) {
+            return;
+        }
+        let _ = input.focus();
+        if select_all {
+            input.select();
+        } else {
+            let _ = input.set_selection_range(at, at);
+        }
     });
-    nettai_entry_open(place.x, place.y, place.width, place.height, place.window_width, text, select_all, &listener);
-    HEARD.with(|h| *h.borrow_mut() = Some(listener));
+    if let Some(window) = web_sys::window() {
+        let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(focus.unchecked_ref(), 0);
+    }
 }
 
 pub fn place(place: Place) {
-    nettai_entry_place(place.x, place.y, place.width, place.height, place.window_width);
+    if let Some(input) = ENTRY.with(|e| e.borrow().clone()) {
+        lay(&input, place);
+    }
 }
 
 pub fn close() {
-    nettai_entry_close();
-    // (Not dropped while it may be the one running: the next open replaces it.)
+    let Some(input) = ENTRY.with(|e| e.borrow_mut().take()) else { return };
+    input.remove();
+    if let Some(canvas) = canvas().and_then(|c| c.dyn_into::<HtmlElement>().ok()) {
+        let _ = canvas.focus();
+    }
+    // (Its listeners aren't dropped while one may be the one running: the next open replaces them.)
 }
 
 pub fn keep(text: &str) {
-    nettai_entry_keep(text);
+    let Some(input) = ENTRY.with(|e| e.borrow().clone()) else { return };
+    if input.value() == text {
+        return;
+    }
+    input.set_value(text);
+    let at = length(text);
+    let _ = input.set_selection_range(at, at);
 }
 
 pub fn is_open() -> bool {
-    nettai_entry_open_now()
+    ENTRY.with(|e| e.borrow().is_some())
 }

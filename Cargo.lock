@@ -3830,6 +3830,7 @@ dependencies = [
  "tokio",
  "toml 0.8.23",
  "wasm-bindgen",
+ "web-sys",
  "web-time",
  "winit",
  "winresource",

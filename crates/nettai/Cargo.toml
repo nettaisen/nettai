@@ -125,13 +125,26 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
 # The TLS provider reqwest is given (`http.rs`): ring's, as the tree's rustls has (nettai-signaling's).
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 
-# The browser's page: the log on its console, and a panic said there; its own JavaScript and what it calls
-# (`page.rs`: the library is the module it loads, packaging/web/build.sh's).
+# The browser's page: the log on its console, and a panic said there; what it calls (`page.rs`: the library is the
+# module it loads, packaging/web/build.sh's), and its window and the input over a field, through web-sys.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 console_log = "1"
 console_error_panic_hook = "0.1"
 wasm-bindgen = "0.2"
 js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+    "CssStyleDeclaration",
+    "Document",
+    "DomRect",
+    "Element",
+    "Event",
+    "EventTarget",
+    "HtmlElement",
+    "HtmlInputElement",
+    "KeyboardEvent",
+    "Node",
+    "Window",
+] }
 
 # A terminate request's signals, taken back from SDL (`quit.rs`). (In the tree already.)
 [target.'cfg(unix)'.dependencies]
