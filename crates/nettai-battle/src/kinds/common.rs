@@ -179,8 +179,7 @@ pub fn spawn_guard_spark(b: &mut Battle, r: ObjectRef) {
     }
     let o = b.objects.get(r);
     let c = o.collision.expect("object with collision data");
-    // Hit flag 0x20000: it blocked a hit.
-    if b.collision.get(c).acc.hit_flags & 0x2_0000 == 0 {
+    if b.collision.get(c).acc.hit_flags & crate::collision::hit::GUARD_SPARK == 0 {
         return;
     }
     b.sound(crate::content::SoundRole::Guard);

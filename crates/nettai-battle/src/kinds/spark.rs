@@ -1,7 +1,7 @@
 //! Hit sparks (effect object #4), spawned where an attack connects.
 
 use crate::battle::Battle;
-use crate::collision::types;
+use crate::collision::{hit, types};
 use crate::content::EffectSprite;
 use crate::object::{ObjectRef, Vec3, flags, state};
 use nettai_content_api::SparkHandle;
@@ -21,7 +21,7 @@ pub fn spawn_collision_effect(b: &mut Battle, hitter: ObjectRef) {
     let Some(c) = b.objects.get(hitter).collision else { return };
     let s = b.collision.get(c);
     let flags = s.acc.hit_flags;
-    if flags & (types::OBJECTS | types::BODIES | types::OTHER_BODIES | types::NEUTRAL) == 0 || flags & 1 != 0 {
+    if flags & (types::OBJECTS | types::BODIES | types::OTHER_BODIES | types::NEUTRAL) == 0 || flags & hit::GUARDED != 0 {
         return;
     }
     let Some(effect) = s.hit_effect else { return };

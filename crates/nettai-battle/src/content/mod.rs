@@ -109,8 +109,12 @@ impl SecondaryElements {
     pub const WIND: u8 = 0x20;
     pub const CURSOR: u8 = 0x40;
     pub const SWORD: u8 = 0x80;
-    pub(crate) const NAMES: &[(u32, &str)] =
-        &[(0x10, "break"), (0x20, "wind"), (0x40, "cursor"), (0x80, "sword")];
+    pub(crate) const NAMES: &[(u32, &str)] = &[
+        (Self::BREAK as u32, "break"),
+        (Self::WIND as u32, "wind"),
+        (Self::CURSOR as u32, "cursor"),
+        (Self::SWORD as u32, "sword"),
+    ];
 }
 
 flags::serde_flags!(SecondaryElements, u8);

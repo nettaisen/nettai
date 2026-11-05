@@ -334,7 +334,7 @@ fn bug_effect(b: &mut Battle, r: ObjectRef) {
 /// own-gauges mode, battle flag 0x40), is counted, and closes the counter
 /// window.
 fn counter_hit_bookkeeping(b: &mut Battle, r: ObjectRef) {
-    if coll(b, r).acc.hit_flags & 0x40 == 0 {
+    if coll(b, r).acc.hit_flags & crate::collision::hit::COUNTERED == 0 {
         return;
     }
     let opp = b.objects.get(r).alliance ^ 1;

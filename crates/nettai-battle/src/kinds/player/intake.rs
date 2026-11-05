@@ -8,8 +8,8 @@ use super::{
     form_of, navi_of, refresh_abilities, reload_base_weapons, set_flag2, stats, stats_mut,
 };
 use crate::battle::{Battle, battle_flags};
-use crate::collision::{CollisionData, f1, timer, types};
-use crate::content::{EffectRole, SparkRole, StatusRole, StatusTimer};
+use crate::collision::{CollisionData, f1, hit, timer, types};
+use crate::content::{EffectRole, SecondaryElements, SparkRole, StatusRole, StatusTimer};
 use crate::object::{ObjectRef, Vec3};
 
 /// `sub_801AC6C`.
@@ -183,7 +183,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
     }
     let regrowing = matches!(barrier, 4 | 8 | 0xA) && barrier_hp16(c) == 0;
     match rule.wind {
-        crate::content::BarrierWind::Pops if !regrowing && (c.acc.raw_elements & 0x20 != 0 || c.acc.raw_hit_flags & (types::WIND | types::PULL | types::PUSHING) != 0) => {
+        crate::content::BarrierWind::Pops if !regrowing && (c.acc.raw_elements & SecondaryElements::WIND != 0 || c.acc.raw_hit_flags & (types::WIND | types::PULL | types::PUSHING) != 0) => {
             // Popped (wind): absorbs everything until its visual clears it.
             barrier = 0x10;
             c.barrier = 0x10;
@@ -300,7 +300,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
     c.acc.exclamation = 0;
     c.acc.damage_multiplier = 0;
     c.acc.damage_elements = 0;
-    c.acc.hit_flags &= !0x50;
+    c.acc.hit_flags &= !(hit::COUNTERED | types::CHIP_DESTRUCTION);
 }
 
 // ---- Panels ------------------------------------------------------------------
@@ -379,7 +379,7 @@ fn hp_bug_drain(b: &mut Battle, r: ObjectRef) {
 /// `sub_802CFF8`: a cursor hit cancels the side's defensive chip.
 fn drop_cursor_trap(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance;
-    if coll(b, r).acc.damage_elements & 0x40 != 0 && b.linked[side as usize].chip.is_some() {
+    if coll(b, r).acc.damage_elements & SecondaryElements::CURSOR != 0 && b.linked[side as usize].chip.is_some() {
         b.clear_linked(side);
         b.sound(crate::content::SoundRole::Fade);
     }
@@ -463,7 +463,7 @@ fn zero_trapped_hit(b: &mut Battle, r: ObjectRef) {
     c.status_timers[timer::PARALYZE] = 0;
     c.status_timers[timer::FREEZE] = 0;
     c.status_timers[timer::BUBBLE] = 0;
-    c.acc.hit_flags &= !0x40;
+    c.acc.hit_flags &= !hit::COUNTERED;
     c.f2 &= !drops;
 }
 
@@ -572,7 +572,7 @@ fn hit_modifier_requests(b: &mut Battle, r: ObjectRef) {
 /// or flashing, unless a bubble status landed.
 fn counter_paralysis(b: &mut Battle, r: ObjectRef) {
     let c = coll(b, r);
-    if c.acc.hit_flags & 0x40 == 0 || c.status_final.is_some_and(|s| b.content.status(s).survives_counter) {
+    if c.acc.hit_flags & hit::COUNTERED == 0 || c.status_final.is_some_and(|s| b.content.status(s).survives_counter) {
         return;
     }
     coll_mut(b, r).status_final = Some(b.roles().status(StatusRole::CounterParalysis));
@@ -774,7 +774,7 @@ fn pierce_ends_flash(b: &mut Battle, r: ObjectRef) {
 /// `object_spawnHiteffect`: a blocked hit shows a guard spark (one RNG
 /// draw).
 fn guard_spark(b: &mut Battle, r: ObjectRef) {
-    if b.paused || coll(b, r).acc.hit_flags & 0x2_0000 == 0 {
+    if b.paused || coll(b, r).acc.hit_flags & hit::GUARD_SPARK == 0 {
         return;
     }
     b.sound(crate::content::SoundRole::Guard);
@@ -976,7 +976,7 @@ mod tests {
             ai_mut(&mut b, r).requests |= request::CHIP | request::BUSTER;
             lose_chip(&mut b, r);
             assert_eq!(b.hands[side].cursor, cursor, "no hit flag 0x10: nothing lost");
-            coll_mut(&mut b, r).acc.hit_flags |= 0x10;
+            coll_mut(&mut b, r).acc.hit_flags |= types::CHIP_DESTRUCTION;
             lose_chip(&mut b, r);
             assert_eq!(b.objects.get(r).chip, None);
             let left = b.hands[side].ids.iter().filter(|id| id.is_some()).count();

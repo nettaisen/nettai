@@ -22,7 +22,7 @@ pub struct Vars {
     pub bug: u8,
     pub bug_arg: u8,
     // The game also lets the spawner pass a slot that receives which bodies
-    // were hit (`hit_flags & 0x0C000000`). Added as a typed field on the
+    // were hit (`hit_flags & types::BODIES`). Added as a typed field on the
     // spawner's action state when the first attack that reads it is ported.
 }
 

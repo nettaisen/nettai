@@ -7,7 +7,7 @@
 //! read on their next update. See docs/engine/field-collision-damage.md §3.
 
 use crate::battle::Battle;
-use crate::content::{Content, DamageWord, Region, RegionRole, SparkRole};
+use crate::content::{Content, DamageWord, Region, RegionRole, SecondaryElements, SparkRole};
 use crate::field;
 use crate::object::{ObjectRef, PanelPos};
 use nettai_content_api::{CollisionHandle, RegionHandle, SparkHandle, StatusHandle};
@@ -130,6 +130,18 @@ pub mod types {
     pub const OTHER_BODIES: u32 = OTHER_BODY_SIDE0 | OTHER_BODY_SIDE1;
 }
 
+/// What a hit leaves in `Accumulators::hit_flags` besides the hitters'
+/// collision types (bits no type has).
+pub mod hit {
+    /// A guard turned its hit aside (the hitter's).
+    pub const GUARDED: u32 = 1 << 0;
+    /// A counter hit (the receiver's).
+    pub const COUNTERED: u32 = 1 << 6;
+    /// Its guard turned aside a hit that shows a guard spark (the
+    /// receiver's).
+    pub const GUARD_SPARK: u32 = 1 << 17;
+}
+
 /// The collision type bits of an attack of each side (side 0's, side
 /// 1's).
 pub const ATTACK_OF: [u32; 2] = [types::ATTACK_SIDE0, types::ATTACK_SIDE1];
@@ -151,8 +163,7 @@ pub struct Accumulators {
     pub pair_tested: u32,
     /// Everything that touched us, unfiltered.
     pub raw_hit_flags: u32,
-    /// What hit us (filtered), plus: 0x1 we were guarded, 0x40 counter
-    /// hit, 0x20000 we blocked a hit.
+    /// What hit us (filtered: the hitters' `types`), plus the `hit` bits.
     pub hit_flags: u32,
     /// The same by the other collision's flip (EXE5's +0x6C and +0x70: the
     /// hit registration, 0x080169C8 to 0x08016A68, keeps them only so; an
@@ -655,15 +666,15 @@ impl Battle {
             let brk = if hs & types::NO_GUARD_SPARK != 0 { types::BREAKS_GUARD | types::BREAK } else { test.guard_breaks_to };
             if hs & brk == 0 {
                 let hm = self.collision.get_mut(h);
-                hm.acc.hit_flags |= 1;
-                hm.acc.hit_flags_by_flip[rd.flip as usize & 1] |= 1;
+                hm.acc.hit_flags |= hit::GUARDED;
+                hm.acc.hit_flags_by_flip[rd.flip as usize & 1] |= hit::GUARDED;
                 let mut flags = hs & !types::CHIP_DESTRUCTION;
                 // (EXE5's mask is 0x0C004000: the same here, where its
                 // guard has broken to every type with 0x1000.)
                 if flags & (types::BODIES | types::NO_GUARD_SPARK | types::BREAKS_GUARD) == 0 {
                     let mark = if test.guard_marks_direction { 1 << hd.flip } else { 1 };
                     self.collision.get_mut(r).guard_dirs |= mark;
-                    flags |= 0x2_0000;
+                    flags |= hit::GUARD_SPARK;
                 }
                 let rm = self.collision.get_mut(r);
                 rm.acc.hit_flags |= flags;
@@ -693,7 +704,7 @@ impl Battle {
         if hs & types::BODIES != 0
             && rs & types::BODIES == 0
             && hd.status_timers[timer::INVULNERABLE] == 0
-            && rd.acc.hit_flags & 1 == 0
+            && rd.acc.hit_flags & hit::GUARDED == 0
             && let Some(kind) = self.field.panel(hd.panel.x, hd.panel.y).map(|p| p.kind)
             && let Some(body) = hd.parent
         {
@@ -702,8 +713,8 @@ impl Battle {
         let c = hd.counter_byte;
         let rm = self.collision.get_mut(r);
         if rm.counter_timer != 0 && c & 0x7F != 0 && c & 0x80 == 0 {
-            rm.acc.hit_flags |= 0x40;
-            rm.acc.hit_flags_by_flip[hd.flip as usize & 1] |= 0x40;
+            rm.acc.hit_flags |= hit::COUNTERED;
+            rm.acc.hit_flags_by_flip[hd.flip as usize & 1] |= hit::COUNTERED;
         }
         // What the hit wears off the mood: the byte's low seven bits, but
         // on a counter hit what the counter puts in the register they're
@@ -747,11 +758,11 @@ impl Battle {
             .and_then(|row| row.get(hd.element as usize))
             .copied()
             .unwrap_or(0);
-        let w2 = (rd.secondary_weakness & hd.secondary_element != 0 || (rd.secondary_weakness == 0x80 && hs & types::SWORD != 0))
+        let w2 = (rd.secondary_weakness & hd.secondary_element != 0 || (rd.secondary_weakness == SecondaryElements::SWORD && hs & types::SWORD != 0))
             as u8;
         let mut m = 1 + w1 + w2;
         rm.acc.damage_multiplier = m - 1;
-        let thaw = rd.f1 & f1::FROZEN != 0 && (rm.acc.hit_flags & 2 != 0 || hd.secondary_element == 0x10);
+        let thaw = rd.f1 & f1::FROZEN != 0 && (rm.acc.hit_flags & types::BREAK != 0 || hd.secondary_element == SecondaryElements::BREAK);
         if thaw {
             m += 1;
         }
@@ -921,7 +932,7 @@ mod tests {
         b.collision.get_mut(h).self_flags = types;
         b.collision.get_mut(h).f1 = 0;
         b.resolve_hit(r, h);
-        b.collision.get(h).acc.hit_flags & 1 != 0
+        b.collision.get(h).acc.hit_flags & hit::GUARDED != 0
     }
 
     /// docs/design/exe5-map.md §15.11: EXE5's guard breaks on type 0x1000
@@ -950,7 +961,7 @@ mod tests {
             b.collision.get_mut(h).self_flags = types::ATTACK_SIDE0;
             b.collision.get_mut(h).f1 = 0;
             b.resolve_hit(r, h);
-            (b.collision.get(h).acc.hit_flags & 1 != 0, b.collision.get(r).acc.hit_flags & 0x2_0000 != 0)
+            (b.collision.get(h).acc.hit_flags & hit::GUARDED != 0, b.collision.get(r).acc.hit_flags & hit::GUARD_SPARK != 0)
         };
         assert_eq!(outcome(false), (false, false));
         assert_eq!(outcome(true), (true, true));
