@@ -1,14 +1,13 @@
 //! The web build's: the WebRTC connection, the browser's (`rtc`: its
-//! `RTCPeerConnection`, behind `crate::rtc`'s API), the signaling server's
-//! WebSocket, the browser's (`ws`), and the browser's randomness. Direct
-//! connect is native only (`direct`: nothing): a browser can't listen on a
-//! port, nor dial one without a description from the other side.
+//! `RTCPeerConnection`, behind `crate::rtc`'s API) and the browser's
+//! randomness. Direct connect is native only (`direct`: nothing): a browser
+//! can't listen on a port, nor dial one without a description from the
+//! other side.
 
 use crate::Error;
 
 pub(crate) mod direct;
 pub(crate) mod rtc;
-pub(crate) mod ws;
 
 /// `bytes` filled from the browser's `crypto.getRandomValues`.
 pub(crate) fn secure_random(bytes: &mut [u8]) -> Result<(), Error> {

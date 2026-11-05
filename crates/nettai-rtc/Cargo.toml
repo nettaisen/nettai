@@ -6,13 +6,15 @@ license.workspace = true
 description = "WebRTC data channels for netplay: one API on both targets (str0m natively, the browser's RTCPeerConnection on the web)"
 
 [dependencies]
+# Where two players meet: the signaling server's rooms.
+nettai-signaling = { path = "../nettai-signaling" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 web-time = "1"
 log = "0.4"
 
-# Native: the connections (`native::rtc`), the signaling server's WebSocket
-# (on a thread of its own), and the system's randomness (reconnect codes).
+# Native: the connections (`native::rtc`) and the system's randomness
+# (reconnect codes).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 # WebRTC sans I/O: ICE, DTLS and SCTP, its crypto pure Rust (dimpl and
 # RustCrypto).
@@ -30,22 +32,15 @@ if-addrs = "0.15"
 # a relayed one (sans I/O).
 stun-proto = "2"
 turn-client-proto = "0.7"
-tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
-# The WebSocket's TLS needs a crypto backend, which tungstenite doesn't pick:
-# without one rustls panics at the first wss:// connection (the signaling
-# thread ended at once, every time). The rtc crate used to bring ring in.
-rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 getrandom = "0.3"
 
 # The web: the browser's connections (`web::rtc`: its RTCPeerConnection and
-# data channels, the Promises they answer with awaited), WebSocket and
-# randomness.
+# data channels, the Promises they answer with awaited) and randomness.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2.126"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 web-sys = { version = "0.3", features = [
-    "CloseEvent",
     "Crypto",
     "MessageEvent",
     "RtcConfiguration",
@@ -61,15 +56,15 @@ web-sys = { version = "0.3", features = [
     "RtcSdpType",
     "RtcSessionDescription",
     "RtcSessionDescriptionInit",
-    "WebSocket",
 ] }
 
 [features]
-# `testing`: a signaling server in process, for tests (native).
+# `testing`: a few of the link's insides, for its tests.
 testing = []
 
 [dev-dependencies]
 nettai-rtc = { path = ".", features = ["testing"] }
+nettai-signaling = { path = "../nettai-signaling", features = ["testing"] }
 
 # The tests' TURN server signs its responses (STUN's long-term credentials).
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]

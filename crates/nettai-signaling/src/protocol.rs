@@ -1,8 +1,8 @@
 //! The signaling server's protocol: how two players meet in a room and
 //! trade what their connections need (docs/design/rollback.md §4.8). The
-//! server is `signaling/` (a Cloudflare Worker; [`crate::testing`] has one
-//! in process); this module is what the clients say and hear, as JSON
-//! text messages on a WebSocket. This is version [`VERSION`] of it.
+//! server is `signaling/` (a Cloudflare Worker; `crate::testing` has one in
+//! process); this module is what the clients say and hear, as JSON text
+//! messages on a WebSocket. This is version [`VERSION`] of it.
 //!
 //! The two are in a room only while they need the server: until their first
 //! connection is through, and while a dropped one is made again. Between
@@ -58,9 +58,9 @@
 //!
 //! A client uses exactly the servers it was given last, for each connection
 //! made after (a welcome that gives none, as before the other has come or
-//! from [`crate::testing`]'s server by default, leaves it to its own,
-//! [`crate::Config::ice_servers`], none unless a caller names some; a `peer`
-//! that gives none leaves them as they were), so a reconnection has the
+//! from `crate::testing`'s server by default, leaves it to its own,
+//! nettai-rtc's `Config::ice_servers`, none unless a caller names some; a
+//! `peer` that gives none leaves them as they were), so a reconnection has the
 //! credentials its reconnect room gave. They come before anything the other
 //! client sends, and a client makes no connection in a room before the other
 //! is there, so every connection has them.
@@ -69,10 +69,9 @@
 //! there; dropped if not) and `{"type":"leave"}` (it gives its place up; a
 //! room both have left is over at once, and its code names no room). A text
 //! message `ping` is answered `pong`, the keepalive. The server reads none
-//! of the data, which is [`Signal`]: the offer, the answer, trickled
-//! candidates and the host's call to dial again, each of a generation (each
-//! new connection is one more), so that what a dropped one still had on its
-//! way is told from the next one's.
+//! of the data, which is the clients' own: any JSON (nettai-rtc's link says
+//! its offer, its answer, trickled candidates and the host's call to dial
+//! again in it).
 //!
 //! An invite room is kept while a socket of it is open and ten minutes after
 //! the last one goes; a reconnect room, while a socket of it is open and
@@ -80,8 +79,7 @@
 //! and its code with it.
 
 use serde::{Deserialize, Serialize};
-
-use crate::{Candidate, Duration, IceServer, Role};
+use web_time::Duration;
 
 /// The protocol's version, which a client says as it connects (`v=`): a
 /// server of another refuses it ([`Refusal::Version`]).
@@ -100,8 +98,8 @@ pub const CODE_LENGTH: usize = 6;
 pub const RECONNECT_CODE_BYTES: usize = 16;
 
 /// How long a reconnect room with no socket is kept: a link's time to
-/// reconnect ([`crate::Config::reconnect_timeout`]'s default), after which
-/// neither side comes back to it.
+/// reconnect (nettai-rtc's `Config::reconnect_timeout`'s default), after
+/// which neither side comes back to it.
 pub const RECONNECT_ROOM_KEPT: Duration = Duration::from_secs(30);
 
 /// How long the TURN credentials a welcome gives last (the Worker asks
@@ -111,18 +109,48 @@ pub const RECONNECT_ROOM_KEPT: Duration = Duration::from_secs(30);
 /// room's welcome then gives new ones.
 pub const TURN_CREDENTIALS_LAST: Duration = Duration::from_secs(4 * 60 * 60);
 
-/// What a client says to the server.
+/// A STUN or TURN server as the browser's `RTCIceServer` has it, as a
+/// welcome gives it: its URLs, `stun:HOST[:PORT]`,
+/// `turn:HOST[:PORT][?transport=udp|tcp]` or
+/// `turns:HOST[:PORT][?transport=tcp]`, and a TURN server's credentials.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct IceServer {
+    pub urls: Vec<String>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub username: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub credential: String,
+}
+
+impl IceServer {
+    /// A server without credentials (STUN).
+    pub fn new(url: &str) -> IceServer {
+        IceServer { urls: vec![url.to_string()], ..IceServer::default() }
+    }
+}
+
+/// A client's place in an invite room: its maker hosts, and the next to
+/// come joins. The two keep their roles in a reconnect room, whose welcome
+/// says none.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Role {
+    Host,
+    Join,
+}
+
+/// What a client says to the server; `T`, what it says to the other client.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
-pub enum ToServer {
-    Signal { data: Signal },
+pub enum ToServer<T> {
+    Signal { data: T },
     Leave,
 }
 
-/// What the server says to a client.
+/// What the server says to a client; `T`, what the other client says.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
-pub enum FromServer {
+pub enum FromServer<T> {
     /// (The place and the code in an invite room; neither in a reconnect
     /// room. The STUN and TURN servers, in either, when the server has
     /// some: a server that isn't one, its URLs not strings, is left out.)
@@ -144,7 +172,7 @@ pub enum FromServer {
         ice_servers: Vec<IceServer>,
     },
     Signal {
-        data: Signal,
+        data: T,
     },
     Error {
         #[serde(default)]
@@ -172,24 +200,6 @@ pub enum Refusal {
     #[default]
     #[serde(other)]
     Unknown,
-}
-
-/// What one client sends the other through the room.
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(tag = "kind", rename_all = "lowercase")]
-pub enum Signal {
-    /// The joiner's offer, for connection `generation`.
-    Offer { generation: u32, sdp: String },
-    /// The host's answer to it.
-    Answer { generation: u32, sdp: String },
-    /// A candidate of connection `generation`'s.
-    Candidate {
-        generation: u32,
-        #[serde(flatten)]
-        candidate: Candidate,
-    },
-    /// The host lost connection `generation`: the joiner dials again.
-    Redial { generation: u32 },
 }
 
 /// A welcome's servers, those that read as [`IceServer`]s (a welcome is
@@ -258,22 +268,27 @@ pub fn reconnect_url(server: &str, code: &str, peer: &str) -> String {
 mod tests {
     use super::*;
 
+    /// What one client says to the other, through the room: any JSON.
+    type Data = serde_json::Value;
+
     /// The messages are the JSON the Worker reads and writes.
     #[test]
     fn messages_are_the_workers_json() {
-        let said = |m: &FromServer| serde_json::to_string(m).unwrap();
+        let said = |m: &FromServer<Data>| serde_json::to_string(m).unwrap();
         assert_eq!(
             said(&FromServer::Welcome { role: Some(Role::Join), peer: true, code: Some("ABC234".into()), ice_servers: Vec::new() }),
             r#"{"type":"welcome","role":"join","peer":true,"code":"ABC234"}"#
         );
         assert_eq!(said(&FromServer::Welcome { role: None, peer: false, code: None, ice_servers: Vec::new() }), r#"{"type":"welcome","peer":false}"#);
-        assert_eq!(serde_json::from_str::<FromServer>(r#"{"type":"welcome","peer":true}"#).unwrap(), FromServer::Welcome { role: None, peer: true, code: None, ice_servers: Vec::new() });
+        assert_eq!(serde_json::from_str::<FromServer<Data>>(r#"{"type":"welcome","peer":true}"#).unwrap(), FromServer::Welcome { role: None, peer: true, code: None, ice_servers: Vec::new() });
         assert_eq!(said(&FromServer::Peer { present: false, ice_servers: Vec::new() }), r#"{"type":"peer","present":false}"#);
-        let candidate = Signal::Candidate { generation: 2, candidate: Candidate { candidate: "candidate:1 1 udp 1 192.0.2.1 9 typ host".into(), mid: Some("0".into()), mline: Some(0) } };
-        let text = serde_json::to_string(&ToServer::Signal { data: candidate.clone() }).unwrap();
-        assert_eq!(text, r#"{"type":"signal","data":{"kind":"candidate","generation":2,"candidate":"candidate:1 1 udp 1 192.0.2.1 9 typ host","mid":"0","mline":0}}"#);
-        assert_eq!(serde_json::from_str::<ToServer>(&text).unwrap(), ToServer::Signal { data: candidate });
-        assert_eq!(serde_json::to_string(&ToServer::Leave).unwrap(), r#"{"type":"leave"}"#);
+        // (A JSON value's keys are written in order.)
+        let data: Data = serde_json::json!({"generation": 2, "kind": "redial"});
+        let text = serde_json::to_string(&ToServer::Signal { data: data.clone() }).unwrap();
+        assert_eq!(text, r#"{"type":"signal","data":{"generation":2,"kind":"redial"}}"#);
+        assert_eq!(serde_json::from_str::<ToServer<Data>>(&text).unwrap(), ToServer::Signal { data: data.clone() });
+        assert_eq!(serde_json::from_str::<FromServer<Data>>(r#"{"type":"signal","data":{"kind":"redial","generation":2}}"#).unwrap(), FromServer::Signal { data });
+        assert_eq!(serde_json::to_string(&ToServer::<Data>::Leave).unwrap(), r#"{"type":"leave"}"#);
     }
 
     /// A welcome's STUN and TURN servers are the browser's `RTCIceServer`s,
@@ -289,23 +304,23 @@ mod tests {
             credential: "c".into(),
         };
         let welcome = FromServer::Welcome { role: Some(Role::Host), peer: false, code: Some("ABC234".into()), ice_servers: vec![stun.clone(), turn] };
-        assert_eq!(serde_json::from_str::<FromServer>(text).unwrap(), welcome);
+        assert_eq!(serde_json::from_str::<FromServer<Data>>(text).unwrap(), welcome);
         assert_eq!(serde_json::to_string(&welcome).unwrap(), text);
         let odd = r#"{"type":"welcome","peer":true,"iceServers":[{"urls":"stun:one.example"},{"username":"u"},{"urls":["stun:stun.cloudflare.com:3478"]}]}"#;
-        assert_eq!(serde_json::from_str::<FromServer>(odd).unwrap(), FromServer::Welcome { role: None, peer: true, code: None, ice_servers: vec![stun] });
+        assert_eq!(serde_json::from_str::<FromServer<Data>>(odd).unwrap(), FromServer::Welcome { role: None, peer: true, code: None, ice_servers: vec![stun] });
         let none = r#"{"type":"welcome","peer":true,"iceServers":"none"}"#;
-        assert_eq!(serde_json::from_str::<FromServer>(none).unwrap(), FromServer::Welcome { role: None, peer: true, code: None, ice_servers: Vec::new() });
+        assert_eq!(serde_json::from_str::<FromServer<Data>>(none).unwrap(), FromServer::Welcome { role: None, peer: true, code: None, ice_servers: Vec::new() });
     }
 
     /// A refusal's reason is one of the protocol's; one this client doesn't
     /// know, or none (an older server's), reads as unknown.
     #[test]
     fn refusals_have_reasons() {
-        let read = |text: &str| serde_json::from_str::<FromServer>(text).unwrap();
+        let read = |text: &str| serde_json::from_str::<FromServer<Data>>(text).unwrap();
         for (reason, name) in [(Refusal::NotFound, "not-found"), (Refusal::Full, "full"), (Refusal::Version, "version"), (Refusal::BadRequest, "bad-request"), (Refusal::Busy, "busy")] {
             let text = format!(r#"{{"type":"error","reason":"{name}","message":"why"}}"#);
             assert_eq!(read(&text), FromServer::Error { reason, message: "why".into() });
-            assert_eq!(serde_json::to_string(&FromServer::Error { reason, message: "why".into() }).unwrap(), text);
+            assert_eq!(serde_json::to_string(&FromServer::<Data>::Error { reason, message: "why".into() }).unwrap(), text);
         }
         assert_eq!(read(r#"{"type":"error","reason":"something-new","message":"why"}"#), FromServer::Error { reason: Refusal::Unknown, message: "why".into() });
         assert_eq!(read(r#"{"type":"error","message":"the room is full"}"#), FromServer::Error { reason: Refusal::Unknown, message: "the room is full".into() });

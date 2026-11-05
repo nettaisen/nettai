@@ -787,8 +787,9 @@ in turn (`rtc::Event`: this side's description, its candidates, the state, a cha
 with no callbacks, so the connection above them is one module for both targets (`peer`). It took the place of
 libdatachannel (C++ with Mbed TLS, through datachannel-facade), which had taken the `rtc` crate's (webrtc-rs's
 sans-I/O WebRTC, driven from the frame loop); dcbench in the verify workspace measured str0m against it
-(nettai-verify tools/dcbench). nettai-rtc keeps everything above the connection: the link, rooms, the signaling
-protocol and its WebSockets, reconnection, the test server. It depends on no engine crate. Two layers:
+(nettai-verify tools/dcbench). nettai-rtc keeps everything above the connection: the link and its reconnection.
+Where the two meet is nettai-signaling's: the signaling protocol, a client in a room on its WebSocket, and the test
+server, which carry what the link says without reading it. Neither depends on an engine crate. Two layers:
 
 - `PeerConnection`: one connection and its data channels. It is told the other side's description and candidates
   and hands over its own as events (`PeerEvent`: the description, each candidate as it is found, open, down),
@@ -836,8 +837,8 @@ rustls) runs on a thread of its own.
 **The signaling server** is `signaling/`, a Cloudflare Worker in TypeScript with a Durable Object a room, on the
 WebSocket hibernation API (an idle room costs nothing; `ping` is answered `pong` without waking it). TypeScript
 because the Durable Object WebSocket API is the Workers runtime's own, with no build step under `wrangler dev`;
-workers-rs would add a wasm build for a relay of about 300 lines. This is version 1 of its protocol (nettai-rtc's
-`signal` module; a client says its version as it connects, `v=1`, and a server of another refuses it).
+workers-rs would add a wasm build for a relay of about 300 lines. This is version 1 of its protocol
+(nettai-signaling's; a client says its version as it connects, `v=1`, and a server of another refuses it).
 
 **The default server.** The user: "default signaling server should be matchmaking.nettai.n1gp.net". The app
 meets through `wss://matchmaking.nettai.n1gp.net` (`DEFAULT_SIGNAL`, where the app builds its `Net`, in
@@ -852,7 +853,7 @@ by default, "you don't even need a google default right? direct connect doesn't 
 
 - Once both players are in the room, in an invite room and a reconnect room alike, each is given `iceServers`:
   the STUN and TURN servers its connections use, as the browser's `RTCIceServer`s (`{"urls":[...],"username":...,
-  "credential":...}`, nettai-rtc's `IceServer`). With its TURN key, the Worker asks Cloudflare's TURN service
+  "credential":...}`, nettai-signaling's `IceServer`). With its TURN key, the Worker asks Cloudflare's TURN service
   (Cloudflare Realtime) for credentials for that client, `POST
   https://rtc.live.cloudflare.com/v1/turn/keys/{CLOUDFLARE_TURN_KEY_ID}/credentials/generate-ice-servers` with
   `Authorization: Bearer {CLOUDFLARE_TURN_KEY_API_TOKEN}` and `{"ttl":14400}`, and gives the servers it answers: its STUN
@@ -987,7 +988,7 @@ acknowledges every one that comes. The channel is DTLS's, so nobody between the 
   reached. A refusal in a reconnect room (a third socket in it, or another version) ends the link: the connection
   is lost (`ServerVersion` for the version).
 
-nettai-rtc's `testing` feature has a server of its own speaking the protocol, in process, for tests (it picks codes,
+nettai-signaling's `testing` feature has a server of its own speaking the protocol, in process, for tests (it picks codes,
 refuses and forgets as the Worker does; `Server::forget` ends a room at once, `Server::set_reachable` takes it off
 the network, `Server::set_ice_servers` sets the servers its welcomes give, none at first, and `testing::Client`
 is a socket of a test's own, for either server). The link tests check that a room's connections ask the

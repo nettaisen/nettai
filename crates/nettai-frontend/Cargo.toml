@@ -50,5 +50,6 @@ nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
 tempfile = "3"
 nettai-match = { path = "../nettai-match", features = ["testing"] }
 # A set played over WebRTC links that drop and come back (the library
-# itself has no transport).
-nettai-rtc = { path = "../nettai-rtc", features = ["testing"] }
+# itself has no transport), met through a signaling server in process.
+nettai-rtc = { path = "../nettai-rtc" }
+nettai-signaling = { path = "../nettai-signaling", features = ["testing"] }

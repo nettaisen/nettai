@@ -22,19 +22,19 @@
 //!   ([`PeerEvent`]); event-driven, the backend's callbacks putting what
 //!   they learn in a queue its calls take from, so nothing waits: the
 //!   caller's frame loop polls.
-//! - [`Link`]: the channel a match is played on, which keeps a connection
-//!   up: it meets the other player (in an invite room of the signaling
-//!   server, `signal`: one it asks the server to make, [`Link::create_room`],
-//!   whose code the server picks, or one it was given the code of,
-//!   [`Link::join_room`]; or directly, at a host's address and port,
-//!   natively). It needs the server only until the connection is through:
-//!   then both sides leave the room and close their sockets, having agreed
-//!   over the connection on the code of a reconnect room, a new one each
-//!   connection. When the connection drops (its state, its data channel, or
-//!   silence) it makes a new one through that reconnect room or to the same
-//!   address, until [`Config::reconnect_timeout`]. Its `send` and `recv` are
-//!   a datagram channel's, which nettai-frontend's `netplay::Channel` takes;
-//!   while it is down, what is sent is dropped and nothing comes
+//! - [`Link`]: the channel a match is played on, which keeps a connection up:
+//!   it meets the other player (in an invite room of the signaling server,
+//!   nettai-signaling's: one it asks the server to make,
+//!   [`Link::create_room`], whose code the server picks, or one it was given
+//!   the code of, [`Link::join_room`]; or directly, at a host's address and
+//!   port, natively). It needs the server only until the connection is
+//!   through: then both sides leave the room and close their sockets, having
+//!   agreed over the connection on the code of a reconnect room, a new one
+//!   each connection. When the connection drops (its state, its data channel,
+//!   or silence) it makes a new one through that reconnect room or to the
+//!   same address, until [`Config::reconnect_timeout`]. Its `send` and `recv`
+//!   are a datagram channel's, which nettai-frontend's `netplay::Channel`
+//!   takes; while it is down, what is sent is dropped and nothing comes
 //!   ([`Link::down_for`] says so, and for how long; [`Link::gives_up_in`],
 //!   how long it has left).
 //!
@@ -58,23 +58,17 @@
 //! direct link uses none, since it says no candidate to anyone.
 //!
 //! The signaling server is the Cloudflare Worker in `signaling/`
-//! (TypeScript, a Durable Object a room); its protocol is [`signal`], and
-//! the `testing` feature has a server of its own speaking it, in process,
-//! and a few of the link's insides for tests (`Link::hold_codes`,
-//! `Link::reconnect_code`, `Link::in_a_room`).
+//! (TypeScript, a Durable Object a room); its protocol, a client of it in a
+//! room, and a server of its own for tests are nettai-signaling's. This
+//! crate's `testing` feature has a few of the link's insides for its tests
+//! (`Link::hold_codes`, `Link::reconnect_code`, `Link::in_a_room`).
 
 #![forbid(unsafe_code)]
-
-pub mod signal;
 
 mod link;
 mod peer;
 mod platform;
-mod room;
 mod rtc;
-
-#[cfg(all(feature = "testing", not(target_arch = "wasm32")))]
-pub mod testing;
 
 pub use link::Link;
 pub use peer::PeerConnection;
@@ -132,7 +126,7 @@ impl Default for Config {
             ice_servers: Vec::new(),
             silence: Duration::from_secs(3),
             dial_timeout: Duration::from_secs(10),
-            reconnect_timeout: signal::RECONNECT_ROOM_KEPT,
+            reconnect_timeout: nettai_signaling::RECONNECT_ROOM_KEPT,
             server_timeout: Duration::from_secs(20),
             connect_timeout: Duration::from_secs(30),
             loopback: false,
@@ -141,37 +135,15 @@ impl Default for Config {
     }
 }
 
-/// A STUN or TURN server as the browser's `RTCIceServer` has it (and the
-/// signaling server's welcome, [`signal`]): its URLs, `stun:HOST[:PORT]`,
-/// `turn:HOST[:PORT][?transport=udp|tcp]` or
-/// `turns:HOST[:PORT][?transport=tcp]`, and a TURN server's credentials.
 /// The browser takes every URL; natively the connection relays over UDP
 /// only (`turn:` without `transport=tcp`, on up to two TURN servers), and
 /// the others are left out.
-#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct IceServer {
-    pub urls: Vec<String>,
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub username: String,
-    #[serde(default, skip_serializing_if = "String::is_empty")]
-    pub credential: String,
-}
-
-impl IceServer {
-    /// A server without credentials (STUN).
-    pub fn new(url: &str) -> IceServer {
-        IceServer { urls: vec![url.to_string()], ..IceServer::default() }
-    }
-}
+pub use nettai_signaling::IceServer;
 
 /// Which side a peer is: the host answers, the joiner dials (offers). In a
-/// room the first to come hosts; directly, the one that listens hosts.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Role {
-    Host,
-    Join,
-}
+/// room the server says which (its maker hosts); directly, the one that
+/// listens hosts.
+pub use nettai_signaling::Role;
 
 /// What went wrong, as a player can be told it. A host says each kind in
 /// its own words (a catalog's string a kind, in the player's language); it

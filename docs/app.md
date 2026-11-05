@@ -2999,8 +2999,8 @@ twice the frame, into the pass's folder) and a second one stopped once some of i
 says how each ended and what was in the folder.
 
 **Play's steps have a second player** (`screens/play/tour.rs`): the lobby, the loading, a match and what ends
-them take two. The second is in the same process: the link library's own signaling server (nettai-rtc's
-`testing`, on loopback), and a peer with a link, a lobby and a match's player of its own, run as the library's
+them take two. The second is in the same process: a signaling server of nettai-signaling's (its `testing`, on
+loopback), and a peer with a link, a lobby and a match's player of its own, run as the library's
 tests seat two players. The app's side is the Play screen itself, driven through its controls; the peer does
 what the steps tell it (ready, load to 74% and hold, drop its network for six seconds, leave the match, leave).
 So the pass runs the whole way between two players over real links, each time it is run: an invite, a wrong

@@ -83,7 +83,7 @@ use nettai_frontend::replay::Recorder;
 use nettai_match::Side;
 use nettai_match::check::Problem;
 use nettai_match::ruleset::Rulesets;
-use nettai_rtc::signal::{ALPHABET, CODE_LENGTH};
+use nettai_signaling::{ALPHABET, CODE_LENGTH};
 use nettai_ui::{BattleKind, BuildSheet, Hint, LobbyNote, MatchOutcome, MatchPage, PadButton, PlayBuild, PlayControl, PlayPart, PlayView, VersusCard};
 use session::{Net, Session, Stands, Way};
 use slint::{ComponentHandle, ModelRc, VecModel};
@@ -2408,7 +2408,7 @@ mod tests {
         assert_eq!(code_typed("k7"), "K7");
         assert_eq!((code_shown("K7M2QX"), code_shown("K7M2"), code_shown("K7M"), code_shown("")), ("K7M-2QX".to_string(), "K7M-2".to_string(), "K7M".to_string(), String::new()));
         // (What the link library takes: the same code.)
-        assert_eq!(nettai_rtc::signal::normalize_code(&code_shown(&code_typed("k7m 2qx"))), Some("K7M2QX".to_string()));
+        assert_eq!(nettai_signaling::normalize_code(&code_shown(&code_typed("k7m 2qx"))), Some("K7M2QX".to_string()));
     }
 
     /// JOIN's field takes an invite's code alone: whatever is typed is kept as a code's characters (capitals,

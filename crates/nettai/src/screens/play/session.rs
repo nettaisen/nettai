@@ -130,7 +130,7 @@ impl Session {
             Way::Invite => return Ok(Session::of(Link::create_room(&server()?, config), way)),
             Way::Code(code) => {
                 let server = server()?;
-                if nettai_rtc::signal::normalize_code(&code).is_none() {
+                if nettai_signaling::normalize_code(&code).is_none() {
                     return Err(Error { kind: ErrorKind::NoSuchRoom, detail: format!("{code:?} isn't a room's code") });
                 }
                 return Ok(Session::of(Link::join_room(&server, &code, config)?, way));

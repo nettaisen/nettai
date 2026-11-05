@@ -2,8 +2,8 @@
 // their WebRTC connection needs (the offer, the answer, the candidates),
 // until it is up and whenever it is made again. A Cloudflare Worker, one
 // Durable Object a room; it reads none of what the players trade. The
-// protocol is nettai-rtc's `signal` module (and docs/design/rollback.md
-// §4.8), version 1.
+// protocol is nettai-signaling's (crates/nettai-signaling, and
+// docs/design/rollback.md §4.8), version 1.
 //
 // The two are in a room only while they need the server: until their first
 // connection is through, and while a dropped one is made again. Between
@@ -114,8 +114,8 @@ export interface Env {
 	TURN_LIMIT?: RateLimit;
 }
 
-/** A STUN or TURN server, as the browser's RTCIceServer (and nettai-rtc's
- * IceServer) has it. */
+/** A STUN or TURN server, as the browser's RTCIceServer (and
+ * nettai-signaling's IceServer) has it. */
 interface IceServer {
 	urls: string[];
 	username?: string;
@@ -168,8 +168,8 @@ const STUN: IceServer[] = [{ urls: ["stun:stun.cloudflare.com:3478"] }];
  * than the coturn's own, which is abroad. */
 const CHINA_STUN: IceServer[] = [{ urls: ["stun:stun.miwifi.com:3478"] }];
 /** How long a welcome's TURN credentials last: a long sitting of matches
- * with one opponent and its reconnections (nettai-rtc's
- * signal::TURN_CREDENTIALS_LAST). */
+ * with one opponent and its reconnections (nettai-signaling's
+ * TURN_CREDENTIALS_LAST). */
 const TURN_TTL_SECONDS = 4 * 60 * 60;
 /** How long a welcome waits on Cloudflare's TURN service before it gives
  * STUN alone. */

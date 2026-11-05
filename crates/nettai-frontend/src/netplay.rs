@@ -995,7 +995,7 @@ mod tests {
     /// links are open, in its link's role, holding its own settings and
     /// bringing its side (the host's, then the joiner's). The seats, and the
     /// room's code.
-    fn meet(content: &Arc<Content>, server: &nettai_rtc::testing::Server, settings: [Settings; 2], sides: [Side; 2]) -> ([Seat; 2], String) {
+    fn meet(content: &Arc<Content>, server: &nettai_signaling::testing::Server, settings: [Settings; 2], sides: [Side; 2]) -> ([Seat; 2], String) {
         use crate::lobby::{Lobby, Role};
         let config = nettai_rtc::Config { loopback: true, ..nettai_rtc::Config::default() };
         let mut host = nettai_rtc::Link::create_room(&server.url(), config.clone());
@@ -1053,7 +1053,7 @@ mod tests {
         use crate::lobby::{Reason, Status};
         use crate::preload::Preload;
         let content = exe6_test_content();
-        let server = nettai_rtc::testing::Server::start();
+        let server = nettai_signaling::testing::Server::start();
         // Each one's lobby: the host's a triple battle, the joiner's what
         // it last played, a single battle.
         let (mut seats, code) = meet(&content, &server, [Settings::new("exe6", TRIPLE_BATTLE, nettai_match::testing::rulesets("exe6").preset("unrestricted").unwrap().clone()), Settings::new("exe6", 1, nettai_match::testing::rulesets("exe6").preset("unrestricted").unwrap().clone())], [side(&content, 3), side(&content, 4)]);
@@ -1286,7 +1286,7 @@ mod tests {
         }
         let results = |seats: &[Seat; 2]| seats.each_ref().map(|seat| seat.player().result());
         let content = exe6_test_content();
-        let server = nettai_rtc::testing::Server::start();
+        let server = nettai_signaling::testing::Server::start();
         let m = short_set::of(&content, "exe6", 7);
         let single = Settings::new("exe6", 1, nettai_match::testing::rulesets("exe6").preset("unrestricted").unwrap().clone());
         let (mut seats, _) = meet(&content, &server, [single.clone(), single.clone()], m.sides.clone());
@@ -1400,7 +1400,7 @@ mod tests {
         use nettai_battle::battle::mode;
         let content = exe6_test_content();
         let m = short_set::of(&content, "exe6", 7);
-        let server = nettai_rtc::testing::Server::start();
+        let server = nettai_signaling::testing::Server::start();
         let config = nettai_rtc::Config { loopback: true, silence: Duration::from_secs(1), ..nettai_rtc::Config::default() };
         // (The host asks the server for a room; the joiner comes by the
         // code the server gave it.)

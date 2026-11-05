@@ -1,4 +1,4 @@
-//! A client of the signaling server, in a room (`crate::signal`): an invite
+//! A client of the signaling server, in a room (`crate::protocol`): an invite
 //! room it asked the server to make (whose code the server's welcome says)
 //! or one it was given the code of, or a reconnect room, by the code the two
 //! clients agreed on. Its WebSocket is made again whenever it closes (the
@@ -8,23 +8,65 @@
 //! In an invite room, before the server has first let it in, a socket that
 //! doesn't open or closes is made again too (a connection that drops
 //! mid-handshake is common on long, lossy routes, and the next one usually
-//! works), until [`Config::server_timeout`](crate::Config::server_timeout)
-//! has passed since it began: that ends it, saying the server can't be
-//! reached and why the last socket closed (the player asked for a room now,
-//! and is told soon). Once it is in, a socket that drops is made again for
-//! as long as the room is kept. A reconnect room's socket is made again
-//! whatever happened, from the first: the link gives up on its own time
-//! ([`Config::reconnect_timeout`](crate::Config::reconnect_timeout)).
+//! works), until its `server_timeout` has passed since it began: that ends
+//! it, saying the server can't be reached and why the last socket closed
+//! (the player asked for a room now, and is told soon). Once it is in, a
+//! socket that drops is made again for as long as the room is kept. A
+//! reconnect room's socket is made again whatever happened, from the first:
+//! its owner gives up on its own time.
 
 use std::collections::VecDeque;
+use std::fmt;
+use std::marker::PhantomData;
 
-use crate::platform::system::ws::{Socket, WsEvent};
-use crate::signal::{self, FromServer, Refusal, Signal, ToServer};
-use crate::{Duration, Error, ErrorKind, IceServer, Instant, Role};
+use serde::Serialize;
+use serde::de::DeserializeOwned;
+use web_time::{Duration, Instant};
 
-/// What the room says, for the link.
+use crate::platform::system::{Socket, WsEvent};
+use crate::protocol::{self as signal, FromServer, IceServer, Refusal, Role, ToServer};
+
+/// Why a room ended: the server can't be reached, or it refused. The room
+/// is left; nothing more comes of it.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Error {
+    pub kind: ErrorKind,
+    /// What happened, in English, for a log.
+    pub detail: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ErrorKind {
+    /// The server didn't let this client into an invite room within its
+    /// `server_timeout` (its socket didn't open, or the server didn't
+    /// answer).
+    Unreachable,
+    /// The server refused this client, for this reason. A code that isn't
+    /// one is refused before the server is asked: no room has it
+    /// ([`Refusal::NotFound`]).
+    Refused(Refusal),
+    /// The server said what no server of this protocol says.
+    Broken,
+}
+
+impl Error {
+    fn new(kind: ErrorKind, detail: impl Into<String>) -> Error {
+        Error { kind, detail: detail.into() }
+    }
+}
+
+/// (The detail: what a log says.)
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(&self.detail)
+    }
+}
+
+impl std::error::Error for Error {}
+
+/// What the room says; `T`, what the other client says.
 #[derive(Debug)]
-pub(crate) enum RoomEvent {
+pub enum RoomEvent<T> {
     /// This client's place (in an invite room), whether the other is there,
     /// and the STUN and TURN servers its connections use (none: the server
     /// gives none).
@@ -32,7 +74,7 @@ pub(crate) enum RoomEvent {
     /// The other came, or went; the servers the server gives now that both
     /// are here (none: those from before).
     Peer { present: bool, ice_servers: Vec<IceServer> },
-    Signal(Signal),
+    Signal(T),
 }
 
 /// How often a client says it is there (a WebSocket that says nothing for
@@ -50,7 +92,8 @@ enum Kind {
     Reconnect(String),
 }
 
-pub(crate) struct Room {
+/// A client in one room, saying `T` to the other client and hearing it.
+pub struct Room<T> {
     server: String,
     peer: String,
     kind: Kind,
@@ -69,33 +112,34 @@ pub(crate) struct Room {
     /// What to say once it is open.
     outbox: VecDeque<String>,
     pinged: Instant,
-    /// Why the socket last closed (for a link that gives up).
+    /// Why the socket last closed (for an owner that gives up).
     last_error: Option<String>,
+    said: PhantomData<fn(T) -> T>,
 }
 
-impl Room {
+impl<T> Room<T> {
     /// A new invite room on the server at `server`, which this client `peer`
     /// hosts: connecting at once. Its code comes with the server's welcome
     /// ([`Room::code`]).
-    pub(crate) fn create(server: &str, peer: &str, server_timeout: Duration) -> Room {
+    pub fn create(server: &str, peer: &str, server_timeout: Duration) -> Room<T> {
         Room::new(server, Kind::Invite(None), peer, server_timeout)
     }
 
     /// The invite room with `code` on the server at `server`, as the client
     /// `peer`: connecting at once. No room has a code that isn't one
     /// ([`signal::normalize_code`]).
-    pub(crate) fn join(server: &str, code: &str, peer: &str, server_timeout: Duration) -> Result<Room, Error> {
-        let code = signal::normalize_code(code).ok_or_else(|| Error::new(ErrorKind::NoSuchRoom, format!("{code:?} isn't a room's code: {} of {}", signal::CODE_LENGTH, signal::ALPHABET)))?;
+    pub fn join(server: &str, code: &str, peer: &str, server_timeout: Duration) -> Result<Room<T>, Error> {
+        let code = signal::normalize_code(code).ok_or_else(|| Error::new(ErrorKind::Refused(Refusal::NotFound), format!("{code:?} isn't a room's code: {} of {}", signal::CODE_LENGTH, signal::ALPHABET)))?;
         Ok(Room::new(server, Kind::Invite(Some(code)), peer, server_timeout))
     }
 
     /// The reconnect room with `code` (one the two clients agreed on) on the
     /// server at `server`, as the client `peer`: connecting at once.
-    pub(crate) fn reconnect(server: &str, code: &str, peer: &str) -> Room {
+    pub fn reconnect(server: &str, code: &str, peer: &str) -> Room<T> {
         Room::new(server, Kind::Reconnect(code.to_string()), peer, Duration::MAX)
     }
 
-    fn new(server: &str, kind: Kind, peer: &str, server_timeout: Duration) -> Room {
+    fn new(server: &str, kind: Kind, peer: &str, server_timeout: Duration) -> Room<T> {
         let now = Instant::now();
         let mut room = Room {
             server: server.to_string(),
@@ -112,6 +156,7 @@ impl Room {
             outbox: VecDeque::new(),
             pinged: now,
             last_error: None,
+            said: PhantomData,
         };
         room.socket = Some(Socket::connect(&room.url()));
         room
@@ -129,7 +174,7 @@ impl Room {
 
     /// An invite room's code, once it has one (a new room's is the server's
     /// to say).
-    pub(crate) fn code(&self) -> Option<&str> {
+    pub fn code(&self) -> Option<&str> {
         match &self.kind {
             Kind::Invite(code) => code.as_deref(),
             Kind::Reconnect(_) => None,
@@ -141,22 +186,25 @@ impl Room {
     }
 
     /// Whether the socket is up.
-    pub(crate) fn is_open(&self) -> bool {
+    pub fn is_open(&self) -> bool {
         self.open
     }
 
     /// Whether the other is in the room, as far as this client knows.
-    pub(crate) fn there(&self) -> bool {
+    pub fn there(&self) -> bool {
         self.open && self.there
     }
 
     /// Why the socket last closed.
-    pub(crate) fn last_error(&self) -> Option<&str> {
+    pub fn last_error(&self) -> Option<&str> {
         self.last_error.as_deref()
     }
 
     /// Say `signal` to the other client (queued while the socket is down).
-    pub(crate) fn send(&mut self, signal: Signal) {
+    pub fn send(&mut self, signal: &T)
+    where
+        T: Serialize,
+    {
         let text = serde_json::to_string(&ToServer::Signal { data: signal }).expect("a signal is JSON");
         match &mut self.socket {
             Some(s) if self.open => s.send(text),
@@ -166,9 +214,9 @@ impl Room {
 
     /// Give the place in the room up, and close (a socket still opening
     /// says so once it has opened: the server may have given it a place).
-    pub(crate) fn leave(&mut self) {
+    pub fn leave(&mut self) {
         if let Some(s) = &mut self.socket {
-            s.send(serde_json::to_string(&ToServer::Leave).expect("JSON"));
+            s.send(serde_json::to_string(&ToServer::<()>::Leave).expect("JSON"));
             s.close();
         }
         self.socket = None;
@@ -179,14 +227,17 @@ impl Room {
     /// What the server said since, without waiting. An error ends it: the
     /// server refused (no such room, a full one, another version), or, in an
     /// invite room, couldn't be reached before it first let this client in.
-    pub(crate) fn poll(&mut self, now: Instant) -> Result<Option<RoomEvent>, Error> {
+    pub fn poll(&mut self, now: Instant) -> Result<Option<RoomEvent<T>>, Error>
+    where
+        T: DeserializeOwned,
+    {
         if self.invite() && !self.welcomed && now.duration_since(self.began) >= self.server_timeout {
             self.leave();
             let mut why = format!("no answer from the signaling server in {} seconds", self.server_timeout.as_secs());
             if let Some(last) = &self.last_error {
                 why = format!("{why} (the last try: {last})");
             }
-            return Err(Error::new(ErrorKind::ServerUnreachable, why));
+            return Err(Error::new(ErrorKind::Unreachable, why));
         }
         if self.socket.is_none() {
             match self.retry {
@@ -214,12 +265,12 @@ impl Room {
                     }
                 }
                 WsEvent::Text(text) if text == signal::PONG => {}
-                WsEvent::Text(text) => match serde_json::from_str::<FromServer>(&text) {
+                WsEvent::Text(text) => match serde_json::from_str::<FromServer<T>>(&text) {
                     Ok(FromServer::Welcome { role, peer, code, ice_servers }) => {
                         if let Kind::Invite(had) = &mut self.kind {
                             if role.is_none() {
                                 self.leave();
-                                return Err(Error::internal("the signaling server didn't say this player's place in the room"));
+                                return Err(Error::new(ErrorKind::Broken, "the signaling server didn't say this player's place in the room"));
                             }
                             // (A new room's code; a room come back to says
                             // the one it was asked by.)
@@ -241,16 +292,7 @@ impl Room {
                     Ok(FromServer::Signal { data }) => return Ok(Some(RoomEvent::Signal(data))),
                     Ok(FromServer::Error { reason, message }) => {
                         self.leave();
-                        let kind = match reason {
-                            Refusal::Version => ErrorKind::ServerVersion,
-                            // (A reconnect room this link can't be in: the
-                            // connection is lost.)
-                            _ if !self.invite() => ErrorKind::ConnectionLost,
-                            Refusal::NotFound => ErrorKind::NoSuchRoom,
-                            Refusal::Full => ErrorKind::RoomFull,
-                            Refusal::BadRequest | Refusal::Busy | Refusal::Unknown => ErrorKind::Internal,
-                        };
-                        return Err(Error::new(kind, format!("the signaling server refused: {message}")));
+                        return Err(Error::new(ErrorKind::Refused(reason), format!("the signaling server refused: {message}")));
                     }
                     // (Something newer than this client: not for it.)
                     Err(_) => {}
@@ -269,7 +311,7 @@ impl Room {
     }
 }
 
-impl Drop for Room {
+impl<T> Drop for Room<T> {
     fn drop(&mut self) {
         self.leave();
     }

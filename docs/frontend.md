@@ -614,7 +614,7 @@ host calls, in order:
   `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (no `0`, `O`, `1`, `I` or `L`), and says
   it as it lets the player in (`Link::code`). That player hosts (the left
   navi, side 0) and gives the code to the other, who joins by it
-  (`Link::join_room`; `nettai_rtc::signal::normalize_code` is what a typed
+  (`Link::join_room`; `nettai_signaling::normalize_code` is what a typed
   code becomes). No program makes a code up, and joining a code no room has
   makes no room: it is refused (`ErrorKind::NoSuchRoom`), as a room with two
   players is (`RoomFull`). The connection finds its

@@ -14,9 +14,9 @@ use std::collections::HashSet;
 use std::net::{SocketAddr, UdpSocket};
 use std::time::{Duration, Instant};
 
-use nettai_rtc::signal::{FromServer, Refusal};
-use nettai_rtc::testing::{Client, Server};
-use nettai_rtc::{Config, Error, ErrorKind, IceServer, Link, Role, signal};
+use nettai_rtc::{Config, Error, ErrorKind, IceServer, Link, Role};
+use nettai_signaling::testing::{Client, Server};
+use nettai_signaling::{self as signal, FromServer, Refusal};
 
 /// Links that find each other on loopback (with no STUN or TURN server of
 /// their own, as by default), quick to notice a drop.

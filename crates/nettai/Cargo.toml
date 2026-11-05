@@ -63,6 +63,8 @@ nettai-video = { path = "../nettai-video" }
 nettai-replay = { path = "../nettai-replay" }
 # Netplay's link: WebRTC through a room of the signaling server.
 nettai-rtc = { path = "../nettai-rtc" }
+# The signaling server's room codes, as Play shows and takes them.
+nettai-signaling = { path = "../nettai-signaling" }
 # The app's own updates, checked for at its loading screen: Velopack's on the desktop, the release's APK on Android.
 nettai-updater = { path = "../nettai-updater" }
 # A build from a save: each game's own reader of its saves.
@@ -120,7 +122,7 @@ objc2-avf-audio = { version = "0.3", default-features = false, features = ["std"
 # The program runs under tokio (main.rs: `#[tokio::main]`, Slint's loop in `block_in_place`), so the futures the
 # window's loop runs can use reqwest (`http.rs`).
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-# The TLS provider reqwest is given (`http.rs`): ring's, as the tree's rustls has (nettai-rtc's).
+# The TLS provider reqwest is given (`http.rs`): ring's, as the tree's rustls has (nettai-signaling's).
 rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 
 # The browser's page: the log on its console, and a panic said there; its own JavaScript and what it calls
@@ -138,10 +140,10 @@ libc = "0.2"
 
 [features]
 # The screenshot pass and the motion probe (docs/app.md §13: `NETTAI_TOUR`), with what they need: the pictures'
-# encoder, and the link library's signaling server in the process, which Play's second player meets the first
+# encoder, and nettai-signaling's signaling server in the process, which Play's second player meets the first
 # through (`screens/play/tour.rs`). A player's build has none of it: `cargo run -p nettai --features tour`. The tests
 # compile the pass whatever the features (the same two dependencies are the tests' below).
-tour = ["dep:png", "nettai-rtc/testing"]
+tour = ["dep:png", "nettai-signaling/testing"]
 # The practice dummy that fights: its Action "Fights" and its Level, played by the trained network
 # (docs/design/training-ai.md §10), downloaded from the nettai-ai repository when Fights is first picked (or
 # `NETTAI_AI_WEIGHTS`'s file). Off by default: a build without it offers the dummy's other Actions alone.
@@ -164,7 +166,7 @@ png = "0.17"
 exe6-compat = { path = "../exe6-compat", features = ["builtin"] }
 exe5-compat = { path = "../exe5-compat", features = ["builtin"] }
 exe4-compat = { path = "../exe4-compat", features = ["builtin"] }
-nettai-rtc = { path = "../nettai-rtc", features = ["testing"] }
+nettai-signaling = { path = "../nettai-signaling", features = ["testing"] }
 # The tests: the content of the repository.
 nettai-match = { path = "../nettai-match", features = ["testing"] }
 # A short set and graphics with no pack, for a battle played to its end.

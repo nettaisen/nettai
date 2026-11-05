@@ -1,15 +1,13 @@
 //! The native build's (the desktop's and a phone's): the WebRTC connections
 //! themselves, on str0m (`rtc`, behind `crate::rtc`'s API as the browser's
 //! is in the web build, so that `crate::peer` is one module on both), direct
-//! connect (`direct`), on what `rtc` can do and a browser can't, the
-//! signaling server's WebSocket, on a thread of its own (`ws`), and the
+//! connect (`direct`), on what `rtc` can do and a browser can't, and the
 //! system's randomness.
 
 use crate::Error;
 
 pub(crate) mod direct;
 pub(crate) mod rtc;
-pub(crate) mod ws;
 
 /// `bytes` filled from the system's cryptographic randomness.
 pub(crate) fn secure_random(bytes: &mut [u8]) -> Result<(), Error> {

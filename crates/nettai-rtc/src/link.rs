@@ -20,7 +20,7 @@
 //!
 //! - Over each connection, once it is open, the two agree on the code of
 //!   the room they will meet in if it drops (a reconnect room,
-//!   [`crate::signal`]): the host draws [`signal::RECONNECT_CODE_BYTES`]
+//!   nettai-signaling's): the host draws [`signal::RECONNECT_CODE_BYTES`]
 //!   bytes from the system's cryptographic randomness and says them, every
 //!   100 ms until the joiner acknowledges them. The channel is DTLS's, so
 //!   the server first sees the code when it is used. The link's own
@@ -58,12 +58,12 @@
 //!
 //! **STUN and TURN** in a room are the server's: once both players are in
 //! the room, it gives each the servers its connections are made on
-//! (`crate::signal`), in the welcome or, for the one that waited, in the
-//! peer message as the other comes, and the latest given are what the next
-//! connection uses, so a reconnection has the credentials its reconnect
-//! room gave. The backend resolves their names itself, without waiting
-//! (natively on the connections' thread, the browser its own way). The
-//! servers come before anything the other side sends, so neither side
+//! (nettai-signaling's protocol), in the welcome or, for the one that
+//! waited, in the peer message as the other comes, and the latest given are
+//! what the next connection uses, so a reconnection has the credentials its
+//! reconnect room gave. The backend resolves their names itself, without
+//! waiting (natively on the connections' thread, the browser its own way).
+//! The servers come before anything the other side sends, so neither side
 //! starts ICE on servers it hasn't had. A direct link uses none.
 //!
 //! A reconnect room's socket that doesn't open, or drops, is made again:
@@ -93,9 +93,10 @@
 
 use std::collections::VecDeque;
 
-use crate::room::{Room, RoomEvent};
-use crate::signal::{self, Signal};
-use crate::{Config, Duration, Error, ErrorKind, IceServer, Instant, Message, PeerConnection, PeerEvent, Role};
+use nettai_signaling::{self as signal, Refusal};
+use serde::{Deserialize, Serialize};
+
+use crate::{Candidate, Config, Duration, Error, ErrorKind, IceServer, Instant, Message, PeerConnection, PeerEvent, Role};
 
 use crate::platform::system::direct::Direct;
 
@@ -133,6 +134,46 @@ enum Way {
     /// Directly (natively: the host listens, the joiner dials it; a browser
     /// has no way to).
     Direct(Direct),
+}
+
+/// What one side says to the other through a room (the server reads none
+/// of it): the offer, the answer, trickled candidates and the host's call to
+/// dial again, each of a generation (each new connection is one more), so
+/// that what a dropped one still had on its way is told from the next
+/// one's.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "lowercase")]
+enum Signal {
+    /// The joiner's offer, for connection `generation`.
+    Offer { generation: u32, sdp: String },
+    /// The host's answer to it.
+    Answer { generation: u32, sdp: String },
+    /// A candidate of connection `generation`'s.
+    Candidate {
+        generation: u32,
+        #[serde(flatten)]
+        candidate: Candidate,
+    },
+    /// The host lost connection `generation`: the joiner dials again.
+    Redial { generation: u32 },
+}
+
+type Room = signal::Room<Signal>;
+type RoomEvent = signal::RoomEvent<Signal>;
+
+/// A room's end, as a player is told it: a reconnect room this link can't
+/// be in is the connection lost.
+fn room_error(place: &Place, e: signal::Error) -> Error {
+    use signal::ErrorKind as Room;
+    let kind = match e.kind {
+        Room::Unreachable => ErrorKind::ServerUnreachable,
+        Room::Refused(Refusal::Version) => ErrorKind::ServerVersion,
+        Room::Refused(_) if matches!(place, Place::Reconnect(_)) => ErrorKind::ConnectionLost,
+        Room::Refused(Refusal::NotFound) => ErrorKind::NoSuchRoom,
+        Room::Refused(Refusal::Full) => ErrorKind::RoomFull,
+        Room::Refused(Refusal::BadRequest | Refusal::Busy | Refusal::Unknown) | Room::Broken => ErrorKind::Internal,
+    };
+    Error::new(kind, e.detail)
 }
 
 /// A room of the signaling server.
@@ -190,7 +231,7 @@ impl Signaling {
     /// most).
     fn send(&mut self, signal: Signal) {
         for (_, room) in &mut self.rooms {
-            room.send(signal.clone());
+            room.send(&signal);
         }
     }
 
@@ -209,7 +250,7 @@ impl Signaling {
                 // (Not left before a code is agreed; this is for a room
                 // whose socket was given up.)
                 Place::Invite => match &self.invite {
-                    Some(code) => Room::join(&self.server, code, &self.peer, self.server_timeout)?,
+                    Some(code) => Room::join(&self.server, code, &self.peer, self.server_timeout).map_err(|e| room_error(&place, e))?,
                     None => continue,
                 },
                 Place::Reconnect(code) => Room::reconnect(&self.server, code, &self.peer),
@@ -334,13 +375,13 @@ impl Link {
 
     /// Join the room with `code` on the signaling server at `server`
     /// (`wss://...`): the code a host was given by the server and gave this
-    /// player, as typed ([`crate::signal::normalize_code`]). No room is made
+    /// player, as typed ([`signal::normalize_code`]). No room is made
     /// of a code no room has: that errs ([`ErrorKind::NoSuchRoom`]), here
     /// for a code that can't be one, else when the server says so. Nothing
     /// here waits: the STUN and TURN servers come with the welcome.
     pub fn join_room(server: &str, code: &str, config: Config) -> Result<Link, Error> {
         let peer = format!("{:016x}", crate::random_u64());
-        let room = Room::join(server, code, &peer, config.server_timeout)?;
+        let room = Room::join(server, code, &peer, config.server_timeout).map_err(|e| room_error(&Place::Invite, e))?;
         let way = Way::Server(Signaling::new(server, &peer, config.server_timeout, room));
         Ok(Link::new(config, way, None))
     }
@@ -522,7 +563,7 @@ impl Link {
                 }
                 let mut events = Vec::new();
                 for (place, room) in &mut s.rooms {
-                    while let Some(e) = room.poll(now)? {
+                    while let Some(e) = room.poll(now).map_err(|e| room_error(place, e))? {
                         events.push((place.clone(), e));
                     }
                 }
@@ -918,5 +959,16 @@ mod tests {
         assert!(!sends(at(150), at(0), Some(at(100))));
         assert!(sends(at(200), at(0), Some(at(100))));
         assert!(sends(at(150), at(0), None));
+    }
+
+    /// What one side says to the other through a room is the JSON both
+    /// builds read (each version's, natively and in a browser).
+    #[test]
+    fn signals_are_json() {
+        let candidate = Signal::Candidate { generation: 2, candidate: Candidate { candidate: "candidate:1 1 udp 1 192.0.2.1 9 typ host".into(), mid: Some("0".into()), mline: Some(0) } };
+        let text = serde_json::to_string(&signal::ToServer::Signal { data: candidate.clone() }).unwrap();
+        assert_eq!(text, r#"{"type":"signal","data":{"kind":"candidate","generation":2,"candidate":"candidate:1 1 udp 1 192.0.2.1 9 typ host","mid":"0","mline":0}}"#);
+        assert_eq!(serde_json::from_str::<signal::ToServer<Signal>>(&text).unwrap(), signal::ToServer::Signal { data: candidate });
+        assert_eq!(serde_json::to_string(&Signal::Redial { generation: 3 }).unwrap(), r#"{"kind":"redial","generation":3}"#);
     }
 }

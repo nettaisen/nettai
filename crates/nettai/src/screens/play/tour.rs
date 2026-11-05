@@ -54,7 +54,7 @@ const OUTAGE: Duration = Duration::from_secs(6);
 
 /// What the pass has of its own: the server the two players meet through, and the second player.
 struct Rig {
-    server: nettai_rtc::testing::Server,
+    server: nettai_signaling::testing::Server,
     peer: Option<Peer>,
     /// The app's player presses by itself in a match (through the custom screen, then the buster), so a set
     /// comes to its end.
@@ -70,7 +70,7 @@ struct Rig {
 
 impl Rig {
     fn new() -> Rig {
-        Rig { server: nettai_rtc::testing::Server::start(), peer: None, shoots: false, held: 0, no_builds: false, apart: false, watch: None }
+        Rig { server: nettai_signaling::testing::Server::start(), peer: None, shoots: false, held: 0, no_builds: false, apart: false, watch: None }
     }
 }
 

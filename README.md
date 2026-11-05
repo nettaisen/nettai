@@ -103,7 +103,7 @@ cargo run --release -p nettai-content -- check exe6   # extract a game's assets 
 ```sh
 cargo test --workspace                                 # the engine on its own test content; no ROMs needed
 cargo run -p nettai-content-check                      # type-check and lint every content pack
-cargo test -p nettai-netplay -p nettai-rtc -p nettai-frontend   # netplay over a simulated lossy network
+cargo test -p nettai-netplay -p nettai-rtc -p nettai-signaling -p nettai-frontend   # netplay over a simulated lossy network
 ```
 
 ### Command line
@@ -141,7 +141,7 @@ and the WASI SDK; see [docs/app.md](docs/app.md) §6.
 | `crates/nettai-extract`, `nettai-assets` | Asset extraction from the ROMs, and the graphics in typed form |
 | `crates/nettai-render`, `nettai-audio`, `m4a` | Drawing a battle into frames; sound through the M4A driver |
 | `crates/nettai-frontend` | Plays battles for a host app: live, online or from a replay (no window) |
-| `crates/nettai-netplay`, `nettai-rtc` | Rollback netplay, and its WebRTC transport |
+| `crates/nettai-netplay`, `nettai-rtc`, `nettai-signaling` | Rollback netplay, its WebRTC transport, and the signaling server's protocol and client |
 | `crates/nettai-replay`, `nettai-video` | The replay format; replays exported as MP4 |
 | `crates/nettai`, `nettai-ui` | The app (Slint), and its UI files |
 | `crates/nettai-files`, `nettai-threads`, `nettai-dialogs`, `nettai-gamepad` | What the app asks of the system, the same on the desktop, in a browser and on a phone, a crate a concern |

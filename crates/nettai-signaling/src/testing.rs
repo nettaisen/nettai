@@ -1,5 +1,5 @@
 //! A signaling server in process, for tests: the Worker's protocol
-//! (`crate::signal`, `signaling/src/index.ts`), its rooms in memory, a
+//! (`crate::protocol`, `signaling/src/index.ts`), its rooms in memory, a
 //! thread a client. It picks an invite room's code as the Worker does,
 //! refuses a code no invite room has and a reconnect code not of the
 //! clients' form, makes a reconnect room for the first to come to it, and
@@ -26,9 +26,10 @@ use tungstenite::handshake::server::{Request, Response};
 use tungstenite::stream::MaybeTlsStream;
 use tungstenite::{Message, WebSocket};
 
-use crate::{IceServer, Role};
+use crate::protocol::{ALPHABET, CODE_LENGTH, FromServer, IceServer, PING, PONG, RECONNECT_ROOM_KEPT, Refusal, Role, ToServer, VERSION, valid_code, valid_reconnect_code};
 
-use crate::signal::{ALPHABET, CODE_LENGTH, FromServer, PING, PONG, RECONNECT_ROOM_KEPT, Refusal, ToServer, VERSION, valid_code, valid_reconnect_code};
+/// What the clients say to each other: the server reads none of it.
+type Data = serde_json::Value;
 
 /// How long an invite room with no socket is kept (the Worker's ten
 /// minutes).
@@ -88,13 +89,17 @@ fn other(role: Role) -> Role {
     }
 }
 
-fn said(m: &FromServer) -> String {
+fn said(m: &FromServer<Data>) -> String {
     serde_json::to_string(m).expect("JSON")
 }
 
 /// A code drawn from the alphabet.
 fn new_code() -> String {
-    let mut random = crate::random_u64();
+    let mut random = {
+        let mut bytes = [0; 8];
+        getrandom::fill(&mut bytes).expect("randomness from the system");
+        u64::from_le_bytes(bytes)
+    };
     (0..CODE_LENGTH)
         .map(|_| {
             let c = ALPHABET.as_bytes()[(random % ALPHABET.len() as u64) as usize] as char;
@@ -149,8 +154,8 @@ impl Server {
         Server { addr, rooms, relayed, reachable }
     }
 
-    /// Its URL, for [`crate::Link::create_room`] and
-    /// [`crate::Link::join_room`].
+    /// Its URL, for [`crate::Room`] (and nettai-rtc's `Link::create_room`
+    /// and `Link::join_room`).
     pub fn url(&self) -> String {
         format!("ws://{}", self.addr)
     }
@@ -363,7 +368,7 @@ fn relay(ws: &mut WebSocket<TcpStream>, rx: &Receiver<Out>, rooms: &Mutex<Rooms>
             Ok(Message::Text(text)) if text.as_str() == PING => {
                 let _ = ws.send(Message::text(PONG));
             }
-            Ok(Message::Text(text)) => match serde_json::from_str::<ToServer>(&text) {
+            Ok(Message::Text(text)) => match serde_json::from_str::<ToServer<Data>>(&text) {
                 Ok(ToServer::Signal { data }) => {
                     let all = rooms.lock().unwrap();
                     if let Some((_, them)) = all.rooms.get(key).and_then(|r| r.sockets.get(&other(role))) {
@@ -392,8 +397,7 @@ pub struct Client {
 }
 
 impl Client {
-    /// Connect to `url` (as [`crate::signal::reconnect_url`] and the
-    /// others make).
+    /// Connect to `url` (as [`crate::reconnect_url`] and the others make).
     pub fn open(url: &str) -> Result<Client, String> {
         let (ws, _) = tungstenite::connect(url).map_err(|e| e.to_string())?;
         if let MaybeTlsStream::Plain(s) = ws.get_ref() {
@@ -404,7 +408,7 @@ impl Client {
 
     /// The next thing the server says, waiting up to `wait` for it; none if
     /// it says nothing or the socket closes.
-    pub fn next(&mut self, wait: Duration) -> Option<FromServer> {
+    pub fn next(&mut self, wait: Duration) -> Option<FromServer<Data>> {
         let until = Instant::now() + wait;
         while Instant::now() < until {
             match self.ws.read() {
@@ -424,7 +428,7 @@ impl Client {
 
     /// Give the place in the room up, and close.
     pub fn leave(mut self) {
-        let _ = self.ws.send(Message::text(serde_json::to_string(&ToServer::Leave).expect("JSON")));
+        let _ = self.ws.send(Message::text(serde_json::to_string(&ToServer::<Data>::Leave).expect("JSON")));
         let _ = self.ws.close(None);
         // (The close goes out; its answer may not come in time to matter.)
         for _ in 0..20 {

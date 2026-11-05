@@ -3807,6 +3807,7 @@ dependencies = [
  "nettai-render",
  "nettai-replay",
  "nettai-rtc",
+ "nettai-signaling",
  "nettai-threads",
  "nettai-training",
  "nettai-ui",
@@ -3976,6 +3977,7 @@ dependencies = [
  "nettai-render",
  "nettai-replay",
  "nettai-rtc",
+ "nettai-signaling",
  "nettai-threads",
  "sha2 0.10.9",
  "tempfile",
@@ -4081,8 +4083,8 @@ dependencies = [
  "log",
  "md-5",
  "nettai-rtc",
+ "nettai-signaling",
  "quinn-udp",
- "rustls",
  "serde",
  "serde_json",
  "sha1 0.10.7",
@@ -4090,11 +4092,24 @@ dependencies = [
  "str0m",
  "stun-proto",
  "tokio",
- "tungstenite",
  "turn-client-proto",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-bindgen-test",
+ "web-sys",
+ "web-time",
+]
+
+[[package]]
+name = "nettai-signaling"
+version = "0.1.0"
+dependencies = [
+ "getrandom 0.3.4",
+ "rustls",
+ "serde",
+ "serde_json",
+ "tungstenite",
+ "wasm-bindgen",
  "web-sys",
  "web-time",
 ]
