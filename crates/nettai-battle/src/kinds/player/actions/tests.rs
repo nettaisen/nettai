@@ -1164,6 +1164,33 @@ fn slashcross_beast_lunge_strikes_from_beside_its_target() {
     assert_eq!(act(&b, p0), IDLE);
 }
 
+/// With no opponent to target and the battle not over (the other side's
+/// navi gone from its alive list with another still to come), the marker
+/// goes where the original's read through the null pointer puts it: off the
+/// field, hidden. (It used to stop the battle.)
+#[test]
+fn a_target_marker_with_no_opponent_goes_off_the_field() {
+    use crate::kinds::target_marker::NULL_AIM;
+    let (mut b, p0, p1) = fight();
+    let marker = crate::kinds::target_marker::spawn(&mut b, p0).expect("a marker");
+    tick(&mut b, p0, p1, 0);
+    tick(&mut b, p0, p1, 0);
+    let m = b.objects.get(marker);
+    assert!(crate::field::is_valid(m.panel.x, m.panel.y), "over the target first: {:?}", m.panel);
+    b.round.alive_actors[1] = [None; 4];
+    assert!(!b.is_battle_over());
+    tick(&mut b, p0, p1, 0);
+    let m = b.objects.get(marker);
+    assert_eq!(m.pos, NULL_AIM);
+    assert!(!crate::field::is_valid(m.panel.x, m.panel.y), "off the field: {:?}", m.panel);
+    assert_eq!(m.flags & crate::object::flags::VISIBLE, 0, "hidden");
+    // The opponent back on the list: over it again.
+    b.round.alive_actors[1][0] = Some(p1);
+    tick(&mut b, p0, p1, 0);
+    let m = b.objects.get(marker);
+    assert!(crate::field::is_valid(m.panel.x, m.panel.y), "over the target again: {:?}", m.panel);
+}
+
 #[test]
 fn chargecross_charged_shot_tackles_the_enemy() {
     let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.charge_shot = testing::weapon("chargecross/tackle")));

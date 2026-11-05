@@ -139,9 +139,10 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 }
 
 /// Over the target: its attach point, raised 8 pixels (none for the
-/// bosses 0x173..=0x178 in their animation 0x4F).
+/// bosses 0x173..=0x178 in their animation 0x4F). With no target, where
+/// the original's read through the null pointer puts it ([`NULL_AIM`]).
 fn aim(b: &Battle, r: ObjectRef) -> Vec3 {
-    let target = target(b, r);
+    let Some(target) = target(b, r) else { return NULL_AIM };
     let t = b.objects.get(target);
     let flat = b.content.identity(t.identity).marker_flat_anim == Some(t.anim);
     let (dx, dz) = if flat {
@@ -156,9 +157,26 @@ fn aim(b: &Battle, r: ObjectRef) -> Vec3 {
     }
 }
 
+/// Where the marker goes with no opponent to target: the original reads
+/// the null target's fields from BIOS memory, which gives the opcode the
+/// BIOS last fetched (open bus; `collision::f1::NULL_READ`, 0xE3A02004
+/// after a software interrupt) for each word of its position, raised as a
+/// target's is. That is thousands of pixels left of the field, so the
+/// marker is hidden and its panel is none on the field, which the Beast Out
+/// rush, berserk and Cross special take as they take `NO_MARKER_PANEL`.
+/// (The attach point the original adds, looked up by the NameID that
+/// halfword names, moves it a few pixels at most: nettai adds none.)
+pub const NULL_AIM: Vec3 = {
+    let w = crate::collision::f1::NULL_READ as i32;
+    Vec3 { x: w, y: w.wrapping_add(8 << 16), z: w.wrapping_add(8 << 16) }
+};
+
 /// `sub_80E1670`: the opposing actor to lock on to: ahead of the owner
-/// first, then behind, then in its column.
-fn target(b: &Battle, r: ObjectRef) -> ObjectRef {
+/// first, then behind, then in its column. None with no opponent in any
+/// of them (none on the side's alive list, as while a side's navi is gone
+/// with others still to come, or none on the field's columns), where the
+/// original returns a null pointer.
+fn target(b: &Battle, r: ObjectRef) -> Option<ObjectRef> {
     let owner = b.objects.get(owner(b, r));
     let opponents = b.round.alive_actors[(b.objects.get(r).alliance ^ 1) as usize];
     // (The original takes the actors with a NameID up to 0x1C3, the last
@@ -174,10 +192,10 @@ fn target(b: &Battle, r: ObjectRef) -> ObjectRef {
         // the one held.
         let found = candidates.iter().copied().filter(|&c| (lo..=hi).contains(&b.objects.get(c).panel.x));
         if let Some(best) = found.reduce(|held, c| closer(b, owner_ref, held, c)) {
-            return best;
+            return Some(best);
         }
     }
-    panic!("a target marker with no opponent to target reads through a null pointer");
+    None
 }
 
 /// `sub_80E1730`: of two targets in range, the one in the owner's row;
