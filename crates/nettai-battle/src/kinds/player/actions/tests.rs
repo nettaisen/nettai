@@ -1191,6 +1191,24 @@ fn a_target_marker_with_no_opponent_goes_off_the_field() {
     assert!(crate::field::is_valid(m.panel.x, m.panel.y), "over the target again: {:?}", m.panel);
 }
 
+/// With no navi of the opponent's for its support to come from (the side's
+/// first spawned actor gone), Rush still turns the chip back and is spent,
+/// and nothing comes: no support, no dimming. (It used to stop the battle.)
+#[test]
+fn a_support_with_no_navi_to_come_from_turns_the_chip_back_alone() {
+    use crate::setup::Supports;
+    let (mut b, p0, _p1) = fight();
+    b.stats[1].support = Some(Supports { rush: true, ..Default::default() });
+    b.round.spawned_actors[1][0] = None;
+    assert_eq!(b.player(1), None);
+    let before = b.objects.in_order().count();
+    let veil = testing::chip_handle(testing::VEIL);
+    assert!(super::super::idle::rush_intercepts(&mut b, p0, Some(veil)), "the chip turned back");
+    assert_eq!(b.stats[1].support, Some(Supports::default()), "Rush spent");
+    assert_eq!(b.objects.in_order().count(), before, "nothing spawned");
+    assert!(!b.is_dimmed(), "no dimming");
+}
+
 #[test]
 fn chargecross_charged_shot_tackles_the_enemy() {
     let (mut b, p0, p1) = fight_with(megaman_with(|s| s.weapons.charge_shot = testing::weapon("chargecross/tackle")));

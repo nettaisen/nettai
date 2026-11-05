@@ -516,9 +516,18 @@ fn intercepted_by(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>, beat: 
         _ => return false,
     };
     let Some(host) = b.player(other) else {
-        // The game goes on with a null navi: its panel and side come from
-        // the BIOS.
-        panic!("the opponent's support has no navi to come from (sub_80106C0 / sub_8010740 read a null object)");
+        // (No navi of the opponent's to come from: the side's first spawned
+        // actor is none, or no player navi. The support is spent and the
+        // chip turned back, as the original does before it looks. It then
+        // reads the null navi from the BIOS's open bus, an even side, 0xA0
+        // after a software interrupt, and the panel (0xA0, 0xE3). It spawns
+        // the controller there with no host and starts the dimming for that
+        // side (`sub_800BF16`). That marks both sides' dimming records as
+        // the side's and registers the controller in a record 0xA0 records
+        // past them, in memory the battle keeps for other things, so neither
+        // side's dimming begins. Past the chip turned back nothing is
+        // defined to port: nettai spawns no support and starts no dimming.)
+        return true;
     };
     summon_support(b, host, support, chip);
     true

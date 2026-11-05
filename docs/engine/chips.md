@@ -748,6 +748,13 @@ already set up (Beat first); Tango every idle frame before any request:
   `sub_80F0354` applies), and only when the support's bit is set.
 - On a Beat or Rush cancel, `object_exitAttackState` runs, so the lockout applies and requests are cleared. The
   hand index is **not** incremented here; Rush and Beat call `sub_800FC7C` on the victim later.
+- With no navi of the opponent's to come from (`sub_80103BC` null: the side's first spawned actor is none or not a
+  player navi), the bit is already cleared and the chip is cancelled. The original then reads the null navi from the
+  BIOS's open bus: panel (0xA0, 0xE3), an even side (0xA0 after a software interrupt). It spawns the controller
+  there with no host, and `sub_800BF16` marks both sides' dimming records as that side's and registers the
+  controller in a record 0xA0 records past them, in memory kept for other things, so neither side's dimming begins.
+  nettai keeps the cancel and the cleared bit, and spawns and dims nothing. No support comes, so the victim's hand
+  index stays and the chip stays in the hand.
 - `sub_80E90FE` spawns the controller, effect object #0x79 (`sub_80E8FE0`, content kind `support/controller`,
   lib/supports/controller: the role `kinds.support`; the ruleset sets its `support`, `eaten` and `telop_chip`), on the
   host's panel (the support's owner: the chip user's opponent for Rush and Beat), with the host in related 1,
