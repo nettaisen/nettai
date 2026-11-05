@@ -9,11 +9,25 @@ description = "Threads, the same calls on the desktop, in a browser (Web Workers
 # Work done off the window's thread, awaited (`off_thread`).
 futures-channel = "0.3"
 
-# The browser's: its workers, started by the page.
+# The browser's: its workers, started by the page (through web-sys).
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+    "Blob",
+    "BlobPropertyBag",
+    "DedicatedWorkerGlobalScope",
+    "ErrorEvent",
+    "Event",
+    "MessageEvent",
+    "Url",
+    "Window",
+    "Worker",
+    "WorkerOptions",
+    "WorkerType",
+    "console",
+] }
 
 [build-dependencies]
 # The targets by name (build.rs).
