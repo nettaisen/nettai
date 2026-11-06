@@ -31,6 +31,7 @@
 mod bind;
 pub mod coverage;
 mod define;
+mod schema;
 pub mod sandbox;
 pub mod tool;
 pub mod verify;

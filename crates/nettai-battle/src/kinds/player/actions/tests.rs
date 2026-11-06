@@ -2499,7 +2499,7 @@ fn a_kind_spawns_by_definition_and_its_state_holds_definitions() {
 }
 
 #[test]
-#[should_panic(expected = "expected a record:ticker-variant, got a record:other-variant")]
+#[should_panic(expected = "expected a record of type ticker-variant, got one of type other-variant")]
 fn a_reference_field_refuses_a_record_of_another_type() {
     let (mut b, p0, p1) = fight_on_test_pack();
     crate::behavior::spawn_kind(&mut b, "test/misuse", crate::object::Vec3::default()).unwrap();

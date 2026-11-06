@@ -198,7 +198,8 @@ fn runaway_content_is_interrupted_and_a_new_pack_still_loads() {
 #[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
 #[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn definition_integers_keep_their_values_on_32_bit_targets() {
-    let defs = define_pack(&[("numbers", "return new.record('numbers', { low = -2147483649, high = 4294967295, [4294967295] = 123 })")]).unwrap();
+    let defs =
+        define_pack(&[("numbers", "return new.record(schema.record_type('numbers'), { low = -2147483649, high = 4294967295, [4294967295] = 123 })")]).unwrap();
     let record = &defs.of(Registry::Record)[0].spec;
     assert_eq!(record.field("low"), &Data::Int(-2147483649));
     assert_eq!(record.field("high"), &Data::Int(4294967295));
@@ -218,7 +219,7 @@ const BOMBS: &[(&str, &str)] = &[
         r#"--!strict
 local throw = {}
 -- One state for every throw action.
-local STATE = { timer = "u16" }
+local STATE = { timer = schema.u16 }
 function throw.action(spec: any): any
     return new.action {
         state = STATE,
@@ -234,14 +235,15 @@ return throw
         r#"--!strict
 local bomb = {}
 local EXPLOSION = new.effect { anim = 0 }
+local VARIANT = schema.record_type("bomb-variant")
 bomb.kind = new.kind {
     id = "bomb",
     pool = "attack",
-    state = { variant = "u16" },
+    state = { variant = VARIANT },
     update = function(me: any) return EXPLOSION end,
 }
 function bomb.variant(v: any): any
-    return new.record("bomb-variant", v)
+    return new.record(VARIANT, v)
 end
 return bomb
 "#,
@@ -309,6 +311,52 @@ fn definitions_get_keys_from_the_root_ids_modules_and_paths() {
     assert_eq!(chip.module, "test:chips/minibomb/init");
     let record = d.get(Registry::Record, "minibomb/action/args/thrower").unwrap();
     assert_eq!(record.record_type.as_deref(), Some("bomb-variant"));
+    // A state's types as data: a record type's records.
+    let state = d.get(Registry::Schema, "kind:bomb/state").unwrap();
+    let records = nettai_content_api::FieldType::Ref(Registry::Record, Some("bomb-variant".into()));
+    assert_eq!(state.spec.field("variant"), &Data::Type(nettai_content_api::TypeData::Is(records)));
+}
+
+/// docs/design/scripting.md §2.4: a state's field types are `schema` values; a
+/// type name is no type. A record type is declared once in a load (the
+/// engine's own, `obstacle.absorbed_look`, too), and `new.record` takes one.
+#[cfg_attr(all(target_arch = "wasm32", target_os = "unknown"), wasm_bindgen_test::wasm_bindgen_test)]
+#[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
+fn state_types_are_schema_values() {
+    use nettai_content_api::{FieldType, TypeData};
+    let d = define_pack(&[(
+        "k",
+        "return new.kind { id = 'k', pool = 'attack', update = function() end, state = {
+            a = schema.array(schema.u8, 3), c = schema.optional(schema.u8), e = schema.entry('patch_cards'),
+            l = schema.list({ chip = schema.chip, code = schema.code }, 2), r = schema.role('form_list', schema.form),
+            v = { 'x', 'y' }, look = obstacle.absorbed_look } }",
+    )])
+    .unwrap();
+    let state = &d.get(Registry::Schema, "kind:k/state").unwrap().spec;
+    let is = |t: FieldType| Data::Type(TypeData::Is(t));
+    assert_eq!(state.field("a"), &is(FieldType::Array(Box::new(FieldType::U8), 3)));
+    assert_eq!(state.field("c"), &is(FieldType::OptionalU8));
+    assert_eq!(state.field("e"), &is(FieldType::Ref(Registry::Entry, Some("patch_cards".into()))));
+    assert_eq!(state.field("look"), &is(FieldType::Ref(Registry::Record, Some(nettai_content_api::ABSORBED_LOOK.into()))));
+    let fields = Data::map([("chip", is(FieldType::Ref(Registry::Chip, None))), ("code", is(FieldType::Code))]);
+    assert_eq!(state.field("l"), &Data::Type(TypeData::List(Box::new(fields), 2)));
+    assert_eq!(state.field("r"), &Data::Type(TypeData::Role("form_list".into(), Box::new(is(FieldType::Ref(Registry::Form, None))))));
+    assert_eq!(state.field("v"), &Data::List(vec![Data::Str("x".into()), Data::Str("y".into())]));
+    // (A type name in a state is a string, which its layout reads as no type: `Schema::from_data`.)
+    for (source, want) in [
+        ("return schema.list('u8', 2)".to_string(), "schema.list's element is a type".to_string()),
+        ("return schema.array(schema.vec3, 2)".to_string(), "a type of one value, not vec3".to_string()),
+        ("return schema.array(schema.list(schema.u8, 2), 2)".to_string(), "a type of one value, not a list".to_string()),
+        ("return schema.optional(schema.u16)".to_string(), "a u8, not u16".to_string()),
+        ("return schema.entry('Cards')".to_string(), "names no collection".to_string()),
+        ("return new.record('bomb-variant', {})".to_string(), "the type is a record type".to_string()),
+        ("return new.record(schema.u8, {})".to_string(), "not a type u8".to_string()),
+        ("local a = schema.record_type('x')\nreturn schema.record_type('x')".to_string(), "\"x\" is declared already, by test/m.luau".to_string()),
+        ("return schema.record_type('absorbed-look')".to_string(), "declared already, by the engine".to_string()),
+    ] {
+        let e = define_pack(&[("m", &source)]).unwrap_err();
+        assert!(e.contains(&want), "`{source}`: {e}");
+    }
 }
 
 /// A root's sections are the ones the packs' tools know (`packs::SECTIONS`,
@@ -450,7 +498,7 @@ fn a_games_rules_are_one_definition() {
 fn definitions_are_frozen_and_tags_close_after_loading() {
     let p = pack(&[(
         "m",
-        "local d = new.record('r', { n = 1 })\nreturn { d = d, late = function() return new.record('r', {}) end }",
+        "local R = schema.record_type('r')\nlocal d = new.record(R, { n = 1 })\nreturn { d = d, late = function() return new.record(R, {}) end, declare = function() return schema.record_type('s') end }",
     )]);
     let (lua, defined, modules, _, _) = open(&p, Options::default()).unwrap();
     assert!(defined.tables.iter().all(|t| t.is_readonly()));
@@ -459,6 +507,9 @@ fn definitions_are_frozen_and_tags_close_after_loading() {
     BUDGET.with(|b| b.set(1000));
     let e = late.call::<LuaValue>(()).unwrap_err().to_string();
     assert!(e.contains("tables are tagged while content loads"), "{e}");
+    let declare: Function = m.get("declare").unwrap();
+    let e = declare.call::<LuaValue>(()).unwrap_err().to_string();
+    assert!(e.contains("record types are declared while content loads"), "{e}");
     drop(lua);
 }
 

@@ -160,7 +160,7 @@ Each with what it was and what it is now.
   the `Lockon` type is exelib's. gen-content checks the records' data against the ROM's modes.
 - **B3.** Beast Out's turns are EXE6's own stat `beast_out_counter` (V1's way), 3 fresh (its `fresh_stats`), which
   rules/beast spends and rules/emotion reads; the HUD reads the count by its role (`StatRole::WindowCount`,
-  `schema.role("window_count", "u8")`), and exe6-compat maps NaviStats+0x21 to it.
+  `schema.role("window_count", schema.u8)`), and exe6-compat maps NaviStats+0x21 to it.
 - **B4.** `Library::beast_out_chip` is gone. `ChipRole::BeastOut` is `ChipRole::ButtonChip` (`button_chip`): the chip
   a button's pick stands as in the hand, whose picture is the button's.
 - **B5, and C6's sounds.** `ScreenSound::{BeastOutGregar, BeastOutFalzar, BeastOutFlash, CrossWindowOpen,
@@ -202,13 +202,12 @@ Each with what it was and what it is now.
   `crosses = [...]`. `Defs::fact_name` gives the field that holds a role.
 - **C10.** The navi's forms table lists a version's forms under `<version>.form_list`.
 - **C11.** The views find the rules' state fields they show by role, never by a game's name for them: each is the
-  field the declaration gives the view's role (`schema.role("form_list.count", "u8")`; `Schema::find_role`, at any
-  depth). The form list's `form_list.{offered, count, marked, chosen, chosen_place}` (EXE6's `offered`,
+  field the declaration gives the view's role (`schema.role("form_list.count", schema.u8)`; `Schema::find_role`, at
+  any depth). The form list's `form_list.{offered, count, marked, chosen, chosen_place}` (EXE6's `offered`,
   `offered_count`, `marked`, `cross_chosen`, `chosen`; `form_list.cursor`, EXE6's `window_cursor`, went to the
-  player's layer on 2026-11-01), the form offer's
-  `form_offer.{form, alternate, turns}` (EXE5's `offer`, `offer_chaos`, `turns`), the flights'
-  `offer_flight.{step, count}` and `chip_flight.{step, count, button}` (EXE5's `unite_*`, MeddySoul's `mix_*`). The
-  games keep their names. The custom screen's `CROSSES` is `FORM_LIST_ENTRIES`.
+  player's layer on 2026-11-01), the form offer's `form_offer.{form, alternate, turns}` (EXE5's `offer`,
+  `offer_chaos`, `turns`), the flights' `offer_flight.{step, count}` and `chip_flight.{step, count, button}` (EXE5's
+  `unite_*`, MeddySoul's `mix_*`). The games keep their names. The custom screen's `CROSSES` is `FORM_LIST_ENTRIES`.
 - **D1.** The dark chip's hover is the shade a dark chip casts: `ChipShade` (`Shading`, `Shaded`),
   `on_shading_chip`, `FadeMode::{Shade, ShadeBack, ShadeWindow, ShadeWindowBack}`, `ScreenSound::Shade` and
   `SoundRole::CustomShade` (`custom_shade`). `ChipFlags::DARK` stays: a chip category of the series, as Mega and

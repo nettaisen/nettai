@@ -157,7 +157,7 @@ The user, of the four open choices: "1. bass cross variant on the card 2. drop t
   `owned` (the `chip_of_another_version` problem, nettai-match's `Wrong::ChipOfAnotherVersion`) are gone: a folder
   may hold either version's Giga chips, and a ruleset of one version per build refuses a build that mixes them.
 - **EXE6's Cybeast** is the setup's `cybeast`, the engine's version fact as a form (`schema.role("version",
-  "form")`: the side's version is the form's own `version`, `Battle::version`; a side states it or the round
+  schema.form)`: the side's version is the form's own `version`, `Battle::version`; a side states it or the round
   doesn't start, as an enum's). Its forms are MegaMan's sets' `cybeast` (the Beast Out forms, Gregar's and
   Falzar's: `facts::offered_forms`). Beast Out from the base form takes the navi into the Cybeast, Beast Over and
   the roar are the Cybeast's version's (rules/beast/custom.luau), and MstrCros plays the Cybeast's version's five

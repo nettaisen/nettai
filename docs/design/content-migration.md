@@ -66,9 +66,10 @@ roles (rules/roles.luau: what it starts, spawns and shows itself), never by numb
    you need, named by what it does.
 3. **Write the definitions.** `--!strict`; a header saying what it is, with the original's routine and object
    numbers; one local function per routine, commented with its name; the game's immediates as named constants.
-   - A kind is `new.kind { pool, state, update }` (an `id` only where compat names it). Its state is typed fields, references included
-     (`"object"`, `"record:bomb-variant"`, `"chip"`, `"bool"`); what the original passed as spawn parameters is
-     state the spawner sets. Export its spawner (`mark.spawn(owner, x, y, ticks)`, the game's `sub_80E7942`).
+   - A kind is `new.kind { pool, state, update }` (an `id` only where compat names it). Its state is typed fields,
+     references included (`schema.object`, a record type, `schema.chip`, `schema.bool`); what the original passed as
+     spawn parameters is state the spawner sets. Export its spawner (`mark.spawn(owner, x, y, ticks)`, the game's
+     `sub_80E7942`).
    - An action is `new.action { id?, state, update }`, usually from a family's builder: what differs
      between chips is the builder's arguments, and a variant several kinds read is a record (`new.record`).
      Anything a definition holds is in the canonical tree, so a thrower is `{ throw = fn, variant = record }`,
@@ -135,11 +136,11 @@ Luau arrays start at 1; the game's tables start at 0. The rule for each case:
   chip `battle.hand_turn(side, i)` with `i` from 0, an attach point `me:attach_point(n)` its number in the
   sprite, a sprite part `sprite:part_offset(n)` from 0, an element `collision:element_damage(element)` 0 to 5.
   What the routine has in a register is what the script passes.
-- **Arrays the engine hands out or stores are Luau arrays, 1-based, with range errors.** A list an accessor
-  returns (`battle.alive_actors(side)`, `field.objects(side)`) is a plain array. An array state field
-  (`targets = "u8[18]"`) is `s.targets[1]` to `s.targets[18]`, with `#s.targets`; `s.targets[0]` and
-  `s.targets[19]` are errors, not nil and not a wrap. A list (`schema.list(T, n)`) is the same from 1 to its
-  length, and takes its next element (`s.picks[#s.picks + 1] = v`); a record's fields are `s.drive.mode`.
+- **Arrays the engine hands out or stores are Luau arrays, 1-based, with range errors.** A list an accessor returns
+  (`battle.alive_actors(side)`, `field.objects(side)`) is a plain array. An array state field (`targets =
+  schema.array(schema.u8, 18)`) is `s.targets[1]` to `s.targets[18]`, with `#s.targets`; `s.targets[0]` and
+  `s.targets[19]` are errors, not nil and not a wrap. A list (`schema.list(T, n)`) is the same from 1 to its length,
+  and takes its next element (`s.picks[#s.picks + 1] = v`); a record's fields are `s.drive.mode`.
 - **A table keyed by a game value is written with its keys**, zero included: `{ [0] = 0x0D880080, [1] =
   0x0E880080 }` by side, `{ [0] = raise, [4] = volleys, [8] = lower }` by step, `{ [0] = 0, [1] = 3, [2] = 1 }`
   by the count left. The lookup is `T[value]`, as the routine reads its table, and a missing key is a `nil` the
@@ -154,7 +155,7 @@ is, or shifted by one at the point it indexes a list.
 ### 4.3 Types
 
 Every module is `--!strict`. Declare a kind's or action's state type next to its schema (`export type State =
-{ timer: number }`, `state = { timer = "u16" }`) and cast (`local s = me.state :: State`).
+{ timer: number }`, `state = { timer = schema.u16 }`) and cast (`local s = me.state :: State`).
 
 The checker checks each module on its own, and `require` gives `any`. So:
 

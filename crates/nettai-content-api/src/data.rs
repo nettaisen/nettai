@@ -24,6 +24,9 @@ pub enum Data {
     /// A function: the definition's function slot at this place (in
     /// definitions only; the runtime keeps the function itself).
     Function,
+    /// A field's type, as a state's declaration gives it (`schema.u16`, a
+    /// record type, `schema.list(T, n)`; in definitions only).
+    Type(crate::state::TypeData),
 }
 
 /// A table key.

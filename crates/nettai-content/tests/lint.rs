@@ -20,7 +20,7 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
     c.scripts.modules.insert(
         module("chips/holder/chip"),
         "local held = require('../../objects/held/held')\n\
-         return new.record('holder', { kind = held.kind })"
+         return new.record(schema.record_type('holder'), { kind = held.kind })"
             .into(),
     );
     // A role that names a definition, left out.

@@ -17,8 +17,8 @@ use nettai_content_api::{
     SparkHandle, SpawnAt, StateId, WeaponHandle,
 };
 
-/// The record type of an absorbed obstacle's look (objects/absorbed_obstacle).
-const ABSORBED_LOOK: &str = "absorbed-look";
+/// The record type of an absorbed obstacle's look (`obstacle.absorbed_look`).
+use nettai_content_api::ABSORBED_LOOK;
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
 use nettai_content_api::{ObstacleHold, ObstaclePush};
 

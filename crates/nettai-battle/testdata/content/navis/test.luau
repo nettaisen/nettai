@@ -26,7 +26,7 @@ local WEAPONS: FormWeapons = { buster = buster.weapon, charge_shot = charged_sho
 -- air and back to idle with the animation it has.
 local landing = new.action {
     id = "test/landing",
-    state = { timer = "u16" },
+    state = { timer = schema.u16 },
     update = function(me: Object, s: { timer: number })
         if me.step_init == 0 then
             me.step_init = 4
@@ -49,7 +49,7 @@ type WornState = { ticks: number, marks: { number } }
 local worn = new.kind {
     id = "test/worn",
     pool = "actor",
-    state = { ticks = "u16", marks = "u32[24]" },
+    state = { ticks = schema.u16, marks = schema.array(schema.u32, 24) },
     update = function(me: Object)
         local l = me.lifecycle
         if l == "init" then

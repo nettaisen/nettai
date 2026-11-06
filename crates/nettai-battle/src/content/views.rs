@@ -185,12 +185,12 @@ impl PlayerFact {
         }
         Err(match self {
             PlayerFact::Navi => "a navi",
-            PlayerFact::Folder => "a list of { chip = \"chip\", code = \"code\" }",
-            PlayerFact::RegularChip => "a u8? (an entry of the folder, or none)",
+            PlayerFact::Folder => "a list of { chip = schema.chip, code = schema.code }",
+            PlayerFact::RegularChip => "an optional u8 (an entry of the folder, or none)",
             PlayerFact::TagChips => "a list of two u8 (entries of the folder)",
             PlayerFact::Version => "a list of the versions' names, or a form",
             PlayerFact::FormList => "an array of forms",
-            PlayerFact::Level => "a u8? (a level, or none)",
+            PlayerFact::Level => "an optional u8 (a level, or none)",
             PlayerFact::BaseHp => "a u16",
         })
     }

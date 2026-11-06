@@ -419,10 +419,10 @@ mod tests {
     }
 
     const GAME: &[(&str, &str)] = &[
-        ("rules/turns", "return { state = { n = 'u8' } }"),
+        ("rules/turns", "return { state = { n = schema.u8 } }"),
         ("rules/init", "return { state = require('@self/turns').state }"),
-        ("cards", "return new.record('card', { power = 1 })"),
-        ("chips/cannon", "return new.record('chip-ish', { power = 3 })"),
+        ("cards", "return new.record(schema.record_type('card'), { power = 1 })"),
+        ("chips/cannon", "return new.record(schema.record_type('chip-ish'), { power = 3 })"),
     ];
 
     /// docs/design/content-model-v2.md §4.0: content holds one game pack
@@ -431,9 +431,9 @@ mod tests {
     #[test]
     fn content_holds_one_game() {
         let mix: &[(&str, &str)] = &[
-            ("rules/extra", "return { state = { e = 'u8' } }"),
+            ("rules/extra", "return { state = { e = schema.u8 } }"),
             ("rules/init", "return { state = require('@self/extra').state }"),
-            ("cards", "return new.record('card', { power = 2 })"),
+            ("cards", "return new.record(schema.record_type('card'), { power = 2 })"),
         ];
         let c = content(vec![folder("game", GAME)]).unwrap();
         let d = &c.defs;
@@ -791,11 +791,11 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         // them.) Rust tables state them for a content that has those (the
         // test content's), and its rules' sections replace them.
         let mut none = Content::default();
-        none.scripts.add_game("game", [("cards".to_string(), "return new.record('card', {})".to_string())].into());
+        none.scripts.add_game("game", [("cards".to_string(), "return new.record(schema.record_type('card'), {})".to_string())].into());
         let e = none.define().unwrap_err().message;
         assert!(e.contains("game/init.luau: game pack game defines no rules"), "{e}");
         let mut loose = Content::default();
-        loose.scripts.add_dir("loose", [("cards".to_string(), "return new.record('card', {})".to_string())].into());
+        loose.scripts.add_dir("loose", [("cards".to_string(), "return new.record(schema.record_type('card'), {})".to_string())].into());
         loose.define().unwrap_or_else(|e| panic!("{}", e.message));
         assert!(loose.rules.is_none());
         let mut tables = stated();
@@ -824,7 +824,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert!(d.rules().is_some());
         assert_eq!(d.definitions.of(nettai_content_api::Registry::Rules)[0].key, nettai_content_api::RULESET_KEY);
         // Content without one: its sides have no rules.
-        let none = content(vec![folder("game", &[("cards", "return new.record('card', {})")])]).unwrap();
+        let none = content(vec![folder("game", &[("cards", "return new.record(schema.record_type('card'), {})")])]).unwrap();
         assert!(none.defs.rules().is_none());
         // A second root's.
         let e = with(&[("rules/other", "return { rules = {} }")]).unwrap_err();
@@ -856,15 +856,15 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
     #[test]
     fn a_load_reads_what_its_requires_reach() {
         let modules: BTreeMap<String, String> = [
-            ("rules/turns", "return { state = { n = 'u8' } }"),
+            ("rules/turns", "return { state = { n = schema.u8 } }"),
             ("rules/init", "return { state = require('@self/turns').state }"),
-            ("chips/cannon", "local cannon: Chip = { instant = function(u) end, part = new.record('part', {}) }\nreturn { cannon = cannon }"),
+            ("chips/cannon", "local cannon: Chip = { instant = function(u) end, part = new.record(schema.record_type('cannon-part'), {}) }\nreturn { cannon = cannon }"),
             (
                 "chips/sword/init",
-                "local sword: Chip = { instant = function(u) end, parts = { new.record('part', {}), require('@self/edge') } }\nreturn { sword = sword }",
+                "local sword: Chip = { instant = function(u) end, parts = { new.record(schema.record_type('sword-part'), {}), require('@self/edge') } }\nreturn { sword = sword }",
             ),
-            ("chips/sword/edge", "return new.record('part', { long = true })"),
-            ("lib/pa", "return { chip = require('../chips/sword').sword, record = new.record('pa', {}) }"),
+            ("chips/sword/edge", "return new.record(schema.record_type('edge'), { long = true })"),
+            ("lib/pa", "return { chip = require('../chips/sword').sword, record = new.record(schema.record_type('pa'), {}) }"),
             ("never", "error('a module nothing requires never loads')"),
         ]
         .into_iter()
@@ -957,7 +957,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         };
         write("game/init.luau", "return { rules = require(\"@self/rules\"), chips = require(\"@self/chips\") }\n");
         write("game/rules/init.luau", "return { state = require(\"@self/turns\").state }\n");
-        write("game/rules/turns.luau", "return { state = { n = \"u8\" } }\n");
+        write("game/rules/turns.luau", "return { state = { n = schema.u8 } }\n");
         write("game/chips/init.luau", "return { sword = require(\"@self/sword\").sword }\n");
         write("game/chips/sword/init.luau", "return { sword = { instant = require(\"@lib/hit\") } }\n");
         write("game/chips/unread/init.luau", "error(\"nothing requires this\")\n");
@@ -987,7 +987,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!((held.hash(), &held.defs.definitions), (c.hash(), &c.defs.definitions));
         // A runtime loads what was read, though the folder is gone.
         let mut stand_in = on_disk();
-        stand_in.scripts.modules.insert("game:rules/turns".into(), "return { state = { r = 'u8' } }\n".into());
+        stand_in.scripts.modules.insert("game:rules/turns".into(), "return { state = { r = schema.u8 } }\n".into());
         stand_in.define().unwrap_or_else(|e| panic!("{}", e.message));
         let state = stand_in.defs.schema(stand_in.defs.rules().expect("the rules").state);
         assert!(state.index_of("r").is_some(), "memory before the folder");

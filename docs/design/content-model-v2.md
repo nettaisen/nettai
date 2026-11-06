@@ -110,8 +110,8 @@ Every definition belongs to one registry. The engine knows the registries and th
 | region | `new.region` | derived | panel offsets, or a whole-field condition | (none) |
 | collision | `new.collision` | derived (`rules/collision/attack`) | a collision type's flag words by side | (none: gen-content knows a type by its row) |
 | status | `new.status` | `id` where compat names it, else derived | requests, duration, timer | its byte, in rules.toml |
-| (lockon) | `new.record("lockon", ...)` | `id` (compat's rules.toml) | the Beast Out lock-on search | its mode byte |
-| record | `new.record(type, spec)` | `id` where compat names it, else derived | only its type name (Luau reads the fields) | (records.toml: SP slots, variants, barriers) |
+| (lockon) | `new.record(LOCKON, ...)` | `id` (compat's rules.toml) | the Beast Out lock-on search | its mode byte |
+| record | `new.record(type, spec)`, of a record type declared once (`schema.record_type(name)`) | `id` where compat names it, else derived | only its type's name (Luau reads the fields) | (records.toml: SP slots, variants, barriers) |
 | entry | a collection of the game's own: the root's other keys (EXE6's `patch_cards`, `navicust_programs`; §3.11) | `<collection>/<id>`; a match names it by its id there | only its collection (Luau reads the fields) | EXE6's: the card's number in compat/patch-cards.toml, the program's in compat/navicust.toml |
 | sprite, sound, banner, background, mugshot, chip icon | `asset.*` (§6.3): a sprite defined by its module (`asset.sprite(name, animations)`), the others named | the asset's name | names (handles: their places, §6.3); a sprite's animations' timing and the parts content reads | the ROM's numbers, in compat/assets.toml |
 
@@ -519,17 +519,17 @@ them, and no hit of the game's carries such a code.
 export type KindSpec<S> = {
     id: string,
     pool: Pool,                  -- "actor" | "attack" | "effect": update order and slot limits
-    state: StateSchema?,         -- `{ timer = "u16", variant = "record", owner = "object" }`
+    state: StateSchema?,         -- `{ timer = schema.u16, variant = BOMB_VARIANT, owner = schema.object }`
     update: (me: Object) -> (),
     place: ((spec: PlaceSpec) -> Object?)?,   -- when a stage's actor list places it (rocks)
 }
 ```
 
-A kind is one behavior, one per original object routine. What differs between its uses goes into its state
-when it is spawned. State fields gain reference types that hold handles: `"chip"`, `"kind"`, `"action"`,
-`"effect"`, `"spark"`, `"region"`, `"sound"`, `"sprite"`, `"record"` (any record), `"record:<type>"` (records of one
-type). A field of a reference type reads back as the definition (a frozen table) or nil. So `me:param(1)` goes:
-the spawner writes `s.variant = variant`, and the kind reads `s.variant.palette`.
+A kind is one behavior, one per original object routine. What differs between its uses goes into its state when it is
+spawned. State fields gain reference types that hold handles: `schema.chip`, `schema.kind`, `schema.action`,
+`schema.effect`, `schema.spark`, `schema.region`, `schema.sound`, `schema.sprite`, a record type (records of the type,
+`schema.record_type(name)`'s value). A field of a reference type reads back as the definition (a frozen table) or nil.
+So `me:param(1)` goes: the spawner writes `s.variant = variant`, and the kind reads `s.variant.palette`.
 
 The pool is part of the kind's definition because it is behavior: it decides the update order and which slot
 limit a spawn hits. The index within the pool is compat.
@@ -755,10 +755,11 @@ collision types into `rules/collision.luau` as named definitions, the actor reco
 
 ### 3.9 Records
 
-`define.record(type, spec)` makes Luau-only data with a handle, so a spawned object can remember which one it is
-(a bomb variant, a projectile variant, a rock variant, an attachment look, a body overlay). Rust stores the
-handle and knows the type name; it never reads the fields. Builders wrap it (`bomb.variant { ... }` is
-`define.record("bomb-variant", ...)`), so chips don't call it directly.
+`new.record(type, spec)` makes Luau-only data of a record type with a handle, so a spawned object can remember which
+one it is (a bomb variant, a projectile variant, a rock variant, an attachment look, a body overlay). Rust stores the
+handle and knows the type's name; it never reads the fields. A record type is a value declared once
+(`schema.record_type("bomb-variant")`), which `new.record` and a field of its records take. Builders wrap it
+(`bomb.variant { ... }` is `new.record(BOMB_VARIANT, ...)`), so chips don't call it directly.
 
 ### 3.10 Hooks: the function slots
 
@@ -795,8 +796,8 @@ sections (chips, navis, forms, stages), its rules and its recipe (`extract`): ea
 `patch_cards`, a patch card each, docs/engine/patch-cards.md; `navicust_programs`, a NaviCust program each,
 docs/design/navicust.md). An entry is a definition of `Registry::Entry`, keyed `<collection>/<id>`, whose data the
 core keeps and reads none of: the game's rules read it (EXE6's rules/patch_cards and rules/navicust). A setup field
-holds one by naming the collection as its type (`patch_cards = schema.list("patch_cards", 32)`; a name that is
-neither one of the core's types nor a collection of the game's root is refused as the content loads), a match
+holds one by naming the collection as its type (`patch_cards = schema.list(schema.entry("patch_cards"), 32)`; a
+name that is no collection of the game's root is refused as the content loads), a match
 names one by its id there (`patch_cards = ["canodumb"]`), the locales by a table of the collection's name
 (`[patch_cards]`), the library order by a list of its name (`navicust_programs = [...]`). Rust names neither
 patch cards nor NaviCust programs; their types (`PatchCard`, `NaviCustProgram`) are exelib's
@@ -1284,7 +1285,7 @@ export type State = { timer: number }
 
 -- One state for every throw: a throw continues the last one's scratch, as the
 -- original's single action does.
-local STATE = { timer = "u16" }
+local STATE = { timer = schema.u16 }
 local SOUND = asset.sound("throw")
 local ANIM_THROW, RELEASE_TICK, THROW_TICKS, RECOVER_TICKS = 6, 9, 0x15, 5
 
@@ -1330,16 +1331,17 @@ export type Variant = {
 export type State = { variant: Variant }
 
 local bomb = {}
+local BOMB_VARIANT = schema.record_type("bomb-variant")
 bomb.kind = define.kind {
     id = "bomb",
     pool = "attack",
-    state = { variant = "record:bomb-variant" },
+    state = { variant = BOMB_VARIANT },
     update = update,      -- as today, reading (me.state :: State).variant instead of KINDS[me:param(1)]
 }
 bomb.held = attachment.look { sprite = asset.sprite("bomb"), palette = 0 }
 
 function bomb.variant(v: Variant): Variant
-    return define.record("bomb-variant", v)
+    return define.record(BOMB_VARIANT, v)
 end
 
 -- `sub_80C5DBC`: a thrower for `throw.action` that throws this variant.
@@ -1544,8 +1546,9 @@ number; the buster passes a NaviCust-chosen number through `attack_param(1)`.
 ```luau
 -- objects/projectile/init.luau exports the kind, `variant` and the firing helpers.
 local projectile = {}
+local PROJECTILE_VARIANT = schema.record_type("projectile-variant")
 projectile.kind = define.kind { id = "projectile", pool = "attack",
-    state = { variant = "record:projectile-variant", row = "i8" }, update = update }
+    state = { variant = PROJECTILE_VARIANT, row = schema.i8 }, update = update }
 
 export type Variant = {
     id: string?,                 -- only when a setup names it (a NaviCust buster shot)
@@ -1553,7 +1556,7 @@ export type Variant = {
     spark: Spark?, sprite: Sprite?, anim: number?,
     status: Status?, bug: Bug?, hit_panel: PanelHit?, bursts: boolean?, climbs: boolean?,
 }
-function projectile.variant(v: Variant): Variant return define.record("projectile-variant", v) end
+function projectile.variant(v: Variant): Variant return define.record(PROJECTILE_VARIANT, v) end
 function projectile.fire(navi: Object, v: Variant, damage: number, opts: { z: number, row: number? }): number ... end
 ```
 
@@ -1599,7 +1602,7 @@ export type State = { chip: Chip?, bonus: number, whole_column: boolean }
 local controller = define.kind {
     id = "grab/controller",
     pool = "effect",
-    state = { chip = "chip", bonus = "u16", whole_column = "bool" },
+    state = { chip = schema.chip, bonus = schema.u16, whole_column = schema.bool },
     update = dimming.phases { effect = effect },  -- begin, dim, telop, effect, undim, finish
 }
 
@@ -1714,7 +1717,7 @@ export type State = { cycle: number, aim: number, controller: Object?, aim_ticks
 
 local navi = define.kind {
     id = "eraseman/navi", pool = "actor",
-    state = { cycle = "u8", aim = "u8", controller = "object", aim_ticks = "u8" },
+    state = { cycle = schema.u8, aim = schema.u8, controller = schema.object, aim_ticks = schema.u8 },
     update = update,     -- as today, with `s.aim_ticks` for `me:param(1)`
 }
 
@@ -2821,9 +2824,9 @@ kind's own state-machine byte, which the traces compare.
   per kind; a handle is the name's place in byte order). The loader leaves it empty until step 6 fills it from
   the asset root's names; the test content has a few made-up ones. Unknown names fail the define phase naming
   the module; a placeholder name (`sprite-0c-01`) is a lint error.
-- **State fields.** Reference types (`"kind"`, `"action"`, `"record"`, `"record:<type>"`, ...) and asset types
-  (`"sprite"`, `"sound"`, `"banner"`, `"background"`, `"mugshot"`) are two bytes, the handle plus one; a record
-  of another type is refused when stored.
+- **State fields.** Reference types (`schema.kind`, `schema.action`, a record type, ...) and asset types
+  (`schema.sprite`, `schema.sound`, `schema.banner`, `schema.background`, `schema.mugshot`) are two bytes, the handle
+  plus one; a record of another type is refused when stored.
 - **Objects and navis.** `battle.spawn(kind, pos)`, `spawn_first`, `spawn_at_end`; `me.kind`;
   `me:set_attack(action, kind)`; `me:navi_action()` (the action definition, the ruleset's own state or action by
   name: `"idle"`, `"move"`, `"dimming_chip"`, ..., or a link navi's number); `me:set_damage_word(w)`.

@@ -287,9 +287,9 @@ pub struct Extension {
     pub ty: ExtensionType,
 }
 
-/// An extension field's type: a state field's (`"u8"`, `"chip"`, a list of
-/// variants, a list holding a list of variants: a list of those names), or a
-/// table of such fields.
+/// An extension field's type: a state field's (`schema.u8`, `schema.chip`, a
+/// list of variants, a list holding a list of variants: a list of those
+/// names), or a table of such fields.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ExtensionType {
     Value(nettai_content_api::FieldType),
@@ -300,12 +300,12 @@ impl ExtensionType {
     /// The type `v` declares (`at`: where, for errors), the game's
     /// collections `collections` (an entry of one: its name).
     fn read(v: &Data, at: &str, collections: &[&str]) -> Result<ExtensionType, String> {
-        use nettai_content_api::FieldType;
+        use nettai_content_api::{FieldType, TypeData};
         match v {
-            Data::Str(name) => FieldType::scalar(name)
-                .filter(|ty| unknown_collection(ty, collections).is_none())
-                .map(ExtensionType::Value)
-                .ok_or_else(|| format!("{at}: no type is named {name:?}")),
+            Data::Type(TypeData::Is(ty)) => match unknown_collection(ty, collections) {
+                Some(c) => Err(format!("{at}: no collection of the game's root is named {c:?}")),
+                None => Ok(ExtensionType::Value(ty.clone())),
+            },
             // A list holding a list of variants: a list of those names.
             Data::List(items) if items.len() == 1 && matches!(&items[0], Data::List(_)) => {
                 let ExtensionType::Value(elem) = ExtensionType::read(&items[0], at, collections)? else {
@@ -326,7 +326,8 @@ impl ExtensionType {
                     .map(|(k, v)| Ok((k.to_string(), ExtensionType::read(v, &format!("{at}.{k}"), collections)?)))
                     .collect::<Result<_, String>>()?,
             )),
-            _ => Err(format!("{at}: a type name, a list of variants, a list holding one, or a table of fields")),
+            Data::Str(name) => Err(format!("{at}: a type is a `schema` value (`schema.u8`, `schema.chip`), not the string {name:?}")),
+            _ => Err(format!("{at}: a type (`schema.u8`), a list of variants, a list holding one, or a table of fields")),
         }
     }
 
@@ -1221,7 +1222,7 @@ impl Defs {
             for f in schema.fields() {
                 if let Some(c) = unknown_collection(&f.ty, &collections) {
                     return Err(ContentError::new(format!(
-                        "{}.luau: state {}: `{}`: no type is named {c:?} (nor is it a collection of the game's root)",
+                        "{}.luau: state {}: `{}`: no collection of the game's root is named {c:?}",
                         d.module, d.key, f.name
                     )));
                 }

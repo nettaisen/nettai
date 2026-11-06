@@ -284,7 +284,7 @@ fn exact(n: f64, what: What) -> mlua::Result<i64> {
     }
 }
 
-fn int(v: &LuaValue, what: &str) -> mlua::Result<i64> {
+pub(crate) fn int(v: &LuaValue, what: &str) -> mlua::Result<i64> {
     int_as(v, &|| what.to_string())
 }
 
@@ -487,7 +487,7 @@ fn to_api_as(v: LuaValue, ty: &FieldType, what: What) -> mlua::Result<Value> {
                     && b.record_type(registry, h) != Some(want.as_str())
                 {
                     return Err(mlua::Error::runtime(format!(
-                        "{}: expected a record:{want}, got a record:{}",
+                        "{}: expected a record of type {want}, got one of type {}",
                         what(),
                         b.record_type(registry, h).unwrap_or("?")
                     )));
@@ -1828,48 +1828,10 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     g.set("Vec3", vec3)?;
 
     g.set("int", int_lib(lua)?)?;
-    g.set("schema", schema_lib(lua)?)?;
+    g.set("schema", crate::schema::lib(lua)?)?;
     g.set("rules", rules_lib(lua)?)?;
     g.set("custom", custom_lib(lua)?)?;
     Ok(())
-}
-
-/// `schema`: what a state's or a setup's declaration takes beside type
-/// names, variants and records (docs/design/rust-and-luau.md, step c1):
-/// `schema.list(T, n)`, a list of up to `n` elements of type `T` (a type
-/// name, a list of variants, a record's table or another list), and
-/// `schema.role(name, T)`, a field of type `T` the engine knows by the
-/// role `name` (a player's setup field: `PlayerFact`).
-fn schema_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
-    let t = lua.create_table()?;
-    lib_fn!(lua, t, "list", |lua, (of, max): (LuaValue, LuaValue)| {
-        let max = int(&max, "schema.list's length")?;
-        if !(1..=nettai_content_api::MAX_LIST as i64).contains(&max) {
-            return Err(mlua::Error::runtime(format!("schema.list holds 1 to {} elements, not {max}", nettai_content_api::MAX_LIST)));
-        }
-        if !matches!(of, LuaValue::String(_) | LuaValue::Table(_)) {
-            return Err(mlua::Error::runtime(format!("schema.list's elements are a type, not a {}", of.type_name())));
-        }
-        let list = lua.create_table()?;
-        list.raw_set(nettai_content_api::LIST_MARK, true)?;
-        list.raw_set("of", of)?;
-        list.raw_set("max", max)?;
-        Ok(list)
-    });
-    lib_fn!(lua, t, "role", |lua, (role, of): (LuaValue, LuaValue)| {
-        let LuaValue::String(role) = role else {
-            return Err(mlua::Error::runtime(format!("schema.role's role is a name, not a {}", role.type_name())));
-        };
-        if !matches!(of, LuaValue::String(_) | LuaValue::Table(_)) {
-            return Err(mlua::Error::runtime(format!("schema.role's field is a type, not a {}", of.type_name())));
-        }
-        let field = lua.create_table()?;
-        field.raw_set(nettai_content_api::ROLE_MARK, true)?;
-        field.raw_set("role", role)?;
-        field.raw_set("of", of)?;
-        Ok(field)
-    });
-    Ok(t)
 }
 
 /// A chip code as the rules write it: a letter, `*`, or nil for the code
@@ -3107,6 +3069,8 @@ fn lua_int(i: mlua::Integer) -> i64 {
 fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     type Me = mlua::UserDataRef<Object>;
     let t = lua.create_table()?;
+    // (The record type of the look `fly_to_absorber` takes: the engine's own.)
+    t.set("absorbed_look", crate::schema::record_type(nettai_content_api::ABSORBED_LOOK).map_err(mlua::Error::runtime)?)?;
     lib_fn!(lua, t, "register", |_, (me, side, class): (Me, LuaValue, LuaValue)| {
         let (side, class) = (u8_arg(side, "side")? & 1, u8_arg(class, "class")?);
         if class > 1 {
@@ -3517,7 +3481,8 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
 
 /// A module's value as plain data (`ContentHost::module_data`): a flag, a
 /// whole number, a string, a definition (by its key), a list, a table by
-/// keys (in key order); a function left out.
+/// keys (in key order); a function and a state's field type (`schema.u8`)
+/// left out.
 pub fn plain_data(v: &LuaValue, bound: &Bound, depth: u32) -> mlua::Result<nettai_content_api::Data> {
     use nettai_content_api::{Data, DataKey};
     if depth > 16 {
@@ -3525,6 +3490,7 @@ pub fn plain_data(v: &LuaValue, bound: &Bound, depth: u32) -> mlua::Result<netta
     }
     Ok(match v {
         LuaValue::Nil | LuaValue::Function(_) => Data::Nil,
+        _ if crate::schema::of(v).is_some() => Data::Nil,
         LuaValue::Boolean(b) => Data::Bool(*b),
         LuaValue::Integer(i) => Data::Int(lua_int(*i)),
         LuaValue::Number(n) if n.fract() == 0.0 && n.abs() < 9.0e15 => Data::Int(*n as i64),
@@ -3538,7 +3504,7 @@ pub fn plain_data(v: &LuaValue, bound: &Bound, depth: u32) -> mlua::Result<netta
             let mut entries = Vec::new();
             for pair in t.clone().pairs::<LuaValue, LuaValue>() {
                 let (k, x) = pair?;
-                if matches!(x, LuaValue::Function(_)) {
+                if matches!(x, LuaValue::Function(_)) || crate::schema::of(&x).is_some() {
                     continue;
                 }
                 let key = match &k {

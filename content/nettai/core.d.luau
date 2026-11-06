@@ -1628,8 +1628,9 @@ export type PlaceSpec = {
     hp: number?,
 }
 
--- How an absorbed obstacle looks (objects/absorbed_obstacle's `look`, an
--- "absorbed-look" record; the original's obstacle kinds, `byte_80E98C0`):
+-- How an absorbed obstacle looks (objects/absorbed_obstacle's `look`, a
+-- record of the engine's record type `obstacle.absorbed_look`; the
+-- original's obstacle kinds, `byte_80E98C0`):
 -- its sprite; `keeps_parts`, it flies with the obstacle's hidden sprite
 -- parts (the original's kind 2); `own_facing`, thrown, its sprite's parts
 -- keep their own facing and it isn't flipped (sprite 0x23 in the
@@ -1711,6 +1712,9 @@ declare obstacle: {
     -- absorbed obstacle of look `look` (objects/absorbed_obstacle's
     -- `look { ... }`; the original's obstacle kind).
     fly_to_absorber: (me: Object, look: AbsorbedLook) -> (),
+    -- The record type of the looks `fly_to_absorber` takes (`AbsorbedLook`):
+    -- the engine's own, which no content declares.
+    absorbed_look: RecordType,
     -- `sub_802EF5C`: the per-side target tracking some chips keep.
     release_tracking: (me: Object) -> (),
     -- The field's two stage objects (the registry's stage slots, which the
@@ -1799,35 +1803,88 @@ declare asset: {
     mugshot: (name: string) -> Mugshot,
 }
 
--- A state layout: each field's type, "bool", "u8", "u16", "u32", "i8",
--- "i16", "i32", "object", "vec3", "code" (a chip code, "A" to "Z" or "*"),
--- an array ("u8[18]"), a list of variant names, a reference ("kind",
--- "action", "effect", "spark", "region", "collision", "chip", "weapon",
--- "record", "record:<type>" (records of one type), "sprite", "sound",
--- "banner", "background", "mugshot": a definition or an asset, or nil), a
--- record (a table of fields of its own: `{ chip = "chip", code = "code" }`)
--- or a list (`schema.list(T, n)`). A record's fields and a list's
--- elements are read and written each by its place (`s.drive.mode`,
--- `s.folder[2].code`, `#s.folder`); a list grows by its next element
--- (`s.folder[#s.folder + 1] = ...`).
-export type SchemaField = string | { string } | SchemaList | SchemaRole | StateSchema
+-- A field's type in a state's declaration: a `schema` value. A type isn't a
+-- string: each is a value of its own, which content passes around but can't
+-- look into.
+declare extern type SchemaType with
+end
+-- A record type (`schema.record_type`): what `new.record` tags a table as,
+-- and a field's type, a record of it or none.
+declare extern type RecordType extends SchemaType with
+end
+-- A state layout: each field's type (a `schema` value), a list of variant
+-- names (an enum, stored as the variant's index), or a record (a table of
+-- fields of its own: `{ chip = schema.chip, code = schema.code }`). A
+-- record's fields and a list's elements are read and written each by its
+-- place (`s.drive.mode`, `s.folder[2].code`, `#s.folder`); a list grows by
+-- its next element (`s.folder[#s.folder + 1] = ...`).
+export type SchemaField = SchemaType | { string } | StateSchema
 export type StateSchema = { [string]: SchemaField }
--- A list's declaration (`schema.list(T, n)`): up to `n` elements of `T`.
-export type SchemaList = { __list: boolean, of: SchemaField, max: number }
--- A role's declaration (`schema.role(name, T)`): a field of type `T` the
--- engine knows by the role `name` (a player's setup field it reads:
--- "form_list", the forms a form list window offers; a state field a view
--- shows: "form_list.count").
-export type SchemaRole = { __role: boolean, role: string, of: SchemaField }
+-- A field the rules add to their game's definitions (`RulesSpec.extends`): a
+-- type of one value (`schema.u8`, `schema.chip`, a record type), or a table:
+-- a list of variant names, a list holding one (a list of those names), or a
+-- table of such fields (which the load checks: Luau's types don't tell a
+-- table literal of mixed fields from a list).
+export type ExtensionField = SchemaType | { [any]: any }
 
--- What a state's or a setup's declaration takes beside type names, lists of
--- variants and records: `schema.list(T, n)`, a list of up to `n` (1 to
--- 65535) elements of type `T` (a type name, a list of variants, a record
--- or another list), and how many it holds; `schema.role(name, T)`, a field
--- of type `T` that the engine knows by the role `name`.
+-- The types a state's fields are of:
+-- - `bool`, `u8`, `u16`, `u32`, `i8`, `i16`, `i32` (a number the field
+--   wraps to its width), `object` (an object, or nil), `vec3`, `code` (a
+--   chip code, "A" to "Z" or "*", or nil);
+-- - a definition, or nil: `kind`, `action`, `effect`, `spark`, `region`,
+--   `collision`, `status`, `identity`, `chip`, `weapon`, `navi`, `form`,
+--   `stage`;
+-- - an asset, or nil: `sprite`, `sound`, `banner`, `background`, `mugshot`;
+-- - `array(T, n)`, `n` (1 to 64) of a type of one value (`array(u8, 18)`;
+--   not a `vec3`), read and written element by element;
+-- - `optional(u8)`, a byte or none (a setup's fact that may be stated as
+--   none, as a navi code's level);
+-- - `entry(collection)`, an entry of a collection of the game's root (its
+--   key there, "patch_cards"), or nil;
+-- - a record type's records, or nil: the record type itself, declared once
+--   (`record_type(name)`, the name the load's messages give it; a second
+--   declaration of a name in a load is an error), which `new.record` takes
+--   too;
+-- - `list(T, n)`, up to `n` (1 to 65535) elements of `T` (a type, a list of
+--   variants, a record or another list), and how many it holds;
+-- - `role(name, T)`, a field of type `T` that the engine knows by the role
+--   `name` (a player's setup field it reads: "form_list", the forms a form
+--   list window offers; a state field a view shows: "form_list.count").
 declare schema: {
-    list: (of: SchemaField, max: number) -> SchemaList,
-    role: (role: string, of: SchemaField) -> SchemaRole,
+    bool: SchemaType,
+    u8: SchemaType,
+    u16: SchemaType,
+    u32: SchemaType,
+    i8: SchemaType,
+    i16: SchemaType,
+    i32: SchemaType,
+    object: SchemaType,
+    vec3: SchemaType,
+    code: SchemaType,
+    kind: SchemaType,
+    action: SchemaType,
+    effect: SchemaType,
+    spark: SchemaType,
+    region: SchemaType,
+    collision: SchemaType,
+    status: SchemaType,
+    identity: SchemaType,
+    chip: SchemaType,
+    weapon: SchemaType,
+    navi: SchemaType,
+    form: SchemaType,
+    stage: SchemaType,
+    sprite: SchemaType,
+    sound: SchemaType,
+    banner: SchemaType,
+    background: SchemaType,
+    mugshot: SchemaType,
+    array: (of: SchemaType, length: number) -> SchemaType,
+    optional: (of: SchemaType) -> SchemaType,
+    entry: (collection: string) -> SchemaType,
+    record_type: (name: string) -> RecordType,
+    list: (of: SchemaField, max: number) -> SchemaType,
+    role: (role: string, of: SchemaField) -> SchemaType,
 }
 
 -- An object kind: one behavior; what differs between uses goes in its
@@ -1962,8 +2019,8 @@ export type RulesSpec = {
     -- most: the stats' every copy carries them): `battle.navi(side)` reads
     -- and writes them by name, a compat crate maps them to its block's
     -- bytes, `fresh_stats` gives their fresh values, and a frontend reads
-    -- one by its role (`schema.role("window_count", "u8")`: the count the
-    -- emotion window's box shows).
+    -- one by its role (`schema.role("window_count", schema.u8)`: the count
+    -- the emotion window's box shows).
     stats: StateSchema?,
     -- What a player's setup that says nothing of a field holds (else zero): a
     -- value of each field given (an enum's by name, a definition's by its
@@ -1983,10 +2040,10 @@ export type RulesSpec = {
     -- Its custom-screen windows, by name (`custom.open_window`).
     windows: { [string]: WindowSpec }?,
     -- Its fields on its game's definitions (docs/design/rules-in-luau.md
-    -- §7.5), by registry (chip, form, navi): each a type name, a list of
+    -- §7.5), by registry (chip, form, navi): each a type, a list of
     -- variants, or a table of such fields. The engine checks a definition's
     -- and reads none of them.
-    extends: { [string]: { [string]: any } }?,
+    extends: { [string]: { [string]: ExtensionField } }?,
     -- Its custom screen's extras (docs/design/rules-in-luau.md §4.4), which
     -- the side's screen asks.
     custom: {
@@ -3273,9 +3330,9 @@ declare new: {
     collision: (spec: CollisionTypeSpec) -> CollisionType,
     status: (spec: StatusDef) -> StatusDef,
     identity: (spec: IdentitySpec) -> Identity,
-    -- Luau-only data with a type name, which a reference field
-    -- ("record:<type>") can hold.
-    record: <T>(record_type: string, spec: T) -> T,
+    -- Luau-only data of a record type (`schema.record_type`), which a field
+    -- of the record type can hold.
+    record: <T>(record_type: RecordType, spec: T) -> T,
 }
 
 -- What the rules' own calls reach (docs/design/rules-in-luau.md §4.5,

@@ -170,6 +170,40 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
     }
 }
 
+/// docs/design/scripting.md §2.4: a state's field types are `schema` values; a type's name, a string, is no
+/// type, nor is a record type's.
+#[test]
+fn a_type_by_name_is_a_type_error() {
+    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "exe6").unwrap()).unwrap();
+    let kind = |state: &str| format!("local _ = new.kind {{ pool = \"attack\", update = function(me: Object) end, state = {state} }}");
+    let good = [
+        kind("{ n = schema.u8, a = schema.array(schema.u8, 18), c = schema.chip, o = schema.optional(schema.u8), v = { \"a\", \"b\" } }"),
+        kind("{ l = schema.list({ chip = schema.chip, code = schema.code }, 30), r = schema.role(\"form_list\", schema.array(schema.form, 5)) }"),
+        "local T = schema.record_type(\"t\")\nlocal _ = new.record(T, { n = 1 })\nlocal _ = new.kind { pool = \"attack\", update = function(me: Object) end, state = { t = T, e = schema.entry(\"patch_cards\") } }".to_string(),
+        "local _ = new.kind { pool = \"attack\", update = function(me: Object) end, state = { look = obstacle.absorbed_look } }".to_string(),
+    ];
+    for source in good {
+        let problems = checker.check("good", &format!("--!strict\n{source}\n")).unwrap();
+        assert!(problems.is_empty(), "`{source}`: {problems:?}");
+    }
+    for (bad, why) in [
+        (kind("{ n = \"u8\" }"), "a scalar by name"),
+        (kind("{ a = \"u8[18]\" }"), "an array by name"),
+        (kind("{ c = \"chip\" }"), "a reference by name"),
+        (kind("{ r = \"record:bomb-variant\" }"), "a record type by name"),
+        (kind("{ l = schema.list(\"u8\", 2) }"), "a list's elements by name"),
+        (kind("{ r = schema.role(\"form_list\", \"u8\") }"), "a role's type by name"),
+        ("local _ = schema.array(\"u8\", 3)".to_string(), "an array's element by name"),
+        ("local _ = new.record(\"bomb-variant\", {})".to_string(), "a record of a type by name"),
+        ("local _ = new.record(schema.u8, {})".to_string(), "a record of a type that is no record type"),
+        (rules("extends = { chip = { weight = \"u8\" } },"), "an extension's type by name"),
+        (rules("setup = { hp = \"u16\" },"), "a setup's type by name"),
+    ] {
+        let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
+        assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
+    }
+}
+
 #[test]
 fn misuse_of_the_core_api_is_a_type_error() {
     let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "exe6").unwrap()).unwrap();

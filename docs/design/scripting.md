@@ -150,7 +150,7 @@ side effect: a module that runs and is reached by nothing makes nothing.
 | `new.action { id?, state?, update, traits? }` | a navi action | `update(me, s)` while the navi runs it |
 | `new.weapon { id?, charge_ticks, setup?, instant?, ... }` | what a button does | `setup(navi)` fills the attack and returns the action to start |
 | `new.effect`, `new.spark`, `new.region`, `new.collision`, `new.status`, `new.identity` | what the engine's primitives are told by | their records, by handle |
-| `new.record(type, table)` | data only content reads (a lock-on mode is `new.record("lockon", ...)`), with a handle | nothing: a state field or another definition holds it |
+| `new.record(type, table)` | data only content reads, of a record type declared once (`schema.record_type("lockon")`: a lock-on mode is `new.record(LOCKON, ...)`), with a handle | nothing: a state field or another definition holds it |
 
 The `new.*` tag constructors mark a table as what it is and return it: no registry, no key, no effect. A root's
 definition is keyed by its id there (`chips.minibomb`), and reads it as `chip.id` (the loader's view; the table
@@ -177,27 +177,34 @@ and tools spawn one by key (`behavior::spawn_kind`).
 Each object kind and action declares its state as named, typed fields:
 
 ```luau
-state = { slot = slot.TYPE, look = "record:attachment-look", anim = "u8", offset_x = "i32", lift = "i8" }
+state = { slot = slot.TYPE, look = ATTACHMENT_LOOK, anim = schema.u8, offset_x = schema.i32, lift = schema.i8 }
 ```
 
-Field types are `bool`, `u8`...`i32`, `object`, `vec3`, `code` (a chip code, `"A"` to `"Z"` or `"*"`), an enum
-(a list of names), fixed arrays (`"u8[18]"`), references: to a definition (`"kind"`, `"action"`, `"chip"`,
-`"effect"`, `"record:<type>"`, ...) or an asset (`"sprite"`, `"sound"`, ...), records (a table of fields of
-their own: `drive = { mode = "u8", target = "chip" }`) and bounded lists (`schema.list(T, n)`: up to `n`
-elements of `T`, and how many it holds). A record's fields and a list's elements are read and written each by
-its place (`s.drive.mode`, `s.picks[2].code`, `#s.picks`); a list grows by its next element (`s.picks[#s.picks
-+ 1] = { chip = c, code = "A" }`), and a record, a list or an array takes a table whole (its fields left out,
-zero). The engine finds a field by its name wherever the state's records have it (`Schema::find`: the rules'
+A field's type is a `schema` value, opaque to content (`SchemaType` in core.d.luau: a string is no type, and doesn't
+type-check): `schema.bool`, `schema.u8`...`schema.i32`, `schema.object`, `schema.vec3`, `schema.code` (a chip code,
+`"A"` to `"Z"` or `"*"`), fixed arrays (`schema.array(schema.u8, 18)`), a byte or none (`schema.optional(schema.u8)`),
+references: to a definition (`schema.kind`, `schema.action`, `schema.chip`, `schema.effect`, ...), an entry of one of
+the game's collections (`schema.entry("patch_cards")`) or an asset (`schema.sprite`, `schema.sound`, ...), the records
+of a record type, bounded lists (`schema.list(T, n)`: up to `n` elements of `T`, and how many it holds) and a field
+the engine knows by a role (`schema.role(role, T)`). Beside them a field may be an enum (a list of variant names, `{
+"idle", "charging" }`) or a record (a table of fields of its own: `drive = { mode = schema.u8, target = schema.chip
+}`). A record type is a value declared once, in the module that owns its records (`local ATTACHMENT_LOOK =
+schema.record_type("attachment-look")`, exported to the others that take it), which both `new.record(ATTACHMENT_LOOK,
+...)` and a field of its records take; its name is what messages call it, and a second declaration of the name in a
+load is an error. The engine declares its own, `obstacle.absorbed_look`. A record's fields and a list's elements are
+read and written each by its place (`s.drive.mode`, `s.picks[2].code`, `#s.picks`); a list grows by its next element
+(`s.picks[#s.picks + 1] = { chip = c, code = "A" }`), and a record, a list or an array takes a table whole (its fields
+left out, zero). The engine finds a field by its name wherever the state's records have it (`Schema::find`: the rules'
 views read MeddySoul's `screen.mix_step` so). The engine stores a block of the schema's own size, its fields packed in
-name order (the layout is private to the store; fields have names and types, never offsets), with no limit but
-what the types take. An object's block is its slot's in its pool's `StateArena` (`Objects::state`), an action's
-its actor's in the actors' (`Actors::action_state`); `kinds::Vars::Content` and `ActionVars::Content` hold the
-layout's id. An arena packs its slots' blocks in slot order, so a snapshot copies the bytes there are and no
-more; a slot's block is replaced (zeroed, at the new layout's size) only when the slot takes a state, so a freed
-object's state stays readable until its slot is taken again, as the original's memory does. `Battle: Clone` is
-still the whole snapshot and `#[derive(Hash)]` still covers it for the digest. A script sees
-it as `me.state` (objects) or its update's second argument (actions), and casts it to its declared type (`local
-s = me.state :: State`). What the original passed an object as spawn parameters is state its spawner sets.
+name order (the layout is private to the store; fields have names and types, never offsets), with no limit but what
+the types take. An object's block is its slot's in its pool's `StateArena` (`Objects::state`), an action's its actor's
+in the actors' (`Actors::action_state`); `kinds::Vars::Content` and `ActionVars::Content` hold the layout's id. An
+arena packs its slots' blocks in slot order, so a snapshot copies the bytes there are and no more; a slot's block is
+replaced (zeroed, at the new layout's size) only when the slot takes a state, so a freed object's state stays readable
+until its slot is taken again, as the original's memory does. `Battle: Clone` is still the whole snapshot and
+`#[derive(Hash)]` still covers it for the digest. A script sees it as `me.state` (objects) or its update's second
+argument (actions), and casts it to its declared type (`local s = me.state :: State`). What the original passed an
+object as spawn parameters is state its spawner sets.
 
 Two properties of the game carry over:
 
@@ -333,8 +340,8 @@ their code only in comments, and none of their manifests names it.
 The checker bundles its own Luau, whose C++ symbols collide with mlua's, so it lives in its own crate and must
 never share a binary with nettai-luau.
 
-The state schema (`state = { timer = "u16" }`) and the Luau type (`State = { timer: number }`) are written
-twice. A generator could emit one from the other.
+The state schema (`state = { timer = schema.u16 }`) and the Luau type (`State = { timer: number }`) are
+written twice. A generator could emit one from the other.
 
 ### 3.4 Why Luau
 
@@ -368,7 +375,7 @@ three chips of the series, which compose the hook with their own arguments.
 eraseman.kind = new.kind {
     id = "eraseman/navi",
     pool = "actor",
-    state = { cycle = "u8", aim = "u8", controller = "object", aim_ticks = "u8" },
+    state = { cycle = schema.u8, aim = schema.u8, controller = schema.object, aim_ticks = schema.u8 },
     -- `sub_80BB608`.
     update = function(me: Object)
         local l = me.lifecycle

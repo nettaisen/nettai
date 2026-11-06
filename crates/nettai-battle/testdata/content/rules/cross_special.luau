@@ -4,7 +4,9 @@
 
 local minibomb = require("../chips/minibomb").minibomb
 
-return new.record("cross-special", {
+local CROSS_SPECIAL = schema.record_type("cross-special")
+
+return new.record(CROSS_SPECIAL, {
     id = "cross-special",
     rows = {
         { minibomb },
