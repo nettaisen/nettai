@@ -20,8 +20,9 @@ pub const SLOTS: usize = 32;
 pub struct CollisionId(pub u8);
 
 bitflags::bitflags! {
-    /// Status flags (`CollisionData::f1`). (Obstacles name three bits of
-    /// their own: `kinds::obstacle`.)
+    /// Status flags (`CollisionData::f1`, the original's ObjectFlags1).
+    /// Bit 7 has no name: nothing in the three games sets it (none of their
+    /// flag routines' calls has it, nor a write of the word).
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
     pub struct StatusFlags: u32 {
         const GUARD = 1 << 0;
@@ -56,7 +57,9 @@ bitflags::bitflags! {
         const USING_ACTION = 1 << 22;
         /// Only swords and guard breakers (`CollisionTypes::SWORD`, `CollisionTypes::BREAKS_GUARD`)
         /// reach it, and it reaches only bodies and those (`sub_3007218`).
-        /// Nothing sets it.
+        /// EXE6's virus of AI index 0x1D sets it in its action 1
+        /// (`sub_81162AE`), EXE4's actor objects 0x3A and 0x3B at their init
+        /// (0x080C62E4, 0x080C68BC); nothing the engine has does.
         const SWORD_ONLY = 1 << 23;
         const AFFECTED_BY_ICE = 1 << 25;
         /// Untouchable: `sub_3007218` drops every pair in which either side
@@ -68,6 +71,25 @@ bitflags::bitflags! {
         /// Hits still reach it while the battle is dimmed (`sub_3007218`; else
         /// only hitters set up while dimmed do): ElemTrap's trap sets it.
         const HIT_WHILE_DIMMED = 1 << 24;
+
+        // The objects' (obstacles', viruses').
+        /// Carried to be thrown (the throw's first step, `sub_801802C`): the
+        /// obstacles' reactions (`sub_801B394` and its kin) return to the
+        /// throw; VDoll's doll leaves carried off (`sub_80D48AE`).
+        const CARRIED = 1 << 26;
+        /// Encased in ice / in a bubble (`sub_8018154`, on the request
+        /// `StatusRequests::ENCASED_IN_ICE` or `ENCASED_IN_BUBBLE`): the
+        /// obstacles' reactions run the encasing, whose end leaves an ice
+        /// block or the bubble (`sub_8018186`).
+        const ENCASED_ICE = 1 << 28;
+        const ENCASED_BUBBLE = 1 << 29;
+        /// Removed while the battle is paused: the viruses' reactions set it
+        /// with `DEAD` on the request `StatusRequests::REMOVED`
+        /// (`sub_801B1C4`; EXE5's 0x08017E4C, on its own removal request),
+        /// and their destroyed action (`sub_80165C2`) then leaves quietly
+        /// (`sub_8016EC4`: a puff, no deletion), paused or not. The engine
+        /// has no viruses that read it.
+        const REMOVED_WHILE_PAUSED = 1 << 30;
         const _ = !0;
     }
 }
@@ -76,8 +98,10 @@ bitflags::bitflags! {
     /// A navi's requests in its collision's second word (`CollisionData::f2`):
     /// what its hits and statuses ask of its next status update. Content names
     /// them in its rules (`content::Requests`); a status raises its timer's
-    /// (`content::StatusTimer::request`). (Obstacles read the word their own
-    /// way, which `kinds::obstacle` names.)
+    /// (`content::StatusTimer::request`). Obstacles and the other objects
+    /// read the word their own way: the bits after the navis'. (EXE4 names
+    /// 0x8000 its counter mark, in its rules' `request_bits`. Bits 22 to 31
+    /// have no name: nothing in the three games sets them.)
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
     pub struct StatusRequests: u32 {
         /// Destroyed at the next reaction: a navi deleted (the death of
@@ -85,7 +109,8 @@ bitflags::bitflags! {
         const DESTROY = 1 << 0;
         /// A hit's flash (hit modifier 0x02).
         const FLASH = 1 << 1;
-        /// A hit's flinch (hit modifier 0x01).
+        /// A hit's flinch (hit modifier 0x01); on an obstacle, a push cancels
+        /// it.
         const FLINCH = 1 << 2;
         const PARALYZE = 1 << 3;
         /// A push's slide.
@@ -103,6 +128,40 @@ bitflags::bitflags! {
         const COUNTER_PARALYSIS = 1 << 14;
         const FREEZE = 1 << 16;
         const BUBBLE = 1 << 17;
+
+        // The objects' (obstacles', viruses').
+        /// Picked up to be thrown by side 0 / side 1 (`sub_800F6AC`; EXE5's
+        /// Poltergeist, 0x0800D5F8): the obstacles' reactions start the throw
+        /// (`sub_801802C`).
+        const THROWN_BY_0 = 1 << 10;
+        const THROWN_BY_1 = 1 << 11;
+        const THROWN = Self::THROWN_BY_0.bits() | Self::THROWN_BY_1.bits();
+        /// To be encased in ice / a bubble (0x0800F830; EXE4's ColdMan,
+        /// 0x0800B44C): the obstacles' reactions encase it (`sub_8018154`).
+        const ENCASED_IN_ICE = 1 << 12;
+        const ENCASED_IN_BUBBLE = 1 << 13;
+        const ENCASED = Self::ENCASED_IN_ICE.bits() | Self::ENCASED_IN_BUBBLE.bits();
+        /// Removed by a chip (`sub_800F884`; battle mode 1's `sub_800EC3C`):
+        /// the obstacles' and viruses' reactions and the attacks' destroyed
+        /// actions.
+        const REMOVED = 1 << 15;
+        /// Removed by blinking out (`sub_800F898`): 20 ticks of blinking
+        /// (`sub_800F8CE`).
+        const VANISH = 1 << 18;
+        /// Present the collision on its panels again: battle mode 1's
+        /// placement (`sub_802AF28`) asks it of an actor it moved while
+        /// paused, and the viruses' reactions (`sub_801B1C4`) answer it.
+        /// The engine has no viruses that read it.
+        const UPDATE_PANELS = 1 << 19;
+        /// Absorbed by side 0 / side 1 (`sub_800F8B0`, DustCross's B+Back):
+        /// it flies to that side's navi (`sub_800F90E`).
+        const ABSORBED_BY_0 = 1 << 20;
+        const ABSORBED_BY_1 = 1 << 21;
+        const ABSORBED = Self::ABSORBED_BY_0.bits() | Self::ABSORBED_BY_1.bits();
+        /// Pushed by a hit, as an obstacle reads the drag bit (hit modifier
+        /// 0x40: `sub_801AD9E`).
+        const PUSHED = Self::DRAG.bits();
+
         /// What dropping the hit in progress clears (`sub_800E9FA`: 0x301FE):
         /// every request but anger.
         const HIT_REQUESTS = Self::FLASH.bits()

@@ -106,39 +106,6 @@ pub enum SharedAction {
     Bubbled,
 }
 
-/// The collision's second word's bits as obstacles read them (`f2`):
-/// besides `StatusRequests::DESTROY`, and `StatusRequests::FLINCH`, a
-/// flinch request (a hit with hit modifier bit 0x1), which a push cancels.
-impl StatusRequests {
-    /// Pushed by a hit (hit modifier 0x40): a navi's drag bit.
-    pub const PUSHED: StatusRequests = StatusRequests::DRAG;
-    /// Picked up to be thrown by side 0 / side 1.
-    pub const THROWN_BY_0: StatusRequests = StatusRequests::from_bits_retain(0x400);
-    pub const THROWN_BY_1: StatusRequests = StatusRequests::from_bits_retain(0x800);
-    pub const THROWN: StatusRequests = StatusRequests::THROWN_BY_0.union(StatusRequests::THROWN_BY_1);
-    /// Encased in ice (0x1000) or a bubble (0x2000).
-    pub const ENCASED_IN_ICE: StatusRequests = StatusRequests::from_bits_retain(0x1000);
-    pub const ENCASED_IN_BUBBLE: StatusRequests = StatusRequests::from_bits_retain(0x2000);
-    pub const ENCASED: StatusRequests = StatusRequests::ENCASED_IN_ICE.union(StatusRequests::ENCASED_IN_BUBBLE);
-    /// Removed by a chip.
-    pub const REMOVED: StatusRequests = StatusRequests::from_bits_retain(0x8000);
-    /// Removed by blinking out.
-    pub const VANISH: StatusRequests = StatusRequests::from_bits_retain(0x4_0000);
-    /// Absorbed by side 0 / side 1.
-    pub const ABSORBED_BY_0: StatusRequests = StatusRequests::from_bits_retain(0x10_0000);
-    pub const ABSORBED_BY_1: StatusRequests = StatusRequests::from_bits_retain(0x20_0000);
-    pub const ABSORBED: StatusRequests = StatusRequests::ABSORBED_BY_0.union(StatusRequests::ABSORBED_BY_1);
-}
-
-/// Status flags (`f1`) only obstacles use.
-impl StatusFlags {
-    /// Being carried to be thrown.
-    pub const CARRIED: StatusFlags = StatusFlags::from_bits_retain(0x0400_0000);
-    /// Encased in ice / in a bubble.
-    pub const ENCASED_ICE: StatusFlags = StatusFlags::from_bits_retain(0x1000_0000);
-    pub const ENCASED_BUBBLE: StatusFlags = StatusFlags::from_bits_retain(0x2000_0000);
-}
-
 /// What a touch by a body, another obstacle or a breaking hit does (the
 /// dispatchers differ there).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
