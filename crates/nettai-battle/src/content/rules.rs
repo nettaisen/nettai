@@ -998,6 +998,91 @@ pub struct RequestClears {
     pub cut_in: RequestSet,
 }
 
+/// A navi's requests (`collision::f2`) the rules name: the engine's, by
+/// their names here, and those its game declares of its own (the reactions
+/// section's `request_bits`: EXE4's counter mark), which
+/// [`reading_requests`] gives while the rules are read. In a content file a
+/// list of names (`requests_by_name`).
+pub const REQUEST_NAMES: &[(u32, &str)] = &[
+    // A hit's and the navi's own.
+    (crate::collision::f2::FLASH, "flash"),
+    (crate::collision::f2::FLINCH, "flinch"),
+    (crate::collision::f2::SLIDE, "slide"),
+    (crate::collision::f2::DRAG, "drag"),
+    (crate::collision::f2::ANGER, "anger"),
+    // The statuses', by their timers' names.
+    (crate::collision::f2::PARALYZE, "paralyze"),
+    (crate::collision::f2::CONFUSE, "confuse"),
+    (crate::collision::f2::BLIND, "blind"),
+    (crate::collision::f2::IMMOBILIZE, "immobilize"),
+    (crate::collision::f2::FREEZE, "freeze"),
+    (crate::collision::f2::BUBBLE, "bubble"),
+];
+
+thread_local! {
+    /// The request bits the rules being read declare of their own
+    /// ([`reading_requests`]).
+    static OWN_REQUESTS: std::cell::RefCell<Vec<(String, u32)>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// `f` with `own`, the request bits a game's rules declare, readable by
+/// name besides the engine's ([`REQUEST_NAMES`]).
+pub(crate) fn reading_requests<T>(own: &[(String, u32)], f: impl FnOnce() -> T) -> T {
+    let before = OWN_REQUESTS.with(|r| r.replace(own.to_vec()));
+    let out = f();
+    OWN_REQUESTS.with(|r| *r.borrow_mut() = before);
+    out
+}
+
+/// A list of request names (the engine's, and those the rules being read
+/// declare) as the request bits: an unknown name, or a number, is an
+/// error.
+pub(crate) fn requests_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
+    let names: Vec<String> = Deserialize::deserialize(d)?;
+    OWN_REQUESTS.with(|own| {
+        let own = own.borrow();
+        let mut bits = 0;
+        for n in &names {
+            let bit = REQUEST_NAMES.iter().find(|x| x.1 == n).map(|x| x.0).or_else(|| own.iter().find(|x| x.0 == *n).map(|x| x.1));
+            let Some(bit) = bit else {
+                let known: Vec<&str> = REQUEST_NAMES.iter().map(|x| x.1).chain(own.iter().map(|x| x.0.as_str())).collect();
+                return Err(serde::de::Error::custom(format!("unknown request {n:?} (the requests: {})", known.join(", "))));
+            };
+            bits |= bit;
+        }
+        Ok(bits)
+    })
+}
+
+/// A game's own bits of a word, as its rules declare them (`{ name = bit }`):
+/// each a single bit, its name and bit none of `engine`'s, its bit no other
+/// name's. `what` names the declaration in errors.
+pub(crate) fn declared_bits(spec: &nettai_content_api::Data, engine: &[(u32, &str)], what: &str) -> Result<Vec<(String, u32)>, String> {
+    use nettai_content_api::Data;
+    let entries = match spec {
+        Data::Nil => return Ok(Vec::new()),
+        Data::Map(entries) => entries,
+        _ => return Err(format!("{what} is a table of bits by name")),
+    };
+    let mut out: Vec<(String, u32)> = Vec::new();
+    for (k, v) in entries {
+        let name = k.to_string();
+        let bit = match v {
+            Data::Int(b) if u32::try_from(*b).is_ok_and(|b| b.count_ones() == 1) => *b as u32,
+            _ => return Err(format!("{what}.{name} is not a single bit of a word")),
+        };
+        if let Some(&(_, engine_name)) = engine.iter().find(|x| x.1 == name || x.0 == bit) {
+            return Err(format!("{what}.{name}: the engine names {bit:#x} or {name:?} (as {engine_name:?})"));
+        }
+        if let Some((other, _)) = out.iter().find(|x| x.1 == bit) {
+            return Err(format!("{what}.{name} and {what}.{other} are both {bit:#x}"));
+        }
+        out.push((name, bit));
+    }
+    out.sort();
+    Ok(out)
+}
+
 /// Collision flags a status end clears, in a content file a list of their
 /// names (`StatusFlag`'s): the statuses'.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -1037,15 +1122,18 @@ serde_flags!(StatusTimers, u16);
 
 /// What a navi's statuses' end clears (EXE6's `sub_801A264`, EXE4's
 /// 0x08013218): its statuses' flags, its requests (the collision's second
-/// word: the statuses' own, the status table's `requests`) and its timers.
-/// EXE6's: the six statuses' flags (0x8001E800), the requests 0x300E8 and
-/// the six timers; EXE4's, a game with no freeze and no bubble, the four
-/// others' (0xE800), the requests 0x8068 and the four timers (its flag
-/// 0x10000 holds a navi changing into a soul).
+/// word, in a content file a list of their names: [`REQUEST_NAMES`] and
+/// the game's own) and its timers. EXE6's: the six statuses' flags
+/// (0x8001E800), their requests (0x300E8) and the six timers; EXE4's, a
+/// game with no freeze and no bubble, the four others' flags (0xE800), the
+/// paralysis's, blindness's and immobilization's requests with its own
+/// counter mark (0x8068) and the four timers (its flag 0x10000 holds a navi
+/// changing into a soul).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StatusEnd {
     pub flags: StatusFlags,
+    #[serde(deserialize_with = "requests_by_name")]
     pub requests: u32,
     pub timers: StatusTimers,
 }
@@ -1233,14 +1321,37 @@ pub struct HpDrainRule {
 
 /// The custom screen's HP bug (`sub_80102AC`, EXE5's 0x0800E034, EXE4's
 /// 0x0800C194): a point of HP every period while the side's status (the
-/// link's status byte, BattleState +0x14) has one of `status`'s bits: bit
-/// 2 its screen is up, bit 0 its selection runs (EXE6's and EXE5's 5,
-/// EXE4's 1).
+/// link's status byte, BattleState +0x14: `battle::remote_status`) has one
+/// of `status`'s bits, in a content file a list of their names
+/// ([`REMOTE_STATUS_NAMES`]): EXE6's and EXE5's its screen is up or its
+/// selection runs, EXE4's its selection runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct CustomDrainRule {
     pub periods: DrainPeriods,
+    #[serde(deserialize_with = "remote_status_by_name")]
     pub status: u8,
+}
+
+/// A side's status bits (`battle::remote_status`) by name.
+pub const REMOTE_STATUS_NAMES: &[(u8, &str)] = &[
+    (crate::battle::remote_status::SELECTING, "selecting"),
+    (crate::battle::remote_status::CUSTOM_SCREEN, "custom_screen"),
+];
+
+/// A list of a side's status names as its bits: an unknown name, or a
+/// number, is an error.
+fn remote_status_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u8, D::Error> {
+    let names: Vec<String> = Deserialize::deserialize(d)?;
+    let mut bits = 0;
+    for n in &names {
+        let Some(&(bit, _)) = REMOTE_STATUS_NAMES.iter().find(|x| x.1 == n) else {
+            let known: Vec<&str> = REMOTE_STATUS_NAMES.iter().map(|x| x.1).collect();
+            return Err(serde::de::Error::custom(format!("unknown status {n:?} (a side's status: {})", known.join(", "))));
+        };
+        bits |= bit;
+    }
+    Ok(bits)
 }
 
 /// How a navi takes a hit's NaviCust bug, where games differ (`sub_801AC6C`,
@@ -1288,7 +1399,7 @@ pub enum ChipDestruction {
 
 /// What a side's defensive chip catches (`IntakeRules::anti_traps`: EXE6's
 /// `sub_802CEF4`, EXE5's 0x08029A60, EXE4's 0x08023048).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct AntiTraps {
     /// AntiDmg catches a hit of at least this much damage (EXE6's 10;
@@ -1300,10 +1411,12 @@ pub struct AntiTraps {
     /// A sword's hit (hit flags 0x2000) with any of these flags isn't
     /// AntiSwrd's (EXE6's 0x20000; EXE5's and EXE4's none).
     pub sword_spares: u32,
-    /// A caught hit drops these of the navi's pending requests (its flags2)
-    /// too, a panel's slide asked for that tick among them (EXE6's 0x301BE;
-    /// EXE5's and EXE4's none: a move that ends on ice as the trap catches
-    /// a hit still slides).
+    /// A caught hit drops these of the navi's pending requests (its flags2,
+    /// in a content file a list of their names: [`REQUEST_NAMES`]) too, a
+    /// panel's slide asked for that tick among them (EXE6's 0x301BE, every
+    /// request but immobilization's and anger's; EXE5's and EXE4's none: a
+    /// move that ends on ice as the trap catches a hit still slides).
+    #[serde(deserialize_with = "requests_by_name")]
     pub drops_requests: u32,
 }
 
@@ -1984,6 +2097,11 @@ pub struct Rules {
     /// The battle's flow where a game's differs (rule section `flow`, the
     /// arena's game's).
     pub flow: FlowRules,
+    /// The battle effects (`BattleSettings::effects`) its game names of its
+    /// own (the flow section's `effect_bits`), by name, in name order: what
+    /// its stages may name besides `setup::effects::NAMES`, and what
+    /// `battle.has_effect` reads.
+    pub effect_bits: Vec<(String, u32)>,
     /// The slots of a side's statistics its content names (rule section
     /// `side_stats`).
     pub side_stats: SideStats,
@@ -2357,7 +2475,10 @@ impl StepRuleSet {
     }
 }
 
-/// The status timer a status effect sets (a collision field).
+/// The status a status effect is (`new.status`'s `timer`): the collision
+/// timer it sets and the request it raises. Every row of the original's
+/// table is one of these, but for those its readers find past the table's
+/// end, which nothing inflicts.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum StatusTimer {
@@ -2365,57 +2486,81 @@ pub enum StatusTimer {
     Confuse,
     Blind,
     Immobilize,
-    Flash,
-    /// `collision::timer::SUBMERGED`.
-    Submerged,
-    Invulnerable,
     Freeze,
     Bubble,
-    /// Table garbage (statuses past a group's end): the collision panel.
-    CollisionPanel,
-    /// Table garbage: another collision field, by the original's offset.
-    Other(u8),
 }
 
 impl StatusTimer {
-    /// The engine's status timer it sets (`collision::timer`); none for
-    /// table garbage.
-    pub fn timer(self) -> Option<usize> {
+    /// The engine's status timer it sets (`collision::timer`).
+    pub fn timer(self) -> usize {
         use crate::collision::timer;
-        Some(match self {
+        match self {
             StatusTimer::Paralyze => timer::PARALYZE,
             StatusTimer::Confuse => timer::CONFUSE,
             StatusTimer::Blind => timer::BLIND,
             StatusTimer::Immobilize => timer::IMMOBILIZE,
-            StatusTimer::Flash => timer::FLASH,
-            StatusTimer::Submerged => timer::SUBMERGED,
-            StatusTimer::Invulnerable => timer::INVULNERABLE,
             StatusTimer::Freeze => timer::FREEZE,
             StatusTimer::Bubble => timer::BUBBLE,
-            StatusTimer::CollisionPanel | StatusTimer::Other(_) => return None,
-        })
+        }
+    }
+
+    /// The request it raises (`collision::f2`): every status of the
+    /// original's table raises its own timer's.
+    pub fn request(self) -> u32 {
+        use crate::collision::f2;
+        match self {
+            StatusTimer::Paralyze => f2::PARALYZE,
+            StatusTimer::Confuse => f2::CONFUSE,
+            StatusTimer::Blind => f2::BLIND,
+            StatusTimer::Immobilize => f2::IMMOBILIZE,
+            StatusTimer::Freeze => f2::FREEZE,
+            StatusTimer::Bubble => f2::BUBBLE,
+        }
     }
 }
 
 /// A status effect (`new.status`): the requests it raises, its duration
-/// and its timer.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
+/// and its timer. In a content file its timer, duration and flags: the
+/// requests are its timer's (`StatusTimer::request`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(from = "StatusSpec")]
 pub struct StatusEffect {
-    /// Request bits (`ObjectFlags2`).
+    /// Request bits (`collision::f2`).
     pub requests: u32,
     pub duration: u16,
     pub timer: StatusTimer,
     /// The hit that lands it doesn't flinch or flash its target: applying
     /// it drops those requests (`sub_801A554`: the freezing statuses,
     /// the original's bytes 0x50 to 0x55).
-    #[serde(default)]
     pub cancels_flinch: bool,
     /// A counter hit that lands it keeps it rather than paralyzing
     /// (`sub_800EB26`: the bubbling statuses, the original's bytes 0x60 to
     /// 0x65).
-    #[serde(default)]
     pub survives_counter: bool,
+}
+
+/// A status effect as a content file states it.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct StatusSpec {
+    duration: u16,
+    timer: StatusTimer,
+    #[serde(default)]
+    cancels_flinch: bool,
+    #[serde(default)]
+    survives_counter: bool,
+}
+
+impl From<StatusSpec> for StatusEffect {
+    fn from(s: StatusSpec) -> StatusEffect {
+        StatusEffect {
+            requests: s.timer.request(),
+            duration: s.duration,
+            timer: s.timer,
+            cancels_flinch: s.cancels_flinch,
+            survives_counter: s.survives_counter,
+        }
+    }
 }
 
 /// The chip record an empty hand reads. A hand with no chip left holds

@@ -481,7 +481,7 @@ impl CoreApi for Battle {
         match f {
             BattleInfo::Link => Value::Bool(self.setup.settings.effects & crate::setup::effects::LINK != 0),
             BattleInfo::BossRank => Value::Bool(self.setup.settings.effects & crate::setup::effects::BOSS_RANK != 0),
-            BattleInfo::Effects => Value::Int(self.setup.settings.effects as i64),
+            BattleInfo::Random => Value::Bool(self.setup.settings.effects & crate::setup::effects::RANDOM != 0),
             BattleInfo::Mode => Value::Int(self.round.mode_copy as i64),
             BattleInfo::PanelPattern => Value::Int(self.content.stage(self.setup.settings.stage).panel_pattern as i64),
             BattleInfo::NavisIn => Value::Bool(self.round.intro_bits & 0x02 != 0),
@@ -495,6 +495,18 @@ impl CoreApi for Battle {
             BattleInfo::LateTurns => Value::Bool(self.late_turns()),
             BattleInfo::ScreenFading => Value::Bool(self.fade.active()),
         }
+    }
+
+    fn has_effect(&self, name: &str) -> ApiResult<bool> {
+        let own = &self.content.rules().effect_bits;
+        let Some(&(_, bit)) = own.iter().find(|x| x.0 == name) else {
+            let names: Vec<&str> = own.iter().map(|x| x.0.as_str()).collect();
+            return Err(ApiError::Other(format!(
+                "no battle effect of its game's rules is named {name:?} (their `flow.effect_bits`: {}; the engine's are battle.link(), battle.boss_rank(), battle.random())",
+                if names.is_empty() { "none".to_string() } else { names.join(", ") }
+            )));
+        };
+        Ok(self.setup.settings.effects & bit != 0)
     }
 
     fn shake_camera(&mut self, magnitude: u16, ticks: u16) {

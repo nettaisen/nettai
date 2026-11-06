@@ -21,6 +21,15 @@ use crate::sound::SoundCue;
 use nettai_content_api::ChipHandle;
 use std::sync::Arc;
 
+/// A side's status bits as the link delivers them (`Round::remote_status`,
+/// BattleState +0x14).
+pub mod remote_status {
+    /// Its custom screen's selection runs (EXE4's custom drain reads it).
+    pub const SELECTING: u8 = 1 << 0;
+    /// Its custom screen is open.
+    pub const CUSTOM_SCREEN: u8 = 1 << 2;
+}
+
 /// Battle flag bits.
 pub mod battle_flags {
     /// The fight has started (collision is live).
@@ -1141,7 +1150,8 @@ impl Battle {
         for p in 0..2 {
             self.inputs[p].update(input[p].held & 0x3FF | keys::PRESENT);
             let side = &self.custom.sides[p];
-            self.round.remote_status[p] = (if side.in_custom { 4 } else { 0 }) | side.selecting as u8;
+            self.round.remote_status[p] =
+                (if side.in_custom { remote_status::CUSTOM_SCREEN } else { 0 }) | if side.selecting { remote_status::SELECTING } else { 0 };
         }
         self.read_switch_requests(input);
         self.mic_levels = input.each_ref().map(|t| if t.mic_loud { u8::MAX } else { 0 });

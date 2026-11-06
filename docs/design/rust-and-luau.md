@@ -213,8 +213,9 @@ Each with what it was and what it is now.
   `SoundRole::CustomShade` (`custom_shade`). `ChipFlags::DARK` stays: a chip category of the series, as Mega and
   Giga are, which both games' rules read.
 - **D2.** `dark_substitute` is `rules_substitute`.
-- **D3.** `BattleInfo::{NoDarkChips, LightDarkHeld}` and `effects::{NO_DARK_CHIPS, LIGHT_DARK_HELD}` are
-  `BattleInfo::Effects` (`battle.effects()`), whose bits EXE5's rules/light_dark names.
+- **D3.** `BattleInfo::{NoDarkChips, LightDarkHeld}` and `effects::{NO_DARK_CHIPS, LIGHT_DARK_HELD}` are EXE5's own
+  battle effects, which its rules declare (`flow.effect_bits`: `dark_chips_fizzle`, `karma_held`) and read by name
+  (`battle.has_effect`).
 - **E1.** A game's emotions are its rules' data: the status section's `emotion.order`, the game's emotions by name in
   the order its routine reads them (the first case that holds is the side's), each case's alternatives over the
   framework's facts (`mood`, `mood_below`, `angry`, `tired`, `exhausted`, `in_form`, `battle_mode`), and `roles`,

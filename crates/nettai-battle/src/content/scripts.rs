@@ -631,13 +631,13 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         dead_player = "kept",
         attack_end_lockout = "by_kind",
         request_clears = { attack = { "mode9_a" }, paralysis = { "mode9_a" }, flinch = { "anti_sword_triggered" }, drag = { 0x400 }, cut_in = { "chip", "charged_chip" } },
-        status_end = { flags = { "paralyzed", "blind", "immobilized", "confused" }, requests = 0x8068, timers = { "paralyze", 0x2, "blind", "immobilize" } },"#,
+        status_end = { flags = { "paralyzed", "blind", "immobilized", "confused" }, requests = { "paralyze", "blind", "immobilize" }, timers = { "paralyze", 0x2, "blind", "immobilize" } },"#,
             ),
             (
                 "status",
                 r#"
         hp_drain = { periods = row(8, 30), stops_while_paused = true },
-        custom_drain = { periods = "stat", status = 5 },
+        custom_drain = { periods = "stat", status = { "selecting", "custom_screen" } },
         form_tick = false,
         form_keeps_back_special = false,
         flash_hides_on_clear = true,
@@ -649,7 +649,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         hp_loss = "hp_alone",
         hit_sound = "by_console",
         barrier = { stops_while_paused = true, wind = "pops" },
-        anti_traps = { damage_min = 10, armed_swallows_below = true, sword_spares = 0x20000, drops_requests = 0x301BE },
+        anti_traps = { damage_min = 10, armed_swallows_below = true, sword_spares = 0x20000, drops_requests = { "flinch", "slide" } },
         chip_destruction = "next",
         emotion = { mood_held = "at_zero", anger_end = "resets_mood", order = { { emotion = "worn_out", when = { { mood = 0 }, { exhausted = true } } }, { emotion = "worried", when = { { mood_below = 40, in_form = false } } }, { emotion = "normal" } }, roles = { worn_out = "worn_out" }, hit_mood = "counter_counts", hitter_gain = "to_full", full_synchro_spent = 0x99, anger_boost_sound = false },
         form_break = "marked_forms",
@@ -727,10 +727,15 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!((f.reg_up, f.custom_level, f.mood), (7, 6, 0x70));
         assert_eq!((f.stats, f.mode9_a), (Default::default(), None), "none stated: none of the game's own, no weapon");
         assert_eq!((r.panels.numbered(2), r.panels.numbered(3)), (Some(crate::field::PanelType(2)), None), "its own numbers, no others");
-        // A status end's flags and timers by name or number (EXE4's: four
-        // of each).
+        // A status end's flags and timers by name or number, its requests by
+        // name (EXE4's: four flags and timers, three of the statuses'
+        // requests).
         let end = r.status_end;
-        assert_eq!((end.flags.0, end.requests, end.timers.0), (0xE800, 0x8068, 0b1111));
+        assert_eq!((end.flags.0, end.requests, end.timers.0), (0xE800, 0x68, 0b1111));
+        // A side's status and requests by name.
+        assert_eq!((r.custom_drain.status, r.intake.anti_traps.drops_requests), (5, 0x14));
+        // No bits of the game's own declared, none.
+        assert!(r.effect_bits.is_empty());
         // What it may leave out reads as nothing, for every game.
         assert!(r.holding_banners.is_empty());
         assert!(r.sine.is_empty() && r.buster_recovery.is_empty());
@@ -766,6 +771,42 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         // A field of a table of settings, too.
         let e = game(rules(None, None, Some((" elec_reaches_submerged = true,", "")))).unwrap_err();
         assert!(e.contains("rules: reactions.hit_test: missing field `elec_reaches_submerged`"), "{e}");
+        // Requests, a side's status and battle effects by name: the engine's,
+        // and those the game declares of its own, once (EXE4's counter mark;
+        // EXE5's battle effects), which any section names. A number, or a
+        // name neither has, is refused.
+        let own = |reactions: &str, flow: &str| -> Result<Content, String> {
+            let text = rules(None, None, Some(("idle_entry_counter = true,", &format!("idle_entry_counter = true,\n        {reactions}"))));
+            game(text.replace("intro_steps_on_init = false,", &format!("intro_steps_on_init = false,\n        {flow}")))
+        };
+        let c = own("request_bits = { counter_mark = 0x8000 },", "effect_bits = { karma_held = 0x20000, shuffled_folder = 0x80 },").unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(c.rules().effect_bits, vec![("karma_held".to_string(), 0x20000), ("shuffled_folder".to_string(), 0x80)]);
+        let named = |from: &str, to: &str| {
+            let text = rules(None, None, Some(("idle_entry_counter = true,", "idle_entry_counter = true,\n        request_bits = { counter_mark = 0x8000 },")));
+            game(text.replace(from, to))
+        };
+        let c = named("requests = { \"paralyze\", \"blind\", \"immobilize\" }", "requests = { \"paralyze\", \"blind\", \"immobilize\", \"counter_mark\" }").unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(c.rules().status_end.requests, 0x8068);
+        let c = named("drops_requests = { \"flinch\", \"slide\" }", "drops_requests = { \"counter_mark\" }").unwrap_or_else(|e| panic!("{e}"));
+        assert_eq!(c.rules().intake.anti_traps.drops_requests, 0x8000);
+        let e = game(rules(None, None, Some(("requests = { \"paralyze\", \"blind\", \"immobilize\" }", "requests = { \"paralyze\", \"counter_mark\" }")))).unwrap_err();
+        assert!(e.contains("rules: reactions.status_end.requests: unknown request \"counter_mark\" (the requests: flash, flinch, slide,"), "{e}");
+        let e = game(rules(None, None, Some(("requests = { \"paralyze\", \"blind\", \"immobilize\" }", "requests = 0x8068")))).unwrap_err();
+        assert!(e.contains("rules: reactions.status_end.requests: invalid type: integer `32872`, expected a sequence"), "{e}");
+        let e = game(rules(None, None, Some(("drops_requests = { \"flinch\", \"slide\" }", "drops_requests = { 0x4 }")))).unwrap_err();
+        assert!(e.contains("rules: status.anti_traps.drops_requests[0]: invalid type: integer `4`, expected a string"), "{e}");
+        let e = game(rules(None, None, Some(("status = { \"selecting\", \"custom_screen\" }", "status = { \"choosing\" }")))).unwrap_err();
+        assert!(e.contains("unknown status \"choosing\" (a side's status: selecting, custom_screen)"), "{e}");
+        let e = own("request_bits = { flinch = 0x8000 },", "").unwrap_err();
+        assert!(e.contains("rules: reactions.request_bits.flinch: the engine names 0x8000 or \"flinch\""), "{e}");
+        let e = own("request_bits = { counter_mark = 0x4 },", "").unwrap_err();
+        assert!(e.contains("rules: reactions.request_bits.counter_mark: the engine names 0x4"), "{e}");
+        let e = own("request_bits = { counter_mark = 0x8001 },", "").unwrap_err();
+        assert!(e.contains("rules: reactions.request_bits.counter_mark is not a single bit"), "{e}");
+        let e = own("", "effect_bits = { link = 0x8 },").unwrap_err();
+        assert!(e.contains("rules: flow.effect_bits.link: the engine names 0x8 or \"link\""), "{e}");
+        let e = own("", "effect_bits = { a = 0x80, b = 0x80 },").unwrap_err();
+        assert!(e.contains("rules: flow.effect_bits.b and flow.effect_bits.a are both 0x80"), "{e}");
         // The fresh stats' weapon is a weapon the content defines.
         let with_weapon = |weapon: &str| -> Result<Content, String> {
             let mut c = Content::default();
@@ -781,6 +822,24 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert!(c.rules().fresh_stats.mode9_a.is_some());
         let e = with_weapon("3").unwrap_err();
         assert!(e.contains("game/rules/init.luau: rules: fresh_stats.mode9_a: a weapon (a `new.weapon`), not"), "{e}");
+        // A status is its timer, which gives its request: one of the six,
+        // and no word of requests besides.
+        let with_status = |status: &str| -> Result<Content, String> {
+            let mut c = Content::default();
+            // (Reached from the root: a role's.)
+            let text = rules(None, None, None).replacen("return {\n", "return {\n    roles = { statuses = { counter_paralysis = stun } },\n", 1);
+            let text = format!("local stun = new.status {{ id = 'stun', {status} }}\n{text}");
+            c.scripts.add_game("game", [("rules/init".to_string(), text)].into());
+            c.define().map_err(|e| e.message)?;
+            Ok(c)
+        };
+        let c = with_status("duration = 30, timer = 'bubble'").unwrap_or_else(|e| panic!("{e}"));
+        let bubble = c.status(c.defs.status_by_key("stun").expect("the status"));
+        assert_eq!((bubble.requests, bubble.duration, bubble.timer), (0x2_0000, 30, crate::content::StatusTimer::Bubble));
+        let e = with_status("requests = 0x20000, duration = 30, timer = 'bubble'").unwrap_err();
+        assert!(e.contains("status stun: stun.requests: unknown field `requests`"), "{e}");
+        let e = with_status("duration = 30, timer = 'flash'").unwrap_err();
+        assert!(e.contains("status stun: stun.timer: unknown variant `flash`"), "{e}");
         // A rule is one of the engine's, by name.
         let e = game(rules(None, None, Some(("shake = \"battle_rng\"", "shake = \"exe5\"")))).unwrap_err();
         assert!(e.contains("rules: effects.shake: unknown variant `exe5`, expected `console_rng` or `battle_rng`"), "{e}");

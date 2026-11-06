@@ -1474,8 +1474,14 @@ declare battle: {
     link: () -> boolean,
     -- A battle against a ranked boss (battle effect 1).
     boss_rank: () -> boolean,
-    -- The battle's effects (its settings' word), whose bits a game's rules read by their own names.
-    effects: () -> number,
+    -- A random battle (battle effect 0x200000: EXE6's random link battle's
+    -- stages).
+    random: () -> boolean,
+    -- Whether the battle has the effect `name`, one its game's rules declare
+    -- of their own (their `flow.effect_bits`: EXE5's "karma_held"); the
+    -- engine's are `link`, `boss_rank` and `random`. Another name is an
+    -- error.
+    has_effect: (name: string) -> boolean,
     mode: () -> number,
     panel_pattern: () -> number,
     -- Every navi is in (the intro's bit 2).
@@ -2286,6 +2292,16 @@ export type WindowSpec = {
 -- A section is a table of its rules by name, which the engine reads by its
 -- schema. Named records need no string indexer. A table, rather than `any`,
 -- keeps required sections required; the loader validates each section's fields.
+--
+-- The rules name bits by name, and declare once, as `{ name = bit }`, the
+-- bits their game has of its own: `reactions.request_bits`, requests (a
+-- navi's collision's second word) besides the engine's ("flash", "flinch",
+-- "slide", "drag", "anger" and the statuses', "paralyze" to "bubble"),
+-- which any section may name (`reactions.status_end.requests`,
+-- `status.anti_traps.drops_requests`); and `flow.effect_bits`, battle
+-- effects besides the engine's (`StageDef.effects`), which its stages name
+-- and `battle.has_effect` reads. A side's status (`status.custom_drain`'s
+-- `status`) is "selecting" or "custom_screen".
 export type RuleSection = {}
 export type RulesSpec = {
     -- What a side keeps through a round (its state, which only the rules' own
@@ -2700,8 +2716,10 @@ export type ChipSpec = {
     hit_param: number?,
     lockout: number?,
     flags: { string }?,
-    -- Named bits, and the value of a bit the engine doesn't name yet.
-    extra_flags: { string | number }?,
+    -- The record's second flag byte, the bits the engine reads: "rush_cancels"
+    -- (the opponent's Rush cancels it), "modifier" (the menus class it with
+    -- the modifier chips), "free_slot_in" (it costs no slot-in gauge).
+    extra_flags: { "rush_cancels" | "modifier" | "free_slot_in" }?,
     slot_in_limit: number?,
     -- What the rules ask of the chip: "no_chain" (the Beast rush's
     -- chain leaves it out), "aura_bonus" (it hits harder while the user's
@@ -3127,19 +3145,24 @@ export type StageDef = {
     music: Sound?,
     mode: number,
     battle_number: number,
-    effects: number?,
+    -- The battle effects a round on it runs with, by name: the engine's
+    -- ("boss_rank", "full_hp", "link", "set", "random", "no_switch_voice")
+    -- and those its game's rules declare of their own (`flow.effect_bits`:
+    -- "shuffled_folder"). The loader refuses another name.
+    effects: { string }?,
     actors: { StageActor },
 }
--- A status (rules/status): the requests it raises on its target
--- (`ObjectFlags2` bits), for how long, and the timer it runs on.
+-- What a status is: the status timer it sets and the request it raises.
+export type StatusKind = "paralyze" | "confuse" | "blind" | "immobilize" | "freeze" | "bubble"
+-- A status (rules/status): for how long, and what it is (`timer`: the timer
+-- it runs on and the request it raises on its target, that timer's).
 -- `cancels_flinch`: the hit that lands it doesn't flinch or flash its
 -- target (the freezing statuses). `survives_counter`: a counter hit that
 -- lands it keeps it rather than paralyzing (the bubbling statuses).
 export type StatusDef = {
     id: string?,
-    requests: number,
     duration: number,
-    timer: string | { other: number },
+    timer: StatusKind,
     cancels_flinch: boolean?,
     survives_counter: boolean?,
 }

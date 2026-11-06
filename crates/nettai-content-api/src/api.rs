@@ -671,10 +671,10 @@ named_fields! {
         /// A battle against a ranked boss (battle effect 1: LifeSync does
         /// nothing in one, `sub_80E72C8`).
         BossRank = "boss_rank", Bool, ro;
-        /// The battle's effects (its settings' word), whose bits a game's
-        /// rules read by their own names (EXE5's 0x20000, a held light/dark
-        /// value; 0x100000, dark chips fizzle).
-        Effects = "effects", U32, ro;
+        /// A random battle (battle effect 0x200000: EXE6's random link
+        /// battle's stages). A game's own battle effects are its rules'
+        /// (`CoreApi::has_effect`).
+        Random = "random", Bool, ro;
         Mode = "mode", U8, ro;
         PanelPattern = "panel_pattern", U8, ro;
         /// Every navi is in (the intro's bit 2).
@@ -1610,6 +1610,11 @@ pub trait CoreApi {
     /// empty hand reads `Rules::empty_hand`; another object's own chip).
     fn next_chip_damages(&self, user: ObjectRef) -> bool;
     fn battle_info(&self, f: BattleInfo) -> Value;
+    /// Whether the battle has the effect `name`, one its game's rules name
+    /// of their own (their `flow.effect_bits`: EXE5's `karma_held`); the
+    /// engine's are `BattleInfo`'s (`Link`, `BossRank`, `Random`). Another
+    /// name is an error.
+    fn has_effect(&self, name: &str) -> ApiResult<bool>;
     /// Report a sound effect both players hear (output only; nothing in
     /// the simulation reads it).
     fn play_sound(&mut self, sound: u16);

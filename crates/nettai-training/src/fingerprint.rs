@@ -562,7 +562,7 @@ impl Sandbox {
             // rules' own collision types for a hit that reaches navis: it
             // lands as any attack's status does, through the target's
             // intake, or doesn't.)
-            let t = b.content.status(status).timer.timer()?;
+            let t = b.content.status(status).timer.timer();
             let owner = navi(&b, 0)?;
             let roles = b.roles();
             let spec = nettai_battle::kinds::hitbox::HitboxSpec {
@@ -933,7 +933,10 @@ impl Conditions {
     pub fn of(content: &Content) -> Conditions {
         let mut statuses: [Option<StatusHandle>; STATUSES] = [None; STATUSES];
         for (i, def) in content.defs.statuses.iter().enumerate() {
-            let Some(t) = def.effect.timer.timer().filter(|&t| t < STATUSES) else { continue };
+            let t = def.effect.timer.timer();
+            if t >= STATUSES {
+                continue;
+            }
             if statuses[t].is_none_or(|h| content.status(h).duration < def.effect.duration) {
                 statuses[t] = Some(StatusHandle(i as u16));
             }

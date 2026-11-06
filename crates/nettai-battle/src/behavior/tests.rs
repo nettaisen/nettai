@@ -1386,7 +1386,8 @@ fn gc_timing_does_not_reach_the_battle() {
 
 /// EXE5's dark chips' writes (content/exe5/rules/light_dark): `sub_800AB2E`
 /// sets a side's statistic (where `sub_800AB46` adds), the mood is
-/// writable, and the battle effects read as they are (`effects`).
+/// writable, and the battle effects read by name: the engine's as
+/// `battle_info`, the game's own as its rules name them (`has_effect`).
 #[test]
 fn a_side_stat_and_the_mood_are_set() {
     use nettai_content_api::api::{BattleInfo, CoreApi, NaviStat};
@@ -1398,10 +1399,17 @@ fn a_side_stat_and_the_mood_are_set() {
     assert_eq!(CoreApi::side_stat(&b, 0, 2), 0);
     CoreApi::set_navi_stat(&mut b, nettai_content_api::StatsOf::side(0), NaviStat::Mood, Value::Int(0)).unwrap();
     assert_eq!(b.stats[0].mood, 0);
-    let effects = b.setup.settings.effects;
-    assert_eq!(CoreApi::battle_info(&b, BattleInfo::Effects), Value::Int(effects as i64));
+    assert_eq!(CoreApi::battle_info(&b, BattleInfo::Random), Value::Bool(false));
+    b.setup.settings.effects |= crate::setup::effects::RANDOM;
+    assert_eq!(CoreApi::battle_info(&b, BattleInfo::Random), Value::Bool(true));
+    assert!(CoreApi::has_effect(&b, "dark_chips_fizzle").is_err(), "a name its rules don't declare");
+    assert!(CoreApi::has_effect(&b, "random").is_err(), "an engine name is battle_info's");
+    let mut content = (*b.content).clone();
+    content.rules.as_mut().expect("the test content's rules").effect_bits = vec![("dark_chips_fizzle".into(), 0x10_0000)];
+    b.content = std::sync::Arc::new(content);
+    assert_eq!(CoreApi::has_effect(&b, "dark_chips_fizzle").ok(), Some(false));
     b.setup.settings.effects |= 0x10_0000;
-    assert_eq!(CoreApi::battle_info(&b, BattleInfo::Effects), Value::Int((effects | 0x10_0000) as i64));
+    assert_eq!(CoreApi::has_effect(&b, "dark_chips_fizzle").ok(), Some(true));
 }
 
 // ---- Dimming chip subtypes 2, 3, 5, 15 and 27 (the panel changes) ---------------------------

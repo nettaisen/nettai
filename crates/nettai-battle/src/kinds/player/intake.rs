@@ -9,7 +9,7 @@ use super::{
 };
 use crate::battle::{Battle, battle_flags};
 use crate::collision::{CollisionData, f1, hit, timer, types};
-use crate::content::{EffectRole, SecondaryElements, SparkRole, StatusRole, StatusTimer};
+use crate::content::{EffectRole, SecondaryElements, SparkRole, StatusRole};
 use crate::object::{ObjectRef, Vec3};
 
 /// `sub_801AC6C`.
@@ -605,19 +605,7 @@ fn apply_status(b: &mut Battle, r: ObjectRef) {
 /// `sub_801A77A`).
 pub(crate) fn take_status(b: &mut Battle, r: ObjectRef, s: nettai_content_api::StatusHandle) {
     let e = b.content.status(s);
-    let c = coll_mut(b, r);
-    let t = match e.timer {
-        StatusTimer::CollisionPanel => {
-            // Garbage entries (the original's statuses past a group's end)
-            // write the collision panel.
-            c.panel.x = e.duration as u8;
-            c.panel.y = (e.duration >> 8) as u8;
-            return set_flag2(b, r, e.requests);
-        }
-        StatusTimer::Other(off) => panic!("status {} writes CollisionData+{off:#x}", b.content.defs.statuses[s.index()].key),
-        t => t.timer().expect("one of the engine's status timers"),
-    };
-    c.status_timers[t] = e.duration;
+    coll_mut(b, r).status_timers[e.timer.timer()] = e.duration;
     set_flag2(b, r, e.requests);
     if e.cancels_flinch {
         clear_flag2(b, r, 0x6);
