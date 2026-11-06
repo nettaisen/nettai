@@ -1461,7 +1461,7 @@ fn a_panic_inside_content_leaves_the_vm_sound() {
                 .is_some_and(|h| nettai_content_api::keys::local(&c.content.defs.action(h).key) == "gundels3/action")
         {
             let actor = c.objects.get(p).actor.unwrap();
-            c.actors.get_mut(actor).requests |= crate::actor::request::ANTI_SWORD_TRIGGERED;
+            c.actors.get_mut(actor).requests.insert(crate::actor::Requests::ANTI_SWORD_TRIGGERED);
         }
         let tick = || with_runtime(&shared, || c.tick(&u.input, u.events.clone()));
         if std::panic::catch_unwind(std::panic::AssertUnwindSafe(tick)).is_err() {

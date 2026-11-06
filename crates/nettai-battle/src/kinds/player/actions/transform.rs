@@ -5,7 +5,7 @@
 //! content/exe6/rules/forms (docs/design/rules-in-luau.md §3.1). See
 //! docs/engine/battle-flow.md §3.4.1 and objects-and-player.md §12.9-§12.10.
 
-use crate::actor::status;
+use crate::actor::{ActorStatus, Requests};
 use crate::battle::{Battle, BattleFlags};
 use crate::collision::{f1, link, timer};
 use crate::content::{EffectRole, SoundRole};
@@ -84,7 +84,7 @@ pub(crate) fn drop_statuses(b: &mut Battle, r: ObjectRef) {
     // The slide request.
     clear_flag2(b, r, 0x10);
     b.objects.get_mut(r).slide_state = 0;
-    ai_mut(b, r).status &= !(status::HEAT_TRAP | status::TRAP_ARMED);
+    ai_mut(b, r).status.remove(ActorStatus::HEAT_TRAP | ActorStatus::TRAP_ARMED);
     let c = coll_mut(b, r);
     c.status_timers[timer::PARALYZE] = 0;
     c.status_timers[timer::FREEZE] = 0;
@@ -164,8 +164,19 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
     if timer_running(b, r) {
         return;
     }
-    ai_mut(b, r).requests &= !0x1000_863D;
-    ai_mut(b, r).status &= !(status::HEAT_TRAP | status::TRAP_ARMED | status::REVERTING_FORM);
+    // (The original's mask, 0x1000863D.)
+    ai_mut(b, r).requests.remove(
+        Requests::BUSTER
+            | Requests::CHIP
+            | Requests::CHARGED_CHIP
+            | Requests::BACK_SPECIAL
+            | Requests::FORCED_CHARGED_SHOT
+            | Requests::ANTI_DAMAGE_TRIGGERED
+            | Requests::ANTI_SWORD_TRIGGERED
+            | Requests::BODY_GUARD_TRIGGERED
+            | Requests::MODE9_A,
+    );
+    ai_mut(b, r).status.remove(ActorStatus::HEAT_TRAP | ActorStatus::TRAP_ARMED | ActorStatus::REVERTING_FORM);
     // The rules' (EXE5 DS's guard and dive end, 0x020605A0).
     let side = b.objects.get(r).alliance;
     b.rules_revert_finished(side, r);
@@ -202,7 +213,7 @@ fn calm_down(b: &mut Battle, r: ObjectRef) {
 // ---- A Cross breaking --------------------------------------------------------
 
 /// `sub_8015766`: a weakness hit breaks the form (from action dispatch,
-/// with `status::FORM_BREAKING`): dimming falls while the navi drops to
+/// with `ActorStatus::FORM_BREAKING`): dimming falls while the navi drops to
 /// base form (a Cross Beast to its Beast), then 30 ticks later it goes on.
 /// True while it runs. EXE5's (0x080122C8, `FormBreak::AnyForm`: a dark chip
 /// used in a soul) drops any form to the base form, and lacks animation 2
@@ -289,7 +300,7 @@ pub(in crate::kinds::player) fn break_form(b: &mut Battle, r: ObjectRef) -> bool
         return true;
     }
     if any_form {
-        ai_mut(b, r).status &= !status::FORM_BREAKING;
+        ai_mut(b, r).status.remove(ActorStatus::FORM_BREAKING);
         // The rules' (EXE5 DS's guard and dive end, 0x020606AA).
         let side = b.objects.get(r).alliance;
         b.rules_revert_finished(side, r);
@@ -299,7 +310,7 @@ pub(in crate::kinds::player) fn break_form(b: &mut Battle, r: ObjectRef) -> bool
         a.step_init = 0;
         return false;
     }
-    ai_mut(b, r).status &= !(status::FORM_BREAKING | status::HEAT_TRAP | status::TRAP_ARMED);
+    ai_mut(b, r).status.remove(ActorStatus::FORM_BREAKING | ActorStatus::HEAT_TRAP | ActorStatus::TRAP_ARMED);
     let side = b.objects.get(r).alliance;
     b.rules_revert_finished(side, r);
     if let Some(o) = b.objects.get(r).related[1] {

@@ -2,7 +2,7 @@
 //! (`sub_8012EBC`). See objects-and-player.md §M3.3, §B3 and §B4.
 
 use super::{ai, ai_mut, battle_mode, form_of, navi_of, next_chip, own_gauges, stats};
-use crate::actor::{request, status};
+use crate::actor::{ActorStatus, Requests};
 use crate::battle::{Battle, BattleFlags};
 use nettai_content_api::ChipHandle;
 use crate::input::keys;
@@ -42,9 +42,9 @@ pub(super) fn chips_enabled(b: &Battle, r: ObjectRef) -> bool {
 pub(super) fn may_charge(b: &Battle, r: ObjectRef) -> bool {
     let a = ai(b, r);
     // Every attack request except B+Back (0x1000002F).
-    a.requests & (request::ATTACKS & !request::BACK_SPECIAL | request::MODE9_A) == 0
-        && a.status & status::NO_CHARGE == 0
-        && a.status & status::CONTROLLABLE != 0
+    !a.requests.intersects(Requests::ATTACKS & !Requests::BACK_SPECIAL | Requests::MODE9_A)
+        && !a.status.contains(ActorStatus::NO_CHARGE)
+        && a.status.contains(ActorStatus::CONTROLLABLE)
 }
 
 /// `sub_801336C`: the A button charges (a charged-chip form).
@@ -112,18 +112,18 @@ fn decode(b: &mut Battle, r: ObjectRef) {
     let f0 = ai(b, r).requests;
     if b.is_dimmed() {
         // Only a dimming chip can cut in.
-        if !chips_enabled(b, r) || f0 & request::CUT_IN != 0 || next_chip(b, r).is_none() {
+        if !chips_enabled(b, r) || f0.contains(Requests::CUT_IN) || next_chip(b, r).is_none() {
             return;
         }
         if ai(b, r).dimmed_pad.pressed & keys::A != 0 {
-            ai_mut(b, r).requests |= request::CUT_IN;
+            ai_mut(b, r).requests.insert(Requests::CUT_IN);
         }
         return;
     }
     if own_gauges(b) && ai(b, r).pad.pressed & keys::SELECT != 0 {
         let side = b.objects.get(r).alliance as usize;
         if b.sides[side].gauge >= 0x1500 {
-            ai_mut(b, r).requests |= request::SELECT_SPECIAL;
+            ai_mut(b, r).requests.insert(Requests::SELECT_SPECIAL);
             return;
         }
         // Otherwise its player hears that it can't.
@@ -136,7 +136,7 @@ fn decode(b: &mut Battle, r: ObjectRef) {
     decode_back_special(b, r);
     decode_buster(b, r, f0);
     if battle_mode(b) == 9 && ai(b, r).pad.pressed & keys::A != 0 {
-        ai_mut(b, r).requests |= request::MODE9_A;
+        ai_mut(b, r).requests.insert(Requests::MODE9_A);
     }
     // A tick that asks no chip may ask a party's switch (the DS's
     // 0x0203C5F6, after its chip block).
@@ -151,7 +151,7 @@ fn decode(b: &mut Battle, r: ObjectRef) {
 fn decode_turn(b: &mut Battle, r: ObjectRef) -> bool {
     let pressed = ai(b, r).pad.pressed;
     let lr = keys::L | keys::R;
-    if ai(b, r).status & status::CAN_TURN == 0 {
+    if !ai(b, r).status.contains(ActorStatus::CAN_TURN) {
         // (A game whose fight reads the keys itself asks nothing here: the
         // flow's `custom_request`.)
         let asks = b.game_rules().flow.custom_request == crate::content::CustomRequest::NaviInput;
@@ -165,9 +165,9 @@ fn decode_turn(b: &mut Battle, r: ObjectRef) -> bool {
         let flipped = b.objects.get(r).flip != 0;
         let a = ai_mut(b, r);
         if flipped {
-            a.requests = (a.requests | request::TURN_L) & !request::TURN_R;
+            a.requests = (a.requests | Requests::TURN_L) & !Requests::TURN_R;
         } else {
-            a.requests = (a.requests | request::TURN_R) & !request::TURN_L;
+            a.requests = (a.requests | Requests::TURN_R) & !Requests::TURN_L;
         }
     }
     false
@@ -180,26 +180,26 @@ fn decode_holds(b: &mut Battle, r: ObjectRef) {
         let a = ai(b, r);
         (a.pad.held, a.pad.pressed, a.requests)
     };
-    let set = |b: &mut Battle, bits: u32| ai_mut(b, r).requests |= bits;
-    let clear = |b: &mut Battle, bits: u32| ai_mut(b, r).requests &= !bits;
-    if f & request::HOLDS == 0 {
+    let set = |b: &mut Battle, bits: Requests| ai_mut(b, r).requests.insert(bits);
+    let clear = |b: &mut Battle, bits: Requests| ai_mut(b, r).requests.remove(bits);
+    if !f.intersects(Requests::HOLDS) {
         if a_chargeable(b, r) && held & keys::A != 0 {
-            set(b, request::A_HELD);
+            set(b, Requests::A_HELD);
         } else if b_chargeable(b, r) && held & keys::B != 0 {
-            set(b, request::B_HELD);
+            set(b, Requests::B_HELD);
         }
-    } else if f & request::A_HELD != 0 {
+    } else if f.contains(Requests::A_HELD) {
         if pressed & keys::B != 0 {
-            clear(b, request::A_HELD);
-            set(b, request::B_HELD);
+            clear(b, Requests::A_HELD);
+            set(b, Requests::B_HELD);
         } else if !(a_chargeable(b, r) && held & keys::A != 0) {
-            clear(b, request::HOLDS);
+            clear(b, Requests::HOLDS);
         }
     } else if a_chargeable(b, r) && pressed & keys::A != 0 {
-        clear(b, request::B_HELD);
-        set(b, request::A_HELD);
+        clear(b, Requests::B_HELD);
+        set(b, Requests::A_HELD);
     } else if !(b_chargeable(b, r) && held & keys::B != 0) {
-        clear(b, request::HOLDS);
+        clear(b, Requests::HOLDS);
     }
 }
 
@@ -220,7 +220,7 @@ fn decode_back_special(b: &mut Battle, r: ObjectRef) {
     let back = if b.objects.get(r).flip != 0 { keys::RIGHT } else { keys::LEFT };
     let a = ai_mut(b, r);
     if pressed & back != 0 && held & keys::B != 0 {
-        a.requests |= request::BACK_SPECIAL;
+        a.requests.insert(Requests::BACK_SPECIAL);
         a.back_special_window = 0;
     } else {
         a.back_special_window = window - 1;
@@ -230,19 +230,19 @@ fn decode_back_special(b: &mut Battle, r: ObjectRef) {
 /// The buster: on B release (B press without a charge shot; B held for
 /// some rapid busters). A full B charge from last tick makes it a charged
 /// shot.
-fn decode_buster(b: &mut Battle, r: ObjectRef, f0: u32) {
+fn decode_buster(b: &mut Battle, r: ObjectRef, f0: Requests) {
     let special_holds = form_of(b, r).traits.has(crate::content::FormTraits::SPECIAL_HOLDS_BUSTER);
     let a = ai(b, r);
-    if a.buster.is_none() || f0 & (request::BUSTER | request::CHARGED_SHOT) != 0 {
+    if a.buster.is_none() || f0.intersects(Requests::BUSTER | Requests::CHARGED_SHOT) {
         return;
     }
     // A buster that fires while B is held (the Beast busters, the Beast
     // form's throw).
     let edge = if a.buster.is_some_and(|w| b.content.weapon(w).held) {
-        if special_holds && a.requests & request::BACK_SPECIAL != 0 {
+        if special_holds && a.requests.contains(Requests::BACK_SPECIAL) {
             return;
         }
-        if a.requests & request::ALT_CHIP != 0 {
+        if a.requests.contains(Requests::ALT_CHIP) {
             return;
         }
         a.pad.held
@@ -255,24 +255,24 @@ fn decode_buster(b: &mut Battle, r: ObjectRef, f0: u32) {
         return;
     }
     let bit = if a.charge_source != 2 || a.charge_level != 2 {
-        request::BUSTER
+        Requests::BUSTER
     } else if a.b_charge_time.is_some() {
         // The rules' own B charge (EXE5's Chaos Unison, 0x0801086E: in the
         // cycle's window, the chaos weapon; out of it, the failure): they
         // hear of it now, and take it from idle.
         let side = b.objects.get(r).alliance;
         b.rules_charge_released(side, r);
-        request::RULES_RELEASE
+        Requests::RULES_RELEASE
     } else {
-        request::CHARGED_SHOT
+        Requests::CHARGED_SHOT
     };
     ai_mut(b, r).requests |= bit;
 }
 
 /// A chip: on A press (A release when A charges). A full A charge makes
 /// it a charged chip. Whether it asked one.
-fn decode_chip(b: &mut Battle, r: ObjectRef, f0: u32) -> bool {
-    if !chips_enabled(b, r) || f0 & (request::CHIP | request::CHARGED_CHIP) != 0 || next_chip(b, r).is_none() {
+fn decode_chip(b: &mut Battle, r: ObjectRef, f0: Requests) -> bool {
+    if !chips_enabled(b, r) || f0.intersects(Requests::CHIP | Requests::CHARGED_CHIP) || next_chip(b, r).is_none() {
         return false;
     }
     let edge = if a_chargeable(b, r) { ai(b, r).pad.released } else { ai(b, r).pad.pressed };
@@ -280,7 +280,7 @@ fn decode_chip(b: &mut Battle, r: ObjectRef, f0: u32) -> bool {
         return false;
     }
     let a = ai_mut(b, r);
-    let bit = if a.charge_source == 1 && a.charge_level == 2 { request::CHARGED_CHIP } else { request::CHIP };
+    let bit = if a.charge_source == 1 && a.charge_level == 2 { Requests::CHARGED_CHIP } else { Requests::CHIP };
     a.requests |= bit;
     true
 }
@@ -297,12 +297,12 @@ fn accumulate_charge(b: &mut Battle, r: ObjectRef) {
     }
     let threshold = charge_threshold(b, r, ai(b, r).charge_source);
     let f = ai(b, r).requests;
-    if f & request::HOLDS == 0 {
+    if !f.intersects(Requests::HOLDS) {
         super::reset_charge_counters(b, r);
         return;
     }
     let a = ai_mut(b, r);
-    let source = if f & request::A_HELD != 0 { 1 } else { 2 };
+    let source = if f.contains(Requests::A_HELD) { 1 } else { 2 };
     let old = a.charge_source;
     a.charge_source = source;
     if old != source && old != 0 {
@@ -334,11 +334,11 @@ fn accumulate_charge(b: &mut Battle, r: ObjectRef) {
 fn decode_per_button(b: &mut Battle, r: ObjectRef) {
     let f0 = ai(b, r).requests;
     if b.is_dimmed() {
-        if !chips_enabled(b, r) || f0 & request::CUT_IN != 0 || next_chip(b, r).is_none() {
+        if !chips_enabled(b, r) || f0.contains(Requests::CUT_IN) || next_chip(b, r).is_none() {
             return;
         }
         if ai(b, r).dimmed_pad.pressed & keys::A != 0 {
-            ai_mut(b, r).requests |= request::CUT_IN;
+            ai_mut(b, r).requests.insert(Requests::CUT_IN);
         }
         return;
     }
@@ -351,7 +351,7 @@ fn decode_per_button(b: &mut Battle, r: ObjectRef) {
     if !form_of(b, r).traits.has(crate::content::FormTraits::IGNORES_B) {
         decode_b(b, r, f0);
     }
-    if !chips_enabled(b, r) || f0 & (request::CHIP | request::CHARGED_CHIP) != 0 || next_chip(b, r).is_none() {
+    if !chips_enabled(b, r) || f0.intersects(Requests::CHIP | Requests::CHARGED_CHIP) || next_chip(b, r).is_none() {
         return;
     }
     let edge = if chip_charges_on_a(b, r) { ai(b, r).pad.released } else { pressed };
@@ -360,27 +360,27 @@ fn decode_per_button(b: &mut Battle, r: ObjectRef) {
     }
     let full = source == 1 && level == 2;
     let a = ai_mut(b, r);
-    a.requests |= if full { request::CHARGED_CHIP } else { request::CHIP };
+    a.requests.insert(if full { Requests::CHARGED_CHIP } else { Requests::CHIP });
 }
 
 /// The B button's part of EXE4's decode (0x0800BE2C to 0x0800BECA): the
 /// buster, a form's rapid presses, the B+Left special.
-fn decode_b(b: &mut Battle, r: ObjectRef, f0: u32) {
+fn decode_b(b: &mut Battle, r: ObjectRef, f0: Requests) {
     let (pressed, released, source, level) = {
         let a = ai(b, r);
         (a.pad.pressed, a.pad.released, a.charge_source, a.charge_level)
     };
-    if f0 & (request::BUSTER | request::CHARGED_SHOT) == 0 && released & keys::B != 0 {
+    if !f0.intersects(Requests::BUSTER | Requests::CHARGED_SHOT) && released & keys::B != 0 {
         let full = source == 2 && level == 2;
         let a = ai_mut(b, r);
-        a.requests |= if full { request::CHARGED_SHOT } else { request::BUSTER };
+        a.requests.insert(if full { Requests::CHARGED_SHOT } else { Requests::BUSTER });
     }
     // (0x0800BE50: a form's rapid presses, GutsSoul's. A press counts and
     // opens the window; the window running out drops the count; at the
     // count the forced charged shot is asked for every tick until it starts,
     // the window set to the count.)
     if let Some(rapid) = form_of(b, r).rapid_presses
-        && f0 & request::FORCED_CHARGED_SHOT == 0
+        && !f0.contains(Requests::FORCED_CHARGED_SHOT)
     {
         let a = ai_mut(b, r);
         if pressed & keys::B != 0 {
@@ -395,7 +395,7 @@ fn decode_b(b: &mut Battle, r: ObjectRef, f0: u32) {
         }
         if a.rapid_presses >= rapid.presses {
             a.rapid_window = a.rapid_presses;
-            a.requests |= request::FORCED_CHARGED_SHOT;
+            a.requests.insert(Requests::FORCED_CHARGED_SHOT);
         }
     }
     // (0x0800BE96: the B+Left special, its weapon's.)
@@ -408,7 +408,7 @@ fn decode_b(b: &mut Battle, r: ObjectRef, f0: u32) {
             }
             let a = ai_mut(b, r);
             if pressed & keys::LEFT != 0 {
-                a.requests |= request::BACK_SPECIAL;
+                a.requests.insert(Requests::BACK_SPECIAL);
                 a.back_special_window = 0;
             } else {
                 a.back_special_window = window - 1;
@@ -443,8 +443,8 @@ fn accumulate_per_button(b: &mut Battle, r: ObjectRef) {
         let a = ai(b, r);
         (a.requests, a.status, a.pad.held, a.pad.pressed, a.charge_source)
     };
-    let asked = request::BUSTER | request::CHARGED_SHOT | request::CHIP | request::CHARGED_CHIP | request::FORCED_CHARGED_SHOT;
-    if f & asked != 0 || status & status::CONTROLLABLE == 0 {
+    let asked = Requests::BUSTER | Requests::CHARGED_SHOT | Requests::CHIP | Requests::CHARGED_CHIP | Requests::FORCED_CHARGED_SHOT;
+    if f.intersects(asked) || !status.contains(ActorStatus::CONTROLLABLE) {
         return super::reset_charge_counters(b, r);
     }
     let chip = next_chip(b, r).is_some();

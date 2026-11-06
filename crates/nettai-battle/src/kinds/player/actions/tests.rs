@@ -5,7 +5,7 @@
 //! data are checked in the verification workspace.
 
 use super::super::ai_mut;
-use crate::actor::request;
+use crate::actor::Requests;
 use crate::battle::{Battle, BattleFlags};
 use crate::collision::f1;
 use crate::hand::ChipHand;
@@ -108,7 +108,7 @@ fn hooked() -> NaviStats {
 
 #[test]
 fn a_navis_own_hooks_run_where_the_originals_tables_call_them() {
-    use crate::actor::status;
+    use crate::actor::ActorStatus;
     // Its requests to its own idle, its state's (the rules' `navi_state`).
     const TAKE_OFF: u8 = 1;
     const LAND: u8 = 2;
@@ -120,8 +120,8 @@ fn a_navis_own_hooks_run_where_the_originals_tables_call_them() {
     let (mut b, p0, p1) = fight_with(hooked());
     let p = [p0, p1];
     // Its post-init hook ran as its init ended: the test navi's marks it.
-    assert_ne!(state(&b, p0) & status::DIVES, 0);
-    assert_eq!(state(&b, p0) & status::HOVERING, 0);
+    assert!(state(&b, p0).contains(ActorStatus::DIVES));
+    assert!(!state(&b, p0).contains(ActorStatus::HOVERING));
     // Its tick runs each tick, after its action. The test navi's puts it in
     // the air in the top row, and asks to take off: on the tick its step
     // up commits (the third after it starts), in the middle of the step.
@@ -129,10 +129,10 @@ fn a_navis_own_hooks_run_where_the_originals_tables_call_them() {
     tick(&mut b, p0, p1, keys::UP);
     assert_eq!((act(&b, p0), b.objects.get(p0).anim), (MOVE, 4));
     run_to(&mut b, p, &mut t, 2, 0);
-    assert_eq!((state(&b, p0) & status::HOVERING, own(&b, p0)), (0, 0));
+    assert_eq!((state(&b, p0).contains(ActorStatus::HOVERING), own(&b, p0)), (false, 0));
     run_to(&mut b, p, &mut t, 3, 0);
     assert_eq!(b.objects.get(p0).panel, PanelPos { x: 2, y: 1 });
-    assert_eq!((state(&b, p0) & status::HOVERING, own(&b, p0)), (status::HOVERING, TAKE_OFF));
+    assert_eq!((state(&b, p0).contains(ActorStatus::HOVERING), own(&b, p0)), (true, TAKE_OFF));
     // In the air the rest of the step sets no animation (the arrival's
     // would be 0) and leaves the one it has; no end clears the request.
     let anim = b.objects.get(p0).anim;
@@ -159,7 +159,7 @@ fn a_navis_own_hooks_run_where_the_originals_tables_call_them() {
     for _ in 0..4 {
         tick(&mut b, p0, p1, 0);
     }
-    assert_eq!((act(&b, p0), state(&b, p0) & status::HOVERING), (IDLE, 0));
+    assert_eq!((act(&b, p0), state(&b, p0).contains(ActorStatus::HOVERING)), (IDLE, false));
     // The landing's request from its last ticks is answered once more,
     // out of the air: the navi's own to clear (EXE5's GyroMan's landing
     // clears it as it ends).
@@ -293,7 +293,7 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     tick(&mut b, p0, p1, keys::A);
     assert_eq!(runs(&b, p0), "gundels3/action");
     assert_eq!(b.hands[0].cursor, 1);
-    assert_eq!(ai_mut(&mut b, p0).requests & request::CHIP, 0);
+    assert!(!ai_mut(&mut b, p0).requests.contains(Requests::CHIP));
 
     // Tick 1: the gun comes out, at its owner's attach point.
     run_to(&mut b, p, &mut t, 1, keys::A);
@@ -2200,7 +2200,7 @@ fn use_charged_chip(b: &mut Battle, p0: ObjectRef, routine: Option<&str>, chip: 
     let routine = routine.map(|key| b.content.weapon_by_key(key));
     let a = ai_mut(b, p0);
     a.a_charge = routine;
-    a.requests |= request::CHARGED_CHIP;
+    a.requests.insert(Requests::CHARGED_CHIP);
     super::super::chip_use::use_chip(b, p0);
 }
 
@@ -2220,7 +2220,7 @@ fn a_charged_chip_with_a_bonus_routine_is_used_charged() {
 
 #[test]
 fn a_cross_change_lands_changes_and_settles_while_paused() {
-    use crate::actor::status;
+    use crate::actor::ActorStatus;
     // Side 0 changes to the navi it already is (the test content has only
     // MegaMan): kept, then taken back from the kept stats.
     let (mut b, p0, p1) = fight();
@@ -2232,7 +2232,7 @@ fn a_cross_change_lands_changes_and_settles_while_paused() {
     // change, 21 ticks settling.
     tick(&mut b, p0, p1, 0);
     assert_eq!(act(&b, p0), FORM_CHANGE);
-    assert_ne!(ai_mut(&mut b, p0).status & status::SWITCHING_NAVI, 0);
+    assert!(ai_mut(&mut b, p0).status.contains(ActorStatus::SWITCHING_NAVI));
     for _ in 0..4 {
         tick(&mut b, p0, p1, 0);
     }
@@ -2248,7 +2248,7 @@ fn a_cross_change_lands_changes_and_settles_while_paused() {
     tick(&mut b, p0, p1, 0);
     assert_eq!(act(&b, p0), IDLE);
     let st = ai_mut(&mut b, p0).status;
-    assert_eq!((st & status::SWITCHED != 0, st & status::SWITCHING_NAVI), (true, 0));
+    assert_eq!((st.contains(ActorStatus::SWITCHED), st.contains(ActorStatus::SWITCHING_NAVI)), (true, false));
 }
 
 // ---- Content model v2: definitions in a battle ---------------------------------------------
@@ -2373,13 +2373,13 @@ fn ticks_in(b: &mut Battle, p0: ObjectRef, p1: ObjectRef, action: nettai_content
 /// flips the navi two ticks later and ends.
 #[test]
 fn l_or_r_turns_the_navi_round_where_turning_is_enabled() {
-    use crate::actor::status;
+    use crate::actor::ActorStatus;
     let (mut b, p0, p1) = fight();
-    ai_mut(&mut b, p0).status |= status::CAN_TURN;
+    ai_mut(&mut b, p0).status.insert(ActorStatus::CAN_TURN);
     assert_eq!(b.objects.get(p0).flip, 0);
     // The press raises the request, and the idle navi starts the turn.
     tick(&mut b, p0, p1, keys::R);
-    assert_ne!(ai_mut(&mut b, p0).requests & request::TURN_R, 0);
+    assert!(ai_mut(&mut b, p0).requests.contains(Requests::TURN_R));
     assert_eq!(runs(&b, p0), "megaman/turn");
     assert_eq!(ai_mut(&mut b, p0).attack.kind, 4);
     // One tick waiting; on the second it faces the other way, the request
@@ -2388,11 +2388,11 @@ fn l_or_r_turns_the_navi_round_where_turning_is_enabled() {
     assert_eq!((runs(&b, p0).as_str(), b.objects.get(p0).flip), ("megaman/turn", 0));
     tick(&mut b, p0, p1, 0);
     assert_eq!((act(&b, p0), b.objects.get(p0).flip), (IDLE, 1));
-    assert_eq!(ai_mut(&mut b, p0).requests & (request::TURN_L | request::TURN_R), 0);
+    assert!(!ai_mut(&mut b, p0).requests.intersects(Requests::TURN_L | Requests::TURN_R));
     assert!(b.objects.sprite(p0).look.hflip, "the sprite turned with it");
     // Turned round, a press turns it back (the request is the other one).
     tick(&mut b, p0, p1, keys::L);
-    assert_ne!(ai_mut(&mut b, p0).requests & request::TURN_L, 0);
+    assert!(ai_mut(&mut b, p0).requests.contains(Requests::TURN_L));
     tick(&mut b, p0, p1, 0);
     tick(&mut b, p0, p1, 0);
     assert_eq!((act(&b, p0), b.objects.get(p0).flip), (IDLE, 0));
@@ -2550,7 +2550,7 @@ fn the_rules_start_a_role_action() {
     let (mut b, p0, p1) = fight_on_test_pack();
     let role = b.roles().try_action(crate::content::ActionRole::AntiDamageCounter).expect("the test pack fills it");
     assert_eq!(nettai_content_api::keys::local(&b.content.defs.action(role).key), "test/anti-damage-counter");
-    ai_mut(&mut b, p0).requests |= request::ANTI_DAMAGE_TRIGGERED;
+    ai_mut(&mut b, p0).requests.insert(Requests::ANTI_DAMAGE_TRIGGERED);
     super::reactive::counter(&mut b, p0);
     assert_eq!(super::super::running_content_action(&b, p0), Some(role));
     use nettai_content_api::CoreApi;
@@ -2565,7 +2565,7 @@ fn a_forced_charged_shot_starts_its_role() {
     // weapon's setup starts the role's action.
     let (mut b, p0, p1) = fight_on_test_pack();
     let role = b.roles().try_action(crate::content::ActionRole::ForcedChargedShot).expect("the test pack fills it");
-    ai_mut(&mut b, p0).requests |= request::FORCED_CHARGED_SHOT;
+    ai_mut(&mut b, p0).requests.insert(Requests::FORCED_CHARGED_SHOT);
     tick(&mut b, p0, p1, 0);
     assert_eq!(super::super::running_content_action(&b, p0), Some(role));
     assert_eq!(runs(&b, p0), "test/forced-charged-shot");
@@ -2663,6 +2663,6 @@ fn a_sticky_charged_shot_stays_and_demotes_a_beast_buster() {
 #[should_panic(expected = "the role actions.body_guard_counter is not filled")]
 fn an_unfilled_role_names_itself() {
     let (mut b, p0, _) = fight_on_test_pack();
-    ai_mut(&mut b, p0).requests |= request::BODY_GUARD_TRIGGERED;
+    ai_mut(&mut b, p0).requests.insert(Requests::BODY_GUARD_TRIGGERED);
     super::reactive::counter(&mut b, p0);
 }

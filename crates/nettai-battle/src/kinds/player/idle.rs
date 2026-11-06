@@ -10,7 +10,7 @@ use super::{
     EmotionRole, ai, ai_mut, switch_protected, emotion_role, exit_attack_state, flag1, form_of,
     is_link, reset_charge, set_attack, stats, stats_mut,
 };
-use crate::actor::{request, status};
+use crate::actor::{ActorStatus, Requests};
 use crate::battle::Battle;
 use crate::collision::f1;
 use crate::input::keys;
@@ -30,11 +30,11 @@ pub(super) fn control(b: &mut Battle, r: ObjectRef) {
     // (Where the rules say so, `idle_entry_counter`: EXE4's entry starts a
     // counter for a navi in auto battle alone, 0x080EB0D6, and its idle
     // starts it in its turn: `decide`.)
-    let traps = request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::BODY_GUARD_TRIGGERED;
-    if b.game_rules().idle_entry_counter && f & traps != 0 {
+    let traps = Requests::ANTI_DAMAGE_TRIGGERED | Requests::ANTI_SWORD_TRIGGERED | Requests::BODY_GUARD_TRIGGERED;
+    if b.game_rules().idle_entry_counter && f.intersects(traps) {
         return reactive_chip(b, r);
     }
-    if f & request::STUN_STRIKE != 0 {
+    if f.contains(Requests::STUN_STRIKE) {
         let strike = super::role_action(b, crate::content::ActionRole::StunStrike);
         return set_attack(b, r, strike, 0);
     }
@@ -117,12 +117,12 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     // (A game with no transformation sequencer at a turn's start, EXE4's:
     // the idle starts a revert asked for, the form's own, 0x080EEBB4.)
     if !b.game_rules().flow.sequencer_at_turn_start
-        && ai(b, r).requests & request::REVERT_FORM != 0
-        && ai(b, r).status & status::FORM_CHANGE == 0
+        && ai(b, r).requests.contains(Requests::REVERT_FORM)
+        && !ai(b, r).status.contains(ActorStatus::FORM_CHANGE)
         && let Some(revert) = form_of(b, r).revert
     {
-        ai_mut(b, r).requests &= !request::REVERT_FORM;
-        ai_mut(b, r).status |= status::REVERTING_FORM;
+        ai_mut(b, r).requests.remove(Requests::REVERT_FORM);
+        ai_mut(b, r).status.insert(ActorStatus::REVERTING_FORM);
         leave_idle(b, r);
         return set_attack(b, r, super::NaviAction::Content(revert), 0);
     }
@@ -157,24 +157,24 @@ fn decide(b: &mut Battle, r: ObjectRef) {
         return;
     }
     // (The rules' guard too: EXE5 DS's 0x0207773A.)
-    if ai(b, r).requests & (request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::GUARD) != 0 {
+    if ai(b, r).requests.intersects(Requests::ANTI_DAMAGE_TRIGGERED | Requests::ANTI_SWORD_TRIGGERED | Requests::GUARD) {
         return reactive_chip(b, r);
     }
     if low_hp_support(b, r) {
         return;
     }
     let f = ai(b, r).requests;
-    if f & request::FORCED_CHARGED_SHOT != 0 {
+    if f.contains(Requests::FORCED_CHARGED_SHOT) {
         leave_idle(b, r);
         let shot = super::role_action(b, crate::content::ActionRole::ForcedChargedShot);
         return set_attack(b, r, shot, 1);
     }
-    if f & request::BUSTER != 0 {
+    if f.contains(Requests::BUSTER) {
         leave_idle(b, r);
         let action = buster_routine(b, r);
         return set_attack(b, r, action, 1);
     }
-    if f & request::CHARGED_SHOT != 0 {
+    if f.contains(Requests::CHARGED_SHOT) {
         leave_idle(b, r);
         let routine = ai(b, r).charge_shot;
         let action = weapon_slot_routine(b, r, routine);
@@ -185,18 +185,18 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     // The rules' own B charge released (EXE5's Chaos Unison releases,
     // 0x080F034E and 0x080F0382): the navi leaves idle, and its side's
     // rules start what it does (`release_taken`).
-    if f & request::RULES_RELEASE != 0 {
+    if f.contains(Requests::RULES_RELEASE) {
         leave_idle(b, r);
         let side = b.objects.get(r).alliance;
         b.rules_release_taken(side, r);
         return;
     }
-    if ai(b, r).requests & request::BACK_SPECIAL != 0 {
+    if ai(b, r).requests.contains(Requests::BACK_SPECIAL) {
         leave_idle(b, r);
         let action = weapon_slot_routine(b, r, ai(b, r).back_special);
         return set_attack(b, r, action, 3);
     }
-    if ai(b, r).requests & request::MODE9_A != 0 {
+    if ai(b, r).requests.contains(Requests::MODE9_A) {
         leave_idle(b, r);
         let action = weapon_slot_routine(b, r, ai(b, r).mode9_a);
         return set_attack(b, r, action, 1);
@@ -221,7 +221,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     if dir != 0 && !blocked(b) {
         return start_move(b, r, dir);
     }
-    if ai(b, r).requests & (request::TURN_L | request::TURN_R) != 0 {
+    if ai(b, r).requests.intersects(Requests::TURN_L | Requests::TURN_R) {
         let turn = super::role_action(b, crate::content::ActionRole::Turn);
         return set_attack(b, r, turn, 4);
     }
@@ -251,8 +251,8 @@ fn phase_timer(b: &mut Battle, r: ObjectRef) {
         }
         b.objects.get_mut(r).timer = 10;
         let a = ai_mut(b, r);
-        a.status |= status::CONTROLLABLE;
-        a.status &= !status::CHIP_IN_PROGRESS;
+        a.status.insert(ActorStatus::CONTROLLABLE);
+        a.status.remove(ActorStatus::CHIP_IN_PROGRESS);
         b.objects.get_mut(r).phase_init = 4;
     }
     let o = b.objects.get_mut(r);
@@ -267,7 +267,7 @@ fn phase_timer(b: &mut Battle, r: ObjectRef) {
 /// An attack starts: no longer controllable (the local side's chip
 /// window HUD closes).
 fn leave_idle(b: &mut Battle, r: ObjectRef) {
-    ai_mut(b, r).status &= !status::CONTROLLABLE;
+    ai_mut(b, r).status.remove(ActorStatus::CONTROLLABLE);
     let side = b.objects.get(r).alliance as usize & 1;
     hide_chip_window(b, side);
 }
@@ -297,15 +297,15 @@ pub(crate) fn hide_every_chip_window(b: &mut Battle) {
 /// state cleared).
 fn start_specials(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
-    if ai(b, r).requests & request::SELECT_SPECIAL != 0 {
-        ai_mut(b, r).requests &= !request::SELECT_SPECIAL;
+    if ai(b, r).requests.contains(Requests::SELECT_SPECIAL) {
+        ai_mut(b, r).requests.remove(Requests::SELECT_SPECIAL);
         b.sides[side].select_special = 1;
         clear_special_selection(b, r);
     }
     // A takeover asked for (EXE6's Cross special): the side's rules start
     // it (`takeover_requested`).
-    if ai(b, r).requests & request::TAKEOVER != 0 {
-        ai_mut(b, r).requests &= !request::TAKEOVER;
+    if ai(b, r).requests.contains(Requests::TAKEOVER) {
+        ai_mut(b, r).requests.remove(Requests::TAKEOVER);
         clear_special_selection(b, r);
         b.rules_takeover_requested(side as u8, r);
     }
@@ -315,7 +315,7 @@ fn start_specials(b: &mut Battle, r: ObjectRef) {
 /// 0x100000..=0x1000000 (and side bytes +0x40, +0x41, which nothing ported
 /// reads).
 fn clear_special_selection(b: &mut Battle, r: ObjectRef) {
-    ai_mut(b, r).requests &= !0x01F0_0000;
+    ai_mut(b, r).requests.remove(Requests::SPECIAL_SELECTION);
 }
 
 /// `sub_802F068`: the SELECT special holds the navi for its ticks, then
@@ -330,7 +330,7 @@ fn select_special(b: &mut Battle, r: ObjectRef) {
         }
     }
     super::reset_select_special(s);
-    ai_mut(b, r).requests &= !request::SELECT_SPECIAL;
+    ai_mut(b, r).requests.remove(Requests::SELECT_SPECIAL);
 }
 
 /// `sub_8010660`: at a quarter of its HP or less, in link battles the
@@ -444,8 +444,8 @@ fn after_chip(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
         return;
     }
     let a = ai_mut(b, r);
-    a.status &= !status::CONTROLLABLE;
-    a.status |= status::CHIP_IN_PROGRESS;
+    a.status.remove(ActorStatus::CONTROLLABLE);
+    a.status.insert(ActorStatus::CHIP_IN_PROGRESS);
     // The other player's console shows the chip's name (sub_801EB18),
     // unless it is a cut-in chip (its telop does), the invalid chip
     // (the original's 0x185), or a chip its own action names (its trait

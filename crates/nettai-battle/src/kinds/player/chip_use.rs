@@ -4,7 +4,7 @@
 //! chips.md §2.6.4 and §2.7.
 
 use super::{EmotionRole, ai, ai_mut, emotion_role, flag1, form_of, navi_of, navi_record, set_attack, set_mood, stats};
-use crate::actor::{ActorType, AttackVars, request};
+use crate::actor::{ActorType, AttackVars, Requests};
 use crate::battle::Battle;
 use crate::collision::f1;
 use crate::field::PanelType;
@@ -32,12 +32,12 @@ const BONUS_SOUND: crate::content::SoundRole = crate::content::SoundRole::Damage
 /// next chip and start its action. Returns the attack's chip (the game
 /// returns 0xFFFF for no use), itself none for the game's 0.
 pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle>> {
-    let requested = ai(b, r).requests & (request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
-    if flag1(b, r) & f1::SLIDING != 0 || requested == 0 {
+    let requested = ai(b, r).requests & (Requests::CHIP | Requests::CHARGED_CHIP | Requests::ALT_CHIP);
+    if flag1(b, r) & f1::SLIDING != 0 || requested.is_empty() {
         return None;
     }
     let mut charge = 0;
-    if requested & request::CHARGED_CHIP != 0 {
+    if requested.contains(Requests::CHARGED_CHIP) {
         // The form's A-charge routine decides what the charged chip does;
         // for the Null family the attack's chip id is cleared (where the
         // rules' `chip_use.charged_null_alt_routine` says).
@@ -75,7 +75,7 @@ pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
                 // (EXE6's rules/beast runs the Beast forms' claw and
                 // SlashCross Beast's charged sword inside its rush.)
                 chip_used(b, r, Some(weapon));
-                ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
+                ai_mut(b, r).requests.remove(Requests::CHIP | Requests::CHARGED_CHIP | Requests::ALT_CHIP);
                 return Some(ai(b, r).attack.chip);
             }
         }
@@ -85,7 +85,7 @@ pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle
     // (EXE6's rules/beast runs a chip with the lock-on flag inside its
     // rush, in a Beast form or from the Cross special.)
     chip_used(b, r, None);
-    ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP | request::ALT_CHIP);
+    ai_mut(b, r).requests.remove(Requests::CHIP | Requests::CHARGED_CHIP | Requests::ALT_CHIP);
     Some(ai(b, r).attack.chip)
 }
 
@@ -139,8 +139,9 @@ struct HandEntry {
 fn hand_entry(b: &Battle, r: ObjectRef, charge: u8) -> HandEntry {
     let o = b.objects.get(r);
     if navi_record(b, r).actor_type != ActorType::Player {
-        let requests = ai(b, r).requests & (request::CHIP | request::CHARGED_CHIP);
-        return HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: requests as u8, spends: None };
+        let requests = ai(b, r).requests & (Requests::CHIP | Requests::CHARGED_CHIP);
+        // (The requests' low byte as the marks: what the caller left in r4.)
+        return HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: requests.bits() as u8, spends: None };
     }
     let hand = &b.hands[o.alliance as usize];
     let i = hand.cursor as usize;
@@ -183,7 +184,7 @@ fn entry_record(content: &Content, chip: Option<ChipHandle>) -> &ChipData {
 /// attack as charged (AIAttackVars+4): 1 for the forms' charged chips, 2
 /// after GroundCross's rocks.
 pub(super) fn prepare(b: &mut Battle, r: ObjectRef, charge: u8) -> super::NaviAction {
-    let slot_in = ai(b, r).requests & request::ALT_CHIP != 0;
+    let slot_in = ai(b, r).requests.contains(Requests::ALT_CHIP);
     prepare_from(b, r, charge, slot_in)
 }
 

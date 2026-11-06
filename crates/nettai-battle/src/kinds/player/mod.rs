@@ -82,7 +82,7 @@ pub(crate) use intake::take_status;
 
 use crate::content::MoodHeld;
 use nettai_content_api::IdentityHandle;
-use crate::actor::{ActorData, ActorId, ActorType, request};
+use crate::actor::{ActorData, ActorId, ActorStatus, ActorType, Requests};
 use crate::battle::{Battle, BattleFlags};
 use crate::collision::{CollisionData, CollisionId, f1, timer};
 use crate::field::PanelType;
@@ -569,17 +569,17 @@ pub(crate) fn runs_role(b: &Battle, r: ObjectRef, role: crate::content::ActionRo
 /// member other than the side's own navi that came in by a switch, unless
 /// the rules' revival runs, or is asked for outside the knockout.
 fn switch_protected(b: &Battle, r: ObjectRef) -> bool {
-    use crate::actor::status;
+    use crate::actor::ActorStatus;
     let side = b.objects.get(r).alliance as usize & 1;
     let party = &b.party[side];
     let a = ai(b, r);
     if party.has_partners() {
         return party.active != 0
-            && a.status & status::SWITCHED != 0
-            && a.status & status::REVIVING == 0
-            && (a.status & status::SWITCH_KNOCKOUT != 0 || a.requests & request::REVIVAL == 0);
+            && a.status.contains(ActorStatus::SWITCHED)
+            && !a.status.contains(ActorStatus::REVIVING)
+            && (a.status.contains(ActorStatus::SWITCH_KNOCKOUT) || !a.requests.contains(Requests::REVIVAL));
     }
-    !is_megaman(b, r) && a.status & status::SWITCHED != 0
+    !is_megaman(b, r) && a.status.contains(ActorStatus::SWITCHED)
 }
 
 /// Switch to `action` at phase 0 (the game's direct CurAction stores).
@@ -674,7 +674,7 @@ fn end_attack_with(b: &mut Battle, r: ObjectRef, hands_on: bool) {
         }
         let a = ai_mut(b, r);
         a.buffered_move = 0;
-        a.requests &= !(request::ATTACKS | clears);
+        a.requests.remove(Requests::ATTACKS | clears);
         reset_charge(b, r);
         clear_flag1(b, r, f1::USING_ACTION);
     }
@@ -687,7 +687,7 @@ fn end_attack_with(b: &mut Battle, r: ObjectRef, hands_on: bool) {
 /// `sub_8012EA8`: drop the buster charge and the hold flags.
 pub(crate) fn reset_charge(b: &mut Battle, r: ObjectRef) {
     reset_charge_counters(b, r);
-    ai_mut(b, r).requests &= !request::HOLDS;
+    ai_mut(b, r).requests.remove(Requests::HOLDS);
 }
 
 /// The charge counter, level and source back to zero.
@@ -844,13 +844,13 @@ pub(crate) fn prepare_chip(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80159A2`: a form reversion is pending or running.
 pub fn reverting_form(b: &Battle, r: ObjectRef) -> bool {
-    ai(b, r).status & crate::actor::status::REVERTING_FORM != 0 || ai(b, r).requests & request::REVERT_FORM != 0
+    ai(b, r).status.contains(crate::actor::ActorStatus::REVERTING_FORM) || ai(b, r).requests.contains(Requests::REVERT_FORM)
 }
 
 /// `sub_801596E`: ask the navi to change form (it does so in the pause
 /// handler, as action 0x1C).
 pub fn request_form_change(b: &mut Battle, r: ObjectRef) {
-    ai_mut(b, r).requests |= request::FORM_CHANGE;
+    ai_mut(b, r).requests.insert(Requests::FORM_CHANGE);
 }
 
 /// The form `r`'s side asked to change into at this turn's start (none:
@@ -862,12 +862,12 @@ pub(crate) fn form_change_target(b: &Battle, r: ObjectRef) -> Option<nettai_cont
 
 /// `sub_801597C`: a form change is running.
 pub fn changing_form(b: &Battle, r: ObjectRef) -> bool {
-    ai(b, r).status & crate::actor::status::FORM_CHANGE != 0
+    ai(b, r).status.contains(crate::actor::ActorStatus::FORM_CHANGE)
 }
 
 /// `sub_802DCEC`: a navi switch is pending or running.
 pub fn switching_navi(b: &Battle, r: ObjectRef) -> bool {
-    ai(b, r).status & crate::actor::status::SWITCHING_NAVI != 0 || ai(b, r).requests & request::NAVI_SWITCH != 0
+    ai(b, r).status.contains(crate::actor::ActorStatus::SWITCHING_NAVI) || ai(b, r).requests.contains(Requests::NAVI_SWITCH)
 }
 
 // ---- Init --------------------------------------------------------------------
@@ -1146,7 +1146,7 @@ fn reset_status_tail(b: &mut Battle, r: ObjectRef, reload_weapons: bool) {
     // army disarmed, which the form's reset below arms again, and the
     // opponent's chip icons off its HUD, which SearchSoul's puts back).
     b.rules_status_reset(side as u8 & 1, r);
-    ai_mut(b, r).status &= !0x20;
+    ai_mut(b, r).status.remove(ActorStatus::DIVES);
     // EXE5's 0x08011B74: a form's priming is spent (EXE6 never primes).
     ai_mut(b, r).primed = false;
     let hm = body_hit_modifier(b);
@@ -1266,7 +1266,7 @@ fn enable_turning(b: &mut Battle, r: ObjectRef) {
     if matches!(b.panel_pattern(), 0x38 | 0x30 | 0x3C) || battle_mode(b) == DUSTMAN_MINI_GAME {
         return;
     }
-    ai_mut(b, r).status |= crate::actor::status::CAN_TURN;
+    ai_mut(b, r).status.insert(crate::actor::ActorStatus::CAN_TURN);
 }
 
 /// `sub_802DFC8`: reset the side's extra state (set up only in the battle
@@ -1365,7 +1365,7 @@ fn palette_pick(b: &mut Battle, r: ObjectRef) -> u8 {
         let form = form_of(b, r);
         (form.base, form.traits.has(FormTraits::MOOD_PALETTE), form.palette)
     };
-    let no_charge = ai(b, r).status & crate::actor::status::NO_CHARGE != 0;
+    let no_charge = ai(b, r).status.contains(crate::actor::ActorStatus::NO_CHARGE);
     let full_synchro = emotion_role(b, b.objects.get(r).alliance) == Some(EmotionRole::FullSynchro);
     let style = if s.element != 0 { s.element.wrapping_mul(5).wrapping_add(0x12) } else { 0 };
     let palette = if !is_megaman(b, r) {

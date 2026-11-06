@@ -993,22 +993,22 @@ pub enum OverlayRestart {
 /// anti-sword trigger, the mode-9 A press, the rules' own B charge's release
 /// (EXE5's Chaos Unison releases), a chip's and a charged chip's.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct RequestSet(pub u32);
+pub struct RequestSet(pub crate::actor::Requests);
 
 impl RequestSet {
     pub const NAMES: &'static [(u32, &'static str)] = &[
-        (crate::actor::request::ANTI_SWORD_TRIGGERED, "anti_sword_triggered"),
-        (crate::actor::request::MODE9_A, "mode9_a"),
-        (crate::actor::request::RULES_RELEASE, "rules_release"),
-        (crate::actor::request::CHIP, "chip"),
-        (crate::actor::request::CHARGED_CHIP, "charged_chip"),
+        (crate::actor::Requests::ANTI_SWORD_TRIGGERED.bits(), "anti_sword_triggered"),
+        (crate::actor::Requests::MODE9_A.bits(), "mode9_a"),
+        (crate::actor::Requests::RULES_RELEASE.bits(), "rules_release"),
+        (crate::actor::Requests::CHIP.bits(), "chip"),
+        (crate::actor::Requests::CHARGED_CHIP.bits(), "charged_chip"),
     ];
 }
 
-serde_flags!(RequestSet, u32);
+serde_flags!(RequestSet(crate::actor::Requests));
 
 /// What the ends of a navi's actions clear of its requests besides the six
-/// attack requests (`request::ATTACKS`): the original's masks, which
+/// attack requests (`Requests::ATTACKS`): the original's masks, which
 /// differ by game. EXE6's are 0x1000003F at an attack's end (`sub_801171C`)
 /// and a paralysis's, freeze's or bubble's, and 0x1000043F at a flinch's
 /// and a drag's: the mode-9 A press, and the anti-sword trigger. EXE5's are

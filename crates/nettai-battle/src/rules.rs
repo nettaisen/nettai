@@ -55,7 +55,7 @@ pub struct SideRules {
 pub struct PaletteInputs {
     navi: ObjectRef,
     stats: crate::setup::NaviStats,
-    status: u32,
+    status: crate::actor::ActorStatus,
     ai_index: u8,
     identity: Option<nettai_content_api::IdentityHandle>,
     b_charge_time: Option<u8>,

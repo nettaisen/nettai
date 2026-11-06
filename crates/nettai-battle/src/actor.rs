@@ -24,151 +24,167 @@ pub enum ActorType {
     Player = 2,
 }
 
-/// Action-request bits (`requests`). (EXE5's 0x10000000 and 0x20000000 are
-/// GyroMan's own, his take-off and landing, which content keeps in his
-/// navi's state; EXE6's are the mode-9 A press and the takeover.)
-pub mod request {
-    pub const BUSTER: u32 = 0x1;
-    pub const CHARGED_SHOT: u32 = 0x2;
-    pub const CHIP: u32 = 0x4;
-    pub const CHARGED_CHIP: u32 = 0x8;
-    pub const BACK_SPECIAL: u32 = 0x10;
-    /// Forces the charged-shot action (setter unknown).
-    pub const FORCED_CHARGED_SHOT: u32 = 0x20;
-    /// Revert to base form while paused (`sub_8015994`: the turn-start
-    /// check found the Beast Out used up; the mid-battle custom screen
-    /// asks too): pause-time action 0x1C with `status::REVERTING_FORM`.
-    pub const REVERT_FORM: u32 = 0x40;
-    /// A full B charge released while the rules' B charge is armed
-    /// (`ActorData::b_charge_time`; EXE5's Chaos Unison releases, its
-    /// requests 0x8000 and 0x10000 by the cycle's window): the side's rules
-    /// heard of it (`charge_released`) and take it from idle
-    /// (`release_taken`). EXE6 has none.
-    pub const RULES_RELEASE: u32 = 0x80;
-    /// The rules hold a navi whose HP reached 0 for an action of theirs
-    /// that brings it back (the role `revival`, with `status::REVIVING`):
-    /// the live request handler starts it first of all its requests. While
-    /// it is asked or runs, the navi isn't deleted at 0 HP. (The DS's
-    /// request 0x100, its ToadMan rescue, action 0x5A: 0x020048E8,
-    /// 0x02062174.)
-    pub const REVIVAL: u32 = 0x100;
-    /// AntiDmg (chip 0xBB) caught a hit: its counterattack runs next.
-    pub const ANTI_DAMAGE_TRIGGERED: u32 = 0x200;
-    /// AntiSwrd (chip 0xBC) caught a sword hit.
-    pub const ANTI_SWORD_TRIGGERED: u32 = 0x400;
-    /// Dimming counter chip.
-    pub const CUT_IN: u32 = 0x800;
-    pub const TURN_L: u32 = 0x1000;
-    pub const TURN_R: u32 = 0x2000;
-    /// Pause-time request: form change (action 0x1C, state bit 0x80).
-    pub const FORM_CHANGE: u32 = 0x4000;
-    /// BodyGrd (program advance 0x157) caught a hit.
-    pub const BODY_GUARD_TRIGGERED: u32 = 0x8000;
-    pub const ALT_CHIP: u32 = 0x10000;
-    pub const A_HELD: u32 = 0x20000;
-    pub const B_HELD: u32 = 0x40000;
-    /// Starts action 0x49 from idle (`sub_80EEB4C`): a slash at every
-    /// opposing navi that is paralyzed (variant 0) or stands on a panel
-    /// with flags 0x1C00 (variant 1). No setter was found; the form
-    /// changes set the *state* bit 0x80000 (`status::FORM_CHANGE_SPRITE_HELD`),
-    /// not this request.
-    pub const STUN_STRIKE: u32 = 0x80000;
-    /// The rules caught a hit for their guard (their `hit_guard`): the role
-    /// `guard`'s action starts from idle as a trap's counter does (the
-    /// DS's request 0x100000, KnightMan's guard, action 0x5B: 0x02063BBC,
-    /// 0x020989E6).
-    pub const GUARD: u32 = 0x0010_0000;
-    /// The rules ask for an action of theirs to follow, which the live
-    /// request handler starts after a navi switch's and before the volley
-    /// (the role `follow_up`, with `status::FOLLOWING_UP`). (The DS's
-    /// request 0x02000000, which its paused swap's settle raises for a
-    /// Double Attack, action 0x5C: 0x02042E74, 0x02062174. Its number is
-    /// the engine's `SELECT_SPECIAL` here.)
-    pub const FOLLOW_UP: u32 = 0x0040_0000;
-    pub const SELECT_SPECIAL: u32 = 0x0200_0000;
-    /// Change Cross while paused (`sub_802DCDE`, from the transformation
-    /// sequencer): pause-time action 0x1C with `status::SWITCHING_NAVI`.
-    pub const NAVI_SWITCH: u32 = 0x0400_0000;
-    /// Cross death (action 0x4C) outside the pause; pause-time request for
-    /// action 0x1C inside it. Both set `status::SWITCH_KNOCKOUT`.
-    pub const SWITCH_KNOCKOUT: u32 = 0x0800_0000;
-    /// Battle mode 9 A press.
-    pub const MODE9_A: u32 = 0x1000_0000;
-    /// The rules' takeover of the side's navi is asked for (EXE6's Cross
-    /// special, which DarkInvs asks for): idle's `sub_802E4E4` hands it to
-    /// the side's rules (`takeover_requested`).
-    pub const TAKEOVER: u32 = 0x2000_0000;
-    /// Starts action 0x30 (the roles' `volley`, with `status::VOLLEY`). No
-    /// EXE6 setter was found; EXE5's loss of HP sets it for a dark MegaMan's
-    /// last stand (0x0802C16C).
-    pub const VOLLEY: u32 = 0x4000_0000;
-    /// Hit by an element this navi is weak to (ends crosses).
-    pub const WEAKNESS_HIT: u32 = 0x8000_0000;
-    /// Every attack request.
-    pub const ATTACKS: u32 = 0x3F;
-    /// The charge holds.
-    pub const HOLDS: u32 = A_HELD | B_HELD;
+bitflags::bitflags! {
+    /// Action-request bits (`ActorData::requests`). (EXE5's 0x10000000 and
+    /// 0x20000000 are GyroMan's own, his take-off and landing, which content
+    /// keeps in his navi's state; EXE6's are the mode-9 A press and the
+    /// takeover.)
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct Requests: u32 {
+        const BUSTER = 0x1;
+        const CHARGED_SHOT = 0x2;
+        const CHIP = 0x4;
+        const CHARGED_CHIP = 0x8;
+        const BACK_SPECIAL = 0x10;
+        /// Forces the charged-shot action (setter unknown).
+        const FORCED_CHARGED_SHOT = 0x20;
+        /// Revert to base form while paused (`sub_8015994`: the turn-start
+        /// check found the Beast Out used up; the mid-battle custom screen
+        /// asks too): pause-time action 0x1C with `ActorStatus::REVERTING_FORM`.
+        const REVERT_FORM = 0x40;
+        /// A full B charge released while the rules' B charge is armed
+        /// (`ActorData::b_charge_time`; EXE5's Chaos Unison releases, its
+        /// requests 0x8000 and 0x10000 by the cycle's window): the side's rules
+        /// heard of it (`charge_released`) and take it from idle
+        /// (`release_taken`). EXE6 has none.
+        const RULES_RELEASE = 0x80;
+        /// The rules hold a navi whose HP reached 0 for an action of theirs
+        /// that brings it back (the role `revival`, with `ActorStatus::REVIVING`):
+        /// the live request handler starts it first of all its requests. While
+        /// it is asked or runs, the navi isn't deleted at 0 HP. (The DS's
+        /// request 0x100, its ToadMan rescue, action 0x5A: 0x020048E8,
+        /// 0x02062174.)
+        const REVIVAL = 0x100;
+        /// AntiDmg (chip 0xBB) caught a hit: its counterattack runs next.
+        const ANTI_DAMAGE_TRIGGERED = 0x200;
+        /// AntiSwrd (chip 0xBC) caught a sword hit.
+        const ANTI_SWORD_TRIGGERED = 0x400;
+        /// Dimming counter chip.
+        const CUT_IN = 0x800;
+        const TURN_L = 0x1000;
+        const TURN_R = 0x2000;
+        /// Pause-time request: form change (action 0x1C, state bit 0x80).
+        const FORM_CHANGE = 0x4000;
+        /// BodyGrd (program advance 0x157) caught a hit.
+        const BODY_GUARD_TRIGGERED = 0x8000;
+        const ALT_CHIP = 0x10000;
+        const A_HELD = 0x20000;
+        const B_HELD = 0x40000;
+        /// Starts action 0x49 from idle (`sub_80EEB4C`): a slash at every
+        /// opposing navi that is paralyzed (variant 0) or stands on a panel
+        /// with flags 0x1C00 (variant 1). No setter was found; the form
+        /// changes set the *state* bit 0x80000 (`ActorStatus::FORM_CHANGE_SPRITE_HELD`),
+        /// not this request.
+        const STUN_STRIKE = 0x80000;
+        /// The rules caught a hit for their guard (their `hit_guard`): the role
+        /// `guard`'s action starts from idle as a trap's counter does (the
+        /// DS's request 0x100000, KnightMan's guard, action 0x5B: 0x02063BBC,
+        /// 0x020989E6).
+        const GUARD = 0x0010_0000;
+        /// The rules ask for an action of theirs to follow, which the live
+        /// request handler starts after a navi switch's and before the volley
+        /// (the role `follow_up`, with `ActorStatus::FOLLOWING_UP`). (The DS's
+        /// request 0x02000000, which its paused swap's settle raises for a
+        /// Double Attack, action 0x5C: 0x02042E74, 0x02062174. Its number is
+        /// the engine's `SELECT_SPECIAL` here.)
+        const FOLLOW_UP = 0x0040_0000;
+        const SELECT_SPECIAL = 0x0200_0000;
+        /// Change Cross while paused (`sub_802DCDE`, from the transformation
+        /// sequencer): pause-time action 0x1C with `ActorStatus::SWITCHING_NAVI`.
+        const NAVI_SWITCH = 0x0400_0000;
+        /// Cross death (action 0x4C) outside the pause; pause-time request for
+        /// action 0x1C inside it. Both set `ActorStatus::SWITCH_KNOCKOUT`.
+        const SWITCH_KNOCKOUT = 0x0800_0000;
+        /// Battle mode 9 A press.
+        const MODE9_A = 0x1000_0000;
+        /// The rules' takeover of the side's navi is asked for (EXE6's Cross
+        /// special, which DarkInvs asks for): idle's `sub_802E4E4` hands it to
+        /// the side's rules (`takeover_requested`).
+        const TAKEOVER = 0x2000_0000;
+        /// Starts action 0x30 (the roles' `volley`, with `ActorStatus::VOLLEY`). No
+        /// EXE6 setter was found; EXE5's loss of HP sets it for a dark MegaMan's
+        /// last stand (0x0802C16C).
+        const VOLLEY = 0x4000_0000;
+        /// Hit by an element this navi is weak to (ends crosses).
+        const WEAKNESS_HIT = 0x8000_0000;
+        /// Every attack request.
+        const ATTACKS = 0x3F;
+        /// The charge holds.
+        const HOLDS = Self::A_HELD.bits() | Self::B_HELD.bits();
+        /// What the SELECT special's selection clears (`sub_802E1EC`:
+        /// 0x100000 to 0x1000000, `GUARD` and `FOLLOW_UP` among them).
+        const SPECIAL_SELECTION = 0x01F0_0000;
+        const _ = !0;
+    }
 }
 
-/// Actor state bits (`status`).
-pub mod status {
-    /// Direction bits of the last move (right, left, down, up).
-    pub const MOVE_DIRECTIONS: u32 = 0xF;
-    pub const CONTROLLABLE: u32 = 0x10;
-    /// It dives: a panel that submerges (EXE5's sea) submerges it and
-    /// doesn't hold it at a move's end (`sub_801032C`'s 0x20: EXE5's
-    /// 0x08017030, 0x0801715E).
-    pub const DIVES: u32 = 0x20;
-    pub const CHIP_IN_PROGRESS: u32 = 0x40;
-    /// Pause handler: form change in progress (`sub_8014A38`).
-    pub const FORM_CHANGE: u32 = 0x80;
-    /// Pause handler: reverting to base form (`sub_8015614`).
-    pub const REVERTING_FORM: u32 = 0x100;
-    pub const NO_CHARGE: u32 = 0x200;
-    pub const CAN_TURN: u32 = 0x400;
-    /// Anti-damage trap armed (acts like chip 0xBB).
-    pub const TRAP_ARMED: u32 = 0x800;
-    /// Pause handler: changing Cross (`sub_802D714`).
-    pub const SWITCHING_NAVI: u32 = 0x1000;
-    /// Knocked out of a Cross instead of deleted (action 0x4C, or the
-    /// pause handler's `sub_802D926`). Takes over the action dispatch.
-    pub const SWITCH_KNOCKOUT: u32 = 0x2000;
-    /// A navi switch took effect (set when `sub_802D714` ends). A link
-    /// navi with it falls back instead of being deleted (`sub_802DD2A`).
-    pub const SWITCHED: u32 = 0x4000;
-    /// In the air (EXE5's 0x8000): GyroMan's tick sets it over a panel
-    /// that isn't solid (0x080F0A10) and his landing clears it
-    /// (0x080F0C9C); nothing else does. A step taken with it sets no
-    /// animation (`movement::animates`).
-    pub const HOVERING: u32 = 0x8000;
-    /// Action 0x30 runs (the roles' `volley`: EXE5's last stand). Takes
-    /// over the action dispatch.
-    pub const VOLLEY: u32 = 0x1_0000;
-    /// Takes over the action dispatch like the two above; no setter was
-    /// found.
-    pub const UNINTERRUPTIBLE: u32 = 0x2_0000;
-    /// A weakness hit is breaking the form (`sub_8015766` runs instead
-    /// of the action).
-    pub const FORM_BREAKING: u32 = 0x4_0000;
-    /// A form change holds the navi's sprite still (it is off the field).
-    pub const FORM_CHANGE_SPRITE_HELD: u32 = 0x8_0000;
-    /// Gone from the field while its navi chip's navi acts (`sub_80E1352`
-    /// sets it, `sub_80E13DC` clears it).
-    pub const VANISHED: u32 = 0x10_0000;
-    /// RskyHny's trap (action 0x39): a hit with no fire damage is
-    /// swallowed and, if it did other damage, sends another bee
-    /// (`sub_802CEF4`).
-    pub const HEAT_TRAP: u32 = 0x20_0000;
-    // (EXE5 DS's 0x400000 and 0x01000000, KnightMan's guard and ToadMan's
-    // dive, are content's, in the navi's state.)
-    /// The rules' revival runs (`request::REVIVAL`'s action; the DS's
-    /// 0x200000, its ToadMan rescue). Takes over the action dispatch; the
-    /// navi isn't deleted at 0 HP while it runs.
-    pub const REVIVING: u32 = 0x0200_0000;
-    /// The rules' follow-up runs (`request::FOLLOW_UP`'s action; the DS's
-    /// 0x800000, a Double Attack after a paused swap). Takes over the action
-    /// dispatch.
-    pub const FOLLOWING_UP: u32 = 0x0400_0000;
+bitflags::bitflags! {
+    /// Actor state bits (`ActorData::status`).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct ActorStatus: u32 {
+        /// The directions of the last move.
+        const MOVED_UP = 0x1;
+        const MOVED_DOWN = 0x2;
+        const MOVED_LEFT = 0x4;
+        const MOVED_RIGHT = 0x8;
+        const MOVE_DIRECTIONS = Self::MOVED_UP.bits() | Self::MOVED_DOWN.bits() | Self::MOVED_LEFT.bits() | Self::MOVED_RIGHT.bits();
+        const CONTROLLABLE = 0x10;
+        /// It dives: a panel that submerges (EXE5's sea) submerges it and
+        /// doesn't hold it at a move's end (`sub_801032C`'s 0x20: EXE5's
+        /// 0x08017030, 0x0801715E).
+        const DIVES = 0x20;
+        const CHIP_IN_PROGRESS = 0x40;
+        /// Pause handler: form change in progress (`sub_8014A38`).
+        const FORM_CHANGE = 0x80;
+        /// Pause handler: reverting to base form (`sub_8015614`).
+        const REVERTING_FORM = 0x100;
+        const NO_CHARGE = 0x200;
+        const CAN_TURN = 0x400;
+        /// Anti-damage trap armed (acts like chip 0xBB).
+        const TRAP_ARMED = 0x800;
+        /// Pause handler: changing Cross (`sub_802D714`).
+        const SWITCHING_NAVI = 0x1000;
+        /// Knocked out of a Cross instead of deleted (action 0x4C, or the
+        /// pause handler's `sub_802D926`). Takes over the action dispatch.
+        const SWITCH_KNOCKOUT = 0x2000;
+        /// A navi switch took effect (set when `sub_802D714` ends). A link
+        /// navi with it falls back instead of being deleted (`sub_802DD2A`).
+        const SWITCHED = 0x4000;
+        /// In the air (EXE5's 0x8000): GyroMan's tick sets it over a panel
+        /// that isn't solid (0x080F0A10) and his landing clears it
+        /// (0x080F0C9C); nothing else does. A step taken with it sets no
+        /// animation (`movement::animates`).
+        const HOVERING = 0x8000;
+        /// Action 0x30 runs (the roles' `volley`: EXE5's last stand). Takes
+        /// over the action dispatch.
+        const VOLLEY = 0x1_0000;
+        /// Takes over the action dispatch like the two above; no setter was
+        /// found.
+        const UNINTERRUPTIBLE = 0x2_0000;
+        /// A weakness hit is breaking the form (`sub_8015766` runs instead
+        /// of the action).
+        const FORM_BREAKING = 0x4_0000;
+        /// A form change holds the navi's sprite still (it is off the field).
+        const FORM_CHANGE_SPRITE_HELD = 0x8_0000;
+        /// Gone from the field while its navi chip's navi acts (`sub_80E1352`
+        /// sets it, `sub_80E13DC` clears it).
+        const VANISHED = 0x10_0000;
+        /// RskyHny's trap (action 0x39): a hit with no fire damage is
+        /// swallowed and, if it did other damage, sends another bee
+        /// (`sub_802CEF4`).
+        const HEAT_TRAP = 0x20_0000;
+        // (EXE5 DS's 0x400000 and 0x01000000, KnightMan's guard and ToadMan's
+        // dive, are content's, in the navi's state.)
+        /// The rules' revival runs (`Requests::REVIVAL`'s action; the DS's
+        /// 0x200000, its ToadMan rescue). Takes over the action dispatch; the
+        /// navi isn't deleted at 0 HP while it runs.
+        const REVIVING = 0x0200_0000;
+        /// The rules' follow-up runs (`Requests::FOLLOW_UP`'s action; the DS's
+        /// 0x800000, a Double Attack after a paused swap). Takes over the action
+        /// dispatch.
+        const FOLLOWING_UP = 0x0400_0000;
+        const _ = !0;
+    }
 }
 
 /// State of the attack action in progress, shared by whatever action is
@@ -373,10 +389,10 @@ pub struct ActorData {
     /// AIData+0x40: the target marker (effect #0xF, EXE6's Beast Out lock-on marker:
     /// `sub_80E1620`), which `sub_80E1662` unfreezes.
     pub target_marker: Option<ObjectRef>,
-    /// Action requests from input (`request::*`).
-    pub requests: u32,
-    /// Actor state bits (`status::*`).
-    pub status: u32,
+    /// Action requests from input and reactions.
+    pub requests: Requests,
+    /// Actor state bits.
+    pub status: ActorStatus,
     /// AIData+0x4C: consecutive ticks spent flinching or paralyzed
     /// (`sub_80143FC`); 120 of them make MegaMan angry (`sub_80142DC`).
     pub stun_ticks: u32,
@@ -413,7 +429,7 @@ pub struct ActorData {
     /// stat), the glow it shows (seen and heard by its side alone) and the
     /// glow's animation once full. The rules push them (EXE5's while its
     /// cycle runs: `navi_tick`); a full charge's release is theirs
-    /// (`request::RULES_RELEASE`), and the weapons' load drops them all
+    /// (`Requests::RULES_RELEASE`), and the weapons' load drops them all
     /// (EXE5's 0x0800DCD8). None: no such charge.
     pub b_charge_time: Option<u8>,
     pub b_charge_glow: Option<nettai_content_api::SpriteId>,

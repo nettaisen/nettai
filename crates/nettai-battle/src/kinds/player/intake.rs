@@ -76,7 +76,7 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
 /// any count but 0 and 0xFFFF); their end asks for the stun strike (EXE5's
 /// action 0x49: the drive's end).
 fn no_charge_timer(b: &mut Battle, r: ObjectRef) {
-    if ai(b, r).status & crate::actor::status::NO_CHARGE == 0 || b.is_dimmed() || b.paused {
+    if !ai(b, r).status.contains(crate::actor::ActorStatus::NO_CHARGE) || b.is_dimmed() || b.paused {
         return;
     }
     let a = ai_mut(b, r);
@@ -86,7 +86,7 @@ fn no_charge_timer(b: &mut Battle, r: ObjectRef) {
     }
     a.no_charge_timer = t - 1;
     if t - 1 == 0 {
-        a.requests |= crate::actor::request::STUN_STRIKE;
+        a.requests.insert(crate::actor::Requests::STUN_STRIKE);
     }
 }
 
@@ -391,7 +391,7 @@ fn drop_cursor_trap(b: &mut Battle, r: ObjectRef) {
 /// may swallow it (`hit_guard`: EXE5 DS's 0x02063B72, KnightMan's guard).
 fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance as usize;
-    if ai(b, r).status & crate::actor::status::HEAT_TRAP != 0 && coll(b, r).acc.element_damage[1] == 0 {
+    if ai(b, r).status.contains(crate::actor::ActorStatus::HEAT_TRAP) && coll(b, r).acc.element_damage[1] == 0 {
         let d = &coll(b, r).acc.element_damage;
         if d[0] | d[2] | d[3] | d[4] != 0 {
             ai_mut(b, r).attack.marker = 1;
@@ -406,18 +406,18 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
     let rules = b.game_rules().intake.anti_traps;
     let (trap, min, swallows_below) = if let Some(trap @ (Trap::AntiDamage | Trap::BodyGuard)) = chip {
         (trap, rules.damage_min as u32, false)
-    } else if ai(b, r).status & crate::actor::status::TRAP_ARMED != 0 {
+    } else if ai(b, r).status.contains(crate::actor::ActorStatus::TRAP_ARMED) {
         (Trap::AntiDamage, 1, rules.armed_swallows_below)
     } else {
         if chip == Some(Trap::AntiSword) {
-            use crate::actor::request::ANTI_SWORD_TRIGGERED;
-            if ai(b, r).requests & ANTI_SWORD_TRIGGERED != 0 {
+            use crate::actor::Requests;
+            if ai(b, r).requests.contains(Requests::ANTI_SWORD_TRIGGERED) {
                 zero_trapped_hit(b, r);
                 return;
             }
             let ffc = coll(b, r).acc.hit_flags;
             if ffc & types::SWORD != 0 && ffc & rules.sword_spares == 0 {
-                ai_mut(b, r).requests |= ANTI_SWORD_TRIGGERED;
+                ai_mut(b, r).requests.insert(Requests::ANTI_SWORD_TRIGGERED);
                 zero_trapped_hit(b, r);
                 return;
             }
@@ -427,7 +427,7 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
         }
         return;
     };
-    if ai(b, r).requests & (crate::actor::request::ANTI_DAMAGE_TRIGGERED | crate::actor::request::BODY_GUARD_TRIGGERED) != 0 {
+    if ai(b, r).requests.intersects(crate::actor::Requests::ANTI_DAMAGE_TRIGGERED | crate::actor::Requests::BODY_GUARD_TRIGGERED) {
         zero_trapped_hit(b, r);
         return;
     }
@@ -442,7 +442,7 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
         return;
     }
     ai_mut(b, r).requests |=
-        if trap == Trap::AntiDamage { crate::actor::request::ANTI_DAMAGE_TRIGGERED } else { crate::actor::request::BODY_GUARD_TRIGGERED };
+        if trap == Trap::AntiDamage { crate::actor::Requests::ANTI_DAMAGE_TRIGGERED } else { crate::actor::Requests::BODY_GUARD_TRIGGERED };
     zero_trapped_hit(b, r);
 }
 
@@ -647,7 +647,7 @@ fn lose_chip(b: &mut Battle, r: ObjectRef) {
     // wouldn't agree. The engine doesn't port that read: a deliberate
     // departure (docs/engine/chips.md §2.9).
     if super::next_chip(b, r).is_none() {
-        ai_mut(b, r).requests &= !(crate::actor::request::CHIP | crate::actor::request::CHARGED_CHIP);
+        ai_mut(b, r).requests.remove(crate::actor::Requests::CHIP | crate::actor::Requests::CHARGED_CHIP);
     }
 }
 
@@ -947,7 +947,7 @@ mod tests {
     /// The hand's cursor and chips after it, and the requests left.
     #[test]
     fn a_chip_destroying_hit_takes_the_next_chip_or_the_hand() {
-        use crate::actor::request;
+        use crate::actor::Requests;
         use crate::content::ChipDestruction;
         let hit = |rule: Option<ChipDestruction>, cursor: u8| {
             let (mut b, r) = on_ice(0);
@@ -961,20 +961,20 @@ mod tests {
             b.hands[side].ids = [Some(chip), Some(chip), Some(chip), None, None, None];
             b.hands[side].cursor = cursor;
             b.objects.get_mut(r).chip = Some(chip);
-            ai_mut(&mut b, r).requests |= request::CHIP | request::BUSTER;
+            ai_mut(&mut b, r).requests.insert(Requests::CHIP | Requests::BUSTER);
             lose_chip(&mut b, r);
             assert_eq!(b.hands[side].cursor, cursor, "no hit flag 0x10: nothing lost");
             coll_mut(&mut b, r).acc.hit_flags |= types::CHIP_DESTRUCTION;
             lose_chip(&mut b, r);
             assert_eq!(b.objects.get(r).chip, None);
             let left = b.hands[side].ids.iter().filter(|id| id.is_some()).count();
-            (b.hands[side].cursor, left, ai(&b, r).requests & (request::CHIP | request::BUSTER))
+            (b.hands[side].cursor, left, ai(&b, r).requests & (Requests::CHIP | Requests::BUSTER))
         };
-        let both = request::CHIP | request::BUSTER;
+        let both = Requests::CHIP | Requests::BUSTER;
         assert_eq!(hit(None, 0), (1, 3, both), "the next chip: the cursor past it, the request for the one after");
-        assert_eq!(hit(None, 2), (3, 3, request::BUSTER), "the last chip: no chip left, the chip request ends");
-        assert_eq!(hit(None, 3), (3, 3, request::BUSTER), "no chip at the cursor: it stays");
+        assert_eq!(hit(None, 2), (3, 3, Requests::BUSTER), "the last chip: no chip left, the chip request ends");
+        assert_eq!(hit(None, 3), (3, 3, Requests::BUSTER), "no chip at the cursor: it stays");
         let hand = Some(ChipDestruction::Hand);
-        assert_eq!(hit(hand, 1), (0, 0, request::BUSTER), "the hand, the cursor back at its first chip");
+        assert_eq!(hit(hand, 1), (0, 0, Requests::BUSTER), "the hand, the cursor back at its first chip");
     }
 }

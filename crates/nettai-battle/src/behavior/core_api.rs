@@ -22,7 +22,7 @@ use nettai_content_api::ABSORBED_LOOK;
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
 use nettai_content_api::{ObstacleHold, ObstaclePush};
 
-use crate::actor::{ActorData, ActorType, request, status};
+use crate::actor::{ActorData, ActorStatus, ActorType, Requests};
 use crate::battle::{Battle, LinkedRecord};
 use crate::collision::{CollisionData, f1, timer, types};
 use crate::field::PanelType;
@@ -93,38 +93,38 @@ fn timer_index(t: StatusTimer) -> usize {
     }
 }
 
-fn request_bit(f: RequestFlag) -> u32 {
+fn request_bit(f: RequestFlag) -> Requests {
     match f {
         // (Not action requests: `request` and `set_request` read flag2.)
-        RequestFlag::Flinch | RequestFlag::Slide | RequestFlag::Anger | RequestFlag::Drag => 0,
-        RequestFlag::Buster => request::BUSTER,
-        RequestFlag::ChargedShot => request::CHARGED_SHOT,
-        RequestFlag::Chip => request::CHIP,
-        RequestFlag::ChargedChip => request::CHARGED_CHIP,
-        RequestFlag::BackSpecial => request::BACK_SPECIAL,
-        RequestFlag::ForcedChargedShot => request::FORCED_CHARGED_SHOT,
-        RequestFlag::RevertForm => request::REVERT_FORM,
-        RequestFlag::AntiDamageTriggered => request::ANTI_DAMAGE_TRIGGERED,
-        RequestFlag::AntiSwordTriggered => request::ANTI_SWORD_TRIGGERED,
-        RequestFlag::CutIn => request::CUT_IN,
-        RequestFlag::TurnL => request::TURN_L,
-        RequestFlag::TurnR => request::TURN_R,
-        RequestFlag::FormChange => request::FORM_CHANGE,
-        RequestFlag::BodyGuardTriggered => request::BODY_GUARD_TRIGGERED,
-        RequestFlag::AltChip => request::ALT_CHIP,
-        RequestFlag::AHeld => request::A_HELD,
-        RequestFlag::BHeld => request::B_HELD,
-        RequestFlag::StunStrike => request::STUN_STRIKE,
-        RequestFlag::Guard => request::GUARD,
-        RequestFlag::Revival => request::REVIVAL,
-        RequestFlag::FollowUp => request::FOLLOW_UP,
-        RequestFlag::SelectSpecial => request::SELECT_SPECIAL,
-        RequestFlag::NaviSwitch => request::NAVI_SWITCH,
-        RequestFlag::SwitchKnockout => request::SWITCH_KNOCKOUT,
-        RequestFlag::Mode9A => request::MODE9_A,
-        RequestFlag::Takeover => request::TAKEOVER,
-        RequestFlag::Volley => request::VOLLEY,
-        RequestFlag::WeaknessHit => request::WEAKNESS_HIT,
+        RequestFlag::Flinch | RequestFlag::Slide | RequestFlag::Anger | RequestFlag::Drag => Requests::empty(),
+        RequestFlag::Buster => Requests::BUSTER,
+        RequestFlag::ChargedShot => Requests::CHARGED_SHOT,
+        RequestFlag::Chip => Requests::CHIP,
+        RequestFlag::ChargedChip => Requests::CHARGED_CHIP,
+        RequestFlag::BackSpecial => Requests::BACK_SPECIAL,
+        RequestFlag::ForcedChargedShot => Requests::FORCED_CHARGED_SHOT,
+        RequestFlag::RevertForm => Requests::REVERT_FORM,
+        RequestFlag::AntiDamageTriggered => Requests::ANTI_DAMAGE_TRIGGERED,
+        RequestFlag::AntiSwordTriggered => Requests::ANTI_SWORD_TRIGGERED,
+        RequestFlag::CutIn => Requests::CUT_IN,
+        RequestFlag::TurnL => Requests::TURN_L,
+        RequestFlag::TurnR => Requests::TURN_R,
+        RequestFlag::FormChange => Requests::FORM_CHANGE,
+        RequestFlag::BodyGuardTriggered => Requests::BODY_GUARD_TRIGGERED,
+        RequestFlag::AltChip => Requests::ALT_CHIP,
+        RequestFlag::AHeld => Requests::A_HELD,
+        RequestFlag::BHeld => Requests::B_HELD,
+        RequestFlag::StunStrike => Requests::STUN_STRIKE,
+        RequestFlag::Guard => Requests::GUARD,
+        RequestFlag::Revival => Requests::REVIVAL,
+        RequestFlag::FollowUp => Requests::FOLLOW_UP,
+        RequestFlag::SelectSpecial => Requests::SELECT_SPECIAL,
+        RequestFlag::NaviSwitch => Requests::NAVI_SWITCH,
+        RequestFlag::SwitchKnockout => Requests::SWITCH_KNOCKOUT,
+        RequestFlag::Mode9A => Requests::MODE9_A,
+        RequestFlag::Takeover => Requests::TAKEOVER,
+        RequestFlag::Volley => Requests::VOLLEY,
+        RequestFlag::WeaknessHit => Requests::WEAKNESS_HIT,
     }
 }
 
@@ -151,28 +151,28 @@ fn flag2_request(f: RequestFlag) -> Option<u32> {
     }
 }
 
-fn navi_state_bit(f: NaviState) -> u32 {
+fn navi_state_bit(f: NaviState) -> ActorStatus {
     match f {
-        NaviState::Controllable => status::CONTROLLABLE,
-        NaviState::ChipInProgress => status::CHIP_IN_PROGRESS,
-        NaviState::FormChange => status::FORM_CHANGE,
-        NaviState::RevertingForm => status::REVERTING_FORM,
-        NaviState::NoCharge => status::NO_CHARGE,
-        NaviState::CanTurn => status::CAN_TURN,
-        NaviState::TrapArmed => status::TRAP_ARMED,
-        NaviState::SwitchingNavi => status::SWITCHING_NAVI,
-        NaviState::SwitchKnockout => status::SWITCH_KNOCKOUT,
-        NaviState::Switched => status::SWITCHED,
-        NaviState::Volley => status::VOLLEY,
-        NaviState::Uninterruptible => status::UNINTERRUPTIBLE,
-        NaviState::FormBreaking => status::FORM_BREAKING,
-        NaviState::FormChangeSpriteHeld => status::FORM_CHANGE_SPRITE_HELD,
-        NaviState::HeatTrap => status::HEAT_TRAP,
-        NaviState::Reviving => status::REVIVING,
-        NaviState::FollowingUp => status::FOLLOWING_UP,
-        NaviState::Vanished => status::VANISHED,
-        NaviState::Dives => status::DIVES,
-        NaviState::Hovering => status::HOVERING,
+        NaviState::Controllable => ActorStatus::CONTROLLABLE,
+        NaviState::ChipInProgress => ActorStatus::CHIP_IN_PROGRESS,
+        NaviState::FormChange => ActorStatus::FORM_CHANGE,
+        NaviState::RevertingForm => ActorStatus::REVERTING_FORM,
+        NaviState::NoCharge => ActorStatus::NO_CHARGE,
+        NaviState::CanTurn => ActorStatus::CAN_TURN,
+        NaviState::TrapArmed => ActorStatus::TRAP_ARMED,
+        NaviState::SwitchingNavi => ActorStatus::SWITCHING_NAVI,
+        NaviState::SwitchKnockout => ActorStatus::SWITCH_KNOCKOUT,
+        NaviState::Switched => ActorStatus::SWITCHED,
+        NaviState::Volley => ActorStatus::VOLLEY,
+        NaviState::Uninterruptible => ActorStatus::UNINTERRUPTIBLE,
+        NaviState::FormBreaking => ActorStatus::FORM_BREAKING,
+        NaviState::FormChangeSpriteHeld => ActorStatus::FORM_CHANGE_SPRITE_HELD,
+        NaviState::HeatTrap => ActorStatus::HEAT_TRAP,
+        NaviState::Reviving => ActorStatus::REVIVING,
+        NaviState::FollowingUp => ActorStatus::FOLLOWING_UP,
+        NaviState::Vanished => ActorStatus::VANISHED,
+        NaviState::Dives => ActorStatus::DIVES,
+        NaviState::Hovering => ActorStatus::HOVERING,
     }
 }
 
@@ -2319,7 +2319,7 @@ impl CoreApi for Battle {
         if let Some(bit) = flag2_request(f) {
             return Ok(self.collision_of(o)?.f2 & bit != 0);
         }
-        Ok(self.actor_of(o)?.requests & request_bit(f) != 0)
+        Ok(self.actor_of(o)?.requests.intersects(request_bit(f)))
     }
 
     fn set_request(&mut self, o: ObjectRef, f: RequestFlag, on: bool) -> ApiResult<()> {
@@ -2329,19 +2329,17 @@ impl CoreApi for Battle {
             return Ok(());
         }
         let a = self.actor_of_mut(o)?;
-        let bit = request_bit(f);
-        a.requests = if on { a.requests | bit } else { a.requests & !bit };
+        a.requests.set(request_bit(f), on);
         Ok(())
     }
 
     fn navi_state(&self, o: ObjectRef, f: NaviState) -> ApiResult<bool> {
-        Ok(self.actor_of(o)?.status & navi_state_bit(f) != 0)
+        Ok(self.actor_of(o)?.status.intersects(navi_state_bit(f)))
     }
 
     fn set_navi_state(&mut self, o: ObjectRef, f: NaviState, on: bool) -> ApiResult<()> {
         let a = self.actor_of_mut(o)?;
-        let bit = navi_state_bit(f);
-        a.status = if on { a.status | bit } else { a.status & !bit };
+        a.status.set(navi_state_bit(f), on);
         Ok(())
     }
 
@@ -2500,7 +2498,7 @@ impl CoreApi for Battle {
         self.actor_of(o)?;
         let side = self.objects.get(o).alliance as usize & 1;
         self.turn_transforms[side].form = Some(form);
-        self.actor_of_mut(o)?.requests |= crate::actor::request::FORM_CHANGE;
+        self.actor_of_mut(o)?.requests.insert(crate::actor::Requests::FORM_CHANGE);
         Ok(())
     }
 

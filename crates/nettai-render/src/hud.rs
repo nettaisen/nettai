@@ -16,7 +16,7 @@ use crate::vfont::{LetteringFont, Lettering, Role};
 use nettai_assets::letters::Digits;
 use nettai_assets::{Bundle, Hud, MapEntry, Palette, TelopLook, TelopTiles, Tiles};
 use nettai_battle::Battle;
-use nettai_battle::actor::status;
+use nettai_battle::actor::ActorStatus;
 use nettai_battle::transform::{SequencerState, TransformPhase};
 use nettai_battle::battle::{fight, mode, top};
 use nettai_battle::content::{BannerId, ChipFlags, ChipIcons};
@@ -2079,7 +2079,7 @@ fn icon_parts<'a>(
     if b.game_rules().effects.chip_icons == ChipIcons::NaviOffset {
         return own_icon_parts(b, graphics, r, view, seat, list, problems);
     }
-    let vanished = o.actor.is_some_and(|a| b.actors.get(a).status & status::VANISHED != 0);
+    let vanished = o.actor.is_some_and(|a| b.actors.get(a).status.contains(ActorStatus::VANISHED));
     if o.chips_held == 0 || vanished || !b.chip_hud_for(o.alliance).icons {
         return;
     }

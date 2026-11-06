@@ -92,9 +92,24 @@ pub(crate) fn deserialize<'de, D: Deserializer<'de>>(d: D, names: &'static [(u32
     Ok(v)
 }
 
-/// `impl Serialize, Deserialize` for a flags newtype `T(pub int)` with a
-/// `NAMES` table: a set of its names (`{ name = true }`).
+/// `impl Serialize, Deserialize` for a flag type with a `NAMES` table: a set
+/// of its names (`{ name = true }`). The type is a `bitflags` type
+/// (`serde_flags!(T)`), or a newtype of one that names a part of its bits
+/// (`serde_flags!(T(Inner))`).
 macro_rules! serde_flags {
+    ($t:ident) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                crate::content::flags::serialize(self.bits().into(), <$t>::NAMES, s)
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<$t, D::Error> {
+                // (The names' bits are the type's own: they fit.)
+                crate::content::flags::deserialize(d, <$t>::NAMES).map(|v| <$t>::from_bits_retain(v as _))
+            }
+        }
+    };
     ($t:ty, $int:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -104,6 +119,18 @@ macro_rules! serde_flags {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<$t, D::Error> {
                 crate::content::flags::deserialize(d, <$t>::NAMES).map(|v| Self(v as $int))
+            }
+        }
+    };
+    ($t:ident($inner:ty)) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                crate::content::flags::serialize(self.0.bits().into(), <$t>::NAMES, s)
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<$t, D::Error> {
+                crate::content::flags::deserialize(d, <$t>::NAMES).map(|v| $t(<$inner>::from_bits_retain(v as _)))
             }
         }
     };

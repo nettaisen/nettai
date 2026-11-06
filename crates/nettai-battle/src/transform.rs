@@ -105,7 +105,7 @@ impl Battle {
         let navis = rev.navis;
         let knocked_out = |b: &Battle, n: Option<crate::object::ObjectRef>| {
             n.is_some_and(|p| {
-                b.objects.get(p).actor.is_some_and(|a| b.actors.get(a).status & crate::actor::status::SWITCH_KNOCKOUT != 0)
+                b.objects.get(p).actor.is_some_and(|a| b.actors.get(a).status.contains(crate::actor::ActorStatus::SWITCH_KNOCKOUT))
             })
         };
         if !knocked_out(self, navis[0]) && !knocked_out(self, navis[1]) {

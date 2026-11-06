@@ -60,16 +60,16 @@ pub enum ActionRole {
     /// 0x08010850): the navi's deletion action runs it. Unfilled, the
     /// engine's (EXE6's `sub_80173F4`, EXE5's alike).
     Deletion,
-    /// What the navi's revival request starts (`request::REVIVAL`): the
+    /// What the navi's revival request starts (`Requests::REVIVAL`): the
     /// rules bring back a navi whose HP reached 0 (EXE5's party battle, the
     /// DS's ToadMan rescue, action 0x5A). Unfilled where no rules ask for it.
     Revival,
-    /// What the navi's follow-up request starts (`request::FOLLOW_UP`): an
+    /// What the navi's follow-up request starts (`Requests::FOLLOW_UP`): an
     /// action of the rules' after the switch handling (EXE5's party battle,
     /// the DS's Double Attack after a paused swap, action 0x5C). Unfilled
     /// where no rules ask for it.
     FollowUp,
-    /// What the navi's guard request starts (`request::GUARD`), as a trap's
+    /// What the navi's guard request starts (`Requests::GUARD`), as a trap's
     /// counter starts: the rules' guard against a hit their `hit_guard`
     /// caught (EXE5's party battle, the DS's KnightMan's guard, action
     /// 0x5B). Unfilled where no rules ask for it.

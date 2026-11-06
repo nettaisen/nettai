@@ -10,7 +10,7 @@ use super::{
     set_navi_action, NaviAction,
     set_coordinates_from_panel, set_flag1, set_flag2, set_mood,
 };
-use crate::actor::{ActorType, request, status as ai_status};
+use crate::actor::{ActorStatus, ActorType, Requests};
 use crate::battle::{Battle, BattleFlags};
 use crate::collision::{f1, link, timer};
 use crate::object::{DragStep, ObjectRef, PanelPos, Vec3};
@@ -66,22 +66,22 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     // (The DS's party battle adds its in-battle switch, the rules'
     // follow-up and their revival to what runs on: 0x02062174. None of them
     // is set outside a side with partners, or the rules' asking.)
-    const RUNS_ON: u32 = ai_status::SWITCH_KNOCKOUT
-        | ai_status::SWITCHING_NAVI
-        | ai_status::FOLLOWING_UP
-        | ai_status::VOLLEY
-        | ai_status::REVIVING
-        | ai_status::UNINTERRUPTIBLE;
-    if st & RUNS_ON != 0 {
+    const RUNS_ON: ActorStatus = ActorStatus::SWITCH_KNOCKOUT
+        .union(ActorStatus::SWITCHING_NAVI)
+        .union(ActorStatus::FOLLOWING_UP)
+        .union(ActorStatus::VOLLEY)
+        .union(ActorStatus::REVIVING)
+        .union(ActorStatus::UNINTERRUPTIBLE);
+    if st.intersects(RUNS_ON) {
         return Flow::Dispatch;
     }
     // (A game with no transformation sequencer at a turn's start, EXE4's:
     // a navi changing form runs its change whatever else, dimmed or not,
     // 0x08013AFC.)
-    if st & ai_status::FORM_CHANGE != 0 && !b.game_rules().flow.sequencer_at_turn_start {
+    if st.contains(ActorStatus::FORM_CHANGE) && !b.game_rules().flow.sequencer_at_turn_start {
         return Flow::Dispatch;
     }
-    if st & ai_status::FORM_BREAKING != 0 && breaking_form(b, r) {
+    if st.contains(ActorStatus::FORM_BREAKING) && breaking_form(b, r) {
         return Flow::Return;
     }
     if b.is_dimmed() {
@@ -361,7 +361,7 @@ fn weakness_request(b: &mut Battle, r: ObjectRef) {
     }
     let c = coll(b, r);
     if c.acc.damage_multiplier != 0 && c.acc.final_damage != 0 {
-        ai_mut(b, r).requests |= request::WEAKNESS_HIT;
+        ai_mut(b, r).requests.insert(Requests::WEAKNESS_HIT);
     }
 }
 
@@ -522,10 +522,10 @@ fn fall(b: &mut Battle, r: ObjectRef) {
         return;
     }
     if switch_protected(b, r) {
-        ai_mut(b, r).requests |= request::SWITCH_KNOCKOUT;
+        ai_mut(b, r).requests.insert(Requests::SWITCH_KNOCKOUT);
         return;
     }
-    if ai(b, r).requests & request::REVIVAL != 0 || ai(b, r).status & ai_status::REVIVING != 0 {
+    if ai(b, r).requests.contains(Requests::REVIVAL) || ai(b, r).status.contains(ActorStatus::REVIVING) {
         return;
     }
     set_flag2(b, r, 1);
@@ -570,16 +570,16 @@ fn action_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
     let f = ai(b, r).requests;
     // The rules' revival of a navi at 0 HP (the DS's ToadMan rescue: request
     // 0x100, action 0x5A), before everything.
-    if f & request::REVIVAL != 0 {
-        ai_mut(b, r).requests &= !request::REVIVAL;
-        ai_mut(b, r).status |= ai_status::REVIVING;
+    if f.contains(Requests::REVIVAL) {
+        ai_mut(b, r).requests.remove(Requests::REVIVAL);
+        ai_mut(b, r).status.insert(ActorStatus::REVIVING);
         let revival = super::role_action(b, crate::content::ActionRole::Revival);
         set_attack(b, r, revival, 0);
         return Some(Flow::Dispatch);
     }
-    if f & request::SWITCH_KNOCKOUT != 0 {
-        ai_mut(b, r).requests &= !request::SWITCH_KNOCKOUT;
-        ai_mut(b, r).status |= ai_status::SWITCH_KNOCKOUT;
+    if f.contains(Requests::SWITCH_KNOCKOUT) {
+        ai_mut(b, r).requests.remove(Requests::SWITCH_KNOCKOUT);
+        ai_mut(b, r).status.insert(ActorStatus::SWITCH_KNOCKOUT);
         let death = super::role_action(b, crate::content::ActionRole::SwitchKnockout);
         set_attack(b, r, death, 0);
         return Some(Flow::Dispatch);
@@ -587,36 +587,36 @@ fn action_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
     // A side with partners switches in battle (the DS's action 0x59, from
     // the navi's own request: `actions::navi_switch::request_in_battle`).
     let side = b.objects.get(r).alliance as usize & 1;
-    if f & request::NAVI_SWITCH != 0 && b.party[side].has_partners() {
-        ai_mut(b, r).requests &= !request::NAVI_SWITCH;
-        ai_mut(b, r).status |= ai_status::SWITCHING_NAVI;
+    if f.contains(Requests::NAVI_SWITCH) && b.party[side].has_partners() {
+        ai_mut(b, r).requests.remove(Requests::NAVI_SWITCH);
+        ai_mut(b, r).status.insert(ActorStatus::SWITCHING_NAVI);
         set_attack(b, r, NaviAction::Engine(super::EngineAction::NaviSwitch), 0);
         return Some(Flow::Dispatch);
     }
     // The rules' follow-up (the DS's Double Attack after a paused swap:
     // request 0x02000000, action 0x5C).
-    if f & request::FOLLOW_UP != 0 {
-        ai_mut(b, r).requests &= !request::FOLLOW_UP;
-        ai_mut(b, r).status |= ai_status::FOLLOWING_UP;
+    if f.contains(Requests::FOLLOW_UP) {
+        ai_mut(b, r).requests.remove(Requests::FOLLOW_UP);
+        ai_mut(b, r).status.insert(ActorStatus::FOLLOWING_UP);
         let follow_up = super::role_action(b, crate::content::ActionRole::FollowUp);
         set_attack(b, r, follow_up, 0);
         return Some(Flow::Dispatch);
     }
-    if f & request::VOLLEY != 0 {
-        ai_mut(b, r).requests &= !request::VOLLEY;
-        ai_mut(b, r).status |= ai_status::VOLLEY;
+    if f.contains(Requests::VOLLEY) {
+        ai_mut(b, r).requests.remove(Requests::VOLLEY);
+        ai_mut(b, r).status.insert(ActorStatus::VOLLEY);
         let volley = super::role_action(b, crate::content::ActionRole::Volley);
         set_attack(b, r, volley, 0);
         return Some(Flow::Dispatch);
     }
-    if f & request::WEAKNESS_HIT != 0 {
-        ai_mut(b, r).requests &= !request::WEAKNESS_HIT;
+    if f.contains(Requests::WEAKNESS_HIT) {
+        ai_mut(b, r).requests.remove(Requests::WEAKNESS_HIT);
         // A form marked to break (EXE6's Crosses, Beast Out and the Crosses
         // in it, NameIDs 0x1AC..=0x1C1); in EXE5 (0x08017CAC) any navi.
         let marked = b.content.identity(b.objects.get(r).identity).breaks_on_weakness;
         let any = b.game_rules().form_break == crate::content::FormBreak::AnyForm;
         if any || marked {
-            ai_mut(b, r).status |= ai_status::FORM_BREAKING;
+            ai_mut(b, r).status.insert(ActorStatus::FORM_BREAKING);
             exit_attack_state(b, r);
             breaking_form(b, r);
             return Some(Flow::Return);
@@ -631,12 +631,12 @@ fn action_requests(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
 /// fight runs, the form's change (0x08013B14: action 0x0D); the battle isn't
 /// paused for it.
 fn unpaused_form_change(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
-    if b.game_rules().flow.sequencer_at_turn_start || ai(b, r).requests & request::FORM_CHANGE == 0 {
+    if b.game_rules().flow.sequencer_at_turn_start || !ai(b, r).requests.contains(Requests::FORM_CHANGE) {
         return None;
     }
-    ai_mut(b, r).requests &= !request::FORM_CHANGE;
+    ai_mut(b, r).requests.remove(Requests::FORM_CHANGE);
     let action = form_change_action(b, r)?;
-    ai_mut(b, r).status |= ai_status::FORM_CHANGE;
+    ai_mut(b, r).status.insert(ActorStatus::FORM_CHANGE);
     set_attack(b, r, NaviAction::Content(action), 0);
     Some(Flow::Dispatch)
 }
@@ -1078,7 +1078,7 @@ fn tick_dive(b: &mut Battle, r: ObjectRef) {
     let rules = &b.game_rules().panels;
     let p = coll(b, r).panel;
     let on = b.field.panel(p.x, p.y).is_some_and(|p| rules.rule(p.kind).submerges);
-    let dives = b.objects.get(r).actor.is_some_and(|a| b.actors.get(a).status & crate::actor::status::DIVES != 0);
+    let dives = b.objects.get(r).actor.is_some_and(|a| b.actors.get(a).status.contains(crate::actor::ActorStatus::DIVES));
     coll_mut(b, r).dive_timer = if on && dives { 0xFFFF } else { 0 };
     let t = coll(b, r).dive_timer;
     if t != 0xFFFF {
@@ -1285,7 +1285,7 @@ fn counter_shader(b: &mut Battle, r: ObjectRef) {
     if b.game_rules().intake.no_charge_drive && navi_action(b, r) != NaviAction::Entry {
         let a = ai(b, r);
         let left = a.no_charge_timer;
-        if a.status & crate::actor::status::NO_CHARGE != 0 && left != 0 && left <= 180 {
+        if a.status.contains(crate::actor::ActorStatus::NO_CHARGE) && left != 0 && left <= 180 {
             let v = GLOW[(left & 0x1F) as usize];
             shown = [v | v << 5 | v << 10; 2];
         }
@@ -1335,46 +1335,46 @@ fn update_visibility(b: &mut Battle, r: ObjectRef) {
 /// (form changes and the like).
 fn pause_requests(b: &mut Battle, r: ObjectRef) {
     let st = ai(b, r).status;
-    if st & ai_status::FORM_CHANGE != 0 {
+    if st.contains(ActorStatus::FORM_CHANGE) {
         return form_change(b, r);
     }
-    if st & ai_status::REVERTING_FORM != 0 {
+    if st.contains(ActorStatus::REVERTING_FORM) {
         // A form's own revert (EXE5's souls') runs as the navi's action.
         if let NaviAction::Content(h) = super::navi_action(b, r) {
             return crate::behavior::run_action(b, h, r);
         }
         return actions::transform::revert(b, r);
     }
-    if st & ai_status::SWITCHING_NAVI != 0 {
+    if st.contains(ActorStatus::SWITCHING_NAVI) {
         return actions::navi_switch::change(b, r);
     }
-    if st & ai_status::SWITCH_KNOCKOUT != 0 {
+    if st.contains(ActorStatus::SWITCH_KNOCKOUT) {
         return actions::navi_switch::knock_out(b, r);
     }
     let f = ai(b, r).requests;
     // The form's own revert (EXE5's 0x08014676 saves no state word).
     let own_revert = super::form_of(b, r).revert;
-    let (bit, state) = if f & request::FORM_CHANGE != 0 {
-        (request::FORM_CHANGE, ai_status::FORM_CHANGE)
-    } else if f & request::REVERT_FORM != 0 {
+    let (bit, state) = if f.contains(Requests::FORM_CHANGE) {
+        (Requests::FORM_CHANGE, ActorStatus::FORM_CHANGE)
+    } else if f.contains(Requests::REVERT_FORM) {
         if own_revert.is_none() {
             // Saves the state word after zeroing it.
             ai_mut(b, r).saved_word = None;
             save_state_word(b, r);
         }
-        (request::REVERT_FORM, ai_status::REVERTING_FORM)
-    } else if f & request::NAVI_SWITCH != 0 {
-        (request::NAVI_SWITCH, ai_status::SWITCHING_NAVI)
-    } else if f & request::SWITCH_KNOCKOUT != 0 {
-        (request::SWITCH_KNOCKOUT, ai_status::SWITCH_KNOCKOUT)
+        (Requests::REVERT_FORM, ActorStatus::REVERTING_FORM)
+    } else if f.contains(Requests::NAVI_SWITCH) {
+        (Requests::NAVI_SWITCH, ActorStatus::SWITCHING_NAVI)
+    } else if f.contains(Requests::SWITCH_KNOCKOUT) {
+        (Requests::SWITCH_KNOCKOUT, ActorStatus::SWITCH_KNOCKOUT)
     } else {
         return;
     };
     // The change into a form runs the action that form names; the rest are
     // the framework's own (the original's CurAction is 0x1C for all).
     let action = match (form_change_action(b, r), own_revert) {
-        (Some(h), _) if bit == request::FORM_CHANGE => NaviAction::Content(h),
-        (_, Some(h)) if bit == request::REVERT_FORM => NaviAction::Content(h),
+        (Some(h), _) if bit == Requests::FORM_CHANGE => NaviAction::Content(h),
+        (_, Some(h)) if bit == Requests::REVERT_FORM => NaviAction::Content(h),
         _ => NaviAction::Engine(super::EngineAction::FormChange),
     };
     let a = ai_mut(b, r);
@@ -1390,7 +1390,7 @@ fn pause_requests(b: &mut Battle, r: ObjectRef) {
 fn form_change(b: &mut Battle, r: ObjectRef) {
     match form_change_action(b, r) {
         Some(action) => crate::behavior::run_action(b, action, r),
-        None => ai_mut(b, r).status &= !ai_status::FORM_CHANGE,
+        None => ai_mut(b, r).status &= !ActorStatus::FORM_CHANGE,
     }
 }
 
@@ -1440,7 +1440,7 @@ fn cut_in(b: &mut Battle, r: ObjectRef) {
     // clear them. The engine doesn't port that read: the deliberate
     // departure the chip destruction makes (docs/engine/chips.md §2.9).
     if super::next_chip(b, r).is_none() {
-        ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP);
+        ai_mut(b, r).requests.remove(Requests::CHIP | Requests::CHARGED_CHIP);
     }
 }
 
@@ -1448,7 +1448,7 @@ fn cut_in(b: &mut Battle, r: ObjectRef) {
 /// draw per shaking tick).
 fn while_dimmed(b: &mut Battle, r: ObjectRef) {
     let player = navi_record(b, r).actor_type == ActorType::Player;
-    if player && is_link(b) && ai(b, r).requests & request::CUT_IN != 0 {
+    if player && is_link(b) && ai(b, r).requests.contains(Requests::CUT_IN) {
         // The next chip must be a dimming chip too, and one the side's
         // rules don't bar (`cut_in_barred`: EXE4's 0x08010C64 and EXE5's
         // 0x0801452E, the chips of the other kind of MegaMan), asked
@@ -1462,7 +1462,7 @@ fn while_dimmed(b: &mut Battle, r: ObjectRef) {
         // The ask goes, with what the rules clear beside it (EXE6's and
         // EXE5's the chip requests, EXE4's nothing: `request_clears`).
         let clears = b.game_rules().request_clears.cut_in.0;
-        ai_mut(b, r).requests &= !(request::CUT_IN | clears);
+        ai_mut(b, r).requests.remove(Requests::CUT_IN | clears);
     }
     let o = b.objects.get_mut(r);
     if o.prevent_anim == 0 {
@@ -1504,7 +1504,7 @@ mod tests {
         let cut_in_with = |hand: &[&str]| {
             let mut c: Content = testing::build();
             c.define().unwrap_or_else(|e| panic!("{e}"));
-            c.rules_mut().request_clears.cut_in = crate::content::RequestSet(0);
+            c.rules_mut().request_clears.cut_in = crate::content::RequestSet(Requests::empty());
             let c = Arc::new(c);
             let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
             testing::on(&mut setup, &c);
@@ -1516,12 +1516,12 @@ mod tests {
             b.hands[0].cursor = 0;
             // (The other side's chip shows its name: it can be cut in on.)
             b.dimming[1].state = crate::dimming::DimmingState::ShowingName;
-            ai_mut(&mut b, r).requests |= request::CHIP | request::CUT_IN;
+            ai_mut(&mut b, r).requests.insert(Requests::CHIP | Requests::CUT_IN);
             while_dimmed(&mut b, r);
-            (b.hands[0].cursor, ai(&b, r).requests & (request::CHIP | request::CUT_IN))
+            (b.hands[0].cursor, ai(&b, r).requests & (Requests::CHIP | Requests::CUT_IN))
         };
-        assert_eq!(cut_in_with(&[testing::VEIL]), (1, 0), "the last chip cut in: the chip request ends");
-        assert_eq!(cut_in_with(&[testing::VEIL, testing::SUN_GUN_3]), (1, request::CHIP), "a chip left: the request stays");
+        assert_eq!(cut_in_with(&[testing::VEIL]), (1, Requests::empty()), "the last chip cut in: the chip request ends");
+        assert_eq!(cut_in_with(&[testing::VEIL, testing::SUN_GUN_3]), (1, Requests::CHIP), "a chip left: the request stays");
     }
 
     /// The status timers hold while the battle is paused (the test

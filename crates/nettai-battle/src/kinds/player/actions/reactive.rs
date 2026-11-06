@@ -8,7 +8,7 @@
 //! `actions.anti_damage_counter`, `anti_sword_counter` and
 //! `body_guard_counter` (the rules' roles). See docs/engine/chips.md §3.6.10.
 
-use crate::actor::{request, status};
+use crate::actor::{ActorStatus, Requests};
 use crate::battle::Battle;
 use crate::content::ActionRole;
 use crate::kinds::player::{NaviAction, ai, ai_mut, clear_flag2, coll_mut, set_attack};
@@ -17,13 +17,13 @@ use crate::object::ObjectRef;
 /// The counter action a trap's request starts: AntiDmg's, AntiSwrd's, the
 /// rules' guard (EXE5 DS's KnightMan's, 0x020989E6), or (none of them)
 /// BodyGrd's.
-fn counter_action(b: &Battle, requests: u32, body_guard: bool) -> NaviAction {
+fn counter_action(b: &Battle, requests: Requests, body_guard: bool) -> NaviAction {
     let roles = b.roles();
-    let h = if requests & request::ANTI_DAMAGE_TRIGGERED != 0 {
+    let h = if requests.contains(Requests::ANTI_DAMAGE_TRIGGERED) {
         roles.action(ActionRole::AntiDamageCounter)
-    } else if requests & request::ANTI_SWORD_TRIGGERED != 0 {
+    } else if requests.contains(Requests::ANTI_SWORD_TRIGGERED) {
         roles.action(ActionRole::AntiSwordCounter)
-    } else if requests & request::GUARD != 0 {
+    } else if requests.contains(Requests::GUARD) {
         roles.action(ActionRole::Guard)
     } else if !body_guard {
         roles.action(ActionRole::AntiSwordCounter)
@@ -34,8 +34,8 @@ fn counter_action(b: &Battle, requests: u32, body_guard: bool) -> NaviAction {
 }
 
 /// The trap requests that start a counter from idle or mid-attack.
-pub(crate) const TRIGGERS: u32 =
-    request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::BODY_GUARD_TRIGGERED;
+pub(crate) const TRIGGERS: Requests =
+    Requests::ANTI_DAMAGE_TRIGGERED.union(Requests::ANTI_SWORD_TRIGGERED).union(Requests::BODY_GUARD_TRIGGERED);
 
 /// What both set-ups share: the attack's links cut, no longer controllable
 /// or trap-armed (`sub_801031C(0x810)`), the hit that set the trap off
@@ -47,7 +47,7 @@ fn drop_everything(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).related[0] = None;
     let a = ai_mut(b, r);
     a.overlay = None;
-    a.status &= !(status::CONTROLLABLE | status::TRAP_ARMED);
+    a.status.remove(ActorStatus::CONTROLLABLE | ActorStatus::TRAP_ARMED);
     // sub_800E9FA
     clear_flag2(b, r, 0x3_01FE);
     let acc = &mut coll_mut(b, r).acc;
@@ -77,7 +77,7 @@ pub(crate) fn counter(b: &mut Battle, r: ObjectRef) {
     // The other player's console shows the trap chip's name (sub_801EB18;
     // not for the rules' guard, EXE5 DS's 0x020989AC).
     if let Some(chip) = rec.chip
-        && requests & request::GUARD == 0
+        && !requests.contains(Requests::GUARD)
     {
         b.show_used_chip(side as u8, chip, rec.damage as u16, rec.bonus);
     }

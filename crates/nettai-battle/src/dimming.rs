@@ -507,9 +507,9 @@ fn set_vanished(b: &mut Battle, user: ObjectRef, on: bool) {
     let Some(a) = b.objects.get(user).actor else { return };
     let status = &mut b.actors.get_mut(a).status;
     if on {
-        *status |= crate::actor::status::VANISHED;
+        *status |= crate::actor::ActorStatus::VANISHED;
     } else {
-        *status &= !crate::actor::status::VANISHED;
+        *status &= !crate::actor::ActorStatus::VANISHED;
     }
 }
 

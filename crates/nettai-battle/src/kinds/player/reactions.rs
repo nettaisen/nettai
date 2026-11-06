@@ -6,7 +6,7 @@ use super::{
     clear_paralysis, coll, coll_mut, flag1, panel_coordinates, panel_kind, refresh_form_overlay,
     reset_charge, set_flag1, snap_to_future_panel, NaviAction, set_action,
 };
-use crate::actor::{request, status as ai_status};
+use crate::actor::{ActorStatus, Requests};
 use crate::battle::Battle;
 use crate::collision::{f1, timer};
 use crate::content::{DragEnding, PushSource, ReactionActions, SlideVector};
@@ -167,7 +167,10 @@ fn enter_reaction(b: &mut Battle, r: ObjectRef, anim: u8) {
     set_flag1(b, r, in_use(b));
     clear_flag1(b, r, f1::DRAG | f1::FLINCHING | f1::MOVING | f1::GUARD);
     cancel_submerged(b, r);
-    ai_mut(b, r).status &= !0x20_005F;
+    // (The original's mask, 0x20005F.)
+    ai_mut(b, r).status.remove(
+        ActorStatus::MOVE_DIRECTIONS | ActorStatus::CONTROLLABLE | ActorStatus::CHIP_IN_PROGRESS | ActorStatus::HEAT_TRAP,
+    );
     reset_charge(b, r);
     if plain(b) {
         snap_to_future_panel(b, r);
@@ -198,7 +201,7 @@ fn finish_reaction_entry(b: &mut Battle, r: ObjectRef, counted: bool) {
 fn end_reaction(b: &mut Battle, r: ObjectRef) {
     // (EXE6's 0x1000003F, EXE5's 0x1843F: the reactions section's.)
     let clears = b.game_rules().request_clears.paralysis.0;
-    ai_mut(b, r).requests &= !(request::ATTACKS | clears);
+    ai_mut(b, r).requests.remove(Requests::ATTACKS | clears);
     clear_flag1(b, r, in_use(b));
     let o = b.objects.get_mut(r);
     o.anim = 0;
@@ -311,7 +314,10 @@ pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
             clear_bubble(b, r);
         }
         cancel_submerged(b, r);
-        ai_mut(b, r).status &= !0x20_005F;
+        // (The original's mask, 0x20005F.)
+    ai_mut(b, r).status.remove(
+        ActorStatus::MOVE_DIRECTIONS | ActorStatus::CONTROLLABLE | ActorStatus::CHIP_IN_PROGRESS | ActorStatus::HEAT_TRAP,
+    );
         clear_flag1(b, r, f1::DRAG | f1::MOVING | f1::GUARD);
         reset_charge(b, r);
         if flag1(b, r) & f1::SLIDING == 0 {
@@ -337,7 +343,7 @@ pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
     clear_flag1(b, r, in_use(b) | f1::FLINCHING);
     // (EXE6's 0x1000043F, EXE5's 0x1843F: the reactions section's.)
     let clears = b.game_rules().request_clears.flinch.0;
-    ai_mut(b, r).requests &= !(request::ATTACKS | clears);
+    ai_mut(b, r).requests.remove(Requests::ATTACKS | clears);
     let o = b.objects.get_mut(r);
     o.anim = 0;
     set_action(b, r, NaviAction::Idle);
@@ -543,7 +549,7 @@ fn recover_from_drag(b: &mut Battle, r: ObjectRef) {
         // cleared, its requests, idle (EXE5's standing, EXE4's in its pose).
         clear_flag1(b, r, in_use(b) | f1::DRAG);
         let clears = b.game_rules().request_clears.drag.0;
-        ai_mut(b, r).requests &= !(request::ATTACKS | clears);
+        ai_mut(b, r).requests.remove(Requests::ATTACKS | clears);
         if ending == DragEnding::Stands {
             let o = b.objects.get_mut(r);
             o.anim = 0;
@@ -560,8 +566,8 @@ fn recover_from_drag(b: &mut Battle, r: ObjectRef) {
     // (EXE6's 0x1000043F, EXE5's 0x1843F: the reactions section's.)
     let clears = b.game_rules().request_clears.drag.0;
     let a = ai_mut(b, r);
-    a.requests &= !(request::ATTACKS | clears);
-    a.status &= !ai_status::HEAT_TRAP;
+    a.requests.remove(Requests::ATTACKS | clears);
+    a.status.remove(ActorStatus::HEAT_TRAP);
     clear_flag2(b, r, 0x10);
     let o = b.objects.get_mut(r);
     o.slide_state = 0;

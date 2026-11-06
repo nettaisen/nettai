@@ -5,7 +5,7 @@
 use crate::double_attacks::fighting;
 use crate::testing::exe5_content;
 use nettai_battle::Battle;
-use nettai_battle::actor::status;
+use nettai_battle::actor::ActorStatus;
 use nettai_battle::collision::f1;
 use nettai_battle::input::PlayerTick;
 
@@ -21,7 +21,7 @@ fn switch_to(b: &mut Battle, member: u8) {
     assert_eq!(b.party[0].active, member, "the switch landed");
 }
 
-fn navi_status(b: &Battle) -> u32 {
+fn navi_status(b: &Battle) -> ActorStatus {
     let a = b.objects.get(b.player(0).unwrap()).actor.expect("the navi's actor");
     b.actors.get(a).status
 }
@@ -56,12 +56,12 @@ fn toadman_switched_in_dives_on_sea() {
     let content = exe5_content();
     let mut b = fighting(&content, &["toadman"]);
     switch_to(&mut b, 1);
-    assert_ne!(navi_status(&b) & status::DIVES, 0, "ToadMan dives");
+    assert!(navi_status(&b).contains(ActorStatus::DIVES), "ToadMan dives");
     sea_under(&mut b);
     assert_ne!(flags(&b) & f1::BUBBLED, 0, "under the sea's surface");
     // (Switched out from under the surface, on the sea.)
     switch_to(&mut b, 0);
-    assert_eq!(navi_status(&b) & status::DIVES, 0, "MegaMan doesn't dive");
+    assert!(!navi_status(&b).contains(ActorStatus::DIVES), "MegaMan doesn't dive");
     sea_under(&mut b);
     assert_eq!(flags(&b) & f1::BUBBLED, 0, "MegaMan stands on the sea");
     let ripple = b.content.defs.kind_by_key("dive-ripple").expect("EXE5's dive ripple");
@@ -114,7 +114,7 @@ fn state(b: &Battle) -> Vec<String> {
         // (Its look, but how long its animation has played, which time alone tells apart.)
         format!("look {:?}", nettai_battle::object::sprite::Look { part_palette: b.objects.sprite(r).look.part_palette.map(|p| nettai_battle::object::sprite::Place { steps: 0, ..p }), ..b.objects.sprite(r).look }),
         format!("collision {:?}", b.collision.get(o.collision.unwrap())),
-        format!("status {:#x}", a.status & !status::SWITCHED),
+        format!("status {:#x}", a.status & !ActorStatus::SWITCHED),
         format!("weapons {:?}", (a.buster, a.charge_shot, a.a_charge, a.alt_a_charge, a.back_special, a.ai_index, a.identity)),
         format!("element {}", b.stats[0].element),
         format!("owned {owned:?}"),
@@ -256,9 +256,9 @@ fn gyroman_switched_in_hovers_over_a_broken_panel() {
     let mut b = fighting(&content, &["gyroman"]);
     switch_to(&mut b, 1);
     panel_under(&mut b, "broken");
-    assert_ne!(navi_status(&b) & status::HOVERING, 0, "GyroMan hovers");
+    assert!(navi_status(&b).contains(ActorStatus::HOVERING), "GyroMan hovers");
     switch_to(&mut b, 0);
-    assert_eq!(navi_status(&b) & status::HOVERING, 0, "MegaMan doesn't");
+    assert!(!navi_status(&b).contains(ActorStatus::HOVERING), "MegaMan doesn't");
 }
 
 /// A dark MegaMan switches in battle as a light one does: EXE5 DS's switch

@@ -10,7 +10,7 @@ use super::super::{
     stats,
 };
 use super::ActionVars;
-use crate::actor::{ActorType, status};
+use crate::actor::{ActorStatus, ActorType};
 use crate::battle::Battle;
 use crate::collision::f1;
 use crate::object::{ObjectRef, PanelPos};
@@ -143,14 +143,14 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80F02A2` (EXE5's 0x080F01CA): whether the step sets the navi's
 /// animations: not while the navi is in the air (the state bit 0x8000,
-/// `status::HOVERING`), where it keeps the animation it has and its ends
+/// `ActorStatus::HOVERING`), where it keeps the animation it has and its ends
 /// leave it. The original also tests a byte of the attack (+0x0D), which
 /// EXE5's move starts set for AI index 2 alone (0x0800F234, 0x0802D544):
 /// GyroMan, whose tick is the only thing that sets the bit, so the bit
 /// says it all. (EXE6 keeps the test and sets neither: its steps always
 /// animate.)
 pub(super) fn animates(b: &Battle, r: ObjectRef) -> bool {
-    ai(b, r).status & status::HOVERING == 0
+    !ai(b, r).status.contains(ActorStatus::HOVERING)
 }
 
 /// Leave for idle (keeping pending requests and the charge).
@@ -279,23 +279,23 @@ fn astray_target(b: &Battle, r: ObjectRef, dir: u8) -> Option<PanelPos> {
 
 /// `sub_801BE04`: the state bits for a move from `from` to `to` (8 right,
 /// 4 left, 2 down, 1 up).
-fn direction_bits(to: PanelPos, from: PanelPos) -> u32 {
+fn direction_bits(to: PanelPos, from: PanelPos) -> ActorStatus {
     let x = match to.x.cmp(&from.x) {
-        std::cmp::Ordering::Greater => 8,
-        std::cmp::Ordering::Less => 4,
-        std::cmp::Ordering::Equal => 0,
+        std::cmp::Ordering::Greater => ActorStatus::MOVED_RIGHT,
+        std::cmp::Ordering::Less => ActorStatus::MOVED_LEFT,
+        std::cmp::Ordering::Equal => ActorStatus::empty(),
     };
     let y = match to.y.cmp(&from.y) {
-        std::cmp::Ordering::Greater => 2,
-        std::cmp::Ordering::Less => 1,
-        std::cmp::Ordering::Equal => 0,
+        std::cmp::Ordering::Greater => ActorStatus::MOVED_DOWN,
+        std::cmp::Ordering::Less => ActorStatus::MOVED_UP,
+        std::cmp::Ordering::Equal => ActorStatus::empty(),
     };
     x | y
 }
 
 /// `sub_80EB128`: on the third tick, move onto the destination.
 fn depart(b: &mut Battle, r: ObjectRef) {
-    ai_mut(b, r).status &= !status::MOVE_DIRECTIONS;
+    ai_mut(b, r).status.remove(ActorStatus::MOVE_DIRECTIONS);
     let v = vars(b, r);
     v.timer = v.timer.wrapping_sub(1);
     if v.timer != 0 {

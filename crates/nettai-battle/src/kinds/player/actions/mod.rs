@@ -77,8 +77,8 @@ pub(crate) fn open_counter_window(b: &mut Battle, r: ObjectRef, ticks: u8) {
 /// EXE5 DS's Slasher, 0x02046C3A): a trap's counter takes over
 /// (`sub_801056A`).
 pub(crate) fn check_reactive_abort(b: &mut Battle, r: ObjectRef, guard: bool) {
-    let triggers = if guard { reactive::TRIGGERS | crate::actor::request::GUARD } else { reactive::TRIGGERS };
-    if super::ai(b, r).requests & triggers != 0 {
+    let triggers = if guard { reactive::TRIGGERS | crate::actor::Requests::GUARD } else { reactive::TRIGGERS };
+    if super::ai(b, r).requests.intersects(triggers) {
         reactive::counter(b, r);
     }
 }

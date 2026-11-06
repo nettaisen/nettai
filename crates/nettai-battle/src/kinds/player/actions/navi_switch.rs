@@ -25,7 +25,7 @@
 //! exists yet: all of it is read from the code, unverified.
 
 use super::ActionVars;
-use crate::actor::{request, status};
+use crate::actor::{ActorStatus, Requests};
 use crate::battle::{Battle, BattleFlags};
 use crate::collision::{f1, timer};
 use crate::kinds::common;
@@ -77,7 +77,7 @@ fn has_partners(b: &Battle, r: ObjectRef) -> bool {
 
 /// `sub_802DCDE`: the transformation sequencer asks `navi` to change.
 pub(crate) fn request_change(b: &mut Battle, navi: ObjectRef) {
-    ai_mut(b, navi).requests |= request::NAVI_SWITCH;
+    ai_mut(b, navi).requests.insert(Requests::NAVI_SWITCH);
 }
 
 /// The end of the navi's input (the DS's input handler, 0x0203C5F6, on a
@@ -96,8 +96,8 @@ pub(crate) fn request_in_battle(b: &mut Battle, r: ObjectRef) {
     }
     // sub_802DE5C
     let a = ai(b, r);
-    if a.requests & (request::NAVI_SWITCH | request::SWITCH_KNOCKOUT) != 0
-        || a.status & (status::SWITCHING_NAVI | status::SWITCH_KNOCKOUT) != 0
+    if a.requests.intersects(Requests::NAVI_SWITCH | Requests::SWITCH_KNOCKOUT)
+        || a.status.intersects(ActorStatus::SWITCHING_NAVI | ActorStatus::SWITCH_KNOCKOUT)
     {
         return;
     }
@@ -106,7 +106,7 @@ pub(crate) fn request_in_battle(b: &mut Battle, r: ObjectRef) {
     }
     let a = ai_mut(b, r);
     a.switch_member = Some(member);
-    a.requests |= request::NAVI_SWITCH;
+    a.requests.insert(Requests::NAVI_SWITCH);
 }
 
 /// `sub_802D714`: one paused tick of the change, then the sprite steps
@@ -134,9 +134,9 @@ pub(in crate::kinds::player) fn change(b: &mut Battle, r: ObjectRef) {
         8 if party => {
             if settle(b, r) {
                 let a = ai_mut(b, r);
-                a.status |= status::SWITCHED;
-                a.status &= !(status::TRAP_ARMED | status::SWITCHING_NAVI | status::HOVERING);
-                a.requests &= !(request::ANTI_SWORD_TRIGGERED | request::ANTI_DAMAGE_TRIGGERED);
+                a.status.insert(ActorStatus::SWITCHED);
+                a.status.remove(ActorStatus::TRAP_ARMED | ActorStatus::SWITCHING_NAVI | ActorStatus::HOVERING);
+                a.requests.remove(Requests::ANTI_SWORD_TRIGGERED | Requests::ANTI_DAMAGE_TRIGGERED);
                 clear_flag2(b, r, 0x4);
                 settled(b, r);
                 exit_attack_state(b, r);
@@ -146,9 +146,9 @@ pub(in crate::kinds::player) fn change(b: &mut Battle, r: ObjectRef) {
             if settle(b, r) {
                 // (The HUD shows the navi again.)
                 let a = ai_mut(b, r);
-                a.status |= status::SWITCHED;
-                a.status &= !(status::TRAP_ARMED | status::SWITCHING_NAVI);
-                a.requests &= !(request::BODY_GUARD_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::ANTI_DAMAGE_TRIGGERED);
+                a.status.insert(ActorStatus::SWITCHED);
+                a.status.remove(ActorStatus::TRAP_ARMED | ActorStatus::SWITCHING_NAVI);
+                a.requests.remove(Requests::BODY_GUARD_TRIGGERED | Requests::ANTI_SWORD_TRIGGERED | Requests::ANTI_DAMAGE_TRIGGERED);
                 exit_attack_state(b, r);
             }
         }
@@ -176,8 +176,8 @@ pub(crate) fn in_battle(b: &mut Battle, r: ObjectRef) {
         8 => {
             if settle(b, r) {
                 let a = ai_mut(b, r);
-                a.status &= !(status::TRAP_ARMED | status::SWITCHING_NAVI | status::HOVERING);
-                a.requests &= !(request::ANTI_SWORD_TRIGGERED | request::ANTI_DAMAGE_TRIGGERED);
+                a.status.remove(ActorStatus::TRAP_ARMED | ActorStatus::SWITCHING_NAVI | ActorStatus::HOVERING);
+                a.requests.remove(Requests::ANTI_SWORD_TRIGGERED | Requests::ANTI_DAMAGE_TRIGGERED);
                 clear_flag2(b, r, 0x104);
                 b.clear_flags(BattleFlags::DIMMED);
                 settled(b, r);
@@ -207,8 +207,8 @@ pub(in crate::kinds::player) fn knock_out(b: &mut Battle, r: ObjectRef) {
         8 if party => {
             if settle(b, r) {
                 let a = ai_mut(b, r);
-                a.status &= !(status::TRAP_ARMED | status::SWITCH_KNOCKOUT | status::SWITCHED | status::HOVERING);
-                a.requests &= !(request::NAVI_SWITCH | request::ANTI_SWORD_TRIGGERED | request::ANTI_DAMAGE_TRIGGERED);
+                a.status.remove(ActorStatus::TRAP_ARMED | ActorStatus::SWITCH_KNOCKOUT | ActorStatus::SWITCHED | ActorStatus::HOVERING);
+                a.requests.remove(Requests::NAVI_SWITCH | Requests::ANTI_SWORD_TRIGGERED | Requests::ANTI_DAMAGE_TRIGGERED);
                 clear_flag2(b, r, 0x4);
                 exit_attack_state(b, r);
             }
@@ -216,11 +216,11 @@ pub(in crate::kinds::player) fn knock_out(b: &mut Battle, r: ObjectRef) {
         8 => {
             if settle(b, r) {
                 let a = ai_mut(b, r);
-                a.status &= !(status::TRAP_ARMED | status::SWITCH_KNOCKOUT | status::SWITCHED);
-                a.requests &= !(request::NAVI_SWITCH
-                    | request::BODY_GUARD_TRIGGERED
-                    | request::ANTI_SWORD_TRIGGERED
-                    | request::ANTI_DAMAGE_TRIGGERED);
+                a.status.remove(ActorStatus::TRAP_ARMED | ActorStatus::SWITCH_KNOCKOUT | ActorStatus::SWITCHED);
+                a.requests &= !(Requests::NAVI_SWITCH
+                    | Requests::BODY_GUARD_TRIGGERED
+                    | Requests::ANTI_SWORD_TRIGGERED
+                    | Requests::ANTI_DAMAGE_TRIGGERED);
                 exit_attack_state(b, r);
             }
         }
@@ -456,7 +456,7 @@ fn party_change(b: &mut Battle, r: ObjectRef, member: u8, in_battle: bool) {
     // sub_801A7F4
     coll_mut(b, r).barrier = 0;
     ai_mut(b, r).barrier_visual = None;
-    ai_mut(b, r).status |= status::SWITCHED;
+    ai_mut(b, r).status.insert(ActorStatus::SWITCHED);
     let (from, mood) = (b.party[side].active, b.stats[side].mood);
     let v = vars(b, r);
     (v.from, v.mood) = (from, mood);
@@ -588,7 +588,7 @@ fn finish_change(b: &mut Battle, r: ObjectRef) {
     clear_flag1(b, r, f1::UNTOUCHABLE);
     update_element(b, r);
     // sub_8014216
-    ai_mut(b, r).status &= !0x20;
+    ai_mut(b, r).status.remove(ActorStatus::DIVES);
     let side = b.objects.get(r).alliance as usize & 1;
     b.hands[side].charge_bonus = [0; 6];
     // The rules' (EXE5's 0x08011918: the side's ColonelSoul army disarmed).
@@ -616,7 +616,7 @@ fn finish_party_change(b: &mut Battle, r: ObjectRef) {
     let a = ai_mut(b, r);
     a.no_charge_timer = 0;
     a.in_auto_battle = false;
-    a.status &= !status::NO_CHARGE;
+    a.status.remove(ActorStatus::NO_CHARGE);
     finish_change(b, r);
 }
 
