@@ -140,13 +140,15 @@ impl<'de> Deserialize<'de> for PanelOffset {
     }
 }
 
-/// A test on a panel's flags word (`field::pflags`): all of `require`
+/// A test on a panel's flags word (`field::PanelFlags`): all of `require`
 /// set and none of `forbid`.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PanelCondition {
-    pub require: u32,
-    pub forbid: u32,
+    #[serde(with = "flags::bits")]
+    pub require: crate::field::PanelFlags,
+    #[serde(with = "flags::bits")]
+    pub forbid: crate::field::PanelFlags,
 }
 
 /// A hit region content defines (`new.region`): panels around the
@@ -678,7 +680,7 @@ impl Content {
     }
 
     /// A collision type's flag word for `alliance`'s side (`sub_801A00E`).
-    pub fn collision_type(&self, h: nettai_content_api::CollisionHandle, alliance: u8) -> u32 {
+    pub fn collision_type(&self, h: nettai_content_api::CollisionHandle, alliance: u8) -> crate::collision::CollisionTypes {
         self.defs.collisions[h.index()].flags[alliance as usize & 1]
     }
 

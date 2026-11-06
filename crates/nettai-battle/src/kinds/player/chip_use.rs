@@ -7,7 +7,7 @@ use super::{EmotionRole, ai, ai_mut, emotion_role, flag1, form_of, navi_of, navi
 use crate::actor::{ActorType, AttackVars, Requests};
 use crate::battle::Battle;
 use crate::collision::StatusFlags;
-use crate::field::PanelType;
+use crate::field::{PanelFlags, PanelType};
 use crate::content::{ChipData, ChipFamily, ChipFlags, ChipTraits, Content};
 use crate::object::{ObjectRef, PanelPos, Vec3};
 use nettai_content_api::{ChipHandle, WeaponHandle};
@@ -767,13 +767,17 @@ fn elsewhere(b: &mut Battle, r: ObjectRef) -> PanelPos {
     let (own, alliance) = (o.panel, o.alliance);
     // Side 0 looks for side 1's panels, unreserved; side 1 for its own
     // opponent's (no alliance bit).
-    let (require, forbid) = if alliance == 0 { (0x20, 0x80) } else { (0, 0xA0) };
+    let (require, forbid) = if alliance == 0 {
+        (PanelFlags::ALLIANCE_1, PanelFlags::RESERVED)
+    } else {
+        (PanelFlags::empty(), PanelFlags::ALLIANCE_1 | PanelFlags::RESERVED)
+    };
     let mut found = Vec::new();
     // object_getPanelsExceptCurrentFiltered: rows 3..1, columns 6..1.
     for y in (1..=3).rev() {
         for x in (1..=6).rev() {
             let f = b.field.flags(x, y);
-            if f & forbid == 0 && f & require == require && !(x == own.x && y == own.y) {
+            if !f.intersects(forbid) && f.contains(require) && !(x == own.x && y == own.y) {
                 found.push(PanelPos { x, y });
             }
         }

@@ -839,7 +839,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 let names = s.numbers.clone();
                 let step = |what: &str, rule: &StepSection| rule.rules(named).map_err(|m| e(format!("{at}.{what}: {m}")));
                 let type_mask = named.type_word(s.type_mask.iter().map(String::as_str)).map_err(|m| e(format!("{at}.type_mask: {m}")))?
-                    | crate::field::pflags::TYPE_MASK;
+                    | crate::field::PanelFlags::TYPE_MASK;
                 stated.panels = Some(PanelRules {
                     types,
                     cycle: s.cycle,

@@ -23,9 +23,9 @@
 use nettai_content_api::RecordHandle;
 
 use crate::battle::{Battle, BattleFlags};
-use crate::collision::{CollisionId, StatusFlags, StatusRequests, types};
+use crate::collision::{CollisionId, CollisionTypes, StatusFlags, StatusRequests};
 use crate::content::{CollisionRole, EffectRole, PushSource, SoundRole, SparkRole};
-use crate::field::{self, pflags};
+use crate::field::{self, PanelFlags};
 use crate::kinds::common::{self, Progress};
 use crate::object::{DragStep, ObjectFlags, ObjectRef, PanelPos, SlideBounds, StateWord, Vec3};
 
@@ -203,18 +203,18 @@ const PUSHING_HIT: u8 = 0x40;
 
 /// Collision types that break an obstacle outright when they touch it:
 /// bodies, other obstacles (neutral objects), and breaking hits.
-const CRUSHING_HITS: u32 = types::BODIES | CRUSHING_HITS_BUT_BODIES;
-const CRUSHING_HITS_BUT_BODIES: u32 = types::NEUTRAL | types::BREAK;
+const CRUSHING_HITS: CollisionTypes = CollisionTypes::BODIES.union(CRUSHING_HITS_BUT_BODIES);
+const CRUSHING_HITS_BUT_BODIES: CollisionTypes = CollisionTypes::NEUTRAL.union(CollisionTypes::BREAK);
 
 /// What pushed it, by side: the side's attacks, objects and other bodies
 /// (`sub_800F598`, `sub_801AE56`).
-const PUSHERS: [u32; 2] = [
-    types::ATTACK_SIDE0 | types::OBJECT_SIDE0 | types::OTHER_BODY_SIDE0,
-    types::ATTACK_SIDE1 | types::OBJECT_SIDE1 | types::OTHER_BODY_SIDE1,
+const PUSHERS: [CollisionTypes; 2] = [
+    CollisionTypes::ATTACK_SIDE0.union(CollisionTypes::OBJECT_SIDE0).union(CollisionTypes::OTHER_BODY_SIDE0),
+    CollisionTypes::ATTACK_SIDE1.union(CollisionTypes::OBJECT_SIDE1).union(CollisionTypes::OTHER_BODY_SIDE1),
 ];
 
 /// Hits of this type don't push a [`Push::AnyHit`] obstacle.
-const UNPUSHING_HIT: u32 = types::BREAKS_GUARD;
+const UNPUSHING_HIT: CollisionTypes = CollisionTypes::BREAKS_GUARD;
 
 /// The hit modifier a [`Push::AnyHit`] obstacle takes from any hit:
 /// pushed (0x40) a panel away (0x20), flinching (0x01).
@@ -223,8 +223,8 @@ const ANY_HIT_PUSH: u8 = 0x61;
 /// Panels a slide may enter: solid ones without other bodies or obstacles
 /// on them (`sub_800F534`); a knockback's also nothing else on them and
 /// no reservation (`sub_800F50C`).
-const SLIDE_BLOCKERS: u32 = types::OTHER_BODIES | types::NEUTRAL;
-const KNOCKBACK_BLOCKERS: u32 = pflags::OCCUPIED;
+const SLIDE_BLOCKERS: PanelFlags = PanelFlags::of_types(CollisionTypes::OTHER_BODIES.union(CollisionTypes::NEUTRAL));
+const KNOCKBACK_BLOCKERS: PanelFlags = PanelFlags::OCCUPIED;
 
 // (A slide's speed is the obstacle's game's reactions section's
 // `slide_speed`: EXE6's 10 pixels a tick across and 6 in depth, EXE5's 8 in
@@ -417,14 +417,14 @@ fn move_end(b: &mut Battle, r: ObjectRef, c: CollisionId) {
 /// other mix, nothing.
 fn push_on_any_hit_by_flip(b: &mut Battle, c: CollisionId) {
     let d = b.collision.get(c);
-    if d.acc.hit_flags & UNPUSHING_HIT != 0 || d.hit_mod_final & PUSHING_HIT != 0 {
+    if d.acc.hit_flags.intersects(UNPUSHING_HIT) || d.hit_mod_final & PUSHING_HIT != 0 {
         return;
     }
     let [unflipped, flipped] = d.acc.hit_flags_by_flip;
-    let i = (unflipped & PUSHERS[0] != 0) as u8
-        | ((unflipped & PUSHERS[1] != 0) as u8) << 1
-        | ((flipped & PUSHERS[0] != 0) as u8) << 2
-        | ((flipped & PUSHERS[1] != 0) as u8) << 3;
+    let i = (unflipped.intersects(PUSHERS[0])) as u8
+        | ((unflipped.intersects(PUSHERS[1])) as u8) << 1
+        | ((flipped.intersects(PUSHERS[0])) as u8) << 2
+        | ((flipped.intersects(PUSHERS[1])) as u8) << 3;
     let byte = match i {
         1 | 2 => 0,
         4 | 8 => 1,
@@ -438,12 +438,12 @@ fn push_on_any_hit_by_flip(b: &mut Battle, c: CollisionId) {
 fn push_on_any_hit(b: &mut Battle, c: CollisionId) {
     let d = b.collision.get(c);
     let hits = d.acc.hit_flags;
-    if hits & UNPUSHING_HIT != 0 || d.hit_mod_final & PUSHING_HIT != 0 {
+    if hits.intersects(UNPUSHING_HIT) || d.hit_mod_final & PUSHING_HIT != 0 {
         return;
     }
     // byte_801AEA0, by (side 0 hit it) + 2 * (side 1 hit it): only one
     // side's hit pushes.
-    let by = (hits & PUSHERS[0] != 0, hits & PUSHERS[1] != 0);
+    let by = (hits.intersects(PUSHERS[0]), hits.intersects(PUSHERS[1]));
     if by.0 != by.1 {
         b.collision.get_mut(c).hit_mod_final |= ANY_HIT_PUSH;
     }
@@ -494,7 +494,7 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u
             Crush::SparesBodies | Crush::DestroysSparingBodies => CRUSHING_HITS_BUT_BODIES,
             _ => CRUSHING_HITS,
         };
-        if crush != Crush::Ignores && b.collision.get(c).acc.hit_flags & crushing != 0 {
+        if crush != Crush::Ignores && b.collision.get(c).acc.hit_flags.intersects(crushing) {
             if !matches!(crush, Crush::Destroys | Crush::DestroysSparingBodies) {
                 b.objects.get_mut(r).hp = 0;
             }
@@ -958,7 +958,7 @@ fn push_vector(b: &Battle, r: ObjectRef) -> PushVector {
     }
     let d = b.collision.get(collision(b, r));
     let hits = d.acc.hit_flags;
-    let pusher = match (hits & PUSHERS[0] != 0, hits & PUSHERS[1] != 0) {
+    let pusher = match (hits.intersects(PUSHERS[0]), hits.intersects(PUSHERS[1])) {
         (true, false) => 1,
         (false, true) => -1,
         _ => return PushVector { pusher: 0, dx: 0, dy: 0, panels: 0 },
@@ -982,8 +982,8 @@ fn push_vector(b: &Battle, r: ObjectRef) -> PushVector {
 fn push_vector_by_flip(b: &Battle, r: ObjectRef) -> PushVector {
     let d = b.collision.get(collision(b, r));
     let hits = d.acc.hit_flags;
-    let pusher: i8 = if hits & PUSHERS[0] != 0 {
-        if hits & PUSHERS[1] != 0 {
+    let pusher: i8 = if hits.intersects(PUSHERS[0]) {
+        if hits.intersects(PUSHERS[1]) {
             return PushVector { pusher: 0, dx: 0, dy: 0, panels: 0 };
         }
         1
@@ -1015,11 +1015,11 @@ fn step_from(p: PanelPos, dx: i8, dy: i8) -> Option<PanelPos> {
 fn can_enter(b: &Battle, r: ObjectRef, kind: Slide, to: Option<PanelPos>) -> bool {
     let Some(p) = to else { return false };
     let (require, forbid) = match (kind, b.objects.get(r).slide_bounds) {
-        (Slide::KnockedBack, _) => (pflags::SOLID, KNOCKBACK_BLOCKERS),
-        (Slide::Bounded, SlideBounds::Anywhere) => (pflags::SOLID, SLIDE_BLOCKERS),
+        (Slide::KnockedBack, _) => (PanelFlags::SOLID, KNOCKBACK_BLOCKERS),
+        (Slide::Bounded, SlideBounds::Anywhere) => (PanelFlags::SOLID, SLIDE_BLOCKERS),
         // byte_800F588.
-        (Slide::Bounded, SlideBounds::Area(1)) => (pflags::SOLID | pflags::ALLIANCE_1, SLIDE_BLOCKERS),
-        (Slide::Bounded, SlideBounds::Area(_)) => (pflags::SOLID, SLIDE_BLOCKERS | pflags::ALLIANCE_1),
+        (Slide::Bounded, SlideBounds::Area(1)) => (PanelFlags::SOLID | PanelFlags::ALLIANCE_1, SLIDE_BLOCKERS),
+        (Slide::Bounded, SlideBounds::Area(_)) => (PanelFlags::SOLID, SLIDE_BLOCKERS | PanelFlags::ALLIANCE_1),
     };
     b.field.check(p.x, p.y, require, forbid)
 }

@@ -27,7 +27,7 @@ bitflags::bitflags! {
         const GUARD = 1 << 0;
         const INVISIBLE = 1 << 1;
         /// Submerged: collides only with collision types that have
-        /// `types::REACHES_SUBMERGED` or `types::BREAKS_GUARD`, in both
+        /// `CollisionTypes::REACHES_SUBMERGED` or `CollisionTypes::BREAKS_GUARD`, in both
         /// directions (`sub_3007218`). DiveMan's AI sets it
         /// while he dives (`sub_80FDEFC`). The timed form (`timer::SUBMERGED`)
         /// is held while its timer runs and no action is in use (`sub_8010162`);
@@ -54,7 +54,7 @@ bitflags::bitflags! {
         const DRAG = 1 << 20;
         const ANGER = 1 << 21;
         const USING_ACTION = 1 << 22;
-        /// Only swords and guard breakers (`types::SWORD`, `types::BREAKS_GUARD`)
+        /// Only swords and guard breakers (`CollisionTypes::SWORD`, `CollisionTypes::BREAKS_GUARD`)
         /// reach it, and it reaches only bodies and those (`sub_3007218`).
         /// Nothing sets it.
         const SWORD_ONLY = 1 << 23;
@@ -119,140 +119,170 @@ bitflags::bitflags! {
     }
 }
 
-/// Collision type bits (docs/engine/field-collision-damage.md §3.3): what
-/// an object is (`self_flags`) and what it reacts to (`target_flags`), as
-/// content's collision types give them (by name: [`member_bits`]). A hit
-/// leaves the hitter's in the receiver's `hit_flags` and `raw_hit_flags`;
-/// panels' flags carry the high half of what is registered on them. Bits
-/// the engine doesn't test matter only through `target & self`.
-pub mod types {
-    pub const ATTACK_SIDE0: u32 = 1 << 31;
-    pub const ATTACK_SIDE1: u32 = 1 << 30;
-    pub const OBJECT_SIDE0: u32 = 1 << 29;
-    pub const OBJECT_SIDE1: u32 = 1 << 28;
-    pub const BODY_SIDE0: u32 = 1 << 27;
-    pub const BODY_SIDE1: u32 = 1 << 26;
-    pub const OTHER_BODY_SIDE0: u32 = 1 << 25;
-    pub const OTHER_BODY_SIDE1: u32 = 1 << 24;
-    pub const NEUTRAL: u32 = 1 << 23;
-    /// A side's player navi (its body's types have it with `BODY_SIDE0`
-    /// or `BODY_SIDE1`): the field regions 0x84 and 0x85 are the panels
-    /// that hold it (field-collision-damage.md §3.4).
-    pub const NAVI_SIDE0: u32 = 1 << 22;
-    pub const NAVI_SIDE1: u32 = 1 << 21;
-    pub const FLOATING: u32 = 1 << 20;
-    pub const BLOCKER: u32 = 1 << 19;
-    /// Reaches the objects a chip sets down that any side's hit sets off:
-    /// their target type has it (row 0x0D: a FlashBomb set down, RlngLog's
-    /// log, ColArmy's soldiers, a VDoll, SideBub), so an attack with it
-    /// reaches those of its own side too. Mines, the generic hitbox (row
-    /// 0x48) and the attacks of both sides carry it. No routine tests it.
-    pub const REACHES_SET_OBJECTS: u32 = 1 << 18;
-    /// Hits while the battle is dimmed: setup gives it to what is set up
-    /// while dimmed (`sub_3007218` lets only these, and receivers with
-    /// `StatusFlags::HIT_WHILE_DIMMED`, hit then).
-    pub const HITS_WHILE_DIMMED: u32 = 1 << 16;
-    /// Doesn't reach a floating body, nor is it reached by a floating
-    /// hitter (`sub_3007218`).
-    pub const GROUND_ONLY: u32 = 1 << 15;
-    /// A guard that holds against it shows no guard spark; in EXE6 it also
-    /// lets `BREAKS_GUARD` break the guard (`sub_3007218`).
-    pub const NO_GUARD_SPARK: u32 = 1 << 14;
-    /// Counts as a sword against a sword weakness and AntiSword, and
-    /// reaches `StatusFlags::SWORD_ONLY`.
-    pub const SWORD: u32 = 1 << 13;
-    /// Breaks a guard (EXE6's only with `NO_GUARD_SPARK`), reaches
-    /// submerged and `StatusFlags::SWORD_ONLY` bodies, doesn't push an obstacle
-    /// that any hit pushes, and keeps a `PIERCING` hit from ending a flash.
-    pub const BREAKS_GUARD: u32 = 1 << 12;
-    /// A pushing attack (AirShot's shot, a tornado): pops a barrier.
-    pub const PUSHING: u32 = 1 << 11;
-    /// What the dark chips' attacks carry (EXE5's DarkWide, DrkSword,
-    /// DrkLance, BlakWing and the dark meteors, thunder and circle; EXE4's
-    /// ElemDark), and a few others (DrilArm's second drill, a bugged
-    /// tornado). No type reaches it and the engine doesn't test it; EXE5's
-    /// rules do (a dark hit's NaviCust hit bug spares a light navi:
-    /// content/exe5/rules/light_dark).
-    pub const DARK: u32 = 1 << 10;
-    /// A pull (a gust, DustBrk's): pops a barrier.
-    pub const PULL: u32 = 1 << 9;
-    /// Counts as a drain on the receiver.
-    pub const DRAIN: u32 = 1 << 8;
-    /// Reaches `StatusFlags::FLOATSHOE` bodies, and is reached by them, where the
-    /// game's hit test asks for it (`float_shoe_needs_self_bit`).
-    pub const REACHES_FLOATSHOE: u32 = 1 << 7;
-    /// Wind: pops a barrier (EXE4's takes it away).
-    pub const WIND: u32 = 1 << 5;
-    /// Destroys the chip the navi it hits holds (`sub_801A2CC`).
-    pub const CHIP_DESTRUCTION: u32 = 1 << 4;
-    /// Reaches submerged bodies.
-    pub const REACHES_SUBMERGED: u32 = 1 << 3;
-    /// Pierces invisibility and flashing, and ends a flash.
-    pub const PIERCING: u32 = 1 << 2;
-    /// Breaks: a guard (by the game's `guard_breaks_to`), ice (thaws it
-    /// for one more multiplier) and obstacles.
-    pub const BREAK: u32 = 1 << 1;
+bitflags::bitflags! {
+    /// Collision type bits (docs/engine/field-collision-damage.md §3.3): what
+    /// an object is (`self_flags`) and what it reacts to (`target_flags`), as
+    /// content's collision types give them (by name: [`member_bits`]). A hit
+    /// leaves the hitter's in the receiver's `hit_flags` and `raw_hit_flags`;
+    /// panels' flags carry the high half of what is registered on them. Bits
+    /// the engine doesn't test matter only through `target & self`.
+    ///
+    /// A hit's result bits share the word in `Accumulators::hit_flags`
+    /// (`GUARDED`, `COUNTERED`, `GUARD_SPARK`): bits no collision type has.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    pub struct CollisionTypes: u32 {
+        const ATTACK_SIDE0 = 1 << 31;
+        const ATTACK_SIDE1 = 1 << 30;
+        const OBJECT_SIDE0 = 1 << 29;
+        const OBJECT_SIDE1 = 1 << 28;
+        const BODY_SIDE0 = 1 << 27;
+        const BODY_SIDE1 = 1 << 26;
+        const OTHER_BODY_SIDE0 = 1 << 25;
+        const OTHER_BODY_SIDE1 = 1 << 24;
+        const NEUTRAL = 1 << 23;
+        /// A side's player navi (its body's types have it with `BODY_SIDE0`
+        /// or `BODY_SIDE1`): the field regions 0x84 and 0x85 are the panels
+        /// that hold it (field-collision-damage.md §3.4).
+        const NAVI_SIDE0 = 1 << 22;
+        const NAVI_SIDE1 = 1 << 21;
+        const FLOATING = 1 << 20;
+        const BLOCKER = 1 << 19;
+        /// Reaches the objects a chip sets down that any side's hit sets off:
+        /// their target type has it (row 0x0D: a FlashBomb set down, RlngLog's
+        /// log, ColArmy's soldiers, a VDoll, SideBub), so an attack with it
+        /// reaches those of its own side too. Mines, the generic hitbox (row
+        /// 0x48) and the attacks of both sides carry it. No routine tests it.
+        const REACHES_SET_OBJECTS = 1 << 18;
+        /// Hits while the battle is dimmed: setup gives it to what is set up
+        /// while dimmed (`sub_3007218` lets only these, and receivers with
+        /// `StatusFlags::HIT_WHILE_DIMMED`, hit then).
+        const HITS_WHILE_DIMMED = 1 << 16;
+        /// Doesn't reach a floating body, nor is it reached by a floating
+        /// hitter (`sub_3007218`).
+        const GROUND_ONLY = 1 << 15;
+        /// A guard that holds against it shows no guard spark; in EXE6 it also
+        /// lets `BREAKS_GUARD` break the guard (`sub_3007218`).
+        const NO_GUARD_SPARK = 1 << 14;
+        /// Counts as a sword against a sword weakness and AntiSword, and
+        /// reaches `StatusFlags::SWORD_ONLY`.
+        const SWORD = 1 << 13;
+        /// Breaks a guard (EXE6's only with `NO_GUARD_SPARK`), reaches
+        /// submerged and `StatusFlags::SWORD_ONLY` bodies, doesn't push an obstacle
+        /// that any hit pushes, and keeps a `PIERCING` hit from ending a flash.
+        const BREAKS_GUARD = 1 << 12;
+        /// A pushing attack (AirShot's shot, a tornado): pops a barrier.
+        const PUSHING = 1 << 11;
+        /// What the dark chips' attacks carry (EXE5's DarkWide, DrkSword,
+        /// DrkLance, BlakWing and the dark meteors, thunder and circle; EXE4's
+        /// ElemDark), and a few others (DrilArm's second drill, a bugged
+        /// tornado). No type reaches it and the engine doesn't test it; EXE5's
+        /// rules do (a dark hit's NaviCust hit bug spares a light navi:
+        /// content/exe5/rules/light_dark).
+        const DARK = 1 << 10;
+        /// A pull (a gust, DustBrk's): pops a barrier.
+        const PULL = 1 << 9;
+        /// Counts as a drain on the receiver.
+        const DRAIN = 1 << 8;
+        /// Reaches `StatusFlags::FLOATSHOE` bodies, and is reached by them, where the
+        /// game's hit test asks for it (`float_shoe_needs_self_bit`).
+        const REACHES_FLOATSHOE = 1 << 7;
+        /// Wind: pops a barrier (EXE4's takes it away).
+        const WIND = 1 << 5;
+        /// Destroys the chip the navi it hits holds (`sub_801A2CC`).
+        const CHIP_DESTRUCTION = 1 << 4;
+        /// Reaches submerged bodies.
+        const REACHES_SUBMERGED = 1 << 3;
+        /// Pierces invisibility and flashing, and ends a flash.
+        const PIERCING = 1 << 2;
+        /// Breaks: a guard (by the game's `guard_breaks_to`), ice (thaws it
+        /// for one more multiplier) and obstacles.
+        const BREAK = 1 << 1;
 
-    /// Each kind of thing, of either side.
-    pub const ATTACKS: u32 = ATTACK_SIDE0 | ATTACK_SIDE1;
-    pub const OBJECTS: u32 = OBJECT_SIDE0 | OBJECT_SIDE1;
-    pub const BODIES: u32 = BODY_SIDE0 | BODY_SIDE1;
-    pub const OTHER_BODIES: u32 = OTHER_BODY_SIDE0 | OTHER_BODY_SIDE1;
-    pub const NAVIS: u32 = NAVI_SIDE0 | NAVI_SIDE1;
+        /// Each kind of thing, of either side.
+        const ATTACKS = Self::ATTACK_SIDE0.bits() | Self::ATTACK_SIDE1.bits();
+        const OBJECTS = Self::OBJECT_SIDE0.bits() | Self::OBJECT_SIDE1.bits();
+        const BODIES = Self::BODY_SIDE0.bits() | Self::BODY_SIDE1.bits();
+        const OTHER_BODIES = Self::OTHER_BODY_SIDE0.bits() | Self::OTHER_BODY_SIDE1.bits();
+        const NAVIS = Self::NAVI_SIDE0.bits() | Self::NAVI_SIDE1.bits();
+        /// What a panel's flags take of the types registered on it: their
+        /// high half (`Collision::panel_self_flags`).
+        const PANEL_BITS = 0xFFFF_0000;
+
+        // What a hit leaves in `Accumulators::hit_flags` besides the hitters'
+        // collision types (bits no type has).
+        /// A guard turned its hit aside (the hitter's).
+        const GUARDED = 1 << 0;
+        /// A counter hit (the receiver's).
+        const COUNTERED = 1 << 6;
+        /// Its guard turned aside a hit that shows a guard spark (the
+        /// receiver's).
+        const GUARD_SPARK = 1 << 17;
+        const _ = !0;
+    }
+}
+
+/// As its word, alone and in an array (`digest::hash_bits_slice`).
+impl std::hash::Hash for CollisionTypes {
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
+        self.bits().hash(h);
+    }
+    fn hash_slice<H: std::hash::Hasher>(data: &[CollisionTypes], h: &mut H) {
+        crate::digest::hash_bits_slice(data.iter().map(|w| w.bits().to_ne_bytes()), h);
+    }
 }
 
 /// A collision type member's bits (content names them: `new.collision`'s
 /// `flags`, docs/design/scripting.md): side 0's and side 1's, each the
 /// other's mirror image (a member of the object's own side, `own_`, or the
 /// other's, `enemy_`; the rest are the same bit for both).
-pub fn member_bits(m: nettai_content_api::CollisionMember) -> [u32; 2] {
+pub fn member_bits(m: nettai_content_api::CollisionMember) -> [CollisionTypes; 2] {
+    use CollisionTypes as T;
     use nettai_content_api::CollisionMember as M;
-    use types::*;
-    let same = |b: u32| [b, b];
+    let same = |b: CollisionTypes| [b, b];
     match m {
-        M::OwnAttack => [ATTACK_SIDE0, ATTACK_SIDE1],
-        M::EnemyAttack => [ATTACK_SIDE1, ATTACK_SIDE0],
-        M::OwnObject => [OBJECT_SIDE0, OBJECT_SIDE1],
-        M::EnemyObject => [OBJECT_SIDE1, OBJECT_SIDE0],
-        M::OwnBody => [BODY_SIDE0, BODY_SIDE1],
-        M::EnemyBody => [BODY_SIDE1, BODY_SIDE0],
-        M::OwnOtherBody => [OTHER_BODY_SIDE0, OTHER_BODY_SIDE1],
-        M::EnemyOtherBody => [OTHER_BODY_SIDE1, OTHER_BODY_SIDE0],
-        M::OwnNavi => [NAVI_SIDE0, NAVI_SIDE1],
-        M::EnemyNavi => [NAVI_SIDE1, NAVI_SIDE0],
-        M::Neutral => same(NEUTRAL),
-        M::Floating => same(FLOATING),
-        M::Blocker => same(BLOCKER),
-        M::ReachesSetObjects => same(REACHES_SET_OBJECTS),
-        M::HitsWhileDimmed => same(HITS_WHILE_DIMMED),
-        M::GroundOnly => same(GROUND_ONLY),
-        M::NoGuardSpark => same(NO_GUARD_SPARK),
-        M::Sword => same(SWORD),
-        M::BreaksGuard => same(BREAKS_GUARD),
-        M::Pushing => same(PUSHING),
-        M::Dark => same(DARK),
-        M::Pull => same(PULL),
-        M::Drain => same(DRAIN),
-        M::ReachesFloatShoe => same(REACHES_FLOATSHOE),
-        M::Wind => same(WIND),
-        M::ChipDestruction => same(CHIP_DESTRUCTION),
-        M::ReachesSubmerged => same(REACHES_SUBMERGED),
-        M::Piercing => same(PIERCING),
-        M::Break => same(BREAK),
+        M::OwnAttack => [T::ATTACK_SIDE0, T::ATTACK_SIDE1],
+        M::EnemyAttack => [T::ATTACK_SIDE1, T::ATTACK_SIDE0],
+        M::OwnObject => [T::OBJECT_SIDE0, T::OBJECT_SIDE1],
+        M::EnemyObject => [T::OBJECT_SIDE1, T::OBJECT_SIDE0],
+        M::OwnBody => [T::BODY_SIDE0, T::BODY_SIDE1],
+        M::EnemyBody => [T::BODY_SIDE1, T::BODY_SIDE0],
+        M::OwnOtherBody => [T::OTHER_BODY_SIDE0, T::OTHER_BODY_SIDE1],
+        M::EnemyOtherBody => [T::OTHER_BODY_SIDE1, T::OTHER_BODY_SIDE0],
+        M::OwnNavi => [T::NAVI_SIDE0, T::NAVI_SIDE1],
+        M::EnemyNavi => [T::NAVI_SIDE1, T::NAVI_SIDE0],
+        M::Neutral => same(T::NEUTRAL),
+        M::Floating => same(T::FLOATING),
+        M::Blocker => same(T::BLOCKER),
+        M::ReachesSetObjects => same(T::REACHES_SET_OBJECTS),
+        M::HitsWhileDimmed => same(T::HITS_WHILE_DIMMED),
+        M::GroundOnly => same(T::GROUND_ONLY),
+        M::NoGuardSpark => same(T::NO_GUARD_SPARK),
+        M::Sword => same(T::SWORD),
+        M::BreaksGuard => same(T::BREAKS_GUARD),
+        M::Pushing => same(T::PUSHING),
+        M::Dark => same(T::DARK),
+        M::Pull => same(T::PULL),
+        M::Drain => same(T::DRAIN),
+        M::ReachesFloatShoe => same(T::REACHES_FLOATSHOE),
+        M::Wind => same(T::WIND),
+        M::ChipDestruction => same(T::CHIP_DESTRUCTION),
+        M::ReachesSubmerged => same(T::REACHES_SUBMERGED),
+        M::Piercing => same(T::PIERCING),
+        M::Break => same(T::BREAK),
     }
 }
 
 /// The bits a name in a hit test stands for, for an object of `side`
 /// (`Collision:hit_any`, the rules' `anti_traps.sword_spares`): a
-/// collision type member ([`member_bits`]) or one of the [`hit`] bits.
+/// collision type member ([`member_bits`]) or one of a hit's result bits.
 /// A side-relative member without a side is refused.
-pub fn hit_name_bits(name: &str, side: Option<u8>) -> Result<u32, String> {
+pub fn hit_name_bits(name: &str, side: Option<u8>) -> Result<CollisionTypes, String> {
     use nettai_content_api::{CollisionMember, HitBit};
     if let Some(b) = HitBit::from_name(name) {
         return Ok(match b {
-            HitBit::Guarded => hit::GUARDED,
-            HitBit::Countered => hit::COUNTERED,
-            HitBit::GuardSpark => hit::GUARD_SPARK,
+            HitBit::Guarded => CollisionTypes::GUARDED,
+            HitBit::Countered => CollisionTypes::COUNTERED,
+            HitBit::GuardSpark => CollisionTypes::GUARD_SPARK,
         });
     }
     let Some(m) = CollisionMember::from_name(name) else {
@@ -269,16 +299,16 @@ pub fn hit_name_bits(name: &str, side: Option<u8>) -> Result<u32, String> {
 
 /// A collision type's two words from its members' names (`new.collision`'s
 /// `flags`), side 0's and side 1's.
-pub fn type_words<'a>(names: impl IntoIterator<Item = &'a str>) -> Result<[u32; 2], String> {
+pub fn type_words<'a>(names: impl IntoIterator<Item = &'a str>) -> Result<[CollisionTypes; 2], String> {
     use nettai_content_api::CollisionMember;
-    let mut words = [0u32; 2];
+    let mut words = [CollisionTypes::empty(); 2];
     for name in names {
         let m = CollisionMember::from_name(name).ok_or_else(|| {
             let names: Vec<&str> = CollisionMember::ALL.iter().map(|m| m.name()).collect();
             format!("`{name}` is no collision type member (they are {})", names.join(", "))
         })?;
         let bits = member_bits(m);
-        if words[0] & bits[0] != 0 {
+        if words[0].intersects(bits[0]) {
             return Err(format!("`{name}` is named twice"));
         }
         words[0] |= bits[0];
@@ -287,21 +317,10 @@ pub fn type_words<'a>(names: impl IntoIterator<Item = &'a str>) -> Result<[u32; 
     Ok(words)
 }
 
-/// What a hit leaves in `Accumulators::hit_flags` besides the hitters'
-/// collision types (bits no type has).
-pub mod hit {
-    /// A guard turned its hit aside (the hitter's).
-    pub const GUARDED: u32 = 1 << 0;
-    /// A counter hit (the receiver's).
-    pub const COUNTERED: u32 = 1 << 6;
-    /// Its guard turned aside a hit that shows a guard spark (the
-    /// receiver's).
-    pub const GUARD_SPARK: u32 = 1 << 17;
-}
 
 /// The collision type bits of an attack of each side (side 0's, side
 /// 1's).
-pub const ATTACK_OF: [u32; 2] = [types::ATTACK_SIDE0, types::ATTACK_SIDE1];
+pub const ATTACK_OF: [CollisionTypes; 2] = [CollisionTypes::ATTACK_SIDE0, CollisionTypes::ATTACK_SIDE1];
 
 /// The panels each side's attacks were presented on during a tick (a bit a
 /// panel at `y * 8 + x`, as `Collision::masks` index them), by side: what
@@ -319,15 +338,15 @@ pub struct Accumulators {
     /// Slots already paired with since the last present.
     pub pair_tested: u32,
     /// Everything that touched us, unfiltered.
-    pub raw_hit_flags: u32,
-    /// What hit us (filtered: the hitters' `types`), plus the `hit` bits.
-    pub hit_flags: u32,
+    pub raw_hit_flags: CollisionTypes,
+    /// What hit us (filtered: the hitters' types), plus a hit's result bits.
+    pub hit_flags: CollisionTypes,
     /// The same by the other collision's flip (EXE5's +0x6C and +0x70: the
     /// hit registration, 0x080169C8 to 0x08016A68, keeps them only so; an
     /// unflipped hitter's, of either side, and a flipped one's), which
     /// EXE5's obstacle push on any hit reads (0x08017AD8); EXE6 keeps them
     /// unread.
-    pub hit_flags_by_flip: [u32; 2],
+    pub hit_flags_by_flip: [CollisionTypes; 2],
     pub exclamation: u8,
     pub damage_multiplier: u8,
     pub damage_elements: u8,
@@ -392,9 +411,9 @@ pub struct CollisionData {
     pub status_timers: [u16; 9],
     pub self_damage: u16,
     /// What I am (collision type flags).
-    pub self_flags: u32,
+    pub self_flags: CollisionTypes,
     /// What I react to.
-    pub target_flags: u32,
+    pub target_flags: CollisionTypes,
     pub parent: Option<ObjectRef>,
     pub f1: StatusFlags,
     pub f2: StatusRequests,
@@ -487,15 +506,15 @@ impl Collision {
 
     /// The union of the high halves of the collision types registered on a
     /// panel (freed slots with stale bits included).
-    pub fn panel_self_flags(&self, x: u8, y: u8) -> u32 {
+    pub fn panel_self_flags(&self, x: u8, y: u8) -> CollisionTypes {
         let mut m = self.masks[(y * 8 + x) as usize];
-        let mut acc = 0;
+        let mut acc = CollisionTypes::empty();
         let mut slot = 0;
         loop {
             let c = m >> 31;
             m <<= 1;
             if c != 0 {
-                acc |= self.slots[slot].self_flags & 0xFFFF_0000;
+                acc.insert(self.slots[slot].self_flags & CollisionTypes::PANEL_BITS);
             } else if m == 0 {
                 break;
             }
@@ -634,7 +653,7 @@ impl Battle {
         s.region = Some(anchor);
         s.counter_byte = o.stamina as u8;
         s.self_damage = o.damage;
-        s.self_flags = self.content.collision_type(self_type, o.alliance) | if dimmed { types::HITS_WHILE_DIMMED } else { 0 };
+        s.self_flags = self.content.collision_type(self_type, o.alliance) | if dimmed { CollisionTypes::HITS_WHILE_DIMMED } else { CollisionTypes::empty() };
         s.target_flags = self.content.collision_type(target_type, o.alliance);
         decode_damage_word(s, &word, self.content.defs.roles());
     }
@@ -654,7 +673,7 @@ impl Battle {
         let s = self.collision.get_mut(id);
         s.hit_mod_base = hit_mod;
         s.self_damage = damage;
-        s.self_flags = self.content.collision_type(self_type, alliance) | if dimmed && !alone { types::HITS_WHILE_DIMMED } else { 0 };
+        s.self_flags = self.content.collision_type(self_type, alliance) | if dimmed && !alone { CollisionTypes::HITS_WHILE_DIMMED } else { CollisionTypes::empty() };
         if !alone {
             s.target_flags = target_flags;
         }
@@ -679,7 +698,7 @@ impl Battle {
             self.collision.masks[(y * 8 + x) as usize] |= bit;
             // (The panels attacked this tick, for a reader of the battle.)
             for (side, attack) in ATTACK_OF.iter().enumerate() {
-                if self_flags & attack != 0 {
+                if self_flags.intersects(*attack) {
                     self.attacked.panels[side] |= 1 << (y * 8 + x);
                 }
             }
@@ -761,7 +780,7 @@ impl Battle {
 
     /// `sub_3007650`: `r` reacts to `h` if it targets what `h` is.
     fn react(&mut self, r: CollisionId, h: CollisionId) {
-        if self.collision.get(r).target_flags & self.collision.get(h).self_flags != 0 {
+        if self.collision.get(r).target_flags.intersects(self.collision.get(h).self_flags) {
             self.resolve_hit(r, h);
             self.accumulate_raw(r, h);
         }
@@ -771,7 +790,7 @@ impl Battle {
     fn resolve_hit(&mut self, r: CollisionId, h: CollisionId) {
         let hd = *self.collision.get(h);
         let rd = *self.collision.get(r);
-        if self.is_dimmed() && !(rd.f1.contains(StatusFlags::HIT_WHILE_DIMMED) || hd.self_flags & types::HITS_WHILE_DIMMED != 0) {
+        if self.is_dimmed() && !(rd.f1.contains(StatusFlags::HIT_WHILE_DIMMED) || hd.self_flags.contains(CollisionTypes::HITS_WHILE_DIMMED)) {
             return;
         }
         // (The game's hit test, the reactions section's `hit_test`: EXE5's,
@@ -784,11 +803,11 @@ impl Battle {
         // The hitter's state against the receiver's type.
         let f = hd.f1;
         let rs = rd.self_flags;
-        if (f.intersects(StatusFlags::INVISIBLE | StatusFlags::FLASHING) && rs & types::PIERCING == 0)
-            || (f.intersects(submerged) && rs & (types::REACHES_SUBMERGED | types::BREAKS_GUARD) == 0 && !elec(rd.element))
-            || (f.contains(StatusFlags::SWORD_ONLY) && rs & (types::BODIES | types::SWORD | types::BREAKS_GUARD) == 0)
+        if (f.intersects(StatusFlags::INVISIBLE | StatusFlags::FLASHING) && !rs.contains(CollisionTypes::PIERCING))
+            || (f.intersects(submerged) && !rs.intersects(CollisionTypes::REACHES_SUBMERGED | CollisionTypes::BREAKS_GUARD) && !elec(rd.element))
+            || (f.contains(StatusFlags::SWORD_ONLY) && !rs.intersects(CollisionTypes::BODIES | CollisionTypes::SWORD | CollisionTypes::BREAKS_GUARD))
             || f.contains(StatusFlags::UNTOUCHABLE)
-            || (self_bit && f.contains(StatusFlags::FLOATSHOE) && rs & types::REACHES_FLOATSHOE == 0)
+            || (self_bit && f.contains(StatusFlags::FLOATSHOE) && !rs.contains(CollisionTypes::REACHES_FLOATSHOE))
         {
             return;
         }
@@ -796,28 +815,28 @@ impl Battle {
         // untouchable state to the invulnerable test, after the guard).
         let f = rd.f1;
         let hs = hd.self_flags;
-        if (f.intersects(StatusFlags::INVISIBLE | StatusFlags::FLASHING) && hs & types::PIERCING == 0)
-            || (f.intersects(submerged) && hs & (types::REACHES_SUBMERGED | types::BREAKS_GUARD) == 0 && !elec(hd.element))
-            || (f.contains(StatusFlags::SWORD_ONLY) && hs & (types::SWORD | types::BREAKS_GUARD) == 0)
+        if (f.intersects(StatusFlags::INVISIBLE | StatusFlags::FLASHING) && !hs.contains(CollisionTypes::PIERCING))
+            || (f.intersects(submerged) && !hs.intersects(CollisionTypes::REACHES_SUBMERGED | CollisionTypes::BREAKS_GUARD) && !elec(hd.element))
+            || (f.contains(StatusFlags::SWORD_ONLY) && !hs.intersects(CollisionTypes::SWORD | CollisionTypes::BREAKS_GUARD))
             || (!test.guard_before_untouchable && f.contains(StatusFlags::UNTOUCHABLE))
-            || (self_bit && f.contains(StatusFlags::FLOATSHOE) && hs & types::REACHES_FLOATSHOE == 0)
+            || (self_bit && f.contains(StatusFlags::FLOATSHOE) && !hs.contains(CollisionTypes::REACHES_FLOATSHOE))
         {
             return;
         }
         // Guard.
         if rd.f1.contains(StatusFlags::GUARD) {
-            let brk = if hs & types::NO_GUARD_SPARK != 0 { types::BREAKS_GUARD | types::BREAK } else { test.guard_breaks_to };
-            if hs & brk == 0 {
+            let brk = if hs.contains(CollisionTypes::NO_GUARD_SPARK) { CollisionTypes::BREAKS_GUARD | CollisionTypes::BREAK } else { test.guard_breaks_to };
+            if !hs.intersects(brk) {
                 let hm = self.collision.get_mut(h);
-                hm.acc.hit_flags |= hit::GUARDED;
-                hm.acc.hit_flags_by_flip[rd.flip as usize & 1] |= hit::GUARDED;
-                let mut flags = hs & !types::CHIP_DESTRUCTION;
+                hm.acc.hit_flags.insert(CollisionTypes::GUARDED);
+                hm.acc.hit_flags_by_flip[rd.flip as usize & 1].insert(CollisionTypes::GUARDED);
+                let mut flags = hs & !CollisionTypes::CHIP_DESTRUCTION;
                 // (EXE5's mask is 0x0C004000: the same here, where its
                 // guard has broken to every type with 0x1000.)
-                if flags & (types::BODIES | types::NO_GUARD_SPARK | types::BREAKS_GUARD) == 0 {
+                if !flags.intersects(CollisionTypes::BODIES | CollisionTypes::NO_GUARD_SPARK | CollisionTypes::BREAKS_GUARD) {
                     let mark = if test.guard_marks_direction { 1 << hd.flip } else { 1 };
                     self.collision.get_mut(r).guard_dirs |= mark;
-                    flags |= hit::GUARD_SPARK;
+                    flags.insert(CollisionTypes::GUARD_SPARK);
                 }
                 let rm = self.collision.get_mut(r);
                 rm.acc.hit_flags |= flags;
@@ -826,7 +845,7 @@ impl Battle {
             }
         }
         // Air/ground.
-        if (rs & types::FLOATING != 0 && hs & types::GROUND_ONLY != 0) || (rs & types::GROUND_ONLY != 0 && hs & types::FLOATING != 0) {
+        if (rs.contains(CollisionTypes::FLOATING) && hs.contains(CollisionTypes::GROUND_ONLY)) || (rs.contains(CollisionTypes::GROUND_ONLY) && hs.contains(CollisionTypes::FLOATING)) {
             return;
         }
         if rd.f1.contains(StatusFlags::INVULNERABLE) || (test.guard_before_untouchable && rd.f1.contains(StatusFlags::UNTOUCHABLE)) {
@@ -844,10 +863,10 @@ impl Battle {
         // isn't invulnerable: the type of the panel under the body does what
         // its `hit` says (EXE6's ice: an aqua attack freezes the body; EXE5
         // has none, docs/design/exe5-map.md §15.3 item 4).
-        if hs & types::BODIES != 0
-            && rs & types::BODIES == 0
+        if hs.intersects(CollisionTypes::BODIES)
+            && !rs.intersects(CollisionTypes::BODIES)
             && hd.status_timers[timer::INVULNERABLE] == 0
-            && rd.acc.hit_flags & hit::GUARDED == 0
+            && !rd.acc.hit_flags.contains(CollisionTypes::GUARDED)
             && let Some(kind) = self.field.panel(hd.panel.x, hd.panel.y).map(|p| p.kind)
             && let Some(body) = hd.parent
         {
@@ -856,8 +875,8 @@ impl Battle {
         let c = hd.counter_byte;
         let rm = self.collision.get_mut(r);
         if rm.counter_timer != 0 && c & 0x7F != 0 && c & 0x80 == 0 {
-            rm.acc.hit_flags |= hit::COUNTERED;
-            rm.acc.hit_flags_by_flip[hd.flip as usize & 1] |= hit::COUNTERED;
+            rm.acc.hit_flags.insert(CollisionTypes::COUNTERED);
+            rm.acc.hit_flags_by_flip[hd.flip as usize & 1].insert(CollisionTypes::COUNTERED);
         }
         // What the hit wears off the mood: the byte's low seven bits, but
         // on a counter hit what the counter puts in the register they're
@@ -881,7 +900,7 @@ impl Battle {
             }
         }
         rm.acc.mood_damage = rm.acc.mood_damage.wrapping_add(mood_damage);
-        if hs & types::DRAIN != 0 {
+        if hs.contains(CollisionTypes::DRAIN) {
             rm.acc.drain_hits = rm.acc.drain_hits.wrapping_add(1);
         }
         rm.hit_mod_final |= hd.hit_mod_base;
@@ -901,11 +920,11 @@ impl Battle {
             .and_then(|row| row.get(hd.element as usize))
             .copied()
             .unwrap_or(0);
-        let w2 = (rd.secondary_weakness & hd.secondary_element != 0 || (rd.secondary_weakness == SecondaryElements::SWORD && hs & types::SWORD != 0))
+        let w2 = (rd.secondary_weakness & hd.secondary_element != 0 || (rd.secondary_weakness == SecondaryElements::SWORD && hs.contains(CollisionTypes::SWORD)))
             as u8;
         let mut m = 1 + w1 + w2;
         rm.acc.damage_multiplier = m - 1;
-        let thaw = rd.f1.contains(StatusFlags::FROZEN) && (rm.acc.hit_flags & types::BREAK != 0 || hd.secondary_element == SecondaryElements::BREAK);
+        let thaw = rd.f1.contains(StatusFlags::FROZEN) && (rm.acc.hit_flags.contains(CollisionTypes::BREAK) || hd.secondary_element == SecondaryElements::BREAK);
         if thaw {
             m += 1;
         }
@@ -947,12 +966,12 @@ impl Battle {
     fn accumulate_raw(&mut self, r: CollisionId, h: CollisionId) {
         let hd = *self.collision.get(h);
         let rd = *self.collision.get(r);
-        if self.is_dimmed() && !(rd.f1.contains(StatusFlags::HIT_WHILE_DIMMED) || hd.self_flags & types::HITS_WHILE_DIMMED != 0) {
+        if self.is_dimmed() && !(rd.f1.contains(StatusFlags::HIT_WHILE_DIMMED) || hd.self_flags.contains(CollisionTypes::HITS_WHILE_DIMMED)) {
             return;
         }
         let self_bit = self.content.rules().hit_test.float_shoe_needs_self_bit;
-        if self_bit && ((hd.f1.contains(StatusFlags::FLOATSHOE) && rd.self_flags & types::REACHES_FLOATSHOE == 0)
-                || (rd.f1.contains(StatusFlags::FLOATSHOE) && hd.self_flags & types::REACHES_FLOATSHOE == 0)) {
+        if self_bit && ((hd.f1.contains(StatusFlags::FLOATSHOE) && !rd.self_flags.contains(CollisionTypes::REACHES_FLOATSHOE))
+                || (rd.f1.contains(StatusFlags::FLOATSHOE) && !hd.self_flags.contains(CollisionTypes::REACHES_FLOATSHOE))) {
             return;
         }
         let bonus = self.panel_bonus(&rd, &hd);
@@ -972,7 +991,7 @@ impl Battle {
             return;
         }
         let s = self.collision.get(id);
-        if s.self_flags & types::BODIES != 0 {
+        if s.self_flags.intersects(CollisionTypes::BODIES) {
             return;
         }
         let e = s.element;
@@ -1042,8 +1061,8 @@ mod tests {
     /// whose guard breaks to 0x1002 (EXE5's).
     fn tests() -> [HitTest; 2] {
         let plain = testing::rules().hit_test;
-        assert_eq!(plain.guard_breaks_to, types::BREAK);
-        [plain, HitTest { guard_breaks_to: types::BREAKS_GUARD | types::BREAK, ..plain }]
+        assert_eq!(plain.guard_breaks_to, CollisionTypes::BREAK);
+        [plain, HitTest { guard_breaks_to: CollisionTypes::BREAKS_GUARD | CollisionTypes::BREAK, ..plain }]
     }
 
     /// A fight on the test content whose arena tests hits by `test`: the
@@ -1071,13 +1090,13 @@ mod tests {
 
     /// Side 1's guarding navi hit by side 0's navi as an attack of types
     /// `types`: whether the guard held (the hitter told it was guarded).
-    fn guarded(test: HitTest, types: u32) -> bool {
+    fn guarded(test: HitTest, types: CollisionTypes) -> bool {
         let (mut b, [h, r]) = fight(test);
         b.collision.get_mut(r).f1.insert(StatusFlags::GUARD);
         b.collision.get_mut(h).self_flags = types;
         b.collision.get_mut(h).f1 = StatusFlags::empty();
         b.resolve_hit(r, h);
-        b.collision.get(h).acc.hit_flags & hit::GUARDED != 0
+        b.collision.get(h).acc.hit_flags.contains(CollisionTypes::GUARDED)
     }
 
     /// docs/design/exe5-map.md §15.11: EXE5's guard breaks on type 0x1000
@@ -1087,12 +1106,12 @@ mod tests {
     #[test]
     fn exe5_guard_breaks_on_0x1000() {
         let [breaks_to_2, breaks_to_1002] = tests();
-        assert!(guarded(breaks_to_2, types::ATTACK_SIDE0 | types::BREAKS_GUARD));
-        assert!(!guarded(breaks_to_1002, types::ATTACK_SIDE0 | types::BREAKS_GUARD));
-        assert!(!guarded(breaks_to_2, types::ATTACK_SIDE0 | types::NO_GUARD_SPARK | types::BREAKS_GUARD));
-        assert!(!guarded(breaks_to_1002, types::ATTACK_SIDE0 | types::NO_GUARD_SPARK | types::BREAKS_GUARD));
-        assert!(guarded(breaks_to_2, types::ATTACK_SIDE0));
-        assert!(guarded(breaks_to_1002, types::ATTACK_SIDE0));
+        assert!(guarded(breaks_to_2, CollisionTypes::ATTACK_SIDE0 | CollisionTypes::BREAKS_GUARD));
+        assert!(!guarded(breaks_to_1002, CollisionTypes::ATTACK_SIDE0 | CollisionTypes::BREAKS_GUARD));
+        assert!(!guarded(breaks_to_2, CollisionTypes::ATTACK_SIDE0 | CollisionTypes::NO_GUARD_SPARK | CollisionTypes::BREAKS_GUARD));
+        assert!(!guarded(breaks_to_1002, CollisionTypes::ATTACK_SIDE0 | CollisionTypes::NO_GUARD_SPARK | CollisionTypes::BREAKS_GUARD));
+        assert!(guarded(breaks_to_2, CollisionTypes::ATTACK_SIDE0));
+        assert!(guarded(breaks_to_1002, CollisionTypes::ATTACK_SIDE0));
     }
 
     /// docs/design/exe4-map.md §18 item 5: EXE4's kernel tests an untouchable
@@ -1103,20 +1122,20 @@ mod tests {
         let outcome = |after: bool| {
             let (mut b, [h, r]) = fight(HitTest { guard_before_untouchable: after, ..tests()[1] });
             b.collision.get_mut(r).f1.insert(StatusFlags::GUARD | StatusFlags::UNTOUCHABLE);
-            b.collision.get_mut(h).self_flags = types::ATTACK_SIDE0;
+            b.collision.get_mut(h).self_flags = CollisionTypes::ATTACK_SIDE0;
             b.collision.get_mut(h).f1 = StatusFlags::empty();
             b.resolve_hit(r, h);
-            (b.collision.get(h).acc.hit_flags & hit::GUARDED != 0, b.collision.get(r).acc.hit_flags & hit::GUARD_SPARK != 0)
+            (b.collision.get(h).acc.hit_flags.contains(CollisionTypes::GUARDED), b.collision.get(r).acc.hit_flags.contains(CollisionTypes::GUARD_SPARK))
         };
         assert_eq!(outcome(false), (false, false));
         assert_eq!(outcome(true), (true, true));
         // Without a guard, untouchable either way.
         let (mut b, [h, r]) = fight(HitTest { guard_before_untouchable: true, ..tests()[1] });
         b.collision.get_mut(r).f1.insert(StatusFlags::UNTOUCHABLE);
-        b.collision.get_mut(h).self_flags = types::ATTACK_SIDE0;
+        b.collision.get_mut(h).self_flags = CollisionTypes::ATTACK_SIDE0;
         b.collision.get_mut(h).f1 = StatusFlags::empty();
         b.resolve_hit(r, h);
-        assert_eq!(b.collision.get(r).acc.hit_flags, 0);
+        assert_eq!(b.collision.get(r).acc.hit_flags, CollisionTypes::empty());
     }
 
     /// docs/design/exe4-map.md §18 item 4: a hit counts once more on a body

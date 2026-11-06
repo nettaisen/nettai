@@ -22,7 +22,7 @@ pub struct Vars {
     pub bug: u8,
     pub bug_arg: u8,
     // The game also lets the spawner pass a slot that receives which bodies
-    // were hit (`hit_flags & types::BODIES`). Added as a typed field on the
+    // were hit (`hit_flags & CollisionTypes::BODIES`). Added as a typed field on the
     // spawner's action state when the first attack that reads it is ported.
 }
 
@@ -134,7 +134,7 @@ fn resolve(b: &mut Battle, r: ObjectRef) {
     let Some(c) = b.objects.get(r).collision else { return };
     b.remove_collision(c);
     crate::kinds::spark::spawn_collision_effect(b, r);
-    if b.collision.get(c).acc.hit_flags == 0 {
+    if b.collision.get(c).acc.hit_flags.is_empty() {
         let o = b.objects.get_mut(r);
         let left = o.timer as i32 - 1;
         o.timer = left as u16;

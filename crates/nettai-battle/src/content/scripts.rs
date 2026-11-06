@@ -717,7 +717,7 @@ local step = { grounded = {}, floor_free = {} }
         assert_eq!((s.hover.to_dark.clone(), s.hover.to_clear.len(), s.hover.players, s.restore_players.clone()), (vec![None, Some([0x60, 0xC0])], 1, [31, 9], vec![9, 31]));
         assert_eq!((s.hover.runs, s.hover.sound), (crate::content::HoverRuns::WhileChoosing, crate::content::HoverSound::WhileDark { every: 61 }));
         assert_eq!((r.push_reading.reads, r.push_reading.bits, r.overlay_restart, r.stance_counter), (PushSource::ByHitterFlip, 4, OverlayRestart::Reload, StanceCounter::NextTick));
-        assert_eq!((r.hit_test.float_shoe_needs_self_bit, r.hit_test.elec_reaches_submerged, r.hit_test.guard_breaks_to), (true, true, 0x1002));
+        assert_eq!((r.hit_test.float_shoe_needs_self_bit, r.hit_test.elec_reaches_submerged, r.hit_test.guard_breaks_to.bits()), (true, true, 0x1002));
         assert!(!r.obstacle_slide_bounds);
         assert_eq!((r.slide_speed.x, r.slide_speed.y), (0x30000, 0x20000));
         assert_eq!((r.reactions, r.form_break, r.intake.hp_loss), (Reactions::FlashTimerFirst, FormBreak::MarkedForms, HpLoss::HpAlone));
@@ -1148,8 +1148,10 @@ local step = { grounded = {}, floor_free = {} }
             let i = c.defs.definitions.of(Registry::Region).iter().position(|d| d.key == key).expect("the region");
             c.defs.regions[i].clone()
         };
-        use crate::collision::types;
-        assert_eq!(region("a"), Region::Field(PanelCondition { require: 0x10, forbid: 0x20 | types::NAVI_SIDE1 }));
-        assert_eq!(region("b"), Region::Field(PanelCondition { require: 0x30, forbid: types::NAVI_SIDE0 }));
+        use crate::collision::CollisionTypes;
+        use crate::field::PanelFlags;
+        let (side_1, navi) = (PanelFlags::ALLIANCE_1, |t: CollisionTypes| PanelFlags::of_types(t));
+        assert_eq!(region("a"), Region::Field(PanelCondition { require: PanelFlags::SOLID, forbid: side_1 | navi(CollisionTypes::NAVI_SIDE1) }));
+        assert_eq!(region("b"), Region::Field(PanelCondition { require: PanelFlags::SOLID | side_1, forbid: navi(CollisionTypes::NAVI_SIDE0) }));
     }
 }

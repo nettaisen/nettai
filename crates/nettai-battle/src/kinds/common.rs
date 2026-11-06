@@ -179,7 +179,7 @@ pub fn spawn_guard_spark(b: &mut Battle, r: ObjectRef) {
     }
     let o = b.objects.get(r);
     let c = o.collision.expect("object with collision data");
-    if b.collision.get(c).acc.hit_flags & crate::collision::hit::GUARD_SPARK == 0 {
+    if !b.collision.get(c).acc.hit_flags.contains(crate::collision::CollisionTypes::GUARD_SPARK) {
         return;
     }
     b.sound(crate::content::SoundRole::Guard);

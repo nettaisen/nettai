@@ -1448,7 +1448,7 @@ pub struct HitTest {
     /// `no_guard_spark` (0x4000) breaks one by those two in either. Content
     /// names them (`collision_names`).
     #[serde(deserialize_with = "collision_names")]
-    pub guard_breaks_to: u32,
+    pub guard_breaks_to: crate::collision::CollisionTypes,
     /// An untouchable receiver (flag 0x08000000) is tested with the
     /// invulnerable one, after its guard and the air/ground test, so its
     /// guard still turns hits aside (EXE4's 0x08012BDC: 0x08000008); else
@@ -1594,7 +1594,7 @@ pub struct AntiTraps {
     /// AntiSwrd's (EXE6's `guard_spark`, 0x20000; EXE5's and EXE4's none).
     /// Content names them (`hit_names`).
     #[serde(deserialize_with = "hit_names")]
-    pub sword_spares: u32,
+    pub sword_spares: crate::collision::CollisionTypes,
     /// A caught hit drops these of the navi's pending requests (its flags2,
     /// in a content file a set of their names: [`REQUEST_NAMES`]) too, a
     /// panel's slide asked for that tick among them (EXE6's 0x301BE, every
@@ -2412,7 +2412,7 @@ pub struct PanelRules {
     /// clears before it sets its own: EXE6's 0x3F5F (`object_crackPanel`
     /// and its kin), EXE5's and EXE4's 0x23F5F (their sea's and metal's
     /// 0x20000 too). A crack keeps the solidity and the crack bit.
-    pub type_mask: u32,
+    pub type_mask: crate::field::PanelFlags,
     /// Where the game keeps what its panels are drawn as (`PanelDrawn`).
     pub drawn: PanelDrawn,
 }
@@ -2593,31 +2593,32 @@ impl PanelNames<'_> {
     /// objects, bodies, navis and attacks of a side, neutral, floating,
     /// blocker; `collision::member_bits`).
     pub fn flag_bits(&self, name: &str, side: Option<u8>) -> Result<nettai_content_api::PanelBits, String> {
-        use crate::field::pflags;
+        use crate::field::PanelFlags;
         use nettai_content_api::{CollisionMember, PanelBits, PanelFlag};
-        let set = |b: u32| Ok(PanelBits { set: b, clear: 0 });
+        let set = |b: PanelFlags| Ok(PanelBits { set: b.bits(), clear: 0 });
         let side_of = || side.map(|s| s & 1).ok_or_else(|| format!("`{name}` is of a side, and nothing gives one here"));
         if let Some(f) = PanelFlag::from_name(name) {
             return match f {
-                PanelFlag::Solid => set(pflags::SOLID),
-                PanelFlag::Cracked => set(pflags::CRACKED),
-                PanelFlag::Reserved => set(pflags::RESERVED),
-                PanelFlag::AnyBody => set(pflags::BODY),
-                PanelFlag::Occupied => set(pflags::OCCUPIED),
+                PanelFlag::Solid => set(PanelFlags::SOLID),
+                PanelFlag::Cracked => set(PanelFlags::CRACKED),
+                PanelFlag::Reserved => set(PanelFlags::RESERVED),
+                PanelFlag::AnyBody => set(PanelFlags::BODY),
+                PanelFlag::Occupied => set(PanelFlags::OCCUPIED),
                 // (The alliance bit is side 1's: side 0's area is the
                 // panels without it.)
                 PanelFlag::OwnArea | PanelFlag::EnemyArea => {
                     let side_1 = (f == PanelFlag::OwnArea) == (side_of()? == 1);
-                    Ok(if side_1 { PanelBits { set: pflags::ALLIANCE_1, clear: 0 } } else { PanelBits { set: 0, clear: pflags::ALLIANCE_1 } })
+                    let area = PanelFlags::ALLIANCE_1.bits();
+                    Ok(if side_1 { PanelBits { set: area, clear: 0 } } else { PanelBits { set: 0, clear: area } })
                 }
             };
         }
         if let Some((_, bit)) = self.0.iter().find(|(n, _)| n == name) {
-            return set(*bit);
+            return set(PanelFlags::from_bits_retain(*bit));
         }
         if let Some(m) = CollisionMember::from_name(name) {
-            let [w0, w1] = crate::collision::member_bits(m);
-            if (w0 | w1) & !pflags::COLLISION_TYPES != 0 {
+            let [w0, w1] = crate::collision::member_bits(m).map(PanelFlags::of_types);
+            if !PanelFlags::COLLISION_TYPES.contains(w0 | w1) {
                 return Err(format!("`{name}` is a collision type's, which no panel holds (a panel holds bits 18 to 31 of what is registered on it)"));
             }
             return set(if w0 == w1 { w0 } else if side_of()? == 0 { w0 } else { w1 });
@@ -2643,15 +2644,16 @@ impl PanelNames<'_> {
     ) -> Result<super::PanelCondition, String> {
         let of = |side: u8| -> Result<super::PanelCondition, String> {
             let mut c = super::PanelCondition::default();
+            use crate::field::PanelFlags;
             for name in require.clone() {
                 let b = self.flag_bits(name, Some(side))?;
-                c.require |= b.set;
-                c.forbid |= b.clear;
+                c.require.insert(PanelFlags::from_bits_retain(b.set));
+                c.forbid.insert(PanelFlags::from_bits_retain(b.clear));
             }
             for name in forbid.clone() {
                 let b = self.flag_bits(name, Some(side))?;
-                c.forbid |= b.set;
-                c.require |= b.clear;
+                c.forbid.insert(PanelFlags::from_bits_retain(b.set));
+                c.require.insert(PanelFlags::from_bits_retain(b.clear));
             }
             Ok(c)
         };
@@ -2669,16 +2671,16 @@ impl PanelNames<'_> {
 
     /// The flags word a type's or the type mask's names make (`flag_bits`:
     /// the engine's `solid` and `cracked` and the game's type flags).
-    pub fn type_word<'a>(&self, names: impl IntoIterator<Item = &'a str>) -> Result<u32, String> {
+    pub fn type_word<'a>(&self, names: impl IntoIterator<Item = &'a str>) -> Result<crate::field::PanelFlags, String> {
         use nettai_content_api::PanelFlag;
-        let mut w = 0;
+        let mut w = crate::field::PanelFlags::empty();
         for name in names {
             let own = matches!(PanelFlag::from_name(name), Some(PanelFlag::Solid | PanelFlag::Cracked));
             if !own && !self.0.iter().any(|(n, _)| n == name) {
                 let game: Vec<&str> = self.0.iter().map(|(n, _)| n.as_str()).collect();
                 return Err(format!("`{name}` is no flag a type sets (solid, cracked, and the type flags: {})", game.join(", ")));
             }
-            w |= self.flag_bits(name, None)?.set;
+            w.insert(crate::field::PanelFlags::from_bits_retain(self.flag_bits(name, None)?.set));
         }
         Ok(w)
     }
@@ -2716,8 +2718,8 @@ impl PanelRules {
     /// (EXE5's holy is its 9, EXE6's its 5), which is what the original's
     /// word holds and what content reading the word's low byte reads (EXE5's
     /// GyroMan's Airforce, 0x080F0AD0).
-    pub fn type_flags(&self, t: PanelType) -> u32 {
-        t.0 as u32 | self.rule(t).flags
+    pub fn type_flags(&self, t: PanelType) -> crate::field::PanelFlags {
+        crate::field::PanelFlags::of_kind(t) | self.rule(t).flags
     }
 
     /// Type `t` as the right-hand console draws it: a type carrying across
@@ -2740,7 +2742,7 @@ impl PanelRules {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct PanelTypeRule {
     /// Flag bits the type adds to a panel's flags word.
-    pub flags: u32,
+    pub flags: crate::field::PanelFlags,
     /// Where it carries a navi's slide of type 3 (EXE6's roads), when its
     /// `slide` says "carry".
     pub carries: Option<SlideVector>,
@@ -2806,7 +2808,7 @@ impl StepRuleSet {
 
 /// Side-free collision type members' bits from their names
 /// (`collision::type_words`): a rule word content states by names.
-fn collision_names<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
+fn collision_names<'de, D: serde::Deserializer<'de>>(d: D) -> Result<crate::collision::CollisionTypes, D::Error> {
     use serde::de::Error;
     let names = super::flags::set(d)?;
     let [w0, w1] = crate::collision::type_words(names.iter().map(String::as_str)).map_err(D::Error::custom)?;
@@ -2818,10 +2820,10 @@ fn collision_names<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u32, D::Err
 
 /// Hit results' bits from their names (`collision::hit_name_bits`, of no
 /// side): a rule word content states by names.
-fn hit_names<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
+fn hit_names<'de, D: serde::Deserializer<'de>>(d: D) -> Result<crate::collision::CollisionTypes, D::Error> {
     use serde::de::Error;
     let names = super::flags::set(d)?;
-    names.iter().try_fold(0, |w, n| Ok(w | crate::collision::hit_name_bits(n, None).map_err(D::Error::custom)?))
+    names.iter().try_fold(crate::collision::CollisionTypes::empty(), |w, n| Ok(w | crate::collision::hit_name_bits(n, None).map_err(D::Error::custom)?))
 }
 
 /// The status a status effect is (`new.status`'s `timer`): the collision

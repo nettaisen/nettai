@@ -2,7 +2,7 @@
 //! y 1..=3). See docs/engine/field-collision-damage.md §2.
 
 use crate::battle::Battle;
-use crate::collision::{Collision, types};
+use crate::collision::{Collision, CollisionTypes};
 use crate::content::{PanelCondition, SoundRole};
 use crate::sound::SoundId;
 use crate::object::ObjectRef;
@@ -68,27 +68,54 @@ impl<'de> serde::Deserialize<'de> for PanelType {
     }
 }
 
-/// Bits of a panel's cached flags word.
-pub mod pflags {
-    use crate::collision::types;
+bitflags::bitflags! {
+    /// A panel's cached flags word (`Panel::flags`): its type's number in the
+    /// low nibble ([`PanelFlags::of_kind`]), its type's flags (`SOLID`,
+    /// `CRACKED`, and bits 8 to 17, which each game's rules declare: its
+    /// panels section's `type_flags`, kept as they are), its side, its
+    /// reservation, and the high half of the collision types registered on
+    /// it ([`PanelFlags::of_types`]).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct PanelFlags: u32 {
+        /// The panel's type, by the game's number of it: a number, not
+        /// flags.
+        const TYPE_MASK = 0x0F;
+        const SOLID = 0x10;
+        const ALLIANCE_1 = 0x20;
+        const CRACKED = 0x40;
+        const RESERVED = 0x80;
+        const BODY_SIDE0 = CollisionTypes::BODY_SIDE0.bits();
+        const BODY_SIDE1 = CollisionTypes::BODY_SIDE1.bits();
+        const FLOATING = CollisionTypes::FLOATING.bits();
+        const BLOCKER = CollisionTypes::BLOCKER.bits();
+        /// Any body.
+        const BODY = CollisionTypes::BODIES.bits() | CollisionTypes::OTHER_BODIES.bits() | CollisionTypes::NEUTRAL.bits();
+        /// Bodies, neutral objects, blockers and reservations.
+        const OCCUPIED = Self::BODY.bits() | Self::BLOCKER.bits() | Self::RESERVED.bits();
+        /// The collision types' bits a panel holds of what is registered on it
+        /// (`Collision::panel_self_flags` takes their high half, whose bits 16
+        /// and 17 the types' flags share).
+        const COLLISION_TYPES = 0xFFFC_0000;
+        const _ = !0;
+    }
+}
 
-    /// The panel's type, by the game's number of it.
-    pub const TYPE_MASK: u32 = 0x0F;
-    pub const SOLID: u32 = 0x10;
-    pub const ALLIANCE_1: u32 = 0x20;
-    pub const CRACKED: u32 = 0x40;
-    pub const RESERVED: u32 = 0x80;
-    pub const BODY_SIDE0: u32 = types::BODY_SIDE0;
-    pub const BODY_SIDE1: u32 = types::BODY_SIDE1;
-    pub const FLOATING: u32 = types::FLOATING;
-    /// Bodies, neutral objects, blockers and reservations.
-    pub const OCCUPIED: u32 = BODY | types::BLOCKER | RESERVED;
-    /// Any body.
-    pub const BODY: u32 = types::BODIES | types::OTHER_BODIES | types::NEUTRAL;
-    /// The collision types' bits a panel holds of what is registered on it
-    /// (`Collision::panel_self_flags` takes their high half, whose bits 16
-    /// and 17 the types' flags share).
-    pub const COLLISION_TYPES: u32 = 0xFFFC_0000;
+impl PanelFlags {
+    /// What the flags of a panel of type `kind` hold of it: its number.
+    pub const fn of_kind(kind: PanelType) -> PanelFlags {
+        PanelFlags::from_bits_retain(kind.0 as u32)
+    }
+
+    /// The collision types `types` as a panel's flags hold them: the same
+    /// bits (a registration's high half, `Collision::panel_self_flags`).
+    pub const fn of_types(types: CollisionTypes) -> PanelFlags {
+        PanelFlags::from_bits_retain(types.bits())
+    }
+
+    /// The collision types the flags hold (`COLLISION_TYPES`).
+    pub const fn types(self) -> CollisionTypes {
+        CollisionTypes::from_bits_retain(self.bits() & PanelFlags::COLLISION_TYPES.bits())
+    }
 }
 
 /// What a panel showed when it was last drawn (drawn only): whether it
@@ -133,9 +160,9 @@ pub struct Panel {
     pub timer: u16,
     /// Cached flags: type bits, owner, reservation and the collision types
     /// of everything registered on the panel.
-    pub flags: u32,
+    pub flags: PanelFlags,
     /// Last tick's flags for cracked panels (0 otherwise).
-    pub latch: u32,
+    pub latch: PanelFlags,
     pub reserver: Option<ObjectRef>,
 }
 
@@ -333,16 +360,16 @@ impl Field {
         is_valid(x, y).then(|| &mut self.panels[y as usize][x as usize])
     }
 
-    /// A panel's flags (0 off the field).
-    pub fn flags(&self, x: u8, y: u8) -> u32 {
-        self.panel(x, y).map(|p| p.flags).unwrap_or(0)
+    /// A panel's flags (none off the field).
+    pub fn flags(&self, x: u8, y: u8) -> PanelFlags {
+        self.panel(x, y).map(|p| p.flags).unwrap_or(PanelFlags::empty())
     }
 
     /// `object_checkPanelParameters`: on the field, flags nonzero, has
     /// every bit of `set` and none of `clear`.
-    pub fn check(&self, x: u8, y: u8, set: u32, clear: u32) -> bool {
+    pub fn check(&self, x: u8, y: u8, set: PanelFlags, clear: PanelFlags) -> bool {
         let f = self.flags(x, y);
-        f != 0 && f & clear == 0 && f & set == set
+        !f.is_empty() && !f.intersects(clear) && f.contains(set)
     }
 
     /// Whether panel (x, y) exists and meets `cond`.
@@ -351,7 +378,7 @@ impl Field {
     }
 
     pub fn is_solid(&self, x: u8, y: u8) -> bool {
-        self.flags(x, y) & pflags::SOLID != 0
+        self.flags(x, y).contains(PanelFlags::SOLID)
     }
 
     /// Count consecutive columns from `start` in direction `dir` with the
@@ -396,10 +423,11 @@ impl Field {
         let p = &mut self.panels[y as usize][x as usize];
         p.display_kind = p.kind;
         p.display_alliance = p.alliance;
+        // (Its side as a number shifted into `ALLIANCE_1`, as the game's.)
         p.flags = rules.type_flags(p.kind)
-            | ((p.alliance as u32) << 5)
-            | if p.reserver.is_some() { pflags::RESERVED } else { 0 }
-            | occupants;
+            | PanelFlags::from_bits_retain((p.alliance as u32) << 5)
+            | if p.reserver.is_some() { PanelFlags::RESERVED } else { PanelFlags::empty() }
+            | PanelFlags::of_types(occupants);
     }
 
     /// Refresh every panel (`sub_800C8F0`).
@@ -428,7 +456,7 @@ impl Battle {
                 self.tick_panel(x, y);
                 let cracked = self.content.rules().panels.roles.cracked;
                 let p = &mut self.field.panels[y as usize][x as usize];
-                p.latch = if p.kind == cracked { p.flags } else { 0 };
+                p.latch = if p.kind == cracked { p.flags } else { PanelFlags::empty() };
             }
         }
     }
@@ -494,7 +522,7 @@ impl Battle {
             let p = &mut self.field.panels[y as usize][x as usize];
             p.hole_timer = h;
             let latch = p.latch;
-            if latch & pflags::BODY != 0 && latch & pflags::FLOATING == 0 && p.flags & pflags::OCCUPIED == 0 {
+            if latch.intersects(PanelFlags::BODY) && !latch.contains(PanelFlags::FLOATING) && !p.flags.intersects(PanelFlags::OCCUPIED) {
                 p.kind = roles.broken;
                 self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
                 let late = self.content.rules().panels.drawn == crate::content::PanelDrawn::OwnTables;
@@ -550,7 +578,7 @@ impl Battle {
                 if p.alliance != p.home {
                     n += 1;
                     m |= 1 << y;
-                    if p.flags & pflags::OCCUPIED == 0 {
+                    if !p.flags.intersects(PanelFlags::OCCUPIED) {
                         nf += 1;
                         fm |= 1 << y;
                     }
@@ -624,7 +652,7 @@ impl Battle {
             return false;
         }
         p.reserver = Some(obj);
-        p.flags |= pflags::RESERVED;
+        p.flags.insert(PanelFlags::RESERVED);
         if self.content.rules().panels.reservations == crate::content::Reservations::Marked {
             self.objects.get_mut(obj).flags.insert(crate::object::ObjectFlags::HOLDS_RESERVATION);
         }
@@ -638,7 +666,7 @@ impl Battle {
             return false;
         }
         p.reserver = None;
-        p.flags &= !pflags::RESERVED;
+        p.flags.remove(PanelFlags::RESERVED);
         true
     }
 
@@ -734,20 +762,20 @@ impl Battle {
         let (mask, roles) = (self.content.rules().panels.type_mask, self.content.rules().panels.roles);
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         let f = p.flags;
-        if f & pflags::SOLID == 0 {
+        if !f.contains(PanelFlags::SOLID) {
             return false;
         }
-        if f & pflags::CRACKED == 0 {
-            p.flags = ((f | pflags::CRACKED) & !(mask & !(pflags::SOLID | pflags::CRACKED))) | roles.cracked.0 as u32;
+        if !f.contains(PanelFlags::CRACKED) {
+            p.flags = ((f | PanelFlags::CRACKED) - (mask - (PanelFlags::SOLID | PanelFlags::CRACKED))) | PanelFlags::of_kind(roles.cracked);
             p.kind = roles.cracked;
             p.display_kind = roles.cracked;
             self.sound(SoundRole::PanelCrack);
             return true;
         }
-        if f & pflags::OCCUPIED != 0 {
+        if f.intersects(PanelFlags::OCCUPIED) {
             return false;
         }
-        p.flags = (f & !mask) | roles.broken.0 as u32;
+        p.flags = (f - mask) | PanelFlags::of_kind(roles.broken);
         p.kind = roles.broken;
         p.display_kind = roles.broken;
         self.sound(SoundRole::PanelCrack);
@@ -763,10 +791,10 @@ impl Battle {
         let (mask, roles) = (self.content.rules().panels.type_mask, self.content.rules().panels.roles);
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         let f = p.flags;
-        if f & pflags::SOLID == 0 || f & pflags::OCCUPIED != 0 {
+        if !f.contains(PanelFlags::SOLID) || f.intersects(PanelFlags::OCCUPIED) {
             return false;
         }
-        p.flags = (f & !mask) | roles.broken.0 as u32;
+        p.flags = (f - mask) | PanelFlags::of_kind(roles.broken);
         p.kind = roles.broken;
         p.display_kind = roles.broken;
         self.sound(SoundRole::PanelCrack);
@@ -783,16 +811,18 @@ impl Battle {
         let (mask, roles) = (self.content.rules().panels.type_mask, self.content.rules().panels.roles);
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         let f = p.flags;
-        if f & pflags::SOLID == 0 {
+        if !f.contains(PanelFlags::SOLID) {
             return false;
         }
-        let broke = f & (types::BODIES | types::OTHER_BODIES | types::BLOCKER | pflags::RESERVED) == 0;
+        let broke = !f.intersects(
+            PanelFlags::of_types(CollisionTypes::BODIES | CollisionTypes::OTHER_BODIES) | PanelFlags::BLOCKER | PanelFlags::RESERVED,
+        );
         if broke {
-            p.flags = (f & !mask) | roles.broken.0 as u32;
+            p.flags = (f - mask) | PanelFlags::of_kind(roles.broken);
             p.kind = roles.broken;
             p.display_kind = roles.broken;
         } else {
-            p.flags = ((f | pflags::CRACKED) & !(mask & !(pflags::SOLID | pflags::CRACKED))) | roles.cracked.0 as u32;
+            p.flags = ((f | PanelFlags::CRACKED) - (mask - (PanelFlags::SOLID | PanelFlags::CRACKED))) | PanelFlags::of_kind(roles.cracked);
             p.kind = roles.cracked;
             p.display_kind = roles.cracked;
         }
@@ -818,15 +848,15 @@ impl Battle {
         let (mask, roles) = (self.content.rules().panels.type_mask, self.content.rules().panels.roles);
         let Some(p) = self.field.panel_mut(x, y) else { return false };
         let f = p.flags;
-        if f & pflags::SOLID == 0 {
+        if !f.contains(PanelFlags::SOLID) {
             return false;
         }
-        if f & pflags::OCCUPIED == 0 {
-            p.flags = (f & !mask) | roles.broken.0 as u32;
+        if !f.intersects(PanelFlags::OCCUPIED) {
+            p.flags = (f - mask) | PanelFlags::of_kind(roles.broken);
             p.kind = roles.broken;
             p.display_kind = roles.broken;
         } else {
-            p.flags = ((f | pflags::CRACKED) & !(mask & !(pflags::SOLID | pflags::CRACKED))) | roles.cracked.0 as u32;
+            p.flags = ((f | PanelFlags::CRACKED) - (mask - (PanelFlags::SOLID | PanelFlags::CRACKED))) | PanelFlags::of_kind(roles.cracked);
             p.kind = roles.cracked;
             p.display_kind = roles.cracked;
         }
@@ -846,10 +876,10 @@ impl Battle {
         let mask = rules.type_mask;
         let bits = rules.type_flags(t) & mask;
         let Some(p) = self.field.panel_mut(x, y) else { return false };
-        if p.flags & pflags::SOLID == 0 {
+        if !p.flags.contains(PanelFlags::SOLID) {
             return false;
         }
-        p.flags = (p.flags & !mask) | bits;
+        p.flags = (p.flags - mask) | bits;
         p.kind = t;
         p.display_kind = t;
         if let Some(s) = sound {
@@ -894,8 +924,8 @@ mod tests {
         let rules = &content.rules().panels;
         let (holy, magnet) = (panel("holy"), panel("magnet"));
         assert_eq!((holy.0, magnet.0), (5, 13));
-        assert_eq!(rules.type_flags(holy), 5 | rules.rule(holy).flags);
-        assert_eq!(rules.type_flags(magnet), 13 | rules.rule(magnet).flags);
+        assert_eq!(rules.type_flags(holy).bits(), 5 | rules.rule(holy).flags.bits());
+        assert_eq!(rules.type_flags(magnet).bits(), 13 | rules.rule(magnet).flags.bits());
         assert_eq!((rules.roles.missing, rules.roles.broken, rules.roles.cracked, rules.roles.normal), (panel("missing"), panel("broken"), panel("cracked"), panel("normal")));
         assert_eq!((rules.numbered(15), rules.numbered(16)), (Some(panel("sea")), None));
     }
@@ -956,20 +986,20 @@ mod tests {
     /// the solidity and sets the crack bit.
     #[test]
     fn a_crack_clears_the_games_type_bits() {
-        use super::pflags;
+        use super::PanelFlags;
         let run = |mask: u32| {
             let mut b = Battle::new(scenario::setup(), scenario::content());
             let mut c = (*b.content).clone();
-            c.rules_mut().panels.type_mask = mask;
+            c.rules_mut().panels.type_mask = PanelFlags::from_bits_retain(mask);
             b.content = std::sync::Arc::new(c);
             b.set_panel_type(2, 1, panel("normal"));
             b.set_panel_type(2, 2, panel("normal"));
-            b.field.panels[1][2].flags |= 0x20000 | 0x0800_0000;
-            b.field.panels[2][2].flags |= 0x20000;
+            b.field.panels[1][2].flags.insert(PanelFlags::from_bits_retain(0x20000) | PanelFlags::BODY_SIDE0);
+            b.field.panels[2][2].flags.insert(PanelFlags::from_bits_retain(0x20000));
             assert!(b.crack_panel(2, 1) && b.overwrite_panel(2, 2, panel("poison"), None));
-            (b.field.panels[1][2].flags, b.field.panels[2][2].flags)
+            (b.field.panels[1][2].flags.bits(), b.field.panels[2][2].flags.bits())
         };
-        let cracked = |extra: u32| extra | 0x0800_0000 | pflags::CRACKED | pflags::SOLID | 3;
+        let cracked = |extra: u32| extra | (PanelFlags::BODY_SIDE0 | PanelFlags::CRACKED | PanelFlags::SOLID).bits() | 3;
         // (The first stood on, cracked; the second poisoned.)
         assert_eq!(run(0x3F5F), (cracked(0x20000 | 0x10000), 0x20000 | 0x10000 | 0x114));
         assert_eq!(run(0x23F5F), (cracked(0x10000), 0x10000 | 0x114));
@@ -982,7 +1012,7 @@ mod tests {
     /// draws every panel as the type and the owner it is.
     #[test]
     fn panels_drawn_from_their_own_tables_show_a_step_off_break_late_and_no_blink_dimmed() {
-        use super::pflags;
+        use super::PanelFlags;
         use crate::content::PanelDrawn;
         let run = |drawn: PanelDrawn| {
             let mut b = Battle::new(scenario::setup(), scenario::content());
@@ -991,7 +1021,7 @@ mod tests {
             b.content = std::sync::Arc::new(c);
             // A cracked panel a body stood on last tick and left.
             b.set_panel_type(2, 1, panel("cracked"));
-            b.field.panels[1][2].latch = b.field.panels[1][2].flags | pflags::BODY;
+            b.field.panels[1][2].latch = b.field.panels[1][2].flags | PanelFlags::BODY;
             b.tick_panels();
             let broke = (b.field.panels[1][2].kind, b.field.panels[1][2].display_kind);
             b.tick_panels();

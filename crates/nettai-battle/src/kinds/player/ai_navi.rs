@@ -199,7 +199,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
 /// statistic 7).
 fn hit_statistics(b: &mut Battle, r: ObjectRef) {
     let c = super::coll(b, r);
-    let counter = c.acc.hit_flags & crate::collision::hit::COUNTERED != 0;
+    let counter = c.acc.hit_flags.contains(crate::collision::CollisionTypes::COUNTERED);
     // (The word the original sums from its hitters' +0x14 holds their bug
     // codes and arguments, then barrier bytes no attack has.)
     let bugs = (c.acc.inflicted_bugs as u32).to_le_bytes();

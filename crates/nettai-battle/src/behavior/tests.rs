@@ -1520,11 +1520,11 @@ fn a_side_stat_and_the_mood_are_set() {
 /// one tick.
 #[test]
 fn panels_break_poison_and_blink() {
-    use crate::field::pflags;
+    use crate::field::PanelFlags;
     let mut b = rock_battle();
     b.field.refresh_all(&b.content.rules().panels, &b.collision);
     let (empty, occupied) = ((2, 1), (2, 2));
-    b.field.panels[occupied.1][occupied.0].flags |= pflags::BODY_SIDE0;
+    b.field.panels[occupied.1][occupied.0].flags.insert(PanelFlags::BODY_SIDE0);
     let kind = |b: &Battle, (x, y): (usize, usize)| b.field.panel(x as u8, y as u8).unwrap().kind;
     assert!(b.break_panel(empty.0 as u8, empty.1 as u8));
     assert_eq!(kind(&b, empty), crate::content::testing::panel("broken"));

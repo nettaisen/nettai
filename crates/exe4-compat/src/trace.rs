@@ -1415,7 +1415,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
                 Ok(n) => format!("{n:#04x}"),
                 Err(e) => format!("? ({e})"),
             };
-            let flags = format!("{:#x}", x.collision.map(|c| b.collision.get(c).acc.hit_flags).unwrap_or(0));
+            let flags = format!("{:#x}", x.collision.map(|c| b.collision.get(c).acc.hit_flags.bits()).unwrap_or(0));
             let f1 = format!("{:#x}", x.collision.map(|c| b.collision.get(c).f1.bits()).unwrap_or(0));
             let palette = b.objects.sprite(o).look.palette.to_string();
             vec![

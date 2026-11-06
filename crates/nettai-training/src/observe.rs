@@ -19,13 +19,13 @@ use crate::names;
 use crate::spec::{self, chips, forms, general, objects, panels, rules, LOG_TICKS};
 use nettai_battle::Battle;
 use nettai_battle::battle::{fight, mode};
-use nettai_battle::collision::{ATTACK_OF, StatusFlags, types};
+use nettai_battle::collision::{ATTACK_OF, CollisionTypes, StatusFlags};
 use nettai_battle::content::{ChipClass, ChipModifier, ChipUsage, Content, DamageFormula, ExtraChipFlags, Trap};
 use nettai_battle::custom::builder::{self, Pick};
 use nettai_battle::custom::Layer;
 use nettai_battle::custom::layer::Sub;
 use nettai_battle::custom::screen::{MAX_SELECTIONS, Phase, SLOTS, Screen, SlotKind, SlotState};
-use nettai_battle::field::pflags;
+use nettai_battle::field::PanelFlags;
 use nettai_battle::hud::CustomGauge;
 use nettai_battle::kinds::player::NaviAction;
 use nettai_battle::object::ObjectRef;
@@ -297,8 +297,8 @@ impl View<'_> {
 
     /// The viewer's side's and the other side's bit of a pair of side bits
     /// (side 0's, side 1's).
-    fn sides(&self, pair: [u32; 2], word: u32) -> [bool; 2] {
-        [word & pair[self.me as usize] != 0, word & pair[self.them as usize] != 0]
+    fn sides(&self, pair: [CollisionTypes; 2], word: CollisionTypes) -> [bool; 2] {
+        [word.intersects(pair[self.me as usize]), word.intersects(pair[self.them as usize])]
     }
 
     /// A panel bit (`y * 8 + x`) of the viewer's layout's token: its
@@ -485,7 +485,7 @@ fn encode_general(v: &View, extra: &Extra, out: &mut Obs) {
 }
 
 /// The type bits of a panel that are its bodies, by side.
-const BODY_OF: [u32; 2] = [pflags::BODY_SIDE0, pflags::BODY_SIDE1];
+const BODY_OF: [CollisionTypes; 2] = [CollisionTypes::BODY_SIDE0, CollisionTypes::BODY_SIDE1];
 
 fn encode_panels(v: &View, extra: &Extra, out: &mut Obs) {
     let b = v.b;
@@ -509,8 +509,8 @@ fn encode_panels(v: &View, extra: &Extra, out: &mut Obs) {
                     flag(r.cleared_by.is_some()),
                     flag(r.carries.is_some()),
                     flag(r.carries_by_move.is_some()),
-                    flag(p.flags & pflags::SOLID != 0),
-                    flag(r.flags != 0),
+                    flag(p.flags.contains(PanelFlags::SOLID)),
+                    flag(!r.flags.is_empty()),
                 ];
                 row[panels::rule..panels::rule + 12].copy_from_slice(&rule);
             }
@@ -518,7 +518,7 @@ fn encode_panels(v: &View, extra: &Extra, out: &mut Obs) {
             row[panels::owner] = flag(p.alliance == v.me);
             row[panels::owner + 1] = flag(p.home == v.me);
             row[panels::owner + 2] = flag(p.alliance != p.home);
-            row[panels::state] = flag(p.flags & pflags::CRACKED != 0);
+            row[panels::state] = flag(p.flags.contains(PanelFlags::CRACKED));
             row[panels::state + 1] = flag(p.visible);
             row[panels::state + 2] = clip(p.hole_timer as f32 / 600.0, 0.0, 2.0);
             row[panels::state + 3] = clip(p.timer as f32 / 1800.0, 0.0, 2.0);
@@ -527,14 +527,14 @@ fn encode_panels(v: &View, extra: &Extra, out: &mut Obs) {
             row[panels::state + 5] = flag(p.return_blink & 0xFF != 0);
             row[panels::highlight] = flag(p.highlight != 0);
             let registered = b.collision.panel_self_flags(x, y);
-            let bodies = v.sides(BODY_OF, p.flags);
+            let bodies = v.sides(BODY_OF, p.flags.types());
             let attacks = v.sides(ATTACK_OF, registered);
             let on = [
                 bodies[0],
                 bodies[1] && v.sees,
-                p.flags & pflags::FLOATING != 0,
-                registered & types::BLOCKER != 0,
-                registered & types::NEUTRAL != 0,
+                p.flags.contains(PanelFlags::FLOATING),
+                registered.contains(CollisionTypes::BLOCKER),
+                registered.contains(CollisionTypes::NEUTRAL),
                 attacks[0],
                 attacks[1] && v.sees,
             ];
@@ -637,8 +637,8 @@ fn encode_object(v: &View, r: ObjectRef, i: usize, out: &mut Obs) {
     if let Some(c) = collision {
         let t = c.self_flags;
         let attacks = v.sides(ATTACK_OF, t);
-        let bodies = v.sides([types::BODY_SIDE0, types::BODY_SIDE1], t);
-        let others = v.sides([types::OTHER_BODY_SIDE0, types::OTHER_BODY_SIDE1], t);
+        let bodies = v.sides([CollisionTypes::BODY_SIDE0, CollisionTypes::BODY_SIDE1], t);
+        let others = v.sides([CollisionTypes::OTHER_BODY_SIDE0, CollisionTypes::OTHER_BODY_SIDE1], t);
         let kinds = [
             true,
             attacks[0],
@@ -646,12 +646,12 @@ fn encode_object(v: &View, r: ObjectRef, i: usize, out: &mut Obs) {
             bodies[0],
             bodies[1],
             others[0] || others[1],
-            t & types::NEUTRAL != 0,
-            t & types::FLOATING != 0,
-            t & types::BLOCKER != 0,
-            t & (types::NO_GUARD_SPARK | types::BREAKS_GUARD) == types::NO_GUARD_SPARK | types::BREAKS_GUARD || t & types::BREAK != 0,
-            t & types::PIERCING != 0,
-            t & types::GROUND_ONLY != 0,
+            t.contains(CollisionTypes::NEUTRAL),
+            t.contains(CollisionTypes::FLOATING),
+            t.contains(CollisionTypes::BLOCKER),
+            t & (CollisionTypes::NO_GUARD_SPARK | CollisionTypes::BREAKS_GUARD) == CollisionTypes::NO_GUARD_SPARK | CollisionTypes::BREAKS_GUARD || t.contains(CollisionTypes::BREAK),
+            t.contains(CollisionTypes::PIERCING),
+            t.contains(CollisionTypes::GROUND_ONLY),
         ];
         for (k, on) in kinds.into_iter().enumerate() {
             row[objects::collision + k] = flag(on);

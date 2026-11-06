@@ -8,7 +8,7 @@ use super::{
     form_of, navi_of, refresh_abilities, reload_base_weapons, set_flag2, stats, stats_mut,
 };
 use crate::battle::{Battle, BattleFlags};
-use crate::collision::{CollisionData, StatusFlags, StatusRequests, hit, timer, types};
+use crate::collision::{CollisionData, CollisionTypes, StatusFlags, StatusRequests, timer};
 use crate::content::{EffectRole, SecondaryElements, SparkRole, StatusRole};
 use crate::object::{ObjectRef, Vec3};
 
@@ -183,14 +183,14 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
     }
     let regrowing = matches!(barrier, 4 | 8 | 0xA) && barrier_hp16(c) == 0;
     match rule.wind {
-        crate::content::BarrierWind::Pops if !regrowing && (c.acc.raw_elements & SecondaryElements::WIND != 0 || c.acc.raw_hit_flags & (types::WIND | types::PULL | types::PUSHING) != 0) => {
+        crate::content::BarrierWind::Pops if !regrowing && (c.acc.raw_elements & SecondaryElements::WIND != 0 || c.acc.raw_hit_flags.intersects(CollisionTypes::WIND | CollisionTypes::PULL | CollisionTypes::PUSHING)) => {
             // Popped (wind): absorbs everything until its visual clears it.
             barrier = 0x10;
             c.barrier = 0x10;
             set_barrier_hp16(c, 0);
             c.barrier_saved_hmf = c.hit_mod_final;
         }
-        crate::content::BarrierWind::TakesAway if !regrowing && c.acc.raw_hit_flags & types::WIND != 0 => {
+        crate::content::BarrierWind::TakesAway if !regrowing && c.acc.raw_hit_flags.contains(CollisionTypes::WIND) => {
             // Gone at once (EXE4's 0x08012E1E); the rest of the tick goes on
             // by the type it had.
             c.barrier = 0;
@@ -254,7 +254,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
                     t
                 }
             } else {
-                c.acc.raw_hit_flags as u8
+                c.acc.raw_hit_flags.bits() as u8
             };
             c.barrier_timer = (c.barrier_timer & 0xFF00) | t as u16;
         }
@@ -300,7 +300,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
     c.acc.exclamation = 0;
     c.acc.damage_multiplier = 0;
     c.acc.damage_elements = 0;
-    c.acc.hit_flags &= !(hit::COUNTERED | types::CHIP_DESTRUCTION);
+    c.acc.hit_flags.remove(CollisionTypes::COUNTERED | CollisionTypes::CHIP_DESTRUCTION);
 }
 
 // ---- Panels ------------------------------------------------------------------
@@ -416,7 +416,7 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
                 return;
             }
             let ffc = coll(b, r).acc.hit_flags;
-            if ffc & types::SWORD != 0 && ffc & rules.sword_spares == 0 {
+            if ffc.contains(CollisionTypes::SWORD) && !ffc.intersects(rules.sword_spares) {
                 ai_mut(b, r).requests.insert(Requests::ANTI_SWORD_TRIGGERED);
                 zero_trapped_hit(b, r);
                 return;
@@ -431,7 +431,7 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
         zero_trapped_hit(b, r);
         return;
     }
-    if coll(b, r).acc.hit_flags & (types::ATTACKS | types::OBJECTS | types::BODIES | types::OTHER_BODIES | types::NEUTRAL) == 0 {
+    if !coll(b, r).acc.hit_flags.intersects(CollisionTypes::ATTACKS | CollisionTypes::OBJECTS | CollisionTypes::BODIES | CollisionTypes::OTHER_BODIES | CollisionTypes::NEUTRAL) {
         return;
     }
     let sum: u32 = coll(b, r).acc.element_damage[..5].iter().map(|&d| d as u32).sum();
@@ -463,7 +463,7 @@ fn zero_trapped_hit(b: &mut Battle, r: ObjectRef) {
     c.status_timers[timer::PARALYZE] = 0;
     c.status_timers[timer::FREEZE] = 0;
     c.status_timers[timer::BUBBLE] = 0;
-    c.acc.hit_flags &= !hit::COUNTERED;
+    c.acc.hit_flags.remove(CollisionTypes::COUNTERED);
     c.f2 &= !drops;
 }
 
@@ -516,7 +516,7 @@ pub(crate) fn strip_body_programs(b: &mut Battle, r: ObjectRef, undershirt: bool
 /// light MegaMan's).
 fn bug_navicust(b: &mut Battle, r: ObjectRef) {
     let c = coll(b, r);
-    if c.acc.inflicted_bugs != 0 || c.acc.hit_flags != 0 {
+    if c.acc.inflicted_bugs != 0 || !c.acc.hit_flags.is_empty() {
         let side = b.objects.get(r).alliance;
         match b.rules_navi_bug(side, r) {
             crate::rules::NaviBug::Spared => return,
@@ -572,7 +572,7 @@ fn hit_modifier_requests(b: &mut Battle, r: ObjectRef) {
 /// or flashing, unless a bubble status landed.
 fn counter_paralysis(b: &mut Battle, r: ObjectRef) {
     let c = coll(b, r);
-    if c.acc.hit_flags & hit::COUNTERED == 0 || c.status_final.is_some_and(|s| b.content.status(s).survives_counter) {
+    if !c.acc.hit_flags.contains(CollisionTypes::COUNTERED) || c.status_final.is_some_and(|s| b.content.status(s).survives_counter) {
         return;
     }
     coll_mut(b, r).status_final = Some(b.roles().status(StatusRole::CounterParalysis));
@@ -612,12 +612,12 @@ pub(crate) fn take_status(b: &mut Battle, r: ObjectRef, s: nettai_content_api::S
     }
 }
 
-/// `sub_801A2CC`: chip destruction, a hit (`types::CHIP_DESTRUCTION`)
+/// `sub_801A2CC`: chip destruction, a hit (`CollisionTypes::CHIP_DESTRUCTION`)
 /// that destroys the chip the navi names and, of a player's hand, what its
 /// game's intake rules say (`chip_destruction`): the next chip, or the
 /// hand.
 fn lose_chip(b: &mut Battle, r: ObjectRef) {
-    if coll(b, r).acc.hit_flags & types::CHIP_DESTRUCTION == 0 {
+    if !coll(b, r).acc.hit_flags.contains(CollisionTypes::CHIP_DESTRUCTION) {
         return;
     }
     b.objects.get_mut(r).chip = None;
@@ -741,7 +741,7 @@ fn anger_trigger(b: &mut Battle, r: ObjectRef) {
 /// `sub_8010198`: any hit ends the timed submerged state.
 fn hit_ends_submerged(b: &mut Battle, r: ObjectRef) {
     let c = coll_mut(b, r);
-    if c.status_timers[timer::SUBMERGED] != 0 && c.acc.hit_flags != 0 {
+    if c.status_timers[timer::SUBMERGED] != 0 && !c.acc.hit_flags.is_empty() {
         c.status_timers[timer::SUBMERGED] = 0;
     }
 }
@@ -754,7 +754,7 @@ fn pierce_ends_flash(b: &mut Battle, r: ObjectRef) {
     }
     let c = coll_mut(b, r);
     let ffc = c.acc.hit_flags;
-    if c.status_timers[timer::FLASH] != 0 && ffc & types::PIERCING != 0 && ffc & types::BREAKS_GUARD == 0 {
+    if c.status_timers[timer::FLASH] != 0 && ffc.contains(CollisionTypes::PIERCING) && !ffc.contains(CollisionTypes::BREAKS_GUARD) {
         c.status_timers[timer::FLASH] = 0;
     }
 }
@@ -762,7 +762,7 @@ fn pierce_ends_flash(b: &mut Battle, r: ObjectRef) {
 /// `object_spawnHiteffect`: a blocked hit shows a guard spark (one RNG
 /// draw).
 fn guard_spark(b: &mut Battle, r: ObjectRef) {
-    if b.paused || coll(b, r).acc.hit_flags & hit::GUARD_SPARK == 0 {
+    if b.paused || !coll(b, r).acc.hit_flags.contains(CollisionTypes::GUARD_SPARK) {
         return;
     }
     b.sound(crate::content::SoundRole::Guard);
@@ -964,7 +964,7 @@ mod tests {
             ai_mut(&mut b, r).requests.insert(Requests::CHIP | Requests::BUSTER);
             lose_chip(&mut b, r);
             assert_eq!(b.hands[side].cursor, cursor, "no hit flag 0x10: nothing lost");
-            coll_mut(&mut b, r).acc.hit_flags |= types::CHIP_DESTRUCTION;
+            coll_mut(&mut b, r).acc.hit_flags.insert(CollisionTypes::CHIP_DESTRUCTION);
             lose_chip(&mut b, r);
             assert_eq!(b.objects.get(r).chip, None);
             let left = b.hands[side].ids.iter().filter(|id| id.is_some()).count();

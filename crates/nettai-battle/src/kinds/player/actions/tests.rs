@@ -2105,7 +2105,7 @@ fn spawning_instant_chips_run_their_objects_and_roll_back() {
             hand.ids[0] = Some(chip);
             b.hands[0] = hand;
             tick(&mut b, p0, p1, keys::A);
-            b.field.panel_mut(6, 2).unwrap().flags |= 0x1_0000;
+            b.field.panel_mut(6, 2).unwrap().flags.insert(crate::field::PanelFlags::from_bits_retain(0x1_0000));
             tick(&mut b, p0, p1, 0);
         } else {
             use_instant_chip_handle(&mut b, p0, p1, chip);
@@ -2508,8 +2508,8 @@ fn a_kind_spawns_by_definition_and_its_state_holds_definitions() {
     assert!(b.sound_cues().iter().any(|c| matches!(c, crate::sound::SoundCue::Effect(s) if crate::content::testing::asset_numbers(&b.content).sound(s.0) == Some(0x1A6))));
     // The collision types and region are the definitions'.
     let c = b.collision.get(b.objects.get(launcher).collision.expect("a collision"));
-    assert_eq!(c.self_flags & 0xFFFE_FFFF, 0x80000088);
-    assert_eq!(c.target_flags, 0x15800000);
+    assert_eq!((c.self_flags - crate::collision::CollisionTypes::HITS_WHILE_DIMMED).bits(), 0x80000088);
+    assert_eq!(c.target_flags.bits(), 0x15800000);
     let wide: Vec<(i8, i8)> = b.content.region_offsets(c.region).iter().map(|p| (p.dx, p.dy)).collect();
     assert_eq!(wide, [(1, -1), (1, 0), (1, 1)]);
     // The variant's lifetime (5) ends it.

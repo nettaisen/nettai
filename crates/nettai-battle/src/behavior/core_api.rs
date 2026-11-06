@@ -24,8 +24,8 @@ use nettai_content_api::{ObstacleHold, ObstaclePush};
 
 use crate::actor::{ActorData, ActorStatus, ActorType, Requests};
 use crate::battle::{Battle, LinkedRecord};
-use crate::collision::{CollisionData, StatusFlags, StatusRequests, timer, types};
-use crate::field::PanelType;
+use crate::collision::{CollisionData, CollisionTypes, StatusFlags, StatusRequests, timer};
+use crate::field::{PanelFlags, PanelType};
 use crate::input::keys;
 use crate::kinds::common::{self, Progress};
 use crate::kinds::player::actions::ActionVars;
@@ -1483,11 +1483,11 @@ impl CoreApi for Battle {
     }
 
     fn panel_flags(&self, p: PanelPos) -> u32 {
-        self.field.flags(p.x, p.y)
+        self.field.flags(p.x, p.y).bits()
     }
 
     fn panel_check(&self, p: PanelPos, require: u32, forbid: u32) -> bool {
-        self.field.check(p.x, p.y, require, forbid)
+        self.field.check(p.x, p.y, PanelFlags::from_bits_retain(require), PanelFlags::from_bits_retain(forbid))
     }
 
     fn panel_flag_bits(&self, name: &str, side: Option<u8>) -> Result<nettai_content_api::PanelBits, String> {
@@ -1553,9 +1553,8 @@ impl CoreApi for Battle {
     }
 
     fn panel_body_grounded(&self, p: PanelPos) -> bool {
-        use crate::field::pflags;
         let f = self.field.flags(p.x, p.y);
-        f & pflags::BODY != 0 && f & pflags::FLOATING == 0
+        f.intersects(PanelFlags::BODY) && !f.contains(PanelFlags::FLOATING)
     }
 
     fn highlight_panel(&mut self, p: PanelPos) {
@@ -2762,9 +2761,9 @@ impl CoreApi for Battle {
             CollisionField::StatusFinal => return def(Registry::Status, c.status_final.map(|h| h.0)),
             CollisionField::Region => return def(Registry::Region, c.region.map(|h| h.0)),
             CollisionField::HitEffect => return def(Registry::Spark, c.hit_effect.map(|h| h.0)),
-            CollisionField::HitsWhileDimmed => return Ok(Value::Bool(c.self_flags & types::HITS_WHILE_DIMMED != 0)),
+            CollisionField::HitsWhileDimmed => return Ok(Value::Bool(c.self_flags.contains(CollisionTypes::HITS_WHILE_DIMMED))),
             CollisionField::CantCounter => return Ok(Value::Bool(c.counter_byte & CANT_COUNTER != 0)),
-            CollisionField::Hit => return Ok(Value::Bool(c.acc.hit_flags != 0)),
+            CollisionField::Hit => return Ok(Value::Bool(!c.acc.hit_flags.is_empty())),
             CollisionField::ConfusionVisual => return Ok(c.links[crate::collision::link::CONFUSE].into()),
             CollisionField::BlindnessVisual => return Ok(c.links[crate::collision::link::BLIND].into()),
             _ => {}
@@ -2818,17 +2817,18 @@ impl CoreApi for Battle {
 
     fn collision_hit_any(&self, o: ObjectRef, bits: [u32; 2]) -> ApiResult<bool> {
         let hit = self.collision_of(o)?.acc.hit_flags;
+        let bits = bits.map(CollisionTypes::from_bits_retain);
         let side = self.objects.get(o).alliance;
         let bits = match side {
             0 | 1 => bits[side as usize],
             _ if bits[0] == bits[1] => bits[0],
             _ => return Err(ApiError::Other(format!("hit_any: an object of side {side} has no own or enemy side"))),
         };
-        Ok(hit & bits != 0)
+        Ok(hit.intersects(bits))
     }
 
     fn hit_bits(&self, name: &str, side: Option<u8>) -> Result<u32, String> {
-        crate::collision::hit_name_bits(name, side)
+        crate::collision::hit_name_bits(name, side).map(|b| b.bits())
     }
 
     fn collision_element_damage(&self, o: ObjectRef, element: u8) -> ApiResult<u16> {
@@ -2874,7 +2874,7 @@ impl CoreApi for Battle {
         let c = self.collision_of_mut(o)?;
         match (f, v) {
             (CollisionField::HitsWhileDimmed, FieldValue::Bool(on)) => {
-                c.self_flags = if on { c.self_flags | types::HITS_WHILE_DIMMED } else { c.self_flags & !types::HITS_WHILE_DIMMED };
+                c.self_flags = if on { c.self_flags | CollisionTypes::HITS_WHILE_DIMMED } else { c.self_flags & !CollisionTypes::HITS_WHILE_DIMMED };
                 return Ok(());
             }
             (CollisionField::CantCounter, FieldValue::Bool(on)) => {
@@ -2893,7 +2893,7 @@ impl CoreApi for Battle {
                 if hit {
                     return Err(ApiError::Other("hit: written false only, which clears the hit results".into()));
                 }
-                c.acc.hit_flags = 0;
+                c.acc.hit_flags = CollisionTypes::empty();
                 return Ok(());
             }
             (CollisionField::ConfusionVisual, FieldValue::Object(r)) => {

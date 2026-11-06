@@ -266,7 +266,7 @@ pub struct StatusDef {
 /// flags.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CollisionTypeDef {
-    pub flags: [u32; 2],
+    pub flags: [crate::collision::CollisionTypes; 2],
 }
 
 

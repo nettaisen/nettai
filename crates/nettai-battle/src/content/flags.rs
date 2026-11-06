@@ -137,3 +137,23 @@ macro_rules! serde_flags {
 }
 
 pub(crate) use serde_flags;
+
+/// `#[serde(with)]` for a flag type held as its integer (a field that
+/// (de)serialized as the integer before it was typed): the same output.
+pub(crate) mod bits {
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<T: bitflags::Flags, S: Serializer>(v: &T, s: S) -> Result<S::Ok, S::Error>
+    where
+        T::Bits: Serialize,
+    {
+        v.bits().serialize(s)
+    }
+
+    pub fn deserialize<'de, T: bitflags::Flags, D: Deserializer<'de>>(d: D) -> Result<T, D::Error>
+    where
+        T::Bits: Deserialize<'de>,
+    {
+        T::Bits::deserialize(d).map(T::from_bits_retain)
+    }
+}

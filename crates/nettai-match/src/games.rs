@@ -975,7 +975,7 @@ fn exe4s_pitfall_crumbles() {
     }
     assert_eq!((b.field.panels[1][2].kind, b.field.panels[1][2].timer), (pitfall, 0x8000 | 190));
     // A grounded body stands on it: the count starts that tick.
-    b.field.panels[1][2].flags |= nettai_battle::field::pflags::BODY_SIDE0;
+    b.field.panels[1][2].flags.insert(nettai_battle::field::PanelFlags::BODY_SIDE0);
     b.tick_panels();
     assert_eq!(b.field.panels[1][2].timer, 189);
 }

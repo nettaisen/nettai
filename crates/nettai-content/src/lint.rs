@@ -111,7 +111,7 @@ pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
     for (d, t) in c.defs.definitions.of(Registry::Collision).iter().zip(&c.defs.collisions) {
         let root = c.game();
         // (Its words, as the loader made them of its members' names.)
-        let tests = t.flags.iter().any(|w| w & nettai_battle::collision::types::REACHES_FLOATSHOE != 0);
+        let tests = t.flags.iter().any(|w| w.contains(nettai_battle::collision::CollisionTypes::REACHES_FLOATSHOE));
         if !tests {
             continue;
         }
