@@ -55,7 +55,7 @@ function ticker.action(spec: Spec): any
             if s.ticks >= spec.length then
                 s.ticks = 0
                 if spec.next then
-                    me:set_attack(spec.next, 1)
+                    me:set_attack(spec.next, "buster")
                 else
                     me:exit_attack()
                 end

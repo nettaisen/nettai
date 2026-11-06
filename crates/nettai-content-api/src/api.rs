@@ -5,9 +5,11 @@
 //! Engine-owned fields are named by enums ([`ObjectField`],
 //! [`ActorField`], [`SpriteField`], ...). Each has a name (what scripts
 //! write), a type (which conversions and wrapping apply) and whether
-//! content may write it. Flags and timers are named too
-//! ([`StatusFlag`], [`RequestFlag`], [`Key`] ...): content never handles
-//! the engine's bit values or offsets.
+//! content may write it. Flags and timers are named fields too
+//! ([`StatusFlag`], [`RequestFlag`], [`Key`] ...), read and written as a
+//! view's properties, and a choice is one of its names ([`AttackKind`],
+//! [`StepDirection`] ...): content never handles the engine's bit values,
+//! offsets or the numbers it keeps a choice as.
 
 use std::fmt;
 
@@ -271,11 +273,12 @@ named_fields! {
         /// telop hidden from its user too.
         TelopHidden = "telop_hidden", Bool, rw;
         SpecialSource = "special_source", U8, rw;
-        /// Which `set_attack` kind started the action (0..5).
-        AttackKind = "attack_kind", U8, ro;
-        /// 1 while the action runs inside the side's wrapper (`sub_801B9E6`
-        /// runs the role `actions.wrapper` instead: EXE6's Beast Out rush).
-        Wrapped = "wrapped", U8, rw;
+        /// The slot the action started in ([`AttackKind`]).
+        AttackKind = "attack_kind", enum_type(AttackKind::NAMES), ro;
+        /// The action runs inside the side's wrapper (`sub_801B9E6` runs the
+        /// role `actions.wrapper` instead: EXE6's Beast Out rush; the byte
+        /// 1).
+        Wrapped = "wrapped", Bool, rw;
         /// The wrapper's state starts over (`sub_801011A` clears it with the
         /// attack's links); the wrapper clears it once it has.
         WrapperFresh = "wrapper_fresh", Bool, rw;
@@ -318,22 +321,22 @@ named_fields! {
         ResetLinkedObject = "reset_linked_object", Object, rw;
         /// The Full Synchro aura.
         FullSynchroAura = "full_synchro_aura", Object, rw;
-        /// The charge: 0 none, 1 charging, 2 full; its source (0 none, 1
-        /// A, 2 B); its counter. The source and the counter are writable:
+        /// The charge ([`CHARGE_LEVELS`]); its source ([`CHARGE_SOURCES`]);
+        /// its counter. The source and the counter are writable:
         /// EXE4's dark soul's AI shows a B charge as it dodges (0x0800E69C:
         /// AIData +9 and its count, +0x32, of which the next tick's input
         /// makes the level, 0x0800BB66), and the level with them (the
         /// charge's reset, `sub_8012EA8`).
-        ChargeLevel = "charge_level", U8, rw;
-        ChargeSource = "charge_source", U8, rw;
+        ChargeLevel = "charge_level", enum_type(&CHARGE_LEVELS), rw;
+        ChargeSource = "charge_source", enum_type(&CHARGE_SOURCES), rw;
         ChargeCounter = "charge_counter", U16, rw;
         /// EXE4's rapid presses (AIData +0x12, +0x11): the B presses
         /// counted toward a form's `rapid_presses`, and the ticks left for
         /// the next (the forced charged shot clears both as it ends).
         RapidPresses = "rapid_presses", U8, rw;
         RapidWindow = "rapid_window", U8, rw;
-        /// A buffered auto-step's direction (0 none).
-        BufferedMove = "buffered_move", U8, rw;
+        /// A buffered auto-step's direction ([`BUFFERED_MOVES`]).
+        BufferedMove = "buffered_move", enum_type(&BUFFERED_MOVES), rw;
         /// Ticks before the next chip can be used.
         ChipLockout = "chip_lockout", U8, rw;
         /// Ticks before the B+Back special can be input again.
@@ -459,9 +462,8 @@ named_fields! {
         HitsWhileDimmed = "hits_while_dimmed", Bool, rw;
         /// The damage taken this window.
         FinalDamage = "final_damage", U16, ro;
-        /// Which way the region's anchor last moved (0 none, 1 up, 2 down,
-        /// 3 back, 4 forward, 5 other).
-        Direction = "direction", U8, ro;
+        /// Which way the region's anchor last moved ([`MOVE_DIRECTIONS`]).
+        Direction = "direction", enum_type(&MOVE_DIRECTIONS), ro;
         /// The directions (1 << the hitter's flip) a guard blocked hits
         /// from this window (CollisionData+0x03).
         GuardDirs = "guard_dirs", U8, ro;
@@ -696,6 +698,9 @@ named_fields! {
     }
 }
 
+/// A single choice content names (a lifecycle's, a fade's, a pad's...): its
+/// names, each one of the choices, and their order (`ALL`, `NAMES`), which
+/// is the byte the engine keeps where the choice is a number.
 macro_rules! named_flags {
     ($(#[$m:meta])* pub enum $name:ident { $($(#[$vm:meta])* $var:ident = $str:literal,)* }) => {
         $(#[$m])*
@@ -704,6 +709,7 @@ macro_rules! named_flags {
 
         impl $name {
             pub const ALL: &'static [$name] = &[$($name::$var,)*];
+            pub const NAMES: &'static [&'static str] = &[$($str,)*];
 
             pub fn name(self) -> &'static str {
                 match self { $($name::$var => $str,)* }
@@ -716,145 +722,145 @@ macro_rules! named_flags {
     };
 }
 
-named_flags! {
+named_fields! {
     /// Status flags an object with collision data carries.
     pub enum StatusFlag {
-        Guard = "guard",
-        Invisible = "invisible",
-        Submerged = "submerged",
-        Invulnerable = "invulnerable",
-        AirShoe = "air_shoe",
-        FloatShoe = "float_shoe",
-        Moving = "moving",
-        Dead = "dead",
-        Flashing = "flashing",
-        Flinching = "flinching",
-        Paralyzed = "paralyzed",
-        Sliding = "sliding",
-        Blind = "blind",
-        Immobilized = "immobilized",
-        Confused = "confused",
-        Frozen = "frozen",
-        SuperArmor = "super_armor",
-        Undershirt = "undershirt",
-        MoveComplete = "move_complete",
-        Drag = "drag",
-        Anger = "anger",
+        Guard = "guard", Bool, rw;
+        Invisible = "invisible", Bool, rw;
+        Submerged = "submerged", Bool, rw;
+        Invulnerable = "invulnerable", Bool, rw;
+        AirShoe = "air_shoe", Bool, rw;
+        FloatShoe = "float_shoe", Bool, rw;
+        Moving = "moving", Bool, rw;
+        Dead = "dead", Bool, rw;
+        Flashing = "flashing", Bool, rw;
+        Flinching = "flinching", Bool, rw;
+        Paralyzed = "paralyzed", Bool, rw;
+        Sliding = "sliding", Bool, rw;
+        Blind = "blind", Bool, rw;
+        Immobilized = "immobilized", Bool, rw;
+        Confused = "confused", Bool, rw;
+        Frozen = "frozen", Bool, rw;
+        SuperArmor = "super_armor", Bool, rw;
+        Undershirt = "undershirt", Bool, rw;
+        MoveComplete = "move_complete", Bool, rw;
+        Drag = "drag", Bool, rw;
+        Anger = "anger", Bool, rw;
         /// An action is in use (attacks set it while they run).
-        UsingAction = "using_action",
-        AffectedByIce = "affected_by_ice",
-        Bubbled = "bubbled",
+        UsingAction = "using_action", Bool, rw;
+        AffectedByIce = "affected_by_ice", Bool, rw;
+        Bubbled = "bubbled", Bool, rw;
         // Dimming chip subtype 20 (ElemTrap's trap).
         /// Hit even while the battle is dimmed.
-        HitWhileDimmed = "hit_while_dimmed",
+        HitWhileDimmed = "hit_while_dimmed", Bool, rw;
         // VDoll's doll.
         /// A field object being carried to be thrown (0x04000000).
-        Carried = "carried",
+        Carried = "carried", Bool, rw;
         /// Untouchable (0x08000000): no hit reaches it and it hits nothing
         /// (Falzar Beast Over's form, EXE5's DarkInvs drive).
-        Untouchable = "untouchable",
+        Untouchable = "untouchable", Bool, rw;
     }
 }
 
-named_flags! {
+named_fields! {
     /// Status timers an object with collision data carries.
     pub enum StatusTimer {
-        Paralyze = "paralyze",
-        Confuse = "confuse",
-        Blind = "blind",
-        Immobilize = "immobilize",
+        Paralyze = "paralyze", U16, rw;
+        Confuse = "confuse", U16, rw;
+        Blind = "blind", U16, rw;
+        Immobilize = "immobilize", U16, rw;
         /// Flashing (and invisible while it runs, with the invisible flag).
-        Flash = "flash",
-        Submerged = "submerged",
-        Invulnerable = "invulnerable",
-        Freeze = "freeze",
-        Bubble = "bubble",
+        Flash = "flash", U16, rw;
+        Submerged = "submerged", U16, rw;
+        Invulnerable = "invulnerable", U16, rw;
+        Freeze = "freeze", U16, rw;
+        Bubble = "bubble", U16, rw;
     }
 }
 
-named_flags! {
+named_fields! {
     /// A navi's action requests (from input and from reactions).
     pub enum RequestFlag {
-        Buster = "buster",
-        ChargedShot = "charged_shot",
-        Chip = "chip",
-        ChargedChip = "charged_chip",
-        BackSpecial = "back_special",
-        ForcedChargedShot = "forced_charged_shot",
-        RevertForm = "revert_form",
-        AntiDamageTriggered = "anti_damage_triggered",
-        AntiSwordTriggered = "anti_sword_triggered",
-        CutIn = "cut_in",
-        TurnL = "turn_l",
-        TurnR = "turn_r",
-        FormChange = "form_change",
-        BodyGuardTriggered = "body_guard_triggered",
-        AltChip = "alt_chip",
-        AHeld = "a_held",
-        BHeld = "b_held",
-        StunStrike = "stun_strike",
+        Buster = "buster", Bool, rw;
+        ChargedShot = "charged_shot", Bool, rw;
+        Chip = "chip", Bool, rw;
+        ChargedChip = "charged_chip", Bool, rw;
+        BackSpecial = "back_special", Bool, rw;
+        ForcedChargedShot = "forced_charged_shot", Bool, rw;
+        RevertForm = "revert_form", Bool, rw;
+        AntiDamageTriggered = "anti_damage_triggered", Bool, rw;
+        AntiSwordTriggered = "anti_sword_triggered", Bool, rw;
+        CutIn = "cut_in", Bool, rw;
+        TurnL = "turn_l", Bool, rw;
+        TurnR = "turn_r", Bool, rw;
+        FormChange = "form_change", Bool, rw;
+        BodyGuardTriggered = "body_guard_triggered", Bool, rw;
+        AltChip = "alt_chip", Bool, rw;
+        AHeld = "a_held", Bool, rw;
+        BHeld = "b_held", Bool, rw;
+        StunStrike = "stun_strike", Bool, rw;
         /// The rules caught a hit for their guard (their `hit_guard`; the
         /// role `guard`).
-        Guard = "guard",
+        Guard = "guard", Bool, rw;
         /// The rules hold a navi at 0 HP for their revival (the role
         /// `revival`).
-        Revival = "revival",
+        Revival = "revival", Bool, rw;
         /// The rules ask for their follow-up action (the role `follow_up`).
-        FollowUp = "follow_up",
-        SelectSpecial = "select_special",
-        NaviSwitch = "navi_switch",
-        SwitchKnockout = "switch_knockout",
-        Mode9A = "mode9_a",
+        FollowUp = "follow_up", Bool, rw;
+        SelectSpecial = "select_special", Bool, rw;
+        NaviSwitch = "navi_switch", Bool, rw;
+        SwitchKnockout = "switch_knockout", Bool, rw;
+        Mode9A = "mode9_a", Bool, rw;
         /// The rules' takeover of the side's navi (EXE6's Cross special).
-        Takeover = "takeover",
-        Volley = "volley",
-        WeaknessHit = "weakness_hit",
+        Takeover = "takeover", Bool, rw;
+        Volley = "volley", Bool, rw;
+        WeaknessHit = "weakness_hit", Bool, rw;
         /// The flinch request (the collision's flag2 0x4: a hit's).
-        Flinch = "flinch",
+        Flinch = "flinch", Bool, rw;
         /// The slide request (the collision's flag2 0x10, not an action
         /// request).
-        Slide = "slide",
+        Slide = "slide", Bool, rw;
         /// The anger request (the collision's flag2 0x200): the navi gets
         /// angry at its next status update, unless its mood is held
         /// (`sub_8014326`).
-        Anger = "anger",
+        Anger = "anger", Bool, rw;
         /// The drag request (the collision's flag2 0x100: a knockback's).
-        Drag = "drag",
+        Drag = "drag", Bool, rw;
     }
 }
 
-named_flags! {
+named_fields! {
     /// A navi's state bits.
     pub enum NaviState {
-        Controllable = "controllable",
-        ChipInProgress = "chip_in_progress",
-        FormChange = "form_change",
-        RevertingForm = "reverting_form",
-        NoCharge = "no_charge",
-        CanTurn = "can_turn",
-        TrapArmed = "trap_armed",
-        SwitchingNavi = "switching_navi",
-        SwitchKnockout = "switch_knockout",
-        Switched = "switched",
-        Volley = "volley",
-        Uninterruptible = "uninterruptible",
-        FormBreaking = "form_breaking",
-        FormChangeSpriteHeld = "form_change_sprite_held",
-        HeatTrap = "heat_trap",
+        Controllable = "controllable", Bool, rw;
+        ChipInProgress = "chip_in_progress", Bool, rw;
+        FormChange = "form_change", Bool, rw;
+        RevertingForm = "reverting_form", Bool, rw;
+        NoCharge = "no_charge", Bool, rw;
+        CanTurn = "can_turn", Bool, rw;
+        TrapArmed = "trap_armed", Bool, rw;
+        SwitchingNavi = "switching_navi", Bool, rw;
+        SwitchKnockout = "switch_knockout", Bool, rw;
+        Switched = "switched", Bool, rw;
+        Volley = "volley", Bool, rw;
+        Uninterruptible = "uninterruptible", Bool, rw;
+        FormBreaking = "form_breaking", Bool, rw;
+        FormChangeSpriteHeld = "form_change_sprite_held", Bool, rw;
+        HeatTrap = "heat_trap", Bool, rw;
         /// The rules' revival runs (the role `revival`'s action).
-        Reviving = "reviving",
+        Reviving = "reviving", Bool, rw;
         /// The rules' follow-up runs (the role `follow_up`'s action).
-        FollowingUp = "following_up",
+        FollowingUp = "following_up", Bool, rw;
         /// Gone from the field while its navi chip's navi acts
         /// (`sub_80E1352` sets it, `sub_80E13DC` clears it).
-        Vanished = "vanished",
+        Vanished = "vanished", Bool, rw;
         /// It dives: a panel that submerges (EXE5's sea) submerges it and
         /// doesn't hold it at a move's end (EXE5's ToadSoul, 0x08011CB2).
         /// The status reset ends it.
-        Dives = "dives",
+        Dives = "dives", Bool, rw;
         /// In the air (EXE5's GyroMan over a panel that isn't solid): a
         /// step it takes sets no animation.
-        Hovering = "hovering",
+        Hovering = "hovering", Bool, rw;
     }
 }
 
@@ -874,19 +880,19 @@ pub struct CheckedFolder {
     pub offered: Vec<u16>,
 }
 
-named_flags! {
+named_fields! {
     /// A button.
     pub enum Key {
-        A = "a",
-        B = "b",
-        Select = "select",
-        Start = "start",
-        Right = "right",
-        Left = "left",
-        Up = "up",
-        Down = "down",
-        R = "r",
-        L = "l",
+        A = "a", Bool, ro;
+        B = "b", Bool, ro;
+        Select = "select", Bool, ro;
+        Start = "start", Bool, ro;
+        Right = "right", Bool, ro;
+        Left = "left", Bool, ro;
+        Up = "up", Bool, ro;
+        Down = "down", Bool, ro;
+        R = "r", Bool, ro;
+        L = "l", Bool, ro;
     }
 }
 
@@ -898,6 +904,146 @@ named_flags! {
         Pressed = "pressed",
         DimmedHeld = "dimmed_held",
         DimmedPressed = "dimmed_pressed",
+    }
+}
+
+named_flags! {
+    /// The slot an action starts in (AIAttackVars+0x1C, `object_setAttack0..5`;
+    /// the byte is its place here), which its end reads (`sub_801171C`).
+    pub enum AttackKind {
+        /// 0: a reaction, or an action the rules start (a deletion, a
+        /// revival, a follow-up...).
+        Plain = "plain",
+        /// 1: the buster, the charged shot and the other weapons the
+        /// buttons fire.
+        Buster = "buster",
+        /// 2: a chip: its end hands the chip lockout on (the rules'
+        /// `attack_end_lockout` by kind) and tells the rules it ended.
+        Chip = "chip",
+        /// 3: the B+Back special: its end hands its cooldown on.
+        Special = "special",
+        /// 4: a step: its end leaves the requests, the charge and the
+        /// lockouts alone.
+        Move = "move",
+        /// 5: a chip's attack the hand doesn't move past (`loc_80F057C`:
+        /// EXE6's Cross special, EXE5's chaos weapon).
+        UnspentChip = "unspent_chip",
+        /// 6: a B charge the rules arm released out of its window (EXE5's
+        /// chaos failure); it ends as a plain action does.
+        Misfire = "misfire",
+    }
+}
+
+impl AttackKind {
+    pub fn byte(self) -> u8 {
+        self as u8
+    }
+}
+
+named_flags! {
+    /// A step's direction (`sub_800FA54`'s answer, `sub_80116AE`'s code:
+    /// the byte is its place here plus 1, 0 none).
+    pub enum StepDirection {
+        Up = "up",
+        Down = "down",
+        Back = "back",
+        Forward = "forward",
+    }
+}
+
+impl StepDirection {
+    pub fn byte(self) -> u8 {
+        self as u8 + 1
+    }
+
+    /// The direction of a byte (none for 0, or one past the four).
+    pub fn of_byte(b: u8) -> Option<StepDirection> {
+        b.checked_sub(1).and_then(|i| StepDirection::ALL.get(i as usize).copied())
+    }
+}
+
+/// A buffered auto-step's direction (AIData+0x1A, by its byte): none, the
+/// four, or an absolute step's (`sub_80116AE`'s code 5).
+pub const BUFFERED_MOVES: [&str; 6] = ["none", "up", "down", "back", "forward", "absolute"];
+/// Which way a collision region's anchor last moved (CollisionData's
+/// direction, by its byte): none, the four, or other (two panels or more).
+pub const MOVE_DIRECTIONS: [&str; 6] = ["none", "up", "down", "back", "forward", "other"];
+/// A navi's charge (AIData+0x1B, by its byte): none, charging, full.
+pub const CHARGE_LEVELS: [&str; 3] = ["none", "charging", "full"];
+/// What a navi charges with (AIData+9, by its byte): none, A, B.
+pub const CHARGE_SOURCES: [&str; 3] = ["none", "a", "b"];
+
+named_flags! {
+    /// `sub_801156A`'s mode (the byte is its place here): what an object
+    /// with HP does with this tick's damage.
+    pub enum TakeDamageMode {
+        /// 0: the HP lost, a white flash while hit, and the damage sound.
+        DamageSound = "damage_sound",
+        /// 1: no HP lost, a white flash while hit, no sound.
+        KeepsHp = "keeps_hp",
+        /// 2: the HP lost, a white flash while hit, and the hit sound.
+        HitSound = "hit_sound",
+    }
+}
+
+named_flags! {
+    /// What `sub_801156A` answers: its HP ran out (-1), it was hit in the
+    /// `keeps_hp` mode (1), or neither (0).
+    pub enum DamageTaken {
+        None = "none",
+        Hit = "hit",
+        Broken = "broken",
+    }
+}
+
+impl DamageTaken {
+    pub fn of(answer: i32) -> DamageTaken {
+        match answer {
+            0 => DamageTaken::None,
+            a if a < 0 => DamageTaken::Broken,
+            _ => DamageTaken::Hit,
+        }
+    }
+}
+
+named_flags! {
+    /// The field-object registry's class an obstacle takes (the byte is its
+    /// place here): `setFieldBattleObject_800F614`'s.
+    pub enum ObstacleClass {
+        /// 0: two a side; a third evicts the oldest.
+        TwoASide = "two_a_side",
+        /// 1: one a side; a second evicts the first.
+        OneASide = "one_a_side",
+    }
+}
+
+named_flags! {
+    /// A screen palette flash's variant (Param1, the byte its place here).
+    pub enum PaletteFlashVariant {
+        /// 0 (`sub_80E10C0`): white or red over one palette layer.
+        OneLayer = "one_layer",
+        /// 1 (`sub_80E114C`): white over two.
+        TwoLayers = "two_layers",
+    }
+}
+
+named_flags! {
+    /// The battle's counts of fight ticks (the rules' `flow.fight_cycles`,
+    /// in its order).
+    pub enum FightCycle {
+        First = "first",
+        Second = "second",
+    }
+}
+
+named_flags! {
+    /// The bonuses a side stores for its special chip (`sub_8010488`, the
+    /// byte its place here).
+    pub enum SpecialBonus {
+        /// The Atk+ bonus a damaging chip spends (the side state's +0x36).
+        Attack = "attack",
+        /// The Navi+ bonus a navi chip spends (+0x38).
+        Navi = "navi",
     }
 }
 
@@ -1168,28 +1314,28 @@ named_flags! {
     }
 }
 
-named_flags! {
+named_fields! {
     /// What other objects ask of a field object (an obstacle: a rock, a
     /// cube, a whirlwind...), in its collision's second flags word.
     pub enum ObstacleFlag {
         /// Break it at its next reaction.
-        Destroy = "destroy",
+        Destroy = "destroy", Bool, ro;
         /// A hit made it flinch.
-        Flinch = "flinch",
+        Flinch = "flinch", Bool, ro;
         /// A hit pushes it.
-        Pushed = "pushed",
+        Pushed = "pushed", Bool, ro;
         /// Picked up to be thrown.
-        Thrown = "thrown",
+        Thrown = "thrown", Bool, ro;
         /// Encased in ice or a bubble.
-        Encased = "encased",
+        Encased = "encased", Bool, ro;
         /// A chip removes it.
-        Removed = "removed",
+        Removed = "removed", Bool, ro;
         /// It blinks out.
-        Vanish = "vanish",
+        Vanish = "vanish", Bool, ro;
         /// A side absorbs it (either side, side 0, side 1).
-        Absorbed = "absorbed",
-        AbsorbedBy0 = "absorbed_by_0",
-        AbsorbedBy1 = "absorbed_by_1",
+        Absorbed = "absorbed", Bool, ro;
+        AbsorbedBy0 = "absorbed_by_0", Bool, ro;
+        AbsorbedBy1 = "absorbed_by_1", Bool, ro;
     }
 }
 
@@ -1773,6 +1919,9 @@ pub trait CoreApi {
     fn set_side_stat(&mut self, side: u8, index: u8, n: u8);
     /// `sub_800AB3A`: a side's statistics counter.
     fn side_stat(&self, side: u8, index: u8) -> u8;
+    /// The slot of the side statistic named `name` (its game's rules'
+    /// `side_stats`), or why there is none.
+    fn side_stat_named(&self, name: &str) -> ApiResult<u8>;
     /// The damage-carry record of the side that takes the damage
     /// (`dword_203CFB0`; CopyDmg's): what that side took this tick and
     /// last tick, the object that set it, and the target that also takes
@@ -1921,6 +2070,8 @@ pub trait CoreApi {
     /// called from the round's setup until the rules say otherwise): one not
     /// called answers nothing, as a hook the rules don't have.
     fn listen(&mut self, side: u8, hook: crate::RulesHook, on: bool) -> ApiResult<()>;
+    /// Whether the engine calls side `side`'s rules' hook `hook` now.
+    fn listening(&self, side: u8, hook: crate::RulesHook) -> ApiResult<bool>;
     /// The panel kinds (bit n: kind n) on which side `side`'s rules'
     /// `navi_panel` is called for a navi standing on one (none at first).
     fn listen_panels(&mut self, side: u8, kinds: u128) -> ApiResult<()>;

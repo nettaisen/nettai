@@ -43,12 +43,18 @@
 -- 16.16 fixed point, wrapping on + and -. Use `//` (floor division) or the
 -- `int` library, never `/`.
 --
--- Names, not numbers: flags, timers, buttons, panel types and lifecycle
--- states are strings ("using_action", "paralyze", "a", "cracked",
--- "destroy"); the engine's bit values and offsets stay in the engine. The
--- original's numbers that are the game's own data (sound ids, animation
--- numbers, collision types, hit regions, panel flag words it matches as
--- whole words) are the scripts' constants, named where they're defined.
+-- Names, not numbers. A set of named members is a view whose members are
+-- properties: an object's status flags and timers, a navi's requests, flags
+-- and buttons, a side's HUD, a hand's entry (`me.status.guard = true`,
+-- `me.held.a`, `battle.hud(side).gauge`). A choice is one of its names, a
+-- literal union the checker holds content to (`me.lifecycle = "destroy"`,
+-- `me:set_attack(action, "chip")`, `me:start_move("up")`); one a game
+-- names (a panel type, an emotion) is checked against the game's own as it
+-- runs. Content holds no bit layout: the engine's bit values, offsets and
+-- the numbers it keeps a choice as stay in the engine, and a game's own
+-- layouts are declared once, in its rules. The original's numbers that are
+-- the game's own data (sound ids, animation numbers, hit regions) are the
+-- scripts' constants, named where they're defined.
 
 export type Pool = "actor" | "attack" | "effect"
 -- ("finish" is the fourth state of kinds that have one after "destroy":
@@ -57,12 +63,38 @@ export type Lifecycle = "init" | "update" | "destroy" | "finish"
 -- How an object follows another (`Object:follow`).
 export type FollowSpec = {
     offset: Vec3?,
-    looks: { string }?,
+    looks: { SpriteFieldName }?,
     visibility: boolean?,
-    held: string?,
+    held: ObjectFieldOfObject?,
     held_in_state: string?,
     while_dimmed: boolean?,
 }
+-- A sprite's field, by name (`FollowSpec.looks`).
+export type SpriteFieldName =
+    "palette"
+    | "hflip"
+    | "vflip"
+    | "shadow"
+    | "under_objects"
+    | "white"
+    | "color_shader"
+    | "alpha"
+    | "mosaic"
+    | "priority"
+    | "hidden_parts"
+    | "animation"
+    | "steps"
+-- An object's field that holds an object, by name (`FollowSpec.held`).
+export type ObjectFieldOfObject =
+    "related1"
+    | "related2"
+    | "overlay"
+    | "face_target"
+    | "target_marker"
+    | "charge_glow"
+    | "reset_linked_object"
+    | "full_synchro_aura"
+    | "barrier_visual"
 -- How the first part of each of a sprite's frames is drawn, by the
 -- original's three routines: "ground" (`sprite_hasShadow`: it is a shadow,
 -- drawn on the ground under the object), "hidden" (`sprite_removeShadow`:
@@ -84,7 +116,7 @@ export type SideSpecial = "none" | "select" | "takeover"
 -- whether the hand's picks list it (they do), and whether the cursor on it
 -- shades the screen as on a dark chip (not).
 export type Offer = { marks: number?, listed: boolean?, shades: boolean? }
--- What the HUD shows, a side's (`battle.hud`, `battle.set_hud`), each a flag. Its navi's as the consoles show it:
+-- What the HUD shows, a side's (`battle.hud(side)`'s properties), each a flag. Its navi's as the consoles show it:
 -- "face_variant", its emotion window shows its base form's second set of faces (`mugshot.variant`: EXE5's Hub
 -- Style); "face_variant_any_form", and whatever its form (EXE5's Chaos Unison look while its charge is armed);
 -- "name_variant", the custom screen's enemy names show it by its variant name (the locale's
@@ -118,6 +150,8 @@ export type HudField =
 export type ScreenFade = "transform_out" | "transform_in" | "dim" | "undim"
 -- A panel type, by name: one of its game's (its rules' `panels.numbers`).
 export type PanelType = string
+-- A side's statistic, by name: one of its game's (its rules' `side_stats`).
+export type SideStat = string
 -- Status flags of an object with collision data.
 export type StatusFlag =
     "guard"
@@ -197,8 +231,8 @@ export type Request =
     | "anger"
     -- The drag request (the collision's flag2 0x100: a knockback's).
     | "drag"
--- A navi's state bits.
-export type NaviStateFlag =
+-- A navi's state flag, by name (`me.navi_flags`).
+export type NaviFlag =
     "controllable"
     | "chip_in_progress"
     | "form_change"
@@ -230,8 +264,6 @@ export type NaviStateFlag =
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
 -- A navi's drag reaction step.
 export type DragStep = "start" | "slide" | "recover"
--- A field of a hand's entry (`battle.hand_entry`).
-export type HandEntryField = "chip" | "damage" | "attack_bonus" | "charge_bonus" | "turn" | "marks"
 -- A navi's slide type: none, a push's, by the arena's rows and the move's
 -- direction (the rules' `reactions.slide_rows`: ice's), the panel's own carry
 -- (a type's `carries` or `carries_by_move`: a road's, EXE5's magnet's).
@@ -242,19 +274,278 @@ export type SlideHow = "slide" | "drag" | "obstacle"
 -- A panel type's `slide`'s answer: one panel further, carried the type's way
 -- (a navi's slide), stopped.
 export type SlideAnswer = "on" | "carry" | "stop"
--- What other objects ask of a field object (an obstacle).
-export type ObstacleFlag =
-    "destroy"
+-- The slot an action starts in (`me:set_attack`, `start_chip_attack`, `start_weapon`; `me.attack_kind`), which its end
+-- reads: "plain" (a reaction, or an action the rules start), "buster" (the weapons the buttons fire), "chip" (its end
+-- hands the chip lockout on and tells the rules it ended), "special" (the B+Back special: its end hands its cooldown
+-- on), "move" (a step: its end leaves the requests, the charge and the lockouts alone), "unspent_chip" (a chip's attack
+-- the hand doesn't move past: EXE6's Cross special, EXE5's chaos weapon), "misfire" (a B charge the rules arm released
+-- out of its window, EXE5's chaos failure: it ends as a plain action does).
+export type AttackKind = "plain" | "buster" | "chip" | "special" | "move" | "unspent_chip" | "misfire"
+-- A step's direction (`me:held_direction`, `step_target`, `start_move`).
+export type StepDirection = "up" | "down" | "back" | "forward"
+-- A buffered auto-step's direction (`me.buffered_move`): none, the four, or an absolute step's.
+export type BufferedMove = "none" | StepDirection | "absolute"
+-- Which way a collision region's anchor last moved (`collision.direction`): none, the four, or other (two panels or
+-- more).
+export type MoveDirection = "none" | StepDirection | "other"
+-- A navi's charge (`me.charge_level`), and what it charges with (`me.charge_source`).
+export type ChargeLevel = "none" | "charging" | "full"
+export type ChargeSource = "none" | "a" | "b"
+-- The engine's own actions, as `me:navi_action()` names them.
+export type EngineAction =
+    "entry"
+    | "take_control"
+    | "deletion"
     | "flinch"
-    | "pushed"
-    | "thrown"
-    | "encased"
-    | "removed"
-    | "vanish"
-    | "absorbed"
-    | "absorbed_by_0"
-    | "absorbed_by_1"
+    | "paralysis"
+    | "drag"
+    | "freeze"
+    | "bubble"
+    | "idle"
+    | "move"
+    | "dimming_chip"
+    | "hand_off_chip"
+    | "instant_chip"
+    | "form_change"
+    | "navi_switch"
+    | "switch_knockout"
+-- `me:take_damage`'s mode: the HP lost and the damage sound ("damage_sound"), no HP lost and no sound ("keeps_hp"),
+-- the HP lost and the hit sound ("hit_sound"); each flashes white while hit.
+export type TakeDamageMode = "damage_sound" | "keeps_hp" | "hit_sound"
+-- What `me:take_damage` answers: its HP ran out ("broken"), it was hit in the "keeps_hp" mode ("hit"), or neither.
+export type DamageTaken = "none" | "hit" | "broken"
+-- The field-object registry's class an obstacle takes (`obstacle.register`): two a side (a third evicts the oldest),
+-- or one (a second evicts the first).
+export type ObstacleClass = "two_a_side" | "one_a_side"
+-- A screen palette flash's variant (`battle.palette_flash`): white or red over one palette layer, or white over two.
+export type PaletteFlashVariant = "one_layer" | "two_layers"
+-- The battle's counts of fight ticks (`battle.cycle`): the rules' `flow.fight_cycles`, in its order.
+export type FightCycle = "first" | "second"
+-- The bonuses a side stores for its special chip (`battle.add_special_bonus`): the Atk+ bonus a damaging chip spends,
+-- the Navi+ bonus a navi chip spends.
+export type SpecialBonus = "attack" | "navi"
+-- A sound of the custom screen's own (`custom.play`).
+export type CustomSound =
+    "pick"
+    | "refused"
+    | "back"
+    | "cancel"
+    | "cursor"
+    | "description"
+    | "program_advance_part"
+    | "program_advance"
+    | "redeal"
+-- A fade of the custom screen's (`custom.fade`).
+export type CustomFade = "half_out" | "half_out_back" | "end_to_white" | "intro_from_white" | "flash" | "flash_back"
+-- An object's status flags (its collision data's), each a property: `me.status.guard`,
+-- `me.status.using_action = true`.
+declare extern type Statuses with
+    guard: boolean
+    invisible: boolean
+    submerged: boolean
+    invulnerable: boolean
+    air_shoe: boolean
+    float_shoe: boolean
+    moving: boolean
+    dead: boolean
+    flashing: boolean
+    flinching: boolean
+    paralyzed: boolean
+    sliding: boolean
+    blind: boolean
+    immobilized: boolean
+    confused: boolean
+    frozen: boolean
+    super_armor: boolean
+    undershirt: boolean
+    move_complete: boolean
+    drag: boolean
+    anger: boolean
+    using_action: boolean
+    affected_by_ice: boolean
+    bubbled: boolean
+    -- Hit even while the battle is dimmed (ElemTrap's trap).
+    hit_while_dimmed: boolean
+    -- A field object being carried to be thrown.
+    carried: boolean
+    -- No hit reaches it and it hits nothing (Falzar Beast Over's form,
+    -- EXE5's DarkInvs drive).
+    untouchable: boolean
+end
 
+-- An object's status timers, in ticks: `me.status_timers.paralyze`, `me.status_timers.flash = n` (a u16).
+declare extern type StatusTimers with
+    paralyze: number
+    confuse: number
+    blind: number
+    immobilize: number
+    flash: number
+    submerged: number
+    invulnerable: number
+    freeze: number
+    bubble: number
+end
+
+-- A navi's action requests (from input and from reactions): `me.requests.guard`, `me.requests.slide = true`.
+declare extern type Requests with
+    buster: boolean
+    charged_shot: boolean
+    chip: boolean
+    charged_chip: boolean
+    back_special: boolean
+    forced_charged_shot: boolean
+    revert_form: boolean
+    anti_damage_triggered: boolean
+    anti_sword_triggered: boolean
+    cut_in: boolean
+    turn_l: boolean
+    turn_r: boolean
+    form_change: boolean
+    body_guard_triggered: boolean
+    alt_chip: boolean
+    a_held: boolean
+    b_held: boolean
+    stun_strike: boolean
+    -- The rules caught a hit for their guard (their `hit_guard`; the role `guard`).
+    guard: boolean
+    -- The rules hold a navi at 0 HP for their revival (the role `revival`).
+    revival: boolean
+    -- The rules ask for their follow-up action (the role `follow_up`).
+    follow_up: boolean
+    select_special: boolean
+    navi_switch: boolean
+    switch_knockout: boolean
+    mode9_a: boolean
+    -- The rules' takeover of the side's navi (EXE6's Cross special).
+    takeover: boolean
+    volley: boolean
+    weakness_hit: boolean
+    -- The flinch request (the collision's flag2 0x4: a hit's).
+    flinch: boolean
+    -- The slide request (the collision's flag2 0x10).
+    slide: boolean
+    -- The anger request (the collision's flag2 0x200): angry at the next
+    -- status update, unless the mood is held.
+    anger: boolean
+    -- The drag request (the collision's flag2 0x100: a knockback's).
+    drag: boolean
+end
+
+-- A navi's state flags: `me.navi_flags.no_charge`, `me.navi_flags.controllable = false`.
+declare extern type NaviFlags with
+    controllable: boolean
+    chip_in_progress: boolean
+    form_change: boolean
+    reverting_form: boolean
+    no_charge: boolean
+    can_turn: boolean
+    trap_armed: boolean
+    switching_navi: boolean
+    switch_knockout: boolean
+    switched: boolean
+    volley: boolean
+    uninterruptible: boolean
+    form_breaking: boolean
+    form_change_sprite_held: boolean
+    heat_trap: boolean
+    -- The rules' revival runs (the role `revival`'s action); the navi isn't
+    -- deleted at 0 HP meanwhile.
+    reviving: boolean
+    -- The rules' follow-up runs (the role `follow_up`'s action).
+    following_up: boolean
+    -- Gone from the field while its navi chip's navi acts.
+    vanished: boolean
+    -- It dives: a panel that submerges (EXE5's sea) submerges it and doesn't
+    -- hold it at a move's end (EXE5's ToadSoul). The status reset ends it.
+    dives: boolean
+    -- In the air (EXE5's GyroMan over a panel that isn't solid): a step it
+    -- takes sets no animation and leaves the one it has.
+    hovering: boolean
+end
+
+-- A navi's buttons in one of its records (`me.held`, `me.pressed`, and the record kept while the battle is dimmed,
+-- `me.dimmed_held`, `me.dimmed_pressed`): `me.pressed.a` (read-only).
+declare extern type Buttons with
+    a: boolean
+    b: boolean
+    select: boolean
+    start: boolean
+    right: boolean
+    left: boolean
+    up: boolean
+    down: boolean
+    r: boolean
+    l: boolean
+end
+
+-- What other objects ask of a field object (an obstacle): `me.obstacle_flags.absorbed` (read-only; the rest is the
+-- `obstacle` service).
+declare extern type ObstacleFlags with
+    destroy: boolean
+    flinch: boolean
+    pushed: boolean
+    thrown: boolean
+    encased: boolean
+    removed: boolean
+    vanish: boolean
+    absorbed: boolean
+    absorbed_by_0: boolean
+    absorbed_by_1: boolean
+end
+
+-- What the HUD shows (see HudField): `battle.hud(side).window_count = shown`, `battle.hud().chip_icons = false` (no
+-- side: every side's; the fields every console shows alike take none).
+declare extern type Hud with
+    face_variant: boolean
+    face_variant_any_form: boolean
+    name_variant: boolean
+    window_count: boolean
+    emotion_window_glitch: boolean
+    emotion_window_glitching: boolean
+    chip_icons: boolean
+    opponent_chip_icons: boolean
+    chip_window: boolean
+    gauge: boolean
+    emotion_window: boolean
+    level_gauge: boolean
+    hp_box: boolean
+end
+
+-- An entry of a side's hand (`battle.hand_entry(side, i)`, from 0, the hand from its first chip, used ones too): each
+-- field nil past its entries, and setting one there an error. Its chip (nil: the hand ends before it), its base damage,
+-- its Atk+ (or Navi+) bonus and the bonus a charge raises (what a form's A charge builds up, and EXE4's souls' status
+-- resets give: the status reset clears it), the turn (from 0) it was picked in, and its marks (its modifier flags: what
+-- its game's chip-use rules read at the use, `mark_damage` and `mark_heals`, and what its rules keep there).
+-- (@exelib/chip_hand reads and adds to them.)
+declare extern type HandEntry with
+    chip: Chip?
+    damage: number
+    attack_bonus: number
+    charge_bonus: number
+    turn: number
+    marks: number
+end
+
+-- An object's fields as side `side`'s console has them (`o:console(side)`): the consoles each decide `visible`, where
+-- the original's consoles clear it by rules of their own side. Reading the object's own field gives the local side's
+-- console's; setting it, every console's. Presentation. (@exelib/visibility hides from a blind player and copies an
+-- owner's.)
+declare extern type ObjectConsole with
+    visible: boolean
+end
+-- A sprite's fields as side `side`'s console draws them (`sprite:console(side)`): the consoles draw these each their
+-- own way, where the original's consoles decide a look by their own side (a palette by whose panel it is as the
+-- console sees it, the parts a console hides); the sprite's other fields read alike there. Reading the sprite's own
+-- field gives the local side's console's; setting it, every console's. Presentation. (@exelib/looks puts a field by
+-- console and copies an owner's look.)
+declare extern type SpriteConsole with
+    palette: number
+    hflip: boolean
+    color_shader: number
+    alpha: number?
+    mosaic: number?
+    hidden_parts: number
+end
 -- A 16.16 fixed-point vector (x right, y down the field, z up). Immutable.
 declare extern type Vec3 with
     x: number
@@ -315,15 +606,8 @@ declare extern type Sprite with
     function attach(self, owner: Object?, part: number?): ()
     -- The game's flip value: bit 0 horizontal, bit 1 vertical.
     function set_flip(self, flip: number): ()
-    -- A field as side `side`'s console (0 or 1) draws it: the consoles draw some fields of a sprite each its own
-    -- way, where the original's consoles decide a look by their own side (a palette by whose panel it is as the
-    -- console sees it, the parts a console hides): "palette", "hflip", "color_shader", "alpha", "mosaic" and
-    -- "hidden_parts"; the others read alike. Reading the field itself gives the local side's console's.
-    -- (@exelib/looks puts a field by console and copies an owner's look.)
-    function get(self, field: string, side: number): any
-    -- Set a field: with `side`, on that side's console alone (one of the fields above); without, on every console,
-    -- as setting the field does. Presentation.
-    function set(self, field: string, value: any, side: number?): ()
+    -- Its fields as side `side`'s console (0 or 1) draws them.
+    function console(self, side: number): SpriteConsole
 end
 
 -- An object's collision registration.
@@ -374,9 +658,8 @@ declare extern type Collision with
     hits_while_dimmed: boolean
     -- The damage taken this window (read-only).
     final_damage: number
-    -- Which way the region's anchor last moved: 0 none, 1 up, 2 down, 3
-    -- back, 4 forward, 5 other (read-only).
-    direction: number
+    -- Which way the region's anchor last moved (read-only).
+    direction: MoveDirection
     -- The directions (bit 1 << the hitter's flip) a guard blocked hits
     -- from this window (read-only).
     guard_dirs: number
@@ -482,7 +765,7 @@ declare extern type Object with
     -- It has a collision record (read-only): `collision`'s fields and methods need one.
     has_collision: boolean
     -- Drawn (for every console, when set; read: the local side's console's).
-    -- Each console's is `get("visible", side)`.
+    -- Each console's is `console(side).visible`.
     visible: boolean
     run_while_paused: boolean
     -- Keeps updating while the battle is dimmed.
@@ -533,11 +816,11 @@ declare extern type Object with
     -- chip it uses hidden from its user too (`sub_800BBA8`). Loading a chip
     -- clears it.
     telop_hidden: boolean
-    -- Which set_attack kind started it (read-only).
-    attack_kind: number
-    -- 1 while the action runs inside the side's wrapper (the role
+    -- The slot it started in (read-only).
+    attack_kind: AttackKind
+    -- The action runs inside the side's wrapper (the role
     -- `actions.wrapper`: EXE6's Beast Out rush).
-    wrapped: number
+    wrapped: boolean
     -- The wrapper's state starts over (`sub_801011A` sets it with the
     -- attack's links); the wrapper clears it once it has.
     wrapper_fresh: boolean
@@ -578,11 +861,11 @@ declare extern type Object with
     target_marker: Object?
     charge_glow: Object?
     full_synchro_aura: Object?
-    -- The charge: level 0 none, 1 charging, 2 full; source 0 none, 1 A, 2 B
-    -- (writable: EXE4's dark soul's AI shows a B charge as it dodges, the
-    -- level following the count; `sub_8012EA8` drops all three).
-    charge_level: number
-    charge_source: number
+    -- The charge, and what it charges with (writable: EXE4's dark soul's AI
+    -- shows a B charge as it dodges, the level following the count;
+    -- `sub_8012EA8` drops all three).
+    charge_level: ChargeLevel
+    charge_source: ChargeSource
     charge_counter: number
     -- Writable: EXE4's rapid presses (AIData +0x12, +0x11), the B presses
     -- counted toward a form's `rapid_presses` and the ticks left for the
@@ -594,7 +877,7 @@ declare extern type Object with
     reset_linked_object: Object?
     -- Writable: a buffered auto-step's direction, the chip lockout, the
     -- B+Back special's cooldown.
-    buffered_move: number
+    buffered_move: BufferedMove
     chip_lockout: number
     back_special_cooldown: number
     -- The weapons the navi's buttons run (nil: none; writable: EXE4's
@@ -647,13 +930,23 @@ declare extern type Object with
     -- (GyroSoul's propeller while primed). An error for another object.
     extra_anim_offset: number
 
-    -- A field as side `side`'s console (0 or 1) has it: the consoles each decide "visible", where the original's
-    -- consoles clear it by rules of their own side; the others read alike. Reading the field itself gives the local
-    -- side's console's. (@exelib/visibility hides from a blind player and copies an owner's.)
-    function get(self, field: string, side: number): any
-    -- Set a field: with `side`, on that side's console alone ("visible"); without, on every console, as setting the
-    -- field does. Presentation.
-    function set(self, field: string, value: any, side: number?): ()
+    -- Its named members, each a view's properties: its status flags and timers (an object with collision data); a
+    -- navi's requests, state flags and buttons (the record kept while the battle is dimmed too), whether its side's
+    -- form has a trait (a form definition's `traits`, read-only); what other objects ask of a field object
+    -- (read-only).
+    status: Statuses
+    status_timers: StatusTimers
+    requests: Requests
+    navi_flags: NaviFlags
+    held: Buttons
+    pressed: Buttons
+    dimmed_held: Buttons
+    dimmed_pressed: Buttons
+    form_traits: FormTraits
+    obstacle_flags: ObstacleFlags
+
+    -- Its fields as side `side`'s console (0 or 1) has them.
+    function console(self, side: number): ObjectConsole
 
 
     -- Enter a lifecycle state from its first action and phase (the game's
@@ -748,12 +1041,8 @@ declare extern type Object with
     -- `sub_800E680`: could it stand on (x, y), whichever side owns it?
     function can_stand_any_side(self, x: number, y: number): boolean
 
-    function status(self, flag: StatusFlag): boolean
-    function set_status(self, flag: StatusFlag, on: boolean): ()
     -- Every status flag off (the collision's whole status word cleared).
     function clear_statuses(self): ()
-    function status_timer(self, timer: StatusTimer): number
-    function set_status_timer(self, timer: StatusTimer, ticks: number): ()
 
     function create_collision(self): boolean
     -- Set up the registration from the object (side, panel, element,
@@ -776,24 +1065,13 @@ declare extern type Object with
     function hit_spark(self): ()
     -- `sub_801156A`: an object with HP takes this tick's damage (the sum
     -- of its hits by element): a guard spark if it blocked, the HP loss
-    -- (not in mode 1), a white flash while hit, with a sound in modes 0
-    -- and 2. -1 when its HP ran out, 1 when hit in another mode, else 0.
-    function take_damage(self, mode: number): number
+    -- (not "keeps_hp"), a white flash while hit, with the mode's sound;
+    -- "broken" when its HP ran out.
+    function take_damage(self, mode: TakeDamageMode): DamageTaken
     -- `sub_801A7CC`: raise a barrier (its collision data).
     function raise_barrier(self, spec: BarrierSpec): ()
 
     -- Navis only.
-    function request(self, flag: Request): boolean
-    function set_request(self, flag: Request, on: boolean): ()
-    function navi_state(self, flag: NaviStateFlag): boolean
-    function set_navi_state(self, flag: NaviStateFlag, on: boolean): ()
-    -- Whether its side's form has the trait (a form definition's `traits`).
-    function form_trait(self, name: FormTrait): boolean
-    -- The buttons, and the record kept while the battle is dimmed.
-    function held(self, key: Key): boolean
-    function pressed(self, key: Key): boolean
-    function dimmed_held(self, key: Key): boolean
-    function dimmed_pressed(self, key: Key): boolean
     -- `object_setDefaultCounterTime`: a counter window of 16 ticks, or of
     -- `ticks` (`object_setCounterTime`).
     function open_counter_window(self, ticks: number?): ()
@@ -854,14 +1132,10 @@ declare extern type Object with
     function form_change_terms(self): (number, boolean)
     -- `sub_801171C`: back to idle, the animation as it is.
     function end_attack(self): ()
-    -- `object_setAttack0..5`: start an action (a definition); kind 1
-    -- buster, 2 chip or charged shot, 3 special, 4 move.
-    function set_attack(self, action: Action, kind: number): ()
-    -- What the navi runs: an action definition, or one of the rules' own
-    -- ("entry", "take_control", "deletion", "flinch", "paralysis", "drag",
-    -- "freeze", "bubble", "idle", "move", "dimming_chip", "hand_off_chip",
-    -- "instant_chip", "form_change", "cross_special").
-    function navi_action(self): Action | string
+    -- `object_setAttack0..5`: start an action (a definition) in a slot.
+    function set_attack(self, action: Action, kind: AttackKind): ()
+    -- What the navi runs: an action definition, or one of the engine's own.
+    function navi_action(self): Action | EngineAction
     -- `loc_80126EA`: `chip` as the navi's attack (its record's damage, hit
     -- parameter, lockout and element; no bonus; not charged): a weapon
     -- that fires a chip, whose setup then returns the chip.
@@ -871,13 +1145,12 @@ declare extern type Object with
     -- Whether it did.
     function rush_cancels(self, chip: Chip): boolean
     function reset_attack_links(self): ()
-    -- `sub_800FA54`: the held direction (1 up, 2 down, 3 back, 4 forward;
-    -- 0 none).
-    function held_direction(self): number
+    -- `sub_800FA54`: the held direction (nil: none).
+    function held_direction(self): StepDirection?
     -- `sub_800F964`: where a step toward dir would go, if it can.
-    function step_target(self, dir: number): (number?, number?)
+    function step_target(self, dir: StepDirection): (number?, number?)
     -- `sub_80116AE`: start a step toward dir.
-    function start_move(self, dir: number): ()
+    function start_move(self, dir: StepDirection): ()
     -- `object_canMove`: not immobilized, sliding or moving.
     function can_move(self): boolean
     -- `sub_800EDD0`'s chip: the hand's chip at the cursor (nil: the hand is
@@ -888,19 +1161,19 @@ declare extern type Object with
     function use_chip(self): boolean
     -- The attack `chip` starts (`sub_80127C0`'s dispatch: its action, or the
     -- dimming, navi or instant chip's), in `set_attack` slot `kind`.
-    function start_chip_attack(self, chip: Chip, kind: number): ()
+    function start_chip_attack(self, chip: Chip, kind: AttackKind): ()
     -- `sub_80116AE(5, end_lag, 2)`: a step straight to (x, y) (column 0: no
     -- step), then `end_lag` ticks; with `face`, EXE5's `sub_80116F6`'s (what
     -- the step turns to face in the panel patterns 0x23, 0x31 and 0x33).
     function start_move_to(self, x: number, y: number, end_lag: number, face: Object?): ()
     -- `sub_80117BA`: `weapon`'s setup, and the action it names started in
     -- `set_attack` slot `kind`.
-    function start_weapon(self, weapon: Weapon, kind: number): ()
+    function start_weapon(self, weapon: Weapon, kind: AttackKind): ()
     -- The wrapper's (the role `actions.wrapper`): run the action the
     -- navi runs (`sub_801B9E6`'s attack).
     function run_wrapped(self): ()
     -- `sub_800FC30`: start the next chip in the hand inside the wrapper
-    -- (prepared, its action started, `wrapped` 1), unless it has the
+    -- (prepared, its action started, `wrapped`), unless it has the
     -- `no_chain` trait, is a dimming chip, or the hand is empty. Whether it
     -- did.
     function chain_next_chip(self): boolean
@@ -933,10 +1206,6 @@ declare extern type Object with
     -- action last used it): how a weapon routine sets up the action it
     -- names before it starts. Cast it to the action's State type.
     function action_state(self, action: Action): any
-
-    -- Field objects (obstacles): whether another object asked this of it
-    -- (the rest is the `obstacle` service).
-    function obstacle_flag(self, flag: ObstacleFlag): boolean
 end
 
 -- A side's navi stats, each writable but `navi`, `base_form` and
@@ -1188,10 +1457,10 @@ declare battle: {
     -- The same as the routines that read its Z flag see it: true only once
     -- time is up (a KO reads false).
     time_up: () -> boolean,
-    -- The battle's count `which` (1 or 2) of fight ticks, modulo its period
-    -- (the rules' `flow.fight_cycles`: EXE6's and EXE5's 20 and 180, EXE4's
-    -- 10 and 2), which grass heals by.
-    cycle: (which: number) -> number,
+    -- The battle's count `which` of fight ticks, modulo its period (the
+    -- rules' `flow.fight_cycles`: EXE6's and EXE5's 20 and 180, EXE4's 10
+    -- and 2), which grass heals by.
+    cycle: (which: FightCycle) -> number,
     -- The shift a hit of element `hitter` takes against a body of element
     -- `receiver` (the rules' `elements.weakness`).
     weakness: (receiver: number, hitter: number) -> number,
@@ -1264,11 +1533,9 @@ declare battle: {
     -- `sub_80EA438`: a burst around the navi's panel (effect #0x90, which
     -- runs while paused).
     burst: (navi: Object) -> Object?,
-    -- A HUD field of side `side`'s (see HudField).
-    hud: (field: HudField, side: number) -> boolean,
-    -- Set a HUD field: with `side`, that side's alone; without, every side's (the fields every console shows alike take
-    -- no side).
-    set_hud: (field: HudField, on: boolean, side: number?) -> (),
+    -- What the HUD shows, side `side`'s (see HudField); without a side, every side's (setting a field sets each
+    -- side's; the fields every console shows alike are read and set without one).
+    hud: (side: number?) -> Hud,
     navi: (side: number) -> Navi,
     -- A member's block of the side's party (0 the side's own navi, then its partners; nil for one it hasn't), as the
     -- party keeps it: the member on the field's is as it was when it came in (its live stats are `battle.navi`'s).
@@ -1366,14 +1633,14 @@ declare battle: {
     -- `sub_802E04E`: take from a side's own custom gauge, down to empty.
     drain_side_gauge: (side: number, n: number) -> (),
     -- `sub_8010488`'s special-source branch: add to a bonus a side stores
-    -- for its special chip (`index` 0: the Atk+ bonus a damaging chip
-    -- spends; 1: the Navi+ bonus a navi chip spends).
-    add_special_bonus: (side: number, index: number, n: number) -> (),
-    bump_side_stat: (side: number, index: number, n: number) -> (),
-    -- `sub_800AB2E`: set a side's statistics counter.
-    set_side_stat: (side: number, index: number, n: number) -> (),
-    -- `sub_800AB3A`: a side's statistics counter.
-    side_stat: (side: number, index: number) -> number,
+    -- for its special chip.
+    add_special_bonus: (side: number, bonus: SpecialBonus, n: number) -> (),
+    -- `sub_800AB46`: bump a side's statistic (up to 255).
+    bump_side_stat: (side: number, stat: SideStat, n: number) -> (),
+    -- `sub_800AB2E`: set a side's statistic.
+    set_side_stat: (side: number, stat: SideStat, n: number) -> (),
+    -- `sub_800AB3A`: a side's statistic.
+    side_stat: (side: number, stat: SideStat) -> number,
     -- The damage-carry record of the side that takes the damage
     -- (`dword_203CFB0`; CopyDmg's).
     damage_carry: (side: number) -> DamageCarry,
@@ -1407,25 +1674,15 @@ declare battle: {
     -- The one-tick hit region (attack object #3).
     hitbox: (owner: Object, spec: HitboxSpec) -> Object?,
     -- `sub_80E11E0`: a screen palette flash (effect object #0x0A) of a
-    -- variant (0 white or red, 1 white over two layers) for `ticks`,
-    -- optionally going on while dimmed or paused.
-    palette_flash: (variant: number, ticks: number, while_dimmed: boolean?, while_paused: boolean?) -> Object?,
+    -- variant for `ticks`, optionally going on while dimmed or paused.
+    palette_flash: (variant: PaletteFlashVariant, ticks: number, while_dimmed: boolean?, while_paused: boolean?) -> Object?,
     -- A hit spark (effect object #4) a spark definition describes.
     spark: (owner: Object, pos: Vec3, spark: Spark) -> Object?,
     -- `sub_80C468C`: a form overlay (actor object #0x57) on `owner`,
     -- following it every tick.
     form_overlay: (owner: Object, spec: FormOverlaySpec) -> Object?,
-    -- A field of entry i (from 0) of a side's hand, the hand from its first
-    -- chip, used ones too (nil past its entries), and setting it (an error
-    -- past them): its "chip" (nil: the hand ends before it), its base
-    -- "damage", its "attack_bonus" (Atk+ or Navi+) and "charge_bonus" (what
-    -- a form's A charge builds up, and EXE4's souls' status resets give: the
-    -- status reset clears it), the "turn" (from 0) it was picked in, and its
-    -- "marks" (its modifier flags: what its game's chip-use rules read at the
-    -- use, `mark_damage` and `mark_heals`, and what its rules keep there).
-    -- (@exelib/chip_hand reads and adds to them.)
-    hand_entry: (side: number, i: number, field: HandEntryField) -> any,
-    set_hand_entry: (side: number, i: number, field: HandEntryField, value: any) -> (),
+    -- Entry i (from 0) of a side's hand (see HandEntry).
+    hand_entry: (side: number, i: number) -> HandEntry,
     -- The chip after i of a side's hand folds into the chip at i (its
     -- damage and bonuses added) and leaves the hand, the chips after it
     -- moving up one: with every per-slot field (`whole`: EXE4's WoodSoul's
@@ -1653,9 +1910,8 @@ export type BlinkOut = "no" | "blinking" | "done"
 -- sprite, and presenting its collision.
 declare obstacle: {
     -- `setFieldBattleObject_800F614`: one of `side`'s field objects of
-    -- `class` (0: two a side, 1: one); a third evicts the oldest (its HP
-    -- drops to 0).
-    register: (me: Object, side: number, class: number) -> (),
+    -- `class`; one past the class's evicts the oldest (its HP drops to 0).
+    register: (me: Object, side: number, class: ObstacleClass) -> (),
     -- `sub_800F656`: forget it in the field-object registry.
     unregister: (me: Object) -> (),
     -- `sub_801AD9E` and its variants: resolve this tick's hits. What a
@@ -1818,7 +2074,34 @@ export type SchemaList = { __list: boolean, of: SchemaField, max: number }
 -- engine knows by the role `name` (a player's setup field it reads:
 -- "form_list", the forms a form list window offers; a state field a view
 -- shows: "form_list.count").
-export type SchemaRole = { __role: boolean, role: string, of: SchemaField }
+export type SchemaRole = { __role: boolean, role: SchemaRoleName, of: SchemaField }
+-- The roles the engine knows a field by: a player's setup fact ("navi", "folder", "regular_chip", "tag_chips",
+-- "version", "form_list", "level", "hp"), a navi stat a frontend shows ("window_count"), and the state fields the
+-- custom screen's views show.
+export type SchemaRoleName =
+    "navi"
+    | "folder"
+    | "regular_chip"
+    | "tag_chips"
+    | "version"
+    | "form_list"
+    | "level"
+    | "hp"
+    | "window_count"
+    | "form_list.offered"
+    | "form_list.count"
+    | "form_list.marked"
+    | "form_list.chosen"
+    | "form_list.chosen_place"
+    | "form_offer.form"
+    | "form_offer.alternate"
+    | "form_offer.turns"
+    | "form_offer.turn_limit"
+    | "offer_flight.step"
+    | "offer_flight.count"
+    | "chip_flight.step"
+    | "chip_flight.count"
+    | "chip_flight.button"
 
 -- What a state's or a setup's declaration takes beside type names, lists of
 -- variants and records: `schema.list(T, n)`, a list of up to `n` (1 to
@@ -1827,7 +2110,7 @@ export type SchemaRole = { __role: boolean, role: string, of: SchemaField }
 -- of type `T` that the engine knows by the role `name`.
 declare schema: {
     list: (of: SchemaField, max: number) -> SchemaList,
-    role: (role: string, of: SchemaField) -> SchemaRole,
+    role: (role: SchemaRoleName, of: SchemaField) -> SchemaRole,
 }
 
 -- An object kind: one behavior; what differs between uses goes in its
@@ -2254,6 +2537,9 @@ export type RulesSpec = {
     math: any?,
     navicust: any?,
     roles: RolesSpec?,
+    -- The slots of a side's statistics (16 a side, the original's counters) its content names, each by its name: the
+    -- game's own layout (`battle.side_stat`, a count formula's `side_stat`).
+    side_stats: { [string]: number }?,
 }
 export type Rules = RulesSpec
 
@@ -2265,7 +2551,6 @@ export type ActionSpec = {
     state: StateSchema?,
     args: any?,
     update: (me: Object, s: any) -> (),
-    traits: { string }?,
 }
 export type Action = ActionSpec
 
@@ -2331,7 +2616,7 @@ export type DamageFormula =
 -- What a count formula counts: a side statistic, the side's panels of a
 -- type, the field's panels of a type (either side's), the turns before this
 -- one.
-export type DamageCount = { side_stat: number } | { own_panels: PanelType } | { panels: PanelType } | "turns_before"
+export type DamageCount = { side_stat: SideStat } | { own_panels: PanelType } | { panels: PanelType } | "turns_before"
 
 export type ChipSpec = {
     -- Its id, its key in the game's root (`chips.cannon`): the loader's to
@@ -2342,9 +2627,9 @@ export type ChipSpec = {
     -- without it). Presentation only.
     art_palette: { number }?,
     codes: { string }?,
-    element: string?,
+    element: ElementName?,
     family: string?,
-    class: string?,
+    class: ChipClass?,
     rarity: number?,
     mb: number?,
     -- A number below 1000, or a formula the rules compute when the chip
@@ -2371,11 +2656,9 @@ export type ChipSpec = {
     -- over its user: EXE4's souls' chips), "not_named_on_use" (its use isn't
     -- named to the other player: its own action names it, EXE4's Slasher as
     -- it slashes).
-    traits: { string }?,
-    -- The trap it is while a side's defensive-chip record holds it:
-    -- "anti_damage", "anti_sword", "body_guard", "anti_navi",
-    -- "anti_recovery".
-    trap: string?,
+    traits: { ChipTrait }?,
+    -- The trap it is while a side's defensive-chip record holds it.
+    trap: TrapKind?,
     modifier: any?,
     program_advances: { any }?,
     -- Its use: exactly one of these.
@@ -2396,11 +2679,28 @@ export type ChipSpec = {
     [string]: any,
 }
 export type Chip = ChipSpec
+-- A chip's class: a folder's standard, Mega and Giga chips, none a folder holds (a cross's or a beast's attack, the
+-- engine's own chips), a Program Advance.
+export type ChipClass = "standard" | "mega" | "giga" | "special" | "program_advance"
+-- What the rules ask of a chip (`ChipSpec.traits`).
+export type ChipTrait =
+    "no_chain"
+    | "aura_bonus"
+    | "no_cut_in"
+    | "element_sword"
+    | "goes_with_any"
+    | "hides_damage_as_a"
+    | "no_icon_when_next"
+    | "not_named_on_use"
+-- A trap chip: what the defensive-chip record that holds it catches.
+export type TrapKind = "anti_damage" | "anti_sword" | "body_guard" | "anti_navi" | "anti_recovery"
 
 -- A chip family, by name: one of its game's (its rules' `elements.families`).
 export type ChipFamily = string
 -- An element, by name.
 export type ElementName = "null" | "fire" | "aqua" | "elec" | "wood"
+-- A secondary element, by name: what a navi's or a form's `weakness` names (a hit of it is a weakness hit).
+export type SecondaryElement = "break" | "wind" | "cursor" | "sword"
 -- The chips a navi's or a form's rule is about: an element's, or a
 -- family's.
 export type ChipMatch = { element: ElementName?, family: ChipFamily? }
@@ -2410,7 +2710,7 @@ export type ChipMatch = { element: ElementName?, family: ChipFamily? }
 -- emotion's (the order's last case's: EXE6's and EXE5's `normal`), which a set has.
 export type FaceSet = { [Emotion]: Mugshot }
 export type MugshotFaces = {
-    -- A second set, shown where the side's rules ask (`battle.set_hud`'s face variants): while the navi's rules' B
+    -- A second set, shown where the side's rules ask (`battle.hud(side)`'s face variants): while the navi's rules' B
     -- charge is armed (EXE5's soul's Chaos Unison look), or in the base form (EXE5's Hub Style).
     variant: FaceSet?,
     [Emotion]: Mugshot,
@@ -2425,7 +2725,7 @@ export type NaviDef = {
     -- The battle sprite (a navi that changes form draws its form's).
     sprite: SpriteAsset,
     element: ElementName,
-    weakness: { string }?,
+    weakness: { SecondaryElement }?,
     buster_bonus: number,
     -- Ticks of lag after a move, by navi variant.
     move_lag: { number },
@@ -2622,6 +2922,21 @@ export type FormTrait =
     | "mood_palette"
     | "ignores_b"
     | "emotions_as_base"
+-- Whether the form of a navi's side has each trait (`me.form_traits.stands_on_magnet`; read-only).
+declare extern type FormTraits with
+    status_immune: boolean
+    erases: boolean
+    special_holds_buster: boolean
+    stands_on_magnet: boolean
+    controlled: boolean
+    shows_target_marker: boolean
+    afterimages_stay: boolean
+    alt_charge_time: boolean
+    doubles_null: boolean
+    mood_palette: boolean
+    ignores_b: boolean
+    emotions_as_base: boolean
+end
 -- One of MegaMan's forms (§3.2).
 export type FormDef = {
     -- Its id, its key in the game's root (`chips.cannon`): the loader's to
@@ -2629,7 +2944,7 @@ export type FormDef = {
     id: string?,
     sprite: SpriteAsset,
     element: ElementName,
-    weakness: { string }?,
+    weakness: { SecondaryElement }?,
     buster_bonus: number,
     -- Its game's base form: what the game's navis are in before they change
     -- form (one a game).
@@ -2790,8 +3105,31 @@ export type Status = StatusDef
 --   board); `overlap` (a piece over the piece at entry `other`, from 1); `slot` (the entry `def`, of one of the
 --   game's collections, sits in slot `value` and belongs in slot `own`, both from 0: a build's alone, the rules'
 --   `build_check`); `invalid` (anything else no save holds).
+export type SetupProblemKind =
+    "folder_size"
+    | "chip_not_allowed"
+    | "chip_code"
+    | "copies"
+    | "mega"
+    | "giga"
+    | "dark"
+    | "regular_memory"
+    | "tag_memory"
+    | "regular_entry"
+    | "tag_entries"
+    | "tag_regular"
+    | "no_tags"
+    | "range"
+    | "not_taken"
+    | "missing"
+    | "twice"
+    | "budget"
+    | "off_board"
+    | "overlap"
+    | "slot"
+    | "invalid"
 export type SetupProblem = {
-    kind: string,
+    kind: SetupProblemKind,
     text: string,
     field: string?,
     entry: number?,
@@ -2976,7 +3314,7 @@ export type NaviBody = {
     element: ElementName,
     body_damage: number,
     collision: { body: CollisionType, target: CollisionType, hit_modifier: number },
-    flags: { "superarmor" | "airshoe" | "floatshoe" | "affected_by_ice" | "untouchable" }?,
+    flags: { "super_armor" | "air_shoe" | "float_shoe" | "affected_by_ice" | "untouchable" }?,
     hides_hp: boolean?,
 }
 -- A body overlay (actor object #0x56): a second sprite over a navi's body,
@@ -3247,7 +3585,7 @@ export type RolesSpec = {
         -- bubble (the game's own of it, `sub_80E544C`'s wind registry, then
         -- what it becomes on its panel); its registry class (nil: it wasn't
         -- registered).
-        encased: ((obstacle: Object, ice: boolean, class: number?) -> ())?,
+        encased: ((obstacle: Object, ice: boolean, class: ObstacleClass?) -> ())?,
         -- A navi no player controls is being deleted (EXE5's 0x08013DA0):
         -- what sparkles over it while it flashes, which its deletion's end
         -- ends.
@@ -3322,8 +3660,7 @@ declare custom: {
     cursor_state: (side: number) -> "selectable" | "unavailable" | "selected",
     -- For the rules' buttons and windows: the button pressed picked (in its
     -- `pressed`);
-    -- a screen sound ("pick", "refused", "back", "cancel", "cursor",
-    -- "description", "program_advance_part", "program_advance"), and a sound
+    -- a screen sound (`CustomSound`), and a sound
     -- of the rules' own in the screen's order (`play_sound`); the last
     -- pick's column cell; one of the rules'
     -- windows opened (`ticks`: the ticks it has had already), and its ticks
@@ -3363,7 +3700,7 @@ declare custom: {
     -- chip a button holds, and its icon in the column cell it left, shown or
     -- not.
     pick: (side: number) -> (),
-    play: (side: number, sound: string) -> (),
+    play: (side: number, sound: CustomSound) -> (),
     play_sound: (side: number, sound: Sound) -> (),
     set_column_icon: (side: number, chip: Chip?) -> (),
     open_window: (side: number, window: string, ticks: number?) -> (),
@@ -3372,7 +3709,7 @@ declare custom: {
     frame: (side: number) -> number,
     set_frame: (side: number, frame: number) -> (),
     spin: (side: number) -> (),
-    fade: (side: number, mode: string, speed: number) -> (),
+    fade: (side: number, mode: CustomFade, speed: number) -> (),
     set_face: (side: number, form: FormDef?) -> (),
     pick_first: (side: number, icon: Chip?) -> (),
     set_button_state: (side: number, button: string, state: "selectable" | "unavailable" | "selected") -> (),
@@ -3422,6 +3759,69 @@ declare custom: {
 
 -- The game's rules' own calls' reach: only a game's modules have it (a
 -- support pack has no game context, docs/design/content-model-v2.md §4.0).
+-- Whether the engine calls each hook of a side's rules (`rules.listening(side)`), by its name in the rules' `hooks`.
+-- (The custom screen's hooks, `custom.*`, `window.*` and `button.*`, are always called.)
+declare extern type RulesListening with
+    round_setup: boolean
+    round_start: boolean
+    turn_opened: boolean
+    turn_check: boolean
+    turn_started: boolean
+    custom_requested: boolean
+    custom_result: boolean
+    custom_closed: boolean
+    folder_check: boolean
+    folder_view: boolean
+    overview: boolean
+    validate: boolean
+    build_check: boolean
+    navi_panel: boolean
+    navi_intake: boolean
+    chip_check: boolean
+    cut_in_barred: boolean
+    chip_cost: boolean
+    chip_substitute: boolean
+    chip_prepared: boolean
+    chip_used: boolean
+    controller: boolean
+    form_reverted: boolean
+    takeover_requested: boolean
+    countered: boolean
+    navi_tick: boolean
+    starting_mood: boolean
+    navi_palette: boolean
+    navi_shader: boolean
+    navi_bug: boolean
+    hit_bug: boolean
+    charge_released: boolean
+    release_taken: boolean
+    bug_mark: boolean
+    navi_flinched: boolean
+    hp_emptied: boolean
+    navi_falling: boolean
+    switch_requested: boolean
+    switch_asked: boolean
+    member_busy: boolean
+    navi_switched: boolean
+    mic_heard: boolean
+    fight_tick: boolean
+    fight_started: boolean
+    custom_hold: boolean
+    opponent_chip: boolean
+    low_hp: boolean
+    hit_guard: boolean
+    hit_swallowed: boolean
+    chip_ready: boolean
+    chip_ended: boolean
+    navi_hit_shown: boolean
+    obstacle_reaction: boolean
+    status_reset: boolean
+    switch_finished: boolean
+    revert_finished: boolean
+    weapons_loaded: boolean
+    takeover: boolean
+end
+
 declare rules: {
     -- The rules' state of the side the call is for (cast it to its declared
     -- type: `rules.state() :: State`).
@@ -3437,13 +3837,14 @@ declare rules: {
     -- Side `side`'s player's setup of the rules, read-only, likewise a
     -- game's rules' alone: its API module reads the save's `level` there.
     setup_of: (side: number) -> any,
-    -- Whether the engine calls side `side`'s hook `hook` (its name in the
-    -- rules' `hooks`): every hook is called from the round's setup on until
-    -- the rules say otherwise, and one not called answers nothing, as a
-    -- hook the rules don't have. A game's rules' alone: what they turn off
-    -- they turn on again where it would do something (a hook asked every
-    -- tick, while nothing can come of it).
-    listen: (side: number, hook: string, on: boolean) -> (),
+    -- Whether the engine calls each of side `side`'s hooks (by its name in
+    -- the rules' `hooks`: `rules.listening(side).controller = false`): every
+    -- hook is called from the round's setup on until the rules say
+    -- otherwise, and one not called answers nothing, as a hook the rules
+    -- don't have. A game's rules' alone: what they turn off they turn on
+    -- again where it would do something (a hook asked every tick, while
+    -- nothing can come of it).
+    listening: (side: number) -> RulesListening,
     -- The panel types (by name) on which the engine calls side `side`'s
     -- `navi_panel` for a navi standing on one, in place of the last; none at
     -- first. A game's rules' alone.

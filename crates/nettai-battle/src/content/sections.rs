@@ -400,6 +400,7 @@ pub(crate) const SECTIONS: &[&str] = &[
     "panels",
     "pools",
     "reactions",
+    "side_stats",
     "status",
 ];
 
@@ -427,6 +428,7 @@ struct Stated {
     effects: Option<super::rules::EffectsRules>,
     fresh_stats: Option<super::rules::FreshStatsRules>,
     link_pick: Option<LinkPickSection>,
+    side_stats: Option<super::rules::SideStats>,
 }
 
 impl Stated {
@@ -489,6 +491,7 @@ impl Stated {
             link_pick: Some(LinkPickSection { first_round_stages: r.link_pick.first_round_stages }),
             effects: Some(r.effects.clone()),
             fresh_stats: Some(r.fresh_stats),
+            side_stats: Some(r.side_stats.clone()),
         }
     }
 
@@ -572,6 +575,7 @@ impl Stated {
             status_end: reactions.status_end,
             bubble_bob: reactions.bubble_bob,
             flow,
+            side_stats: self.side_stats.unwrap_or_default(),
             effects,
             chip_use,
             fresh_stats,
@@ -814,6 +818,20 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
             "status" => stated.status = Some(r.read(spec, &at).map_err(e)?),
             "chip_use" => stated.chip_use = Some(r.read(spec, &at).map_err(e)?),
             "flow" => stated.flow = Some(r.read(spec, &at).map_err(e)?),
+            "side_stats" => {
+                // (Each a slot by its name.)
+                let Data::Map(entries) = spec else { return Err(e(format!("{at}: a table of slots by name"))) };
+                let mut stats = Vec::new();
+                for (name, slot) in entries {
+                    let slot = match slot {
+                        Data::Int(n) if (0..super::rules::SideStats::SLOTS as i64).contains(n) => *n as u8,
+                        other => return Err(e(format!("{at}.{name}: {other:?} is no slot (0 to 15)"))),
+                    };
+                    stats.push((name.to_string(), slot));
+                }
+                stats.sort();
+                stated.side_stats = Some(super::rules::SideStats(stats));
+            }
             "link_pick" => {
                 // (Its stages are definitions, which `link` resolves once
                 // they have their handles; stated all the same. Both
