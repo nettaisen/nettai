@@ -27,7 +27,7 @@ Max in release builds, on a machine shared with other work, so single runs vary 
   the engine names a module, a chip or a kind, nothing is registered by number, and loading has no side effect.
   The content hash covers the scripts.
 - **Definitions and assets cross the API, not numbers.** `battle.spawn(bomb.kind, pos)`,
-  `me:set_attack(action, 2)`, `me:setup_collision(collision.thrown, collision.hits_navis, 0)`,
+  `me:set_attack(action, "chip")`, `me:setup_collision(collision.thrown, collision.hits_navis, 0)`,
   `battle.play_sound(asset.sound("exe6:throw"))`. The engine keeps a handle for each.
 - **Fidelity.** Every golden trace matches every frame, also under rollback at every tested latency; the sound
   calls match; the chip lab's scenarios match every frame (§5).
@@ -88,11 +88,19 @@ Conventions:
 - **Definitions, not numbers.** A kind, an action, a chip, a weapon, an effect, a spark, a region, a collision
   type, a status, a lock-on mode, an identity or a record crosses the API as its definition (its frozen table),
   and an asset as the value `asset.*` returned. The binding turns each into its handle.
-- **Names, not bits.** Status flags, status timers, navi requests and state bits, buttons, panel types,
-  lifecycle states and shadows are names (`"using_action"`, `"paralyze"`, `"a"`, `"cracked"`, `"destroy"`); the
-  engine's bit values and offsets stay in the engine. The original's numbers that are a routine's own
-  immediates (animation numbers, tick counts, panel flag words it matches as whole words, bug codes) are the
-  scripts' named constants.
+- **Names, not bits.** A set of named members is a view whose members are properties: an object's status flags
+  and timers, a navi's requests, flags and buttons, what other objects ask of a field object, its form's
+  traits, a side's HUD, a hand's entry, the hooks a side's rules listen to, the fields a console has its own
+  way (`me.status.using_action = true`, `me.status_timers.paralyze`, `me.held.a`, `battle.hud(side).gauge`,
+  `battle.hand_entry(side, i).marks`, `rules.listening(side).controller = false`, `o:console(side).visible`).
+  The binding keeps each view as it keeps a handle, so reading a member allocates nothing; a name held in a
+  variable indexes the view cast to `any` (`(me.requests :: any)[r] = false`), the checker refusing a dynamic
+  key on a view. A choice is a checked literal union (`me.lifecycle = "destroy"`, `me:set_attack(action,
+  "chip")`, `me:start_move("up")`, `me:take_damage("damage_sound") == "broken"`), never the number the engine
+  keeps it as; one a game names (a panel type, an emotion, a side statistic) is a string the engine checks
+  against the game's own as it runs. Content holds no bit layout: the engine's bit values and offsets stay in
+  the engine, and a game's own layouts are declared once, in its rules. The original's numbers that are a
+  routine's own immediates (animation numbers, tick counts, bug codes) are the scripts' named constants.
 - **No floats anywhere.** `Vec3` is three `i32` in 16.16 fixed point with wrapping `+` and `-`.
 - **Faithful stores.** Where the game's store width matters, the API has both: `me:set_lifecycle("destroy")` is
   the word store (state, action, phase and phase-init: the game's `str CUR_STATE_DESTROY`), `me.lifecycle =
@@ -112,8 +120,8 @@ core.d.luau is the reference; in outline:
 - **Sprites**: load, animation, stepping, look (palette, flip, shadow, white, shader, alpha, mosaic, priority,
   hidden parts), frame flags, attach points.
 - **Navis**: the attack in progress (step, step-init, chip, element, damage, hit parameter, charged, lockout,
-  bonus, marker), requests and state bits, the buttons (held, pressed, released, and the record kept while
-  dimmed), the counter window, the reactive abort, `exit_attack`/`end_attack`/`set_attack`, what it runs
+  bonus, marker), requests and state flags, the buttons (held, pressed, and the record kept while dimmed),
+  the counter window, the reactive abort, `exit_attack`/`end_attack`/`set_attack`, what it runs
   (`navi_action`), the held direction, step targets and `start_move`, the buster's damage, absorbed obstacles,
   the actor data (type, AI index, overlay, links, charge, the weapons).
 - **The battle** (`battle`): dimmed, paused, over, time up, mode, sound cues, the side's navi stats and
@@ -310,8 +318,8 @@ the same data and code. Pixels, palettes and audio are presentation and are left
 its modules share (content/exe6/types.d.luau). Scripts are
 `--!strict` and declare their state types (`export type State = { timer: number }`). `nettai-content-check`
 type-checks every module with Luau's own analysis (the `luau-analyze` crate, in process), and its tests also
-check that API misuse (a misspelled field, a lifecycle state or status flag or button that doesn't exist, `Vec3
-+ number`, a number where a definition goes) is a type error.
+check that API misuse (a misspelled field, a lifecycle state or status flag or button that doesn't exist, a
+choice by its number, `Vec3 + number`, a number where a definition goes) is a type error.
 
 The checker checks each module on its own, with `require` typed `any`: what crosses a `require` is unchecked.
 So a type two modules both name is declared once in types.d.luau (`HeatFlame`, `AttachmentLook`), and the
@@ -464,7 +472,7 @@ rollback.md §8.2 lists what content must guarantee:
 | Outputs write-only | `battle.play_sound` only adds a cue; scripts can't read cues back |
 | Content immutable during a battle, identified by a hash both peers compare | Modules and definitions frozen after load; `Content::hash` covers the scripts |
 | Bounded work that fails the same way on every peer | The interrupt budget counts VM checkpoints, not time |
-| No perspective in simulated state | `battle.local_side` is for presentation only; what a blind player can't see is decided per viewer (`o:get("visible", side)`, `o:set("visible", on, side)`; @exelib/visibility); sound goes to both sides' cue lists (or one side's player's, `play_sound_for`) |
+| No perspective in simulated state | `battle.local_side` is for presentation only; what a blind player can't see is decided per viewer (`o:console(side).visible`; @exelib/visibility); sound goes to both sides' cue lists (or one side's player's, `play_sound_for`) |
 | Re-running a tick free of side effects outside `Battle` | Scripts can't reach the host; the VM keeps nothing |
 
 In-repo, `scripted_chips_roll_back` copies a battle every 97 ticks of a duel and checks the copy plays on

@@ -1408,6 +1408,10 @@ impl CoreApi for Battle {
         self.side_stats[side as usize & 1][index as usize & 0xF]
     }
 
+    fn side_stat_named(&self, name: &str) -> ApiResult<u8> {
+        self.game_rules().side_stats.named(name).map_err(ApiError::Other)
+    }
+
     fn damage_carry(&self, side: u8) -> nettai_content_api::api::DamageCarryInfo {
         let c = &self.damage_carry[side as usize & 1];
         nettai_content_api::api::DamageCarryInfo {
@@ -1702,6 +1706,13 @@ impl CoreApi for Battle {
             r.muted |= hook.bit();
         }
         Ok(())
+    }
+
+    fn listening(&self, side: u8, hook: nettai_content_api::RulesHook) -> ApiResult<bool> {
+        if !self.has_rules(side) {
+            return Err(ApiError::Other(format!("side {side} plays by no rules")));
+        }
+        Ok(self.rules[side as usize & 1].muted & hook.bit() == 0)
     }
 
     fn listen_panels(&mut self, side: u8, kinds: u128) -> ApiResult<()> {
@@ -2157,7 +2168,7 @@ impl CoreApi for Battle {
             ActorField::TelopHidden => Value::Bool(at.telop_hidden),
             ActorField::SpecialSource => i(at.special_source as i64),
             ActorField::AttackKind => i(at.kind as i64),
-            ActorField::Wrapped => i(at.wrapped as i64),
+            ActorField::Wrapped => Value::Bool(at.wrapped != 0),
             ActorField::WrapperFresh => Value::Bool(at.wrapper_fresh),
             ActorField::ControllerFresh => Value::Bool(a.controller_fresh),
             ActorField::MoodHeld => Value::Bool(a.tired || a.exhausted),
@@ -2236,7 +2247,7 @@ impl CoreApi for Battle {
             (ActorField::Extra, FieldValue::U16(x)) => at.extra = x,
             (ActorField::TelopHidden, FieldValue::Bool(x)) => at.telop_hidden = x,
             (ActorField::SpecialSource, FieldValue::U8(x)) => at.special_source = x,
-            (ActorField::Wrapped, FieldValue::U8(x)) => at.wrapped = x,
+            (ActorField::Wrapped, FieldValue::Bool(x)) => at.wrapped = x as u8,
             (ActorField::WrapperFresh, FieldValue::Bool(x)) => at.wrapper_fresh = x,
             (ActorField::ControllerFresh, FieldValue::Bool(x)) => a.controller_fresh = x,
             (ActorField::Ticked, FieldValue::Bool(x)) => a.ticked = x,
@@ -2248,9 +2259,9 @@ impl CoreApi for Battle {
             (ActorField::ChargeGlow, FieldValue::Object(r)) => a.charge_glow = r,
             (ActorField::ResetLinkedObject, FieldValue::Object(r)) => a.reset_linked_object = r,
             (ActorField::FullSynchroAura, FieldValue::Object(r)) => a.full_synchro_aura = r,
-            (ActorField::BufferedMove, FieldValue::U8(x)) => a.buffered_move = x,
-            (ActorField::ChargeLevel, FieldValue::U8(x)) => a.charge_level = x,
-            (ActorField::ChargeSource, FieldValue::U8(x)) => a.charge_source = x,
+            (ActorField::BufferedMove, FieldValue::Enum(x)) => a.buffered_move = x,
+            (ActorField::ChargeLevel, FieldValue::Enum(x)) => a.charge_level = x,
+            (ActorField::ChargeSource, FieldValue::Enum(x)) => a.charge_source = x,
             (ActorField::ChargeCounter, FieldValue::U16(x)) => a.charge_counter = x,
             (ActorField::RapidPresses, FieldValue::U8(x)) => a.rapid_presses = x,
             (ActorField::RapidWindow, FieldValue::U8(x)) => a.rapid_window = x,

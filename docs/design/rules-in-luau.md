@@ -3327,7 +3327,7 @@ and slides, a hit, the timers), and the pure facts stay data (`flags`, `trail_so
   EXE5's magnet's tries).
 - **Gone from Rust**: `IceRule`, a type's `holds` and `stops_slides`, `road_slide` and `slide` (as `carries` and
   `carries_by_move`), the effect role `panel_splash` (EXE5's sea names its splash). New API: the object's
-  `slide_type`, the navi's `slide_cooldown`, `me:form_trait(name)`, `collision:add_final_hit_mod`.
+  `slide_type`, the navi's `slide_cooldown`, `me.form_traits`, `collision:add_final_hit_mod`.
 - **EXE5's type 5 is "magnet"** (the user: "metal" panels in EXE5 are magnet panels): its rules, compat table,
   stages, chips, generators and pack field name it so, and the form trait is `stands_on_magnet`. EXE4's type 5 stays
   "metal", its unbreakable plate.

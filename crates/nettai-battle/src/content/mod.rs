@@ -350,7 +350,10 @@ impl Content {
         // its rules'.)
         let families = self.rules.as_ref().map(|r| r.chip_families.clone()).unwrap_or_default();
         let panel_types = self.rules.as_ref().map(|r| r.panels.names.clone()).unwrap_or_default();
-        self.defs = crate::field::reading_panel_types(&panel_types, || chips::reading_families(&families, || Defs::build(self, definitions)))?;
+        let side_stats = self.rules.as_ref().map(|r| r.side_stats.clone()).unwrap_or_default();
+        self.defs = rules::reading_side_stats(&side_stats, || {
+            crate::field::reading_panel_types(&panel_types, || chips::reading_families(&families, || Defs::build(self, definitions)))
+        })?;
         // (The rules' references to definitions, which have their handles
         // now.)
         crate::field::reading_panel_types(&panel_types, || chips::reading_families(&families, || sections::link(self)))?;

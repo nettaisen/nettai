@@ -45,6 +45,8 @@ pub use api::{
     ObstacleAction, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, ScreenFade,
     Shadow, SpriteField, StatusFlag, StatusTimer,
     SideSpecial, StatsOf, PartyInfo,
+    AttackKind, DamageTaken, FightCycle, ObstacleClass, PaletteFlashVariant, SpecialBonus, StepDirection, TakeDamageMode,
+    BUFFERED_MOVES, CHARGE_LEVELS, CHARGE_SOURCES, MOVE_DIRECTIONS,
 };
 pub use api::AfterimageSpec;
 pub use api::{Drive, Fly, Follow, Held};

@@ -30,6 +30,7 @@ use nettai_content_api::{
     StateId, StatusFlag, StatusTimer, Value, Vec3,
 };
 use nettai_content_api::{ObjectRef, PanelCall, RulesHook, SlideAnswer};
+use nettai_content_api::{AttackKind, DamageTaken, FightCycle, ObstacleClass, PaletteFlashVariant, SpecialBonus, StepDirection, TakeDamageMode};
 use nettai_content_api::{ChipHandle, CollisionHandle, EffectHandle, RegionHandle, SparkHandle};
 
 use crate::Bound;
@@ -121,7 +122,9 @@ fn bound<R>(f: impl FnOnce(&Bound) -> mlua::Result<R>) -> mlua::Result<R> {
 /// Handles made once for each VM and given out again: an object's
 /// (`Object`), `me.sprite`, `me.collision`, `me.state`, `me.attack_state`,
 /// `rules.state()` and `rules.setup()` (and of a side), `battle.navi(side)`,
-/// `battle.member(side, m)`. Such a handle only names what it reads (a value
+/// `battle.member(side, m)`, and the views of named members ([`View`]:
+/// `me.status`, `me:console(side)`, `battle.hud(side)`...). Such a handle
+/// only names what it reads (a value
 /// of its own type, which holds nothing else; an `Object`'s `__eq` compares
 /// what two name), while making a userdata costs two allocations (Lua's and
 /// mlua's) and the GC's work later, for each object updated, each hook's
@@ -143,6 +146,7 @@ enum Handle {
     Collision(ObjectRef),
     State(StateOf),
     Navi(nettai_content_api::StatsOf),
+    View(View),
 }
 
 impl Handles {
@@ -150,7 +154,14 @@ impl Handles {
     const OBJECTS: usize = 4 * 32;
     /// The members a side's party has room for, as handles go.
     const MEMBERS: usize = 16;
-    const LEN: usize = 5 * Handles::OBJECTS + 4 + 2 * (1 + Handles::MEMBERS);
+    /// The entries of a side's hand, as handles go.
+    const HAND: usize = 8;
+    /// An object's views: its statuses, timers, requests, navi flags, its
+    /// four button records, its obstacle flags, its form's traits, and its
+    /// and its sprite's two consoles'.
+    const OBJECT_VIEWS: usize = 14;
+    const VIEWS: usize = 5 * Handles::OBJECTS + 4 + 2 * (1 + Handles::MEMBERS);
+    const LEN: usize = Handles::VIEWS + Handles::OBJECT_VIEWS * Handles::OBJECTS + 3 + 2 * Handles::HAND + 2;
 
     /// Where the handle of `h` is kept (none: one not kept, made each time).
     fn place(h: Handle) -> Option<usize> {
@@ -158,6 +169,8 @@ impl Handles {
         let side = |s: u8| (s < 2).then_some(s as usize);
         let rules = 5 * Handles::OBJECTS;
         let navis = rules + 4;
+        let view = |o: ObjectRef, n: usize| object(o).map(|i| Handles::VIEWS + i * Handles::OBJECT_VIEWS + n);
+        let shared = Handles::VIEWS + Handles::OBJECT_VIEWS * Handles::OBJECTS;
         match h {
             Handle::Object(o) => object(o),
             Handle::State(StateOf::Object(o)) => object(o).map(|i| Handles::OBJECTS + i),
@@ -174,6 +187,23 @@ impl Handles {
                 };
                 side(of.side).zip(member).map(|(s, m)| navis + s * (1 + Handles::MEMBERS) + m)
             }
+            Handle::View(v) => match v {
+                View::Statuses(o) => view(o, 0),
+                View::StatusTimers(o) => view(o, 1),
+                View::Requests(o) => view(o, 2),
+                View::NaviFlags(o) => view(o, 3),
+                View::Buttons(o, pad) => view(o, 4 + pad as usize),
+                View::ObstacleFlags(o) => view(o, 8),
+                View::FormTraits(o) => view(o, 9),
+                View::ObjectConsole(o, s) => side(s).and_then(|s| view(o, 10 + s)),
+                View::SpriteConsole(o, s) => side(s).and_then(|s| view(o, 12 + s)),
+                View::Hud(None) => Some(shared),
+                View::Hud(Some(s)) => side(s).map(|s| shared + 1 + s),
+                View::HandEntry(s, i) => {
+                    side(s).zip(((i as usize) < Handles::HAND).then_some(i as usize)).map(|(s, i)| shared + 3 + s * Handles::HAND + i)
+                }
+                View::Listening(s) => side(s).map(|s| shared + 3 + 2 * Handles::HAND + s),
+            },
         }
     }
 
@@ -194,6 +224,20 @@ impl Handles {
             Handle::Collision(o) => lua.create_userdata(Collision(o)),
             Handle::State(of) => lua.create_userdata(State(of)),
             Handle::Navi(of) => lua.create_userdata(Navi(of)),
+            Handle::View(v) => match v {
+                View::Statuses(o) => lua.create_userdata(Statuses(o)),
+                View::StatusTimers(o) => lua.create_userdata(StatusTimers(o)),
+                View::Requests(o) => lua.create_userdata(Requests(o)),
+                View::NaviFlags(o) => lua.create_userdata(NaviFlags(o)),
+                View::Buttons(o, pad) => lua.create_userdata(Buttons(o, pad)),
+                View::ObstacleFlags(o) => lua.create_userdata(ObstacleFlags(o)),
+                View::FormTraits(o) => lua.create_userdata(FormTraits(o)),
+                View::ObjectConsole(o, s) => lua.create_userdata(ObjectConsole(o, s)),
+                View::SpriteConsole(o, s) => lua.create_userdata(SpriteConsole(o, s)),
+                View::Hud(s) => lua.create_userdata(Hud(s)),
+                View::HandEntry(s, i) => lua.create_userdata(HandEntry(s, i)),
+                View::Listening(s) => lua.create_userdata(Listening(s)),
+            },
         }
     }
 
@@ -688,6 +732,16 @@ impl UserData for Object {
         fields.add_field_method_get("collision", |lua, this| Handles::get(lua, Handle::Collision(this.0)));
         fields.add_field_method_get("state", |lua, this| state_handle(lua, StateOf::Object(this.0)));
         fields.add_field_method_get("attack_state", |lua, this| state_handle(lua, StateOf::Action(this.0)));
+        // Its named members, each a view's properties.
+        fields.add_field_method_get("status", |lua, this| view(lua, View::Statuses(this.0)));
+        fields.add_field_method_get("status_timers", |lua, this| view(lua, View::StatusTimers(this.0)));
+        fields.add_field_method_get("requests", |lua, this| view(lua, View::Requests(this.0)));
+        fields.add_field_method_get("navi_flags", |lua, this| view(lua, View::NaviFlags(this.0)));
+        for &pad in Pad::ALL {
+            fields.add_field_method_get(pad.name(), move |lua, this| view(lua, View::Buttons(this.0, pad)));
+        }
+        fields.add_field_method_get("obstacle_flags", |lua, this| view(lua, View::ObstacleFlags(this.0)));
+        fields.add_field_method_get("form_traits", |lua, this| view(lua, View::FormTraits(this.0)));
     }
 
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
@@ -698,24 +752,8 @@ impl UserData for Object {
             Ok(format!("Object({} {})", this.0.pool.name(), this.0.slot))
         });
 
-        // A field by console.
-        methods.add_method("get", |lua, this, (field, side): (Name, LuaValue)| {
-            let f = named(&field, "object field", ObjectField::from_name)?;
-            let side = side_arg(side)?;
-            let v = with(|api, _| api.get_for(this.0, f, side).map_err(api_error))?;
-            from_api(lua, v, f.field_type())
-        });
-        methods.add_method("set", |_, this, (field, value, side): (Name, LuaValue, Option<LuaValue>)| {
-            let f = named(&field, "object field", ObjectField::from_name)?;
-            let v = to_api(value, f.field_type(), f.name())?;
-            match side.filter(|s| !s.is_nil()) {
-                None => with(|api, _| api.set(this.0, f, v).map_err(api_error)),
-                Some(s) => {
-                    let side = side_arg(s)?;
-                    with(|api, _| api.set_for(this.0, f, side, v).map_err(api_error))
-                }
-            }
-        });
+        // Its fields as a console has them.
+        methods.add_method("console", |lua, this, side: LuaValue| view(lua, View::ObjectConsole(this.0, side_arg(side)?)));
 
         // Lifecycle.
         methods.add_method("set_lifecycle", |_, this, name: Name| {
@@ -843,25 +881,8 @@ impl UserData for Object {
             with(|api, _| Ok(api.can_stand_any_side(this.0, p)))
         });
 
-        // Status.
-        methods.add_method("status", |_, this, name: Name| {
-            let flag = named(&name, "status flag", StatusFlag::from_name)?;
-            with(|api, _| api.status(this.0, flag).map_err(api_error))
-        });
-        methods.add_method("set_status", |_, this, (name, on): (Name, bool)| {
-            let flag = named(&name, "status flag", StatusFlag::from_name)?;
-            with(|api, _| api.set_status(this.0, flag, on).map_err(api_error))
-        });
+        // Status (the flags and timers are views: `me.status`, `me.status_timers`).
         methods.add_method("clear_statuses", |_, this, ()| with(|api, _| api.clear_statuses(this.0).map_err(api_error)));
-        methods.add_method("status_timer", |_, this, name: Name| {
-            let t = named(&name, "status timer", StatusTimer::from_name)?;
-            with(|api, _| api.status_timer(this.0, t).map_err(api_error))
-        });
-        methods.add_method("set_status_timer", |_, this, (name, v): (Name, LuaValue)| {
-            let t = named(&name, "status timer", StatusTimer::from_name)?;
-            let v = u16_arg(v, "status timer")?;
-            with(|api, _| api.set_status_timer(this.0, t, v).map_err(api_error))
-        });
 
         // Collision.
         methods.add_method("create_collision", |_, this, ()| with(|api, _| Ok(api.create_collision(this.0))));
@@ -888,9 +909,10 @@ impl UserData for Object {
             },
         );
         methods.add_method("hit_spark", |_, this, ()| with(|api, _| Ok(api.hit_spark(this.0))));
-        methods.add_method("take_damage", |_, this, mode: LuaValue| {
-            let mode = u8_arg(mode, "damage mode")?;
-            with(|api, _| Ok(api.take_damage(this.0, mode)))
+        methods.add_method("take_damage", |_, this, mode: Name| {
+            let mode = named(&mode, "damage mode", TakeDamageMode::from_name)? as u8;
+            let taken = with(|api, _| Ok(api.take_damage(this.0, mode)))?;
+            Ok(DamageTaken::of(taken).name())
         });
         methods.add_method("raise_barrier", |_, this, t: mlua::Table| {
             let behavior: mlua::LuaString = t.raw_get("behavior")?;
@@ -912,33 +934,8 @@ impl UserData for Object {
             with(|api, _| api.raise_barrier(this.0, spec).map_err(api_error))
         });
 
-        // Navis: the attack, requests, state, buttons.
-        methods.add_method("request", |_, this, name: Name| {
-            let f = named(&name, "request", RequestFlag::from_name)?;
-            with(|api, _| api.request(this.0, f).map_err(api_error))
-        });
-        methods.add_method("set_request", |_, this, (name, on): (Name, bool)| {
-            let f = named(&name, "request", RequestFlag::from_name)?;
-            with(|api, _| api.set_request(this.0, f, on).map_err(api_error))
-        });
-        methods.add_method("navi_state", |_, this, name: Name| {
-            let f = named(&name, "navi state", NaviState::from_name)?;
-            with(|api, _| api.navi_state(this.0, f).map_err(api_error))
-        });
-        methods.add_method("set_navi_state", |_, this, (name, on): (Name, bool)| {
-            let f = named(&name, "navi state", NaviState::from_name)?;
-            with(|api, _| api.set_navi_state(this.0, f, on).map_err(api_error))
-        });
-        methods.add_method("form_trait", |_, this, name: Name| {
-            let name = name.to_str()?.to_string();
-            with(|api, _| api.form_trait(this.0, &name).map_err(api_error))
-        });
-        for &pad in Pad::ALL {
-            methods.add_method(pad.name(), move |_, this, name: Name| {
-                let key = named(&name, "button", Key::from_name)?;
-                with(|api, _| api.key(this.0, pad, key).map_err(api_error))
-            });
-        }
+        // Navis: the attack (the requests, flags and buttons are views:
+        // `me.requests`, `me.navi_flags`, `me.held`...).
         methods.add_method("open_counter_window", |_, this, ticks: Option<u8>| {
             with(|api, _| Ok(api.open_counter_window(this.0, ticks.unwrap_or(0x10))))
         });
@@ -981,8 +978,8 @@ impl UserData for Object {
         });
         methods.add_method("form_change_terms", |_, this, ()| with(|api, _| Ok(api.form_change_terms(this.0))));
         methods.add_method("end_attack", |_, this, ()| with(|api, _| Ok(api.end_attack(this.0))));
-        methods.add_method("set_attack", |_, this, (action, kind): (LuaValue, LuaValue)| {
-            let kind = u8_arg(kind, "attack kind")?;
+        methods.add_method("set_attack", |_, this, (action, kind): (LuaValue, Name)| {
+            let kind = named(&kind, "attack kind", AttackKind::from_name)?.byte();
             with(|api, b| match b.def(&action) {
                 Some((Registry::Action, h)) => api.set_content_attack(this.0, h, kind).map_err(api_error),
                 Some((r, _)) => Err(mlua::Error::runtime(format!("set_attack: a {r} is not an action"))),
@@ -1019,14 +1016,17 @@ impl UserData for Object {
             })
         });
         methods.add_method("reset_attack_links", |_, this, ()| with(|api, _| Ok(api.reset_attack_links(this.0))));
-        methods.add_method("held_direction", |_, this, ()| with(|api, _| Ok(api.held_direction(this.0))));
-        methods.add_method("step_target", |_, this, dir: LuaValue| {
-            let dir = u8_arg(dir, "direction")?;
+        methods.add_method("held_direction", |_, this, ()| {
+            let dir = with(|api, _| Ok(api.held_direction(this.0)))?;
+            Ok(StepDirection::of_byte(dir).map(|d| d.name()))
+        });
+        methods.add_method("step_target", |_, this, dir: Name| {
+            let dir = named(&dir, "step direction", StepDirection::from_name)?.byte();
             let p = with(|api, _| Ok(api.step_target(this.0, dir)))?;
             Ok(p.map_or((None, None), |p| (Some(p.x), Some(p.y))))
         });
-        methods.add_method("start_move", |_, this, dir: LuaValue| {
-            let dir = u8_arg(dir, "direction")?;
+        methods.add_method("start_move", |_, this, dir: Name| {
+            let dir = named(&dir, "step direction", StepDirection::from_name)?.byte();
             with(|api, _| Ok(api.start_move(this.0, dir)))
         });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
@@ -1036,9 +1036,9 @@ impl UserData for Object {
             bound(|b| chip.map_or(Ok(LuaValue::Nil), |c| Ok(LuaValue::Table(b.def_value(Registry::Chip, c.0)?))))
         });
         methods.add_method("use_chip", |_, this, ()| with(|api, _| api.use_chip(this.0).map_err(api_error)));
-        methods.add_method("start_chip_attack", |_, this, (chip, kind): (LuaValue, LuaValue)| {
+        methods.add_method("start_chip_attack", |_, this, (chip, kind): (LuaValue, Name)| {
             let chip = bound(|b| def_arg(b, &chip, Registry::Chip, "start_chip_attack"))?;
-            let kind = int(&kind, "kind")? as u8;
+            let kind = named(&kind, "attack kind", AttackKind::from_name)?.byte();
             with(|api, _| api.start_chip_attack(this.0, nettai_content_api::ChipHandle(chip), kind).map_err(api_error))
         });
         methods.add_method("start_move_to", |_, this, (x, y, end_lag, face): (LuaValue, LuaValue, LuaValue, LuaValue)| {
@@ -1047,9 +1047,9 @@ impl UserData for Object {
             let face = object_arg(&face, "face")?;
             with(|api, _| api.start_move_to(this.0, p, end_lag, face).map_err(api_error))
         });
-        methods.add_method("start_weapon", |_, this, (weapon, kind): (LuaValue, LuaValue)| {
+        methods.add_method("start_weapon", |_, this, (weapon, kind): (LuaValue, Name)| {
             let weapon = bound(|b| def_arg(b, &weapon, Registry::Weapon, "start_weapon"))?;
-            let kind = int(&kind, "kind")? as u8;
+            let kind = named(&kind, "attack kind", AttackKind::from_name)?.byte();
             with(|api, _| api.start_weapon(this.0, nettai_content_api::WeaponHandle(weapon), kind).map_err(api_error))
         });
         // The wrapper's (the role `actions.wrapper`).
@@ -1095,12 +1095,6 @@ impl UserData for Object {
                 api.action_schema(action).map_err(api_error)
             })?;
             Ok(State(StateOf::ActionAs(this.0, id)))
-        });
-
-        // Field objects (obstacles; the rest is the `obstacle` service).
-        methods.add_method("obstacle_flag", |_, this, name: Name| {
-            let f = named(&name, "obstacle flag", nettai_content_api::api::ObstacleFlag::from_name)?;
-            with(|api, _| api.obstacle_flag(this.0, f).map_err(api_error))
         });
     }
 }
@@ -1158,23 +1152,8 @@ impl UserData for Sprite {
                 api.sprite_set(this.0, SpriteField::VFlip, Value::Bool(flip & 2 != 0)).map_err(api_error)
             })
         });
-        methods.add_method("get", |lua, this, (field, side): (Name, LuaValue)| {
-            let f = named(&field, "sprite field", SpriteField::from_name)?;
-            let side = side_arg(side)?;
-            let v = with(|api, _| Ok(api.sprite_get_for(this.0, f, side)))?;
-            from_api(lua, v, f.field_type())
-        });
-        methods.add_method("set", |_, this, (field, value, side): (Name, LuaValue, Option<LuaValue>)| {
-            let f = named(&field, "sprite field", SpriteField::from_name)?;
-            let v = to_api(value, f.field_type(), f.name())?;
-            match side.filter(|s| !s.is_nil()) {
-                None => with(|api, _| api.sprite_set(this.0, f, v).map_err(api_error)),
-                Some(s) => {
-                    let side = side_arg(s)?;
-                    with(|api, _| api.sprite_set_for(this.0, f, side, v).map_err(api_error))
-                }
-            }
-        });
+        // Its fields as a console draws them.
+        methods.add_method("console", |lua, this, side: LuaValue| view(lua, View::SpriteConsole(this.0, side_arg(side)?)));
     }
 }
 
@@ -1718,6 +1697,265 @@ impl UserData for Navi {
     }
 }
 
+// ---- Views ----------------------------------------------------------------------------------
+
+/// A view of named members: what it reads (an object's status flags, a
+/// side's HUD...), each member a property (`me.status.guard = true`,
+/// `battle.hud(side).gauge`). Made once and given again ([`Handles`]), so
+/// reading a member allocates nothing; an unknown member is an error.
+#[derive(Clone, Copy)]
+enum View {
+    Statuses(ObjectRef),
+    StatusTimers(ObjectRef),
+    Requests(ObjectRef),
+    NaviFlags(ObjectRef),
+    Buttons(ObjectRef, Pad),
+    ObstacleFlags(ObjectRef),
+    FormTraits(ObjectRef),
+    ObjectConsole(ObjectRef, u8),
+    SpriteConsole(ObjectRef, u8),
+    Hud(Option<u8>),
+    HandEntry(u8, u8),
+    Listening(u8),
+}
+
+fn view(lua: &Lua, v: View) -> mlua::Result<AnyUserData> {
+    Handles::get(lua, Handle::View(v))
+}
+
+/// `me.status`: an object's status flags (its collision data's).
+#[derive(Clone, Copy)]
+struct Statuses(ObjectRef);
+
+impl UserData for Statuses {
+    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
+        for &f in StatusFlag::ALL {
+            fields.add_field_method_get(f.name(), move |_, this| with(|api, _| api.status(this.0, f).map_err(api_error)));
+            fields.add_field_function_set(f.name(), move |_, this, on: bool| {
+                let o = this.borrow::<Statuses>()?.0;
+                with(|api, _| api.set_status(o, f, on).map_err(api_error))
+            });
+        }
+    }
+}
+
+/// `me.status_timers`: an object's status timers.
+#[derive(Clone, Copy)]
+struct StatusTimers(ObjectRef);
+
+impl UserData for StatusTimers {
+    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
+        for &t in StatusTimer::ALL {
+            fields.add_field_method_get(t.name(), move |_, this| with(|api, _| api.status_timer(this.0, t).map_err(api_error)));
+            fields.add_field_function_set(t.name(), move |_, this, v: LuaValue| {
+                let o = this.borrow::<StatusTimers>()?.0;
+                let v = u16_arg(v, "status timer")?;
+                with(|api, _| api.set_status_timer(o, t, v).map_err(api_error))
+            });
+        }
+    }
+}
+
+/// `me.requests`: a navi's requests.
+#[derive(Clone, Copy)]
+struct Requests(ObjectRef);
+
+impl UserData for Requests {
+    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
+        for &f in RequestFlag::ALL {
+            fields.add_field_method_get(f.name(), move |_, this| with(|api, _| api.request(this.0, f).map_err(api_error)));
+            fields.add_field_function_set(f.name(), move |_, this, on: bool| {
+                let o = this.borrow::<Requests>()?.0;
+                with(|api, _| api.set_request(o, f, on).map_err(api_error))
+            });
+        }
+    }
+}
+
+/// `me.navi_flags`: a navi's state flags.
+#[derive(Clone, Copy)]
+struct NaviFlags(ObjectRef);
+
+impl UserData for NaviFlags {
+    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
+        for &f in NaviState::ALL {
+            fields.add_field_method_get(f.name(), move |_, this| with(|api, _| api.navi_state(this.0, f).map_err(api_error)));
+            fields.add_field_function_set(f.name(), move |_, this, on: bool| {
+                let o = this.borrow::<NaviFlags>()?.0;
+                with(|api, _| api.set_navi_state(o, f, on).map_err(api_error))
+            });
+        }
+    }
+}
+
+/// `me.held`, `me.pressed`, `me.dimmed_held`, `me.dimmed_pressed`: a navi's
+/// buttons in one of its records (read-only).
+#[derive(Clone, Copy)]
+struct Buttons(ObjectRef, Pad);
+
+impl UserData for Buttons {
+    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
+        for &key in Key::ALL {
+            fields.add_field_method_get(key.name(), move |_, this| with(|api, _| api.key(this.0, this.1, key).map_err(api_error)));
+        }
+    }
+}
+
+/// `me.obstacle_flags`: what other objects asked of a field object
+/// (read-only).
+#[derive(Clone, Copy)]
+struct ObstacleFlags(ObjectRef);
+
+impl UserData for ObstacleFlags {
+    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
+        for &f in nettai_content_api::api::ObstacleFlag::ALL {
+            fields.add_field_method_get(f.name(), move |_, this| with(|api, _| api.obstacle_flag(this.0, f).map_err(api_error)));
+        }
+    }
+}
+
+/// `me.form_traits`: the traits of the form of a navi's side (read-only;
+/// the engine knows their names).
+#[derive(Clone, Copy)]
+struct FormTraits(ObjectRef);
+
+impl UserData for FormTraits {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
+        methods.add_meta_method(MetaMethod::Index, |_, this, name: Name| {
+            let name = name.to_str()?;
+            with(|api, _| api.form_trait(this.0, name).map_err(api_error))
+        });
+        methods.add_meta_method(MetaMethod::NewIndex, |_, _, (name, _): (Name, LuaValue)| -> mlua::Result<()> {
+            Err(mlua::Error::runtime(format!("form_traits.{}: a form's traits are its definition's (read-only)", name.lossy())))
+        });
+    }
+}
+
+/// `o:console(side)`: an object's fields as side `side`'s console has them:
+/// `visible`, which the consoles each decide.
+#[derive(Clone, Copy)]
+struct ObjectConsole(ObjectRef, u8);
+
+impl UserData for ObjectConsole {
+    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
+        let f = ObjectField::Visible;
+        fields.add_field_method_get(f.name(), move |lua, this| {
+            let v = with(|api, _| api.get_for(this.0, f, this.1).map_err(api_error))?;
+            from_api(lua, v, f.field_type())
+        });
+        fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
+            let ObjectConsole(o, side) = *this.borrow::<ObjectConsole>()?;
+            let v = to_api(v, f.field_type(), f.name())?;
+            with(|api, _| api.set_for(o, f, side, v).map_err(api_error))
+        });
+    }
+}
+
+/// The sprite fields the consoles draw each their own way (where the
+/// original's consoles decide a look by their own side).
+const CONSOLE_LOOKS: [SpriteField; 6] =
+    [SpriteField::Palette, SpriteField::HFlip, SpriteField::ColorShader, SpriteField::Alpha, SpriteField::Mosaic, SpriteField::HiddenParts];
+
+/// `sprite:console(side)`: a sprite's fields as side `side`'s console draws
+/// them: each its own way for [`CONSOLE_LOOKS`], which are set there alone;
+/// the others alike (read as the sprite's).
+#[derive(Clone, Copy)]
+struct SpriteConsole(ObjectRef, u8);
+
+impl UserData for SpriteConsole {
+    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
+        for &f in SpriteField::ALL {
+            fields.add_field_method_get(f.name(), move |lua, this| {
+                let v = with(|api, _| Ok(api.sprite_get_for(this.0, f, this.1)))?;
+                from_api(lua, v, f.field_type())
+            });
+        }
+        for f in CONSOLE_LOOKS {
+            fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
+                let SpriteConsole(o, side) = *this.borrow::<SpriteConsole>()?;
+                let v = to_api(v, f.field_type(), f.name())?;
+                with(|api, _| api.sprite_set_for(o, f, side, v).map_err(api_error))
+            });
+        }
+    }
+}
+
+/// `battle.hud(side)`: what the HUD shows, a side's; `battle.hud()`, every
+/// side's (setting a field sets each side's; the fields every console shows
+/// alike are read and set so alone).
+#[derive(Clone, Copy)]
+struct Hud(Option<u8>);
+
+impl UserData for Hud {
+    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
+        for &f in HudField::ALL {
+            fields.add_field_method_get(f.name(), move |lua, this| {
+                let side = match this.0 {
+                    Some(side) => side,
+                    // (Every console shows it alike: any side's.)
+                    None if f.shared() => 0,
+                    None => {
+                        return Err(mlua::Error::runtime(format!(
+                            "battle.hud().{}: each side has its own; read it with a side",
+                            f.name()
+                        )));
+                    }
+                };
+                let v = with(|api, _| Ok(api.hud(f, side)))?;
+                from_api(lua, v, f.field_type())
+            });
+            fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
+                let side = this.borrow::<Hud>()?.0;
+                let v = to_api(v, f.field_type(), f.name())?;
+                with(|api, _| api.set_hud(f, side, v).map_err(api_error))
+            });
+        }
+    }
+}
+
+/// `battle.hand_entry(side, i)`: an entry of a side's hand (from 0, used
+/// ones too): each field nil past its entries, and setting one there an
+/// error.
+#[derive(Clone, Copy)]
+struct HandEntry(u8, u8);
+
+impl UserData for HandEntry {
+    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
+        for &f in HandField::ALL {
+            fields.add_field_method_get(f.name(), move |lua, this| {
+                let v = with(|api, _| Ok(api.hand_entry(this.0, this.1, f)))?;
+                from_api(lua, v, f.field_type())
+            });
+            fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
+                let HandEntry(side, i) = *this.borrow::<HandEntry>()?;
+                let v = to_api(v, f.field_type(), f.name())?;
+                with(|api, _| api.set_hand_entry(side, i, f, v).map_err(api_error))
+            });
+        }
+    }
+}
+
+/// `rules.listening(side)`: whether the engine calls each hook of side
+/// `side`'s rules (the view only the rules' own calls are given: its
+/// members' accessors run from mlua's own chunk, which `rules_only` can't
+/// tell from the caller's). The custom screen's hooks
+/// (`custom.*`, `window.*`, `button.*`: no identifier names them) are
+/// always called.
+#[derive(Clone, Copy)]
+struct Listening(u8);
+
+impl UserData for Listening {
+    fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
+        for hook in RulesHook::ALL.into_iter().filter(|h| !h.name().contains('.')) {
+            fields.add_field_method_get(hook.name(), move |_, this| with(|api, _| api.listening(this.0, hook).map_err(api_error)));
+            fields.add_field_function_set(hook.name(), move |_, this, on: bool| {
+                let side = this.borrow::<Listening>()?.0;
+                with(|api, _| api.listen(side, hook, on).map_err(api_error))
+            });
+        }
+    }
+}
+
 // ---- Vec3 ------------------------------------------------------------------------------------
 
 /// A 16.16 fixed-point vector: three `i32`, wrapping on `+` and `-`.
@@ -2182,12 +2420,11 @@ fn rules_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         rules_only(lua, "rules.setup_of", "setup")?;
         state_handle(lua, StateOf::Setup(RulesCtx { side: u8_arg(side, "side")? & 1 }))
     });
-    // Whether the engine calls a hook of side `side`'s rules.
-    lib_fn!(lua, t, "listen", |lua, (side, hook, on): (LuaValue, Name, bool)| {
-        rules_only(lua, "rules.listen", "hooks")?;
+    // Whether the engine calls each hook of side `side`'s rules.
+    lib_fn!(lua, t, "listening", |lua, side: LuaValue| {
+        rules_only(lua, "rules.listening", "hooks")?;
         let side = u8_arg(side, "side")? & 1;
-        let hook = named(&hook, "rules hook", nettai_content_api::RulesHook::named)?;
-        with(|api, _| api.listen(side, hook, on).map_err(api_error))
+        view(lua, View::Listening(side))
     });
     // The panel kinds `navi_panel` is called on, for side `side`.
     lib_fn!(lua, t, "listen_panels", |lua, (side, kinds): (LuaValue, mlua::Table)| {
@@ -2260,11 +2497,8 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "paused", |_, ()| with(|api, _| Ok(api.is_paused())));
     lib_fn!(lua, t, "over", |_, ()| with(|api, _| Ok(api.is_battle_over())));
     lib_fn!(lua, t, "time_up", |_, ()| with(|api, _| Ok(api.is_time_up())));
-    lib_fn!(lua, t, "cycle", |_, which: LuaValue| {
-        let which = u8_arg(which, "which")?;
-        if !matches!(which, 1 | 2) {
-            return Err(mlua::Error::runtime(format!("battle.cycle({which}): the battle has counts 1 and 2")));
-        }
+    lib_fn!(lua, t, "cycle", |_, which: Name| {
+        let which = named(&which, "fight cycle", FightCycle::from_name)? as u8 + 1;
         with(|api, _| Ok(api.cycle(which)))
     });
     lib_fn!(lua, t, "weakness", |_, (receiver, hitter): (LuaValue, LuaValue)| {
@@ -2350,17 +2584,9 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let speed = u8_arg(speed, "fade speed")?;
         with(|api, _| Ok(api.screen_fade(fade, speed)))
     });
-    lib_fn!(lua, t, "hud", |lua, (field, side): (Name, LuaValue)| {
-        let f = named(&field, "HUD field", HudField::from_name)?;
-        let side = side_arg(side)?;
-        let v = with(|api, _| Ok(api.hud(f, side)))?;
-        from_api(lua, v, f.field_type())
-    });
-    lib_fn!(lua, t, "set_hud", |_, (field, value, side): (Name, LuaValue, Option<LuaValue>)| {
-        let f = named(&field, "HUD field", HudField::from_name)?;
-        let v = to_api(value, f.field_type(), f.name())?;
+    lib_fn!(lua, t, "hud", |lua, side: Option<LuaValue>| {
         let side = side.filter(|s| !s.is_nil()).map(side_arg).transpose()?;
-        with(|api, _| api.set_hud(f, side, v).map_err(api_error))
+        view(lua, View::Hud(side))
     });
     lib_fn!(lua, t, "navi", |lua, side: LuaValue| navi_handle(lua, nettai_content_api::StatsOf::side(u8_arg(side, "side")?)));
     lib_fn!(lua, t, "member", |lua, (side, m): (LuaValue, LuaValue)| {
@@ -2581,8 +2807,9 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, n) = (u8_arg(side, "side")? & 1, u16_arg(n, "gauge")?);
         with(|api, _| Ok(api.drain_side_gauge(side, n)))
     });
-    lib_fn!(lua, t, "add_special_bonus", |_, (side, index, n): (LuaValue, LuaValue, LuaValue)| {
-        let (side, index, n) = (u8_arg(side, "side")? & 1, u8_arg(index, "bonus")?, u16_arg(n, "bonus")?);
+    lib_fn!(lua, t, "add_special_bonus", |_, (side, bonus, n): (LuaValue, Name, LuaValue)| {
+        let index = named(&bonus, "special bonus", SpecialBonus::from_name)? as u8;
+        let (side, n) = (u8_arg(side, "side")? & 1, u16_arg(n, "bonus")?);
         with(|api, _| api.add_special_bonus(side, index, n).map_err(api_error))
     });
     lib_fn!(lua, t, "set_gauge_rate", |_, rate: LuaValue| {
@@ -2597,17 +2824,30 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.gauge_damage(side)))
     });
-    lib_fn!(lua, t, "bump_side_stat", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
-        let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
-        with(|api, _| Ok(api.bump_side_stat(side, i, n)))
+    // A side's statistics, each by its name (its game's rules' `side_stats`).
+    lib_fn!(lua, t, "bump_side_stat", |_, (side, stat, n): (LuaValue, Name, LuaValue)| {
+        let (side, n) = (u8_arg(side, "side")? & 1, u8_arg(n, "count")?);
+        let stat = stat.to_str()?;
+        with(|api, _| {
+            let i = api.side_stat_named(stat).map_err(api_error)?;
+            Ok(api.bump_side_stat(side, i, n))
+        })
     });
-    lib_fn!(lua, t, "set_side_stat", |_, (side, i, n): (LuaValue, LuaValue, LuaValue)| {
-        let (side, i, n) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?, u8_arg(n, "count")?);
-        with(|api, _| Ok(api.set_side_stat(side, i, n)))
+    lib_fn!(lua, t, "set_side_stat", |_, (side, stat, n): (LuaValue, Name, LuaValue)| {
+        let (side, n) = (u8_arg(side, "side")? & 1, u8_arg(n, "count")?);
+        let stat = stat.to_str()?;
+        with(|api, _| {
+            let i = api.side_stat_named(stat).map_err(api_error)?;
+            Ok(api.set_side_stat(side, i, n))
+        })
     });
-    lib_fn!(lua, t, "side_stat", |_, (side, i): (LuaValue, LuaValue)| {
-        let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "stat")?);
-        with(|api, _| Ok(api.side_stat(side, i)))
+    lib_fn!(lua, t, "side_stat", |_, (side, stat): (LuaValue, Name)| {
+        let side = u8_arg(side, "side")? & 1;
+        let stat = stat.to_str()?;
+        with(|api, _| {
+            let i = api.side_stat_named(stat).map_err(api_error)?;
+            Ok(api.side_stat(side, i))
+        })
     });
     lib_fn!(lua, t, "damage_carry", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -2685,8 +2925,9 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         lua,
         t,
         "palette_flash",
-        |lua, (variant, ticks, while_dimmed, while_paused): (LuaValue, LuaValue, Option<bool>, Option<bool>)| {
-            let (variant, ticks) = (u8_arg(variant, "palette flash variant")?, u8_arg(ticks, "palette flash ticks")?);
+        |lua, (variant, ticks, while_dimmed, while_paused): (Name, LuaValue, Option<bool>, Option<bool>)| {
+            let variant = named(&variant, "palette flash variant", PaletteFlashVariant::from_name)? as u8;
+            let ticks = u8_arg(ticks, "palette flash ticks")?;
             let (dimmed, paused) = (while_dimmed.unwrap_or(false), while_paused.unwrap_or(false));
             let o = with(|api, _| Ok(api.spawn_palette_flash(variant, ticks, dimmed, paused)))?;
             object_value(lua, o)
@@ -2771,17 +3012,9 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     // A hand's entries, by field (from 0; past the hand, as a negative
     // entry, none).
     let entry = |i: LuaValue| -> mlua::Result<u8> { Ok(u8::try_from(int(&i, "hand entry")?).unwrap_or(u8::MAX)) };
-    lib_fn!(lua, t, "hand_entry", move |lua, (side, i, field): (LuaValue, LuaValue, Name)| {
+    lib_fn!(lua, t, "hand_entry", move |lua, (side, i): (LuaValue, LuaValue)| {
         let (side, i) = (u8_arg(side, "side")? & 1, entry(i)?);
-        let f = named(&field, "hand entry field", HandField::from_name)?;
-        let v = with(|api, _| Ok(api.hand_entry(side, i, f)))?;
-        from_api(lua, v, f.field_type())
-    });
-    lib_fn!(lua, t, "set_hand_entry", move |_, (side, i, field, value): (LuaValue, LuaValue, Name, LuaValue)| {
-        let (side, i) = (u8_arg(side, "side")? & 1, entry(i)?);
-        let f = named(&field, "hand entry field", HandField::from_name)?;
-        let v = to_api(value, f.field_type(), f.name())?;
-        with(|api, _| api.set_hand_entry(side, i, f, v).map_err(api_error))
+        view(lua, View::HandEntry(side, i))
     });
     lib_fn!(lua, t, "fold_hand_chip", |_, (side, i, whole): (LuaValue, LuaValue, bool)| {
         let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?);
@@ -3071,11 +3304,9 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     let t = lua.create_table()?;
     // (The record type of the look `fly_to_absorber` takes: the engine's own.)
     t.set("absorbed_look", crate::schema::record_type(nettai_content_api::ABSORBED_LOOK).map_err(mlua::Error::runtime)?)?;
-    lib_fn!(lua, t, "register", |_, (me, side, class): (Me, LuaValue, LuaValue)| {
-        let (side, class) = (u8_arg(side, "side")? & 1, u8_arg(class, "class")?);
-        if class > 1 {
-            return Err(mlua::Error::runtime(format!("obstacle.register: class {class} (0 or 1)")));
-        }
+    lib_fn!(lua, t, "register", |_, (me, side, class): (Me, LuaValue, Name)| {
+        let side = u8_arg(side, "side")? & 1;
+        let class = named(&class, "obstacle class", ObstacleClass::from_name)? as u8;
         with(|api, _| Ok(api.obstacle_register(me.0, side, class)))
     });
     lib_fn!(lua, t, "unregister", |_, me: Me| with(|api, _| Ok(api.obstacle_unregister(me.0))));
@@ -3249,7 +3480,13 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
         }
         HookCall::Encased { obstacle } => vec![obj(obstacle)?],
         HookCall::RoleEncased { obstacle, ice, class } => {
-            let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(mlua::Integer::from(c)));
+            let class = match class {
+                None => LuaValue::Nil,
+                Some(c) => {
+                    let name = ObstacleClass::NAMES.get(c as usize).ok_or_else(|| mlua::Error::runtime(format!("obstacle class {c}")))?;
+                    LuaValue::String(lua.create_string(name)?)
+                }
+            };
             vec![obj(obstacle)?, LuaValue::Boolean(ice), class]
         }
         // The side, then the navi, the chip and the weapon, where the hook

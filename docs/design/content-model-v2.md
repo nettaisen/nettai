@@ -1299,7 +1299,7 @@ function throw.action(spec: ThrowSpec): Action
             me:open_counter_window()
             attachment.spawn(me, spec.held, { palette = spec.held_palette or 0 }, "related")
             battle.play_sound(SOUND)
-            me:set_status("using_action", true)
+            me.status.using_action = true
             s.timer, me.step_init = 0, 4
         end
         if s.timer == RELEASE_TICK then
