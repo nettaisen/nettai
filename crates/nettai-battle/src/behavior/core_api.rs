@@ -2791,7 +2791,13 @@ impl CoreApi for Battle {
             CollisionField::CounterByte => c.counter_byte as i64,
             CollisionField::CounterTimer => c.counter_timer as i64,
             CollisionField::FinalDamage => c.acc.final_damage as i64,
-            CollisionField::Direction => c.direction as i64,
+            // (`MOVE_DIRECTIONS`: a game whose moves go by the field's
+            // left and right, not by the side, names 3 and 4 so.)
+            CollisionField::Direction => match (self.content.rules().move_direction, c.direction) {
+                (crate::content::MoveDirection::Absolute, 3) => 6,
+                (crate::content::MoveDirection::Absolute, 4) => 7,
+                (_, d) => d as i64,
+            },
             CollisionField::GuardDirs => c.guard_dirs as i64,
             CollisionField::DamageElements => c.acc.damage_elements as i64,
             CollisionField::HitModFinal => c.hit_mod_final as i64,

@@ -657,7 +657,9 @@ pub struct ChargedChips {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ChargedBonus {
-    #[serde(default)]
+    /// Damage added (in a content file a number, or "again": the chip's
+    /// damage again, the byte 0xFF).
+    #[serde(default, deserialize_with = "bonus_damage")]
     pub damage: u16,
     /// It paralyzes.
     #[serde(default)]
@@ -665,6 +667,23 @@ pub struct ChargedBonus {
     /// It doubles: the damage word's 0x8000 (EXE4's souls, 0x0800C47A).
     #[serde(default)]
     pub doubles: bool,
+}
+
+/// A charged chip's bonus damage as a content file states it: a number, or
+/// "again" (its damage again: 0xFF, which a number may not state).
+fn bonus_damage<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u16, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Bonus {
+        Amount(u16),
+        Named(String),
+    }
+    match Bonus::deserialize(d)? {
+        Bonus::Amount(0xFF) => Err(serde::de::Error::custom("a bonus of 0xff is \"again\" (the chip's damage again), by name")),
+        Bonus::Amount(n) => Ok(n),
+        Bonus::Named(s) if s == "again" => Ok(0xFF),
+        Bonus::Named(s) => Err(serde::de::Error::custom(format!("{s:?} is no bonus (a number, or \"again\")"))),
+    }
 }
 
 /// What a form's status reset gives the navi. In a content file, a list of
@@ -1192,5 +1211,21 @@ mod tests {
         // A family is one of its game's.
         let error = read(r#"{ "family": "metal", "damaging": true }"#).unwrap_err().to_string();
         assert!(error.contains("\"metal\" is none of its game's chip families (wood, sword, null)"), "{error}");
+    }
+}
+
+#[cfg(test)]
+mod named_words {
+    use super::ChargedBonus;
+
+    /// A charged chip's bonus of its damage again is "again"; the byte is no
+    /// form of it.
+    #[test]
+    fn a_bonus_of_the_damage_again_is_named() {
+        let read = |j: serde_json::Value| serde_json::from_value::<ChargedBonus>(j).map(|b| b.damage).map_err(|e| e.to_string());
+        assert_eq!(read(serde_json::json!({ "damage": "again" })), Ok(0xFF));
+        assert_eq!(read(serde_json::json!({ "damage": 40 })), Ok(40));
+        assert!(read(serde_json::json!({ "damage": 255 })).unwrap_err().contains("\"again\""));
+        assert!(read(serde_json::json!({ "damage": "twice" })).unwrap_err().contains("no bonus"));
     }
 }

@@ -159,9 +159,10 @@ impl Handles {
     /// The entries of a side's hand, as handles go.
     const HAND: usize = 8;
     /// An object's views: its statuses, timers, requests, navi flags, its
-    /// four button records, its obstacle flags, its form's traits, and its
-    /// and its sprite's two consoles'.
-    const OBJECT_VIEWS: usize = 14;
+    /// four button records, its obstacle flags, its form's traits, its and
+    /// its sprite's two consoles', and its sprite's hidden parts (every
+    /// console's and each one's).
+    const OBJECT_VIEWS: usize = 17;
     const VIEWS: usize = 5 * Handles::OBJECTS + 4 + 2 * (1 + Handles::MEMBERS);
     const LEN: usize = Handles::VIEWS + Handles::OBJECT_VIEWS * Handles::OBJECTS + 3 + 2 * Handles::HAND + 2;
 
@@ -199,6 +200,8 @@ impl Handles {
                 View::FormTraits(o) => view(o, 9),
                 View::ObjectConsole(o, s) => side(s).and_then(|s| view(o, 10 + s)),
                 View::SpriteConsole(o, s) => side(s).and_then(|s| view(o, 12 + s)),
+                View::HiddenParts(o, None) => view(o, 14),
+                View::HiddenParts(o, Some(s)) => side(s).and_then(|s| view(o, 15 + s)),
                 View::Hud(None) => Some(shared),
                 View::Hud(Some(s)) => side(s).map(|s| shared + 1 + s),
                 View::HandEntry(s, i) => {
@@ -236,6 +239,7 @@ impl Handles {
                 View::FormTraits(o) => lua.create_userdata(FormTraits(o)),
                 View::ObjectConsole(o, s) => lua.create_userdata(ObjectConsole(o, s)),
                 View::SpriteConsole(o, s) => lua.create_userdata(SpriteConsole(o, s)),
+                View::HiddenParts(o, s) => lua.create_userdata(HiddenParts(o, s)),
                 View::Hud(s) => lua.create_userdata(Hud(s)),
                 View::HandEntry(s, i) => lua.create_userdata(HandEntry(s, i)),
                 View::Listening(s) => lua.create_userdata(Listening(s)),
@@ -613,6 +617,116 @@ fn from_api(lua: &Lua, v: Value, ty: &FieldType) -> mlua::Result<LuaValue> {
     })
 }
 
+/// How the binding shows a field the engine keeps as a word whose values
+/// content names (docs/design/scripting.md §2.1): the engine's field is the
+/// same word, and only its form in Luau differs.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Shown {
+    /// As the field's type says.
+    Plain,
+    /// An element byte: an `Element`.
+    Element,
+    /// The secondary elements of an element byte: a view of them by name.
+    Secondary,
+    /// A byte that is 0 or 1, the object turned against its side's way (its
+    /// flip): a boolean.
+    Turned,
+    /// A navi's mood: a number, or "full_synchro" for the byte 0xFF.
+    Mood,
+    /// A count that holds at 0xFFFF: a number, or "holds".
+    Holds,
+    /// A byte that is 0xFF for none: a number, or nil.
+    NoneAt0xFF,
+    /// A sprite's hidden parts (bit 31 − i hides part i), written as a
+    /// table of parts (from 0) to whether each is hidden (`{ [6] = true }`);
+    /// read as a view by part (`HiddenParts`).
+    Parts,
+}
+
+/// An engine value of a field shown as `shown`.
+fn show(lua: &Lua, v: Value, ty: &FieldType, shown: Shown) -> mlua::Result<LuaValue> {
+    let Value::Int(i) = v else { return from_api(lua, v, ty) };
+    Ok(match shown {
+        Shown::Plain => return from_api(lua, v, ty),
+        Shown::Element => LuaValue::UserData(crate::element::value(lua, i as u8)?),
+        Shown::Secondary => LuaValue::UserData(crate::element::secondary_value(lua, i as u8)?),
+        Shown::Turned => LuaValue::Boolean(i != 0),
+        Shown::Mood if i == 0xFF => LuaValue::String(lua.create_string("full_synchro")?),
+        Shown::Holds if i == 0xFFFF => LuaValue::String(lua.create_string("holds")?),
+        Shown::NoneAt0xFF if i == 0xFF => LuaValue::Nil,
+        Shown::Mood | Shown::Holds | Shown::NoneAt0xFF => LuaValue::Number(i as f64),
+        Shown::Parts => unreachable!("hidden parts read as a view"),
+    })
+}
+
+/// A Luau value going into a field shown as `shown`.
+fn take(v: LuaValue, ty: &FieldType, shown: Shown, what: &str) -> mlua::Result<Value> {
+    let word = |v: LuaValue, sentinel: i64, name: &str| -> mlua::Result<Value> {
+        match &v {
+            LuaValue::String(s) if &*s.to_str()? == name => Ok(Value::Int(sentinel)),
+            LuaValue::Number(_) | LuaValue::Integer(_) => {
+                let n = int(&v, what)?;
+                if n == sentinel {
+                    return Err(mlua::Error::runtime(format!("{what}: {sentinel:#x} is {name:?}, by name")));
+                }
+                Ok(Value::Int(n))
+            }
+            v => Err(mlua::Error::runtime(format!("{what}: expected a number or {name:?}, got {}", v.type_name()))),
+        }
+    };
+    match shown {
+        Shown::Plain => to_api(v, ty, what),
+        Shown::Element => Ok(Value::Int(i64::from(crate::element::arg(&v, what)?))),
+        Shown::Secondary => Err(mlua::Error::runtime(format!("{what} is read-only"))),
+        Shown::Turned => match v {
+            LuaValue::Boolean(b) => Ok(Value::Int(i64::from(b))),
+            v => Err(mlua::Error::runtime(format!("{what}: expected a boolean (turned), got {}", v.type_name()))),
+        },
+        Shown::Mood => word(v, 0xFF, "full_synchro"),
+        Shown::Holds => word(v, 0xFFFF, "holds"),
+        Shown::NoneAt0xFF => match v {
+            LuaValue::Nil => Ok(Value::Int(0xFF)),
+            v => {
+                let n = int(&v, what)?;
+                if n == 0xFF {
+                    return Err(mlua::Error::runtime(format!("{what}: 0xff is none: nil")));
+                }
+                Ok(Value::Int(n))
+            }
+        },
+        Shown::Parts => Ok(Value::Int(i64::from(parts_word(&v, what)?))),
+    }
+}
+
+/// A table of sprite parts (0 to 31) to whether each is hidden, as the word
+/// that hides them (bit 31 − i hides part i): a part past 31 or a value not
+/// a boolean is an error.
+fn parts_word(v: &LuaValue, what: &str) -> mlua::Result<u32> {
+    let LuaValue::Table(t) = v else {
+        return Err(mlua::Error::runtime(format!("{what}: expected a table of sprite parts ({{ [6] = true }}), got {}", v.type_name())));
+    };
+    let mut w = 0u32;
+    for pair in t.pairs::<LuaValue, LuaValue>() {
+        let (part, hidden) = pair?;
+        let part = part_index(&part, what)?;
+        match hidden {
+            LuaValue::Boolean(true) => w |= 0x8000_0000 >> part,
+            LuaValue::Boolean(false) => {}
+            v => return Err(mlua::Error::runtime(format!("{what}: part {part} is hidden true or false, not {}", v.type_name()))),
+        }
+    }
+    Ok(w)
+}
+
+/// A sprite part's index, 0 to 31.
+fn part_index(v: &LuaValue, what: &str) -> mlua::Result<u32> {
+    let part = match v {
+        LuaValue::Integer(_) | LuaValue::Number(_) => int(v, what)?,
+        v => return Err(mlua::Error::runtime(format!("{what}: a sprite part is its index, not {}", v.type_name()))),
+    };
+    u32::try_from(part).ok().filter(|p| *p < 32).ok_or_else(|| mlua::Error::runtime(format!("{what}: a sprite has parts 0 to 31, not {part}")))
+}
+
 fn object_value(lua: &Lua, o: Option<ObjectRef>) -> mlua::Result<LuaValue> {
     o.map_or(Ok(LuaValue::Nil), |o| Ok(LuaValue::UserData(object_handle(lua, o)?)))
 }
@@ -679,27 +793,46 @@ impl UserData for Object {
 
     fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
         for &f in ObjectField::ALL {
+            let shown = match f {
+                ObjectField::Element => Shown::Element,
+                ObjectField::Flip => Shown::Turned,
+                _ => Shown::Plain,
+            };
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| api.get(this.0, f).map_err(api_error))?;
-                from_api(lua, v, f.field_type())
+                show(lua, v, f.field_type(), shown)
             });
             if f.writable() {
                 fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
                     let o = object_of(&this)?;
-                    let v = to_api(v, f.field_type(), f.name())?;
+                    let v = take(v, f.field_type(), shown, f.name())?;
                     with(|api, _| api.set(o, f, v).map_err(api_error))
                 });
             }
         }
+        // The side whose way it faces: its own, or the other turned (its
+        // alliance ^ flip).
+        fields.add_field_method_get("facing_side", |_, this| {
+            let (side, flip) = with(|api, _| Ok((api.get(this.0, ObjectField::Alliance).map_err(api_error)?, api.get(this.0, ObjectField::Flip).map_err(api_error)?)))?;
+            match (side, flip) {
+                (Value::Int(side), Value::Int(flip)) => Ok(side ^ flip),
+                _ => unreachable!("alliance and flip are bytes"),
+            }
+        });
         for &f in ActorField::ALL {
+            let shown = match f {
+                ActorField::AttackElement => Shown::Element,
+                ActorField::NoChargeTimer => Shown::Holds,
+                _ => Shown::Plain,
+            };
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| api.actor_get(this.0, f).map_err(api_error))?;
-                from_api(lua, v, f.field_type())
+                show(lua, v, f.field_type(), shown)
             });
             if f.writable() {
                 fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
                     let o = object_of(&this)?;
-                    let v = to_api(v, f.field_type(), f.name())?;
+                    let v = take(v, f.field_type(), shown, f.name())?;
                     with(|api, _| api.actor_set(o, f, v).map_err(api_error))
                 });
             }
@@ -862,9 +995,25 @@ impl UserData for Object {
             let p = panel(x, y)?;
             with(|api, _| Ok(api.reserve_panel(this.0, p)))
         });
-        methods.add_method("set_header_flags", |_, this, flags: LuaValue| {
-            let flags = u8_arg(flags, "header flags")?;
-            with(|api, _| Ok(api.set_header_flags(this.0, flags)))
+        methods.add_method("set_header_flags", |_, this, flags: mlua::Table| {
+            let mut byte = 0u8;
+            for pair in flags.pairs::<LuaValue, LuaValue>() {
+                let (k, on) = pair?;
+                let name = match &k {
+                    LuaValue::String(s) => s.to_str()?.to_string(),
+                    k => return Err(mlua::Error::runtime(format!("set_header_flags: a flag is named, not {}", k.type_name()))),
+                };
+                let bit = HEADER_FLAGS.iter().find(|(n, _)| *n == name).map(|&(_, b)| b).ok_or_else(|| {
+                    let names: Vec<&str> = HEADER_FLAGS.iter().map(|(n, _)| *n).collect();
+                    mlua::Error::runtime(format!("set_header_flags: {name:?} is no header flag ({})", names.join(", ")))
+                })?;
+                match on {
+                    LuaValue::Boolean(true) => byte |= bit,
+                    LuaValue::Boolean(false) => {}
+                    v => return Err(mlua::Error::runtime(format!("set_header_flags: `{name}` is true or false, not {}", v.type_name()))),
+                }
+            }
+            with(|api, _| Ok(api.set_header_flags(this.0, byte)))
         });
         methods.add_method("unreserve_panel", |_, this, (x, y): (LuaValue, LuaValue)| {
             let p = panel(x, y)?;
@@ -924,14 +1073,28 @@ impl UserData for Object {
             let byte = |k: &str| -> mlua::Result<u8> {
                 u8::try_from(table_int(&t, k)?).map_err(|_| mlua::Error::runtime(format!("barrier `{k}` is not a byte")))
             };
-            let timer = u16::try_from(table_int(&t, "timer")?)
-                .map_err(|_| mlua::Error::runtime("barrier `timer` is not a halfword"))?;
+            // (No timer: the game's 0xFFFF, which never runs out.)
+            let timer = match t.raw_get::<LuaValue>("timer")? {
+                LuaValue::Nil => 0xFFFF,
+                v => match u16::try_from(int(&v, "barrier `timer`")?) {
+                    Ok(0xFFFF) | Err(_) => return Err(mlua::Error::runtime("barrier `timer` is a count below 0xffff (nil: none)")),
+                    Ok(n) => n,
+                },
+            };
+            // (Breaks to no element: the byte 0; null is no weak element.)
+            let weak_element = match t.raw_get::<LuaValue>("weak_element")? {
+                LuaValue::Nil => 0,
+                v => match crate::element::primary_arg(&v, "barrier `weak_element`")? {
+                    0 => return Err(mlua::Error::runtime("barrier `weak_element`: null breaks no barrier (nil: none)")),
+                    e => e,
+                },
+            };
             let spec = nettai_content_api::api::BarrierSpec {
                 behavior,
                 hp: byte("hp")?,
                 threshold: byte("threshold")?,
                 timer,
-                weak_element: byte("weak_element")?,
+                weak_element,
             };
             with(|api, _| api.raise_barrier(this.0, spec).map_err(api_error))
         });
@@ -1116,14 +1279,18 @@ impl UserData for Sprite {
 
     fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
         for &f in SpriteField::ALL {
+            let shown = sprite_shown(f);
             fields.add_field_method_get(f.name(), move |lua, this| {
+                if shown == Shown::Parts {
+                    return Ok(LuaValue::UserData(view(lua, View::HiddenParts(this.0, None))?));
+                }
                 let v = with(|api, _| Ok(api.sprite_get(this.0, f)))?;
-                from_api(lua, v, f.field_type())
+                show(lua, v, f.field_type(), shown)
             });
             if f.writable() {
                 fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
                     let o = this.borrow::<Sprite>()?.0;
-                    let v = to_api(v, f.field_type(), f.name())?;
+                    let v = take(v, f.field_type(), shown, f.name())?;
                     with(|api, _| api.sprite_set(o, f, v).map_err(api_error))
                 });
             }
@@ -1147,16 +1314,70 @@ impl UserData for Sprite {
             };
             with(|api, _| Ok(api.sprite_attach(this.0, to)))
         });
-        methods.add_method("set_flip", |_, this, flip: LuaValue| {
-            let flip = u8_arg(flip, "flip")?;
-            with(|api, _| {
-                api.sprite_set(this.0, SpriteField::HFlip, Value::Bool(flip & 1 != 0)).map_err(api_error)?;
-                api.sprite_set(this.0, SpriteField::VFlip, Value::Bool(flip & 2 != 0)).map_err(api_error)
-            })
+        // `sprite_setFlip` with the side whose way it faces: mirrored for
+        // side 1's way, never upside down. `face(o)`: the way `o` faces (its
+        // alliance ^ flip, as the game's routines pass it).
+        methods.add_method("face_side", |_, this, side: LuaValue| {
+            let side = u8_arg(side, "side")?;
+            if side > 1 {
+                return Err(mlua::Error::runtime(format!("sprite:face_side: a side is 0 or 1, not {side}")));
+            }
+            set_sprite_flip(this.0, side)
+        });
+        methods.add_method("face", |_, this, o: mlua::UserDataRef<Object>| {
+            let flip = with(|api, _| match (api.get(o.0, ObjectField::Alliance), api.get(o.0, ObjectField::Flip)) {
+                (Ok(Value::Int(side)), Ok(Value::Int(flip))) => Ok((side ^ flip) as u8),
+                (Err(e), _) | (_, Err(e)) => Err(api_error(e)),
+                _ => unreachable!("alliance and flip are bytes"),
+            })?;
+            set_sprite_flip(this.0, flip)
+        });
+        // The hidden parts as the engine keeps them for content: the word an
+        // absorbed obstacle's state `hidden_parts` holds, which the engine
+        // fills from the absorbed object's sprite (`fly_to_absorber`).
+        methods.add_method("hide_saved_parts", |_, this, saved: LuaValue| {
+            let w = u32::try_from(int(&saved, "saved parts")?).map_err(|_| mlua::Error::runtime("sprite:hide_saved_parts: expected a state's saved parts"))?;
+            with(|api, _| api.sprite_set(this.0, SpriteField::HiddenParts, Value::Int(i64::from(w))).map_err(api_error))
         });
         // Its fields as a console draws them.
         methods.add_method("console", |lua, this, side: LuaValue| view(lua, View::SpriteConsole(this.0, side_arg(side)?)));
     }
+}
+
+/// The header flag byte's bits, by name (`set_header_flags`): those the
+/// object's flag fields are, and the top two, which nothing reads.
+const HEADER_FLAGS: [(&str, u8); 8] = [
+    ("active", 0x01),
+    ("visible", 0x02),
+    ("run_while_paused", 0x04),
+    ("no_sprite_update", 0x08),
+    ("run_while_dimmed", 0x10),
+    ("holds_reservation", 0x20),
+    ("unused_low", 0x40),
+    ("unused_high", 0x80),
+];
+
+/// The side whose way an effect faces (the game's flip value's bit 0).
+fn facing_arg(v: LuaValue, what: &str) -> mlua::Result<u8> {
+    let side = u8_arg(v, "facing")?;
+    if side > 1 {
+        return Err(mlua::Error::runtime(format!("{what}: it faces a side's way, 0 or 1, not {side}")));
+    }
+    Ok(side)
+}
+
+/// How a sprite field is shown.
+fn sprite_shown(f: SpriteField) -> Shown {
+    if f == SpriteField::HiddenParts { Shown::Parts } else { Shown::Plain }
+}
+
+/// `sprite_setFlip` with the game's flip value (bit 0 horizontal, bit 1
+/// vertical), every console's.
+fn set_sprite_flip(o: ObjectRef, flip: u8) -> mlua::Result<()> {
+    with(|api, _| {
+        api.sprite_set(o, SpriteField::HFlip, Value::Bool(flip & 1 != 0)).map_err(api_error)?;
+        api.sprite_set(o, SpriteField::VFlip, Value::Bool(flip & 2 != 0)).map_err(api_error)
+    })
 }
 
 /// An object's collision registration (`Collision` in core.d.luau).
@@ -1172,18 +1393,47 @@ impl UserData for Collision {
 
     fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
         for &f in CollisionField::ALL {
+            // (The element is its two bytes as one `Element`, below; the
+            // guard's directions are `guarded_from`.)
+            if matches!(f, CollisionField::Element | CollisionField::SecondaryElement | CollisionField::GuardDirs) {
+                continue;
+            }
+            let shown = if f == CollisionField::DamageElements { Shown::Secondary } else { Shown::Plain };
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| api.collision_get(this.0, f).map_err(api_error))?;
-                from_api(lua, v, f.field_type())
+                show(lua, v, f.field_type(), shown)
             });
             if f.writable() {
                 fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
                     let o = this.borrow::<Collision>()?.0;
-                    let v = to_api(v, f.field_type(), f.name())?;
+                    let v = take(v, f.field_type(), shown, f.name())?;
                     with(|api, _| api.collision_set(o, f, v).map_err(api_error))
                 });
             }
         }
+        // The element its hits carry: the primary element (CollisionData+0x02)
+        // and the secondary elements (+0x19) as one value, as setup and
+        // `sub_8019F8C` take them from an element byte (the low four bits and
+        // the high four).
+        fields.add_field_method_get("element", |lua, this| {
+            let (p, s) = with(|api, _| {
+                let p = api.collision_get(this.0, CollisionField::Element).map_err(api_error)?;
+                let s = api.collision_get(this.0, CollisionField::SecondaryElement).map_err(api_error)?;
+                Ok((p, s))
+            })?;
+            match (p, s) {
+                (Value::Int(p), Value::Int(s)) => Ok(crate::element::value(lua, (p | s) as u8)?),
+                _ => unreachable!("the element bytes are bytes"),
+            }
+        });
+        fields.add_field_function_set("element", |_, this, v: LuaValue| {
+            let o = this.borrow::<Collision>()?.0;
+            let e = crate::element::arg(&v, "element")?;
+            with(|api, _| {
+                api.collision_set(o, CollisionField::Element, Value::Int(i64::from(e & 0xF))).map_err(api_error)?;
+                api.collision_set(o, CollisionField::SecondaryElement, Value::Int(i64::from(e & 0xF0))).map_err(api_error)
+            })
+        });
     }
 
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
@@ -1207,8 +1457,15 @@ impl UserData for Collision {
         methods.add_method("remove", |_, this, ()| with(|api, _| Ok(api.remove_collision(this.0))));
         methods.add_method("free", |_, this, ()| with(|api, _| Ok(api.free_collision(this.0))));
         methods.add_method("element_damage", |_, this, element: LuaValue| {
-            let element = u8_arg(element, "element")?;
+            let element = crate::element::primary_arg(&element, "element_damage")?;
             with(|api, _| api.collision_element_damage(this.0, element).map_err(api_error))
+        });
+        // A guard blocked a hit this window from a hitter turned so (its
+        // `flip`): the guard's directions, bit 1 << the hitter's flip.
+        methods.add_method("guarded_from", |_, this, turned: bool| {
+            let dirs = with(|api, _| api.collision_get(this.0, CollisionField::GuardDirs).map_err(api_error))?;
+            let Value::Int(dirs) = dirs else { unreachable!("a byte") };
+            Ok(dirs & (1 << u8::from(turned)) != 0)
         });
         methods.add_method("hit_by", |lua, this, ()| {
             let hitters = with(|api, _| api.collision_hit_by(this.0).map_err(api_error))?;
@@ -1221,17 +1478,11 @@ impl UserData for Collision {
             with(|api, _| api.collision_hit_any(this.0, bits).map_err(api_error))
         });
         methods.add_method("add_damage", |_, this, (element, amount, raw): (LuaValue, LuaValue, bool)| {
-            let (element, amount) = (u8_arg(element, "element")?, u16_arg(amount, "amount")?);
-            if element > 5 {
-                return Err(mlua::Error::runtime(format!("add_damage: element {element} (0 to 4, 5 the sixth slot)")));
-            }
+            let (element, amount) = (crate::element::primary_arg(&element, "add_damage")?, u16_arg(amount, "amount")?);
             with(|api, _| Ok(api.add_damage(this.0, element, amount, raw)))
         });
         methods.add_method("add_raw_damage", |_, this, (element, amount): (LuaValue, LuaValue)| {
-            let (element, amount) = (u8_arg(element, "element")?, u16_arg(amount, "amount")?);
-            if element > 5 {
-                return Err(mlua::Error::runtime(format!("add_raw_damage: element {element} (0 to 4, 5 the sixth slot)")));
-            }
+            let (element, amount) = (crate::element::primary_arg(&element, "add_raw_damage")?, u16_arg(amount, "amount")?);
             with(|api, _| Ok(api.add_raw_damage(this.0, element, amount)))
         });
         methods.add_method("add_mood_damage", |_, this, amount: LuaValue| {
@@ -1680,14 +1931,25 @@ pub struct Navi(nettai_content_api::StatsOf);
 impl UserData for Navi {
     fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
         for &f in NaviStat::ALL {
+            let shown = match f {
+                NaviStat::Element => Shown::Element,
+                NaviStat::Mood => Shown::Mood,
+                NaviStat::Folder1Regular
+                | NaviStat::Folder2Regular
+                | NaviStat::Folder1TagA
+                | NaviStat::Folder1TagB
+                | NaviStat::Folder2TagA
+                | NaviStat::Folder2TagB => Shown::NoneAt0xFF,
+                _ => Shown::Plain,
+            };
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| Ok(api.navi_stat(this.0, f)))?;
-                from_api(lua, v, f.field_type())
+                show(lua, v, f.field_type(), shown)
             });
             if f.writable() {
                 fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
                     let of = this.borrow::<Navi>()?.0;
-                    let v = to_api(v, f.field_type(), f.name())?;
+                    let v = take(v, f.field_type(), shown, f.name())?;
                     with(|api, _| api.set_navi_stat(of, f, v).map_err(api_error))
                 });
             }
@@ -1722,6 +1984,7 @@ enum View {
     FormTraits(ObjectRef),
     ObjectConsole(ObjectRef, u8),
     SpriteConsole(ObjectRef, u8),
+    HiddenParts(ObjectRef, Option<u8>),
     Hud(Option<u8>),
     HandEntry(u8, u8),
     Listening(u8),
@@ -1874,17 +2137,62 @@ impl UserData for SpriteConsole {
     fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
         for &f in SpriteField::ALL {
             fields.add_field_method_get(f.name(), move |lua, this| {
+                if sprite_shown(f) == Shown::Parts {
+                    return Ok(LuaValue::UserData(view(lua, View::HiddenParts(this.0, Some(this.1)))?));
+                }
                 let v = with(|api, _| Ok(api.sprite_get_for(this.0, f, this.1)))?;
-                from_api(lua, v, f.field_type())
+                show(lua, v, f.field_type(), sprite_shown(f))
             });
         }
         for f in CONSOLE_LOOKS {
             fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
                 let SpriteConsole(o, side) = *this.borrow::<SpriteConsole>()?;
-                let v = to_api(v, f.field_type(), f.name())?;
+                let v = take(v, f.field_type(), sprite_shown(f), f.name())?;
                 with(|api, _| api.sprite_set_for(o, f, side, v).map_err(api_error))
             });
         }
+    }
+}
+
+/// `sprite.hidden_parts`: a sprite's parts, each hidden or not by its index
+/// from 0 (`sprite.hidden_parts[6] = true`); `sprite:console(side).hidden_parts`,
+/// a console's.
+#[derive(Clone, Copy)]
+struct HiddenParts(ObjectRef, Option<u8>);
+
+impl HiddenParts {
+    fn word(self) -> mlua::Result<u32> {
+        let v = with(|api, _| {
+            Ok(match self.1 {
+                None => api.sprite_get(self.0, SpriteField::HiddenParts),
+                Some(side) => api.sprite_get_for(self.0, SpriteField::HiddenParts, side),
+            })
+        })?;
+        let Value::Int(w) = v else { unreachable!("the hidden parts are a word") };
+        Ok(w as u32)
+    }
+}
+
+impl UserData for HiddenParts {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
+        methods.add_meta_method(MetaMethod::Index, |_, this, part: LuaValue| {
+            let part = part_index(&part, "sprite.hidden_parts")?;
+            Ok(this.word()? & (0x8000_0000 >> part) != 0)
+        });
+        methods.add_meta_method(MetaMethod::NewIndex, |_, this, (part, hidden): (LuaValue, LuaValue)| {
+            let part = part_index(&part, "sprite.hidden_parts")?;
+            let LuaValue::Boolean(hidden) = hidden else {
+                return Err(mlua::Error::runtime(format!("sprite.hidden_parts[{part}] is true or false, not {}", hidden.type_name())));
+            };
+            let bit = 0x8000_0000u32 >> part;
+            let w = this.word()?;
+            let w = if hidden { w | bit } else { w & !bit };
+            let v = Value::Int(i64::from(w));
+            with(|api, _| match this.1 {
+                None => api.sprite_set(this.0, SpriteField::HiddenParts, v).map_err(api_error),
+                Some(side) => api.sprite_set_for(this.0, SpriteField::HiddenParts, side, v).map_err(api_error),
+            })
+        });
     }
 }
 
@@ -2037,8 +2345,8 @@ fn table_int(t: &mlua::Table, key: &str) -> mlua::Result<i64> {
     if v.is_nil() { Ok(0) } else { int(&v, key) }
 }
 
-/// Install `battle`, `field`, `dimming`, `navi_chip`, `obstacle`, `Vec3`
-/// and `int`.
+/// Install `battle`, `field`, `dimming`, `navi_chip`, `obstacle`, `Vec3`,
+/// `Element` and `int`.
 pub fn install(lua: &Lua) -> mlua::Result<()> {
     let g = lua.globals();
     g.set("battle", battle_lib(lua)?)?;
@@ -2075,6 +2383,7 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
 
     g.set("int", int_lib(lua)?)?;
     g.set("schema", crate::schema::lib(lua)?)?;
+    g.set("Element", crate::element::lib(lua)?)?;
     g.set("rules", rules_lib(lua)?)?;
     g.set("custom", custom_lib(lua)?)?;
     Ok(())
@@ -2510,11 +2819,17 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.cycle(which)))
     });
     lib_fn!(lua, t, "weakness", |_, (receiver, hitter): (LuaValue, LuaValue)| {
-        let (receiver, hitter) = (u8_arg(receiver, "receiver")?, u8_arg(hitter, "hitter")?);
-        if receiver > 5 || hitter > 5 {
-            return Err(mlua::Error::runtime(format!("battle.weakness({receiver}, {hitter}): elements are 0 to 5")));
-        }
+        let receiver = crate::element::primary_arg(&receiver, "battle.weakness's receiver")?;
+        let hitter = crate::element::primary_arg(&hitter, "battle.weakness's hitter")?;
         with(|api, _| Ok(api.weakness(receiver, hitter)))
+    });
+    // The other side: 1 for 0, 0 for 1.
+    lib_fn!(lua, t, "other_side", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")?;
+        if side > 1 {
+            return Err(mlua::Error::runtime(format!("battle.other_side: a side is 0 or 1, not {side}")));
+        }
+        Ok(side ^ 1)
     });
     lib_fn!(lua, t, "lose_round", |_, side: u8| with(|api, _| {
         api.lose_round(side & 1);
@@ -2631,7 +2946,9 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.emotion(side)))
     });
     lib_fn!(lua, t, "set_mood", |_, (side, mood): (LuaValue, LuaValue)| {
-        let (side, mood) = (u8_arg(side, "side")? & 1, u8_arg(mood, "mood")?);
+        let side = u8_arg(side, "side")? & 1;
+        let Value::Int(mood) = take(mood, &FieldType::U8, Shown::Mood, "battle.set_mood's mood")? else { unreachable!("a mood") };
+        let mood = u8::try_from(mood).map_err(|_| mlua::Error::runtime(format!("battle.set_mood: a mood is a byte, not {mood}")))?;
         with(|api, _| Ok(api.set_mood(side, mood)))
     });
     // The folder a tool asks the rules to check (`folder_check`): { side,
@@ -2892,18 +3209,24 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         lua,
         t,
         "effect",
-        |lua, (pos, id, flip, palette_add, priority): (
+        |lua, (pos, id, facing, palette_add, priority, upside_down): (
             mlua::UserDataRef<LVec3>,
             LuaValue,
             Option<LuaValue>,
             Option<LuaValue>,
-            Option<LuaValue>
+            Option<LuaValue>,
+            Option<bool>
         )| {
             let opt = |v: Option<LuaValue>, what| v.map_or(Ok(0), |v| u8_arg(v, what));
-            // (A flip, or each side's console's: { side 0's, side 1's }.)
-            let flips = match flip {
-                Some(LuaValue::Table(t)) => [u8_arg(t.raw_get(1)?, "flip")?, u8_arg(t.raw_get(2)?, "flip")?],
-                flip => [opt(flip, "flip")?; 2],
+            // (The side whose way it faces, or each side's console's: { side
+            // 0's, side 1's }; upside down, the game's flip value's bit 1.)
+            let vertical = if upside_down.unwrap_or(false) { 2 } else { 0 };
+            let flips = match facing {
+                Some(LuaValue::Table(t)) => {
+                    [facing_arg(t.raw_get(1)?, "battle.effect")? | vertical, facing_arg(t.raw_get(2)?, "battle.effect")? | vertical]
+                }
+                Some(v) => [facing_arg(v, "battle.effect")? | vertical; 2],
+                None => [vertical; 2],
             };
             let (add, prio) = (opt(palette_add, "palette")?, opt(priority, "priority")?);
             let o = with(|api, b| {
@@ -2917,7 +3240,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         lua,
         t,
         "effect_after_spawn",
-        |lua, (z, id, flip, palette_add, priority): (
+        |lua, (z, id, facing, palette_add, priority): (
             i32,
             LuaValue,
             Option<LuaValue>,
@@ -2925,7 +3248,8 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             Option<LuaValue>
         )| {
             let opt = |v: Option<LuaValue>, what| v.map_or(Ok(0), |v| u8_arg(v, what));
-            let (flip, add, prio) = (opt(flip, "flip")?, opt(palette_add, "palette")?, opt(priority, "priority")?);
+            let flip = facing.map_or(Ok(0), |v| facing_arg(v, "battle.effect_after_spawn"))?;
+            let (add, prio) = (opt(palette_add, "palette")?, opt(priority, "priority")?);
             let o = with(|api, b| {
                 let look = EffectHandle(def_arg(b, &id, Registry::Effect, "battle.effect_after_spawn")?);
                 Ok(api.spawn_effect_after_spawn(z, look, flip, add, prio))
@@ -2978,7 +3302,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         };
         let s = HitboxSpec {
             panel: PanelPos { x: table_int(&spec, "panel_x")? as u8, y: table_int(&spec, "panel_y")? as u8 },
-            element: table_int(&spec, "element")? as u8,
+            element: crate::element::arg(&spec.raw_get("element")?, "battle.hitbox's element")?,
             z: table_int(&spec, "z")? as i32,
             region: def("region", Registry::Region)?.map(RegionHandle),
             hit_effect: def("hit_effect", Registry::Spark)?.map(SparkHandle),
@@ -3037,6 +3361,17 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         t,
         "afterimage",
         |lua, (owner, pos, spec): (mlua::UserDataRef<Object>, mlua::UserDataRef<LVec3>, mlua::Table)| {
+            // (luau-analyze lets a table's extra keys through: one the spec
+            // hasn't is refused here.)
+            const KEYS: [&str; 10] =
+                ["sprite", "anim", "facing", "upside_down", "lifetime", "color_shader", "palette", "shadow", "steady", "tether"];
+            for pair in spec.pairs::<LuaValue, LuaValue>() {
+                let (k, _) = pair?;
+                let known = matches!(&k, LuaValue::String(s) if KEYS.contains(&&*s.to_str()?));
+                if !known {
+                    return Err(mlua::Error::runtime(format!("battle.afterimage: {k:?} is no field of an afterimage's spec ({})", KEYS.join(", "))));
+                }
+            }
             let sprite: LuaValue = spec.raw_get("sprite")?;
             let shadow: Option<mlua::LuaString> = spec.raw_get("shadow")?;
             let shadow = match shadow {
@@ -3055,7 +3390,11 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             let s = nettai_content_api::api::AfterimageSpec {
                 sprite: if sprite.is_nil() { None } else { Some(sprite_id(sprite)?) },
                 anim: table_int(&spec, "anim")? as u8,
-                flip: table_int(&spec, "flip")? as u8,
+                flip: {
+                    let facing: LuaValue = spec.raw_get("facing")?;
+                    let facing = if facing.is_nil() { 0 } else { facing_arg(facing, "battle.afterimage's facing")? };
+                    facing | if spec.raw_get::<Option<bool>>("upside_down")?.unwrap_or(false) { 2 } else { 0 }
+                },
                 lifetime: table_int(&spec, "lifetime")? as u16,
                 color_shader: table_int(&spec, "color_shader")? as u16,
                 palette: table_int(&spec, "palette")? as u8,
@@ -3605,7 +3944,7 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
         HookCall::Weapon { navi } => vec![obj(navi)?],
         HookCall::DimmingChip { user, spec } => {
             let t = lua.create_table()?;
-            t.raw_set("element", spec.element)?;
+            t.raw_set("element", crate::element::value(lua, spec.element)?)?;
             t.raw_set("damage", spec.damage)?;
             t.raw_set("chip", chip_value(bound, spec.chip)?)?;
             t.raw_set("bonus", spec.bonus)?;
@@ -3615,7 +3954,7 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             let t = lua.create_table()?;
             t.raw_set("panel_x", spec.panel.x)?;
             t.raw_set("panel_y", spec.panel.y)?;
-            t.raw_set("element", spec.element)?;
+            t.raw_set("element", crate::element::value(lua, spec.element)?)?;
             t.raw_set("z", spec.z)?;
             t.raw_set("damage", spec.damage)?;
             vec![obj(user)?, LuaValue::Table(t)]
@@ -3640,7 +3979,10 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
         HookCall::Panel(PanelCall::Burn { body, player }) => vec![obj(body)?, LuaValue::Boolean(player)],
         HookCall::Panel(PanelCall::Stand { body } | PanelCall::Rest { body } | PanelCall::MoveEnd { body }) => vec![obj(body)?],
         HookCall::Panel(PanelCall::Slide { body, how }) => vec![obj(body)?, LuaValue::String(lua.create_string(how.name())?)],
-        HookCall::Panel(PanelCall::Hit { body, element }) => vec![obj(body)?, LuaValue::Integer(mlua::Integer::from(element))],
+        HookCall::Panel(PanelCall::Hit { body, element }) => vec![
+            obj(body)?,
+            crate::element::PRIMARY.get(element as usize).map_or(Ok(LuaValue::Nil), |n| lua.create_string(n).map(LuaValue::String))?,
+        ],
         HookCall::Panel(PanelCall::Tick { x, y } | PanelCall::Changed { x, y } | PanelCall::Start { x, y }) => {
             vec![LuaValue::Integer(mlua::Integer::from(x)), LuaValue::Integer(mlua::Integer::from(y))]
         }
@@ -3702,7 +4044,10 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
                 v.push(obj(o)?);
             }
             v.push(n(member));
-            v.push(n(mood));
+            v.push(match mood {
+                Some(m) => show(lua, Value::Int(i64::from(m)), &FieldType::U8, Shown::Mood)?,
+                None => LuaValue::Nil,
+            });
             while v.len() > 1 && v.last().is_some_and(LuaValue::is_nil) {
                 v.pop();
             }
@@ -3851,8 +4196,16 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             },
             _ => Err(mlua::Error::runtime(format!("a button's state is its name, not a {}", v.type_name()))),
         },
-        // A mood or a palette.
-        HookCall::Rules { hook: hook @ (RulesHook::StartingMood | RulesHook::NaviPalette), .. } => match &v {
+        // A mood (a byte, or "full_synchro": the byte 0xFF).
+        HookCall::Rules { hook: RulesHook::StartingMood, .. } => match &v {
+            LuaValue::Nil => Ok(Value::Nil),
+            LuaValue::String(_) => take(v.clone(), &FieldType::U8, Shown::Mood, "starting_mood"),
+            LuaValue::Integer(n) if (0..0xFF).contains(n) => Ok(Value::Int(i64::from(*n))),
+            LuaValue::Number(n) if n.fract() == 0.0 && (0.0..255.0).contains(n) => Ok(Value::Int(*n as i64)),
+            _ => Err(mlua::Error::runtime(format!("starting_mood returns a mood (a byte below 0xff, or \"full_synchro\") or nil, not {v:?}"))),
+        },
+        // A palette.
+        HookCall::Rules { hook: hook @ RulesHook::NaviPalette, .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
             LuaValue::Integer(n) if (0..=255).contains(n) => Ok(Value::Int(i64::from(*n))),
             LuaValue::Number(n) if n.fract() == 0.0 && (0.0..=255.0).contains(n) => Ok(Value::Int(*n as i64)),

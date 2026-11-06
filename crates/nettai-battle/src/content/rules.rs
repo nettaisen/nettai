@@ -1709,8 +1709,9 @@ pub struct EmotionCase {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct EmotionWhen {
-    /// The side's mood is this (0xFF: Full Synchro's), or under this.
-    #[serde(default)]
+    /// The side's mood is this (in a content file a byte, or
+    /// "full_synchro": the byte 0xFF), or under this.
+    #[serde(default, deserialize_with = "mood")]
     pub mood: Option<u8>,
     #[serde(default)]
     pub mood_below: Option<u8>,
@@ -1727,6 +1728,23 @@ pub struct EmotionWhen {
     /// The battle's mode is this.
     #[serde(default)]
     pub battle_mode: Option<u8>,
+}
+
+/// A mood as a content file states it: a byte, or "full_synchro" (the byte
+/// 0xFF, which a number may not state).
+fn mood<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<u8>, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Mood {
+        Byte(u8),
+        Named(String),
+    }
+    match Mood::deserialize(d)? {
+        Mood::Byte(0xFF) => Err(serde::de::Error::custom("the mood 0xff is \"full_synchro\", by name")),
+        Mood::Byte(n) => Ok(Some(n)),
+        Mood::Named(s) if s == "full_synchro" => Ok(Some(0xFF)),
+        Mood::Named(s) => Err(serde::de::Error::custom(format!("{s:?} is no mood (a byte, or \"full_synchro\")"))),
+    }
 }
 
 /// The facts the emotions' order reads of a side.
@@ -2751,3 +2769,18 @@ impl SlideVector {
 }
 
 
+
+#[cfg(test)]
+mod named_moods {
+    use super::EmotionWhen;
+
+    /// Full Synchro's mood is named; the byte is no form of it.
+    #[test]
+    fn full_synchro_is_named() {
+        let read = |j: serde_json::Value| serde_json::from_value::<EmotionWhen>(j).map(|w| w.mood).map_err(|e| e.to_string());
+        assert_eq!(read(serde_json::json!({ "mood": "full_synchro" })), Ok(Some(0xFF)));
+        assert_eq!(read(serde_json::json!({ "mood": 0 })), Ok(Some(0)));
+        assert_eq!(read(serde_json::json!({})), Ok(None));
+        assert!(read(serde_json::json!({ "mood": 255 })).unwrap_err().contains("full_synchro"));
+    }
+}

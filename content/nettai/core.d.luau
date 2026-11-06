@@ -56,7 +56,11 @@
 -- and panel flags are names too: a collision type by its members
 -- (`new.collision`), a hit by them (`Collision:hit_any`), a panel by its
 -- flags (`field.check`, `field.any`), each a side's own (`own_`) or the other
--- side's (`enemy_`) where it is of a side. The original's numbers that are
+-- side's (`enemy_`) where it is of a side. An element is a value made and
+-- read by names (`Element.new("fire", { sword = true })`, `e.primary`), a
+-- turn a boolean (`me.flip`), a sprite's parts a view by index, and a
+-- sentinel a name or nil ("full_synchro", "holds"); a set is a table of
+-- names to booleans, never a list. The original's numbers that are
 -- the game's own data (sound ids, animation numbers, hit regions) are the
 -- scripts' constants, named where they're defined.
 
@@ -356,8 +360,9 @@ export type StepDirection = "up" | "down" | "back" | "forward"
 -- A buffered auto-step's direction (`me.buffered_move`): none, the four, or an absolute step's.
 export type BufferedMove = "none" | StepDirection | "absolute"
 -- Which way a collision region's anchor last moved (`collision.direction`): none, the four, or other (two panels or
--- more).
-export type MoveDirection = "none" | StepDirection | "other"
+-- more). In a game whose moves go by the field's left and right whatever the side (its reactions' `move_direction`
+-- "absolute": EXE4's), across is "left" or "right", never "back" or "forward".
+export type MoveDirection = "none" | StepDirection | "other" | "left" | "right"
 -- A navi's charge (`me.charge_level`), and what it charges with (`me.charge_source`).
 export type ChargeLevel = "none" | "charging" | "full"
 export type ChargeSource = "none" | "a" | "b"
@@ -614,8 +619,12 @@ declare extern type SpriteConsole with
     color_shader: number
     alpha: number?
     mosaic: number?
-    hidden_parts: number
+    hidden_parts: HiddenParts
 end
+-- A sprite's parts, each hidden or not by its index from 0 (`sprite.hidden_parts[6] = true`): read, each part's;
+-- set whole, the parts the table hides (`sprite.hidden_parts = { [6] = true }`: every other part shown). A part past
+-- 31 or a value not true or false is an error.
+export type HiddenParts = { [number]: boolean }
 -- A 16.16 fixed-point vector (x right, y down the field, z up). Immutable.
 declare extern type Vec3 with
     x: number
@@ -631,6 +640,59 @@ declare Vec3: {
     -- From whole pixels.
     px: (x: number, y: number, z: number) -> Vec3,
     zero: Vec3,
+}
+
+-- A primary element, by name: the five a chip or a navi has, and the drain (the sixth damage slot: what poison and a
+-- field's drain deal, past barriers, holy panels and Undershirt).
+export type PrimaryElement = ElementName | "drain"
+-- An element: an attack's primary element and its secondary elements, as objects, attacks, navis and collisions
+-- carry it (the original's element byte). A value: made by names, compared with `==`, passed whole (`o.element =
+-- me.element`).
+declare extern type Element with
+    -- Its primary element (nil: a number past the drain, which only an element written from another number holds).
+    primary: PrimaryElement?
+    -- Its secondary elements, each by name (`e.secondary.sword`; read-only).
+    secondary: SecondaryElements
+    -- The byte, for where the original holds an element as a number: where its registers carry the element into a
+    -- coordinate (a spawn's position: `Vec3.new(y, element.byte, z)`), and the bytes its data holds (a patch card's
+    -- block). Nothing else reads it.
+    byte: number
+end
+-- The secondary elements, each true or false (`Element.new("null", { sword = true })`; written `["break"]`, a
+-- keyword). Given whole, a name not one of them or a value not true or false is an error.
+export type SecondaryElements = { ["break"]: boolean?, wind: boolean?, cursor: boolean?, sword: boolean? }
+
+declare Element: {
+    -- The element `primary` with the secondary elements `secondary` holds true.
+    new: (primary: PrimaryElement, secondary: SecondaryElements?) -> Element,
+    -- The element whose byte is `byte` (0 to 255): where the original holds a number as an element, its data (a
+    -- NaviCust bug code's argument, a patch card's block) or a register holding something else (a side, a
+    -- coordinate's low byte, which its writes store as the element).
+    from_byte: (byte: number) -> Element,
+    -- The primary elements alone.
+    null: Element,
+    fire: Element,
+    aqua: Element,
+    elec: Element,
+    wood: Element,
+    drain: Element,
+}
+
+-- A navi's mood (0 worn out, 0x80 normal, up to 254), or Full Synchro.
+export type Mood = number | "full_synchro"
+
+-- The header flag byte, by name (`set_header_flags`): those the object's flag fields are (`active` its slot in use),
+-- and the top two bits, which nothing reads. Those left out are clear; a name not one of them or a value not true or
+-- false is an error.
+export type HeaderFlags = {
+    active: boolean?,
+    visible: boolean?,
+    run_while_paused: boolean?,
+    no_sprite_update: boolean?,
+    run_while_dimmed: boolean?,
+    holds_reservation: boolean?,
+    unused_low: boolean?,
+    unused_high: boolean?,
 }
 
 -- How an object's sprite is drawn, and its animation.
@@ -652,8 +714,8 @@ declare extern type Sprite with
     mosaic: number?
     -- Priority against the background layers (0 = frontmost).
     priority: number
-    -- Parts not drawn: bit 31 - i hides part i.
-    hidden_parts: number
+    -- Its parts not drawn (HiddenParts).
+    hidden_parts: HiddenParts
     -- The animation playing (read-only).
     animation: number
     -- How many times the sprite has stepped since its animation started
@@ -674,8 +736,13 @@ declare extern type Sprite with
     -- position, mirrored with the owner's flip); nil: where the object is.
     -- Presentation: what rides on another's sprite. (Loading a sprite drops it.)
     function attach(self, owner: Object?, part: number?): ()
-    -- The game's flip value: bit 0 horizontal, bit 1 vertical.
-    function set_flip(self, flip: number): ()
+    -- `sprite_setFlip`: turned the way `o` faces (`o.facing_side`'s way: mirrored for side 1's), never upside down.
+    function face(self, o: Object): ()
+    -- The same, the way side `side` (0 or 1) faces. (`hflip` and `vflip` turn it either way.)
+    function face_side(self, side: number): ()
+    -- The parts an engine-saved state field hides: an absorbed obstacle's `hidden_parts`, which the engine fills from
+    -- the absorbed object's sprite (its whole word, as the original copies it), every other part shown.
+    function hide_saved_parts(self, saved: number): ()
     -- Its fields as side `side`'s console (0 or 1) draws them.
     function console(self, side: number): SpriteConsole
 end
@@ -693,11 +760,10 @@ declare extern type Collision with
     panel_x: number
     panel_y: number
     hit_effect: Spark?
-    -- The primary element its hits carry and the secondary elements (sword
-    -- 0x80, cursor 0x40, wind 0x20, break 0x10): setup takes them from the
-    -- object's element byte; `sub_8019F8C` sets them again.
-    element: number
-    secondary_element: number
+    -- The element its hits carry, its primary element and its secondary
+    -- elements (CollisionData+0x02 and +0x19): setup takes it from the
+    -- object's element; `sub_8019F8C` sets it again.
+    element: Element
     -- The status its hits carry (rules/status), if any.
     status_base: Status?
     -- The status it takes this window (its hits', a counter's, or one the
@@ -732,12 +798,8 @@ declare extern type Collision with
     final_damage: number
     -- Which way the region's anchor last moved (read-only).
     direction: MoveDirection
-    -- The directions (bit 1 << the hitter's flip) a guard blocked hits
-    -- from this window (read-only).
-    guard_dirs: number
-    -- The secondary elements (sword 0x80, cursor 0x40, wind 0x20, break
-    -- 0x10) of what hit it this window (read-only).
-    damage_elements: number
+    -- The secondary elements of what hit it this window (read-only).
+    damage_elements: SecondaryElements
     -- The hit modifiers of what hit it this window (HitModifierFinal; 0x3C
     -- the pushes, 0x40 a pushing hit; read-only).
     hit_mod_final: number
@@ -759,9 +821,12 @@ declare extern type Collision with
     -- Unregister, resolving hits against what is registered there.
     function remove(self): ()
     function free(self): ()
-    -- The damage taken this window in an element (0 null, 1 fire, 2 aqua,
-    -- 3 elec, 4 wood; 5 the sixth slot).
-    function element_damage(self, element: number): number
+    -- The damage taken this window in a primary element (each element's
+    -- slot, and the drain's).
+    function element_damage(self, element: PrimaryElement): number
+    -- A guard blocked a hit this window from a hitter turned so (its
+    -- `flip`): the guard's directions.
+    function guarded_from(self, turned: boolean): boolean
     -- `sub_801A4DC`: the objects whose collisions hit it this window, in
     -- slot order.
     function hit_by(self): { Object }
@@ -770,12 +835,13 @@ declare extern type Collision with
     -- `c:hit_any(ENEMY_BODIES)`. A name, or a list a module keeps, is read
     -- once.
     function hit_any(self, names: HitName | { HitName }): boolean
-    -- Add to the damage taken this window in an element (0 to 4, 5 the
-    -- sixth slot), and to the raw damage barriers and traps see where `raw`.
-    function add_damage(self, element: number, amount: number, raw: boolean): ()
+    -- Add to the damage taken this window in a primary element (the drain:
+    -- the slot no barrier, holy panel or Undershirt touches), and to the raw
+    -- damage barriers and traps see where `raw`.
+    function add_damage(self, element: PrimaryElement, amount: number, raw: boolean): ()
     -- Add to the raw damage alone (what barriers and traps see) this window
-    -- in an element.
-    function add_raw_damage(self, element: number, amount: number): ()
+    -- in a primary element.
+    function add_raw_damage(self, element: PrimaryElement, amount: number): ()
     -- Add to the mood damage taken this window.
     function add_mood_damage(self, amount: number): ()
     -- Set hit modifier bits this window, both sides' too.
@@ -806,14 +872,17 @@ declare extern type Object with
     future_panel_y: number
     -- 0 = left side, 1 = right side.
     alliance: number
-    -- Facing is alliance ~ flip; see `facing`.
-    flip: number
+    -- Turned against its side's way: it faces the other side's way.
+    flip: boolean
+    -- The side whose way it faces: its alliance, or the other side turned
+    -- (read-only).
+    facing_side: number
     -- +1 facing right, -1 facing left (read-only).
     facing: number
     -- The requested animation, and the one the sprite has.
     anim: number
     anim_loaded: number
-    element: number
+    element: Element
     timer: number
     timer2: number
     hp: number
@@ -874,7 +943,7 @@ declare extern type Object with
     -- parts (`navi.attack_chip.action`), and what an action that becomes
     -- another chip's sets.
     attack_chip: Chip?
-    attack_element: number
+    attack_element: Element
     attack_damage: number
     -- The attack's bonus from its hand entry (the Atk+ and charge bonuses; read-only).
     attack_extra: number
@@ -984,10 +1053,10 @@ declare extern type Object with
     primed: boolean
     -- Writable: EXE5's no-charge drive (DarkInvs): its ticks left
     -- (AIData+0x36; counted down in the intake while the navi has the
-    -- no-charge state, asking for the stun strike at 0; 0xFFFF holds), and
-    -- the auto battle AI driving it (AIData+0xF0, which VarSwrd's pick
-    -- reads).
-    no_charge_timer: number
+    -- no-charge state, asking for the stun strike at 0; "holds": never
+    -- counted down), and the auto battle AI driving it (AIData+0xF0, which
+    -- VarSwrd's pick reads).
+    no_charge_timer: number | "holds"
     in_auto_battle: boolean
     -- Writable: the ticks of anger left, and the consecutive ticks spent
     -- flinching or paralyzed (120 make MegaMan angry): what anger's end
@@ -1131,12 +1200,11 @@ declare extern type Object with
     -- the low half, the counter byte above (the object's damage and
     -- stamina).
     function set_damage_word(self, word: number): ()
-    -- Replace the whole header flag byte (the flags above are its bits: in
-    -- use 0x01, `visible` 0x02, `run_while_paused` 0x04, `no_sprite_update`
-    -- 0x08, `run_while_dimmed` 0x10, `holds_reservation` 0x20; 0x40 and
-    -- 0x80 nothing reads): what a spawner's bug leaves (the boulder's reads
-    -- the byte from the wrong address). Everything else sets flags by name.
-    function set_header_flags(self, flags: number): ()
+    -- Replace the whole header flag byte with the flags `flags` sets (the
+    -- others clear): what a spawner's bug leaves (the boulder's reads the
+    -- byte from the wrong address). Everything else sets the flags each by
+    -- its field.
+    function set_header_flags(self, flags: HeaderFlags): ()
     -- `object_spawnCollisionEffect`: the hit spark after a hit (one RNG
     -- draw when it shows).
     function hit_spark(self): ()
@@ -1295,12 +1363,12 @@ declare extern type Navi with
     -- MegaMan's variant (+0x2B, his move lag): his base HP in hundreds.
     navi_variant: number
     -- The base form's element.
-    element: number
+    element: Element
     -- The buster's attack level (writable: `SetBattleNaviStatsByte`).
     attack: number
     rapid: number
     charge: number
-    mood: number
+    mood: Mood
     -- (`form` is writable too: a game's form change puts the navi in it.)
     -- The form the navi started the battle in (writable: a bug code puts
     -- the base form there), and its base form.
@@ -1370,14 +1438,14 @@ declare extern type Navi with
     starting_damage: number
     -- The folder the navi brings (+0x2D, 0 to 2), the folders' Regular
     -- chips (+0x2E, +0x2F) and tag chips (+0x56 to +0x59), entries as the
-    -- save keeps them (0xFF none).
+    -- save keeps them (nil: none).
     folder: number
-    folder_1_regular: number
-    folder_2_regular: number
-    folder_1_tag_a: number
-    folder_1_tag_b: number
-    folder_2_tag_a: number
-    folder_2_tag_b: number
+    folder_1_regular: number?
+    folder_2_regular: number?
+    folder_1_tag_a: number?
+    folder_1_tag_b: number?
+    folder_2_tag_a: number?
+    folder_2_tag_b: number?
     -- The weapons of the A button's charge (+0x39) and of battle mode 9's A
     -- button (+0x44); nil: none.
     a_charge_weapon: Weapon?
@@ -1394,7 +1462,7 @@ end
 export type HitboxSpec = {
     panel_x: number,
     panel_y: number,
-    element: number,
+    element: Element,
     z: number?,
     -- The region it covers and the spark its hits show (definitions; nil,
     -- none).
@@ -1414,8 +1482,9 @@ export type HitboxSpec = {
 
 -- An afterimage (`battle.afterimage`): `anim` of `sprite` (or, without
 -- one, a copy of the owner's sprite, wearing its form's overlay where the
--- game's afterimages do: the effects rule `afterimages_wear_overlays`), flipped
--- by the game's flip value, for `lifetime` ticks, blinking unless
+-- game's afterimages do: the effects rule `afterimages_wear_overlays`), turned
+-- the way side `facing` faces (none: side 0's) and upside down where
+-- `upside_down`, for `lifetime` ticks, blinking unless
 -- `steady`; its shadow at its height unless said otherwise. It ends early
 -- with its `tether`: when its side leaves the forms whose afterimages stay
 -- (the form trait `afterimages_stay`: EXE6's Beast forms), or when its owner
@@ -1423,7 +1492,8 @@ export type HitboxSpec = {
 export type AfterimageSpec = {
     sprite: SpriteAsset?,
     anim: number?,
-    flip: number?,
+    facing: number?,
+    upside_down: boolean?,
     lifetime: number,
     color_shader: number?,
     palette: number?,
@@ -1481,19 +1551,19 @@ export type BarrierState = "none" | "up" | "popped"
 -- tick says (`status.intake.barrier.regrowing`: EXE4's BlakBarr).
 export type BarrierBehavior = "plain" | "bubble" | "regenerating" | "regrowing"
 -- `sub_801A7CC`'s row (`me:raise_barrier`): its HP, the damage a hit must
--- reach to wear it, its timer (0xFFFF: none) and the element that breaks
--- it (an element byte; 0: none).
+-- reach to wear it, its timer (nil: none, it never runs out) and the
+-- element whose damage breaks it (nil: none; not null).
 export type BarrierSpec = {
     behavior: BarrierBehavior,
     hp: number,
     threshold: number,
-    timer: number,
-    weak_element: number,
+    timer: number?,
+    weak_element: PrimaryElement?,
 }
 
 -- What a dimming chip's controller is spawned with: the user's attack.
 export type DimmingChipSpec = {
-    element: number,
+    element: Element,
     -- The damage word (damage | hit parameter << 16).
     damage: number,
     -- The chip (nil: an attack without one), and the bonus the telop shows
@@ -1508,7 +1578,7 @@ export type InstantChipSpec = {
     panel_x: number,
     panel_y: number,
     z: number,
-    element: number,
+    element: Element,
     -- The damage word (damage | hit parameter << 16) plus the bonus's low
     -- byte.
     damage: number,
@@ -1541,9 +1611,11 @@ declare battle: {
     -- rules' `flow.fight_cycles`: EXE6's and EXE5's 20 and 180, EXE4's 10
     -- and 2), which grass heals by.
     cycle: (which: FightCycle) -> number,
-    -- The shift a hit of element `hitter` takes against a body of element
-    -- `receiver` (the rules' `elements.weakness`).
-    weakness: (receiver: number, hitter: number) -> number,
+    -- The shift a hit of primary element `hitter` takes against a body of
+    -- primary element `receiver` (the rules' `elements.weakness`).
+    weakness: (receiver: PrimaryElement, hitter: PrimaryElement) -> number,
+    -- The other side: 1 for side 0, 0 for side 1.
+    other_side: (side: number) -> number,
     -- `sub_80D8DEE` (EXE4's 0x080E0842): `side` loses the round: its actor
     -- count (what the fight's result reads) to 0 and the round's time-up
     -- byte set (and battle flag 8, which nothing in EXE4 reads).
@@ -1637,7 +1709,7 @@ declare battle: {
     mic_level: (side: number) -> number,
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
-    set_mood: (side: number, mood: number) -> (),
+    set_mood: (side: number, mood: Mood) -> (),
     -- A definition's name in the content's own strings (its locales'
     -- language), else its key: for what the rules say to a tool
     -- (`validate`).
@@ -1744,14 +1816,22 @@ declare battle: {
     -- list (it runs after everything else this tick).
     spawn_at_end: (kind: Kind, pos: Vec3?) -> Object?,
     -- The generic one-shot effect (effect object #0) an effect definition
-    -- describes. `flip` is the game's flip value, or each side's console's
-    -- ({ side 0's, side 1's }: an effect each console turns its own way,
-    -- where the original passes the console's side).
-    effect: (pos: Vec3, effect: Effect, flip: (number | { number })?, palette_add: number?, priority: number?) -> Object?,
+    -- describes, turned the way side `facing` faces (none: side 0's), or
+    -- each side's console's ({ side 0's, side 1's }: an effect each console
+    -- turns its own way, where the original passes the console's side), and
+    -- upside down where `upside_down`.
+    effect: (
+        pos: Vec3,
+        effect: Effect,
+        facing: (number | { number })?,
+        palette_add: number?,
+        priority: number?,
+        upside_down: boolean?
+    ) -> Object?,
     -- The same spawner called again straight after a spawn, at height z:
     -- its X and Y what the object allocator left in their registers (list
     -- node addresses), which the engine doesn't know.
-    effect_after_spawn: (z: number, effect: Effect, flip: number?, palette_add: number?, priority: number?) -> Object?,
+    effect_after_spawn: (z: number, effect: Effect, facing: number?, palette_add: number?, priority: number?) -> Object?,
     -- `sub_801BD3C`: the one-shot effect `effect` on each field panel of
     -- hit region `region` around (x, y), turned the way side `side` faces,
     -- at height z (default 0); a whole-field region's from the bottom
@@ -2572,7 +2652,7 @@ export type RulesSpec = {
         -- The mood the side's navi starts the round with (`sub_8015C2C`'s
         -- 0x80, where `sub_8013892` sets it; EXE5's by the light/dark value,
         -- 0x0801283A); none, 0x80.
-        starting_mood: ((side: number) -> number?)?,
+        starting_mood: ((side: number) -> Mood?)?,
         -- Each tick, the sprite palette of the side's navi of a player's
         -- kind (presentation; `sub_801002C`, EXE5's 0x0800DD94); none, the
         -- framework's (EXE6's). Asked again only when the navi, its side's
@@ -2624,8 +2704,8 @@ export type RulesSpec = {
         member_busy: ((side: number, member: number) -> boolean?)?,
         -- A switch of the side's party settled, in battle or while paused (`battle.paused()` tells them apart),
         -- before the switch's action ends: `navi` the incoming navi, `member` the outgoing member, `mood` the
-        -- outgoing navi's mood as it left (before its anger ended: 0xFF, Full Synchro).
-        navi_switched: ((side: number, navi: Object, member: number, mood: number) -> ())?,
+        -- outgoing navi's mood as it left (before its anger ended).
+        navi_switched: ((side: number, navi: Object, member: number, mood: Mood) -> ())?,
         -- Each fight tick the side's microphone level isn't 0 (`battle.mic_level`), just before the navis copy their
         -- input (the DS's shout heal).
         mic_heard: ((side: number) -> ())?,
@@ -2927,9 +3007,9 @@ export type NaviDef = {
     -- (EXE6's link navis: their family's damaging chips from a level,
     -- `byte_8021369`; EXE5's team navis: their family's plain chips.)
     charged_chips: { family: ChipFamily, damaging: boolean, when: ((side: number) -> boolean)?, plain: boolean? }?,
-    -- What a chip it charged gains (damage 0xFF: its damage again), where
+    -- What a chip it charged gains (damage "again": its damage again), where
     -- its form states no `charged_bonus`: a form's comes first.
-    charged_bonus: { damage: number?, paralyzes: boolean?, doubles: boolean? }?,
+    charged_bonus: { damage: (number | "again")?, paralyzes: boolean?, doubles: boolean? }?,
     -- The chips a charge doubles (`sub_8012AFA`).
     charge_doubles: ChipMatch?,
     -- Its A charge builds up the next Fire chip's damage, up to a limit: a
@@ -3142,8 +3222,9 @@ export type FormDef = {
     -- `element_sword` trait too; `plain`: only those that are neither
     -- dimming nor dark chips (EXE5's souls).
     charged_chips: { { family: ChipFamily, damaging: boolean, element_swords: boolean?, plain: boolean? } }?,
-    -- What a charged chip gains in it (`doubles`: the damage word's doubling).
-    charged_bonus: { damage: number?, paralyzes: boolean?, doubles: boolean? }?,
+    -- What a charged chip gains in it (damage "again": its damage again;
+    -- `doubles`: the damage word's doubling).
+    charged_bonus: { damage: (number | "again")?, paralyzes: boolean?, doubles: boolean? }?,
     -- The chips a charge doubles, and those whose use heals a twentieth of
     -- the base HP.
     charge_doubles: ChipMatch?,

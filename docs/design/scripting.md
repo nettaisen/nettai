@@ -117,6 +117,19 @@ Conventions:
   panel condition as `{ require = ..., forbid = ... }` (regions, the step rules). A loader or the binding turns
   the names into the very words the engine keeps; a name it doesn't know is an error (luau-analyze lets a
   misspelled key of a table literal through), and a name, or a list a module keeps (frozen), is read once.
+- **Elements, turns, sprite parts and sentinels are values and names.** An element is a value (`Element`): made
+  by names (`Element.new("fire", { sword = true })`, `Element.fire`), read by names (`e.primary`,
+  `e.secondary.sword`), compared with `==` and passed whole (`o.element = me.element`); the binding keeps one per
+  byte, so reading one allocates nothing. A damage slot is a primary element by name (`c:element_damage("fire")`,
+  the sixth slot's `"drain"`). An object's turn is a boolean (`me.flip`) and the side whose way it faces a number
+  (`me.facing_side`); a sprite faces an object's or a side's way (`sprite:face(me)`, `sprite:face_side(side)`)
+  or is mirrored and turned upside down by booleans (`hflip`, `vflip`), an effect or an afterimage faces a side's
+  way (`battle.effect(pos, fx, me.facing_side)`). A sprite's parts are a view by index (`sprite.hidden_parts[6] =
+  true`), the header flags a table of names (`me:set_header_flags { active = true }`), a guard's directions a
+  question (`c:guarded_from(me.flip)`). A sentinel is a name or nil: Full Synchro's mood (`"full_synchro"`), a
+  count that holds (`"holds"`), a charged chip's bonus of its damage again (`"again"`), a barrier with no timer, a
+  folder entry that is none. A set is a table of names to booleans (`{ sword = true }`), never a list; the binding
+  refuses a name it doesn't know and a value that isn't a boolean.
 - **No floats anywhere.** `Vec3` is three `i32` in 16.16 fixed point with wrapping `+` and `-`.
 - **Faithful stores.** Where the game's store width matters, the API has both: `me:set_lifecycle("destroy")` is
   the word store (state, action, phase and phase-init: the game's `str CUR_STATE_DESTROY`), `me.lifecycle =
@@ -246,6 +259,11 @@ keeps (a Z whose fraction survives). The port spawns them with what the register
 and observable (EraseMan's marks at Z 1; `battle.loop_register()` for the update loop's leftover), and
 otherwise the trace comparison skips the garbage: `scratch_position` or `scratch_z_fraction` on the kind's
 entry in compat/kinds.toml. The engine knows nothing of it.
+
+An element a spawner's register carries into the position is its byte (`Vec3.new(y, element.byte, z)`), and a
+number a register holds for something else that the original stores as an element becomes one by its byte
+(`Element.from_byte(me.alliance)`: the side, side 1's fire). These, and the bytes the original's data holds (a
+NaviCust bug code's argument, a patch card's block), are the only places content reads or makes an element's byte.
 
 ## 3. The runtime
 
