@@ -1013,7 +1013,7 @@ fn init_hp(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     o.hp = s.max_hp;
     o.max_hp = s.max_hp;
-    if b.setup.settings.effects & 4 == 0 {
+    if b.setup.settings.effects & effects::FULL_HP == 0 {
         b.objects.get_mut(r).hp = s.hp;
     }
 }

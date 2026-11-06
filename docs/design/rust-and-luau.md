@@ -36,7 +36,7 @@ the rules' code.
 The original polls: many of its routines run every tick and mostly find nothing to do. The engine keeps their timing
 without a script call a tick, through four generic means (2026-10-28):
 
-- **`rules.listen(side, hook, on)`**: whether the engine calls a hook of the side's rules. Every hook is called until
+- **`rules.listening(side).hook = on`**: whether the engine calls a hook of the side's rules. Every hook is called until
   the rules turn it off; they turn it off where it can do nothing (EXE5's party supports and KnightMan's guard without
   partners) and on again at the event that lets it act (Chaos Unison's charge armed, a DarkInvs drive, the dark
   soul's emerging), or turn it off from inside the call that finds nothing left (the dark soul's AI out of the soul).
@@ -160,7 +160,7 @@ Each with what it was and what it is now.
   the `Lockon` type is exelib's. gen-content checks the records' data against the ROM's modes.
 - **B3.** Beast Out's turns are EXE6's own stat `beast_out_counter` (V1's way), 3 fresh (its `fresh_stats`), which
   rules/beast spends and rules/emotion reads; the HUD reads the count by its role (`StatRole::WindowCount`,
-  `schema.role("window_count", "u8")`), and exe6-compat maps NaviStats+0x21 to it.
+  `schema.role("window_count", schema.u8)`), and exe6-compat maps NaviStats+0x21 to it.
 - **B4.** `Library::beast_out_chip` is gone. `ChipRole::BeastOut` is `ChipRole::ButtonChip` (`button_chip`): the chip
   a button's pick stands as in the hand, whose picture is the button's.
 - **B5, and C6's sounds.** `ScreenSound::{BeastOutGregar, BeastOutFalzar, BeastOutFlash, CrossWindowOpen,
@@ -202,20 +202,20 @@ Each with what it was and what it is now.
   `crosses = [...]`. `Defs::fact_name` gives the field that holds a role.
 - **C10.** The navi's forms table lists a version's forms under `<version>.form_list`.
 - **C11.** The views find the rules' state fields they show by role, never by a game's name for them: each is the
-  field the declaration gives the view's role (`schema.role("form_list.count", "u8")`; `Schema::find_role`, at any
-  depth). The form list's `form_list.{offered, count, marked, chosen, chosen_place}` (EXE6's `offered`,
+  field the declaration gives the view's role (`schema.role("form_list.count", schema.u8)`; `Schema::find_role`, at
+  any depth). The form list's `form_list.{offered, count, marked, chosen, chosen_place}` (EXE6's `offered`,
   `offered_count`, `marked`, `cross_chosen`, `chosen`; `form_list.cursor`, EXE6's `window_cursor`, went to the
-  player's layer on 2026-11-01), the form offer's
-  `form_offer.{form, alternate, turns}` (EXE5's `offer`, `offer_chaos`, `turns`), the flights'
-  `offer_flight.{step, count}` and `chip_flight.{step, count, button}` (EXE5's `unite_*`, MeddySoul's `mix_*`). The
-  games keep their names. The custom screen's `CROSSES` is `FORM_LIST_ENTRIES`.
+  player's layer on 2026-11-01), the form offer's `form_offer.{form, alternate, turns}` (EXE5's `offer`,
+  `offer_chaos`, `turns`), the flights' `offer_flight.{step, count}` and `chip_flight.{step, count, button}` (EXE5's
+  `unite_*`, MeddySoul's `mix_*`). The games keep their names. The custom screen's `CROSSES` is `FORM_LIST_ENTRIES`.
 - **D1.** The dark chip's hover is the shade a dark chip casts: `ChipShade` (`Shading`, `Shaded`),
   `on_shading_chip`, `FadeMode::{Shade, ShadeBack, ShadeWindow, ShadeWindowBack}`, `ScreenSound::Shade` and
   `SoundRole::CustomShade` (`custom_shade`). `ChipFlags::DARK` stays: a chip category of the series, as Mega and
   Giga are, which both games' rules read.
 - **D2.** `dark_substitute` is `rules_substitute`.
-- **D3.** `BattleInfo::{NoDarkChips, LightDarkHeld}` and `effects::{NO_DARK_CHIPS, LIGHT_DARK_HELD}` are
-  `BattleInfo::Effects` (`battle.effects()`), whose bits EXE5's rules/light_dark names.
+- **D3.** `BattleInfo::{NoDarkChips, LightDarkHeld}` and `effects::{NO_DARK_CHIPS, LIGHT_DARK_HELD}` are EXE5's own
+  battle effects, which its rules declare (`flow.effect_bits`: `dark_chips_fizzle`, `karma_held`) and read by name
+  (`battle.has_effect`).
 - **E1.** A game's emotions are its rules' data: the status section's `emotion.order`, the game's emotions by name in
   the order its routine reads them (the first case that holds is the side's), each case's alternatives over the
   framework's facts (`mood`, `mood_below`, `angry`, `tired`, `exhausted`, `in_form`, `battle_mode`), and `roles`,
@@ -269,7 +269,7 @@ Each with what it was and what it is now.
   `b_charge_anim` (its full animation). A full charge released while it is armed asks the rules
   (`charge_released`) and raises one request, `rules_release`, which idle hands them (`release_taken`) where the
   original's 0x080F034E and 0x080F0382 run. The palette and the face are EXE5's (its `navi_palette`;
-  `battle.set_hud("face_variant_any_form", ...)` as it arms and drops the charge). Gone from Rust: `ChaosCharge`, `ActorField::{ChaosArmed,
+  `battle.hud(side).face_variant_any_form = ...` as it arms and drops the charge). Gone from Rust: `ChaosCharge`, `ActorField::{ChaosArmed,
   ChaosLevel}`, the `chaos_cycle` rule, `request::CHAOS_*`, `FormWeapons::chaos`, `SoulData::chaos_cycle`,
   `ActionRole::ChaosFailure`, `SpriteRole::ChargeGlowChaos`, the palette's branch and the end-of-kind-6 disarm
   (the failure's revert drops the charge with its status reset first: the EXE5 lab's 29 failures end disarmed).

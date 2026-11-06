@@ -21,6 +21,15 @@ use crate::sound::SoundCue;
 use nettai_content_api::ChipHandle;
 use std::sync::Arc;
 
+/// A side's status bits as the link delivers them (`Round::remote_status`,
+/// BattleState +0x14).
+pub mod remote_status {
+    /// Its custom screen's selection runs (EXE4's custom drain reads it).
+    pub const SELECTING: u8 = 1 << 0;
+    /// Its custom screen is open.
+    pub const CUSTOM_SCREEN: u8 = 1 << 2;
+}
+
 /// Battle flag bits.
 pub mod battle_flags {
     /// The fight has started (collision is live).
@@ -639,19 +648,19 @@ pub struct SideState {
 pub struct SideLooks {
     /// The emotion window shows the second set of the base form's faces
     /// (EXE5's Hub Style, NaviStats +0x4C: 0x0801AF8E adds 11 to the face;
-    /// `battle.set_hud("face_variant", ..)`, `kinds::player::shows_face_variant`).
+    /// `battle.hud(side).face_variant = ...`, `kinds::player::shows_face_variant`).
     pub face_variant: bool,
     /// And whatever its form (EXE5's Chaos Unison look while its charge is
     /// armed, 0x080125F6, which its rules set and clear).
     pub face_variant_any_form: bool,
     /// The emotion window shows the side's count (its navi's stat of the
     /// role `window_count`), else its empty box, as the side's rules say
-    /// for the round (`battle.set_hud("window_count", ..)`: EXE6's Beast Out turns,
+    /// for the round (`battle.hud(side).window_count = ...`: EXE6's Beast Out turns,
     /// `sub_801D814`).
     pub window_count: bool,
     /// The custom screen's enemy names show the side's navi by its variant
     /// name (EXE5's Hub Style in a link battle: 0x0801AE3A's NameID 0xEA;
-    /// `battle.set_hud("name_variant", ..)`).
+    /// `battle.hud(side).name_variant = ...`).
     pub name_variant: bool,
 }
 
@@ -1141,7 +1150,8 @@ impl Battle {
         for p in 0..2 {
             self.inputs[p].update(input[p].held & 0x3FF | keys::PRESENT);
             let side = &self.custom.sides[p];
-            self.round.remote_status[p] = (if side.in_custom { 4 } else { 0 }) | side.selecting as u8;
+            self.round.remote_status[p] =
+                (if side.in_custom { remote_status::CUSTOM_SCREEN } else { 0 }) | if side.selecting { remote_status::SELECTING } else { 0 };
         }
         self.read_switch_requests(input);
         self.mic_levels = input.each_ref().map(|t| if t.mic_loud { u8::MAX } else { 0 });

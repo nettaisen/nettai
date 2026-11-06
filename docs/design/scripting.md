@@ -27,7 +27,7 @@ Max in release builds, on a machine shared with other work, so single runs vary 
   the engine names a module, a chip or a kind, nothing is registered by number, and loading has no side effect.
   The content hash covers the scripts.
 - **Definitions and assets cross the API, not numbers.** `battle.spawn(bomb.kind, pos)`,
-  `me:set_attack(action, 2)`, `me:setup_collision(collision.thrown, collision.hits_navis, 0)`,
+  `me:set_attack(action, "chip")`, `me:setup_collision(collision.thrown, collision.hits_navis, 0)`,
   `battle.play_sound(asset.sound("exe6:throw"))`. The engine keeps a handle for each.
 - **Fidelity.** Every golden trace matches every frame, also under rollback at every tested latency; the sound
   calls match; the chip lab's scenarios match every frame (§5).
@@ -88,19 +88,35 @@ Conventions:
 - **Definitions, not numbers.** A kind, an action, a chip, a weapon, an effect, a spark, a region, a collision
   type, a status, a lock-on mode, an identity or a record crosses the API as its definition (its frozen table),
   and an asset as the value `asset.*` returned. The binding turns each into its handle.
-- **Names, not bits.** Status flags, status timers, navi requests and state bits, buttons, panel types,
-  lifecycle states and shadows are names (`"using_action"`, `"paralyze"`, `"a"`, `"cracked"`, `"destroy"`); the
-  engine's bit values and offsets stay in the engine. So are collision types, hit results and panel flags: a
-  collision type is a list of its members (`new.collision { flags = { "own_attack", "reaches_float_shoe" } }`),
-  of the object's side (`own_`) or the other (`enemy_`) where a member is of a side, so a type is the same for
-  either side, mirrored; a hit is tested by them (`c:hit_any("enemy_body")`); a panel by its flags
-  (`field.check(x, y, "solid", { "own_body", "enemy_area" }, side)`, `field.any`): the engine's, the game's
-  type flags (each declared once, in its rules' `panels.type_flags`), and the members a panel holds of what
-  is registered on it; data keeps a panel condition as `{ require = ..., forbid = ... }` (regions, the step
-  rules). A loader or the binding turns the names into the very words the engine keeps; a name it doesn't
-  know is an error (luau-analyze lets a misspelled key of a table literal through), and a name, or a list a
-  module keeps (frozen), is read once. The original's numbers that are a routine's own
-  immediates (animation numbers, tick counts, bug codes) are the scripts' named constants.
+- **Names, not bits.** A set of named members is a view whose members are properties: an object's status flags
+  and timers, a navi's requests, flags and buttons, what other objects ask of a field object, its form's
+  traits, a side's HUD, a hand's entry, the hooks a side's rules listen to, the fields a console has its own
+  way (`me.status.using_action = true`, `me.status_timers.paralyze`, `me.held.a`, `battle.hud(side).gauge`,
+  `battle.hand_entry(side, i).marks`, `rules.listening(side).controller = false`, `o:console(side).visible`).
+  The binding keeps each view as it keeps a handle, so reading a member allocates nothing; a name held in a
+  variable indexes the view cast to `any` (`(me.requests :: any)[r] = false`), the checker refusing a dynamic
+  key on a view. A choice is a checked literal union (`me.lifecycle = "destroy"`, `me:set_attack(action,
+  "chip")`, `me:start_move("up")`, `me:take_damage("damage_sound") == "broken"`), never the number the engine
+  keeps it as; one a game names (a panel type, an emotion, a side statistic) is a string the engine checks
+  against the game's own as it runs. Content holds no bit layout: the engine's bit values and offsets stay in
+  the engine, and a game's own layouts are declared once, in its rules. The original's numbers that are a
+  routine's own immediates (animation numbers, tick counts, bug codes) are the scripts' named constants.
+- **Definitions and rule sections name their bits.** A status is its timer (`new.status { duration = 90, timer =
+  "paralyze" }`), and the loader gives it that timer's request. A stage's battle effects (`effects = { "full_hp",
+  "link" }`), the rules' requests (`reactions.status_end.requests`, `status.anti_traps.drops_requests`), a side's
+  status (`status.custom_drain.status`) and a chip's `extra_flags` are lists of names. A bit only its game has is
+  declared once, in that game's rules (`{ name = bit }`: `reactions.request_bits`, `flow.effect_bits`), and named
+  everywhere else; `battle.has_effect(name)` reads such a battle effect, `battle.link()`, `battle.boss_rank()` and
+  `battle.random()` the engine's. A loader refuses a name it doesn't know, and a number.
+- **Collision types, hit results and panel flags are names.** A collision type is a list of its members
+  (`new.collision { flags = { "own_attack", "reaches_float_shoe" } }`), of the object's side (`own_`) or the
+  other (`enemy_`) where a member is of a side, so a type is the same for either side, mirrored; a hit is
+  tested by them (`c:hit_any("enemy_body")`, `c.hit`); a panel by its flags (`field.check(x, y, "solid", {
+  "own_body", "enemy_area" }, side)`, `field.any`): the engine's, the game's type flags (each declared once, in
+  its rules' `panels.type_flags`), and the members a panel holds of what is registered on it. Data keeps a
+  panel condition as `{ require = ..., forbid = ... }` (regions, the step rules). A loader or the binding turns
+  the names into the very words the engine keeps; a name it doesn't know is an error (luau-analyze lets a
+  misspelled key of a table literal through), and a name, or a list a module keeps (frozen), is read once.
 - **No floats anywhere.** `Vec3` is three `i32` in 16.16 fixed point with wrapping `+` and `-`.
 - **Faithful stores.** Where the game's store width matters, the API has both: `me:set_lifecycle("destroy")` is
   the word store (state, action, phase and phase-init: the game's `str CUR_STATE_DESTROY`), `me.lifecycle =
@@ -120,8 +136,8 @@ core.d.luau is the reference; in outline:
 - **Sprites**: load, animation, stepping, look (palette, flip, shadow, white, shader, alpha, mosaic, priority,
   hidden parts), frame flags, attach points.
 - **Navis**: the attack in progress (step, step-init, chip, element, damage, hit parameter, charged, lockout,
-  bonus, marker), requests and state bits, the buttons (held, pressed, released, and the record kept while
-  dimmed), the counter window, the reactive abort, `exit_attack`/`end_attack`/`set_attack`, what it runs
+  bonus, marker), requests and state flags, the buttons (held, pressed, and the record kept while dimmed),
+  the counter window, the reactive abort, `exit_attack`/`end_attack`/`set_attack`, what it runs
   (`navi_action`), the held direction, step targets and `start_move`, the buster's damage, absorbed obstacles,
   the actor data (type, AI index, overlay, links, charge, the weapons).
 - **The battle** (`battle`): dimmed, paused, over, time up, mode, sound cues, the side's navi stats and
@@ -151,14 +167,14 @@ side effect: a module that runs and is reached by nothing makes nothing.
 |---|---|---|
 | the root's `chips`: `{ [id] = { ...record..., action \| dimming \| navi \| instant } }` | a chip and its one use | the action as the navi's attack, or the hook from the ruleset's dimming, navi chip or instant chip action |
 | the root's `navis`, `forms` | a navi, one of MegaMan's forms | their records: stats, weapons, sprite, identity |
-| the root's `stages`: `{ [id] = { layout, actors, ... } }` | a stage | its panels and what it places |
+| the root's `stages`: `{ [id] = { layout, effects, actors, ... } }` | a stage | its panels, its battle effects (by name) and what it places |
 | the root's `patch_cards`, `navicust_programs` | a patch card, a NaviCust program | their records |
 | the root's `rules`: `{ state?, setup?, hooks?, custom?, ..., <sections>?, roles? }` | a game's rules, their one definition, written by hand (rules/init.luau; rules-in-luau.md §2.5): a side's state, a player's setup, hooks (plain functions that call the game's modules), custom-screen buttons and windows, its rule sections (plain tables no entity owns: elements, panels, the custom screen, ...) and its roles (what the rules need from content: the action a request starts, the kind it spawns, the chip a zeroed field reads, ...) | its hooks, each called for one side; its state per side and each player's setup; the game's typed tables and roles |
 | `new.kind { id?, pool, state?, update, place? }` | an object kind | `update(me)` each tick it runs; `place(spec)` when a stage names it |
 | `new.action { id?, state?, update, traits? }` | a navi action | `update(me, s)` while the navi runs it |
 | `new.weapon { id?, charge_ticks, setup?, instant?, ... }` | what a button does | `setup(navi)` fills the attack and returns the action to start |
 | `new.effect`, `new.spark`, `new.region`, `new.collision`, `new.status`, `new.identity` | what the engine's primitives are told by | their records, by handle |
-| `new.record(type, table)` | data only content reads (a lock-on mode is `new.record("lockon", ...)`), with a handle | nothing: a state field or another definition holds it |
+| `new.record(type, table)` | data only content reads, of a record type declared once (`schema.record_type("lockon")`: a lock-on mode is `new.record(LOCKON, ...)`), with a handle | nothing: a state field or another definition holds it |
 
 The `new.*` tag constructors mark a table as what it is and return it: no registry, no key, no effect. A root's
 definition is keyed by its id there (`chips.minibomb`), and reads it as `chip.id` (the loader's view; the table
@@ -185,27 +201,34 @@ and tools spawn one by key (`behavior::spawn_kind`).
 Each object kind and action declares its state as named, typed fields:
 
 ```luau
-state = { slot = slot.TYPE, look = "record:attachment-look", anim = "u8", offset_x = "i32", lift = "i8" }
+state = { slot = slot.TYPE, look = ATTACHMENT_LOOK, anim = schema.u8, offset_x = schema.i32, lift = schema.i8 }
 ```
 
-Field types are `bool`, `u8`...`i32`, `object`, `vec3`, `code` (a chip code, `"A"` to `"Z"` or `"*"`), an enum
-(a list of names), fixed arrays (`"u8[18]"`), references: to a definition (`"kind"`, `"action"`, `"chip"`,
-`"effect"`, `"record:<type>"`, ...) or an asset (`"sprite"`, `"sound"`, ...), records (a table of fields of
-their own: `drive = { mode = "u8", target = "chip" }`) and bounded lists (`schema.list(T, n)`: up to `n`
-elements of `T`, and how many it holds). A record's fields and a list's elements are read and written each by
-its place (`s.drive.mode`, `s.picks[2].code`, `#s.picks`); a list grows by its next element (`s.picks[#s.picks
-+ 1] = { chip = c, code = "A" }`), and a record, a list or an array takes a table whole (its fields left out,
-zero). The engine finds a field by its name wherever the state's records have it (`Schema::find`: the rules'
+A field's type is a `schema` value, opaque to content (`SchemaType` in core.d.luau: a string is no type, and doesn't
+type-check): `schema.bool`, `schema.u8`...`schema.i32`, `schema.object`, `schema.vec3`, `schema.code` (a chip code,
+`"A"` to `"Z"` or `"*"`), fixed arrays (`schema.array(schema.u8, 18)`), a byte or none (`schema.optional(schema.u8)`),
+references: to a definition (`schema.kind`, `schema.action`, `schema.chip`, `schema.effect`, ...), an entry of one of
+the game's collections (`schema.entry("patch_cards")`) or an asset (`schema.sprite`, `schema.sound`, ...), the records
+of a record type, bounded lists (`schema.list(T, n)`: up to `n` elements of `T`, and how many it holds) and a field
+the engine knows by a role (`schema.role(role, T)`). Beside them a field may be an enum (a list of variant names, `{
+"idle", "charging" }`) or a record (a table of fields of its own: `drive = { mode = schema.u8, target = schema.chip
+}`). A record type is a value declared once, in the module that owns its records (`local ATTACHMENT_LOOK =
+schema.record_type("attachment-look")`, exported to the others that take it), which both `new.record(ATTACHMENT_LOOK,
+...)` and a field of its records take; its name is what messages call it, and a second declaration of the name in a
+load is an error. The engine declares its own, `obstacle.absorbed_look`. A record's fields and a list's elements are
+read and written each by its place (`s.drive.mode`, `s.picks[2].code`, `#s.picks`); a list grows by its next element
+(`s.picks[#s.picks + 1] = { chip = c, code = "A" }`), and a record, a list or an array takes a table whole (its fields
+left out, zero). The engine finds a field by its name wherever the state's records have it (`Schema::find`: the rules'
 views read MeddySoul's `screen.mix_step` so). The engine stores a block of the schema's own size, its fields packed in
-name order (the layout is private to the store; fields have names and types, never offsets), with no limit but
-what the types take. An object's block is its slot's in its pool's `StateArena` (`Objects::state`), an action's
-its actor's in the actors' (`Actors::action_state`); `kinds::Vars::Content` and `ActionVars::Content` hold the
-layout's id. An arena packs its slots' blocks in slot order, so a snapshot copies the bytes there are and no
-more; a slot's block is replaced (zeroed, at the new layout's size) only when the slot takes a state, so a freed
-object's state stays readable until its slot is taken again, as the original's memory does. `Battle: Clone` is
-still the whole snapshot and `#[derive(Hash)]` still covers it for the digest. A script sees
-it as `me.state` (objects) or its update's second argument (actions), and casts it to its declared type (`local
-s = me.state :: State`). What the original passed an object as spawn parameters is state its spawner sets.
+name order (the layout is private to the store; fields have names and types, never offsets), with no limit but what
+the types take. An object's block is its slot's in its pool's `StateArena` (`Objects::state`), an action's its actor's
+in the actors' (`Actors::action_state`); `kinds::Vars::Content` and `ActionVars::Content` hold the layout's id. An
+arena packs its slots' blocks in slot order, so a snapshot copies the bytes there are and no more; a slot's block is
+replaced (zeroed, at the new layout's size) only when the slot takes a state, so a freed object's state stays readable
+until its slot is taken again, as the original's memory does. `Battle: Clone` is still the whole snapshot and
+`#[derive(Hash)]` still covers it for the digest. A script sees it as `me.state` (objects) or its update's second
+argument (actions), and casts it to its declared type (`local s = me.state :: State`). What the original passed an
+object as spawn parameters is state its spawner sets.
 
 Two properties of the game carry over:
 
@@ -311,8 +334,8 @@ the same data and code. Pixels, palettes and audio are presentation and are left
 its modules share (content/exe6/types.d.luau). Scripts are
 `--!strict` and declare their state types (`export type State = { timer: number }`). `nettai-content-check`
 type-checks every module with Luau's own analysis (the `luau-analyze` crate, in process), and its tests also
-check that API misuse (a misspelled field, a lifecycle state or status flag or button that doesn't exist, `Vec3
-+ number`, a number where a definition goes) is a type error.
+check that API misuse (a misspelled field, a lifecycle state or status flag or button that doesn't exist, a
+choice by its number, `Vec3 + number`, a number where a definition goes) is a type error.
 
 The checker checks each module on its own, with `require` typed `any`: what crosses a `require` is unchecked.
 So a type two modules both name is declared once in types.d.luau (`HeatFlame`, `AttachmentLook`), and the
@@ -341,8 +364,8 @@ their code only in comments, and none of their manifests names it.
 The checker bundles its own Luau, whose C++ symbols collide with mlua's, so it lives in its own crate and must
 never share a binary with nettai-luau.
 
-The state schema (`state = { timer = "u16" }`) and the Luau type (`State = { timer: number }`) are written
-twice. A generator could emit one from the other.
+The state schema (`state = { timer = schema.u16 }`) and the Luau type (`State = { timer: number }`) are
+written twice. A generator could emit one from the other.
 
 ### 3.4 Why Luau
 
@@ -376,7 +399,7 @@ three chips of the series, which compose the hook with their own arguments.
 eraseman.kind = new.kind {
     id = "eraseman/navi",
     pool = "actor",
-    state = { cycle = "u8", aim = "u8", controller = "object", aim_ticks = "u8" },
+    state = { cycle = schema.u8, aim = schema.u8, controller = schema.object, aim_ticks = schema.u8 },
     -- `sub_80BB608`.
     update = function(me: Object)
         local l = me.lifecycle
@@ -465,7 +488,7 @@ rollback.md §8.2 lists what content must guarantee:
 | Outputs write-only | `battle.play_sound` only adds a cue; scripts can't read cues back |
 | Content immutable during a battle, identified by a hash both peers compare | Modules and definitions frozen after load; `Content::hash` covers the scripts |
 | Bounded work that fails the same way on every peer | The interrupt budget counts VM checkpoints, not time |
-| No perspective in simulated state | `battle.local_side` is for presentation only; what a blind player can't see is decided per viewer (`o:get("visible", side)`, `o:set("visible", on, side)`; @exelib/visibility); sound goes to both sides' cue lists (or one side's player's, `play_sound_for`) |
+| No perspective in simulated state | `battle.local_side` is for presentation only; what a blind player can't see is decided per viewer (`o:console(side).visible`; @exelib/visibility); sound goes to both sides' cue lists (or one side's player's, `play_sound_for`) |
 | Re-running a tick free of side effects outside `Battle` | Scripts can't reach the host; the VM keeps nothing |
 
 In-repo, `scripted_chips_roll_back` copies a battle every 97 ticks of a duel and checks the copy plays on

@@ -153,8 +153,9 @@ impl ChipFlags {
 
 serde_flags!(ChipFlags, u8);
 
-/// The chip record's second flag byte. Bits without a name only sort
-/// chips in menus.
+/// The chip record's second flag byte, the bits the engine reads, by name
+/// (in a content file a list of the names alone). The original's other
+/// bits only sort chips in its menus: content holds none of them.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ExtraChipFlags(pub u8);
 
@@ -174,7 +175,7 @@ impl ExtraChipFlags {
     }
 }
 
-serde_flags!(ExtraChipFlags, u8);
+serde_flags!(ExtraChipFlags, u8, names_only);
 
 /// What the rules ask of particular chips (docs/design/
 /// content-model-v2.md §7.5): the cases the original tells by a chip's
@@ -310,8 +311,8 @@ pub enum DamageFormula {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Counted {
-    /// The side's statistics counter `n` (`sub_800AB3A`).
-    SideStat(u8),
+    /// The side's statistic in a slot (`sub_800AB3A`), by its name.
+    SideStat(super::rules::SideStatSlot),
     /// The field's panels of this type the side owns
     /// (`object_dead_getPanelsTypeAllianceCount`).
     OwnPanels(crate::field::PanelType),

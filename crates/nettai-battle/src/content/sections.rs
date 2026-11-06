@@ -430,6 +430,7 @@ pub(crate) const SECTIONS: &[&str] = &[
     "panels",
     "pools",
     "reactions",
+    "side_stats",
     "status",
 ];
 
@@ -457,6 +458,7 @@ struct Stated {
     effects: Option<super::rules::EffectsRules>,
     fresh_stats: Option<super::rules::FreshStatsRules>,
     link_pick: Option<LinkPickSection>,
+    side_stats: Option<super::rules::SideStats>,
 }
 
 impl Stated {
@@ -519,6 +521,7 @@ impl Stated {
             link_pick: Some(LinkPickSection { first_round_stages: r.link_pick.first_round_stages }),
             effects: Some(r.effects.clone()),
             fresh_stats: Some(r.fresh_stats),
+            side_stats: Some(r.side_stats.clone()),
         }
     }
 
@@ -602,6 +605,9 @@ impl Stated {
             status_end: reactions.status_end,
             bubble_bob: reactions.bubble_bob,
             flow,
+            // (`rules` sets the rules' own, read before the sections.)
+            effect_bits: Vec::new(),
+            side_stats: self.side_stats.unwrap_or_default(),
             effects,
             chip_use,
             fresh_stats,
@@ -629,15 +635,29 @@ fn rules(base: Option<&Rules>, game: Option<&str>, r: &SpecReader, definitions: 
     };
     let mut stated = base.map(Stated::of).unwrap_or_default();
     let at = format!("{}.luau: rules", nettai_content_api::keys::module_path(&d.module));
-    if let Data::Map(fields) = &d.spec {
-        for (field, spec) in fields {
-            let DataKey::Str(name) = field else { continue };
-            if SECTIONS.contains(&name.as_str()) {
-                section(&mut stated, name, spec, &format!("{at}: {name}"), r)?;
+    // The bits its game names of its own, declared once (each beside what
+    // reads it first): requests any section may name, and battle effects,
+    // which its stages and `battle.has_effect` name.
+    let declared = |section: &str, field: &str, engine: &[(u32, &str)]| {
+        super::rules::declared_bits(d.spec.field(section).field(field), engine, &format!("{section}.{field}"))
+            .map_err(|e| ContentError::new(format!("{at}: {e}")))
+    };
+    let own_requests = declared("reactions", "request_bits", super::rules::REQUEST_NAMES)?;
+    let effect_bits = declared("flow", "effect_bits", crate::setup::effects::NAMES)?;
+    super::rules::reading_requests(&own_requests, || -> Result<(), ContentError> {
+        if let Data::Map(fields) = &d.spec {
+            for (field, spec) in fields {
+                let DataKey::Str(name) = field else { continue };
+                if SECTIONS.contains(&name.as_str()) {
+                    section(&mut stated, name, spec, &format!("{at}: {name}"), r)?;
+                }
             }
         }
-    }
-    stated.rules(&at).map(Some)
+        Ok(())
+    })?;
+    let mut rules = stated.rules(&at)?;
+    rules.effect_bits = effect_bits;
+    Ok(Some(rules))
 }
 
 /// Section `name` (`spec`, at `at`) into what is stated.
@@ -800,7 +820,13 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     drawn: s.drawn,
                 });
             }
-            "reactions" => stated.reactions = Some(r.read(spec, &at).map_err(e)?),
+            "reactions" => {
+                // (Its `request_bits`, the game's own requests, `rules` read
+                // first.)
+                let mut data = spec.clone();
+                super::reader::strip(&mut data, &["request_bits"]);
+                stated.reactions = Some(r.read(&data, &at).map_err(e)?);
+            }
             "math" => stated.sine = Some(r.read::<MathSection>(spec, &at).map_err(e)?.sine),
             "pools" => {
                 let s: PoolSizes = r.read(spec, &at).map_err(e)?;
@@ -866,7 +892,27 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
             "banners" => stated.holding_banners = Some(r.read::<BannersSection>(spec, &at).map_err(e)?.holding),
             "status" => stated.status = Some(r.read(spec, &at).map_err(e)?),
             "chip_use" => stated.chip_use = Some(r.read(spec, &at).map_err(e)?),
-            "flow" => stated.flow = Some(r.read(spec, &at).map_err(e)?),
+            "flow" => {
+                // (Its `effect_bits`, the game's own battle effects, `rules`
+                // read first.)
+                let mut data = spec.clone();
+                super::reader::strip(&mut data, &["effect_bits"]);
+                stated.flow = Some(r.read(&data, &at).map_err(e)?);
+            }
+            "side_stats" => {
+                // (Each a slot by its name.)
+                let Data::Map(entries) = spec else { return Err(e(format!("{at}: a table of slots by name"))) };
+                let mut stats = Vec::new();
+                for (name, slot) in entries {
+                    let slot = match slot {
+                        Data::Int(n) if (0..super::rules::SideStats::SLOTS as i64).contains(n) => *n as u8,
+                        other => return Err(e(format!("{at}.{name}: {other:?} is no slot (0 to 15)"))),
+                    };
+                    stats.push((name.to_string(), slot));
+                }
+                stats.sort();
+                stated.side_stats = Some(super::rules::SideStats(stats));
+            }
             "link_pick" => {
                 // (Its stages are definitions, which `link` resolves once
                 // they have their handles; stated all the same. Both

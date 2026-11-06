@@ -11,10 +11,11 @@
 //! capture, and what it reaches is what the game has. Everything else is a
 //! table only code reaches (a kind a chip's action spawns, an effect a
 //! kind shows), which says what it is by a tag constructor (`new.kind {
-//! ... }`, `new.record("bomb-variant", { ... })`: a metatable, no registry,
-//! no id). When the walk is done, the `state` tables of kinds, actions and
-//! the rules become schemas, and everything is read back as plain data (the
-//! canonical tree, [`Definitions`]).
+//! ... }`, `new.record(VARIANT, { ... })` of a record type declared once,
+//! `schema.record_type("bomb-variant")`: a metatable, no registry, no id).
+//! When the walk is done, the `state` tables of kinds, actions and the rules
+//! become schemas, and everything is read back as plain data (the canonical
+//! tree, [`Definitions`]).
 //!
 //! Keys (§2.2), local to the game:
 //!
@@ -58,18 +59,23 @@ pub(crate) struct Tag {
     _table: Table,
 }
 
-/// The tags made while content loads, by table.
+/// The tags made while content loads, by table, and the record types
+/// declared.
 #[derive(Default)]
 pub(crate) struct Tags {
     /// Tag constructors work only while this is set.
     pub open: bool,
     by_table: HashMap<Ptr, Tag>,
+    /// Each record type declared (`schema.record_type`), by name: where (a
+    /// module's file, or the engine).
+    record_types: HashMap<String, String>,
 }
 
 impl Tags {
-    /// Tags for a load that is starting.
+    /// Tags for a load that is starting: the engine's record type declared.
     pub fn open() -> Tags {
-        Tags { open: true, ..Default::default() }
+        let record_types = [(nettai_content_api::ABSORBED_LOOK.to_string(), "the engine (obstacle.absorbed_look)".to_string())].into();
+        Tags { open: true, record_types, ..Default::default() }
     }
 }
 
@@ -332,9 +338,37 @@ pub(crate) fn environments(lua: &Lua) -> mlua::Result<Environments> {
 
 /// Install `new`: a tag constructor per registry only code reaches
 /// ([`TAGGED`]), which marks a table as what it is (a metatable) and
-/// returns it. `module` names the module loading at the moment of a call
+/// returns it; and `schema.record_type`, which declares a record type, once
+/// in a load. `module` names the module loading at the moment of a call
 /// (None outside loading).
 pub(crate) fn install(lua: &Lua, tags: &Rc<RefCell<Tags>>, module: Rc<dyn Fn() -> Option<String>>) -> mlua::Result<()> {
+    {
+        let tags = Rc::downgrade(tags);
+        let module = module.clone();
+        let declare = lua.create_function(move |_, name: LuaValue| {
+            let what = "schema.record_type";
+            let tags = tags.upgrade().filter(|t| t.borrow().open).ok_or_else(|| {
+                mlua::Error::runtime(format!("{what}: record types are declared while content loads"))
+            })?;
+            let at = module().ok_or_else(|| mlua::Error::runtime(format!("{what}: called outside a module")))?;
+            let LuaValue::String(name) = name else {
+                return Err(mlua::Error::runtime(format!("{at}: {what} takes the type's name, not {}", name.type_name())));
+            };
+            let name = name.to_str()?.to_string();
+            let t = crate::schema::record_type(&name).map_err(|e| mlua::Error::runtime(format!("{at}: {what}: {e}")))?;
+            let file = format!("{}.luau", keys::module_path(&at));
+            let mut tags = tags.borrow_mut();
+            if let Some(first) = tags.record_types.get(&name) {
+                return Err(mlua::Error::runtime(format!(
+                    "{file}: {what}: record type {name:?} is declared already, by {first}: a record type is declared once (the other modules take its value)"
+                )));
+            }
+            tags.record_types.insert(name, file);
+            Ok(t)
+        })?;
+        let schema: Table = lua.globals().get("schema")?;
+        schema.raw_set("record_type", declare)?;
+    }
     let new = lua.create_table()?;
     for registry in TAGGED {
         let meta = lua.create_table()?;
@@ -366,13 +400,10 @@ pub(crate) fn install(lua: &Lua, tags: &Rc<RefCell<Tags>>, module: Rc<dyn Fn() -
             Ok(table)
         };
         let f = if registry == Registry::Record {
-            // `new.record(type, table)`: the string is the record's type.
-            let what = "new.record(type, table): the type";
-            lua.create_function(move |_, (name, spec): (LuaValue, LuaValue)| {
-                let LuaValue::String(t) = name else {
-                    return Err(mlua::Error::runtime(format!("{what} is a string")));
-                };
-                let t = t.to_str()?.to_string();
+            // `new.record(type, table)`: a record of a record type
+            // (`schema.record_type`).
+            lua.create_function(move |_, (t, spec): (LuaValue, LuaValue)| {
+                let t = crate::schema::record_type_of(&t).map_err(|e| mlua::Error::runtime(format!("new.record(type, table): the type is {e}")))?;
                 tag(Some(t), spec)
             })?
         } else {
@@ -914,6 +945,9 @@ impl Refs<'_> {
             }
             LuaValue::String(s) => Data::Str(s.to_str().map_err(|e| format!("{at}: {e}"))?.to_string()),
             LuaValue::Function(_) => Data::Function,
+            LuaValue::UserData(_) if let Some(ty) = crate::schema::of(v) => {
+                return ty.data(|of| self.data(of, at, false, path));
+            }
             LuaValue::Table(t) => {
                 let p = t.to_pointer();
                 if let Some(&(kind, h)) = self.assets.by_ptr.get(&p) {

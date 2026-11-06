@@ -57,6 +57,7 @@ impl<'a> SpecReader<'a> {
                 Json::from(self.assets.handle(*kind, name).ok_or_else(|| format!("{at}: the content names no {kind} {name:?}"))?)
             }
             Data::Function => return Err(format!("{at}: a function isn't data")),
+            Data::Type(_) => return Err(format!("{at}: a field's type (`schema`) isn't data")),
         })
     }
 

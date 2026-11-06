@@ -46,6 +46,8 @@ pub use api::{
     ObstacleAction, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag, ScreenFade,
     Shadow, SpriteField, StatusFlag, StatusTimer,
     SideSpecial, StatsOf, PartyInfo,
+    AttackKind, DamageTaken, FightCycle, ObstacleClass, PaletteFlashVariant, SpecialBonus, StepDirection, TakeDamageMode,
+    BUFFERED_MOVES, CHARGE_LEVELS, CHARGE_SOURCES, MOVE_DIRECTIONS,
 };
 pub use api::AfterimageSpec;
 pub use api::{Drive, Fly, Follow, Held};
@@ -65,7 +67,7 @@ pub use registry::{
     valid_key,
 };
 pub use state::{
-    Block, FieldDef, FieldPath, FieldType, FieldValue, Fields, LIST_MARK, MAX_ARRAY, MAX_LIST, Place, ROLE_MARK, SMALL_BLOCK, Schema, SmallBlock, StateArena, StateId,
+    ABSORBED_LOOK, Block, FieldDef, FieldPath, FieldType, FieldValue, Fields, MAX_ARRAY, MAX_LIST, Place, SMALL_BLOCK, Schema, SmallBlock, StateArena, StateId, TypeData,
     StateMut, StateRef, Value, is_code, is_collection_name,
 };
 pub use types::{CANONICAL_SIDE, ObjectRef, PanelPos, Pool, SpriteId, SpriteNumber, Vec3, passed, passed_x, side_sign};

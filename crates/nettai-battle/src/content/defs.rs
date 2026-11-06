@@ -287,9 +287,9 @@ pub struct Extension {
     pub ty: ExtensionType,
 }
 
-/// An extension field's type: a state field's (`"u8"`, `"chip"`, a list of
-/// variants, a list holding a list of variants: a list of those names), or a
-/// table of such fields.
+/// An extension field's type: a state field's (`schema.u8`, `schema.chip`, a
+/// list of variants, a list holding a list of variants: a list of those
+/// names), or a table of such fields.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ExtensionType {
     Value(nettai_content_api::FieldType),
@@ -300,12 +300,12 @@ impl ExtensionType {
     /// The type `v` declares (`at`: where, for errors), the game's
     /// collections `collections` (an entry of one: its name).
     fn read(v: &Data, at: &str, collections: &[&str]) -> Result<ExtensionType, String> {
-        use nettai_content_api::FieldType;
+        use nettai_content_api::{FieldType, TypeData};
         match v {
-            Data::Str(name) => FieldType::scalar(name)
-                .filter(|ty| unknown_collection(ty, collections).is_none())
-                .map(ExtensionType::Value)
-                .ok_or_else(|| format!("{at}: no type is named {name:?}")),
+            Data::Type(TypeData::Is(ty)) => match unknown_collection(ty, collections) {
+                Some(c) => Err(format!("{at}: no collection of the game's root is named {c:?}")),
+                None => Ok(ExtensionType::Value(ty.clone())),
+            },
             // A list holding a list of variants: a list of those names.
             Data::List(items) if items.len() == 1 && matches!(&items[0], Data::List(_)) => {
                 let ExtensionType::Value(elem) = ExtensionType::read(&items[0], at, collections)? else {
@@ -326,7 +326,8 @@ impl ExtensionType {
                     .map(|(k, v)| Ok((k.to_string(), ExtensionType::read(v, &format!("{at}.{k}"), collections)?)))
                     .collect::<Result<_, String>>()?,
             )),
-            _ => Err(format!("{at}: a type name, a list of variants, a list holding one, or a table of fields")),
+            Data::Str(name) => Err(format!("{at}: a type is a `schema` value (`schema.u8`, `schema.chip`), not the string {name:?}")),
+            _ => Err(format!("{at}: a type (`schema.u8`), a list of variants, a list holding one, or a table of fields")),
         }
     }
 
@@ -1221,7 +1222,7 @@ impl Defs {
             for f in schema.fields() {
                 if let Some(c) = unknown_collection(&f.ty, &collections) {
                     return Err(ContentError::new(format!(
-                        "{}.luau: state {}: `{}`: no type is named {c:?} (nor is it a collection of the game's root)",
+                        "{}.luau: state {}: `{}`: no collection of the game's root is named {c:?}",
                         d.module, d.key, f.name
                     )));
                 }
@@ -1700,12 +1701,15 @@ impl Defs {
                 return Err(ContentError::new(format!("navi {} changes form, and no form of its game is the base form", n.key)));
             }
         }
-        // Stages: what they place names kinds and their variant records.
+        // Stages: what they place names kinds and their variant records;
+        // their effects, the engine's and their game's (its rules').
         let mut stages = Entries::new(Registry::Stage);
+        let effect_bits = content.rules.as_ref().map(|r| r.effect_bits.as_slice()).unwrap_or_default();
         for d in definitions.of(Registry::Stage) {
             let record = super::stages::read(
                 d,
                 &content.assets,
+                effect_bits,
                 |key| kinds.iter().position(|k| k.key == key).map(|i| KindHandle(i as u16)),
                 |key| definitions.of(Registry::Record).iter().position(|r| r.key == key).map(|i| RecordHandle(i as u16)),
             )?;
@@ -2376,5 +2380,18 @@ mod tests {
         // the engine holds by handle.
         assert!(c.defs.effects.len() > 100, "{} effects defined", c.defs.effects.len());
         assert!(!c.defs.sparks.is_empty() && !c.defs.regions.is_empty() && c.defs.collisions.len() >= 87);
+        // A stage's battle effects by name, the engine's and the game's own
+        // (its rules' `flow.effect_bits`); a status's requests its timer's.
+        let effects = |key: &str| c.stage(c.defs.stage_by_key(key).unwrap_or_else(|| panic!("stage {key}"))).effects;
+        assert_eq!((effects("netbattle-1"), effects("netbattle-96"), effects("netbattle-97")), (0x88C, 0x8C, 0x20_088C));
+        let paralysis = c.status(c.defs.status_by_key("paralyze-90").expect("paralyze-90"));
+        assert_eq!((paralysis.requests, paralysis.duration), (crate::collision::f2::PARALYZE, 90));
+        // A name neither has is a load error.
+        let mut wrong = Content::default();
+        wrong.scripts = c.scripts.clone();
+        let stages = wrong.scripts.module_mut("exe6", "stages").expect("exe6's stages");
+        *stages = stages.replacen("\"karma_changes\" }", "\"karma_change\" }", 1);
+        let e = wrong.define().unwrap_err().message;
+        assert!(e.contains("stage netbattle-1: `effects` names \"karma_change\", no battle effect of its game (boss_rank,"), "{e}");
     }
 }

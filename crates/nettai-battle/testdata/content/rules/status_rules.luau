@@ -7,7 +7,7 @@
 return {
     hp_drain = { periods = { 0, 60, 50, 40, 30, 20, 10, 5 }, stops_while_paused = true },
     -- The custom screen's HP bug: EXE6's periods, while the screen is up.
-    custom_drain = { periods = { 0, 40, 30, 20, 10, 5, 3, 2 }, status = 0x5 },
+    custom_drain = { periods = { 0, 40, 30, 20, 10, 5, 3, 2 }, status = { "selecting", "custom_screen" } },
     -- The per-form tick runs (the Fire chips' charge, a form's height).
     form_tick = true,
     form_keeps_back_special = false,
@@ -27,7 +27,12 @@ return {
     hp_loss = "hp_alone",
     hit_sound = "by_console",
     barrier = { stops_while_paused = true, wind = "pops" },
-    anti_traps = { damage_min = 10, armed_swallows_below = true, sword_spares = { "guard_spark" }, drops_requests = 0x301BE },
+    anti_traps = {
+        damage_min = 10,
+        armed_swallows_below = true,
+        sword_spares = { "guard_spark" },
+        drops_requests = { "flash", "flinch", "slide", "drag", "paralyze", "confuse", "blind", "freeze", "bubble" },
+    },
     chip_destruction = "next",
     -- Worn out (exhausted, or a mood of 0) before anger, then held tired, Full
     -- Synchro, else normal; a navi held tired or exhausted holds its mood, and

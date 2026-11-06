@@ -10,6 +10,7 @@ local dark_chips = require("@self/dark_chips")
 local emotion = require("@self/emotion")
 local forms = require("@self/forms")
 local fresh_stats = require("@self/fresh_stats")
+local lockon = require("@self/lockon")
 local patch_cards = require("@self/patch_cards")
 local save = require("@self/save")
 
@@ -26,94 +27,94 @@ end
 local rules_: Rules = {
     state = {
         -- EXE6's Beast Out (its rush's, its controllers', its turn-start check's delay, its custom screen's).
-        rush_phase = "u8",
-        rush_started = "bool",
-        rush_home_x = "u8",
-        rush_home_y = "u8",
-        rush_chain = "bool",
-        rush_chain_block = "u8",
-        rush_countdown = "u16",
-        controller_step = "u8",
-        controller_moves = "u16",
-        controller_volley = "u16",
-        controller_started = "bool",
-        check_delay = "u8",
-        beast_out_used = "bool",
+        rush_phase = schema.u8,
+        rush_started = schema.bool,
+        rush_home_x = schema.u8,
+        rush_home_y = schema.u8,
+        rush_chain = schema.bool,
+        rush_chain_block = schema.u8,
+        rush_countdown = schema.u16,
+        controller_step = schema.u8,
+        controller_moves = schema.u16,
+        controller_volley = schema.u16,
+        controller_started = schema.bool,
+        check_delay = schema.u8,
+        beast_out_used = schema.bool,
         -- EXE6's emotions' and dark chips'.
-        swing_ticks = "u16",
-        swung = "u8",
-        bug_frags = "u32",
+        swing_ticks = schema.u16,
+        swung = schema.u8,
+        bug_frags = schema.u32,
         -- The counter's.
-        starts = "u8",
-        side = "u8",
-        bonus = "u16",
+        starts = schema.u8,
+        side = schema.u8,
+        bonus = schema.u16,
     },
     -- The state of each navi, its object's own: EXE6's (DustCross's absorbed obstacles and the one its last throw took:
     -- content/exe6/rules/api's `NaviState`), and the requests the navi with hooks makes of its own idle
     -- (../navis/test).
     navi_state = {
-        absorbed = schema.list({ look = "record:absorbed-look", anim = "u8" }, 8),
-        thrown_look = "record:absorbed-look",
-        thrown_anim = "u8",
-        take_off = "bool",
-        land = "bool",
+        absorbed = schema.list({ look = obstacle.absorbed_look, anim = schema.u8 }, 8),
+        thrown_look = obstacle.absorbed_look,
+        thrown_anim = schema.u8,
+        take_off = schema.bool,
+        land = schema.bool,
     },
     -- EXE6's stats of its own (content/exe6/rules).
     stats = {
-        beast_out_counter = schema.role("window_count", "u8"),
-        sun = "bool",
-        chip_drops = "u8",
-        encounters = "u8",
-        chip_shuffle = "bool",
-        number_open = "bool",
+        beast_out_counter = schema.role("window_count", schema.u8),
+        sun = schema.bool,
+        chip_drops = schema.u8,
+        encounters = schema.u8,
+        chip_shuffle = schema.bool,
+        number_open = schema.bool,
     },
     setup = {
         -- EXE6's: the navi, the folder, the patch cards and whether a NaviCust compiles (EXE6's rules/patch_cards
         -- and rules/save read them; the test content has no NaviCust board, nor programs).
-        navi = "navi",
-        folder = schema.list({ chip = "chip", code = "code" }, 30),
-        regular_chip = "u8?",
-        tag_chips = schema.list("u8", 2),
-        patch_cards = schema.list({ card = "patch_cards", variant = { "gregar", "falzar" } }, 32),
-        navicust_expansions = "u8?",
+        navi = schema.navi,
+        folder = schema.list({ chip = schema.chip, code = schema.code }, 30),
+        regular_chip = schema.optional(schema.u8),
+        tag_chips = schema.list(schema.u8, 2),
+        patch_cards = schema.list({ card = schema.entry("patch_cards"), variant = { "gregar", "falzar" } }, 32),
+        navicust_expansions = schema.optional(schema.u8),
         -- EXE6's: the version, Beast Out, what the save brings, the bug frags.
         version = { "gregar", "falzar" },
-        beast_out = "bool",
-        hp = "u16",
-        reg_up = "u8",
-        sun = "bool",
-        level = "u8?",
-        bug_frags = "u32",
+        beast_out = schema.bool,
+        hp = schema.u16,
+        reg_up = schema.u8,
+        sun = schema.bool,
+        level = schema.optional(schema.u8),
+        bug_frags = schema.u32,
         -- EXE6's SP navi deletion times (EXE6's rules/sp_chips, which Count[SP]'s damage reads): none stated, every
         -- SP navi in no time.
-        sp_times = schema.list({ chip = "chip", frames = "u16" }, 1),
+        sp_times = schema.list({ chip = schema.chip, frames = schema.u16 }, 1),
         -- The counter's.
-        bonus = "u8",
+        bonus = schema.u8,
     },
     setup_defaults = { beast_out = true, hp = 100, reg_up = fresh_stats.reg_up, sun = false },
     extends = {
         chip = {
             -- EXE6's.
-            beast = { lockon = "record:lockon", rush = "bool" },
-            dark_substitute = "chip",
-            hp_bug = "u8",
-            sp = { by_time = "u16[11]" },
+            beast = { lockon = lockon.LOCKON, rush = schema.bool },
+            dark_substitute = schema.chip,
+            hp_bug = schema.u8,
+            sp = { by_time = schema.array(schema.u16, 11) },
             -- Made-up fields of the game's chips, for the extension's tests.
-            test_weight = "u8",
-            test_tag = { level = "u8", kind = { "a", "b" } },
+            test_weight = schema.u8,
+            test_tag = { level = schema.u8, kind = { "a", "b" } },
         },
         form = {
             -- EXE6's.
             kind = { "cross", "beast", "cross_beast", "beast_over" },
-            cross_of = "navi",
-            cross_release_anim = "u8",
-            beast = "form",
-            special_volley = "u16",
-            charged_sword_rush = "bool",
+            cross_of = schema.navi,
+            cross_release_anim = schema.u8,
+            beast = schema.form,
+            special_volley = schema.u16,
+            charged_sword_rush = schema.bool,
         },
         navi = {
             -- EXE6's: how many of its sprite's steps its warp out and its hold last.
-            animation_steps = { warp_out = "u8", hold = "u8", hold_loops = "bool" },
+            animation_steps = { warp_out = schema.u8, hold = schema.u8, hold_loops = schema.bool },
         },
     },
     actions = { forms.action, beast.rush_action, beast.cross_special_action },
@@ -167,6 +168,7 @@ local rules_: Rules = {
     pools = require("@self/pools"),
     reactions = require("@self/reactions"),
     roles = require("@self/roles"),
+    side_stats = { recoveries = 5 },
     status = require("@self/status_rules"),
 }
 

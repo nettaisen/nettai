@@ -1,6 +1,7 @@
 //! Flag bytes in content files: a list of the set bits' names, with any
-//! bit that has no name as its number (`["has_damage", 32]`). Nothing is
-//! derived: the value is exactly the bits the list names.
+//! bit that has no name as its number (`["has_damage", 32]`), or, for a
+//! word whose every bit content may set has a name, its names alone.
+//! Nothing is derived: the value is exactly the bits the list names.
 
 use serde::de::{self, SeqAccess, Visitor};
 use serde::ser::SerializeSeq;
@@ -31,16 +32,26 @@ pub(crate) fn serialize<S: Serializer>(bits: u32, names: &[(u32, &str)], s: S) -
     seq.end()
 }
 
-pub(crate) fn deserialize<'de, D: Deserializer<'de>>(d: D, names: &'static [(u32, &'static str)], max: u32) -> Result<u32, D::Error> {
+pub(crate) fn deserialize<'de, D: Deserializer<'de>>(
+    d: D,
+    names: &'static [(u32, &'static str)],
+    max: u32,
+    numbers: bool,
+) -> Result<u32, D::Error> {
     struct V {
         names: &'static [(u32, &'static str)],
         max: u32,
+        numbers: bool,
     }
     impl<'de> Visitor<'de> for V {
         type Value = u32;
         fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
             let names: Vec<&str> = self.names.iter().map(|n| n.1).collect();
-            write!(f, "a list of flag names ({}) or bit values", names.join(", "))
+            if self.numbers {
+                write!(f, "a list of flag names ({}) or bit values", names.join(", "))
+            } else {
+                write!(f, "a list of flag names ({})", names.join(", "))
+            }
         }
         fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<u32, A::Error> {
             let mut v = 0u32;
@@ -48,8 +59,15 @@ pub(crate) fn deserialize<'de, D: Deserializer<'de>>(d: D, names: &'static [(u32
                 v |= match bit {
                     Bit::Name(n) => match self.names.iter().find(|x| x.1 == n) {
                         Some(&(b, _)) => b,
-                        None => return Err(de::Error::custom(format!("unknown flag {n:?}"))),
+                        None => {
+                            let names: Vec<&str> = self.names.iter().map(|n| n.1).collect();
+                            return Err(de::Error::custom(format!("unknown flag {n:?} (the flags: {})", names.join(", "))));
+                        }
                     },
+                    Bit::Number(b) if !self.numbers => {
+                        let names: Vec<&str> = self.names.iter().map(|n| n.1).collect();
+                        return Err(de::Error::custom(format!("{b:#x} is a number: name the flag ({})", names.join(", "))));
+                    }
                     Bit::Number(b) if b.count_ones() == 1 && b <= self.max => b,
                     Bit::Number(b) => return Err(de::Error::custom(format!("{b:#x} is not a single bit that fits"))),
                 };
@@ -57,13 +75,19 @@ pub(crate) fn deserialize<'de, D: Deserializer<'de>>(d: D, names: &'static [(u32
             Ok(v)
         }
     }
-    d.deserialize_seq(V { names, max })
+    d.deserialize_seq(V { names, max, numbers })
 }
 
 /// `impl Serialize, Deserialize` for a flags newtype `T(pub int)` with a
-/// `NAMES` table.
+/// `NAMES` table; with `names_only`, a list that holds a number is refused.
 macro_rules! serde_flags {
     ($t:ty, $int:ty) => {
+        crate::content::flags::serde_flags!($t, $int, true);
+    };
+    ($t:ty, $int:ty, names_only) => {
+        crate::content::flags::serde_flags!($t, $int, false);
+    };
+    ($t:ty, $int:ty, $numbers:literal) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 crate::content::flags::serialize(self.0 as u32, <$t>::NAMES, s)
@@ -71,7 +95,7 @@ macro_rules! serde_flags {
         }
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<$t, D::Error> {
-                crate::content::flags::deserialize(d, <$t>::NAMES, <$int>::MAX as u32).map(|v| Self(v as $int))
+                crate::content::flags::deserialize(d, <$t>::NAMES, <$int>::MAX as u32, $numbers).map(|v| Self(v as $int))
             }
         }
     };

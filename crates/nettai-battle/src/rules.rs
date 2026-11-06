@@ -1132,9 +1132,9 @@ mod tests {
         let with = |defaults: &str| -> Result<Content, String> {
             let mut c = testing::build();
             let module = c.scripts.module_mut(testing::ROOT, "rules/init").expect("the test content's rules");
-            let stock = "        bonus = \"u8\",\n    },\n    setup_defaults = { beast_out = true, hp = 100, reg_up = fresh_stats.reg_up, sun = false },\n";
+            let stock = "        bonus = schema.u8,\n    },\n    setup_defaults = { beast_out = true, hp = 100, reg_up = fresh_stats.reg_up, sun = false },\n";
             assert!(module.contains(stock), "rules/init.luau's setup ends with `{stock}`");
-            let fields = "        bonus = \"u8\",\n        marks = \"u8[3]\",\n        owned = \"bool[2]\",\n        wears = \"form[2]\",\n";
+            let fields = "        bonus = schema.u8,\n        marks = schema.array(schema.u8, 3),\n        owned = schema.array(schema.bool, 2),\n        wears = schema.array(schema.form, 2),\n";
             *module = module.replace(stock, &format!("{fields}    }},\n    setup_defaults = {defaults},\n"));
             c.define().map_err(|e| e.message)?;
             Ok(c)
@@ -1201,7 +1201,7 @@ mod tests {
     #[test]
     fn the_rules_intake_and_chip_check_hooks() {
         let content = testing::with_rules(&[
-            ("        -- The counter's.\n        starts = \"u8\",", "        intakes = \"u16\",\n        x = \"u8\",\n        y = \"u8\",\n        -- The counter's.\n        starts = \"u8\","),
+            ("        -- The counter's.\n        starts = schema.u8,", "        intakes = schema.u16,\n        x = schema.u8,\n        y = schema.u8,\n        -- The counter's.\n        starts = schema.u8,"),
             ("local save = require(\"@self/save\")\n", "local save = require(\"@self/save\")\nlocal test_chips = require(\"./chips/test\")\n"),
             (
                 "    hooks = {\n",
@@ -1241,8 +1241,8 @@ mod tests {
     fn records_lists_and_codes_in_the_rules_state() {
         let content = testing::with_rules(&[
             (
-                "        -- The counter's.\n        starts = \"u8\",",
-                "        drive = { mode = \"u8\", target = \"chip\" },\n        picks = schema.list({ chip = \"chip\", code = \"code\" }, 3),\n        letters = schema.list(\"code\", 2),\n        -- The counter's.\n        starts = \"u8\",",
+                "        -- The counter's.\n        starts = schema.u8,",
+                "        drive = { mode = schema.u8, target = schema.chip },\n        picks = schema.list({ chip = schema.chip, code = schema.code }, 3),\n        letters = schema.list(schema.code, 2),\n        -- The counter's.\n        starts = schema.u8,",
             ),
             ("local save = require(\"@self/save\")\n", "local save = require(\"@self/save\")\nlocal test_chips = require(\"./chips/test\")\n"),
             (
@@ -1341,7 +1341,7 @@ mod tests {
         refused(chips, "kind = \"b\" }", "kind = \"c\" }", "chip test/veil.test_tag.kind");
         refused(chips, "kind = \"b\" }", "kind = \"b\", hue = 1 }", "`hue` is none of its fields (kind, level)");
         let rules = "rules/init";
-        refused(rules, "            test_weight = \"u8\",", "            test_weight = \"u9\",", "no type is named \"u9\"");
+        refused(rules, "            test_weight = schema.u8,", "            test_weight = \"u8\",", "not the string \"u8\"");
         refused(rules, "    extends = {\n        chip = {", "    extends = {\n        stage = {},\n        chip = {", "the rules extend chip, form or navi");
     }
 
@@ -1354,7 +1354,7 @@ mod tests {
     fn views_and_facts_are_checked_as_the_content_is_defined() {
         use crate::content::{ButtonView, WindowView};
         // (The rules' state and their windows, with what a test gives them.)
-        let marker = "        -- The counter's.\n        starts = \"u8\",";
+        let marker = "        -- The counter's.\n        starts = schema.u8,";
         let patched = |from: &str, to: &str| {
             let mut c = testing::build();
             let src = c.scripts.module_mut(testing::ROOT, "rules/init").expect("the module");
@@ -1384,16 +1384,16 @@ mod tests {
         let button_named = |c: &Content, name: &str| c.defs.rules().unwrap().buttons.iter().copied().find(|&b| c.defs.button(b).name == name);
         // A window's view: a name of the engine's, whose fields the rules
         // keep as the view's types.
-        window_refused("mark = \"u8\"", "form_lst", &["rules/init.luau: rules", "window `w`: `view` is \"form_lst\"", "form_chosen"]);
+        window_refused("mark = schema.u8", "form_lst", &["rules/init.luau: rules", "window `w`: `view` is \"form_lst\"", "form_chosen"]);
         window_refused(
-            "mark = \"u8\"",
+            "mark = schema.u8",
             "offer_flight",
             &["window `w` has the view `offer_flight`", "the state field of the role `offer_flight.step` (a u8): the rules' state has none"],
         );
         // (By its role, never by a game's name for it.)
-        window_refused("unite_step = \"u8\", unite_count = \"u8\"", "offer_flight", &["the role `offer_flight.step` (a u8): the rules' state has none"]);
+        window_refused("unite_step = schema.u8, unite_count = schema.u8", "offer_flight", &["the role `offer_flight.step` (a u8): the rules' state has none"]);
         let roled = |step: &str| {
-            format!("flight_step = schema.role(\"offer_flight.step\", \"{step}\"), flight_count = schema.role(\"offer_flight.count\", \"u8\")")
+            format!("flight_step = schema.role(\"offer_flight.step\", schema.{step}), flight_count = schema.role(\"offer_flight.count\", schema.u8)")
         };
         window_refused(&roled("bool"), "offer_flight", &["the state field of the role `offer_flight.step` (`flight_step`) as a u8: it is Bool"]);
         let content = window_patched(&roled("u8"), "offer_flight").expect("a view with its fields");
@@ -1414,22 +1414,22 @@ mod tests {
         // A fact: the setup field that declares its role (`schema.role`),
         // else the field of its name, of its type.
         let setup = "        -- The counter's.
-        bonus = \"u8\",";
+        bonus = schema.u8,";
         refused(
             setup,
-            "        crosses = schema.role(\"form_list\", \"u8\"),
-        bonus = \"u8\",",
+            "        crosses = schema.role(\"form_list\", schema.u8),
+        bonus = schema.u8,",
             &["rules/init.luau: rules", "their setup field `crosses` is the fact a player brings as `form_list`, an array of forms"],
         );
-        let content = patched(setup, "        crosses = schema.role(\"form_list\", \"form[5]\"),
-        bonus = \"u8\",").expect("a fact of its type");
+        let content = patched(setup, "        crosses = schema.role(\"form_list\", schema.array(schema.form, 5)),
+        bonus = schema.u8,").expect("a fact of its type");
         assert_eq!(content.defs.fact_name(PlayerFact::FormList), Some("crosses"));
-        let content = patched(setup, "        form_list = \"form[5]\",
-        bonus = \"u8\",").expect("a fact by its name");
+        let content = patched(setup, "        form_list = schema.array(schema.form, 5),
+        bonus = schema.u8,").expect("a fact by its name");
         assert_eq!(content.defs.fact_name(PlayerFact::FormList), Some("form_list"));
         // (A field named for another role than its own is that role's alone.)
-        let content = patched(setup, "        form_list = schema.role(\"level\", \"u8?\"),
-        bonus = \"u8\",").expect("a role elsewhere");
+        let content = patched(setup, "        form_list = schema.role(\"level\", schema.optional(schema.u8)),
+        bonus = schema.u8,").expect("a role elsewhere");
         assert_eq!((content.defs.fact_name(PlayerFact::FormList), content.defs.fact_name(PlayerFact::Level)), (None, Some("form_list")));
     }
 

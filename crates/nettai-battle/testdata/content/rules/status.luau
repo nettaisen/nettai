@@ -1,8 +1,8 @@
 --!strict
 -- The engine's test statuses, under the EXE6 statuses' names (the EXE6
--- overlay's modules name them): each a made-up effect, no requests and 60
--- ticks on the paralysis timer. The freezing ones cancel the flinch and the
--- bubbling ones survive a counter hit, as EXE6's do.
+-- overlay's modules name them): each a made-up effect, 60 ticks on the
+-- paralysis timer (and its request). The freezing ones cancel the flinch and
+-- the bubbling ones survive a counter hit, as EXE6's do.
 
 local PLAIN: { string } = {
     "paralyze-90", "paralyze-120", "paralyze-150", "paralyze-4", "paralyze-300", "paralyze-600",
@@ -24,10 +24,7 @@ local PLAIN: { string } = {
     "freeze-600-past-immobilize", "bubble-150-past-immobilize", "bubble-150-2-past-immobilize",
     "bubble-150-3-past-immobilize", "bubble-150-past-freeze", "bubble-150-2-past-freeze",
     "bubble-150-3-past-freeze", "bubble-4-past-freeze", "bubble-300-past-freeze",
-    "bubble-600-past-freeze", "after-table-1-past-freeze", "after-table-2-past-freeze", "after-table-3-past-freeze",
-    "after-table-4-past-freeze", "after-table-1-past-bubble", "after-table-2-past-bubble", "after-table-3-past-bubble",
-    "after-table-4-past-bubble", "after-table-5-past-bubble", "after-table-6-past-bubble", "after-table-7-past-bubble", "after-table-8-past-bubble",
-    "after-table-9-past-bubble", "after-table-10-past-bubble",
+    "bubble-600-past-freeze",
 }
 local FREEZING: { string } = {
     "freeze-150", "freeze-150-2", "freeze-150-3", "freeze-4", "freeze-300", "freeze-600",
@@ -44,7 +41,6 @@ local function define_all(keys: { string }, cancels_flinch: boolean, survives_co
         local name = string.gsub(key, "-", "_")
         status[name] = new.status {
             id = key,
-            requests = 0,
             duration = 60,
             timer = "paralyze",
             cancels_flinch = cancels_flinch,

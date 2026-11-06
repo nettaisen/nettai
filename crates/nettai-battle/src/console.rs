@@ -98,7 +98,7 @@ pub struct Console {
     /// cards; EXE5's 0x10C1 and 0x10C4), for the emotion window's start:
     /// MegaMan's window flickers as a bugged navi's does, bugs or not. No
     /// setup gives it: the game's rules make it as the round is set up
-    /// (`battle.set_hud("emotion_window_glitch", ..)`: the NaviCust's compile when a
+    /// (`battle.hud(side).emotion_window_glitch = ...`: the NaviCust's compile when a
     /// bug applies, the patch cards' routine).
     pub emotion_window_glitch: bool,
     /// The HP box's count to its next low-HP sound (`eStruct2035280`+6:
@@ -262,7 +262,7 @@ impl Battle {
             self.update_cameras_from_battle_rng();
             return;
         }
-        let primary_first = self.round.remote_status[0] & 5 != 0
+        let primary_first = self.round.remote_status[0] & (crate::battle::remote_status::SELECTING | crate::battle::remote_status::CUSTOM_SCREEN) != 0
             || !self.paused
             || self.is_dimmed()
             || self.round.flags & crate::battle::battle_flags::SHAKE_THROUGH_PAUSE != 0;

@@ -154,7 +154,7 @@ for its emotion (`mugshot`, `FormData::mugshot`), or a link navi's own
 (`NaviData::mugshot`); mugshot numbers from `nettai_assets::NAVI_MUGSHOTS`
 are the link navis' faces, with their Full Synchro palettes. The box beside
 the face shows its side's count (the stat of the role `window_count`) where
-the side's rules say so for the round (`battle.set_hud("window_count", ...)`: EXE6's
+the side's rules say so for the round (`battle.hud(side).window_count = ...`: EXE6's
 Beast Out turns, `sub_801D814`), else the empty box.
 
 ### The battle backgrounds, by area
@@ -2067,15 +2067,13 @@ navicust_programs = [                      # MegaMan's NaviCust's programs, in t
 ]
 ```
 
-**A side's facts.** What a side brings that its game's rules take is the
-game's own to say: its rules declare a `setup` (content/exe6/rules/init.luau:
-`setup = { version = { "gregar", "falzar" }, crosses = "form[5]", ... }`;
-content/exe5/rules/init.luau: `setup = { karma = "u16", ... }`), and every field of that setup is a fact a side of that
-game may state, as a key of its table by the field's name. `nettai-match`
-names none of them (`nettai_match::facts`): a side holds its facts as that
-setup block, the round's setup hands the engine the block as it is, and a
-game that declares another fact has it in its match files, its
-descriptions and the build creator without a line of Rust.
+**A side's facts.** What a side brings that its game's rules take is the game's own to say: its rules declare a
+`setup` (content/exe6/rules/init.luau: `setup = { version = { "gregar", "falzar" }, crosses =
+schema.array(schema.form, 5), ... }`; content/exe5/rules/init.luau: `setup = { karma = schema.u16, ... }`), and every
+field of that setup is a fact a side of that game may state, as a key of its table by the field's name. `nettai-match`
+names none of them (`nettai_match::facts`): a side holds its facts as that setup block, the round's setup hands the
+engine the block as it is, and a game that declares another fact has it in its match files, its descriptions and the
+build creator without a line of Rust.
 
 - A fact's value is its field's type's: a flag `true` or `false`; a whole
   number in the type's range; an enum's variant by the name the rules give
@@ -2204,7 +2202,7 @@ when the stats carry a NaviCust bug
 
 **The navi code's level** (`level`) is the level of the navi code the
 save received (docs/engine/link-navis.md), 0 to 14: a fact of EXE6's save
-part (`level = "u8?"`, a number or none). The engine knows no level: EXE6's
+part (`level = schema.optional(schema.u8)`, a number or none). The engine knows no level: EXE6's
 rules read it (`exe6.navi_level`, its API module): the seal below, the
 reload, MegaMan's gains, and what a level gives a link navi in battle (its
 chip bonus, its charged chips, ChargeMan's Fire charge: rules/by_level.luau,

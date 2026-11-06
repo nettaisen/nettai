@@ -42,6 +42,9 @@ impl BattleSettings {
 pub mod effects {
     /// A ranked boss (`BATTLE_EFFECT_BOSS_RANK`).
     pub const BOSS_RANK: u32 = 0x1;
+    /// Each navi starts at its full HP (`sub_80141C8`; without it, at its
+    /// navi stats' HP).
+    pub const FULL_HP: u32 = 0x4;
     /// Link battle between two players.
     pub const LINK: u32 = 0x8;
     /// Multi-round set.
@@ -53,6 +56,18 @@ pub mod effects {
     /// number, the microphone's story flag) are presentation or the save's.
     /// No stage of the engine's sets it.
     pub const NO_SWITCH_VOICE: u32 = 0x40_0000;
+
+    /// The effects by the names content gives them (a stage's `effects`).
+    /// A game's rules name its own besides (the flow section's
+    /// `effect_bits`), which `battle.has_effect` reads.
+    pub const NAMES: &[(u32, &str)] = &[
+        (BOSS_RANK, "boss_rank"),
+        (FULL_HP, "full_hp"),
+        (LINK, "link"),
+        (SET, "set"),
+        (RANDOM, "random"),
+        (NO_SWITCH_VOICE, "no_switch_voice"),
+    ];
 }
 
 /// Custom gauge speed (NaviStats+0x08).

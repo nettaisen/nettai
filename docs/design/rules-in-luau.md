@@ -182,9 +182,11 @@ export type State = { counter: number, used: boolean, spent: boolean, exhausted:
 return define.system {
     id = "exe6:beast",
     -- Each side's fields (the side keeps them, §5).
-    state = { counter = "u8", used = "bool", spent = "bool", exhausted = "bool", check_delay = "u8" },
+    state = {
+        counter = schema.u8, used = schema.bool, spent = schema.bool, exhausted = schema.bool, check_delay = schema.u8,
+    },
     -- What the player brings (the save's unlock), read-only in battle.
-    setup = { unlocked = "bool", sealed = "bool" },
+    setup = { unlocked = schema.bool, sealed = schema.bool },
     -- (An enum of the setup has no default: a player's setup states it, or the round doesn't start. EXE6's
     -- `version = { "gregar", "falzar" }` is none of the engine's to pick. `setup_defaults` may give it one.)
     -- (`setup_defaults = { field = value }`: what a player's setup that says nothing of a field
@@ -277,8 +279,10 @@ line between the two languages: [rust-and-luau.md](rust-and-luau.md)):
 local beast = require("@self/beast")
 -- ... the game's other modules
 return define.rules {
-    state = { check_delay = "u8", crosses_used = "bool[5]", bug_frags = "u32", ... },  -- a side's, whole
-    setup = { version = { "gregar", "falzar" }, crosses = "form[5]", beast_out = "bool", ... },  -- a player's facts
+    -- A side's, whole.
+    state = { check_delay = schema.u8, crosses_used = schema.array(schema.bool, 5), bug_frags = schema.u32, ... },
+    -- A player's facts.
+    setup = { version = { "gregar", "falzar" }, crosses = schema.array(schema.form, 5), beast_out = schema.bool, ... },
     setup_defaults = { beast_out = true, ... },
     extends = { chip = { ... }, form = { ... } },  -- EXE6's fields on its definitions
     actions = { forms.action, beast.rush_action, beast.cross_special_action },
@@ -1912,8 +1916,9 @@ then.)
 ### S7a, systems' extensions and the chip's EXE6 fields (2026-10-03)
 
 - **`extends`** (§7.5): a system declares fields its game's definitions may carry, by registry (`chip`, `form`,
-  `navi`). Each field is typed with a state type name, a list of variants, a list holding a list of variants (a
-  list of those names: EXE5's VarSwrd and NeoVari swings), or a table of such fields.
+  `navi`). Each field is typed with a state's type (a `schema` value: `schema.u8`, a record type), a list of
+  variants, a list holding a list of variants (a list of those names: EXE5's VarSwrd and NeoVari swings), or a
+  table of such fields.
   - The define phase checks each of the game's definitions that carries one: the type, an integer's range, a
     variant's name, a table's fields. A field has one owner among a game's systems.
   - The engine reads none of it. Luau reads it on the definition, as before; tools read it through
@@ -2244,8 +2249,8 @@ plain Luau library with a single definition.
   - The engine keeps the search (`ho_8026554`, actions/lockon.rs), a primitive whose input is a mode's data: the
     define phase reads every "lockon" record into a `LockonMode` (`Defs::lockons`, by record handle,
     `LOCKON_RECORD`).
-  - `navi:lockon_panel(x, y, mode)` and the actor field `rush_lockon` (`record:lockon`) take the record. The
-    beast system's chip extension is `beast = { lockon = "record:lockon", rush = "bool" }`.
+  - `navi:lockon_panel(x, y, mode)` and the actor field `rush_lockon` (a record of `LOCKON`, rules/lockon's record
+    type) take the record. The beast system's chip extension is `beast = { lockon = LOCKON, rush = schema.bool }`.
   - The stock ruleset's `lockon` section (the column shifts, the clear-path condition) stays: the search reads
     it.
   - (Since rust-and-luau.md's B2 the search is EXE6's Luau, rules/lockon_search, which `lockon.panel(navi, x, y,
@@ -2526,9 +2531,9 @@ recording shows changed (exe5-map.md §15.8 holds the layout).
   - rules/souls/custom.luau gathers them at define time from MegaMan's `forms.souls` (a soul's button becomes a
     `ButtonSpec` of the system's, shown while the side's navi is in the soul, outside battle mode 1) and at run
     time asks the soul the side's navi is in (`form.custom`). It lists no soul and tests none.
-  - The value is a record (`define.record("soul-custom", ...)`; the extension's type `"record:soul-custom"`): an
-    extension field holds data, and a record is the Luau-only data a field can refer to, functions included. The
-    image's look is one too (`"record:soul-image"`).
+  - The value is a record (`new.record(SOUL_CUSTOM, ...)`; the extension's type the record type `SOUL_CUSTOM`,
+    @exelib/souls/custom's): an extension field holds data, and a record is the Luau-only data a field can refer
+    to, functions included. The image's look is one too (`SOUL_IMAGE`, @exelib/souls/image's).
   - The turn's arm chip (`arm_chip`, the transform record's +6) is the system's own field: each screen's open
     clears it and the change copies it into the navi's weapon chip whatever the soul; ColonelSoul's Arm Change
     fills it at OK and reads it at the turn's start.
@@ -2912,12 +2917,12 @@ A side's level was the engine's: `PlayerSetup::navi_level`, then a fact the engi
 `Battle::navi_levels`, which four engine routines indexed level tables with. The user asked for those formulas in
 Luau. The engine knows no level now:
 
-- **The level is a fact of each game's save system** (`level = "u8?"`), which the game's rules read through its API
-  module: `exe6.navi_level(side)` (content/exe6/rules/api.luau: the custom screen's seal, the save's reload,
-  MegaMan's gains), `exe5.navi_level(side)` (content/exe5/rules/api.luau, new: the team navis' damage rows). They
-  read the save system's setup with `system.setup_of(side, system)`, `state_of`'s twin for a setup, and a game's
-  rules' alone (the content check's lint and the call refuse a module outside rules/). `battle.navi_level` is gone
-  from the core API.
+- **The level is a fact of each game's save system** (`level = schema.optional(schema.u8)`), which the game's rules
+  read through its API module: `exe6.navi_level(side)` (content/exe6/rules/api.luau: the custom screen's seal, the
+  save's reload, MegaMan's gains), `exe5.navi_level(side)` (content/exe5/rules/api.luau, new: the team navis' damage
+  rows). They read the save system's setup with `system.setup_of(side, system)`, `state_of`'s twin for a setup, and a
+  game's rules' alone (the content check's lint and the call refuse a module outside rules/). `battle.navi_level` is
+  gone from the core API.
 - **What a level gives in battle is a definition's function of its side** (`HookCall::Given`), which the round's setup
   asks once for each side, after the side's systems' `round_setup`, into `Battle::given` (digested, cloned with the
   battle): a chip's `damage` given as a function (EXE5's team navis' own chips, `navi_level.row({...})`, which was the
@@ -3028,11 +3033,11 @@ level table in init.luau" (content-model-v2.md §2.2, As built).
 
 A state's or a setup's declaration takes records, bounded lists and chip codes (scripting.md §2.3).
 
-- **Records**: a table of fields of their own (`drive = { mode = "u8", target = "chip" }`), stored in name order
-  as a schema's fields are. **Lists**: `schema.list(T, n)` (the `schema` global; `T` a type name, a list of
-  variants, a record or another list; `n` 1 to 65535), a count (a byte, two past 255) then room for `n`; a list
-  shortened zeroes what it drops, so its bytes are what its elements say. **`code`**: a chip code, a letter A to Z
-  or `*` (a byte, 0 for none).
+- **Records**: a table of fields of their own (`drive = { mode = schema.u8, target = schema.chip }`), stored in name
+  order as a schema's fields are. **Lists**: `schema.list(T, n)` (the `schema` global; `T` a type, a list of variants,
+  a record or another list; `n` 1 to 65535), a count (a byte, two past 255) then room for `n`; a list shortened zeroes
+  what it drops, so its bytes are what its elements say. **`code`**: a chip code, a letter A to Z or `*` (a byte, 0
+  for none).
 - **In Luau**, a record's fields and a list's elements are read and written by their places (`s.drive.mode`,
   `s.picks[1].code`, `#s.picks`), as deep as the schema nests them; a list grows by its next element, and a
   record, a list or an array takes a table whole (`assign` in nettai-luau's bind.rs). A setup's defaults state
@@ -3054,10 +3059,10 @@ A state's or a setup's declaration takes records, bounded lists and chip codes (
 
 The SP navi chips' damage is each game's Luau, and the deletion times a fact of its rules' setup.
 
-- **The fact**: `sp_times = schema.list({ chip = "chip", frames = "u16" }, 18)` in each game's `setup`, defaulting
-  to every SP chip of the game at 0 frames, in the save's order (`setup_defaults`). A side that states some has
-  those alone; a chip it leaves out is in no time. Tools find it by its role, `PlayerFact::SpTimes`; the engine reads
-  none of it. `PlayerSetup::sp_times` and `setup::SpTimes` are gone.
+- **The fact**: `sp_times = schema.list({ chip = schema.chip, frames = schema.u16 }, 18)` in each game's `setup`,
+  defaulting to every SP chip of the game at 0 frames, in the save's order (`setup_defaults`). A side that states some
+  has those alone; a chip it leaves out is in no time. Tools find it by its role, `PlayerFact::SpTimes`; the engine
+  reads none of it. `PlayerSetup::sp_times` and `setup::SpTimes` are gone.
 - **The formula**: rules/sp_chips.luau of each game, a module (no longer a rule section): its `DELETION_TIMES`
   (a record of type `sp-deletion-times`, `byte_8010B2C`), the BCD time of the frames (`sub_8000D84`), and
   `sp_chips.damage(side, chip)`, the step the side's time for the chip passes into the chip's `sp.by_time`
@@ -3085,12 +3090,13 @@ The SP navi chips' damage is each game's Luau, and the deletion times a fact of 
 
 Every part of a side is a fact of its game's rules' setup, and what is wrong with a side is the rules' to say.
 
-- **The facts** (each game's `setup`, under the approved names): `navi = "navi"` (required), `folder =
-  schema.list({ chip = "chip", code = "code" }, 30)`, `regular_chip = "u8?"`, EXE6's `tag_chips =
-  schema.list("u8", 2)`, `patch_cards = schema.list({ card = "patch_card", on = "bool" }, 32)`,
-  `navicust_expansions = "u8?"` (none: no NaviCust; the rules' default is the largest board, a recording's
-  boundary states none) and `navicust_programs = schema.list({ program, color, x, y, rotation, compressed }, 49)`,
-  the color an enum of the six names the programs use, held to the program's own `colors` by the rules.
+- **The facts** (each game's `setup`, under the approved names): `navi = schema.navi` (required), `folder =
+  schema.list({ chip = schema.chip, code = schema.code }, 30)`, `regular_chip = schema.optional(schema.u8)`, EXE6's
+  `tag_chips = schema.list(schema.u8, 2)`, `patch_cards = schema.list({ card = schema.entry("patch_card"), on =
+  schema.bool }, 32)`, `navicust_expansions = schema.optional(schema.u8)` (none: no NaviCust; the rules' default is
+  the largest board, a recording's boundary states none) and `navicust_programs = schema.list({ program, color, x, y,
+  rotation, compressed }, 49)`, the color an enum of the six names the programs use, held to the program's own
+  `colors` by the rules.
 - **Roles** `PlayerFact::{Navi, Folder, RegularChip, TagChips}`. `Battle::new` holds the round's stats to the navi
   a setup states. `Match::round` deals the battle folder from the folder facts as before; the engine still takes
   the dealt `PlayerSetup::folder`, which recordings give dealt.
@@ -3129,12 +3135,12 @@ Every part of a side is a fact of its game's rules' setup, and what is wrong wit
 The auto battle data is EXE5's setup's, and its send and its reads are EXE5's Luau (content/exe5/rules/auto_battle/
 block.luau); the engine has no auto battle code.
 
-- **The facts**: `auto_battle_places = schema.list(PLACE, 42)` (a place `{ chip, pattern, zero }`: a chip, a
-  pattern record by number from 1, a 0, or `{}` empty; past the list, empty), `auto_battle_records =
-  schema.list(RECORD, 8)` (`{ dx, dy, chips = schema.list({ chip, zero }, 5), score }`; past the list, blank, 0xFF
-  throughout) and `auto_battle_sent = "bool"` (new: the places are as a console sent them, a recording's; gone since:
-  a recording states its saves' blocks and the send's RNG2, exe5-map.md §15.9). A side
-  that says nothing has every place empty and every record zeros (nothing learned).
+- **The facts**: `auto_battle_places = schema.list(PLACE, 42)` (a place `{ chip, pattern, zero }`: a chip, a pattern
+  record by number from 1, a 0, or `{}` empty; past the list, empty), `auto_battle_records = schema.list(RECORD, 8)`
+  (`{ dx, dy, chips = schema.list({ chip, zero }, 5), score }`; past the list, blank, 0xFF throughout) and
+  `auto_battle_sent = schema.bool` (new: the places are as a console sent them, a recording's; gone since: a recording
+  states its saves' blocks and the send's RNG2, exe5-map.md §15.9). A side that says nothing has every place empty and
+  every record zeros (nothing learned).
 - **The send** (0x0802C7BE) is the rules' `round_setup`: the 42 places, the first three shuffled over three rounds
   and the rest over 39, two draws a round from the battle's RNG (84 a side, standing in for the console's RNG2 at the
   link's start; a match's battle RNG is otherwise its seed's), packed into the side's state, `auto_battle_places`.
@@ -3197,8 +3203,8 @@ file format alone, nettai-frontend what plays; no version beyond the content has
 ### A patch card always applies; merge takes a list; the game's own collections (2026-10-06, branch nettai-player, steps c6a to c6c)
 
 - **c6a** (the user: "no need to implement on/off, an patch card is always on"): `patch_cards =
-  schema.list("patch_cards", 32)`, a list of cards each of which applies; the codecs leave out a save's card
-  switched off (docs/engine/patch-cards.md says what that changes: the JP emotion window over a save whose every
+  schema.list(schema.entry("patch_cards"), 32)`, a list of cards each of which applies; the codecs leave out a save's
+  card switched off (docs/engine/patch-cards.md says what that changes: the JP emotion window over a save whose every
   card is off).
 - **c6b** (the user: "why does merge not take just a list?"): a section init is `merge { require(...), ... }` in
   path order; an id two modules give is an error naming it.
@@ -3321,7 +3327,7 @@ and slides, a hit, the timers), and the pure facts stay data (`flags`, `trail_so
   EXE5's magnet's tries).
 - **Gone from Rust**: `IceRule`, a type's `holds` and `stops_slides`, `road_slide` and `slide` (as `carries` and
   `carries_by_move`), the effect role `panel_splash` (EXE5's sea names its splash). New API: the object's
-  `slide_type`, the navi's `slide_cooldown`, `me:form_trait(name)`, `collision:add_final_hit_mod`.
+  `slide_type`, the navi's `slide_cooldown`, `me.form_traits`, `collision:add_final_hit_mod`.
 - **EXE5's type 5 is "magnet"** (the user: "metal" panels in EXE5 are magnet panels): its rules, compat table,
   stages, chips, generators and pack field name it so, and the form trait is `stands_on_magnet`. EXE4's type 5 stays
   "metal", its unbreakable plate.

@@ -26,7 +26,7 @@ local WEAPONS: FormWeapons = { buster = buster.weapon, charge_shot = charged_sho
 -- air and back to idle with the animation it has.
 local landing = new.action {
     id = "test/landing",
-    state = { timer = "u16" },
+    state = { timer = schema.u16 },
     update = function(me: Object, s: { timer: number })
         if me.step_init == 0 then
             me.step_init = 4
@@ -35,7 +35,7 @@ local landing = new.action {
         end
         s.timer -= 1
         if s.timer <= 0 then
-            me:set_navi_state("hovering", false)
+            me.navi_flags.hovering = false
             me:end_attack()
         end
     end,
@@ -49,7 +49,7 @@ type WornState = { ticks: number, marks: { number } }
 local worn = new.kind {
     id = "test/worn",
     pool = "actor",
-    state = { ticks = "u16", marks = "u32[24]" },
+    state = { ticks = schema.u16, marks = schema.array(schema.u32, 24) },
     update = function(me: Object)
         local l = me.lifecycle
         if l == "init" then
@@ -88,13 +88,13 @@ local HOOKS: Hooks = {
         wearer.related2 = o
     end,
     post_init = function(navi: Object)
-        navi:set_navi_state("dives", true)
+        navi.navi_flags.dives = true
     end,
     tick = function(navi: Object)
         local own = navi.state :: Requests
-        local hovering = navi:navi_state("hovering")
+        local hovering = navi.navi_flags.hovering
         if navi.panel_y == 1 and not hovering then
-            navi:set_navi_state("hovering", true)
+            navi.navi_flags.hovering = true
             own.take_off = true
         elseif navi.panel_y ~= 1 and hovering then
             own.land = true
@@ -106,7 +106,7 @@ local HOOKS: Hooks = {
             own.take_off = false
         elseif own.land then
             own.land = false
-            navi:set_attack(landing, 0)
+            navi:set_attack(landing, "plain")
         end
     end,
 }

@@ -22,7 +22,7 @@ local launcher = {}
 launcher.kind = new.kind {
     id = "test/launcher",
     pool = "attack",
-    state = { launched = "bool" },
+    state = { launched = schema.bool },
     update = function(me: Object)
         local s = me.state :: { launched: boolean }
         if s.launched then
@@ -43,8 +43,10 @@ launcher.kind = new.kind {
     end,
 }
 
+local OTHER_VARIANT = schema.record_type("other-variant")
+
 -- A kind that stores a record of the wrong type in a ticker's variant.
-local OTHER = new.record("other-variant", { lifetime = 1 })
+local OTHER = new.record(OTHER_VARIANT, { lifetime = 1 })
 
 launcher.misuse = new.kind {
     id = "test/misuse",

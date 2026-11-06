@@ -67,6 +67,30 @@ pub mod f1 {
     pub const HIT_WHILE_DIMMED: u32 = 1 << 24;
 }
 
+/// A navi's requests in its collision's second word (`f2`): what its hits
+/// and statuses ask of its next status update. Content names them in its
+/// rules (`content::Requests`); a status raises its timer's
+/// (`content::StatusTimer::request`). (Obstacles read the word their own
+/// way: `kinds::obstacle::f2`.)
+pub mod f2 {
+    /// A hit's flash (hit modifier 0x02).
+    pub const FLASH: u32 = 1 << 1;
+    /// A hit's flinch (hit modifier 0x01).
+    pub const FLINCH: u32 = 1 << 2;
+    pub const PARALYZE: u32 = 1 << 3;
+    /// A push's slide.
+    pub const SLIDE: u32 = 1 << 4;
+    pub const BLIND: u32 = 1 << 5;
+    pub const IMMOBILIZE: u32 = 1 << 6;
+    pub const CONFUSE: u32 = 1 << 7;
+    /// A push's drag (the game's drag bit).
+    pub const DRAG: u32 = 1 << 8;
+    /// Anger, at the navi's next status update.
+    pub const ANGER: u32 = 1 << 9;
+    pub const FREEZE: u32 = 1 << 16;
+    pub const BUBBLE: u32 = 1 << 17;
+}
+
 /// Collision type bits (docs/engine/field-collision-damage.md §3.3): what
 /// an object is (`self_flags`) and what it reacts to (`target_flags`), as
 /// content's collision types give them (by name: [`member_bits`]). A hit

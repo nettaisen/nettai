@@ -11,10 +11,12 @@ local ticker = {}
 -- lifetime (or `LIFETIME`). `parent` is the kind that spawned it.
 local LIFETIME = 30
 
+local TICKER_VARIANT = schema.record_type("ticker-variant")
+
 ticker.kind = new.kind {
     id = "test/ticker",
     pool = "effect",
-    state = { ticks = "u16", variant = "record:ticker-variant", parent = "kind" },
+    state = { ticks = schema.u16, variant = TICKER_VARIANT, parent = schema.kind },
     update = function(me: Object)
         local s = me.state :: State
         if me.kind ~= ticker.kind then
@@ -30,12 +32,12 @@ ticker.kind = new.kind {
 
 -- A ticker variant: a record a ticker's state refers to.
 function ticker.variant(v: Variant): Variant
-    return new.record("ticker-variant", v)
+    return new.record(TICKER_VARIANT, v)
 end
 
 -- One state for every action the builder makes: they continue each
 -- other's attack state, as the original's actions of one number do.
-local STATE = { ticks = "u16" }
+local STATE = { ticks = schema.u16 }
 
 export type Spec = { id: string?, length: number, next: any? }
 
@@ -55,7 +57,7 @@ function ticker.action(spec: Spec): any
             if s.ticks >= spec.length then
                 s.ticks = 0
                 if spec.next then
-                    me:set_attack(spec.next, 1)
+                    me:set_attack(spec.next, "buster")
                 else
                     me:exit_attack()
                 end

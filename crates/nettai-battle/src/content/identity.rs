@@ -508,14 +508,14 @@ pub(crate) fn read(
                     for n in names {
                         use crate::collision::f1;
                         flags |= match n {
-                            Data::Str(s) if s == "superarmor" => f1::SUPERARMOR,
-                            Data::Str(s) if s == "airshoe" => f1::AIRSHOE,
-                            Data::Str(s) if s == "floatshoe" => f1::FLOATSHOE,
+                            Data::Str(s) if s == "super_armor" => f1::SUPERARMOR,
+                            Data::Str(s) if s == "air_shoe" => f1::AIRSHOE,
+                            Data::Str(s) if s == "float_shoe" => f1::FLOATSHOE,
                             Data::Str(s) if s == "affected_by_ice" => f1::AFFECTED_BY_ICE,
                             Data::Str(s) if s == "untouchable" => f1::UNTOUCHABLE,
                             other => {
                                 return Err(what(format!(
-                                    "body.flags has {other:?}, not superarmor, airshoe, floatshoe, affected_by_ice or untouchable"
+                                    "body.flags has {other:?}, not super_armor, air_shoe, float_shoe, affected_by_ice or untouchable"
                                 )));
                             }
                         };

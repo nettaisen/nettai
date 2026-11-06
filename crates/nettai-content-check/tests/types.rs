@@ -117,7 +117,7 @@ fn misuse_of_the_v2_api_is_a_type_error() {
         ("local _ = new.kind { id = 'x', pool = 'attack' }", "a kind without its update"),
         ("local _ = asset.sprite(3)", "an asset by number"),
         ("local _ = new.effect { sprite = 'bomb' }", "a sprite by string"),
-        ("local function f(me: Object) me:set_attack('shot', 1) end", "an action by name"),
+        ("local function f(me: Object) me:set_attack('shot', \"buster\") end", "an action by name"),
         ("local function f(me: Object) local _ = battle.spawn(me, me.pos) end", "an object for a kind"),
         ("local _ = new.region { panels = { 'front' } }", "a panel that isn't { dx, dy }"),
     ] {
@@ -141,7 +141,7 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
         ("local function f(me: Object) local _ = me.index end", "a kind by index"),
         ("local function f(me: Object) local _ = me.variant end", "the attack's variant"),
         ("local function f(me: Object) local _: number = me.chip end", "the attack's chip by number"),
-        ("local function f(me: Object) me:set_attack(0x12, 2) end", "an action by number"),
+        ("local function f(me: Object) me:set_attack(0x12, \"chip\") end", "an action by number"),
         ("local function f(me: Object) me.sprite:load(\"0c-01\") end", "a sprite by number"),
         // (`battle.hand_chip(side, i)` is a hand's chip by handle, a `Chip`: the number it gave is what is gone.)
         ("local _: number = battle.hand_chip(0, 0)", "a hand's chip by number"),
@@ -160,6 +160,11 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
         ("local _ = field.check(1, 1, 0x10, 0x0F880080)", "a panel condition by words"),
         ("local _ = new.region { field = { require = 0x20, forbid = 0 } }", "a region's condition by words"),
         ("local function f(me: Object) local _ = me.collision.hit_flags end", "hit results as a word"),
+        // A status raises its timer's request; the rows past the original's table, a collision offset, are gone.
+        ("local _: StatusDef = { duration = 90, timer = { other = 10 } }", "a status timer by collision offset"),
+        ("local _ = battle.effects()", "the battle's effects as a word"),
+        ("local _: StageDef = { layout = {}, panel_pattern = 0x38, mode = 0, battle_number = 0, effects = 0x88C, actors = {} }", "a stage's effects as a word"),
+        ("local function f(c: ChipSpec) c.extra_flags = { 128 } end", "a chip's extra flag by number"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
@@ -175,6 +180,40 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
     }
 }
 
+/// docs/design/scripting.md §2.4: a state's field types are `schema` values; a type's name, a string, is no
+/// type, nor is a record type's.
+#[test]
+fn a_type_by_name_is_a_type_error() {
+    let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "exe6").unwrap()).unwrap();
+    let kind = |state: &str| format!("local _ = new.kind {{ pool = \"attack\", update = function(me: Object) end, state = {state} }}");
+    let good = [
+        kind("{ n = schema.u8, a = schema.array(schema.u8, 18), c = schema.chip, o = schema.optional(schema.u8), v = { \"a\", \"b\" } }"),
+        kind("{ l = schema.list({ chip = schema.chip, code = schema.code }, 30), r = schema.role(\"form_list\", schema.array(schema.form, 5)) }"),
+        "local T = schema.record_type(\"t\")\nlocal _ = new.record(T, { n = 1 })\nlocal _ = new.kind { pool = \"attack\", update = function(me: Object) end, state = { t = T, e = schema.entry(\"patch_cards\") } }".to_string(),
+        "local _ = new.kind { pool = \"attack\", update = function(me: Object) end, state = { look = obstacle.absorbed_look } }".to_string(),
+    ];
+    for source in good {
+        let problems = checker.check("good", &format!("--!strict\n{source}\n")).unwrap();
+        assert!(problems.is_empty(), "`{source}`: {problems:?}");
+    }
+    for (bad, why) in [
+        (kind("{ n = \"u8\" }"), "a scalar by name"),
+        (kind("{ a = \"u8[18]\" }"), "an array by name"),
+        (kind("{ c = \"chip\" }"), "a reference by name"),
+        (kind("{ r = \"record:bomb-variant\" }"), "a record type by name"),
+        (kind("{ l = schema.list(\"u8\", 2) }"), "a list's elements by name"),
+        (kind("{ r = schema.role(\"form_list\", \"u8\") }"), "a role's type by name"),
+        ("local _ = schema.array(\"u8\", 3)".to_string(), "an array's element by name"),
+        ("local _ = new.record(\"bomb-variant\", {})".to_string(), "a record of a type by name"),
+        ("local _ = new.record(schema.u8, {})".to_string(), "a record of a type that is no record type"),
+        (rules("extends = { chip = { weight = \"u8\" } },"), "an extension's type by name"),
+        (rules("setup = { hp = \"u16\" },"), "a setup's type by name"),
+    ] {
+        let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
+        assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
+    }
+}
+
 #[test]
 fn misuse_of_the_core_api_is_a_type_error() {
     let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "exe6").unwrap()).unwrap();
@@ -184,12 +223,38 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("local function f(me: Object) me.sprite.shadow = \"soft\" end", "not a shadow"),
         ("local function f(me: Object) local _ = me.pos + 1 end", "Vec3 plus a number"),
         ("local _ = battle.spawn(\"projectile\", 3)", "not a pool"),
-        ("local function f(me: Object) me:set_status(\"usingaction\", true) end", "not a status flag"),
-        ("local function f(me: Object) local _ = me:held(\"x\") end", "not a button"),
+        ("local function f(me: Object) me.status.usingaction = true end", "not a status flag"),
+        ("local function f(me: Object) local _ = me.held.x end", "not a button"),
+        ("local function f(me: Object) me:set_status(\"guard\", true) end", "a status flag by a string"),
+        ("local function f(me: Object) me.requests.gaurd = true end", "not a request"),
+        ("local function f(me: Object) me.navi_flags.no_charging = true end", "not a navi flag"),
+        ("local function f(me: Object) local _ = me.obstacle_flags.pushing end", "not an obstacle flag"),
+        ("local function f(me: Object) local _ = me.form_traits.stands_on_magnets end", "not a form trait"),
+        ("local function f(me: Object) me:console(0).palette = 1 end", "a sprite field on an object's console"),
+        ("local function f(me: Object) me.sprite:console(0).white = true end", "a field every console draws alike"),
+        ("local function f(me: Object, a: Action) me:set_attack(a, 2) end", "an attack kind by number"),
+        ("local function f(me: Object) me:start_move(1) end", "a step's direction by number"),
+        ("local function f(me: Object) local _: number = me:held_direction() end", "the held direction as a number"),
+        ("local function f(me: Object) me.wrapped = 1 end", "wrapped as a number"),
+        ("local function f(me: Object) me.charge_level = 2 end", "a charge level by number"),
+        ("local function f(me: Object) local _ = me.collision.direction == 4 end", "a move's direction by number"),
+        ("local function f(me: Object) local _ = me:take_damage(0) end", "a damage mode by number"),
+        ("local function f(me: Object) obstacle.register(me, 0, 1) end", "an obstacle class by number"),
+        ("local _ = battle.palette_flash(0, 4)", "a palette flash variant by number"),
+        ("local _ = battle.cycle(1)", "a fight cycle by number"),
+        ("battle.add_special_bonus(0, 1, 10)", "a special bonus by number"),
+        ("custom.play(0, \"chips\")", "not a custom screen sound"),
+        ("custom.fade(0, \"out\", 1)", "not a custom screen fade"),
+        ("rules.listening(0).controler = false", "not a rules hook"),
+        ("local _ = schema.role(\"form_lists\", \"u8\")", "not a role"),
+        ("local _: TrapKind = \"anti_dmg\"", "not a trap"),
+        ("local _: ChipTrait = \"no_chains\"", "not a chip trait"),
+        ("local _: ChipClass = \"dark\"", "not a chip class"),
+        ("local _: SetupProblemKind = \"too_many\"", "not a setup problem's kind"),
         // (A panel type is named, by its game's rules, so to the core a name is a string; one none of the game's
         // types has is refused as the battle runs. Its number is no name.)
         ("field.set_type(1, 1, 3)", "a panel type by number"),
-        ("local function f(me: Object) me:set_status_timer(\"stun\", 3) end", "not a status timer"),
+        ("local function f(me: Object) me.status_timers.stun = 3 end", "not a status timer"),
         ("local _ = data.chips[1]", "not a data field"),
         ("local function f(me: Object) me.drag_step = \"sliding\" end", "not a drag step"),
         (
@@ -214,8 +279,12 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("local function f(me: Object) local _ = me.collision:hit_any({ \"swrod\" }) end", "not a hit's name"),
         ("local function f(me: Object) me.collision.hit = 1 end", "a hit that isn't a boolean"),
         // The Gregar and Falzar chips.
-        ("battle.set_hud(\"chips\", false)", "not a HUD field"),
-        ("battle.set_hud({ \"gauge\" }, false)", "a list of HUD fields, not one"),
+        ("battle.hud().chips = false", "not a HUD field"),
+        ("battle.hud(\"gauge\").gauge = false", "a HUD field for a side"),
+        ("local _ = battle.hand_entry(0, 0).bonus", "not a hand entry's field"),
+        ("local _: StatusDef = { duration = 90, timer = \"stun\" }", "not a status"),
+        ("local function f(c: ChipSpec) c.extra_flags = { \"rush\" } end", "not a chip's extra flag"),
+        ("local _: boolean = battle.has_effect(0x20000)", "a battle effect by its bit"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");

@@ -16,11 +16,11 @@
 //! private to this module: content and engine code read and write fields
 //! by name (or by the schema's field index), never by offset.
 //!
-//! A field may be a record of fields of its own (`{ chip = "chip", code =
-//! "code" }`) or a bounded list of a type (`schema.list(T, n)`: how many it
-//! holds, then room for `n`), nested as deep as a schema says. A part of a
-//! block is reached through its [`Place`]: a field's, a record's field's,
-//! an element's.
+//! A field may be a record of fields of its own (`{ chip = schema.chip,
+//! code = schema.code }`) or a bounded list of a type (`schema.list(T, n)`:
+//! how many it holds, then room for `n`), nested as deep as a schema says. A
+//! part of a block is reached through its [`Place`]: a field's, a record's
+//! field's, an element's.
 
 use std::fmt;
 
@@ -53,16 +53,18 @@ pub enum FieldType {
     Enum(Vec<String>),
     /// A byte, or none (a sprite's alpha; a setup's level, `u8?`).
     OptionalU8,
-    /// A fixed number of elements of a scalar type (`"u8[18]"`): read and
-    /// written element by element.
+    /// A fixed number of elements of a scalar type
+    /// (`schema.array(schema.u8, 18)`): read and written element by element.
     Array(Box<FieldType>, u8),
-    /// A definition of a registry, or none (`"kind"`, `"record"`,
-    /// `"record:bomb-variant"`): docs/design/content-model-v2.md §3.4. A
-    /// record field may name the records' type.
+    /// A definition of a registry, or none (`schema.kind`; a record of a
+    /// record type, `schema.record_type("bomb-variant")`'s; an entry of a
+    /// collection, `schema.entry("patch_cards")`):
+    /// docs/design/content-model-v2.md §3.4. A record field names the
+    /// records' type, an entry field the collection.
     Ref(Registry, Option<String>),
-    /// An asset of a kind, or none (`"sprite"`, `"sound"`): §3.4.
+    /// An asset of a kind, or none (`schema.sprite`, `schema.sound`): §3.4.
     Asset(AssetKind),
-    /// A chip code (`"code"`): a letter A to Z or `*`, or none.
+    /// A chip code (`schema.code`): a letter A to Z or `*`, or none.
     Code,
     /// A record: fields of their own, in their names' order (a table of
     /// field names to types).
@@ -74,46 +76,82 @@ pub enum FieldType {
 }
 
 impl FieldType {
-    /// A type by name: `bool`, `u8`, `u16`, `u32`, `i8`, `i16`, `i32`,
-    /// `u8?` (a byte or none: a setup's fact that may be stated as none, as
-    /// a navi code's level), `object`, `vec3`, `code` (a chip code), a
-    /// registry's or an asset kind's name, or an array of one of the
-    /// scalars, `"u8[18]"`.
-    pub fn scalar(name: &str) -> Option<FieldType> {
-        if let Some((elem, len)) = name.strip_suffix(']').and_then(|s| s.split_once('[')) {
-            let elem = FieldType::scalar(elem)?;
-            let len: usize = len.parse().ok()?;
-            if matches!(elem, FieldType::Array(..) | FieldType::Vec3) || !(1..=MAX_ARRAY).contains(&len) {
-                return None;
-            }
-            return Some(FieldType::Array(Box::new(elem), len as u8));
+    /// The types a declaration names, each its `schema` value's name
+    /// (`schema.u16`): `bool`, `u8`, `u16`, `u32`, `i8`, `i16`, `i32`,
+    /// `object`, `vec3`, `code` (a chip code), a definition of a registry
+    /// a field may hold (by the registry's name: `schema.chip`; a record's
+    /// field names its record type and an entry's its collection,
+    /// [`FieldType::records`], [`FieldType::entry`]) and an asset of a kind
+    /// (`schema.sprite`).
+    pub fn named() -> Vec<(&'static str, FieldType)> {
+        let mut out = vec![
+            ("bool", FieldType::Bool),
+            ("u8", FieldType::U8),
+            ("u16", FieldType::U16),
+            ("u32", FieldType::U32),
+            ("i8", FieldType::I8),
+            ("i16", FieldType::I16),
+            ("i32", FieldType::I32),
+            ("object", FieldType::Object),
+            ("vec3", FieldType::Vec3),
+            ("code", FieldType::Code),
+        ];
+        // (Not the rules, a game's one; a record or an entry, of a type or a
+        // collection; a layout.)
+        let held = |r: &Registry| !matches!(r, Registry::Rules | Registry::Record | Registry::Entry | Registry::Schema);
+        out.extend(Registry::ALL.into_iter().filter(held).map(|r| (r.name(), FieldType::Ref(r, None))));
+        out.extend(AssetKind::ALL.into_iter().map(|k| (k.name(), FieldType::Asset(k))));
+        out
+    }
+
+    /// An array of `len` elements of `elem` (`schema.array(schema.u8,
+    /// 18)`): of a type that is one value (not a vector or an array), 1 to
+    /// [`MAX_ARRAY`] of them.
+    pub fn array(elem: FieldType, len: i64) -> Result<FieldType, String> {
+        if !elem.is_scalar() || matches!(elem, FieldType::Vec3 | FieldType::Enum(_)) {
+            return Err(format!("an array's elements are a type of one value, not {elem}"));
         }
-        Some(match name {
-            "bool" => FieldType::Bool,
-            "u8" => FieldType::U8,
-            "u8?" => FieldType::OptionalU8,
-            "u16" => FieldType::U16,
-            "u32" => FieldType::U32,
-            "i8" => FieldType::I8,
-            "i16" => FieldType::I16,
-            "i32" => FieldType::I32,
-            "object" => FieldType::Object,
-            "vec3" => FieldType::Vec3,
-            "code" => FieldType::Code,
-            _ if name.starts_with("record:") => {
-                let t = &name["record:".len()..];
-                return (!t.is_empty()).then(|| FieldType::Ref(Registry::Record, Some(t.to_string())));
-            }
-            _ if Registry::from_name(name).is_some_and(|r| !matches!(r, Registry::Schema | Registry::Entry)) => {
-                FieldType::Ref(Registry::from_name(name).expect("a registry"), None)
-            }
-            _ if AssetKind::from_name(name).is_some() => FieldType::Asset(AssetKind::from_name(name).expect("an asset kind")),
-            // An entry of the collection the game's root holds under this
-            // key (`patch_cards`): which collections there are, the define
-            // phase checks.
-            _ if name != "entry" && is_collection_name(name) => FieldType::Ref(Registry::Entry, Some(name.to_string())),
-            _ => return None,
-        })
+        if !(1..=MAX_ARRAY as i64).contains(&len) {
+            return Err(format!("an array has 1 to {MAX_ARRAY} elements, not {len}"));
+        }
+        Ok(FieldType::Array(Box::new(elem), len as u8))
+    }
+
+    /// A byte, or none (`schema.optional(schema.u8)`: a setup's fact that
+    /// may be stated as none, as a navi code's level). (A byte is the one
+    /// type a field may hold or not.)
+    pub fn optional(of: FieldType) -> Result<FieldType, String> {
+        match of {
+            FieldType::U8 => Ok(FieldType::OptionalU8),
+            other => Err(format!("a field that may be none is a u8, not {other}")),
+        }
+    }
+
+    /// A record of record type `t` (`schema.record_type(t)`'s value: a
+    /// field's type, and what `new.record` tags a table as).
+    pub fn records(t: &str) -> Result<FieldType, String> {
+        if t.is_empty() {
+            return Err("a record type has a name".into());
+        }
+        Ok(FieldType::Ref(Registry::Record, Some(t.to_string())))
+    }
+
+    /// The record type a record field names, if this is one.
+    pub fn record_type(&self) -> Option<&str> {
+        match self {
+            FieldType::Ref(Registry::Record, Some(t)) => Some(t),
+            _ => None,
+        }
+    }
+
+    /// An entry of the collection the game's root holds under the key `c`
+    /// (`schema.entry("patch_cards")`): which collections there are, the
+    /// define phase checks.
+    pub fn entry(c: &str) -> Result<FieldType, String> {
+        if c == "entry" || !is_collection_name(c) {
+            return Err(format!("{c:?} names no collection (lowercase words joined by _)"));
+        }
+        Ok(FieldType::Ref(Registry::Entry, Some(c.to_string())))
     }
 
     /// Bytes a value of this type takes in a state.
@@ -247,6 +285,11 @@ impl FieldType {
     }
 }
 
+/// The engine's own record type (`obstacle.absorbed_look`): an absorbed
+/// obstacle's look, which `obstacle.fly_to_absorber` takes. No content
+/// declares a record type of its name.
+pub const ABSORBED_LOOK: &str = "absorbed-look";
+
 /// Whether `name` may name a collection of a game's root (a field type that
 /// is an entry of it, [`Registry::Entry`]): lowercase words joined by `_`.
 pub fn is_collection_name(name: &str) -> bool {
@@ -264,33 +307,44 @@ fn list_count_size(n: u16) -> usize {
     if n <= u8::MAX as u16 { 1 } else { 2 }
 }
 
-/// The key a list's declaration (`schema.list(T, n)`) marks its table with.
-pub const LIST_MARK: &str = "__list";
-
-/// The key a role's declaration (`schema.role(name, T)`) marks its table
-/// with: a field of type `T` (its `of`) that the engine knows by the role
-/// `name` (its `role`).
-pub const ROLE_MARK: &str = "__role";
+/// A field's type as a declaration gives it, read back as data
+/// ([`Data::Type`]): what a `schema` value is (docs/design/scripting.md §2.4).
+/// A list of variant names (an enum) and a table of fields (a record) are
+/// plain data.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum TypeData {
+    /// A type of its own: one value or an array of them (`schema.u16`,
+    /// `schema.array(schema.u8, 18)`, `schema.chip`, a record type).
+    Is(FieldType),
+    /// A list of up to `n` elements of a type, as data (`schema.list(T,
+    /// n)`).
+    List(Box<Data>, u16),
+    /// A field of a type that the engine knows by a role (`schema.role(role,
+    /// T)`; a field's, not an element's).
+    Role(String, Box<Data>),
+}
 
 impl FieldType {
-    /// A field's type as data: a type name, a list of variant names (an
-    /// enum), a table of fields (a record), or a list's declaration.
+    /// A field's type as data: a type (`schema.u16`, a list's
+    /// declaration), a list of variant names (an enum) or a table of fields
+    /// (a record).
     pub fn from_data(d: &Data) -> Result<FieldType, String> {
         Ok(match d {
-            Data::Str(t) => FieldType::scalar(t).ok_or_else(|| format!("unknown type {t:?}"))?,
+            Data::Type(TypeData::Is(t)) => t.clone(),
+            Data::Type(TypeData::List(of, max)) => {
+                if !(1..=MAX_LIST as u16).contains(max) {
+                    return Err(format!("a list holds 1 to {MAX_LIST} elements, not {max}"));
+                }
+                let of = FieldType::from_data(of).map_err(|e| format!("a list's elements: {e}"))?;
+                FieldType::List(Box::new(of), *max)
+            }
+            Data::Type(TypeData::Role(role, _)) => return Err(format!("a role ({role:?}) is a field's, not an element's")),
             Data::List(variants) => FieldType::Enum(
                 variants.iter().map(|v| v.str().map(str::to_string).ok_or_else(|| "variants are names".to_string())).collect::<Result<_, _>>()?,
             ),
-            Data::Map(_) if *d.field(LIST_MARK) == Data::Bool(true) => {
-                let max = d.field("max").int().ok_or("a list's `max` is a whole number")?;
-                if !(1..=MAX_LIST as i64).contains(&max) {
-                    return Err(format!("a list holds 1 to {MAX_LIST} elements, not {max}"));
-                }
-                let of = FieldType::from_data(d.field("of")).map_err(|e| format!("a list's elements: {e}"))?;
-                FieldType::List(Box::new(of), max as u16)
-            }
             Data::Map(_) => FieldType::Record(Box::new(Schema::from_data(d)?)),
-            _ => return Err("needs a type name, a list of variants, a table of fields or a list (`schema.list`)".into()),
+            Data::Str(t) => return Err(format!("a type is a `schema` value (`schema.u8`, `schema.chip`), not the string {t:?}")),
+            _ => return Err("needs a type (`schema.u8`, `schema.list`), a list of variants or a table of fields".into()),
         })
     }
 }
@@ -368,8 +422,8 @@ impl fmt::Display for FieldType {
             FieldType::OptionalU8 => f.write_str("u8?"),
             FieldType::Array(elem, n) => write!(f, "{elem}[{n}]"),
             FieldType::Ref(r, None) => write!(f, "{r}"),
-            FieldType::Ref(Registry::Entry, Some(c)) => write!(f, "{c}"),
-            FieldType::Ref(r, Some(t)) => write!(f, "{r}:{t}"),
+            FieldType::Ref(Registry::Entry, Some(c)) => write!(f, "entry of {c}"),
+            FieldType::Ref(r, Some(t)) => write!(f, "{r} of type {t}"),
             FieldType::Asset(k) => write!(f, "{k}"),
             FieldType::Code => f.write_str("code"),
             FieldType::Record(fields) => {
@@ -562,11 +616,12 @@ impl Schema {
         self.size
     }
 
-    /// A schema from a `state` table as data: field name to a type name
-    /// (`"u16"`, `"u8[18]"`, `"object"`, `"code"`), to a list of variant
-    /// names (an enum), to a table of fields (a record) or to a list
-    /// (`schema.list(T, n)`, a table of [`LIST_MARK`], `of` and `max`).
-    /// Fields are stored in name order.
+    /// A schema from a `state` table as data: field name to a type
+    /// (`schema.u16`, `schema.array(schema.u8, 18)`, `schema.object`,
+    /// `schema.code`, a list, `schema.list(T, n)`), to a list of variant
+    /// names (an enum) or to a table of fields (a record); a field's type
+    /// may give it a role (`schema.role(role, T)`). Fields are stored in name
+    /// order.
     pub fn from_data(d: &Data) -> Result<Schema, String> {
         let Data::Map(entries) = d else {
             return match d {
@@ -580,10 +635,7 @@ impl Schema {
                 return Err(format!("state field names are strings, not {k}"));
             };
             let (of, role) = match v {
-                Data::Map(_) if *v.field(ROLE_MARK) == Data::Bool(true) => {
-                    let role = v.field("role").str().ok_or_else(|| format!("state field `{name}`: a role is a name"))?;
-                    (v.field("of"), Some(role.to_string()))
-                }
+                Data::Type(TypeData::Role(role, of)) => (&**of, Some(role.clone())),
                 _ => (v, None),
             };
             let ty = FieldType::from_data(of).map_err(|e| format!("state field `{name}`: {e}"))?;
@@ -1200,7 +1252,7 @@ mod tests {
             FieldDef::new("slot", FieldType::Enum(vec!["overlay".into(), "related".into()])),
             FieldDef::new("owner", FieldType::Object),
             FieldDef::new("offset", FieldType::Vec3),
-            FieldDef::new("targets", FieldType::scalar("u8[6]").unwrap()),
+            FieldDef::new("targets", FieldType::array(FieldType::U8, 6).unwrap()),
         ])
         .unwrap()
     }
@@ -1272,7 +1324,7 @@ mod tests {
             f("flag", FieldType::Bool),
             f("level", FieldType::OptionalU8),
             f("side", FieldType::Enum(vec!["left".into(), "right".into()])),
-            f("souls", FieldType::scalar("u16[3]").unwrap()),
+            f("souls", FieldType::array(FieldType::U16, 3).unwrap()),
         ])
         .unwrap();
         let mut b = Block::new(StateId(4), &s);
@@ -1347,7 +1399,7 @@ mod tests {
     #[test]
     fn a_block_is_its_schemas_size() {
         let f = |n: &str, ty: FieldType| FieldDef::new(n, ty);
-        let s = Schema::new(vec![f("big", FieldType::scalar("u16[60]").unwrap()), f("last", FieldType::U32)]).unwrap();
+        let s = Schema::new(vec![f("big", FieldType::array(FieldType::U16, 60).unwrap()), f("last", FieldType::U32)]).unwrap();
         let mut b = Block::new(StateId(0), &s);
         b.set_elem(&s, 0, 59, Value::Int(0x1234)).unwrap();
         b.set(&s, 1, Value::Int(-1)).unwrap();
@@ -1375,8 +1427,9 @@ mod tests {
         let mut block = Block::new(StateId(0), &large);
         block.set(&large, 399, Value::Vec3(Vec3 { x: 1, y: 2, z: 3 })).unwrap();
         assert_eq!(block.get(&large, 399).load(), Value::Vec3(Vec3 { x: 1, y: 2, z: 3 }));
-        assert!(FieldType::scalar("vec3[2]").is_none());
-        assert!(FieldType::scalar("u8[0]").is_none());
+        assert!(FieldType::array(FieldType::Vec3, 2).is_err());
+        assert!(FieldType::array(FieldType::U8, 0).is_err());
+        assert!(FieldType::array(FieldType::array(FieldType::U8, 2).unwrap(), 2).is_err());
     }
 
     /// docs/design/rust-and-luau.md, step c1: a record's fields and a
@@ -1386,13 +1439,14 @@ mod tests {
     fn records_lists_and_codes() {
         use crate::data::Key;
         let str_ = |s: &str| Data::Str(s.into());
+        let ty = |t: FieldType| Data::Type(TypeData::Is(t));
         let map = |kv: Vec<(&str, Data)>| Data::Map(kv.into_iter().map(|(k, v)| (Key::Str(k.into()), v)).collect());
-        let list = |of: Data, max: i64| map(vec![(LIST_MARK, Data::Bool(true)), ("max", Data::Int(max)), ("of", of)]);
+        let list = |of: Data, max: u16| Data::Type(TypeData::List(Box::new(of), max));
         let d = map(vec![
-            ("folder", list(map(vec![("code", str_("code")), ("chip", str_("chip"))]), 30)),
-            ("tags", list(str_("u8"), 2)),
-            ("at", map(vec![("x", str_("u8")), ("y", str_("i8"))])),
-            ("many", list(str_("u16"), 300)),
+            ("folder", list(map(vec![("code", ty(FieldType::Code)), ("chip", ty(FieldType::Ref(Registry::Chip, None)))]), 30)),
+            ("tags", list(ty(FieldType::U8), 2)),
+            ("at", map(vec![("x", ty(FieldType::U8)), ("y", ty(FieldType::I8))])),
+            ("many", list(ty(FieldType::U16), 300)),
         ]);
         let s = Schema::from_data(&d).unwrap();
         // In name order, within a record too: { chip, code }.
@@ -1432,14 +1486,15 @@ mod tests {
         b.set_at(many.elem(299).unwrap(), Value::Int(9)).unwrap();
         assert_eq!((b.len_at(many), b.get_at(many.elem(299).unwrap())), (Some(300), FieldValue::U16(9)));
         // What a declaration may not be.
-        assert!(Schema::from_data(&map(vec![("l", list(str_("u8"), 0))])).is_err());
-        assert!(Schema::from_data(&map(vec![("l", list(str_("U8"), 2))])).is_err());
-        // (A lowercase name no type has is a collection's: whether the
-        // game's root holds it is the define phase's to check.)
-        assert_eq!(FieldType::scalar("u9"), Some(FieldType::Ref(Registry::Entry, Some("u9".into()))));
-        assert_eq!(FieldType::scalar("patch_cards").map(|t| t.to_string()).as_deref(), Some("patch_cards"));
-        assert_eq!(FieldType::scalar("entry"), None);
-        assert!(Schema::from_data(&map(vec![("r", map(vec![("1x", str_("u8"))]))])).is_err());
+        assert!(Schema::from_data(&map(vec![("l", list(ty(FieldType::U8), 0))])).is_err());
+        // (A type is a value: a string names none.)
+        assert!(Schema::from_data(&map(vec![("l", list(str_("u8"), 2))])).is_err());
+        assert!(Schema::from_data(&map(vec![("n", str_("u8"))])).is_err());
+        // (A collection is a lowercase name: whether the game's root holds
+        // it is the define phase's to check.)
+        assert_eq!(FieldType::entry("patch_cards").map(|t| t.to_string()).as_deref(), Ok("entry of patch_cards"));
+        assert!(FieldType::entry("entry").is_err() && FieldType::entry("Cards").is_err());
+        assert!(Schema::from_data(&map(vec![("r", map(vec![("1x", ty(FieldType::U8))]))])).is_err());
         // A field by its name, the schema's or a record's; cleared whole.
         let y = s.find("y").unwrap().expect("the record's field");
         assert_eq!((s.path_name(y), s.place_of(y).ty().clone()), ("at.y".to_string(), FieldType::I8));
@@ -1447,16 +1502,16 @@ mod tests {
         assert_eq!(s.find("code"), Ok(None), "a list's elements' fields have a place each");
         b.clear_at(at);
         assert_eq!(b.get_at(at.field("y").unwrap()), FieldValue::I8(0));
-        let twice = Schema::from_data(&map(vec![("a", map(vec![("n", str_("u8"))])), ("b", map(vec![("n", str_("u8"))]))])).unwrap();
+        let twice = Schema::from_data(&map(vec![("a", map(vec![("n", ty(FieldType::U8))])), ("b", map(vec![("n", ty(FieldType::U8))]))])).unwrap();
         assert_eq!(twice.find("n"), Err("`n` is `a.n` and `b.n`".to_string()));
         // A field by its role (`schema.role`), the schema's or a record's,
         // whatever its name; not by a name.
-        let role = |r: &str, of: &str| map(vec![(ROLE_MARK, Data::Bool(true)), ("role", str_(r)), ("of", str_(of))]);
-        let roled = Schema::from_data(&map(vec![("own", map(vec![("step", role("w.step", "u8"))])), ("count", role("w.count", "u8"))])).unwrap();
+        let role = |r: &str, of: FieldType| Data::Type(TypeData::Role(r.into(), Box::new(ty(of))));
+        let roled = Schema::from_data(&map(vec![("own", map(vec![("step", role("w.step", FieldType::U8))])), ("count", role("w.count", FieldType::U8))])).unwrap();
         let step = roled.find_role("w.step").unwrap().expect("the record's field of the role");
         assert_eq!((roled.path_name(step), roled.find_role("w.count").map(|p| p.map(|p| roled.path_name(p)))), ("own.step".to_string(), Ok(Some("count".to_string()))));
         assert_eq!((roled.find_role("step"), roled.find_role("w.other")), (Ok(None), Ok(None)));
-        let both = Schema::from_data(&map(vec![("a", role("w.n", "u8")), ("b", map(vec![("n", role("w.n", "u8"))]))])).unwrap();
+        let both = Schema::from_data(&map(vec![("a", role("w.n", FieldType::U8)), ("b", map(vec![("n", role("w.n", FieldType::U8))]))])).unwrap();
         assert_eq!(both.find_role("w.n"), Err("the role `w.n` is `a` and `b.n`".to_string()));
     }
 
