@@ -81,6 +81,12 @@ bitflags::bitflags! {
         /// DS's request 0x100000, KnightMan's guard, action 0x5B: 0x02063BBC,
         /// 0x020989E6).
         const GUARD = 0x0010_0000;
+        /// EXE5's operation battle: L asks for the L order (0x08010A68, from
+        /// the input handler 0x08010A10), which 0x0802DA24 takes into the
+        /// side's block. (Its 0x100000 is the R order, its 0x400000 an order
+        /// just given: `GUARD` and `FOLLOW_UP` here.) EXE6 only clears it
+        /// (`sub_802E1EC`).
+        const ORDER_L = 0x0020_0000;
         /// The rules ask for an action of theirs to follow, which the live
         /// request handler starts after a navi switch's and before the volley
         /// (the role `follow_up`, with `ActorStatus::FOLLOWING_UP`). (The DS's
@@ -88,6 +94,15 @@ bitflags::bitflags! {
         /// Double Attack, action 0x5C: 0x02042E74, 0x02062174. Its number is
         /// the engine's `SELECT_SPECIAL` here.)
         const FOLLOW_UP = 0x0040_0000;
+        /// EXE5's operation battle: L while the L order holds ends it
+        /// (0x08010A68), as a Liberation chip's controller does on its user
+        /// (0x080EA7AE); 0x0802F7CC ends the orders. EXE6 only clears it
+        /// (`sub_802E1EC`).
+        const END_ORDER_L = 0x0080_0000;
+        /// EXE5's operation battle: R while the R order holds ends it
+        /// (0x08010A84), read with `END_ORDER_L` (0x0802F7CC). EXE6 only
+        /// clears it (`sub_802E1EC`).
+        const END_ORDER_R = 0x0100_0000;
         const SELECT_SPECIAL = 0x0200_0000;
         /// Change Cross while paused (`sub_802DCDE`, from the transformation
         /// sequencer): pause-time action 0x1C with `ActorStatus::SWITCHING_NAVI`.
@@ -111,18 +126,26 @@ bitflags::bitflags! {
         const ATTACKS = 0x3F;
         /// The charge holds.
         const HOLDS = Self::A_HELD.bits() | Self::B_HELD.bits();
-        /// What the SELECT special's selection clears (`sub_802E1EC`:
-        /// 0x100000 to 0x1000000, `GUARD` and `FOLLOW_UP` among them).
-        const SPECIAL_SELECTION = 0x01F0_0000;
+        /// What the SELECT special's selection clears (`sub_802E1EC`: EXE5's
+        /// operation battle's orders, which EXE6 kept).
+        const SPECIAL_SELECTION = Self::GUARD.bits()
+            | Self::ORDER_L.bits()
+            | Self::FOLLOW_UP.bits()
+            | Self::END_ORDER_L.bits()
+            | Self::END_ORDER_R.bits();
         const _ = !0;
     }
 }
 
 bitflags::bitflags! {
-    /// Actor state bits (`ActorData::status`).
+    /// Actor state bits (`ActorData::status`). Bits 27 to 31 have no name:
+    /// nothing in EXE4 to EXE6 or the DS sets them.
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
     pub struct ActorStatus: u32 {
-        /// The directions of the last move.
+        /// The direction of the move that started this tick, by the field's
+        /// own left and right (column 1 is left, whichever side moves):
+        /// `sub_801BE04` from `sub_80EB088`; `sub_80EB128` clears them the
+        /// next tick. Nothing reads them.
         const MOVED_UP = 0x1;
         const MOVED_DOWN = 0x2;
         const MOVED_LEFT = 0x4;
@@ -173,8 +196,17 @@ bitflags::bitflags! {
         /// swallowed and, if it did other damage, sends another bee
         /// (`sub_802CEF4`).
         const HEAT_TRAP = 0x20_0000;
-        // (EXE5 DS's 0x400000 and 0x01000000, KnightMan's guard and ToadMan's
-        // dive, are content's, in the navi's state.)
+        /// The DS's: KnightMan's guard holds (0x020497B6; its hit intake
+        /// reads it, 0x02063B72). Content keeps it in the navi's state
+        /// (`guarded`); exe5-compat compares the two.
+        const GUARDED = 0x40_0000;
+        /// The DS's: a Double Attack runs (0x0206229C, read at 0x020621E0).
+        /// The engine runs it as the rules' follow-up, `FOLLOWING_UP`.
+        const DOUBLE_ATTACK_RUNS = 0x80_0000;
+        /// The DS's: ToadMan dives (0x0204A366, read at 0x020497A4). Content
+        /// keeps it in the navi's state (`diving`); exe5-compat compares the
+        /// two.
+        const DIVING = 0x0100_0000;
         /// The rules' revival runs (`Requests::REVIVAL`'s action; the DS's
         /// 0x200000, its ToadMan rescue). Takes over the action dispatch; the
         /// navi isn't deleted at 0 HP while it runs.

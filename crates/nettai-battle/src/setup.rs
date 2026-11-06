@@ -38,9 +38,18 @@ impl BattleSettings {
 }
 
 bitflags::bitflags! {
-    /// Battle effects bits (`BattleSettings::effects`). A game's rules
-    /// declare their own besides (the flow section's `effect_bits`): bits
-    /// this type doesn't name are kept as they are.
+    /// Battle effects bits (`BattleSettings::effects`, BattleSettings +8).
+    /// A game's rules declare their own besides (the flow section's
+    /// `effect_bits`: shuffled_folder 0x80, karma_changes 0x800, EXE5's
+    /// karma_held 0x20000 and dark_chips_fizzle 0x100000), kept as they are.
+    /// The originals' story battles set bits that mean a game's own thing
+    /// and that nothing in nettai sets: EXE6's 0x1000 refills the Beast Out
+    /// counter after a loss (0x08007DFE; EXE5's runs the hand panel,
+    /// 0x0800AE92), its 0x20000 nothing reads (EXE5's `karma_held`), its
+    /// 0x40000 resets the mood after a loss (EXE5's names every enemy
+    /// ChaosLrd, 0x0801AE8C) and its 0x800000 refills the HP after a loss
+    /// (0x08007DE4); a game's rules would declare those. 0x2000 and the bits
+    /// from 0x1000000 have no name: no game sets them.
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
     pub struct BattleEffects: u32 {
         /// A ranked boss (`BATTLE_EFFECT_BOSS_RANK`).
@@ -54,17 +63,48 @@ bitflags::bitflags! {
         const FULL_HP = 0x4;
         /// Link battle between two players.
         const LINK = 0x8;
+        /// The navi's HP is refilled after the battle (`sub_8007CA0`; EXE5's
+        /// 0x0800719A). Story battles' (EXE6's battle list 0); the engine
+        /// doesn't read it.
+        const HP_REFILLED_AFTER = 0x10;
+        /// The battle can be run from (`sub_8026EC8`'s run dialog; EXE5's
+        /// 0x08023192), and a link error's message says so (`sub_8007EB8`).
+        /// Story battles'; the engine doesn't read it.
+        const ESCAPABLE = 0x20;
+        /// The battle's HP is written back to the navi after it
+        /// (`sub_8007CA0`; EXE5's 0x08007124). Story battles'; the engine
+        /// doesn't read it.
+        const HP_KEPT_AFTER = 0x40;
+        /// A loss outside a link battle doesn't end the game
+        /// (`sub_800A892`; EXE5's 0x0800907A). Story battles'; the engine
+        /// doesn't read it.
+        const LOSS_CONTINUES = 0x100;
+        /// A practice match's (`off_812B7AC`'s single and triple battles,
+        /// which nettai-match sets). No game reads it.
+        const PRACTICE = 0x200;
         /// Multi-round set.
         const SET = 0x400;
+        /// The save keeps the battle's settings (`gameState_8005BC8`; EXE5's
+        /// 0x08005506). Story battles'; the engine doesn't read it.
+        const SETTINGS_KEPT = 0x4000;
+        /// The stage's viruses keep their levels: its actor entries skip the
+        /// level raise (`sub_800EC80`; EXE5's 0x0800683E). Story battles';
+        /// the engine doesn't read it.
+        const FIXED_VIRUS_LEVEL = 0x8000;
         /// Each navi starts at the starting mood, as in a link battle
         /// (`sub_8013892`, by `sub_8015C2C`).
         const STARTING_MOOD = 0x1_0000;
+        /// Defeating the stage's enemies sets no event flags (`sub_800B6F2`;
+        /// EXE5's 0x08009E74). The engine doesn't read it.
+        const NO_DEFEAT_FLAGS = 0x8_0000;
         /// Random battle.
         const RANDOM = 0x20_0000;
         /// The DS's party battle plays no switch voice (0x02098ED0), and no
         /// such draw of the console's RNG; its other readers (the rescue's HP
         /// number, the microphone's story flag) are presentation or the save's.
-        /// No stage of the engine's sets it.
+        /// No stage of the engine's sets it. (EXE6's story battles set the
+        /// same bit to refill the Beast Out counter after the battle,
+        /// 0x08007DA0.)
         const NO_SWITCH_VOICE = 0x40_0000;
         const _ = !0;
     }

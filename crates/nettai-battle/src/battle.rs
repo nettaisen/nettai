@@ -23,7 +23,8 @@ use std::sync::Arc;
 
 bitflags::bitflags! {
     /// A side's status bits as the link delivers them (`Round::remote_status`,
-    /// BattleState +0x14).
+    /// BattleState +0x14: the other console's +0x11, from the link packet's
+    /// +6). Bits 1 and 3 to 7 have no name: no game sets them.
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
     pub struct RemoteStatus: u8 {
         /// Its custom screen's selection runs (EXE4's custom drain reads it).
@@ -54,6 +55,12 @@ bitflags::bitflags! {
         const GAUGE_FULL = 0x02;
         /// Dimming (dimming chips).
         const DIMMED = 0x04;
+        /// A side's stage flag broke and that side lost the round (the flag
+        /// object's end: `sub_80D8DEE`, EXE5's 0x080DA376, EXE4's
+        /// 0x080E0842). No game reads it; the engine's round loss
+        /// (`lose_round`) doesn't set it, and exe4-compat's comparison leaves
+        /// it out.
+        const STAGE_FLAG_BROKEN = 0x08;
         /// A player asked to open the custom screen.
         const CUSTOM_REQUESTED = 0x10;
         /// The cameras shake even while the battle is paused
@@ -73,6 +80,24 @@ bitflags::bitflags! {
         ///   Advance window. `sub_800A8F8` tests it. A netbattle without gates
         ///   never has it.
         const OWN_GAUGES = 0x40;
+        /// The DS's party battle: side 0's / side 1's MagnetMan used Mag-Barr
+        /// this battle (0x02098B24, read at 0x02098B10). Content keeps it
+        /// in the rules' state (`mag_barr`); the engine never sets it.
+        const MAG_BARR_SPENT_SIDE0 = 0x200;
+        const MAG_BARR_SPENT_SIDE1 = 0x400;
+        /// The DS's: side 0's / side 1's shout was used this battle
+        /// (0x022261FA), or the side's setup record refused it at the start
+        /// (0x020978D6; read at 0x022262D8). Content keeps it in the rules'
+        /// state (`shouted`); the engine never sets it.
+        const SHOUT_SPENT_SIDE0 = 0x800;
+        const SHOUT_SPENT_SIDE1 = 0x1000;
+        /// The DS's: side 1's / side 0's MegaMan of the DS's own Hub Style
+        /// stands in the sun (0x02098E94), and Otenko's statue charges twice
+        /// as fast (0x022188CC). The engine never sets it.
+        const SUNLIT_HUB_SIDE1 = 0x2000;
+        const SUNLIT_HUB_SIDE0 = 0x4000;
+        // (0x80 and 0x100 only a DS routine no code reaches sets, and 0x8000
+        // nothing: they have no name.)
         const _ = !0;
     }
 }

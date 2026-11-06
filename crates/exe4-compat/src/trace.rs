@@ -869,7 +869,7 @@ const LINK_DELAY: u8 = 4;
 const SCREEN_BIT_CLEARED: u32 = 1;
 /// The effects a link battle's match type adds to its stage's (as
 /// nettai-match's `MATCH_EFFECTS`: a triple battle's).
-const LINK_BATTLE_EFFECTS: BattleEffects = BattleEffects::from_bits_retain(0x600);
+const LINK_BATTLE_EFFECTS: BattleEffects = BattleEffects::SET.union(BattleEffects::PRACTICE);
 /// The set's bit of them, which a single battle hasn't.
 const SET: BattleEffects = BattleEffects::SET;
 
@@ -1233,7 +1233,6 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
     // side's chips enabled, which SignlRed's signal clears and sets; the
     // engine's 0x10, the fade's start, has no bit there).
     let gauge_full = BattleFlags::GAUGE_FULL;
-    const FLAG_BROKEN: BattleFlags = BattleFlags::from_bits_retain(0x08);
     if let Ok(bs) = unhex(&f.bs) {
         if bs.len() >= 0xF0 {
             check("actors", format!("{:?}", r.actor_count), format!("{:?}", [bs[0x04], bs[0x05]]));
@@ -1247,7 +1246,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
             check("round", r.round.to_string(), bs[0x1A].to_string());
             check("delay", r.delay.to_string(), i16::from_le_bytes([bs[0x28], bs[0x29]]).to_string());
             let flags = BattleFlags::from_bits_retain(u16::from_le_bytes([bs[0x32], bs[0x33]]));
-            check("battle flags", format!("{:#x}", r.flags - gauge_full), format!("{:#x}", flags - (gauge_full | FLAG_BROKEN)));
+            check("battle flags", format!("{:#x}", r.flags - gauge_full), format!("{:#x}", flags - (gauge_full | BattleFlags::STAGE_FLAG_BROKEN)));
             check("battle time", r.battle_time.to_string(), u32::from_le_bytes([bs[0x40], bs[0x41], bs[0x42], bs[0x43]]).to_string());
             check("intro bits", format!("{:#x}", r.intro_bits & 0x0F), format!("{:#x}", bs[0x64]));
         }

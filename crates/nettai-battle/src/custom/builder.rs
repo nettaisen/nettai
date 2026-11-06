@@ -14,7 +14,11 @@ bitflags::bitflags! {
     /// pick with (`Pick::marks`: EXE5's capsules, EXE4's chip offered
     /// again), which its chip-use rules declare (`chip_use.mark_bits`):
     /// kept as they are. What a mark does at the chip's use is its game's to
-    /// say (the chip-use rules' `mark_damage` and `mark_heals`).
+    /// say (the chip-use rules' `mark_damage` and `mark_heals`). EXE5
+    /// declares 0x08, 0x10 and 0x20 (its black, pink and purple capsules,
+    /// 0x08023824); EXE4 reads 0x02 as a chip offered again (0x0801F0B8)
+    /// and 0x04 as an entry whose hand was installed (0x0801EA1E). 0x40 and
+    /// 0x80 have no name: no game sets them.
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
     pub struct Marks: u8 {
         /// The chip is the folder's Regular chip.

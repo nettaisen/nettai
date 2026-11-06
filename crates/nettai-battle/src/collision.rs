@@ -206,15 +206,20 @@ bitflags::bitflags! {
         const NAVI_SIDE1 = 1 << 21;
         const FLOATING = 1 << 20;
         const BLOCKER = 1 << 19;
-        /// Reaches the objects a chip sets down that any side's hit sets off:
-        /// their target type has it (row 0x0D: a FlashBomb set down, RlngLog's
-        /// log, ColArmy's soldiers, a VDoll, SideBub), so an attack with it
-        /// reaches those of its own side too. Mines, the generic hitbox (row
-        /// 0x48) and the attacks of both sides carry it. No routine tests it.
+        /// Reaches the objects a chip sets down that any side's hit sets off,
+        /// whatever side carries it: their target type has it (row 0x0D: a
+        /// FlashBomb set down, RlngLog's log, ColArmy's soldiers, a VDoll,
+        /// SideBub). Every attack of both sides carries it (a mine, the
+        /// generic hitbox, row 0x48, BlzrdBal's roller), and rows 0x1F,
+        /// 0x21, 0x43 and 0x44. Panel conditions test it too: a land mine
+        /// doesn't hop onto a panel holding one (`byte_80CDF50`), nor does
+        /// EXE4's wood tower rise there (0x080CDF82).
         const REACHES_SET_OBJECTS = 1 << 18;
         /// Hits while the battle is dimmed: setup gives it to what is set up
         /// while dimmed (`sub_3007218` lets only these, and receivers with
-        /// `StatusFlags::HIT_WHILE_DIMMED`, hit then).
+        /// `StatusFlags::HIT_WHILE_DIMMED`, hit then); the collision type
+        /// tables give it to bodies, set objects, neutral objects and row
+        /// 0x46 for good.
         const HITS_WHILE_DIMMED = 1 << 16;
         /// Doesn't reach a floating body, nor is it reached by a floating
         /// hitter (`sub_3007218`).

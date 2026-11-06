@@ -280,8 +280,7 @@ pub const MATCH_EFFECTS: BattleEffects = BattleEffects::SET.union(SINGLE_EFFECTS
 /// match of one round is one (the user: a best of 1 should be the
 /// original's single battle). EXE6's value; EXE5's and EXE4's single
 /// battles are taken to be the same, their triple battle less the set.
-/// (Nothing reads its bit.)
-pub const SINGLE_EFFECTS: BattleEffects = BattleEffects::from_bits_retain(0x200);
+pub const SINGLE_EFFECTS: BattleEffects = BattleEffects::PRACTICE;
 
 /// The effects a match of `rounds` rounds adds to each stage's: a single
 /// battle's for one round, else a triple battle's.

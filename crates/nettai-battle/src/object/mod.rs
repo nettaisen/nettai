@@ -63,8 +63,14 @@ bitflags::bitflags! {
         const RUN_WHILE_DIMMED = 0x10;
         /// Holds a panel reservation.
         const HOLDS_RESERVATION = 0x20;
-        // (The top two, which content may set and nothing reads, are kept
-        // as they are: `set_header_flags`.)
+        /// Set only through the open bus: the stage boulder's spawner
+        /// (`sub_80D2430`; EXE5's 0x080D3A3E, EXE4's 0x080DB25E) reads the
+        /// new object's flags at its panel's column, a BIOS address, so the
+        /// byte is a part of the BIOS's last opcode (content's boulder:
+        /// `set_header_flags`, `unused_low` and `unused_high`). Nothing reads
+        /// them.
+        const OPEN_BUS_LOW = 0x40;
+        const OPEN_BUS_HIGH = 0x80;
         const _ = !0;
     }
 }

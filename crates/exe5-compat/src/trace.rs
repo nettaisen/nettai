@@ -1915,7 +1915,8 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, exchange:
                     schema.index_of(name).is_some_and(|i| s.get(schema, i) == nettai_content_api::FieldValue::Bool(true))
                 })
             };
-            let (guarded, diving) = (0x40_0000u32, 0x0100_0000u32);
+            use nettai_battle::actor::ActorStatus;
+            let (guarded, diving) = (ActorStatus::GUARDED.bits(), ActorStatus::DIVING.bits());
             let ours = if own("guarded") { guarded } else { 0 } | if own("diving") { diving } else { 0 };
             check(&format!("side {side}'s navi's guard and dive (+0x48)"), format!("{ours:#x}"), format!("{:#x}", status & (guarded | diving)));
             let ours = [a.switch_input.map_or(0, |m| m + 1), (b.mic_levels[side] != 0) as u8, a.switch_member.unwrap_or(0)];

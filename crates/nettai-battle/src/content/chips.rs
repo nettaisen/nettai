@@ -167,14 +167,31 @@ impl ChipFlags {
 serde_flags!(ChipFlags);
 
 bitflags::bitflags! {
-    /// The chip record's second flag byte, the bits the engine reads, by name
-    /// (in a content file a set of them, `{ rush_cancels = true }`). The
-    /// original's other bits only sort chips in its menus: content holds none
-    /// of them.
+    /// The chip record's second flag byte (+0x16). Content names the bits
+    /// the engine reads (in a content file a set of them,
+    /// `{ rush_cancels = true }`); the original's others sort chips in its
+    /// menus, and content holds none of them.
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
     pub struct ExtraChipFlags: u8 {
+        /// One of the version's own navi chips (EXE6's 0xE3 to 0xF1, GunDelEx,
+        /// Otenko; EXE5's of each team): the library counts them apart
+        /// (`sub_81207F8`, `sub_8120898`). Menus only.
+        const VERSION_NAVI = 0x01;
         /// Canceled by the opponent's Rush (a NaviCust support).
         const RUSH_CANCELS = 0x02;
+        /// The first version's Giga chips (EXE6's Bass, DeltaRay, ColForce,
+        /// BugRSwrd and MetrKnuk; EXE5's 0x12D to 0x131), and the second's
+        /// (BigHook, BassAnly, CrossDiv, HubBatc, BgDthThd; EXE5's 0x132 to
+        /// 0x136). No routine was found that reads them.
+        const FIRST_VERSION_GIGA = 0x04;
+        const SECOND_VERSION_GIGA = 0x08;
+        /// A folder holding it is refused by the comm menu's folder check
+        /// (`sub_8130780`, message 0x3E: the arm and dark chips, the Gigas,
+        /// DblBeast, Gregar and Falzar). Menus only.
+        const LINK_FOLDER_REFUSED = 0x10;
+        /// The pack list leaves it out (`sub_811FE7C`: the arm and dark
+        /// chips). Menus only.
+        const UNLISTED_IN_PACK = 0x20;
         /// The menus class it with the modifier chips (WhiCapsl, Uninstll and
         /// the plus chips, which the custom screen folds into the chip before
         /// them; the battle reads `ChipData::modifier`).
@@ -195,7 +212,8 @@ bitflags::bitflags! {
     /// What the rules ask of particular chips (docs/design/
     /// content-model-v2.md §7.5): the cases the original tells by a chip's
     /// place in its chip table. In a content file, a set of names
-    /// (`{ no_chain = true }`).
+    /// (`{ no_chain = true }`). (The places between the traits, 0x10 to 0x80,
+    /// 0x200 and from 0x2000, are retired: nothing sets them.)
     #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
     pub struct ChipTraits: u16 {
         /// The Beast rush doesn't chain it as the next chip (`sub_800FC30`:
