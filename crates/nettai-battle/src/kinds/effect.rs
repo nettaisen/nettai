@@ -6,7 +6,7 @@
 use crate::battle::Battle;
 use crate::content::{EffectSprite, Region};
 use crate::object::sprite::Shadow;
-use crate::object::{ObjectRef, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, Vec3, state};
 use nettai_content_api::{EffectHandle, RegionHandle};
 
 /// Effect-private state.
@@ -162,7 +162,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
         look.priority = 0;
     }
     let o = b.objects.get_mut(r);
-    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
     o.anim = anim;
     o.anim_loaded = anim;
     o.set_visible(true);

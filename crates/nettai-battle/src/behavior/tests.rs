@@ -793,12 +793,12 @@ fn rock_battle() -> Battle {
 /// Step the objects of the given kinds, in list order and with the game's
 /// pause and dimming gating (as `Battle::run_objects`).
 fn run_only(b: &mut Battle, kinds: &[&str]) {
-    use crate::object::flags;
+    use crate::object::ObjectFlags;
     let mut cur = b.objects.loop_first();
     while let Some(r) = cur {
         let o = b.objects.get(r);
-        let gated = (b.paused && o.flags & flags::RUN_WHILE_PAUSED == 0)
-            || (b.is_dimmed() && o.flags & flags::RUN_WHILE_DIMMED == 0);
+        let gated = (b.paused && !o.flags.contains(ObjectFlags::RUN_WHILE_PAUSED))
+            || (b.is_dimmed() && !o.flags.contains(ObjectFlags::RUN_WHILE_DIMMED));
         if !gated && kinds.contains(&b.local_kind_key(r)) {
             crate::kinds::update(b, r);
         }
@@ -871,7 +871,7 @@ fn breaking_a_scripted_rock_throws_debris() {
 /// two debris chunks and dust, leaving their slot.
 #[test]
 fn a_stage_places_boulders_in_the_stage_slots() {
-    use crate::object::{PanelPos, Pool, flags, state};
+    use crate::object::{ObjectFlags, PanelPos, Pool, state};
     use crate::setup::NaviStats;
     const BOULDER_KINDS: [&str; 3] = ["boulder", "rockcube/debris", "engine/effect"];
     let stats = NaviStats { support: Some(Default::default()), ..Default::default() };
@@ -892,14 +892,14 @@ fn a_stage_places_boulders_in_the_stage_slots() {
     // dimming bits over garbage, and "not in use"; the other side's than the
     // canonical by its mirrored column (docs/engine/side-symmetry.md), the
     // same as the canonical side's: column 2's byte, or column 5's.
-    let read = if nettai_content_api::CANONICAL_SIDE == 0 { 0xB4 } else { 0x34 };
+    let read = ObjectFlags::from_bits_retain(if nettai_content_api::CANONICAL_SIDE == 0 { 0xB4 } else { 0x34 });
     assert_eq!(boulders.iter().map(|&r| b.objects.get(r).flags).collect::<Vec<_>>(), [read, read]);
     // Before the fight they wait, a pixel back and a pixel down, 500 HP.
     b.paused = true;
     run_only(&mut b, &BOULDER_KINDS);
     run_only(&mut b, &BOULDER_KINDS);
     let o = b.objects.get(boulders[0]);
-    assert_eq!((o.hp, o.action, o.pos.z, o.flags), (500, 0, -0x1_0000, read | flags::VISIBLE));
+    assert_eq!((o.hp, o.action, o.pos.z, o.flags), (500, 0, -0x1_0000, read | ObjectFlags::VISIBLE));
     let (_, y) = crate::kinds::player::panel_coordinates(2, 2);
     assert_eq!(o.pos.y, y - 0x1_0000);
     // The fight is on: they stand, and stop running while paused.
@@ -907,7 +907,7 @@ fn a_stage_places_boulders_in_the_stage_slots() {
     b.round.flags |= crate::battle::battle_flags::FIGHTING;
     run_only(&mut b, &BOULDER_KINDS);
     let o = b.objects.get(boulders[0]);
-    assert_eq!((o.action, o.flags), (8, (read & !flags::RUN_WHILE_PAUSED) | flags::VISIBLE));
+    assert_eq!((o.action, o.flags), (8, (read - ObjectFlags::RUN_WHILE_PAUSED) | ObjectFlags::VISIBLE));
     // Broken: two chunks (a jitter draw each, two draws in each one's
     // init) and dust; it leaves its slot.
     let before = b.rng.state;
@@ -994,7 +994,7 @@ fn a_thrown_rock_flies_to_its_target_and_breaks() {
 /// it was, gone from the registry and destroyed, and what replaced it.
 fn encase_rock(ice: bool) -> (Battle, crate::object::ObjectRef) {
     use crate::kinds::obstacle::{f2, obstacle_f1};
-    use crate::object::{Pool, flags};
+    use crate::object::{ObjectFlags, Pool};
     const KINDS: [&str; 2] = ["rockcube/rock", "encased-bubble"];
     // The rock stage on the test pack's content, which fills the role.
     let stats = crate::setup::NaviStats { support: Some(Default::default()), ..Default::default() };
@@ -1018,7 +1018,7 @@ fn encase_rock(ice: bool) -> (Battle, crate::object::ObjectRef) {
     let mut hidden = 0;
     for _ in 0..0x3C {
         run_only(&mut b, &KINDS);
-        if b.objects.get(r).flags & flags::VISIBLE == 0 {
+        if !b.objects.get(r).flags.contains(ObjectFlags::VISIBLE) {
             hidden += 1;
         }
     }
@@ -1851,10 +1851,10 @@ fn the_other_sides_first_barrier_is_hidden_until_the_local_navi_is_in() {
     }
     let v = visual(&b).unwrap();
     let local = b.objects.get(b.player(0).unwrap());
-    assert!(b.objects.get(v).flags & crate::object::flags::VISIBLE == 0, "hidden on its first tick");
+    assert!(!b.objects.get(v).flags.contains(crate::object::ObjectFlags::VISIBLE), "hidden on its first tick");
     assert!(local.collision.is_some(), "the local navi is in by the tick's end");
     b.tick(&Default::default(), Default::default());
-    assert!(b.objects.get(v).flags & crate::object::flags::VISIBLE != 0, "shown from the next");
+    assert!(b.objects.get(v).flags.contains(crate::object::ObjectFlags::VISIBLE), "shown from the next");
 }
 
 #[test]

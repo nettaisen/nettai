@@ -3,7 +3,7 @@
 //! See docs/engine/objects-and-player.md §A.4.
 
 use crate::battle::{Battle, FadeMode};
-use crate::object::{ObjectRef, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, Vec3, state};
 
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars;
@@ -13,14 +13,14 @@ pub fn spawn(b: &mut Battle) {
     // The spawn position is whatever the caller's registers held; it is
     // never read.
     if let Some(r) = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::Intro, Vec3::default(), [2, 0, 0, 0]) {
-        b.objects.get_mut(r).flags |= flags::RUN_WHILE_PAUSED;
+        b.objects.get_mut(r).flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
     }
 }
 
 pub fn update(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).state == state::INIT {
         let o = b.objects.get_mut(r);
-        o.flags |= flags::NO_SPRITE_UPDATE;
+        o.flags.insert(ObjectFlags::NO_SPRITE_UPDATE);
         o.state = state::UPDATE;
     }
     match b.objects.get(r).phase {

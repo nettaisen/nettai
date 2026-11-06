@@ -7,7 +7,7 @@
 
 use crate::battle::Battle;
 use crate::collision::{f1, link};
-use crate::object::{ObjectRef, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, state};
 
 /// The navi's attach point it sits at, and how far it sits behind and
 /// above it (16.16).
@@ -28,7 +28,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
     o.alliance = alliance;
     o.flip = flip;
     o.related[0] = Some(owner);
-    o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
+    o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED | ObjectFlags::RUN_WHILE_DIMMED);
     let c = b.objects.get(owner).collision.expect("an ice block on an object without collision data");
     b.collision.get_mut(c).links[link::FREEZE] = Some(r);
     Some(r)
@@ -62,7 +62,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.set_animation(0, &b.content);
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
-    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
     o.set_visible(true);
     o.anim = anim;
     o.anim_loaded = anim;

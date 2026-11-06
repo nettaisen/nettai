@@ -1347,10 +1347,10 @@ impl Battle {
         while let Some(r) = cur {
             let f = self.objects.get(r).flags;
             let mut run = true;
-            if self.paused && f & crate::object::flags::RUN_WHILE_PAUSED == 0 {
+            if self.paused && !f.contains(crate::object::ObjectFlags::RUN_WHILE_PAUSED) {
                 run = false;
             }
-            if run && self.is_dimmed() && f & crate::object::flags::RUN_WHILE_DIMMED == 0 {
+            if run && self.is_dimmed() && !f.contains(crate::object::ObjectFlags::RUN_WHILE_DIMMED) {
                 run = false;
             }
             if run {
@@ -2436,7 +2436,7 @@ impl Battle {
             for place in places.iter_mut() {
                 if place.is_some_and(|n| {
                     let o = self.objects.get(n.object);
-                    o.hp == 0 || o.flags & crate::object::flags::ACTIVE == 0
+                    o.hp == 0 || !o.flags.contains(crate::object::ObjectFlags::ACTIVE)
                 }) {
                     *place = None;
                 }

@@ -317,7 +317,7 @@ fn party_land(b: &mut Battle, r: ObjectRef, how: Land) {
         if how == Land::Paused
             && let Some(f) = flash
         {
-            b.objects.get_mut(f).flags |= crate::object::flags::RUN_WHILE_PAUSED;
+            b.objects.get_mut(f).flags.insert(crate::object::ObjectFlags::RUN_WHILE_PAUSED);
         }
         let side = side_of(b, r);
         let target = match how {

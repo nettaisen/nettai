@@ -10,7 +10,7 @@
 
 use crate::battle::Battle;
 use crate::kinds::common::{self, Progress, set_progress};
-use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, PanelPos, Vec3, state};
 
 /// Its attach point on the target.
 const TARGET_ATTACH_POINT: usize = 0x11;
@@ -47,7 +47,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
     o.related[0] = Some(owner);
     o.alliance = alliance;
     o.flip = flip;
-    o.flags |= flags::RUN_WHILE_PAUSED;
+    o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
     let actor = b.objects.get(owner).actor.expect("target marker owner has actor data");
     b.actors.get_mut(actor).target_marker = Some(r);
     Some(r)
@@ -85,7 +85,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
             b.objects.sprite_mut(r).set_animation(0, &b.content);
             b.objects.sprite_mut(r).look.shadow = crate::object::sprite::Shadow::WithSprite;
             let o = b.objects.get_mut(r);
-            o.flags &= !flags::NO_SPRITE_UPDATE;
+            o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
             o.set_visible(true);
             set_progress(b, r, Progress::UPDATE);
             tick(b, r);

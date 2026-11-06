@@ -9,7 +9,7 @@ use crate::battle::Battle;
 use crate::content::SpriteId;
 use crate::kinds::common::{self, Progress};
 use crate::object::sprite::Shadow;
-use crate::object::{ObjectRef, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, state};
 
 /// Overlay-private state.
 #[derive(Clone, Copy, Debug, Default, Hash)]
@@ -40,7 +40,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, sprite: SpriteId) -> Option<Objec
     let o = b.objects.get_mut(r);
     o.alliance = alliance;
     o.related[0] = Some(owner);
-    o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
+    o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED | ObjectFlags::RUN_WHILE_DIMMED);
     o.vars = crate::kinds::Vars::IdleOverlay(Vars { sprite: Some(sprite), pinned: false });
     Some(r)
 }
@@ -81,7 +81,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.look.set_palette(owner_palette);
     s.look.set_flip(flip);
     let o = b.objects.get_mut(r);
-    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
     o.set_visible(true);
     o.anim = 0;
     o.anim_loaded = 0;

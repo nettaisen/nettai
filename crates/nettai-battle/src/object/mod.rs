@@ -28,10 +28,10 @@ fn pool_base(pool: Pool) -> usize {
 }
 
 /// Header flags every new object in a pool starts with.
-fn spawn_flags(pool: Pool) -> u8 {
+fn spawn_flags(pool: Pool) -> ObjectFlags {
     match pool {
-        Pool::Attack => flags::ACTIVE | flags::NO_SPRITE_UPDATE,
-        _ => flags::ACTIVE | flags::NO_SPRITE_UPDATE | flags::RUN_WHILE_DIMMED,
+        Pool::Attack => ObjectFlags::ACTIVE | ObjectFlags::NO_SPRITE_UPDATE,
+        _ => ObjectFlags::ACTIVE | ObjectFlags::NO_SPRITE_UPDATE | ObjectFlags::RUN_WHILE_DIMMED,
     }
 }
 
@@ -47,20 +47,26 @@ fn node_of(r: ObjectRef) -> Node {
     Node(FIRST_OBJECT_NODE + slot_index(r) as u8)
 }
 
-/// Header flag bits.
-pub mod flags {
-    /// The slot is in use.
-    pub const ACTIVE: u8 = 0x01;
-    /// Drawn this frame.
-    pub const VISIBLE: u8 = 0x02;
-    /// Keeps updating while the battle is paused.
-    pub const RUN_WHILE_PAUSED: u8 = 0x04;
-    /// The sprite doesn't animate (set at spawn; loading a sprite clears it).
-    pub const NO_SPRITE_UPDATE: u8 = 0x08;
-    /// Keeps updating while dimmed.
-    pub const RUN_WHILE_DIMMED: u8 = 0x10;
-    /// Holds a panel reservation.
-    pub const HOLDS_RESERVATION: u8 = 0x20;
+bitflags::bitflags! {
+    /// An object's header flags (`Object::flags`).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct ObjectFlags: u8 {
+        /// The slot is in use.
+        const ACTIVE = 0x01;
+        /// Drawn this frame.
+        const VISIBLE = 0x02;
+        /// Keeps updating while the battle is paused.
+        const RUN_WHILE_PAUSED = 0x04;
+        /// The sprite doesn't animate (set at spawn; loading a sprite clears it).
+        const NO_SPRITE_UPDATE = 0x08;
+        /// Keeps updating while dimmed.
+        const RUN_WHILE_DIMMED = 0x10;
+        /// Holds a panel reservation.
+        const HOLDS_RESERVATION = 0x20;
+        // (The top two, which content may set and nothing reads, are kept
+        // as they are: `set_header_flags`.)
+        const _ = !0;
+    }
 }
 
 /// Who sees an object where the viewers differ: what a rule the original
@@ -139,7 +145,7 @@ pub struct New {
 /// The state every object shares. Behavior-specific state lives in `vars`.
 #[derive(Clone, Debug, Default)]
 pub struct Object {
-    pub flags: u8,
+    pub flags: ObjectFlags,
     /// Its kind. The original's object slot (pool and index), which the
     /// traces compare, is the validator's to know: the engine's own kinds'
     /// and number-registered kinds' slots are in their definitions
@@ -238,9 +244,9 @@ impl Object {
     /// decide it per viewer are `Battle::hide_from_blind` and its kin.)
     pub fn set_visible(&mut self, on: bool) {
         if on {
-            self.flags |= flags::VISIBLE;
+            self.flags.insert(ObjectFlags::VISIBLE);
         } else {
-            self.flags &= !flags::VISIBLE;
+            self.flags.remove(ObjectFlags::VISIBLE);
         }
         self.sight = Sight::Shared;
     }
@@ -441,7 +447,7 @@ impl Objects {
     /// links are left as they were, as in the game, and so is its content
     /// state, until the slot is taken again.
     pub fn free(&mut self, r: ObjectRef) {
-        self.get_mut(r).flags = 0;
+        self.get_mut(r).flags = ObjectFlags::empty();
         self.in_use[r.pool as usize] &= !(0x8000_0000 >> r.slot);
         let n = node_of(r);
         let Links { prev, next } = self.links[n.0 as usize];

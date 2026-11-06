@@ -5,7 +5,7 @@
 //! routine (`status.rs`, `sub_80E8124`).
 
 use crate::battle::Battle;
-use crate::object::{ObjectRef, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, Vec3, state};
 
 
 /// Its animation (Param1).
@@ -42,7 +42,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.set_animation(0, &b.content);
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
-    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
     o.anim = anim;
     o.anim_loaded = anim;
     let s = b.objects.sprite_mut(r);

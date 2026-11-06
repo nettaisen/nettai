@@ -13,7 +13,7 @@ use nettai_battle::Battle;
 use nettai_battle::behavior::{self, Behaviors, Options};
 use nettai_battle::content::testing;
 use nettai_battle::input::PlayerTick;
-use nettai_battle::object::{Vec3, flags};
+use nettai_battle::object::{ObjectFlags, Vec3};
 use nettai_battle::scenario::{self, Tick};
 use nettai_content_api::{AssetKind, Registry, Value};
 
@@ -77,7 +77,7 @@ fn attach(b: &mut Battle, n: usize) {
             b.objects.get_mut(owner).related[0] = Some(r);
         } else {
             o.panel = panel;
-            o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
+            o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED | ObjectFlags::RUN_WHILE_DIMMED);
             // The gun a level-3 GunDelSol holds.
             let records = &b.content.defs.records;
             let look = records

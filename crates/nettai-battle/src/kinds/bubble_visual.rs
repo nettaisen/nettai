@@ -7,7 +7,7 @@
 
 use crate::battle::Battle;
 use crate::collision::{f1, link};
-use crate::object::{ObjectRef, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, state};
 
 /// Floating, and popping.
 const ANIM_FLOAT: u8 = 2;
@@ -31,7 +31,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
     o.alliance = alliance;
     o.flip = flip;
     o.related[0] = Some(owner);
-    o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
+    o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED | ObjectFlags::RUN_WHILE_DIMMED);
     let c = b.objects.get(owner).collision.expect("a bubble on an object without collision data");
     b.collision.get_mut(c).links[link::BUBBLE] = Some(r);
     Some(r)
@@ -43,7 +43,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
         state::UPDATE => follow(b, r),
         _ => pop(b, r),
     }
-    if b.objects.get(r).flags & flags::ACTIVE == 0 {
+    if !b.objects.get(r).flags.contains(ObjectFlags::ACTIVE) {
         return;
     }
     if b.objects.get(r).state == state::DESTROY {
@@ -61,7 +61,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.set_animation(0, &b.content);
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
-    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
     o.set_visible(true);
     o.anim = ANIM_FLOAT;
     o.anim_loaded = ANIM_FLOAT;

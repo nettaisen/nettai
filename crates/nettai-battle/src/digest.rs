@@ -49,7 +49,7 @@
 use crate::battle::Battle;
 use crate::hud::Banner;
 use crate::object::sprite::Sprite;
-use crate::object::{Object, flags};
+use crate::object::{Object, ObjectFlags};
 use std::hash::{Hash, Hasher};
 
 // Byte slices of integers (`[u16]`, `[u32]`...) reach the hasher as their
@@ -318,7 +318,7 @@ impl Hash for Object {
             sight: _,
             drive,
         } = self;
-        (header & !flags::VISIBLE).hash(h);
+        (*header - ObjectFlags::VISIBLE).hash(h);
         kind.hash(h);
         params.hash(h);
         (state, action, phase, phase_init).hash(h);

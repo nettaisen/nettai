@@ -15,7 +15,7 @@ use crate::kinds::player::{
     reset_status, set_mood, snap_to_future_panel, stats, stats_mut,
 };
 use crate::kinds::{effect, full_synchro_aura};
-use crate::object::{ObjectRef, Vec3, flags};
+use crate::object::{ObjectFlags, ObjectRef, Vec3};
 
 /// The form change's own state.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -108,7 +108,7 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
     b.objects.sprite_mut(r).look.white = true;
     if ai(b, r).attack.step_init == 0 {
         if let Some(o) = b.objects.get(r).related[1] {
-            b.objects.get_mut(o).flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
+            b.objects.get_mut(o).flags.insert(ObjectFlags::RUN_WHILE_PAUSED | ObjectFlags::RUN_WHILE_DIMMED);
         }
         use crate::kinds::player::NaviAction as A;
         let resumes = ai(b, r).saved_word.is_some_and(|s| matches!(s.action, A::Paralysis | A::Freeze | A::Bubble));
@@ -119,7 +119,7 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         let pos = b.objects.get(r).pos;
         let look = b.roles().effect(EffectRole::Deletion);
         if let Some(e) = effect::spawn(b, Vec3 { z: pos.z.wrapping_add(0x14_0000), ..pos }, look, 0, 0, 0) {
-            b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
+            b.objects.get_mut(e).flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
         }
         clear_flag1(b, r, f1::UNTOUCHABLE | f1::SLIDING | f1::FLINCHING | f1::MOVING);
         clear_flag2(b, r, 0x10);
@@ -142,7 +142,7 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         s.set_animation(anim, &b.content);
         s.look.set_flip(flip);
         s.look.white = true;
-        b.objects.get_mut(r).flags &= !flags::NO_SPRITE_UPDATE;
+        b.objects.get_mut(r).flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
         spend_form(b, r);
         stats_mut(b, r).form = base;
         // sub_8015B22(0): the navi's own identity again (MegaMan's: only
@@ -229,7 +229,7 @@ pub(in crate::kinds::player) fn break_form(b: &mut Battle, r: ObjectRef) -> bool
         let pos = b.objects.get(r).pos;
         let look = b.roles().effect(EffectRole::Deletion);
         if let Some(e) = effect::spawn(b, Vec3 { z: pos.z.wrapping_add(0x14_0000), ..pos }, look, 0, 0, 0) {
-            b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
+            b.objects.get_mut(e).flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
         }
         let moving = f1::SLIDING | f1::PARALYZED | f1::FLINCHING | f1::MOVING;
         clear_flag1(b, r, if any_form { moving } else { moving | f1::BUBBLED | f1::DRAG | f1::FROZEN });
@@ -256,7 +256,7 @@ pub(in crate::kinds::player) fn break_form(b: &mut Battle, r: ObjectRef) -> bool
         s.load(sprite);
         s.look.shadow = crate::object::sprite::Shadow::Ground;
         let o = b.objects.get_mut(r);
-        o.flags &= !flags::NO_SPRITE_UPDATE;
+        o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
         o.anim = 0;
         o.anim_loaded = 0xFF;
         let s = b.objects.sprite_mut(r);

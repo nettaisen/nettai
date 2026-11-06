@@ -16,7 +16,7 @@ use crate::battle::Battle;
 use crate::content::{Content, SpriteId};
 use crate::kinds::common::{Progress, set_progress};
 use crate::kinds::player::form;
-use crate::object::{ObjectRef, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, Vec3, state};
 
 /// The color shader `sub_80EAFC2` gives its afterimages.
 const COLOR_SHADER: u16 = 0x83E0;
@@ -103,7 +103,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, anim: u8, lifetime: u1
     o.related[0] = Some(owner);
     o.alliance = alliance;
     if paused {
-        o.flags |= flags::RUN_WHILE_PAUSED;
+        o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
     }
     // sub_80E341E: tied to the form (EXE6's Beast forms), or to the attack.
     let stays = b.form(alliance as usize).traits.has(crate::content::FormTraits::AFTERIMAGES_STAY);
@@ -135,7 +135,7 @@ pub fn spawn_copy(
     o.related[0] = Some(owner);
     o.alliance = alliance;
     if paused {
-        o.flags |= flags::RUN_WHILE_PAUSED;
+        o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
     }
     *vars(b, r) = Vars { lifetime, tether, anim, plain: look };
     Some(r)
@@ -165,7 +165,7 @@ pub fn spawn_plain(
     o.related[0] = Some(owner);
     o.alliance = alliance;
     if paused {
-        o.flags |= flags::RUN_WHILE_PAUSED;
+        o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
     }
     *vars(b, r) = Vars { lifetime, tether, anim, plain: look };
     Some(r)
@@ -211,7 +211,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let owner = b.objects.get(r).related[0].expect("afterimage has an owner");
     let identity = b.objects.get(owner).identity;
     b.objects.sprite_mut(r).load(player_sprite(&b.content, identity));
-    b.objects.get_mut(r).flags &= !flags::NO_SPRITE_UPDATE;
+    b.objects.get_mut(r).flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
     if b.game_rules().effects.afterimages_wear_overlays {
         b.objects.get_mut(r).identity = identity;
         put_on_layer(b, r, identity);
@@ -253,7 +253,7 @@ fn init_plain(b: &mut Battle, r: ObjectRef) {
     s.look.set_flip(flip);
     s.look.set_color_shader(plain.color_shader);
     let o = b.objects.get_mut(r);
-    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
     o.anim = anim;
     o.anim_loaded = anim;
     o.timer2 = lifetime;
@@ -315,7 +315,7 @@ fn destroy(b: &mut Battle, r: ObjectRef) {
         return;
     }
     if let Some(layer) = b.objects.get(r).related[1] {
-        b.objects.get_mut(layer).flags |= flags::RUN_WHILE_PAUSED;
+        b.objects.get_mut(layer).flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
     }
     // sub_8011044(record, 1): the NameID's death hook takes the overlay
     // off.

@@ -355,7 +355,7 @@ pub fn set_state_variant(b: &mut Battle, r: ObjectRef, name: &str, variant: &str
 /// spawns a content kind passes it arguments.
 /// Whether `r` is an active content object whose state has a field `name`.
 pub fn has_state_field(b: &Battle, r: ObjectRef, name: &str) -> bool {
-    if b.objects.get(r).flags & crate::object::flags::ACTIVE == 0 {
+    if !b.objects.get(r).flags.contains(crate::object::ObjectFlags::ACTIVE) {
         return false;
     }
     let Vars::Content(id) = b.objects.get(r).vars else { return false };

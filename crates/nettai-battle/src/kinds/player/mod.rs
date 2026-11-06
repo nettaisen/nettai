@@ -93,7 +93,7 @@ use crate::content::Content;
 pub use navi_action::{EngineAction, NaviAction, NaviWord};
 pub use ai_navi::Controller;
 pub(crate) use ai_navi::spawn as spawn_ai_navi;
-use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, PanelPos, Vec3, state};
 use crate::content::ActorEntry;
 use crate::content::{FormData, FormTraits, NaviData};
 use crate::setup::{NaviStats, effects};
@@ -114,7 +114,7 @@ pub fn spawn(b: &mut Battle, entry: &ActorEntry) -> Option<ObjectRef> {
         o.panel = PanelPos { x: entry.x, y: entry.y };
         o.future_panel = o.panel;
         o.pos = Vec3 { x, y, z: 0 };
-        o.flags |= flags::RUN_WHILE_PAUSED;
+        o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
     }
     let Some(a) = b.actors.allocate() else {
         b.objects.free(r);
@@ -971,7 +971,7 @@ pub(crate) fn spawn_mode9_objects(b: &mut Battle, r: ObjectRef) {
         o.alliance = alliance;
         o.flip = flip;
         o.element = 0;
-        o.flags |= flags::RUN_WHILE_DIMMED;
+        o.flags.insert(ObjectFlags::RUN_WHILE_DIMMED);
     }
     let kind = b.roles().kind(crate::content::KindRole::Mode9Actor);
     let second = crate::kinds::spawn(b, kind, nettai_content_api::SpawnAt::AfterCurrent, Vec3::default(), [0; 4]);
@@ -1002,7 +1002,7 @@ fn load_sprite(b: &mut Battle, r: ObjectRef) {
     sprite.look.shadow = crate::object::sprite::Shadow::Ground;
     sprite.look.set_flip(flip);
     let o = b.objects.get_mut(r);
-    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
     o.anim = 0;
 }
 
@@ -1556,10 +1556,10 @@ pub(crate) fn update_sprite(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let o = b.objects.get(r);
-    if o.flags & flags::ACTIVE == 0 || o.flags & flags::NO_SPRITE_UPDATE != 0 {
+    if !o.flags.contains(ObjectFlags::ACTIVE) || o.flags.contains(ObjectFlags::NO_SPRITE_UPDATE) {
         return;
     }
-    if o.flags & flags::RUN_WHILE_DIMMED == 0 && b.is_dimmed() {
+    if !o.flags.contains(ObjectFlags::RUN_WHILE_DIMMED) && b.is_dimmed() {
         return;
     }
     if o.collision.is_some() && o.prevent_anim != 0 {

@@ -10,7 +10,7 @@ use crate::graphics::GameGraphics;
 use crate::stage::{Stage, StageClock};
 use nettai_battle::Battle;
 use nettai_battle::content::{BackgroundId, Content};
-use nettai_battle::object::{ObjectRef, flags};
+use nettai_battle::object::{ObjectFlags, ObjectRef};
 
 /// Background `id` as a round's first frame shows it (its scroll and its
 /// animations at their start), `w` by `h` pixels from the screen's top
@@ -42,7 +42,7 @@ pub fn field(graphics: &GameGraphics, b: &Battle, keep: &[ObjectRef]) -> Vec<u32
     let mut only = b.clone();
     let others: Vec<ObjectRef> = only.objects.in_order().filter(|r| !keep.contains(r)).collect();
     for r in others {
-        only.objects.get_mut(r).flags |= flags::NO_SPRITE_UPDATE;
+        only.objects.get_mut(r).flags.insert(ObjectFlags::NO_SPRITE_UPDATE);
     }
     let stage = Stage::new(&graphics, &b.content, None, StageClock::of(b), false);
     let mut layer = Layer::new(2, 2);

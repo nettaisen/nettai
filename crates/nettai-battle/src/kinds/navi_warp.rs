@@ -9,7 +9,7 @@ use crate::battle::Battle;
 use crate::kinds::common::{self, Progress};
 use crate::kinds::player::form;
 use crate::object::sprite::Shadow;
-use crate::object::{ObjectRef, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, Vec3, state};
 use crate::dimming::{hide_user, show_user};
 
 /// Which way the navi warps (Param4).
@@ -94,7 +94,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.look.set_palette(palette);
     s.look.set_flip(flip);
     let o = b.objects.get_mut(r);
-    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
     o.set_visible(true);
     o.pos = pos;
     // sub_8011420(navi, form, 1): the form's overlay (whose Param3 is

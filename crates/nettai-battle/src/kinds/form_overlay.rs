@@ -7,7 +7,7 @@
 use crate::battle::Battle;
 use crate::content::{OverlayStart, SpriteId};
 use crate::kinds::common::{self, Progress, set_progress};
-use crate::object::{ObjectRef, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, Vec3, state};
 
 /// How the overlay's sprite steps once it runs (Param3).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -91,7 +91,7 @@ pub fn spawn_with(b: &mut Battle, owner: ObjectRef, spec: Vars) -> Option<Object
     o.related[0] = Some(owner);
     o.alliance = alliance;
     if paused {
-        o.flags |= flags::RUN_WHILE_PAUSED;
+        o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
     }
     *vars(b, r) = spec;
     Some(r)
@@ -153,7 +153,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.set_animation(anim, &b.content);
     s.update();
     let o = b.objects.get_mut(r);
-    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
     o.anim = anim;
     // One halfword store sets both: the loaded animation gets the sum's
     // carry, so unless the animation is 0 the first tick restarts it,
@@ -173,11 +173,11 @@ fn init(b: &mut Battle, r: ObjectRef) {
         // while paused until the navis are in.
         let fighting = b.round.flags & crate::battle::battle_flags::FIGHTING != 0;
         let o = b.objects.get_mut(r);
-        o.flags &= !flags::RUN_WHILE_PAUSED;
+        o.flags.remove(ObjectFlags::RUN_WHILE_PAUSED);
         if fighting {
             o.action = follow_action(rules.start);
         } else {
-            o.flags |= flags::RUN_WHILE_PAUSED;
+            o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
         }
     }
     tick(b, r);
@@ -256,7 +256,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
         }
         let o = b.objects.get_mut(r);
         if stepping == Stepping::Normal || rules.start == OverlayStart::AtOnceInFight {
-            o.flags &= !flags::RUN_WHILE_PAUSED;
+            o.flags.remove(ObjectFlags::RUN_WHILE_PAUSED);
         }
         o.action = follow_action(rules.start);
         o.phase = 0;

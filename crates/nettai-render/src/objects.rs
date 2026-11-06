@@ -16,7 +16,7 @@ use nettai_assets::{Palette, Tiles};
 use nettai_battle::Battle;
 use nettai_battle::object::sprite::Shadow;
 use nettai_battle::kinds::EngineKind;
-use nettai_battle::object::{Object, ObjectRef, Pool, flags};
+use nettai_battle::object::{Object, ObjectFlags, ObjectRef, Pool};
 
 /// Where the camera looks and whether the field is shown mirrored (the
 /// right-hand player sees their side on the left).
@@ -415,7 +415,7 @@ pub fn describe(b: &Battle, view: &View) -> Vec<String> {
             if !b.visible_to(r, b.setup.local_side) {
                 notes.push("not visible".to_string());
             }
-            if o.flags & flags::NO_SPRITE_UPDATE != 0 {
+            if o.flags.contains(ObjectFlags::NO_SPRITE_UPDATE) {
                 notes.push("sprite held (not drawn)".to_string());
             }
             let l = s.look;
@@ -500,7 +500,7 @@ pub fn queue_objects<'a>(
             let o = b.objects.get(r);
             // Objects whose sprite doesn't animate are culled to nothing
             // (`sub_30061E8` gives them a one-point mask).
-            if !viewers.iter().any(|&v| b.visible_to(r, v)) || o.flags & flags::NO_SPRITE_UPDATE != 0 {
+            if !viewers.iter().any(|&v| b.visible_to(r, v)) || o.flags.contains(ObjectFlags::NO_SPRITE_UPDATE) {
                 continue;
             }
             // An effect the game spawns without a position (the second

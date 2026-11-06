@@ -2,7 +2,7 @@
 //! coordinate conversion, the state word, and damage totals.
 
 use crate::battle::Battle;
-use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, PanelPos, Vec3, state};
 
 /// `object_setAnimation`: request animation `anim`, restarting it even if
 /// it is the current one.
@@ -26,10 +26,10 @@ pub fn update_sprite(b: &mut Battle, r: ObjectRef) {
 /// `sub_801BC64`: `object_updateSprite` without its pause check.
 pub fn update_sprite_even_paused(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get(r);
-    if o.flags & flags::ACTIVE == 0 || o.flags & flags::NO_SPRITE_UPDATE != 0 {
+    if !o.flags.contains(ObjectFlags::ACTIVE) || o.flags.contains(ObjectFlags::NO_SPRITE_UPDATE) {
         return;
     }
-    if o.flags & flags::RUN_WHILE_DIMMED == 0 && b.is_dimmed() {
+    if !o.flags.contains(ObjectFlags::RUN_WHILE_DIMMED) && b.is_dimmed() {
         return;
     }
     if o.collision.is_some() && o.prevent_anim != 0 {
@@ -199,11 +199,11 @@ pub fn update_sprite_while_dimmed(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let o = b.objects.get(r);
-    if o.flags & flags::ACTIVE == 0 {
+    if !o.flags.contains(ObjectFlags::ACTIVE) {
         return;
     }
     if !b.game_rules().effects.dimmed_update_steps_on_load
-        && o.flags & flags::NO_SPRITE_UPDATE == 0
+        && !o.flags.contains(ObjectFlags::NO_SPRITE_UPDATE)
         && o.anim != o.anim_loaded
     {
         let anim = o.anim;
@@ -218,7 +218,7 @@ pub fn update_sprite_while_dimmed(b: &mut Battle, r: ObjectRef) {
 /// the sprite, paused or not, but not while dimmed. (It skips only
 /// inactive objects: `NO_SPRITE_UPDATE` doesn't stop it.)
 pub fn update_sprite_while_paused(b: &mut Battle, r: ObjectRef) {
-    if b.objects.get(r).flags & flags::ACTIVE == 0 || b.is_dimmed() {
+    if !b.objects.get(r).flags.contains(ObjectFlags::ACTIVE) || b.is_dimmed() {
         return;
     }
     let o = b.objects.get(r);
@@ -236,10 +236,10 @@ pub fn update_sprite_while_paused(b: &mut Battle, r: ObjectRef) {
 /// objects).
 pub fn load_or_step_sprite(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get(r);
-    if b.paused || o.flags & flags::ACTIVE == 0 || o.flags & flags::NO_SPRITE_UPDATE != 0 {
+    if b.paused || !o.flags.contains(ObjectFlags::ACTIVE) || o.flags.contains(ObjectFlags::NO_SPRITE_UPDATE) {
         return;
     }
-    if o.flags & flags::RUN_WHILE_DIMMED == 0 && b.is_dimmed() {
+    if !o.flags.contains(ObjectFlags::RUN_WHILE_DIMMED) && b.is_dimmed() {
         return;
     }
     let (anim, loaded) = (o.anim, o.anim_loaded);
@@ -255,7 +255,7 @@ pub fn load_or_step_sprite(b: &mut Battle, r: ObjectRef) {
 /// paused or not (skipped only for non-animating objects).
 pub fn step_sprite(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get(r);
-    if o.flags & flags::NO_SPRITE_UPDATE != 0 {
+    if o.flags.contains(ObjectFlags::NO_SPRITE_UPDATE) {
         return;
     }
     let (anim, loaded) = (o.anim, o.anim_loaded);

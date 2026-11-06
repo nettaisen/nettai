@@ -4,7 +4,7 @@
 
 use crate::battle::Battle;
 use crate::content::{SoundRole, SpriteRole};
-use crate::object::{ObjectRef, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, Vec3, state};
 
 #[derive(Clone, Debug, Default, Hash)]
 pub struct Vars {
@@ -41,7 +41,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::ChargeGlow, Vec3::default(), [0; 4])?;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
-    o.flags |= flags::RUN_WHILE_PAUSED;
+    o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
     b.actors.get_mut(actor).charge_glow = Some(r);
     Some(r)
 }
@@ -53,7 +53,7 @@ pub fn spawn_unlinked(b: &mut Battle, owner: ObjectRef) -> Option<ObjectRef> {
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::ChargeGlow, Vec3::default(), [0; 4])?;
     let o = b.objects.get_mut(r);
     o.related[0] = Some(owner);
-    o.flags |= flags::RUN_WHILE_PAUSED;
+    o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
     vars(b, r).bios_link = true;
     Some(r)
 }
@@ -177,5 +177,5 @@ fn select_sprite(b: &mut Battle, r: ObjectRef, source: u8, glow: Option<nettai_c
     b.objects.sprite_mut(r).look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
     o.anim_loaded = 0xFF;
-    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
 }

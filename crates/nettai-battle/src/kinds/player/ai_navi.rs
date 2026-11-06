@@ -13,7 +13,7 @@
 use super::{ai, ai_mut, face_toward, intake, panel_coordinates, set_flag1, status, NaviAction};
 use crate::actor::ActorType;
 use crate::battle::Battle;
-use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, PanelPos, Vec3, state};
 use nettai_content_api::IdentityHandle;
 
 /// Who drives a navi no player controls: the rules of a side (their
@@ -77,7 +77,7 @@ pub(crate) fn spawn(
     };
     b.round.alive_actors[side as usize][place] = Some(r);
     let o = b.objects.get_mut(r);
-    o.flags |= flags::RUN_WHILE_PAUSED;
+    o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
     o.identity = Some(identity);
     o.hp = body.hp;
     o.max_hp = body.hp;
@@ -130,7 +130,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     o.anim = 0;
     o.anim_loaded = 0xFF;
-    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
     crate::kinds::common::set_animation(b, r, 0);
     if b.create_collision(r).is_none() {
         b.objects.free(r);

@@ -11,7 +11,7 @@ use crate::content::testing;
 use crate::hand::ChipHand;
 use crate::input::keys;
 use crate::kinds::player::panel_coordinates;
-use crate::object::{ObjectRef, PanelPos, Vec3, flags};
+use crate::object::{ObjectFlags, ObjectRef, PanelPos, Vec3};
 use crate::setup::{NaviStats, NaviWeapons};
 use crate::sound::{SoundCue, SoundId};
 
@@ -186,14 +186,14 @@ fn gregar_sends_its_two_pieces_which_breathe_flames_and_drop_rocks() {
     assert_eq!((b.objects.get(first).anim, b.objects.get(second).anim), (0, 4));
     for &r in &pieces {
         assert_eq!(b.objects.get(r).panel, PanelPos { x: 1, y: 2 });
-        assert_eq!(b.objects.get(r).flags & flags::VISIBLE, 0);
+        assert!(!b.objects.get(r).flags.contains(ObjectFlags::VISIBLE));
     }
 
     // They appear with a sound; the second brings the arrival, five pixels
     // down the field and up from it, for 60 ticks.
     run_to(&mut b, p, &mut t, e + 32);
     assert!(heard(&b, "log-in"));
-    assert!(pieces.iter().all(|&r| b.objects.get(r).flags & flags::VISIBLE != 0));
+    assert!(pieces.iter().all(|&r| b.objects.get(r).flags.contains(ObjectFlags::VISIBLE)));
     let arrival = one(&b, "beast-chips/arrival").expect("the arrival");
     let s = b.objects.get(second).pos;
     assert_eq!(b.objects.get(arrival).pos, Vec3 { x: s.x, y: s.y + 0x5_0000, z: s.z + 0x5_0000 });

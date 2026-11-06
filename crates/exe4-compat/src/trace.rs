@@ -1380,7 +1380,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
     let skip = |i: usize, flags: u8| -> (bool, bool) {
         let Some(Some(k)) = entries.get(i) else { return (false, false) };
         let garbage = k.scratch_position
-            || (k.scratch_position_without_sprite && flags & nettai_battle::object::flags::NO_SPRITE_UPDATE != 0)
+            || (k.scratch_position_without_sprite && nettai_battle::object::ObjectFlags::from_bits_retain(flags).contains(nettai_battle::object::ObjectFlags::NO_SPRITE_UPDATE))
             || (k.scratch_with_owner && owners_scratch.get(i).copied().unwrap_or(false));
         (garbage, k.scratch_z_fraction)
     };
@@ -1407,7 +1407,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
                 Some(k) => format!("type {} #{:#04x}", type_of_pool(o.pool), k.index),
                 None => format!("type {} {key} (no EXE4 number)", type_of_pool(o.pool)),
             };
-            let (garbage, zf) = skip(i, x.flags);
+            let (garbage, zf) = skip(i, x.flags.bits());
             let xy = nettai_battle::kinds::effect::xy_not_the_originals(b, o);
             let action = match compat.navi_action(b, o) {
                 Ok(n) => format!("{n:#04x}"),

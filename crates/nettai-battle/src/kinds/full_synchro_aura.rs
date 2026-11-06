@@ -9,7 +9,7 @@ use crate::collision::f1;
 use crate::kinds::common::{self, Progress};
 use crate::kinds::player::{EmotionRole, emotion_role};
 use crate::object::sprite::Shadow;
-use crate::object::{ObjectRef, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, Vec3, state};
 
 
 /// Aura-private state.
@@ -40,7 +40,7 @@ pub fn spawn(b: &mut Battle, navi: ObjectRef) -> Option<ObjectRef> {
     o.flip = flip;
     o.related[0] = Some(navi);
     if rules(b).spawn_runs_while_paused {
-        b.objects.get_mut(r).flags |= flags::RUN_WHILE_PAUSED;
+        b.objects.get_mut(r).flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
     }
     let o = b.objects.get_mut(r);
     o.vars = crate::kinds::Vars::FullSynchroAura(Vars { shown: true });
@@ -120,7 +120,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.set_animation(anim, &b.content);
     s.update();
     let o = b.objects.get_mut(r);
-    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
     o.set_visible(true);
     o.anim = anim;
     o.anim_loaded = anim;
@@ -149,7 +149,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let hiding = if under_the_sea { f1::SUBMERGED | f1::BUBBLED } else { f1::SUBMERGED };
     let submerged = b.objects.get(navi).collision.is_some_and(|c| b.collision.get(c).f1 & hiding != 0);
     if rules.stops_at_a_pause_in_the_fight && b.round.flags & crate::battle::battle_flags::FIGHTING != 0 {
-        b.objects.get_mut(r).flags &= !flags::RUN_WHILE_PAUSED;
+        b.objects.get_mut(r).flags.remove(ObjectFlags::RUN_WHILE_PAUSED);
     }
     let (pos, flip) = {
         let n = b.objects.get(navi);

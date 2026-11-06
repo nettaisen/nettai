@@ -38,7 +38,7 @@
 //!   is drawn from it, `kinds::player::entry`).
 
 use crate::battle::{Battle, BattleResult, RoundEnd, fight};
-use crate::object::{ObjectRef, Sight, flags};
+use crate::object::{ObjectFlags, ObjectRef, Sight};
 use crate::content::{BannerId, Telops};
 use crate::setup::SetScore;
 use crate::dimming::telop_banner;
@@ -133,7 +133,7 @@ impl Battle {
     pub fn visible_to(&self, r: ObjectRef, viewer: u8) -> bool {
         let o = self.objects.get(r);
         match o.sight {
-            Sight::Shared => o.flags & flags::VISIBLE != 0,
+            Sight::Shared => o.flags.contains(ObjectFlags::VISIBLE),
             Sight::ByViewer(shown) => shown[viewer as usize & 1],
         }
     }
@@ -150,9 +150,10 @@ impl Battle {
 
     /// `r`'s header flags as `viewer`'s console has them: its `VISIBLE`
     /// flag the viewer's (the others are the same for every viewer).
-    pub fn flags_for(&self, r: ObjectRef, viewer: u8) -> u8 {
-        let shown = if self.visible_to(r, viewer) { flags::VISIBLE } else { 0 };
-        self.objects.get(r).flags & !flags::VISIBLE | shown
+    pub fn flags_for(&self, r: ObjectRef, viewer: u8) -> ObjectFlags {
+        let mut flags = self.objects.get(r).flags;
+        flags.set(ObjectFlags::VISIBLE, self.visible_to(r, viewer));
+        flags
     }
 
     /// `r` shown to the viewers `shown` says (by side). Its `VISIBLE` flag
@@ -494,7 +495,7 @@ mod tests {
         // The local side's hidden too: the flag follows it, and the two are
         // alike again.
         b.set_for(e, ObjectField::Visible, local, Value::Bool(false)).unwrap();
-        assert_eq!(b.objects.get(e).flags & flags::VISIBLE, 0);
+        assert!(!b.objects.get(e).flags.contains(ObjectFlags::VISIBLE));
         assert_eq!(b.objects.get(e).sight, Sight::Shared);
         b.set_for(e, ObjectField::Visible, local ^ 1, Value::Bool(true)).unwrap();
         b.set(e, ObjectField::Visible, Value::Bool(false)).unwrap();
@@ -618,8 +619,8 @@ mod tests {
         let seen = |b: &Battle| [n0, n1].map(|r| [0, 1].map(|viewer| b.visible_to(r, viewer)));
         assert_eq!(seen(&b), [[true, false], [true, true]]);
         // The flag is the local side's (side 0, who sees both).
-        assert!(b.objects.get(n0).flags & flags::VISIBLE != 0);
-        assert_eq!(b.flags_for(n0, 1) & flags::VISIBLE, 0);
+        assert!(b.objects.get(n0).flags.contains(ObjectFlags::VISIBLE));
+        assert!(!b.flags_for(n0, 1).contains(ObjectFlags::VISIBLE));
         // Showing it again shows it to everyone.
         b.objects.get_mut(n0).set_visible(true);
         blind(&mut b, 1, false);
@@ -628,7 +629,7 @@ mod tests {
             b.hide_from_blind(r);
         }
         assert_eq!(seen(&b), [[true, true], [false, true]]);
-        assert_eq!(b.objects.get(n1).flags & flags::VISIBLE, 0);
+        assert!(!b.objects.get(n1).flags.contains(ObjectFlags::VISIBLE));
         // Something following side 1's navi is seen by whoever sees it.
         let follower = n0;
         b.copy_visibility(n1, follower);

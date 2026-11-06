@@ -7,7 +7,7 @@ use super::{
 use crate::actor::ActorType;
 use crate::battle::Battle;
 use crate::content::EffectRole;
-use crate::object::{ObjectRef, flags};
+use crate::object::{ObjectFlags, ObjectRef};
 
 /// Action 0, `sub_8016380`.
 pub(super) fn entry(b: &mut Battle, r: ObjectRef) {
@@ -128,7 +128,7 @@ const ARRIVE_LOOK: EffectRole = EffectRole::Deletion;
 fn flash(b: &mut Battle, pos: crate::object::Vec3, look: EffectRole) {
     let look = b.roles().effect(look);
     if let Some(e) = crate::kinds::effect::spawn(b, pos, look, 0, 0, 0) {
-        b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
+        b.objects.get_mut(e).flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
     }
 }
 
@@ -227,7 +227,7 @@ fn show_hp_number(b: &mut Battle, r: ObjectRef) {
 pub(super) fn take_control(b: &mut Battle, r: ObjectRef) {
     // (EXE4's, 0x08010A88: from here the navi stops for pauses.)
     if b.content.rules().paused_navi == crate::content::PausedNavi::StopsAtControl {
-        b.objects.get_mut(r).flags &= !crate::object::flags::RUN_WHILE_PAUSED;
+        b.objects.get_mut(r).flags.remove(crate::object::ObjectFlags::RUN_WHILE_PAUSED);
     }
     if own_gauges(b) && navi_record(b, r).actor_type == ActorType::Player && ai(b, r).target_marker.is_none() {
         crate::kinds::target_marker::spawn(b, r);

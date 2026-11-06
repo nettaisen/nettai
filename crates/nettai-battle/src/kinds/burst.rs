@@ -7,7 +7,7 @@
 use crate::battle::Battle;
 use crate::kinds::common::{self, Progress};
 use crate::kinds::effect;
-use crate::object::{ObjectRef, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, Vec3, state};
 
 /// The panels it bursts on, from the last to the first (`byte_80EA418`:
 /// dx toward the navi's front, dy).
@@ -41,7 +41,7 @@ pub fn spawn(b: &mut Battle, navi: ObjectRef) -> Option<ObjectRef> {
     o.alliance = alliance;
     o.flip = flip;
     o.panel = panel;
-    o.flags |= flags::RUN_WHILE_PAUSED;
+    o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
     Some(r)
 }
 
@@ -85,7 +85,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let (px, py) = crate::kinds::player::panel_coordinates(x as u8, y as u8);
     let look = b.roles().effect(crate::content::EffectRole::Burst);
     if let Some(e) = effect::spawn(b, Vec3 { x: px, y: py, z: 0 }, look, 0, 0, 0) {
-        b.objects.get_mut(e).flags |= flags::RUN_WHILE_PAUSED;
+        b.objects.get_mut(e).flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
         b.sound(crate::content::SoundRole::Burst);
     }
 }

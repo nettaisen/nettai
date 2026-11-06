@@ -1182,7 +1182,7 @@ fn a_target_marker_with_no_opponent_is_on_none() {
     tick(&mut b, p0, p1, 0);
     let m = b.objects.get(marker);
     assert_eq!((target_panel(&b, marker), m.pos), (None, pos), "on none, where it was");
-    assert_eq!(m.flags & crate::object::flags::VISIBLE, 0, "hidden");
+    assert!(!m.flags.contains(crate::object::ObjectFlags::VISIBLE), "hidden");
     // The opponent back on the list: over it again.
     b.round.alive_actors[1][0] = Some(p1);
     tick(&mut b, p0, p1, 0);

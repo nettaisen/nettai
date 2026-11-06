@@ -1941,7 +1941,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, exchange:
         b.objects.in_order().map(|o| compat.kinds.get(&b.content.defs.kind(b.objects.get(o).kind).key)).collect();
     let skip = |i: usize, flags: u8| -> (bool, bool) {
         let Some(Some(k)) = entries.get(i) else { return (false, false) };
-        let garbage = k.scratch_position || (k.scratch_position_without_sprite && flags & nettai_battle::object::flags::NO_SPRITE_UPDATE != 0);
+        let garbage = k.scratch_position || (k.scratch_position_without_sprite && nettai_battle::object::ObjectFlags::from_bits_retain(flags).contains(nettai_battle::object::ObjectFlags::NO_SPRITE_UPDATE));
         (garbage, k.scratch_z_fraction)
     };
     let panel = |i: usize, p: [u8; 2]| -> String {
@@ -2007,7 +2007,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, exchange:
                 Some(k) => format!("type {} #{:#04x}", pool_type(o.pool), k.index),
                 None => format!("type {} {key} (no EXE5 number)", pool_type(o.pool)),
             };
-            let (garbage, zf) = skip(i, x.flags);
+            let (garbage, zf) = skip(i, x.flags.bits());
             let xy = nettai_battle::kinds::effect::xy_not_the_originals(b, o);
             let action = match compat.navi_action(b, o) {
                 Ok(n) => format!("{n:#04x}"),
@@ -2045,7 +2045,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, exchange:
             };
             vec![
                 ("kind", kind),
-                ("flags", flags_field(i, x.flags, x.alliance)),
+                ("flags", flags_field(i, x.flags.bits(), x.alliance)),
                 ("state", format!("{:#04x}", x.state)),
                 ("action", action),
                 ("phase", format!("{:#04x}", x.phase)),

@@ -10,7 +10,7 @@ use crate::battle::Battle;
 use crate::content::{BodyPart, Parts};
 use crate::kinds::common;
 use crate::object::sprite::Shadow;
-use crate::object::{ObjectRef, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, Vec3, state};
 
 /// Overlay-private state (the spawn parameters, and ExtraVars[0]).
 #[derive(Clone, Copy, Debug, Default, Hash)]
@@ -68,7 +68,7 @@ pub fn spawn_with(b: &mut Battle, owner: ObjectRef, spec: Vars) -> Option<Object
     o.related[0] = Some(owner);
     o.alliance = alliance;
     o.flip = flip;
-    o.flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
+    o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED | ObjectFlags::RUN_WHILE_DIMMED);
     *vars_mut(b, r) = Vars { forced_front: false, ..spec };
     Some(r)
 }
@@ -118,7 +118,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     s.set_animation(anim, &b.content);
     s.update();
     let o = b.objects.get_mut(r);
-    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
     // A halfword store: the animation, and 0 as the loaded one.
     o.anim = anim;
     o.anim_loaded = 0;

@@ -12,7 +12,7 @@ use crate::collision::f1;
 use crate::content::{FormEffects, Parts};
 use crate::kinds::common::{Progress, set_progress};
 use crate::kinds::{body_overlay, form_overlay, idle_overlay, target_marker};
-use crate::object::{ObjectRef, flags};
+use crate::object::{ObjectFlags, ObjectRef};
 
 /// `sub_8010DF6`: the init hook of an identity's actor record, run on the
 /// object `r` (the navi, or an image of it), with its r2 (the overlay's
@@ -136,7 +136,7 @@ pub(crate) fn put_on_navi_overlay(b: &mut Battle, r: ObjectRef, navi: NaviHandle
 /// form changes' first step): it keeps running while paused and dimmed,
 /// and steps its sprite through them.
 pub(crate) fn keep_overlay_stepping(b: &mut Battle, overlay: ObjectRef) {
-    b.objects.get_mut(overlay).flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
+    b.objects.get_mut(overlay).flags.insert(ObjectFlags::RUN_WHILE_PAUSED | ObjectFlags::RUN_WHILE_DIMMED);
     tell_overlay(b, overlay);
 }
 

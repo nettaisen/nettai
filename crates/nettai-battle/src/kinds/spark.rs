@@ -3,7 +3,7 @@
 use crate::battle::Battle;
 use crate::collision::{hit, types};
 use crate::content::EffectSprite;
-use crate::object::{ObjectRef, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, Vec3, state};
 use nettai_content_api::SparkHandle;
 
 /// `AddRandomVarianceToTwoCoords`: jitter x and z by up to ±mask/2 pixels
@@ -68,7 +68,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
                 sprite.update();
             }
             let o = b.objects.get_mut(r);
-            o.flags &= !flags::NO_SPRITE_UPDATE;
+            o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
             o.anim = anim;
             o.anim_loaded = anim;
             o.set_visible(true);

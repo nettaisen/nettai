@@ -31,7 +31,7 @@ use crate::kinds::common::{self, Progress};
 use crate::kinds::player::actions::ActionVars;
 use crate::kinds;
 use crate::object::sprite;
-use crate::object::{ObjectRef, PanelPos, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, PanelPos, Vec3, state};
 use crate::sound::SoundId;
 
 /// The collision `f1` bit behind a status flag.
@@ -192,14 +192,14 @@ fn key_bit(k: Key) -> u16 {
 }
 
 /// The header flag behind a boolean object field.
-fn flag_bit(f: ObjectField) -> Option<u8> {
+fn flag_bit(f: ObjectField) -> Option<ObjectFlags> {
     Some(match f {
-        ObjectField::Active => flags::ACTIVE,
-        ObjectField::Visible => flags::VISIBLE,
-        ObjectField::RunWhilePaused => flags::RUN_WHILE_PAUSED,
-        ObjectField::RunWhileDimmed => flags::RUN_WHILE_DIMMED,
-        ObjectField::NoSpriteUpdate => flags::NO_SPRITE_UPDATE,
-        ObjectField::HoldsReservation => flags::HOLDS_RESERVATION,
+        ObjectField::Active => ObjectFlags::ACTIVE,
+        ObjectField::Visible => ObjectFlags::VISIBLE,
+        ObjectField::RunWhilePaused => ObjectFlags::RUN_WHILE_PAUSED,
+        ObjectField::RunWhileDimmed => ObjectFlags::RUN_WHILE_DIMMED,
+        ObjectField::NoSpriteUpdate => ObjectFlags::NO_SPRITE_UPDATE,
+        ObjectField::HoldsReservation => ObjectFlags::HOLDS_RESERVATION,
         _ => return None,
     })
 }
@@ -1577,8 +1577,9 @@ impl CoreApi for Battle {
     fn set_header_flags(&mut self, o: ObjectRef, flags: u8) {
         // A write that leaves VISIBLE as it was leaves who sees it as it was.
         let ob = self.objects.get_mut(o);
-        let visible = flags & crate::object::flags::VISIBLE != 0;
-        if visible != (ob.flags & crate::object::flags::VISIBLE != 0) {
+        let flags = ObjectFlags::from_bits_retain(flags);
+        let visible = flags.contains(ObjectFlags::VISIBLE);
+        if visible != ob.flags.contains(ObjectFlags::VISIBLE) {
             ob.set_visible(visible);
         }
         ob.flags = flags;
@@ -1808,7 +1809,7 @@ impl CoreApi for Battle {
     fn get(&self, o: ObjectRef, f: ObjectField) -> ApiResult<Value> {
         let ob = self.objects.get(o);
         if let Some(bit) = flag_bit(f) {
-            return Ok(Value::Bool(ob.flags & bit != 0));
+            return Ok(Value::Bool(ob.flags.contains(bit)));
         }
         let i = |v: i64| Value::Int(v);
         Ok(match f {
@@ -1879,7 +1880,7 @@ impl CoreApi for Battle {
                 // For every viewer (`set_for` decides it for one).
                 ob.set_visible(on);
             } else {
-                ob.flags = if on { ob.flags | bit } else { ob.flags & !bit };
+                ob.flags.set(bit, on);
             }
             return Ok(());
         }
@@ -2641,7 +2642,7 @@ impl CoreApi for Battle {
     fn sprite_load(&mut self, o: ObjectRef, id: SpriteId) {
         // `sprite_load` also lets the sprite animate (header flag 0x08).
         self.objects.sprite_mut(o).load(id);
-        self.objects.get_mut(o).flags &= !flags::NO_SPRITE_UPDATE;
+        self.objects.get_mut(o).flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
     }
 
     fn sprite_set_animation(&mut self, o: ObjectRef, anim: u8) {

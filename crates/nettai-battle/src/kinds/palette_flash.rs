@@ -6,7 +6,7 @@
 //! §A.7.
 
 use crate::battle::Battle;
-use crate::object::{ObjectRef, Vec3, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, Vec3, state};
 
 /// Flash-private state (the spawn parameters).
 #[derive(Clone, Debug, Default, Hash)]
@@ -38,7 +38,7 @@ pub fn spawn(b: &mut Battle, duration: u8, while_dimmed: bool, while_paused: boo
 pub fn spawn_variant(b: &mut Battle, variant: u8, duration: u8, while_dimmed: bool, while_paused: bool) -> Option<ObjectRef> {
     let mode = while_dimmed as u8 | (while_paused as u8) << 1;
     let r = crate::kinds::spawn_engine(b, crate::kinds::EngineKind::PaletteFlash, Vec3::default(), [variant, duration, mode, 0])?;
-    b.objects.get_mut(r).flags |= flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED;
+    b.objects.get_mut(r).flags.insert(ObjectFlags::RUN_WHILE_PAUSED | ObjectFlags::RUN_WHILE_DIMMED);
     *vars(b, r) = Vars { variant, duration, while_dimmed, while_paused };
     Some(r)
 }

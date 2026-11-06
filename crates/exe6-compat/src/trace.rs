@@ -1057,7 +1057,7 @@ fn slot_kind(compat: &Compat, kind: u8, index: u8) -> Option<&crate::KindEntry> 
 fn pos_is_garbage(compat: &Compat, kind: u8, index: u8, flags: u8) -> bool {
     slot_kind(compat, kind, index).is_some_and(|k| {
         k.scratch_position
-            || (k.scratch_position_without_sprite && flags & nettai_battle::object::flags::NO_SPRITE_UPDATE != 0)
+            || (k.scratch_position_without_sprite && nettai_battle::object::ObjectFlags::from_bits_retain(flags).contains(nettai_battle::object::ObjectFlags::NO_SPRITE_UPDATE))
     })
 }
 
@@ -1114,7 +1114,7 @@ fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, un
         compat,
         crate::pool_type(r.pool),
         index,
-        o.flags,
+        o.flags.bits(),
         [o.state, action, o.phase, o.phase_init],
         [o.panel.x, compat.games.panel_y(game, &b.content.defs.kind(o.kind).key, o.panel.y)],
         o.alliance,

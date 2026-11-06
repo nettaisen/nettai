@@ -6,6 +6,9 @@ license.workspace = true
 description = "nettai: a Battle Network battle engine in Rust, reimplemented from Mega Man Battle Network 6 with the game's content as a separate pack"
 
 [dependencies]
+# The state's flag words as typed sets (collision::StatusFlags and the
+# rest): each word's bits are declared once, and tested and set by name.
+bitflags = "2"
 nettai-content-api = { path = "../nettai-content-api" }
 # The content scripts' runtime (docs/design/scripting.md): a content pack's
 # Luau scripts implement its object kinds, actions and hooks.

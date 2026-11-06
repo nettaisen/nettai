@@ -27,7 +27,7 @@ use crate::collision::{CollisionId, f1, types};
 use crate::content::{CollisionRole, EffectRole, PushSource, SoundRole, SparkRole};
 use crate::field::{self, pflags};
 use crate::kinds::common::{self, Progress};
-use crate::object::{DragStep, ObjectRef, PanelPos, SlideBounds, StateWord, Vec3, flags};
+use crate::object::{DragStep, ObjectFlags, ObjectRef, PanelPos, SlideBounds, StateWord, Vec3};
 
 /// Obstacle actions (the object's `action` byte indexes the kind's
 /// table; the entries marked shared are the same for every kind).
@@ -757,7 +757,7 @@ fn thrown(b: &mut Battle, r: ObjectRef) {
             };
             // sub_80C53A6: the hit resolves while dimmed too.
             if let Some(h) = crate::kinds::hitbox::spawn(b, r, &spec) {
-                b.objects.get_mut(h).flags |= flags::RUN_WHILE_DIMMED;
+                b.objects.get_mut(h).flags.insert(ObjectFlags::RUN_WHILE_DIMMED);
             }
             b.objects.get_mut(r).hp = 0;
             Action::Destroyed.start(b, r);
@@ -1283,7 +1283,7 @@ pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, look: RecordHandle) {
     let o = b.objects.get_mut(e);
     o.alliance = alliance;
     o.flip = flip;
-    o.flags &= !(flags::RUN_WHILE_PAUSED | flags::RUN_WHILE_DIMMED);
+    o.flags.remove(ObjectFlags::RUN_WHILE_PAUSED | ObjectFlags::RUN_WHILE_DIMMED);
 }
 
 /// Done: hidden, and destroyed at the next update.

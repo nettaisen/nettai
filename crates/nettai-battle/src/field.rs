@@ -626,7 +626,7 @@ impl Battle {
         p.reserver = Some(obj);
         p.flags |= pflags::RESERVED;
         if self.content.rules().panels.reservations == crate::content::Reservations::Marked {
-            self.objects.get_mut(obj).flags |= crate::object::flags::HOLDS_RESERVATION;
+            self.objects.get_mut(obj).flags.insert(crate::object::ObjectFlags::HOLDS_RESERVATION);
         }
         true
     }
@@ -645,7 +645,7 @@ impl Battle {
     /// `sub_801BB78`: release every reservation `obj` holds (none where
     /// reservations don't mark their holder: EXE5's destroys release none).
     pub fn release_reservations(&mut self, obj: ObjectRef) {
-        if self.objects.get(obj).flags & crate::object::flags::HOLDS_RESERVATION == 0 {
+        if !self.objects.get(obj).flags.contains(crate::object::ObjectFlags::HOLDS_RESERVATION) {
             return;
         }
         for y in (1..=4).rev() {

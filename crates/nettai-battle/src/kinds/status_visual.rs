@@ -11,7 +11,7 @@
 use crate::battle::Battle;
 use crate::collision::{f1, link};
 use crate::content::{SoundRole, SpriteRole, StatusVisualPlace};
-use crate::object::{ObjectRef, flags, state};
+use crate::object::{ObjectFlags, ObjectRef, state};
 
 /// Which status it shows (Param1, a row of `byte_80E08E4`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -103,7 +103,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     // 0x080E2302.)
     s.look.shadow = crate::object::sprite::Shadow::WithSprite;
     let o = b.objects.get_mut(r);
-    o.flags &= !flags::NO_SPRITE_UPDATE;
+    o.flags.remove(ObjectFlags::NO_SPRITE_UPDATE);
     o.set_visible(true);
     let flip = o.alliance ^ o.flip;
     b.objects.sprite_mut(r).look.set_flip(flip);
