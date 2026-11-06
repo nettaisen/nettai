@@ -54,7 +54,7 @@ mod tests {
     use crate::battle::{Battle, TickEvents};
     use crate::input::PlayerTick;
     use crate::content::testing;
-    use crate::setup::effects;
+    use crate::setup::BattleEffects;
 
     /// A battle between two navis with 500 HP on the test content, a link
     /// battle or not, with this music.
@@ -62,7 +62,7 @@ mod tests {
         let content = testing::restaged(testing::LINK_BATTLE_SIDE0_FIRST, |s| s.music = music);
         let mut setup = testing::round_setup(testing::LINK_BATTLE_SIDE0_FIRST, testing::stats(500));
         crate::content::testing::on(&mut setup, &content);
-        setup.settings.effects = if link { effects::LINK } else { 0 };
+        setup.settings.effects = if link { BattleEffects::LINK } else { BattleEffects::empty() };
         setup.rng = 0x1234_5678;
         Battle::new(setup, std::sync::Arc::new(content))
     }
@@ -95,7 +95,7 @@ mod tests {
             }
             let mut setup = testing::round_setup(testing::LINK_BATTLE_SIDE0_FIRST, testing::stats(500));
             crate::content::testing::on(&mut setup, &content);
-            setup.settings.effects = effects::LINK | if set { effects::SET } else { 0 };
+            setup.settings.effects = BattleEffects::LINK | if set { BattleEffects::SET } else { BattleEffects::empty() };
             let mut b = Battle::new(setup, std::sync::Arc::new(content));
             let link_battle = b.roles().music(MusicRole::LinkBattle);
             (tick(&mut b)[0], SoundCue::Music(link_battle))

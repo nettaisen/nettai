@@ -26,7 +26,7 @@
 
 use super::ActionVars;
 use crate::actor::{request, status};
-use crate::battle::{Battle, battle_flags};
+use crate::battle::{Battle, BattleFlags};
 use crate::collision::{f1, timer};
 use crate::kinds::common;
 use crate::kinds::player::{
@@ -36,7 +36,7 @@ use crate::kinds::player::{
 };
 use crate::object::ObjectRef;
 use crate::content::Content;
-use crate::setup::{NaviStats, effects};
+use crate::setup::{BattleEffects, NaviStats};
 use nettai_content_api::NaviHandle;
 
 /// The action's own state.
@@ -179,7 +179,7 @@ pub(crate) fn in_battle(b: &mut Battle, r: ObjectRef) {
                 a.status &= !(status::TRAP_ARMED | status::SWITCHING_NAVI | status::HOVERING);
                 a.requests &= !(request::ANTI_SWORD_TRIGGERED | request::ANTI_DAMAGE_TRIGGERED);
                 clear_flag2(b, r, 0x104);
-                b.clear_flags(battle_flags::DIMMED);
+                b.clear_flags(BattleFlags::DIMMED);
                 settled(b, r);
                 exit_attack_state(b, r);
             }
@@ -308,7 +308,7 @@ fn party_land(b: &mut Battle, r: ObjectRef, how: Land) {
     b.objects.sprite_mut(r).look.white = true;
     if ai(b, r).attack.step_init == 0 {
         if how == Land::InBattle {
-            b.set_flags(battle_flags::DIMMED);
+            b.set_flags(BattleFlags::DIMMED);
         }
         to_destination(b, r);
         let pos = b.objects.get(r).pos;
@@ -325,7 +325,7 @@ fn party_land(b: &mut Battle, r: ObjectRef, how: Land) {
             Land::Paused => b.turn_transforms[side].navi_switch.and_then(|n| member_of(b, side, n)),
         };
         let quiet = how == Land::Paused && target == Some(0) && b.round.turn <= 1;
-        if !quiet && side as u8 == b.round.local_side && b.setup.settings.effects & effects::NO_SWITCH_VOICE == 0 {
+        if !quiet && side as u8 == b.round.local_side && !b.setup.settings.effects.contains(BattleEffects::NO_SWITCH_VOICE) {
             b.consoles[side].rng.next();
         }
         b.sound(crate::content::SoundRole::NaviSwitch);
@@ -374,7 +374,7 @@ fn settled(b: &mut Battle, r: ObjectRef) {
 /// The member of `side`'s party whose block is of `navi` (the DS's
 /// 0x0200DEE8: none offline for side 1).
 fn member_of(b: &Battle, side: usize, navi: NaviHandle) -> Option<u8> {
-    if b.setup.settings.effects & effects::LINK == 0 && side != 0 {
+    if !b.setup.settings.effects.contains(BattleEffects::LINK) && side != 0 {
         return None;
     }
     b.party[side].member_of(navi)

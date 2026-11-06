@@ -2378,7 +2378,7 @@ mod tests {
         assert!(!c.defs.sparks.is_empty() && !c.defs.regions.is_empty() && c.defs.collisions.len() >= 87);
         // A stage's battle effects by name, the engine's and the game's own
         // (its rules' `flow.effect_bits`); a status's requests its timer's.
-        let effects = |key: &str| c.stage(c.defs.stage_by_key(key).unwrap_or_else(|| panic!("stage {key}"))).effects;
+        let effects = |key: &str| c.stage(c.defs.stage_by_key(key).unwrap_or_else(|| panic!("stage {key}"))).effects.bits();
         assert_eq!((effects("netbattle-1"), effects("netbattle-96"), effects("netbattle-97")), (0x88C, 0x8C, 0x20_088C));
         let paralysis = c.status(c.defs.status_by_key("paralyze-90").expect("paralyze-90"));
         assert_eq!((paralysis.requests, paralysis.duration), (crate::collision::f2::PARALYZE, 90));

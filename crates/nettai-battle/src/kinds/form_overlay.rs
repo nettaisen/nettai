@@ -171,7 +171,7 @@ fn init(b: &mut Battle, r: ObjectRef) {
     if rules.start == OverlayStart::AtOnceInFight {
         // With the fight on it follows at once; else it waits, running
         // while paused until the navis are in.
-        let fighting = b.round.flags & crate::battle::battle_flags::FIGHTING != 0;
+        let fighting = b.round.flags.contains(crate::battle::BattleFlags::FIGHTING);
         let o = b.objects.get_mut(r);
         o.flags.remove(ObjectFlags::RUN_WHILE_PAUSED);
         if fighting {

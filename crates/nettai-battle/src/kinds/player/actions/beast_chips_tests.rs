@@ -6,7 +6,7 @@
 //! them yet; the timings here are the routines' as docs/engine reads them.
 
 use super::super::ai_mut;
-use crate::battle::{Battle, FadeMode, battle_flags};
+use crate::battle::{Battle, BattleFlags, FadeMode};
 use crate::content::testing;
 use crate::hand::ChipHand;
 use crate::input::keys;
@@ -35,11 +35,11 @@ fn megaman() -> NaviStats {
 /// (2,2), side 1 at (5,2)), the screen clear.
 fn fight_on(stage: &str) -> (Battle, [ObjectRef; 2]) {
     let mut setup = testing::round_setup(stage, megaman());
-    setup.settings.effects = 0xE8C;
+    setup.settings.effects = crate::setup::BattleEffects::from_bits_retain(0xE8C);
     let mut b = Battle::new(setup, testing::content());
     b.spawn_actors();
     b.run_objects();
-    b.round.flags |= battle_flags::FIGHTING;
+    b.round.flags.insert(BattleFlags::FIGHTING);
     b.fade.level = 0;
     let players = [b.player(0).unwrap(), b.player(1).unwrap()];
     for p in players {

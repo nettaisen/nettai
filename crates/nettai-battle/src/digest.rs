@@ -143,6 +143,27 @@ impl Hasher for StableHasher {
     }
 }
 
+/// Hashes a slice of flag words (a `bitflags` type's, as `bits().to_ne_bytes()`)
+/// as `Hash::hash_slice` hashes a slice of their integers: their bytes in one
+/// write. A flag type held in an array implements `hash_slice` with it, so
+/// that the array hashes as the array of integers it replaced (a derived
+/// `Hash` would hash each word apart).
+pub fn hash_bits_slice<H: Hasher, const N: usize>(words: impl ExactSizeIterator<Item = [u8; N]>, h: &mut H) {
+    let mut stack = [0u8; 64];
+    let mut heap = Vec::new();
+    let len = words.len() * N;
+    let bytes: &mut [u8] = if len <= stack.len() {
+        &mut stack[..len]
+    } else {
+        heap.resize(len, 0);
+        &mut heap
+    };
+    for (to, word) in bytes.chunks_exact_mut(N).zip(words) {
+        to.copy_from_slice(&word);
+    }
+    h.write(bytes);
+}
+
 /// The digest of anything hashable, with [`StableHasher`].
 pub fn stable_hash<T: Hash + ?Sized>(value: &T) -> u64 {
     let mut h = StableHasher::new();

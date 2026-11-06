@@ -891,7 +891,7 @@ fn compare_with(b: &Battle, f: &Frame, known: Known, compat: &Compat) -> Vec<Str
         // recording console's still clear.)
         let received = [bs[0x14], bs[0x15]];
         let theirs: [u8; 2] = std::array::from_fn(|p| if known.opening[p] && received[p] & 4 == 0 { received[p] | 4 } else { received[p] });
-        check("custom screens open (as received)", format!("{:?}", b.round.remote_status), format!("{theirs:?}"));
+        check("custom screens open (as received)", format!("{:?}", b.round.remote_status.map(|s| s.bits())), format!("{theirs:?}"));
     }
     // The banner: its task (bit 15 of the HUD's tasks) and, while it shows,
     // the number the traced console's record holds (its +1: the banner

@@ -22,7 +22,7 @@
 
 use nettai_content_api::RecordHandle;
 
-use crate::battle::{Battle, battle_flags};
+use crate::battle::{Battle, BattleFlags};
 use crate::collision::{CollisionId, f1, types};
 use crate::content::{CollisionRole, EffectRole, PushSource, SoundRole, SparkRole};
 use crate::field::{self, pflags};
@@ -358,7 +358,7 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
     // sprite_clearFinalPalette
     b.objects.sprite_mut(r).look.white = false;
     let c = collision(b, r);
-    if b.round.flags & battle_flags::FIGHTING == 0 {
+    if !b.round.flags.contains(BattleFlags::FIGHTING) {
         return;
     }
     b.remove_collision(c);
@@ -1161,7 +1161,7 @@ fn rest_after_slide(b: &mut Battle, r: ObjectRef) {
 /// tracked target (`sub_802EF74`) in the own-gauges mode, which
 /// netbattles don't use.
 pub fn release_tracking(b: &mut Battle, r: ObjectRef) {
-    if b.round.flags & battle_flags::OWN_GAUGES == 0 {
+    if !b.round.flags.contains(BattleFlags::OWN_GAUGES) {
         return;
     }
     for side in 0..2 {

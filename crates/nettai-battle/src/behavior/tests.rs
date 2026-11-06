@@ -786,7 +786,7 @@ fn rock_battle() -> Battle {
     // 0xFF), everything else zero.
     let stats = NaviStats { support: Some(Default::default()), ..Default::default() };
     let mut setup = testing::round_setup(testing::ROCK_BATTLE, stats);
-    setup.settings.effects = 0;
+    setup.settings.effects = crate::setup::BattleEffects::empty();
     Battle::new(setup, testing::content())
 }
 
@@ -841,7 +841,7 @@ fn breaking_a_scripted_rock_throws_debris() {
     let r = b.objects.in_order().find(|r| r.pool == Pool::Attack).unwrap();
     // A fight in progress (with nobody alive the battle is over, and
     // obstacles break).
-    b.round.flags |= crate::battle::battle_flags::FIGHTING;
+    b.round.flags.insert(crate::battle::BattleFlags::FIGHTING);
     run_only(&mut b, &ROCK_KINDS);
     assert_eq!(b.objects.get(r).action, 8, "placed rocks stand at once");
     assert_eq!(b.objects.get(r).hp, 200, "the stages' rock cubes have RockCube's HP");
@@ -876,7 +876,7 @@ fn a_stage_places_boulders_in_the_stage_slots() {
     const BOULDER_KINDS: [&str; 3] = ["boulder", "rockcube/debris", "engine/effect"];
     let stats = NaviStats { support: Some(Default::default()), ..Default::default() };
     let mut setup = testing::round_setup(testing::BOULDER_BATTLE, stats);
-    setup.settings.effects = 0;
+    setup.settings.effects = crate::setup::BattleEffects::empty();
     let mut b = Battle::new(setup, testing::content());
     b.spawn_actors();
     assert_eq!(b.round.alive, [1, 1]);
@@ -904,7 +904,7 @@ fn a_stage_places_boulders_in_the_stage_slots() {
     assert_eq!(o.pos.y, y - 0x1_0000);
     // The fight is on: they stand, and stop running while paused.
     b.paused = false;
-    b.round.flags |= crate::battle::battle_flags::FIGHTING;
+    b.round.flags.insert(crate::battle::BattleFlags::FIGHTING);
     run_only(&mut b, &BOULDER_KINDS);
     let o = b.objects.get(boulders[0]);
     assert_eq!((o.action, o.flags), (8, (read - ObjectFlags::RUN_WHILE_PAUSED) | ObjectFlags::VISIBLE));
@@ -937,7 +937,7 @@ fn a_thrown_rock_flies_to_its_target_and_breaks() {
     const ROCK: [&str; 1] = ["rockcube/rock"];
     let mut b = rock_battle();
     b.spawn_actors();
-    b.round.flags |= crate::battle::battle_flags::FIGHTING;
+    b.round.flags.insert(crate::battle::BattleFlags::FIGHTING);
     let r = b.objects.in_order().find(|r| r.pool == Pool::Attack).unwrap();
     run_only(&mut b, &ROCK);
     assert_eq!(b.objects.get(r).panel, PanelPos { x: 3, y: 3 });
@@ -999,12 +999,12 @@ fn encase_rock(ice: bool) -> (Battle, crate::object::ObjectRef) {
     // The rock stage on the test pack's content, which fills the role.
     let stats = crate::setup::NaviStats { support: Some(Default::default()), ..Default::default() };
     let mut setup = testing::round_setup(testing::ROCK_BATTLE, stats);
-    setup.settings.effects = 0;
+    setup.settings.effects = crate::setup::BattleEffects::empty();
     let content = std::sync::Arc::new(testing::with_test_pack());
     crate::content::testing::on(&mut setup, &content);
     let mut b = Battle::new(setup, content);
     b.spawn_actors();
-    b.round.flags |= crate::battle::battle_flags::FIGHTING;
+    b.round.flags.insert(crate::battle::BattleFlags::FIGHTING);
     let r = b.objects.in_order().find(|r| r.pool == Pool::Attack).unwrap();
     run_only(&mut b, &KINDS);
     assert_eq!(b.field.objects.class_of(r), Some(0), "a stage rock takes a class-0 slot");
@@ -1499,7 +1499,7 @@ fn a_side_stat_and_the_mood_are_set() {
     CoreApi::set_navi_stat(&mut b, nettai_content_api::StatsOf::side(0), NaviStat::Mood, Value::Int(0)).unwrap();
     assert_eq!(b.stats[0].mood, 0);
     assert_eq!(CoreApi::battle_info(&b, BattleInfo::Random), Value::Bool(false));
-    b.setup.settings.effects |= crate::setup::effects::RANDOM;
+    b.setup.settings.effects.insert(crate::setup::BattleEffects::RANDOM);
     assert_eq!(CoreApi::battle_info(&b, BattleInfo::Random), Value::Bool(true));
     assert!(CoreApi::has_effect(&b, "dark_chips_fizzle").is_err(), "a name its rules don't declare");
     assert!(CoreApi::has_effect(&b, "random").is_err(), "an engine name is battle_info's");
@@ -1507,7 +1507,7 @@ fn a_side_stat_and_the_mood_are_set() {
     content.rules.as_mut().expect("the test content's rules").effect_bits = vec![("dark_chips_fizzle".into(), 0x10_0000)];
     b.content = std::sync::Arc::new(content);
     assert_eq!(CoreApi::has_effect(&b, "dark_chips_fizzle").ok(), Some(false));
-    b.setup.settings.effects |= 0x10_0000;
+    b.setup.settings.effects |= crate::setup::BattleEffects::from_bits_retain(0x10_0000);
     assert_eq!(CoreApi::has_effect(&b, "dark_chips_fizzle").ok(), Some(true));
 }
 
@@ -1898,7 +1898,7 @@ fn the_support_dimming_chips_roll_back() {
 /// and in the fight each side holding `fight(b, side, n)` (`n` the ticks
 /// fought so far); `each` sees the battle after every tick.
 fn drive(chip: &str, ticks: usize, fight: impl Fn(&Battle, usize, u32) -> u16, mut each: impl FnMut(&Battle)) -> Battle {
-    use crate::battle::{TickEvents, battle_flags, mode};
+    use crate::battle::{BattleFlags, TickEvents, mode};
     use crate::input::PlayerTick;
     let mut setup = scenario::setup_with_handles(&[testing::chip_handle(chip)]);
     setup.players[1] = scenario::setup().players[1].clone();
@@ -1906,7 +1906,7 @@ fn drive(chip: &str, ticks: usize, fight: impl Fn(&Battle, usize, u32) -> u16, m
     let mut last = [None; 2];
     let mut n = 0;
     for _ in 0..ticks {
-        let fighting = b.round.mode == mode::FIGHTING && b.round.flags & battle_flags::FIGHTING != 0;
+        let fighting = b.round.mode == mode::FIGHTING && b.round.flags.contains(BattleFlags::FIGHTING);
         let mut input = [PlayerTick::default(); 2];
         for side in 0..2 {
             let choice = if b.round.mode == mode::CUSTOM { scenario::custom_choice(&b, side, last[side]) } else { None };

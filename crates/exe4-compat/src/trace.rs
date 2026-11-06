@@ -8,10 +8,12 @@
 
 use crate::codec::{self, ChipHand, NAVI_STATS, NaviStats, Panel};
 use crate::{Compat, Version, pool_of_type, pool_slots, type_of_pool};
+use nettai_battle::battle::BattleFlags;
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::content::ChipCode;
 use nettai_battle::custom::{BattleFolder, FolderChip, PlayerSetup};
 use nettai_battle::rules::Fact;
+use nettai_battle::setup::BattleEffects;
 use nettai_battle::{Battle, Content, NaviStats as EngineNaviStats, PlayerTick, RoundSetup, TickEvents};
 use nettai_content_api::{Pool, Registry, Value, WeaponHandle};
 use serde::Deserialize;
@@ -734,7 +736,7 @@ impl Round {
         // (EXE4's records have no effects word: the stage's own, with what a
         // link battle's match adds, as a match sets a round up; a single
         // battle is no set.)
-        let effects = content.stage(stage).effects | LINK_BATTLE_EFFECTS & !if triple_battle(bs[0x0F]) { 0 } else { SET };
+        let effects = content.stage(stage).effects | if triple_battle(bs[0x0F]) { LINK_BATTLE_EFFECTS } else { LINK_BATTLE_EFFECTS - SET };
         let settings = nettai_battle::BattleSettings { stage, background, effects };
         if content.defs.rules().is_none() {
             return Err("the content has no rules (EXE4's)".into());
@@ -867,9 +869,9 @@ const LINK_DELAY: u8 = 4;
 const SCREEN_BIT_CLEARED: u32 = 1;
 /// The effects a link battle's match type adds to its stage's (as
 /// nettai-match's `MATCH_EFFECTS`: a triple battle's).
-const LINK_BATTLE_EFFECTS: u32 = 0x600;
+const LINK_BATTLE_EFFECTS: BattleEffects = BattleEffects::from_bits_retain(0x600);
 /// The set's bit of them, which a single battle hasn't.
-const SET: u32 = nettai_battle::setup::effects::SET;
+const SET: BattleEffects = BattleEffects::SET;
 
 /// Whether the battle state's battle type (+0x0F) is a set's: a triple
 /// battle's 0x48, or 0x49 or 0x4A (the intro, 0x08007464, counts the round
@@ -1230,8 +1232,8 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
     // the intro bits' low nibble (+0x64: the fade done, the navis in, each
     // side's chips enabled, which SignlRed's signal clears and sets; the
     // engine's 0x10, the fade's start, has no bit there).
-    let gauge_full = nettai_battle::battle::battle_flags::GAUGE_FULL;
-    const FLAG_BROKEN: u16 = 0x08;
+    let gauge_full = BattleFlags::GAUGE_FULL;
+    const FLAG_BROKEN: BattleFlags = BattleFlags::from_bits_retain(0x08);
     if let Ok(bs) = unhex(&f.bs) {
         if bs.len() >= 0xF0 {
             check("actors", format!("{:?}", r.actor_count), format!("{:?}", [bs[0x04], bs[0x05]]));
@@ -1244,8 +1246,8 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
             // (And the round, +0x1A, as the round's start sets it.)
             check("round", r.round.to_string(), bs[0x1A].to_string());
             check("delay", r.delay.to_string(), i16::from_le_bytes([bs[0x28], bs[0x29]]).to_string());
-            let flags = u16::from_le_bytes([bs[0x32], bs[0x33]]);
-            check("battle flags", format!("{:#x}", r.flags & !gauge_full), format!("{:#x}", flags & !(gauge_full | FLAG_BROKEN)));
+            let flags = BattleFlags::from_bits_retain(u16::from_le_bytes([bs[0x32], bs[0x33]]));
+            check("battle flags", format!("{:#x}", r.flags - gauge_full), format!("{:#x}", flags - (gauge_full | FLAG_BROKEN)));
             check("battle time", r.battle_time.to_string(), u32::from_le_bytes([bs[0x40], bs[0x41], bs[0x42], bs[0x43]]).to_string());
             check("intro bits", format!("{:#x}", r.intro_bits & 0x0F), format!("{:#x}", bs[0x64]));
         }
@@ -1295,8 +1297,8 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
     if let Ok(late) = unhex(&banner.bs) {
         if late.len() >= 0xF0 {
             if b.gauge_for(r.local_side) == b.gauge.value {
-                let theirs = u16::from_le_bytes([late[0x32], late[0x33]]) & gauge_full != 0;
-                check("gauge full", ((r.flags & gauge_full != 0) as u8).to_string(), (theirs as u8).to_string());
+                let theirs = BattleFlags::from_bits_retain(u16::from_le_bytes([late[0x32], late[0x33]])).contains(gauge_full);
+                check("gauge full", (r.flags.contains(gauge_full) as u8).to_string(), (theirs as u8).to_string());
             }
         }
     }

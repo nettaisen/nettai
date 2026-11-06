@@ -3,7 +3,7 @@
 
 use super::{ai, ai_mut, battle_mode, form_of, navi_of, next_chip, own_gauges, stats};
 use crate::actor::{request, status};
-use crate::battle::{Battle, battle_flags};
+use crate::battle::{Battle, BattleFlags};
 use nettai_content_api::ChipHandle;
 use crate::input::keys;
 use crate::object::ObjectRef;
@@ -155,8 +155,8 @@ fn decode_turn(b: &mut Battle, r: ObjectRef) -> bool {
         // (A game whose fight reads the keys itself asks nothing here: the
         // flow's `custom_request`.)
         let asks = b.game_rules().flow.custom_request == crate::content::CustomRequest::NaviInput;
-        if asks && b.round.flags & battle_flags::GAUGE_FULL != 0 && pressed & lr != 0 {
-            b.set_flags(battle_flags::CUSTOM_REQUESTED);
+        if asks && b.round.flags.contains(BattleFlags::GAUGE_FULL) && pressed & lr != 0 {
+            b.set_flags(BattleFlags::CUSTOM_REQUESTED);
             return true;
         }
         return false;

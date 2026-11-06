@@ -11,7 +11,7 @@ use super::{
     set_coordinates_from_panel, set_flag1, set_flag2, set_mood,
 };
 use crate::actor::{ActorType, request, status as ai_status};
-use crate::battle::{Battle, battle_flags};
+use crate::battle::{Battle, BattleFlags};
 use crate::collision::{f1, link, timer};
 use crate::object::{DragStep, ObjectRef, PanelPos, Vec3};
 
@@ -853,7 +853,7 @@ fn flinch_request(b: &mut Battle, r: ObjectRef) {
 /// of FLASHING (not extended by new requests). Only while fighting in
 /// EXE6's reactions (EXE5's 0x080173C4 runs regardless).
 fn tick_flash(b: &mut Battle, r: ObjectRef) {
-    if b.round.flags & battle_flags::FIGHTING == 0 && b.game_rules().reactions == crate::content::Reactions::FlashTimerLast {
+    if !b.round.flags.contains(BattleFlags::FIGHTING) && b.game_rules().reactions == crate::content::Reactions::FlashTimerLast {
         return;
     }
     if coll(b, r).status_timers[timer::FLASH] == 0 && flag2(b, r) & 2 != 0 {
@@ -1567,7 +1567,7 @@ mod tests {
         let mut b = Battle::new(setup, c);
         b.spawn_actors();
         b.run_objects();
-        b.round.flags |= battle_flags::FIGHTING;
+        b.round.flags.insert(BattleFlags::FIGHTING);
         let r = b.player(1).unwrap();
         let hit = coll_mut(&mut b, r);
         hit.element = element;
@@ -1624,7 +1624,7 @@ mod tests {
             let mut b = Battle::new(setup, c);
             b.spawn_actors();
             b.run_objects();
-            b.round.flags |= battle_flags::FIGHTING;
+            b.round.flags.insert(BattleFlags::FIGHTING);
             let r = b.player(1).unwrap();
             b.objects.get_mut(r).hp = hp;
             b.sides[1].gauge = 0x4000;

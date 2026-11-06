@@ -370,9 +370,9 @@ impl CoreApi for Battle {
 
     fn set_dimmed(&mut self, on: bool) {
         if on {
-            self.set_flags(crate::battle::battle_flags::DIMMED);
+            self.set_flags(crate::battle::BattleFlags::DIMMED);
         } else {
-            self.clear_flags(crate::battle::battle_flags::DIMMED);
+            self.clear_flags(crate::battle::BattleFlags::DIMMED);
         }
     }
 
@@ -483,19 +483,19 @@ impl CoreApi for Battle {
 
     fn battle_info(&self, f: BattleInfo) -> Value {
         match f {
-            BattleInfo::Link => Value::Bool(self.setup.settings.effects & crate::setup::effects::LINK != 0),
-            BattleInfo::BossRank => Value::Bool(self.setup.settings.effects & crate::setup::effects::BOSS_RANK != 0),
-            BattleInfo::Random => Value::Bool(self.setup.settings.effects & crate::setup::effects::RANDOM != 0),
+            BattleInfo::Link => Value::Bool(self.setup.settings.effects.contains(crate::setup::BattleEffects::LINK)),
+            BattleInfo::BossRank => Value::Bool(self.setup.settings.effects.contains(crate::setup::BattleEffects::BOSS_RANK)),
+            BattleInfo::Random => Value::Bool(self.setup.settings.effects.contains(crate::setup::BattleEffects::RANDOM)),
             BattleInfo::Mode => Value::Int(self.round.mode_copy as i64),
             BattleInfo::PanelPattern => Value::Int(self.content.stage(self.setup.settings.stage).panel_pattern as i64),
             BattleInfo::NavisIn => Value::Bool(self.round.intro_bits & 0x02 != 0),
             BattleInfo::LocalSide => Value::Int(self.round.local_side as i64),
             BattleInfo::Turn => Value::Int(self.round.turn as i64),
             BattleInfo::OwnGauges => {
-                Value::Bool(self.round.flags & crate::battle::battle_flags::OWN_GAUGES != 0)
+                Value::Bool(self.round.flags.contains(crate::battle::BattleFlags::OWN_GAUGES))
             }
-            BattleInfo::Fighting => Value::Bool(self.round.flags & crate::battle::battle_flags::FIGHTING != 0),
-            BattleInfo::GaugeFull => Value::Bool(self.round.flags & crate::battle::battle_flags::GAUGE_FULL != 0),
+            BattleInfo::Fighting => Value::Bool(self.round.flags.contains(crate::battle::BattleFlags::FIGHTING)),
+            BattleInfo::GaugeFull => Value::Bool(self.round.flags.contains(crate::battle::BattleFlags::GAUGE_FULL)),
             BattleInfo::LateTurns => Value::Bool(self.late_turns()),
             BattleInfo::ScreenFading => Value::Bool(self.fade.active()),
         }
@@ -510,7 +510,7 @@ impl CoreApi for Battle {
                 if names.is_empty() { "none".to_string() } else { names.join(", ") }
             )));
         };
-        Ok(self.setup.settings.effects & bit != 0)
+        Ok(self.setup.settings.effects.intersects(crate::setup::BattleEffects::from_bits_retain(bit)))
     }
 
     fn named_bit(&self, set: NamedBits, name: &str) -> ApiResult<u32> {
@@ -539,12 +539,7 @@ impl CoreApi for Battle {
     }
 
     fn set_shake_through_pause(&mut self, on: bool) {
-        use crate::battle::battle_flags::SHAKE_THROUGH_PAUSE;
-        if on {
-            self.set_flags(SHAKE_THROUGH_PAUSE);
-        } else {
-            self.round.flags &= !SHAKE_THROUGH_PAUSE;
-        }
+        self.round.flags.set(crate::battle::BattleFlags::SHAKE_THROUGH_PAUSE, on);
     }
 
     fn set_chips_enabled(&mut self, side: u8, on: bool) {
@@ -1222,7 +1217,7 @@ impl CoreApi for Battle {
         let s = &self.custom.sides[side as usize & 1];
         Ok(nettai_content_api::api::CustomPlayer {
             emotion: self.game_rules().emotion.name(s.emotion).to_string(),
-            random_battle: self.setup.settings.effects & crate::setup::effects::RANDOM != 0,
+            random_battle: self.setup.settings.effects.contains(crate::setup::BattleEffects::RANDOM),
             member: s.screen.and_then(|screen| screen.member),
         })
     }

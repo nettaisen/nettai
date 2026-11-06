@@ -1512,20 +1512,20 @@ pub struct HpDrainRule {
 pub struct CustomDrainRule {
     pub periods: DrainPeriods,
     #[serde(deserialize_with = "remote_status_by_name")]
-    pub status: u8,
+    pub status: crate::battle::RemoteStatus,
 }
 
 /// A side's status bits (`battle::remote_status`) by name.
-pub const REMOTE_STATUS_NAMES: &[(u8, &str)] = &[
-    (crate::battle::remote_status::SELECTING, "selecting"),
-    (crate::battle::remote_status::CUSTOM_SCREEN, "custom_screen"),
+pub const REMOTE_STATUS_NAMES: &[(crate::battle::RemoteStatus, &str)] = &[
+    (crate::battle::RemoteStatus::SELECTING, "selecting"),
+    (crate::battle::RemoteStatus::CUSTOM_SCREEN, "custom_screen"),
 ];
 
 /// A set of a side's status names (`{ selecting = true }`) as its bits: an
 /// unknown name is an error.
-fn remote_status_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u8, D::Error> {
+fn remote_status_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result<crate::battle::RemoteStatus, D::Error> {
     let names = super::flags::set(d)?;
-    let mut bits = 0;
+    let mut bits = crate::battle::RemoteStatus::empty();
     for n in &names {
         let Some(&(bit, _)) = REMOTE_STATUS_NAMES.iter().find(|x| x.1 == n) else {
             let known: Vec<&str> = REMOTE_STATUS_NAMES.iter().map(|x| x.1).collect();
@@ -2301,7 +2301,7 @@ pub struct Rules {
     pub flow: FlowRules,
     /// The battle effects (`BattleSettings::effects`) its game names of its
     /// own (the flow section's `effect_bits`), by name, in name order: what
-    /// its stages may name besides `setup::effects::NAMES`, and what
+    /// its stages may name besides `setup::BattleEffects::NAMES`, and what
     /// `battle.has_effect` reads.
     pub effect_bits: Vec<(String, u32)>,
     /// The hit modifier's, the damage word's and a hand entry's bits its

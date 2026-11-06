@@ -304,7 +304,7 @@ fn a_exe5_match_plays() {
 #[test]
 fn a_exe4_navi_of_light_closes_a_hole() {
     use nettai_battle::Battle;
-    use nettai_battle::battle::battle_flags;
+    use nettai_battle::battle::BattleFlags;
     let content = exe4_content();
     let hole = content.rules().panels.named("hole").expect("EXE4's hole");
     let holes_closed = |karma: Option<i64>| {
@@ -326,7 +326,7 @@ fn a_exe4_navi_of_light_closes_a_hole() {
             }
         }
         let before = holes(&b);
-        b.round.flags |= battle_flags::FIGHTING;
+        b.round.flags.insert(BattleFlags::FIGHTING);
         nettai_battle::kinds::player::update(&mut b, navi);
         before - holes(&b)
     };
@@ -857,13 +857,13 @@ fn a_souls_chip_is_no_place_of_exe4s_auto_battle_data() {
 /// handle order.
 #[test]
 fn a_match_names_its_rules_link_battle_stages() {
-    use nettai_battle::setup::effects;
+    use nettai_battle::setup::BattleEffects;
     for (content, game, n) in [(exe6_content(), "exe6", 96), (exe5_content(), "exe5", 94)] {
         let by_effects: Vec<nettai_content_api::StageHandle> = (0..content.defs.stages.len() as u16)
             .map(nettai_content_api::StageHandle)
             .filter(|&s| {
                 let e = content.stage(s).effects;
-                e & effects::LINK != 0 && e & effects::RANDOM == 0
+                e.contains(BattleEffects::LINK) && !e.contains(BattleEffects::RANDOM)
             })
             .collect();
         assert_eq!(crate::link_battle_stages(&content, game), by_effects, "{game}");
@@ -877,7 +877,7 @@ fn a_match_names_its_rules_link_battle_stages() {
 #[test]
 fn exe4s_lava_and_grass_are_its_own() {
     use nettai_battle::Battle;
-    use nettai_battle::battle::battle_flags;
+    use nettai_battle::battle::BattleFlags;
     let content = exe4_content();
     let panels = &content.rules().panels;
     let (lava, grass) = (panels.named("lava").expect("EXE4's lava"), panels.named("grass").expect("EXE4's grass"));
@@ -895,7 +895,7 @@ fn exe4s_lava_and_grass_are_its_own() {
     let (mut b, navi) = battle();
     let p = b.objects.get(navi).panel;
     b.set_panel_type(p.x, p.y, lava);
-    b.round.flags |= battle_flags::DIMMED;
+    b.round.flags.insert(BattleFlags::DIMMED);
     nettai_battle::kinds::common::panel_burn(&mut b, navi, true);
     let c = b.collision.get(b.objects.get(navi).collision.unwrap());
     assert_eq!((c.acc.element_damage[1], c.acc.mood_damage), (50, 20), "a player burns while dimmed");
@@ -909,7 +909,7 @@ fn exe4s_lava_and_grass_are_its_own() {
     (o.hp, o.max_hp) = (5, 100);
     b.round.cycles = [0, 1];
     // (The fight on: the standing effects wait out a pause.)
-    b.round.flags |= battle_flags::FIGHTING;
+    b.round.flags.insert(BattleFlags::FIGHTING);
     b.paused = false;
     nettai_battle::kinds::player::update(&mut b, navi);
     assert_eq!(b.objects.get(navi).hp, 6, "at 5 HP, on the 20-tick count");
@@ -922,7 +922,7 @@ fn exe4s_lava_and_grass_are_its_own() {
 #[test]
 fn exe4s_ice_pushes() {
     use nettai_battle::Battle;
-    use nettai_battle::battle::battle_flags;
+    use nettai_battle::battle::BattleFlags;
     let content = exe4_content();
     let ice = content.rules().panels.named("ice").expect("EXE4's ice");
     assert_eq!(content.rules().slide_rows, None);
@@ -941,7 +941,7 @@ fn exe4s_ice_pushes() {
     d.f1 |= nettai_battle::collision::f1::AFFECTED_BY_ICE | nettai_battle::collision::f1::MOVE_COMPLETE;
     // (Side 0's move forward: its push 0x10, a push forward.)
     d.direction = 4;
-    b.round.flags |= battle_flags::FIGHTING;
+    b.round.flags.insert(BattleFlags::FIGHTING);
     b.paused = false;
     nettai_battle::kinds::player::update(&mut b, navi);
     assert_eq!(b.objects.get(navi).slide_type, 1, "a push's slide");

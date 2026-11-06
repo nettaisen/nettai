@@ -676,7 +676,7 @@ pub fn battle_settings_of(game: Game, b: &[u8], ids: &Ids) -> BattleSettings {
     BattleSettings {
         stage,
         background: ids.background(b[4]),
-        effects: u32::from_le_bytes(b[8..12].try_into().unwrap()),
+        effects: nettai_battle::setup::BattleEffects::from_bits_retain(u32::from_le_bytes(b[8..12].try_into().unwrap())),
     }
 }
 

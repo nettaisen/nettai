@@ -370,7 +370,7 @@ mod tests {
             assert_eq!(seen.len(), own.len(), "{game}: every one of the game's drawn");
         }
     }
-    use nettai_battle::setup::effects;
+    use nettai_battle::setup::BattleEffects;
 
     /// A random match's arena is picked as the game picks a link battle's
     /// (the rules' `link_pick`). EXE6's: its 96 link battle stages each
@@ -490,7 +490,7 @@ mod tests {
             let m = live(&content, "exe6", seed, None).unwrap();
             let setup = m.round(&content, seed);
             assert!(stages.contains(&setup.settings.stage));
-            assert_eq!(setup.settings.effects & effects::RANDOM, 0);
+            assert!(!setup.settings.effects.contains(BattleEffects::RANDOM));
             seen.insert(setup.settings.stage);
             let mut b = crate::check::start(&content, &m).unwrap();
             for side in 0..2 {

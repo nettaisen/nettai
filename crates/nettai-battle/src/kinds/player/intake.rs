@@ -7,7 +7,7 @@ use super::{
     ActorType, ai, ai_mut, battle_mode, clear_flag2, coll, coll_id, coll_mut, flag1, flag2, panel_kind,
     form_of, navi_of, refresh_abilities, reload_base_weapons, set_flag2, stats, stats_mut,
 };
-use crate::battle::{Battle, battle_flags};
+use crate::battle::{Battle, BattleFlags};
 use crate::collision::{CollisionData, f1, hit, timer, types};
 use crate::content::{EffectRole, SecondaryElements, SparkRole, StatusRole};
 use crate::object::{ObjectRef, Vec3};
@@ -16,7 +16,7 @@ use crate::object::{ObjectRef, Vec3};
 pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     // sprite_clearFinalPalette.
     b.objects.sprite_mut(r).look.white = false;
-    if b.round.flags & battle_flags::FIGHTING == 0 {
+    if !b.round.flags.contains(BattleFlags::FIGHTING) {
         return;
     }
     b.remove_collision(coll_id(b, r));
@@ -98,7 +98,7 @@ fn no_charge_timer(b: &mut Battle, r: ObjectRef) {
 /// without its own healing (`sub_801A308`).
 pub(super) fn collect_hits_navi(b: &mut Battle, r: ObjectRef) {
     b.objects.sprite_mut(r).look.white = false;
-    if b.round.flags & battle_flags::FIGHTING == 0 {
+    if !b.round.flags.contains(BattleFlags::FIGHTING) {
         return;
     }
     b.remove_collision(coll_id(b, r));
@@ -788,7 +788,7 @@ mod tests {
         let mut b = Battle::new(setup, c);
         b.spawn_actors();
         b.run_objects();
-        b.round.flags |= battle_flags::FIGHTING;
+        b.round.flags.insert(BattleFlags::FIGHTING);
         let r = b.player(1).unwrap();
         b.set_panel_type(5, 2, crate::content::testing::panel("ice"));
         super::super::set_flag1(&mut b, r, f1::AFFECTED_BY_ICE | f1::MOVE_COMPLETE);
@@ -885,7 +885,7 @@ mod tests {
         let mut b = Battle::new(setup, c);
         b.spawn_actors();
         b.run_objects();
-        b.round.flags |= battle_flags::FIGHTING;
+        b.round.flags.insert(BattleFlags::FIGHTING);
         let r = b.player(1).unwrap();
         (b, r)
     }
@@ -903,7 +903,7 @@ mod tests {
             let lava = crate::content::testing::panel("lava");
             b.set_panel_type(p.x, p.y, lava);
             if dimmed {
-                b.round.flags |= battle_flags::DIMMED;
+                b.round.flags.insert(BattleFlags::DIMMED);
             }
             super::super::set_flag1(&mut b, r, status);
             crate::kinds::common::panel_burn(&mut b, r, true);

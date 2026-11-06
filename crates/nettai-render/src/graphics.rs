@@ -421,7 +421,7 @@ mod tests {
         assert_eq!(graphics.background(&c, own).map(|b| b.first_tile), Some(7), "the game's own");
         assert_eq!(graphics.background(&c, far).map(|b| b.first_tile), Some(9), "another game's, from its own");
         assert_eq!(graphics.background(&c, gone), None, "its game hasn't it");
-        let settings = |background| BattleSettings { stage, background, effects: 0 };
+        let settings = |background| BattleSettings { stage, background, effects: nettai_battle::setup::BattleEffects::empty() };
         assert_eq!(graphics.round_background(&c, &settings(far)), far);
         assert_eq!(graphics.round_background(&c, &settings(gone)), own, "the stage's own");
         assert_eq!(graphics.round_background(&c, &settings(own)), own);
@@ -452,7 +452,7 @@ mod tests {
         others.insert("zzz", other.clone());
         let held = GameGraphics::new(Arc::new(bundle(1, "none"))).with_others(Arc::new(others)).with_numbers(Arc::new(testing::asset_numbers(&c)));
         let shared = held.clone();
-        let settings = BattleSettings { stage, background: far, effects: 0 };
+        let settings = BattleSettings { stage, background: far, effects: nettai_battle::setup::BattleEffects::empty() };
         assert!(!held.backgrounds_ready(&c, [far]) && held.backgrounds_ready(&c, [own]), "not wanted yet; the game's own needs none");
         assert_eq!(held.view().round_background(&c, &settings), own, "not extracted: the stage's own");
         held.want_backgrounds(&c, [far]);

@@ -648,7 +648,7 @@ pub(super) fn can_slide_to(b: &Battle, r: ObjectRef, p: PanelPos) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::battle::battle_flags;
+    use crate::battle::BattleFlags;
     use crate::content::{Content, testing};
     use std::sync::Arc;
 
@@ -670,7 +670,7 @@ mod tests {
         let mut b = Battle::new(setup, c);
         b.spawn_actors();
         b.run_objects();
-        b.round.flags |= battle_flags::FIGHTING;
+        b.round.flags.insert(BattleFlags::FIGHTING);
         let players = [b.player(0).unwrap(), b.player(1).unwrap()];
         (b, players)
     }
@@ -913,7 +913,7 @@ mod tests {
             let mut b = Battle::new(setup, c);
             b.spawn_actors();
             b.run_objects();
-            b.round.flags |= battle_flags::FIGHTING;
+            b.round.flags.insert(BattleFlags::FIGHTING);
             let r = b.player(1).unwrap();
             // A push up a panel (EXE6's 0x80 rows: bit 2, row 5).
             coll_mut(&mut b, r).hit_mod_final = 0x84;

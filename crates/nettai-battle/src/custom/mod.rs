@@ -27,13 +27,13 @@ pub use library::Library;
 pub use look::{ChipShade, Draw, Drawn, ScreenLook, WindowLook};
 pub use screen::{ButtonCell, ButtonPlace, Phase, PlayerView, Request, RoundMemory, Screen, Slot, SlotKind, SlotState};
 
-use crate::battle::{Battle, CustomResult, battle_flags};
+use crate::battle::{Battle, BattleFlags, CustomResult};
 use crate::console::{Console, ConsoleSetup};
 use nettai_content_api::ChipHandle;
 use crate::hand::ChipHand;
 use crate::input::ScreenChoice;
 use crate::kinds::player::Emotion;
-use crate::setup::{NaviStats, effects};
+use crate::setup::{BattleEffects, NaviStats};
 use crate::transform::TransformRequest;
 use builder::{ClassCounts, Pick, ProgramAdvancesUsed};
 
@@ -542,8 +542,8 @@ impl Battle {
             stats: self.stats[side as usize],
             emotion: Emotion::default(),
             turn: self.round.turn,
-            own_gauges: self.round.flags & battle_flags::OWN_GAUGES != 0,
-            random_battle: self.setup.settings.effects & effects::RANDOM != 0,
+            own_gauges: self.round.flags.contains(BattleFlags::OWN_GAUGES),
+            random_battle: self.setup.settings.effects.contains(BattleEffects::RANDOM),
             battle_mode: self.round.mode_copy,
             party: self.party[side as usize],
             switch_request: self.switch_inputs[side as usize],
@@ -562,7 +562,7 @@ impl Battle {
         self.custom.gauge_at_open = self.gauge.value;
         if self.content.rules().custom_screen.gauge_empties_at_open {
             self.gauge.value = 0;
-            self.clear_flags(battle_flags::GAUGE_FULL | battle_flags::CUSTOM_REQUESTED);
+            self.clear_flags(BattleFlags::GAUGE_FULL | BattleFlags::CUSTOM_REQUESTED);
         }
         self.gauge.enabled = false;
         // sub_801DACC(0x30172): the chips' icons and window go.
@@ -699,8 +699,8 @@ impl Battle {
             class_uses: &s.class_uses,
             round: &s.round,
             regular_pending: s.folder.regular_pending,
-            own_gauges: self.round.flags & battle_flags::OWN_GAUGES != 0,
-            random_battle: self.setup.settings.effects & effects::RANDOM != 0,
+            own_gauges: self.round.flags.contains(BattleFlags::OWN_GAUGES),
+            random_battle: self.setup.settings.effects.contains(BattleEffects::RANDOM),
             battle_mode: self.round.mode_copy,
             party: &self.party[i],
             switch_request: self.switch_inputs[i],
@@ -756,7 +756,7 @@ impl Battle {
             return;
         }
         self.gauge.value = 0;
-        self.clear_flags(battle_flags::GAUGE_FULL | battle_flags::CUSTOM_REQUESTED);
+        self.clear_flags(BattleFlags::GAUGE_FULL | BattleFlags::CUSTOM_REQUESTED);
         self.gauge.enabled = true;
     }
 }

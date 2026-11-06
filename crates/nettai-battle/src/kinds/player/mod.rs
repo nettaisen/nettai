@@ -83,7 +83,7 @@ pub(crate) use intake::take_status;
 use crate::content::MoodHeld;
 use nettai_content_api::IdentityHandle;
 use crate::actor::{ActorData, ActorId, ActorType, request};
-use crate::battle::{Battle, battle_flags};
+use crate::battle::{Battle, BattleFlags};
 use crate::collision::{CollisionData, CollisionId, f1, timer};
 use crate::field::PanelType;
 use crate::content::NaviRecord;
@@ -96,7 +96,7 @@ pub(crate) use ai_navi::spawn as spawn_ai_navi;
 use crate::object::{ObjectFlags, ObjectRef, PanelPos, Vec3, state};
 use crate::content::ActorEntry;
 use crate::content::{FormData, FormTraits, NaviData};
-use crate::setup::{NaviStats, effects};
+use crate::setup::{BattleEffects, NaviStats};
 
 /// Panel center coordinates (`object_getCoordinatesForPanels`, which
 /// takes the panel numbers as signed bytes).
@@ -247,12 +247,12 @@ fn clear_flag2(b: &mut Battle, r: ObjectRef, bits: u32) {
 
 /// `GetBattleEffects() & 8`: a link battle.
 fn is_link(b: &Battle) -> bool {
-    b.setup.settings.effects & effects::LINK != 0
+    b.setup.settings.effects.contains(BattleEffects::LINK)
 }
 
 /// `sub_800A8F8`: battle flag 0x40 (not set in PvP).
 fn own_gauges(b: &Battle) -> bool {
-    b.round.flags & battle_flags::OWN_GAUGES != 0
+    b.round.flags.contains(BattleFlags::OWN_GAUGES)
 }
 
 /// `GetBattleMode`.
@@ -1013,7 +1013,7 @@ fn init_hp(b: &mut Battle, r: ObjectRef) {
     let o = b.objects.get_mut(r);
     o.hp = s.max_hp;
     o.max_hp = s.max_hp;
-    if b.setup.settings.effects & effects::FULL_HP == 0 {
+    if !b.setup.settings.effects.contains(BattleEffects::FULL_HP) {
         b.objects.get_mut(r).hp = s.hp;
     }
 }
@@ -1023,7 +1023,7 @@ fn init_hp(b: &mut Battle, r: ObjectRef) {
 fn init_round_state(b: &mut Battle, r: ObjectRef) {
     b.objects.get_mut(r).stamina = 10;
     let eff = b.setup.settings.effects;
-    if eff & effects::LINK != 0 || eff & 0x1_0000 != 0 || stats(b, r).mood != 0xFF {
+    if eff.intersects(BattleEffects::LINK | BattleEffects::STARTING_MOOD) || stats(b, r).mood != 0xFF {
         // sub_8015C2C: the starting mood (the side's rules may say
         // another: EXE5's rules/light_dark's, by the light/dark value,
         // 0x0801283A).

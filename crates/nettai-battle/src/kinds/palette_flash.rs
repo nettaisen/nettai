@@ -92,7 +92,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::battle::battle_flags;
+    use crate::battle::BattleFlags;
     use crate::content::{PaletteFlashRule, testing};
 
     /// A battle on `rule`, with a flash of `variant` and the mode's two
@@ -107,7 +107,7 @@ mod tests {
         let mut b = Battle::new(setup, c);
         let r = spawn_variant(&mut b, variant, 4, while_dimmed, while_paused).expect("an effect slot");
         if dimmed {
-            b.set_flags(battle_flags::DIMMED);
+            b.set_flags(BattleFlags::DIMMED);
         }
         b.paused = paused;
         held(&b, r)

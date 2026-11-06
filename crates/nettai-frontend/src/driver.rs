@@ -1234,7 +1234,7 @@ mod tests {
             // The local player opens the custom screen again when it can.
             let input = if b.round.mode == mode::CUSTOM {
                 bot_tick(&b, 0, tick)
-            } else if b.round.flags & nettai_battle::battle::battle_flags::GAUGE_FULL != 0 && tick % 2 == 1 {
+            } else if b.round.flags.contains(nettai_battle::battle::BattleFlags::GAUGE_FULL) && tick % 2 == 1 {
                 PlayerTick::buttons(keys::L)
             } else {
                 PlayerTick::default()
@@ -1497,7 +1497,7 @@ mod tests {
     /// at its rate, ten seconds a turn. Turned on mid-fight, at once.
     #[test]
     fn the_gauge_is_always_full() {
-        use nettai_battle::battle::battle_flags;
+        use nettai_battle::battle::BattleFlags;
         let content = nettai_match::testing::exe6_content();
         let m = long_match(&content);
         for full_gauge in [false, true] {
@@ -1509,12 +1509,12 @@ mod tests {
                 // On the custom screen a chip and OK; in the fight L as soon as the gauge is full.
                 let input = if b.round.mode == mode::CUSTOM {
                     bot_tick(b, 0, tick)
-                } else if b.round.flags & battle_flags::GAUGE_FULL != 0 && tick % 2 == 1 {
+                } else if b.round.flags.contains(BattleFlags::GAUGE_FULL) && tick % 2 == 1 {
                     PlayerTick::buttons(keys::L)
                 } else {
                     PlayerTick::default()
                 };
-                let (custom, was_full) = (b.round.mode == mode::CUSTOM, b.round.flags & battle_flags::GAUGE_FULL != 0);
+                let (custom, was_full) = (b.round.mode == mode::CUSTOM, b.round.flags.contains(BattleFlags::GAUGE_FULL));
                 assert!(s.step(input), "tick {tick}");
                 let b = &s.battle;
                 opened += (!custom && b.round.mode == mode::CUSTOM) as u32;
@@ -1523,7 +1523,7 @@ mod tests {
                     if full_gauge && running > 1 {
                         assert_eq!(b.gauge.value, CustomGauge::FULL, "tick {tick}");
                     }
-                    if b.round.flags & battle_flags::GAUGE_FULL != 0 {
+                    if b.round.flags.contains(BattleFlags::GAUGE_FULL) {
                         waits.push(running);
                         running = 0;
                     }
@@ -1560,7 +1560,7 @@ mod tests {
         for tick in 0..3000u32 {
             // The second pad: on the custom screen as the player's own is pressed, in the fight up and down, and
             // L once the gauge is full.
-            let full = b.round.flags & nettai_battle::battle::battle_flags::GAUGE_FULL != 0;
+            let full = b.round.flags.contains(nettai_battle::battle::BattleFlags::GAUGE_FULL);
             let pad = if b.round.mode == mode::CUSTOM {
                 bot_keys(&b, live.layers()[1], 1, tick)
             } else if full && tick % 2 == 1 {
@@ -1671,7 +1671,7 @@ mod tests {
                 bot_tick(b, 0, tick)
             } else if out.len() >= shoot {
                 short_set::shooter(b, 0, tick)
-            } else if b.round.flags & nettai_battle::battle::battle_flags::GAUGE_FULL != 0 && tick % 2 == 1 {
+            } else if b.round.flags.contains(nettai_battle::battle::BattleFlags::GAUGE_FULL) && tick % 2 == 1 {
                 PlayerTick::buttons(keys::L)
             } else {
                 PlayerTick::default()
@@ -1886,7 +1886,7 @@ mod tests {
     /// Gregar Beast, with its weapons.
     #[test]
     fn a_falzar_player_plays_a_gregar_cross() {
-        use nettai_battle::battle::battle_flags;
+        use nettai_battle::battle::BattleFlags;
         use nettai_battle::content::Element;
         use nettai_battle::kinds::player::{NaviAction, navi_action};
         let content = nettai_match::testing::exe6_content();
@@ -1958,7 +1958,7 @@ mod tests {
             6000,
             |tick, b, layer| {
                 if b.round.mode == mode::FIGHTING {
-                    return if b.round.flags & battle_flags::GAUGE_FULL != 0 && tick % 2 == 1 { keys::L } else { 0 };
+                    return if b.round.flags.contains(BattleFlags::GAUGE_FULL) && tick % 2 == 1 { keys::L } else { 0 };
                 }
                 let Some(screen) = choosing(b) else { return 0 };
                 if b.round.turn < 2 {
@@ -2084,7 +2084,7 @@ mod tests {
     /// next screen.
     #[test]
     fn a_cross_list_offers_crosses_of_either_game_once_a_round() {
-        use nettai_battle::battle::battle_flags;
+        use nettai_battle::battle::BattleFlags;
         let (content, mut live, mut b) = cross_battle("falzar", Some(&["heatcross", "groundcross"]), |_, _| {});
         let heat = form_of(&content, "heatcross");
         let w = b.form_list(0).unwrap();
@@ -2100,7 +2100,7 @@ mod tests {
             &mut live,
             &mut b,
             6000,
-            |tick, b, _| if b.round.mode == mode::FIGHTING && b.round.flags & battle_flags::GAUGE_FULL != 0 && tick % 2 == 1 { keys::L } else { 0 },
+            |tick, b, _| if b.round.mode == mode::FIGHTING && b.round.flags.contains(BattleFlags::GAUGE_FULL) && tick % 2 == 1 { keys::L } else { 0 },
             |b, _| b.round.turn >= 2 && choosing(b).is_some(),
         );
         let w = b.form_list(0).unwrap();

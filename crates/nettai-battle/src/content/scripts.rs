@@ -740,7 +740,7 @@ local step = { grounded = {}, floor_free = {} }
         let end = r.status_end;
         assert_eq!((end.flags.0, end.requests, end.timers.0), (0xE800, 0x68, 0b1111));
         // A side's status and requests by name.
-        assert_eq!((r.custom_drain.status, r.intake.anti_traps.drops_requests), (5, 0x14));
+        assert_eq!((r.custom_drain.status.bits(), r.intake.anti_traps.drops_requests), (5, 0x14));
         // No bits of the game's own declared, none.
         assert!(r.effect_bits.is_empty());
         // What it may leave out reads as nothing, for every game.

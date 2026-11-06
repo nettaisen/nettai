@@ -1145,7 +1145,7 @@ pub fn draw<'a>(
         // local navi's status is reset (`sub_80144C0`), unless its form's
         // reset puts it back (EXE5's SearchSoul, 0x08011C0C: the chip HUD's
         // `opponent`). On a screen of both each navi's are its own console's.
-        let link = b.setup.settings.effects & nettai_battle::setup::effects::LINK != 0;
+        let link = b.setup.settings.effects.contains(nettai_battle::setup::BattleEffects::LINK);
         let shows_opponent = b.chip_hud_for(local).opponent;
         for side in 0..2u8 {
             if let Some(r) = b.player(side).filter(|_| side == local || (seat.draws_other() && (!link || shows_opponent))) {
@@ -2089,7 +2089,7 @@ fn icon_parts<'a>(
     // that HUD's icon palette; the other player's in a link battle outside
     // battle mode 1, the hidden chip's (EXE5's 0x08018B48: its entries of
     // the remote navi).
-    let link = b.setup.settings.effects & nettai_battle::setup::effects::LINK != 0;
+    let link = b.setup.settings.effects.contains(nettai_battle::setup::BattleEffects::LINK);
     let hidden = link && o.alliance != seat.side && b.round.mode_copy != 1;
     let (tiles, icon_palette) = if hidden {
         let hud = &graphics.bundle().hud;

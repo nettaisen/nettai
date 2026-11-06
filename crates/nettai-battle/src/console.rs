@@ -225,7 +225,7 @@ impl Battle {
     /// the battle's RNG2 (the simulation's: every console shakes alike);
     /// otherwise held, its jitter none and its magnitude kept.
     fn update_cameras_from_battle_rng(&mut self) {
-        let runs = !self.paused || self.is_dimmed() || self.round.flags & crate::battle::battle_flags::SHAKE_THROUGH_PAUSE != 0;
+        let runs = !self.paused || self.is_dimmed() || self.round.flags.contains(crate::battle::BattleFlags::SHAKE_THROUGH_PAUSE);
         let shake = self.consoles[0].camera.primary;
         if !runs || shake.ticks == 0 {
             for c in &mut self.consoles {
@@ -262,10 +262,10 @@ impl Battle {
             self.update_cameras_from_battle_rng();
             return;
         }
-        let primary_first = self.round.remote_status[0] & (crate::battle::remote_status::SELECTING | crate::battle::remote_status::CUSTOM_SCREEN) != 0
+        let primary_first = self.round.remote_status[0].intersects(crate::battle::RemoteStatus::SELECTING | crate::battle::RemoteStatus::CUSTOM_SCREEN)
             || !self.paused
             || self.is_dimmed()
-            || self.round.flags & crate::battle::battle_flags::SHAKE_THROUGH_PAUSE != 0;
+            || self.round.flags.contains(crate::battle::BattleFlags::SHAKE_THROUGH_PAUSE);
         for c in &mut self.consoles {
             c.update_camera(primary_first);
         }
@@ -274,11 +274,11 @@ impl Battle {
     /// `sub_801E5F8` (the intro's HUD setup): the emotion windows' task
     /// starts, their first check 120 ticks away.
     pub(crate) fn start_emotion_windows(&mut self) {
-        use crate::setup::effects;
+        use crate::setup::BattleEffects;
         // The glitch is kept outside random battles and battle modes 1-5
         // and 8.
         let mode = self.round.mode_copy;
-        let keeps = self.setup.settings.effects & effects::RANDOM == 0 && !matches!(mode, 1..=5 | 8);
+        let keeps = !self.setup.settings.effects.contains(BattleEffects::RANDOM) && !matches!(mode, 1..=5 | 8);
         for c in &mut self.consoles {
             let w = &mut c.emotion_window;
             w.timer = FIRST_CHECK_TICKS;

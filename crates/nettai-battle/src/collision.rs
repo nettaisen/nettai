@@ -1006,7 +1006,7 @@ fn decode_damage_word(s: &mut CollisionData, word: &DamageWord, roles: &crate::c
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::battle::battle_flags;
+    use crate::battle::BattleFlags;
     use crate::content::{HitTest, testing};
     use std::sync::Arc;
 
@@ -1033,7 +1033,7 @@ mod tests {
         let mut b = Battle::new(setup, c);
         b.spawn_actors();
         b.run_objects();
-        b.round.flags |= battle_flags::FIGHTING;
+        b.round.flags.insert(BattleFlags::FIGHTING);
         let ids = [0, 1].map(|side| {
             let p = b.player(side).unwrap();
             b.objects.get(p).collision.unwrap()

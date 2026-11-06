@@ -527,7 +527,7 @@ mod tests {
     /// ruling's "YOU WIN" and "YOU LOSE".
     #[test]
     fn a_results_banner_is_the_navis_or_the_roles() {
-        use crate::battle::battle_flags;
+        use crate::battle::BattleFlags;
         use crate::content::{BannerRole, NaviWinBanner};
         let content = |rule: NaviWinBanner| {
             let mut c: crate::content::Content = testing::build();
@@ -539,7 +539,7 @@ mod tests {
             let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(c));
             crate::content::testing::on(&mut setup, &c);
             if !link {
-                setup.settings.effects &= !crate::setup::effects::LINK;
+                setup.settings.effects.remove(crate::setup::BattleEffects::LINK);
             }
             Battle::new(setup, c.clone())
         };
@@ -575,7 +575,7 @@ mod tests {
         b.round.time_up = 1;
         assert_eq!((b.result_banner(0, true), b.result_banner(1, false)), (role(&b, BannerRole::WinJudged), role(&b, BannerRole::LoseJudged)));
         // And the navi's in an operation battle, whatever the result.
-        b.round.flags |= battle_flags::OWN_GAUGES;
+        b.round.flags.insert(BattleFlags::OWN_GAUGES);
         assert_eq!(b.result_banner(0, true), navi.win_banner);
         b.round.time_up = 0;
         b.round.actor_count = [1, 0];
@@ -584,7 +584,7 @@ mod tests {
         // or not.
         let mut b = with(&content(NaviWinBanner::Never), true);
         b.round.actor_count = [1, 0];
-        b.round.flags |= battle_flags::OWN_GAUGES;
+        b.round.flags.insert(BattleFlags::OWN_GAUGES);
         assert_eq!((b.result_banner(0, true), b.result_banner(1, false)), (role(&b, BannerRole::Win), navi.lose_banner));
     }
 

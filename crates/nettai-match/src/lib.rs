@@ -46,7 +46,7 @@ pub mod testing;
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::content::{Content, PlayerFact};
 use nettai_battle::custom::{BattleFolder, PlayerSetup};
-use nettai_battle::setup::{BattleSettings, HostKeys, NaviStats, RoundSetup, SetScore, Stage};
+use nettai_battle::setup::{BattleEffects, BattleSettings, HostKeys, NaviStats, RoundSetup, SetScore, Stage};
 use nettai_battle::Rng;
 use nettai_content_api::{NaviHandle, StageHandle};
 
@@ -272,7 +272,7 @@ pub fn check_custom_screen_time(seconds: Option<u16>) -> Option<String> {
 /// (`sub_812B768`, from `off_812B7AC`): a triple battle's, 0x600 (the set,
 /// 0x400, and 0x200), the match type the recorded matches were. A match of
 /// more than one round is one ([`match_effects`]).
-pub const MATCH_EFFECTS: u32 = 0x600;
+pub const MATCH_EFFECTS: BattleEffects = BattleEffects::SET.union(SINGLE_EFFECTS);
 
 /// A single battle's effects (`off_812B7AC`'s first word, 0x200): no set,
 /// so its round is its stage's battle number, 0, and no round banner
@@ -280,11 +280,12 @@ pub const MATCH_EFFECTS: u32 = 0x600;
 /// match of one round is one (the user: a best of 1 should be the
 /// original's single battle). EXE6's value; EXE5's and EXE4's single
 /// battles are taken to be the same, their triple battle less the set.
-pub const SINGLE_EFFECTS: u32 = 0x200;
+/// (Nothing reads its bit.)
+pub const SINGLE_EFFECTS: BattleEffects = BattleEffects::from_bits_retain(0x200);
 
 /// The effects a match of `rounds` rounds adds to each stage's: a single
 /// battle's for one round, else a triple battle's.
-pub fn match_effects(rounds: usize) -> u32 {
+pub fn match_effects(rounds: usize) -> BattleEffects {
     if rounds == 1 { SINGLE_EFFECTS } else { MATCH_EFFECTS }
 }
 

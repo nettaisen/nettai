@@ -6,7 +6,7 @@
 
 use super::super::ai_mut;
 use crate::actor::request;
-use crate::battle::{Battle, battle_flags};
+use crate::battle::{Battle, BattleFlags};
 use crate::collision::f1;
 use crate::hand::ChipHand;
 use crate::input::keys;
@@ -63,11 +63,11 @@ fn fight() -> (Battle, ObjectRef, ObjectRef) {
 fn fight_with(stats: NaviStats) -> (Battle, ObjectRef, ObjectRef) {
     // A link battle on a plain field with the usual two-navi list.
     let mut setup = testing::round_setup(testing::LINK_BATTLE, stats);
-    setup.settings.effects = 0xE8C;
+    setup.settings.effects = crate::setup::BattleEffects::from_bits_retain(0xE8C);
     let mut b = Battle::new(setup, testing::content());
     b.spawn_actors();
     b.run_objects();
-    b.round.flags |= battle_flags::FIGHTING;
+    b.round.flags.insert(BattleFlags::FIGHTING);
     let players = [b.player(0).unwrap(), b.player(1).unwrap()];
     for p in players {
         let o = b.objects.get_mut(p);
@@ -1833,11 +1833,11 @@ fn dustcross_beast_throws_its_newest_obstacle_or_fires_the_beast_buster() {
 /// both navis' stats `stats`.
 fn fight_on(stage: &str, stats: NaviStats) -> (Battle, ObjectRef, ObjectRef) {
     let mut setup = testing::round_setup(stage, stats);
-    setup.settings.effects = 0xE8C;
+    setup.settings.effects = crate::setup::BattleEffects::from_bits_retain(0xE8C);
     let mut b = Battle::new(setup, testing::content());
     b.spawn_actors();
     b.run_objects();
-    b.round.flags |= battle_flags::FIGHTING;
+    b.round.flags.insert(BattleFlags::FIGHTING);
     let players = [b.player(0).unwrap(), b.player(1).unwrap()];
     for p in players {
         let o = b.objects.get_mut(p);
@@ -2269,11 +2269,11 @@ fn fight_on_test_pack() -> (Battle, ObjectRef, ObjectRef) {
     let mut setup = testing::round_setup(testing::LINK_BATTLE, stats);
     crate::content::testing::on(&mut setup, &content);
     setup.settings.stage = content.stage_by_key(testing::LINK_BATTLE);
-    setup.settings.effects = 0xE8C;
+    setup.settings.effects = crate::setup::BattleEffects::from_bits_retain(0xE8C);
     let mut b = Battle::new(setup, content);
     b.spawn_actors();
     b.run_objects();
-    b.round.flags |= battle_flags::FIGHTING;
+    b.round.flags.insert(BattleFlags::FIGHTING);
     let players = [b.player(0).unwrap(), b.player(1).unwrap()];
     for p in players {
         let o = b.objects.get_mut(p);

@@ -7,7 +7,7 @@
 //! side's dimming chip used during the telop) makes the controllers wait
 //! on each other. See docs/engine/chips.md §3.6.
 
-use crate::battle::{Battle, FadeMode, battle_flags};
+use crate::battle::{Battle, BattleFlags, FadeMode};
 use crate::content::{BannerId, BannerRole, ChipTraits, SoundRole, Telops, Trap};
 use nettai_content_api::ChipHandle;
 use crate::hud::{BannerStatus, Telop, TelopChip, TelopHidden};
@@ -244,7 +244,7 @@ pub fn begin(b: &mut Battle, r: ObjectRef) {
     // every console, where the game's rules say (EXE4's).
     crate::kinds::player::idle::hide_chip_window(b, side as usize);
     if b.dimming[side as usize].initiator == side {
-        b.set_flags(battle_flags::DIMMED);
+        b.set_flags(BattleFlags::DIMMED);
     }
     // (dword_200F3B8[side] = 0: written, never read.)
     b.objects.get_mut(r).state = state::UPDATE;
@@ -622,7 +622,7 @@ pub fn end(b: &mut Battle, r: ObjectRef) {
         }
         b.dimming(other).user = None;
         b.clear_dimming(other);
-        b.clear_flags(battle_flags::DIMMED);
+        b.clear_flags(BattleFlags::DIMMED);
     }
     b.clear_dimming(side);
     b.dimming(side).user = None;

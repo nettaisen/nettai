@@ -15,48 +15,66 @@ use crate::object::{ObjectRef, Objects};
 use crate::console::Console;
 use crate::rng::Rng;
 use crate::content::{BannerId, BannerRole, Content, FormData, MusicRole, NaviData, NaviWinBanner, PlayerFact, SoundRole};
-use crate::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, effects};
+use crate::setup::{BattleEffects, BattleSettings, NaviStats, RoundSetup, SetScore};
 use crate::transform::{TransformRequest, TransformSequencer};
 use crate::sound::SoundCue;
 use nettai_content_api::ChipHandle;
 use std::sync::Arc;
 
-/// A side's status bits as the link delivers them (`Round::remote_status`,
-/// BattleState +0x14).
-pub mod remote_status {
-    /// Its custom screen's selection runs (EXE4's custom drain reads it).
-    pub const SELECTING: u8 = 1 << 0;
-    /// Its custom screen is open.
-    pub const CUSTOM_SCREEN: u8 = 1 << 2;
+bitflags::bitflags! {
+    /// A side's status bits as the link delivers them (`Round::remote_status`,
+    /// BattleState +0x14).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    pub struct RemoteStatus: u8 {
+        /// Its custom screen's selection runs (EXE4's custom drain reads it).
+        const SELECTING = 1 << 0;
+        /// Its custom screen is open.
+        const CUSTOM_SCREEN = 1 << 2;
+        const _ = !0;
+    }
 }
 
-/// Battle flag bits.
-pub mod battle_flags {
-    /// The fight has started (collision is live).
-    pub const FIGHTING: u16 = 0x01;
-    /// The custom gauge is full.
-    pub const GAUGE_FULL: u16 = 0x02;
-    /// Dimming (dimming chips).
-    pub const DIMMED: u16 = 0x04;
-    /// A player asked to open the custom screen.
-    pub const CUSTOM_REQUESTED: u16 = 0x10;
-    /// The cameras shake even while the battle is paused
-    /// (`battle_isTimeStopPauseOrBattleFlags0x20_800a0a4`): EXE5's
-    /// TomahawkSoul's change sets it (0x08012138), every soul change's end
-    /// clears it (0x080121B6); nothing in EXE6 sets it.
-    pub const SHAKE_THROUGH_PAUSE: u16 = 0x20;
-    /// Each side its own custom gauge: battle flag 0x40, in each game a
-    /// mode of its own.
-    /// - EXE5's operation battle (set at 0x0802D590 when the battle mode
-    ///   isn't 1 and the navi's stats' +0x2A is set): both navis
-    ///   in auto battle, the Tactics screen.
-    /// - EXE6's chip gate battle (set once a battle by `sub_802E112` when a
-    ///   chip gate is on the link port, 0x0200AD04, or in a link battle,
-    ///   battle mode 0, whose consoles both have one, EVENT_1722): the
-    ///   gate's slotted chips paid from the side's gauge, SELECT's Program
-    ///   Advance window. `sub_800A8F8` tests it. A netbattle without gates
-    ///   never has it.
-    pub const OWN_GAUGES: u16 = 0x40;
+/// As its byte, alone and in an array (`digest::hash_bits_slice`).
+impl std::hash::Hash for RemoteStatus {
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
+        self.bits().hash(h);
+    }
+    fn hash_slice<H: std::hash::Hasher>(data: &[RemoteStatus], h: &mut H) {
+        crate::digest::hash_bits_slice(data.iter().map(|w| w.bits().to_ne_bytes()), h);
+    }
+}
+
+bitflags::bitflags! {
+    /// Battle flag bits (`RoundState::flags`).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct BattleFlags: u16 {
+        /// The fight has started (collision is live).
+        const FIGHTING = 0x01;
+        /// The custom gauge is full.
+        const GAUGE_FULL = 0x02;
+        /// Dimming (dimming chips).
+        const DIMMED = 0x04;
+        /// A player asked to open the custom screen.
+        const CUSTOM_REQUESTED = 0x10;
+        /// The cameras shake even while the battle is paused
+        /// (`battle_isTimeStopPauseOrBattleFlags0x20_800a0a4`): EXE5's
+        /// TomahawkSoul's change sets it (0x08012138), every soul change's end
+        /// clears it (0x080121B6); nothing in EXE6 sets it.
+        const SHAKE_THROUGH_PAUSE = 0x20;
+        /// Each side its own custom gauge: battle flag 0x40, in each game a
+        /// mode of its own.
+        /// - EXE5's operation battle (set at 0x0802D590 when the battle mode
+        ///   isn't 1 and the navi's stats' +0x2A is set): both navis
+        ///   in auto battle, the Tactics screen.
+        /// - EXE6's chip gate battle (set once a battle by `sub_802E112` when a
+        ///   chip gate is on the link port, 0x0200AD04, or in a link battle,
+        ///   battle mode 0, whose consoles both have one, EVENT_1722): the
+        ///   gate's slotted chips paid from the side's gauge, SELECT's Program
+        ///   Advance window. `sub_800A8F8` tests it. A netbattle without gates
+        ///   never has it.
+        const OWN_GAUGES = 0x40;
+        const _ = !0;
+    }
 }
 
 /// Top-level battle states (the game's jump-table offsets).
@@ -115,9 +133,8 @@ pub struct RoundState {
     pub winner: u8,
     /// Alive navis per side.
     pub alive: [u8; 2],
-    /// Both players' status bits as the link delivers them (bit 2: that
-    /// player's custom screen is open).
-    pub remote_status: [u8; 2],
+    /// Both players' status bits as the link delivers them.
+    pub remote_status: [RemoteStatus; 2],
     pub has_regular: u8,
     pub wins: u8,
     pub losses: u8,
@@ -130,7 +147,7 @@ pub struct RoundState {
     pub low_hp_music: [bool; 2],
     /// Small countdown used by banners and the end state.
     pub delay: i16,
-    pub flags: u16,
+    pub flags: BattleFlags,
     /// The local navi's HP when the battle ended (`sub_800FAE0`).
     pub exit_hp: u16,
     pub escape: u16,
@@ -519,7 +536,7 @@ pub struct Battle {
     /// Both players' custom screens.
     pub custom: CustomScreens,
     /// Per-side extra battle state (`sub_802E070`), used by the own-gauges
-    /// mode (battle flag 0x40, `battle_flags::OWN_GAUGES`).
+    /// mode (battle flag 0x40, `BattleFlags::OWN_GAUGES`).
     pub sides: [SideState; 2],
     /// Per side: the looks its rules set (presentation).
     pub looks: [SideLooks; 2],
@@ -962,7 +979,7 @@ impl Battle {
     }
 
     pub fn is_dimmed(&self) -> bool {
-        self.round.flags & battle_flags::DIMMED != 0
+        self.round.flags.contains(BattleFlags::DIMMED)
     }
 
     /// How many times content has read `side`'s keys `keys` (a mask of
@@ -984,12 +1001,12 @@ impl Battle {
         self.attacked.panels[side as usize & 1]
     }
 
-    pub fn set_flags(&mut self, f: u16) {
-        self.round.flags |= f;
+    pub fn set_flags(&mut self, f: BattleFlags) {
+        self.round.flags.insert(f);
     }
 
-    pub fn clear_flags(&mut self, f: u16) {
-        self.round.flags &= !f;
+    pub fn clear_flags(&mut self, f: BattleFlags) {
+        self.round.flags.remove(f);
     }
 
     /// `battle_isBattleOver`: a side has no navis left, or time is up.
@@ -1150,8 +1167,10 @@ impl Battle {
         for p in 0..2 {
             self.inputs[p].update(input[p].held & 0x3FF | keys::PRESENT);
             let side = &self.custom.sides[p];
-            self.round.remote_status[p] =
-                (if side.in_custom { remote_status::CUSTOM_SCREEN } else { 0 }) | if side.selecting { remote_status::SELECTING } else { 0 };
+            let mut status = RemoteStatus::empty();
+            status.set(RemoteStatus::CUSTOM_SCREEN, side.in_custom);
+            status.set(RemoteStatus::SELECTING, side.selecting);
+            self.round.remote_status[p] = status;
         }
         self.read_switch_requests(input);
         self.mic_levels = input.each_ref().map(|t| if t.mic_loud { u8::MAX } else { 0 });
@@ -1175,7 +1194,7 @@ impl Battle {
             self.shift_damage_carry();
         }
         self.custom_hp_drain(0);
-        if self.setup.settings.effects & effects::LINK != 0 {
+        if self.setup.settings.effects.contains(BattleEffects::LINK) {
             self.custom_hp_drain(1);
         }
         self.round.ticks = self.round.ticks.wrapping_add(1);
@@ -1267,7 +1286,7 @@ impl Battle {
         let code = self.round.result & 0xF;
         // A broken link or a cut-short battle ends the set.
         let cut_short = matches!(code, 5 | 9 | 0xA);
-        if self.setup.settings.effects & effects::SET != 0 && !cut_short {
+        if self.setup.settings.effects.contains(BattleEffects::SET) && !cut_short {
             match self.set_standing() {
                 SetStanding::Undecided => return self.chain_next_round(),
                 // setTwoStructs_800A840
@@ -1284,7 +1303,7 @@ impl Battle {
             0xA => BattleResult::TerminatedA,
             c => panic!("battle result code {c} is none sub_8007CA0 hands back"),
         };
-        let link = self.setup.settings.effects & effects::LINK != 0;
+        let link = self.setup.settings.effects.contains(BattleEffects::LINK);
         if result == BattleResult::CommError && !link {
             // Outside link battles the game may restart the battle
             // (sub_803F4EC, event flag 0x1733, loc_80071FE): the menus'.
@@ -1377,7 +1396,7 @@ impl Battle {
     fn mode_intro(&mut self) {
         if self.round.init == 0 {
             let s = &self.setup.settings;
-            if s.effects & effects::SET == 0 {
+            if !s.effects.contains(BattleEffects::SET) {
                 self.round.round = self.content.stage(s.stage).battle_number;
             } else {
                 self.round.round += 1;
@@ -1627,7 +1646,7 @@ impl Battle {
         if self.banner_status() != BannerStatus::Done {
             return;
         }
-        if self.setup.settings.effects & effects::SET != 0 {
+        if self.setup.settings.effects.contains(BattleEffects::SET) {
             match self.set_standing() {
                 SetStanding::Decided(BattleResult::Won) => return self.set_fight_state(fight::WIN),
                 SetStanding::Decided(BattleResult::Lost) => return self.set_fight_state(fight::LOSE),
@@ -1904,7 +1923,7 @@ impl Battle {
             if self.late_turns() {
                 self.fight.turn_timer = 0xA5 * 4 - 1;
                 self.start_banner(self.roles().banner(BannerRole::FinalTurn));
-            } else if self.setup.settings.effects & effects::LINK != 0 {
+            } else if self.setup.settings.effects.contains(BattleEffects::LINK) {
                 self.start_banner(self.roles().banner(BannerRole::TurnStart));
             }
         }
@@ -1924,14 +1943,14 @@ impl Battle {
     /// From the 15th custom screen on, netbattles use a turn timer and the
     /// gauge stops arming.
     pub fn late_turns(&self) -> bool {
-        self.setup.settings.effects & effects::LINK != 0 && self.round.turn >= 15
+        self.setup.settings.effects.contains(BattleEffects::LINK) && self.round.turn >= 15
     }
 
     fn fight_fighting(&mut self) {
         self.side_ticks();
         self.apply_actor_inputs();
         self.paused = false;
-        self.set_flags(battle_flags::FIGHTING);
+        self.set_flags(BattleFlags::FIGHTING);
         self.update_combo();
         self.update_battle_time();
         if self.late_turns() {
@@ -1996,7 +2015,7 @@ impl Battle {
             }
             return;
         }
-        let open = if self.round.flags & battle_flags::OWN_GAUGES != 0 {
+        let open = if self.round.flags.contains(BattleFlags::OWN_GAUGES) {
             // sub_800A244: in the own-gauges mode a side opens it with
             // L or R and a gauge of 0x2900, which it pays.
             let sides = self.gauge_custom_requests();
@@ -2052,7 +2071,7 @@ impl Battle {
         let asks = |side: usize| {
             self.sides[side].gauge >= GAUGE_CUSTOM_COST && self.inputs[side].pressed & (keys::L | keys::R) != 0
         };
-        let link = self.setup.settings.effects & effects::LINK != 0;
+        let link = self.setup.settings.effects.contains(BattleEffects::LINK);
         u8::from(asks(0)) | (u8::from(link && asks(1)) << 1)
     }
 
@@ -2061,7 +2080,7 @@ impl Battle {
     /// 0x08007774 tests the flag alone).
     fn custom_request_transforms(&self) -> bool {
         let mode_5 = self.round.mode_copy == 5 && self.game_rules().flow.sequencer_before_custom;
-        mode_5 || self.round.flags & battle_flags::OWN_GAUGES == 0
+        mode_5 || !self.round.flags.contains(BattleFlags::OWN_GAUGES)
     }
 
     /// Fighting state 0x20 (`sub_8008452`): a custom screen was asked for:
@@ -2153,7 +2172,7 @@ impl Battle {
         if self.is_dimmed() || self.is_battle_over() || self.late_turns() {
             return false;
         }
-        self.round.flags & battle_flags::GAUGE_FULL != 0
+        self.round.flags.contains(BattleFlags::GAUGE_FULL)
             && (self.inputs[0].pressed | self.inputs[1].pressed) & (keys::L | keys::R) != 0
     }
 
@@ -2165,8 +2184,8 @@ impl Battle {
         // (A controlled navi, EXE6's Beast Over, can't ask for it: a full
         // gauge opens it.)
         let berserk = |side: usize| self.form(side).traits.has(crate::content::FormTraits::CONTROLLED);
-        ((berserk(0) || berserk(1)) && self.round.flags & battle_flags::GAUGE_FULL != 0)
-            || self.round.flags & battle_flags::CUSTOM_REQUESTED != 0
+        ((berserk(0) || berserk(1)) && self.round.flags.contains(BattleFlags::GAUGE_FULL))
+            || self.round.flags.contains(BattleFlags::CUSTOM_REQUESTED)
     }
 
     fn update_combo(&mut self) {
@@ -2182,7 +2201,7 @@ impl Battle {
     }
 
     fn update_battle_time(&mut self) {
-        if self.is_dimmed() || self.paused || self.round.flags & battle_flags::FIGHTING == 0 {
+        if self.is_dimmed() || self.paused || !self.round.flags.contains(BattleFlags::FIGHTING) {
             return;
         }
         if self.is_battle_over_flag_quirk() {
@@ -2232,8 +2251,8 @@ impl Battle {
                 // in battle modes 4, 5 and 8 too (`sub_80081A4`; EXE5's
                 // tests 4 and 5, and nothing of it tests a mode 8); the
                 // loser's wait is a special battle's alone (`sub_800825A`).
-                let special = self.setup.settings.effects & 2 != 0;
-                let link = self.setup.settings.effects & effects::LINK != 0;
+                let special = self.setup.settings.effects.contains(BattleEffects::SPECIAL);
+                let link = self.setup.settings.effects.contains(BattleEffects::LINK);
                 let special_win = special || matches!(self.round.mode_copy, 4 | 5 | 8);
                 // (Each console's music is its player's game's.)
                 for side in 0..2 {
@@ -2277,11 +2296,11 @@ impl Battle {
         if !won {
             return if judged { roles.banner(BannerRole::LoseJudged) } else { navi.lose_banner };
         }
-        let link = self.setup.settings.effects & effects::LINK != 0;
+        let link = self.setup.settings.effects.contains(BattleEffects::LINK);
         let navis = link
             && match self.game_rules().flow.navi_win_banner {
                 NaviWinBanner::LinkBattle => true,
-                NaviWinBanner::OperationBattle => self.round.flags & battle_flags::OWN_GAUGES != 0,
+                NaviWinBanner::OperationBattle => self.round.flags.contains(BattleFlags::OWN_GAUGES),
                 NaviWinBanner::Never => false,
             };
         if navis {
@@ -2482,7 +2501,7 @@ impl Battle {
 
     /// `sub_801C470`.
     fn fill_gauge(&mut self) {
-        if self.paused || self.is_dimmed() || self.round.flags & battle_flags::GAUGE_FULL != 0 {
+        if self.paused || self.is_dimmed() || self.round.flags.contains(BattleFlags::GAUGE_FULL) {
             return;
         }
         let v = self.gauge.value.wrapping_add(self.gauge.rate);
@@ -2490,7 +2509,7 @@ impl Battle {
         if v >= CustomGauge::FULL {
             self.gauge.value = CustomGauge::FULL;
             if !self.late_turns() {
-                self.set_flags(battle_flags::GAUGE_FULL);
+                self.set_flags(BattleFlags::GAUGE_FULL);
                 self.sound(SoundRole::GaugeFull);
             }
         }
@@ -2517,7 +2536,7 @@ impl Battle {
     /// selection runs), every period by the bug's level or the stat itself.
     fn custom_hp_drain(&mut self, side: u8) {
         let rule = self.content.rules().custom_drain;
-        if self.round.remote_status[side as usize] & rule.status == 0 {
+        if !self.round.remote_status[side as usize].intersects(rule.status) {
             return;
         }
         let period = rule.periods.period(self.stats[side as usize].bugs.custom_drain);
@@ -2567,7 +2586,7 @@ impl Battle {
     /// the engine keeps both sides' latches. (Where the arena's flow rules
     /// have it: EXE5 has none.)
     fn low_hp_music(&mut self) {
-        if self.setup.settings.effects & effects::LINK == 0 || !self.content.rules().flow.low_hp_music {
+        if !self.setup.settings.effects.contains(BattleEffects::LINK) || !self.content.rules().flow.low_hp_music {
             return;
         }
         for side in 0..2 {
@@ -2809,7 +2828,7 @@ mod tests {
         assert_eq!(b.pause_requests(), [false; 2]);
         // Dimmed, and over: no pause to ask for.
         let mut dimmed = b.clone();
-        dimmed.set_flags(battle_flags::DIMMED);
+        dimmed.set_flags(BattleFlags::DIMMED);
         held(&mut dimmed, [keys::START, 0]);
         assert_eq!(dimmed.pause_requests(), [false; 2]);
         let mut over = b.clone();
@@ -2860,7 +2879,7 @@ mod tests {
     /// the set standing at `wins`-`losses` after `round` rounds.
     fn ending(wins: u8, losses: u8, round: u8) -> Battle {
         let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::stats(1000));
-        setup.settings.effects = 0xE8C;
+        setup.settings.effects = BattleEffects::from_bits_retain(0xE8C);
         let content = testing::content();
         setup.later_stages = vec![
             Stage { stage: content.stage_by_key(testing::ROCK_BATTLE), background: crate::content::BackgroundId(3) },
@@ -2887,7 +2906,7 @@ mod tests {
         // The drawn table entry, with this round's effects and the drawn
         // background.
         let drawn = testing::content().stage_by_key(testing::ROCK_BATTLE);
-        assert_eq!(*settings, BattleSettings { stage: drawn, effects: 0xE8C, background: crate::content::BackgroundId(3) });
+        assert_eq!(*settings, BattleSettings { stage: drawn, effects: BattleEffects::from_bits_retain(0xE8C), background: crate::content::BackgroundId(3) });
         assert_eq!(*score, SetScore { wins: 1, losses: 0, round: 1, max_combo: 1 });
         assert_eq!(b.round.top, top::INIT);
         assert_eq!(b.sound_cues(), [SoundCue::StopMusic]);

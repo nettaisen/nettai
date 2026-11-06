@@ -148,7 +148,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let under_the_sea = b.game_rules().hit_test.bubbled_as_submerged;
     let hiding = if under_the_sea { f1::SUBMERGED | f1::BUBBLED } else { f1::SUBMERGED };
     let submerged = b.objects.get(navi).collision.is_some_and(|c| b.collision.get(c).f1 & hiding != 0);
-    if rules.stops_at_a_pause_in_the_fight && b.round.flags & crate::battle::battle_flags::FIGHTING != 0 {
+    if rules.stops_at_a_pause_in_the_fight && b.round.flags.contains(crate::battle::BattleFlags::FIGHTING) {
         b.objects.get_mut(r).flags.remove(ObjectFlags::RUN_WHILE_PAUSED);
     }
     let (pos, flip) = {

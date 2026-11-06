@@ -30,7 +30,7 @@ pub fn update(b: &mut Battle, r: ObjectRef) {
                 // later ones from black.
                 b.round.intro_bits |= 0x10;
                 let s = &b.setup.settings;
-                let later = if s.effects & crate::setup::effects::SET != 0 {
+                let later = if s.effects.contains(crate::setup::BattleEffects::SET) {
                     b.round.round > 1
                 } else {
                     b.content.stage(s.stage).battle_number >= 2

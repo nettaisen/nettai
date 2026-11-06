@@ -11,8 +11,7 @@ use nettai_content_api::{FormHandle, NaviHandle, RecordHandle, StageHandle, Weap
 pub struct BattleSettings {
     pub stage: StageHandle,
     pub background: crate::content::BackgroundId,
-    /// `effects` bits (see `effects`).
-    pub effects: u32,
+    pub effects: BattleEffects,
 }
 
 impl BattleSettings {
@@ -30,43 +29,58 @@ impl BattleSettings {
     /// stage has none. A host that plays it before the battle (a preview)
     /// asks here.
     pub fn music(&self, content: &Content) -> Option<crate::sound::SoundId> {
-        if self.effects & effects::LINK != 0 {
-            Some(content.defs.roles().link_battle_music(self.effects & effects::SET != 0))
+        if self.effects.contains(BattleEffects::LINK) {
+            Some(content.defs.roles().link_battle_music(self.effects.contains(BattleEffects::SET)))
         } else {
             content.stage(self.stage).music
         }
     }
 }
 
-/// Battle effects bits.
-pub mod effects {
-    /// A ranked boss (`BATTLE_EFFECT_BOSS_RANK`).
-    pub const BOSS_RANK: u32 = 0x1;
-    /// Each navi starts at its full HP (`sub_80141C8`; without it, at its
-    /// navi stats' HP).
-    pub const FULL_HP: u32 = 0x4;
-    /// Link battle between two players.
-    pub const LINK: u32 = 0x8;
-    /// Multi-round set.
-    pub const SET: u32 = 0x400;
-    /// Random battle.
-    pub const RANDOM: u32 = 0x20_0000;
-    /// The DS's party battle plays no switch voice (0x02098ED0), and no
-    /// such draw of the console's RNG; its other readers (the rescue's HP
-    /// number, the microphone's story flag) are presentation or the save's.
-    /// No stage of the engine's sets it.
-    pub const NO_SWITCH_VOICE: u32 = 0x40_0000;
+bitflags::bitflags! {
+    /// Battle effects bits (`BattleSettings::effects`). A game's rules
+    /// declare their own besides (the flow section's `effect_bits`): bits
+    /// this type doesn't name are kept as they are.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct BattleEffects: u32 {
+        /// A ranked boss (`BATTLE_EFFECT_BOSS_RANK`).
+        const BOSS_RANK = 0x1;
+        /// A special battle: the winner's music and the wait are those of
+        /// battle modes 4, 5 and 8 (`sub_80081A4`), and the loser's wait is
+        /// its own (`sub_800825A`).
+        const SPECIAL = 0x2;
+        /// Each navi starts at its full HP (`sub_80141C8`; without it, at its
+        /// navi stats' HP).
+        const FULL_HP = 0x4;
+        /// Link battle between two players.
+        const LINK = 0x8;
+        /// Multi-round set.
+        const SET = 0x400;
+        /// Each navi starts at the starting mood, as in a link battle
+        /// (`sub_8013892`, by `sub_8015C2C`).
+        const STARTING_MOOD = 0x1_0000;
+        /// Random battle.
+        const RANDOM = 0x20_0000;
+        /// The DS's party battle plays no switch voice (0x02098ED0), and no
+        /// such draw of the console's RNG; its other readers (the rescue's HP
+        /// number, the microphone's story flag) are presentation or the save's.
+        /// No stage of the engine's sets it.
+        const NO_SWITCH_VOICE = 0x40_0000;
+        const _ = !0;
+    }
+}
 
+impl BattleEffects {
     /// The effects by the names content gives them (a stage's `effects`).
     /// A game's rules name its own besides (the flow section's
     /// `effect_bits`), which `battle.has_effect` reads.
     pub const NAMES: &[(u32, &str)] = &[
-        (BOSS_RANK, "boss_rank"),
-        (FULL_HP, "full_hp"),
-        (LINK, "link"),
-        (SET, "set"),
-        (RANDOM, "random"),
-        (NO_SWITCH_VOICE, "no_switch_voice"),
+        (Self::BOSS_RANK.bits(), "boss_rank"),
+        (Self::FULL_HP.bits(), "full_hp"),
+        (Self::LINK.bits(), "link"),
+        (Self::SET.bits(), "set"),
+        (Self::RANDOM.bits(), "random"),
+        (Self::NO_SWITCH_VOICE.bits(), "no_switch_voice"),
     ];
 }
 

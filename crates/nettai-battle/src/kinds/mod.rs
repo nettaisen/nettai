@@ -254,7 +254,7 @@ pub fn chip_damage_formula(b: &Battle, id: nettai_content_api::ChipHandle, side:
     use crate::content::DamageFormula as F;
     // EXE5's: a fixed damage in the own-gauges mode.
     if let F::Count { operation_battle: Some(d), .. } = formula
-        && b.round.flags & crate::battle::battle_flags::OWN_GAUGES != 0
+        && b.round.flags.contains(crate::battle::BattleFlags::OWN_GAUGES)
     {
         return *d;
     }
@@ -291,7 +291,7 @@ fn single_player_opponents(b: &Battle, side: u8) -> impl Iterator<Item = ObjectR
 /// `sub_8010A90`: the opponent's HP, at most 500: in link battles the other
 /// side's player's, else the highest of the opponents'.
 fn opponent_hp(b: &Battle, side: u8) -> u16 {
-    let hp = if b.setup.settings.effects & crate::setup::effects::LINK != 0 {
+    let hp = if b.setup.settings.effects.contains(crate::setup::BattleEffects::LINK) {
         let Some(p) = b.player(side ^ 1) else {
             panic!("damage formula 0 reads the HP of a missing navi (sub_8010A90)");
         };
@@ -312,7 +312,7 @@ pub(crate) fn gauge_damage(b: &Battle, side: u8) -> u16 {
 
 /// [`gauge_damage`] with `full` for a full gauge (EXE4's formula 45 gives 0).
 fn gauge_damage_or(b: &Battle, side: u8, full: u16) -> u16 {
-    let gauge = if b.round.flags & crate::battle::battle_flags::OWN_GAUGES != 0 {
+    let gauge = if b.round.flags.contains(crate::battle::BattleFlags::OWN_GAUGES) {
         b.sides[side as usize & 1].gauge as u32 + 0x1500
     } else {
         b.gauge.value as u32
@@ -334,7 +334,7 @@ fn gauge_damage_or(b: &Battle, side: u8, full: u16) -> u16 {
 /// none of `sub_8010B78`'s 0x1500): 100 × level / 95 below level 96, 100 to
 /// level 126, nothing from 127.
 fn gauge_level_damage(b: &Battle, side: u8, base: u16) -> u16 {
-    let gauge = if b.round.flags & crate::battle::battle_flags::OWN_GAUGES != 0 {
+    let gauge = if b.round.flags.contains(crate::battle::BattleFlags::OWN_GAUGES) {
         b.sides[side as usize & 1].gauge as u32
     } else {
         b.gauge.value as u32
@@ -359,7 +359,7 @@ fn hp_last_digits(b: &Battle, side: u8) -> u16 {
 /// the other side's player's (0 without one), else the highest of the
 /// opponents'.
 fn half_opponent_max_hp(b: &Battle, side: u8) -> u16 {
-    let max_hp = if b.setup.settings.effects & crate::setup::effects::LINK != 0 {
+    let max_hp = if b.setup.settings.effects.contains(crate::setup::BattleEffects::LINK) {
         let Some(p) = b.player(side ^ 1) else { return 0 };
         b.objects.get(p).max_hp
     } else {

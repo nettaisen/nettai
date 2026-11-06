@@ -123,7 +123,7 @@ fn state(app: &App, lang: &str, size: &str, when: &str) -> String {
         hp(0),
         hp(1),
         battle.gauge.value,
-        if battle.round.flags & nettai_battle::battle::battle_flags::GAUGE_FULL != 0 { " (full)" } else { "" },
+        if battle.round.flags.contains(nettai_battle::battle::BattleFlags::GAUGE_FULL) { " (full)" } else { "" },
     );
     if let Some(live) = b.stage.player.live() {
         out += &format!(", options {:?}, dummy {:?}", live.training(), live.opponent().in_fight);

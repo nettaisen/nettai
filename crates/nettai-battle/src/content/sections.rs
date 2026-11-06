@@ -667,7 +667,7 @@ fn rules(base: Option<&Rules>, game: Option<&str>, r: &SpecReader, definitions: 
             .map_err(|e| ContentError::new(format!("{at}: {e}")))
     };
     let own_requests = declared("reactions", "request_bits", super::rules::REQUEST_NAMES)?;
-    let effect_bits = declared("flow", "effect_bits", crate::setup::effects::NAMES)?;
+    let effect_bits = declared("flow", "effect_bits", crate::setup::BattleEffects::NAMES)?;
     let own_bits = super::rules::OwnBits {
         hit_modifier: declared("reactions", "hit_modifier_bits", super::rules::HIT_MODIFIER_NAMES)?,
         damage_word: declared("effects", "damage_word_bits", super::rules::DAMAGE_WORD_NAMES)?,

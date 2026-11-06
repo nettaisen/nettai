@@ -939,12 +939,12 @@ impl Round {
             .background(st[4])
             .and_then(|name| content.background_handle(crate::ROOT, name))
             .ok_or_else(|| format!("EXE5's content has no background {:#04x}", st[4]))?;
-        let mut effects = u32::from_le_bytes([st[8], st[9], st[10], st[11]]);
+        let mut effects = nettai_battle::setup::BattleEffects::from_bits_retain(u32::from_le_bytes([st[8], st[9], st[10], st[11]]));
         if d.ds.is_some() {
             // (The DS's 0x200000 says Navi Select's partners join, where the
             // GBA's says a random battle: a party battle's are its
             // members.)
-            effects &= !DS_NAVI_SELECT;
+            effects.remove(DS_NAVI_SELECT);
         }
         let settings = nettai_battle::BattleSettings { stage, background, effects };
         if content.defs.rules().is_none() {
@@ -1279,7 +1279,7 @@ const DS_RESULT_WORDS: u8 = 13;
 
 /// The DS's battle effect for Navi Select's partners (0x02097DD4), which
 /// is the GBA's random battle's bit.
-const DS_NAVI_SELECT: u32 = 0x20_0000;
+const DS_NAVI_SELECT: nettai_battle::setup::BattleEffects = nettai_battle::setup::BattleEffects::from_bits_retain(0x20_0000);
 
 /// The auto battle data's send draws RNG2 this many times (0x0802C7BE),
 /// both consoles alike.

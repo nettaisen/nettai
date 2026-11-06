@@ -902,7 +902,7 @@ fn picks(b: &Battle, side: u8, screen: &Screen, extra: Option<u8>) -> Vec<Pick> 
 /// a formula's left out: it can read what the viewer doesn't see).
 fn would_build(b: &Battle, side: u8, picks: &[Pick]) -> builder::Built {
     let mut used = b.custom.sides[side as usize].program_advances;
-    let own_gauges = b.round.flags & nettai_battle::battle::battle_flags::OWN_GAUGES != 0;
+    let own_gauges = b.round.flags.contains(nettai_battle::battle::BattleFlags::OWN_GAUGES);
     builder::build(picks, b.round.turn, &mut used, &*b.content, own_gauges, |id| b.content.chip(id).damage)
 }
 
