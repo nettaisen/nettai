@@ -93,6 +93,13 @@ Conventions:
   engine's bit values and offsets stay in the engine. The original's numbers that are a routine's own
   immediates (animation numbers, tick counts, panel flag words it matches as whole words, bug codes) are the
   scripts' named constants.
+- **Definitions and rule sections name their bits.** A status is its timer (`new.status { duration = 90, timer =
+  "paralyze" }`), and the loader gives it that timer's request. A stage's battle effects (`effects = { "full_hp",
+  "link" }`), the rules' requests (`reactions.status_end.requests`, `status.anti_traps.drops_requests`), a side's
+  status (`status.custom_drain.status`) and a chip's `extra_flags` are lists of names. A bit only its game has is
+  declared once, in that game's rules (`{ name = bit }`: `reactions.request_bits`, `flow.effect_bits`), and named
+  everywhere else; `battle.has_effect(name)` reads such a battle effect, `battle.link()`, `battle.boss_rank()` and
+  `battle.random()` the engine's. A loader refuses a name it doesn't know, and a number.
 - **No floats anywhere.** `Vec3` is three `i32` in 16.16 fixed point with wrapping `+` and `-`.
 - **Faithful stores.** Where the game's store width matters, the API has both: `me:set_lifecycle("destroy")` is
   the word store (state, action, phase and phase-init: the game's `str CUR_STATE_DESTROY`), `me.lifecycle =
@@ -143,7 +150,7 @@ side effect: a module that runs and is reached by nothing makes nothing.
 |---|---|---|
 | the root's `chips`: `{ [id] = { ...record..., action \| dimming \| navi \| instant } }` | a chip and its one use | the action as the navi's attack, or the hook from the ruleset's dimming, navi chip or instant chip action |
 | the root's `navis`, `forms` | a navi, one of MegaMan's forms | their records: stats, weapons, sprite, identity |
-| the root's `stages`: `{ [id] = { layout, actors, ... } }` | a stage | its panels and what it places |
+| the root's `stages`: `{ [id] = { layout, effects, actors, ... } }` | a stage | its panels, its battle effects (by name) and what it places |
 | the root's `patch_cards`, `navicust_programs` | a patch card, a NaviCust program | their records |
 | the root's `rules`: `{ state?, setup?, hooks?, custom?, ..., <sections>?, roles? }` | a game's rules, their one definition, written by hand (rules/init.luau; rules-in-luau.md §2.5): a side's state, a player's setup, hooks (plain functions that call the game's modules), custom-screen buttons and windows, its rule sections (plain tables no entity owns: elements, panels, the custom screen, ...) and its roles (what the rules need from content: the action a request starts, the kind it spawns, the chip a zeroed field reads, ...) | its hooks, each called for one side; its state per side and each player's setup; the game's typed tables and roles |
 | `new.kind { id?, pool, state?, update, place? }` | an object kind | `update(me)` each tick it runs; `place(spec)` when a stage names it |

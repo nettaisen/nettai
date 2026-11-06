@@ -153,8 +153,9 @@ impl ChipFlags {
 
 serde_flags!(ChipFlags, u8);
 
-/// The chip record's second flag byte. Bits without a name only sort
-/// chips in menus.
+/// The chip record's second flag byte, the bits the engine reads, by name
+/// (in a content file a list of the names alone). The original's other
+/// bits only sort chips in its menus: content holds none of them.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ExtraChipFlags(pub u8);
 
@@ -174,7 +175,7 @@ impl ExtraChipFlags {
     }
 }
 
-serde_flags!(ExtraChipFlags, u8);
+serde_flags!(ExtraChipFlags, u8, names_only);
 
 /// What the rules ask of particular chips (docs/design/
 /// content-model-v2.md §7.5): the cases the original tells by a chip's

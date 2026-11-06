@@ -262,7 +262,7 @@ impl Battle {
             self.update_cameras_from_battle_rng();
             return;
         }
-        let primary_first = self.round.remote_status[0] & 5 != 0
+        let primary_first = self.round.remote_status[0] & (crate::battle::remote_status::SELECTING | crate::battle::remote_status::CUSTOM_SCREEN) != 0
             || !self.paused
             || self.is_dimmed()
             || self.round.flags & crate::battle::battle_flags::SHAKE_THROUGH_PAUSE != 0;

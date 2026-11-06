@@ -27,7 +27,9 @@ pub struct StageData {
     pub mode: u8,
     pub battle_number: u8,
     /// `effects` bits (`setup::effects`) a round on it runs with unless its
-    /// settings say otherwise.
+    /// settings say otherwise. In a content file a list of their names: the
+    /// engine's (`setup::effects::NAMES`) and its game's (its rules'
+    /// `flow.effect_bits`).
     pub effects: u32,
     /// Who and what it places when the round starts, in order
     /// (`sub_8007368`).
@@ -65,11 +67,13 @@ fn panel_type(name: &str) -> Option<PanelType> {
     crate::field::reading_panel_type(name).ok()
 }
 
-/// A stage definition as the engine holds it. `kind` and `record` give the
-/// handles of the kinds and records its entries name.
+/// A stage definition as the engine holds it. `effect_bits` are the battle
+/// effects its game names of its own; `kind` and `record` give the handles
+/// of the kinds and records its entries name.
 pub(crate) fn read(
     d: &nettai_content_api::Definition,
     assets: &nettai_content_api::AssetNames,
+    effect_bits: &[(String, u32)],
     kind: impl Fn(&str) -> Option<KindHandle>,
     record: impl Fn(&str) -> Option<RecordHandle>,
 ) -> Result<StageData, nettai_content_api::ContentError> {
@@ -108,11 +112,31 @@ pub(crate) fn read(
         )),
         _ => return Err(what("`music` is a sound (asset.sound(...)), or nothing".into())),
     };
-    let effects = match spec.field("effects") {
-        Data::Nil => 0,
-        Data::Int(i) => u32::try_from(*i).map_err(|_| what(format!("`effects` {i:#x} is not a flags word")))?,
-        _ => return Err(what("`effects` is a flags word".into())),
+    let known = || -> String {
+        let names: Vec<&str> =
+            crate::setup::effects::NAMES.iter().map(|x| x.1).chain(effect_bits.iter().map(|x| x.0.as_str())).collect();
+        names.join(", ")
     };
+    let mut effects = 0;
+    match spec.field("effects") {
+        Data::Nil => {}
+        Data::List(names) => {
+            for n in names {
+                let Data::Str(n) = n else {
+                    return Err(what(format!("`effects` lists battle effects by name ({})", known())));
+                };
+                let bit = crate::setup::effects::NAMES
+                    .iter()
+                    .find(|x| x.1 == n)
+                    .map(|x| x.0)
+                    .or_else(|| effect_bits.iter().find(|x| x.0 == *n).map(|x| x.1))
+                    .ok_or_else(|| what(format!("`effects` names {n:?}, no battle effect of its game ({})", known())))?;
+                effects |= bit;
+            }
+        }
+        Data::Map(m) if m.is_empty() => {}
+        _ => return Err(what(format!("`effects` lists battle effects by name ({})", known()))),
+    }
 
     let entries = match spec.field("actors") {
         Data::List(entries) => entries.as_slice(),

@@ -2319,6 +2319,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "next_chip_damages", |_, user: mlua::UserDataRef<Object>| {
         with(|api, _| Ok(api.next_chip_damages(user.0)))
     });
+    lib_fn!(lua, t, "has_effect", |_, name: mlua::LuaString| {
+        let name = name.to_str()?.to_string();
+        with(|api, _| api.has_effect(&name).map_err(api_error))
+    });
     for &f in BattleInfo::ALL {
         t.set(
             f.name(),

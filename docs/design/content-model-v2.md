@@ -579,7 +579,7 @@ local ENEMY_PANELS = define.region { field = { require = 0x20, forbid = 0 } }  -
 -- (`setup_collision(self_type, target_type, hit_mod)`), as a `CollisionSpec`.
 collision.thrown = define.collision { id = "thrown", side0 = 0x80000088, side1 = 0x40000088 }       -- type 0x0A
 collision.hits_navis = define.collision { id = "hits-navis", side0 = 0x15800000, side1 = 0x2a800000 } -- type 0x05
-local PARALYZE = define.status { id = "paralyze", requests = 0x..., duration = 0x78, timer = "paralyze" }
+local PARALYZE = define.status { id = "paralyze", duration = 0x78, timer = "paralyze" }
 ```
 
 (The flag words are the real rows 0x0A and 0x05, the thrown bomb's; the names are the kind the generator gives

@@ -1700,12 +1700,15 @@ impl Defs {
                 return Err(ContentError::new(format!("navi {} changes form, and no form of its game is the base form", n.key)));
             }
         }
-        // Stages: what they place names kinds and their variant records.
+        // Stages: what they place names kinds and their variant records;
+        // their effects, the engine's and their game's (its rules').
         let mut stages = Entries::new(Registry::Stage);
+        let effect_bits = content.rules.as_ref().map(|r| r.effect_bits.as_slice()).unwrap_or_default();
         for d in definitions.of(Registry::Stage) {
             let record = super::stages::read(
                 d,
                 &content.assets,
+                effect_bits,
                 |key| kinds.iter().position(|k| k.key == key).map(|i| KindHandle(i as u16)),
                 |key| definitions.of(Registry::Record).iter().position(|r| r.key == key).map(|i| RecordHandle(i as u16)),
             )?;
@@ -2323,5 +2326,18 @@ mod tests {
         // the engine holds by handle.
         assert!(c.defs.effects.len() > 100, "{} effects defined", c.defs.effects.len());
         assert!(!c.defs.sparks.is_empty() && !c.defs.regions.is_empty() && c.defs.collisions.len() >= 87);
+        // A stage's battle effects by name, the engine's and the game's own
+        // (its rules' `flow.effect_bits`); a status's requests its timer's.
+        let effects = |key: &str| c.stage(c.defs.stage_by_key(key).unwrap_or_else(|| panic!("stage {key}"))).effects;
+        assert_eq!((effects("netbattle-1"), effects("netbattle-96"), effects("netbattle-97")), (0x88C, 0x8C, 0x20_088C));
+        let paralysis = c.status(c.defs.status_by_key("paralyze-90").expect("paralyze-90"));
+        assert_eq!((paralysis.requests, paralysis.duration), (crate::collision::f2::PARALYZE, 90));
+        // A name neither has is a load error.
+        let mut wrong = Content::default();
+        wrong.scripts = c.scripts.clone();
+        let stages = wrong.scripts.module_mut("exe6", "stages").expect("exe6's stages");
+        *stages = stages.replacen("\"karma_changes\" }", "\"karma_change\" }", 1);
+        let e = wrong.define().unwrap_err().message;
+        assert!(e.contains("stage netbattle-1: `effects` names \"karma_change\", no battle effect of its game (boss_rank,"), "{e}");
     }
 }

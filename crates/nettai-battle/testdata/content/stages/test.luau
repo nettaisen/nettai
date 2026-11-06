@@ -20,7 +20,7 @@ local function stage(actors: { StageActor }): StageDef
         mode = 0,
         battle_number = 0,
         -- A link battle.
-        effects = 0x8,
+        effects = { "link" },
         actors = actors,
     }
 end

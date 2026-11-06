@@ -155,6 +155,11 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
         ("local function f(me: Object) me:death_hook(0x1A0) end", "a death hook by NameID"),
         ("local _ = battle.attach_point(0x1A0, 3, 0, 0)", "an attach point by NameID"),
         ("local function f(me: Object) me:setup_collision(4, 5, 0) end", "collision types by number"),
+        // A status raises its timer's request; the rows past the original's table, a collision offset, are gone.
+        ("local _: StatusDef = { duration = 90, timer = { other = 10 } }", "a status timer by collision offset"),
+        ("local _ = battle.effects()", "the battle's effects as a word"),
+        ("local _: StageDef = { layout = {}, panel_pattern = 0x38, mode = 0, battle_number = 0, effects = 0x88C, actors = {} }", "a stage's effects as a word"),
+        ("local function f(c: ChipSpec) c.extra_flags = { 128 } end", "a chip's extra flag by number"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
@@ -207,6 +212,9 @@ fn misuse_of_the_core_api_is_a_type_error() {
         // The Gregar and Falzar chips.
         ("battle.set_hud(\"chips\", false)", "not a HUD field"),
         ("battle.set_hud({ \"gauge\" }, false)", "a list of HUD fields, not one"),
+        ("local _: StatusDef = { duration = 90, timer = \"stun\" }", "not a status"),
+        ("local function f(c: ChipSpec) c.extra_flags = { \"rush\" } end", "not a chip's extra flag"),
+        ("local _: boolean = battle.has_effect(0x20000)", "a battle effect by its bit"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
