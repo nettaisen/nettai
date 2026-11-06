@@ -4,6 +4,7 @@
 use crate::battle::Battle;
 use crate::content::ChipFlags;
 use crate::custom::FolderChip;
+use crate::custom::builder::Marks;
 use nettai_content_api::ChipHandle;
 
 /// Up to five chips, in use order, with their build-time damage and bonuses.
@@ -31,7 +32,7 @@ pub struct ChipHand {
     /// a screen's marked picks, what the rules add), and what they do at
     /// the chip's use by the game's chip-use rules (`mark_damage`,
     /// `mark_heals`).
-    pub modifiers: [u8; 6],
+    pub modifiers: [crate::custom::builder::Marks; 6],
 }
 
 impl ChipHand {
@@ -47,7 +48,7 @@ impl ChipHand {
             charge_bonus: [0; 6],
             selection: [zeroed; 6],
             turn: [0; 6],
-            modifiers: [0; 6],
+            modifiers: [Marks::empty(); 6],
         }
     }
 
@@ -145,11 +146,11 @@ impl ChipHand {
     fn move_flag_bytes(&mut self, k: usize) {
         let mut bytes = [0u8; 18];
         bytes[..6].copy_from_slice(&self.turn);
-        bytes[6..12].copy_from_slice(&self.modifiers);
+        bytes[6..12].copy_from_slice(&self.modifiers.map(|m| m.bits()));
         bytes[2 * k] = bytes[2 * k + 2];
         bytes[6 + 2 * k] = bytes[6 + 2 * k + 2];
         self.turn.copy_from_slice(&bytes[..6]);
-        self.modifiers.copy_from_slice(&bytes[6..12]);
+        self.modifiers = std::array::from_fn(|i| Marks::from_bits_retain(bytes[6 + i]));
     }
 
     /// Chips left, counting from the cursor.

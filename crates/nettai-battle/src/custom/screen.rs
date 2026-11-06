@@ -21,6 +21,7 @@ use crate::hud::{Banner, BannerStatus};
 use crate::input::ScreenChoice;
 use crate::kinds::player::Emotion;
 use crate::content::FormTraits;
+use super::builder::Marks;
 use crate::setup::NaviStats;
 
 /// Slots: 0-4 the top row, 5-9 the bottom row, then these two.
@@ -53,7 +54,7 @@ const SPECIAL_CODES: [ChipCode; 2] = [ChipCode(0x1B), ChipCode(0x1C)];
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Offer {
     pub chip: FolderChip,
-    pub marks: u8,
+    pub marks: super::builder::Marks,
     pub listed: bool,
     pub shades: bool,
 }
@@ -141,7 +142,7 @@ pub struct Slot {
     /// (`custom.attach_to_last_pick`: EXE5's capsules, the slot's +4's bits
     /// 0x3E), and that button's slot (its +5). B on the chip clears them and
     /// frees the button.
-    pub marks: u8,
+    pub marks: super::builder::Marks,
     pub attached: Option<u8>,
     /// A button: the chip it shows (EXE5's capsules, the chip its slot's +8
     /// points at), which the chip window shows and R describes.
@@ -455,7 +456,7 @@ impl Screen {
                 right: None,
                 state: SlotState::Selectable,
                 uses_left: 0,
-                marks: 0,
+                marks: Marks::empty(),
                 attached: None,
                 face: None,
             }; SLOTS],
@@ -544,7 +545,7 @@ impl Screen {
                 right,
                 state: SlotState::Selectable,
                 uses_left: 0,
-                marks: 0,
+                marks: Marks::empty(),
                 attached: None,
                 face: None,
             };
@@ -1353,10 +1354,10 @@ impl Screen {
     /// modifier bits, past the Regular chip's) into the hand, and the button
     /// is picked until B takes the chip back. False when the last pick
     /// isn't such a chip.
-    pub fn attach_to_last_pick(&mut self, button: u8, modifiers: u8, folder: &BattleFolder, view: &PlayerView) -> bool {
+    pub fn attach_to_last_pick(&mut self, button: u8, modifiers: super::builder::Marks, folder: &BattleFolder, view: &PlayerView) -> bool {
         let Some(last) = self.last_pick(folder, view).filter(|l| !l.attached) else { return false };
         let slot = &mut self.slots[last.slot as usize];
-        slot.marks |= modifiers & !super::builder::modifier_bits::REGULAR;
+        slot.marks.insert(modifiers - super::builder::Marks::REGULAR);
         slot.attached = Some(button);
         self.slots[button as usize].state = SlotState::Selected;
         true
@@ -1631,7 +1632,7 @@ impl Screen {
     /// comes off: the chip's marks go, and the button is selectable again.
     fn detach(&mut self, slot: u8) {
         if let Some(button) = self.slots[slot as usize].attached.take() {
-            self.slots[slot as usize].marks = 0;
+            self.slots[slot as usize].marks = Marks::empty();
             self.slots[button as usize].state = SlotState::Selectable;
         }
     }

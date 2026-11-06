@@ -90,7 +90,7 @@ fn scramble(b: &mut Battle, viewer: u8, rng: &mut SplitMix64) {
         h.ids[i] = Some(chip(rng));
         h.damage[i] = rng.below(400) as u16;
         h.attack_bonus[i] = rng.below(50) as u16;
-        h.modifiers[i] = rng.below(8) as u8;
+        h.modifiers[i] = nettai_battle::custom::builder::Marks::from_bits_retain(rng.below(8) as u8);
     }
     h.cursor = rng.below(5) as u8;
     let side = &mut b.custom.sides[them];

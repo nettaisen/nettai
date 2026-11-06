@@ -239,7 +239,7 @@ pub struct ChipUseRules {
     /// content file a set of marks by name (`{ pink = true }`: EXE5's
     /// 0x0800FFF6, its pink capsule's; none: none).
     #[serde(deserialize_with = "marks_by_name")]
-    pub mark_heals: u8,
+    pub mark_heals: crate::custom::builder::Marks,
     /// The opponent's NaviCust support Beat lets a dark chip go: EXE4's
     /// (0x0800C86C tests the record's flag 0x20) takes a Mega or Giga chip
     /// only if it isn't dark; EXE6's `sub_80106C0` and EXE5's take any.
@@ -1100,7 +1100,7 @@ pub const DAMAGE_WORD_NAMES: &[(u32, &str)] = &[(0x8000, "double")];
 /// The mark the engine gives a hand entry in every game: the folder's
 /// Regular chip. A game's rules declare their own (the chip-use section's
 /// `mark_bits`).
-pub const MARK_NAMES: &[(u32, &str)] = &[(crate::custom::builder::modifier_bits::REGULAR as u32, "regular")];
+pub const MARK_NAMES: &[(u32, &str)] = &[(crate::custom::builder::Marks::REGULAR.bits() as u32, "regular")];
 
 /// The bits of the named words a game's rules declare of their own
 /// (`NamedBits`), by name, in name order.
@@ -1210,9 +1210,9 @@ fn bits_of_set(set: nettai_content_api::NamedBits, members: &std::collections::B
 }
 
 /// A set of marks (`{ pink = true }`) as their bits.
-fn marks_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u8, D::Error> {
+fn marks_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result<crate::custom::builder::Marks, D::Error> {
     let members: ByName<bool> = Deserialize::deserialize(d)?;
-    bits_of_set(nettai_content_api::NamedBits::Mark, &members.0).map(|b| b as u8).map_err(serde::de::Error::custom)
+    bits_of_set(nettai_content_api::NamedBits::Mark, &members.0).map(|b| crate::custom::builder::Marks::from_bits_retain(b as u8)).map_err(serde::de::Error::custom)
 }
 
 /// A table of damage word flags by mark name as what each mark's bit adds.

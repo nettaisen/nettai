@@ -287,7 +287,7 @@ pub(crate) fn give(b: &mut Battle, side: u8, chips: &[ChipHandle]) {
         h.damage[i] = id.map_or(0, |c| b.content.chip(c).damage);
         h.attack_bonus[i] = 0;
         h.charge_bonus[i] = 0;
-        h.modifiers[i] = 0;
+        h.modifiers[i] = nettai_battle::custom::builder::Marks::empty();
         h.selection[i] = id.map(|c| FolderChip::new(c, b.content.chip(c).codes.first().copied().unwrap_or(nettai_battle::content::ChipCode(0))));
     }
 }

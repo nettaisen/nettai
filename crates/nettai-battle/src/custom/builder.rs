@@ -8,18 +8,33 @@ use crate::content::{ChipClass, ChipCode, ChipFlags, ChipModifier, Recipe};
 use crate::hand::ChipHand;
 use nettai_content_api::ChipHandle;
 
-/// The marks the builder leaves in a hand entry (`ChipHand::modifiers`).
-/// What a mark does at the chip's use is its game's to say (the chip-use
-/// rules' `mark_damage` and `mark_heals`), and a game's screen may mark a
-/// pick with others (`Pick::marks`: EXE5's capsules, EXE4's chip offered
-/// again).
-pub mod modifier_bits {
-    /// The chip is the folder's Regular chip.
-    pub const REGULAR: u8 = 0x01;
-    /// A paralyzing modifier chip folded in (EXE6's WhiCapsl).
-    pub const PARALYZE: u8 = 0x02;
-    /// An uninstalling modifier chip folded in (EXE6's Uninstll).
-    pub const UNINSTALL: u8 = 0x04;
+bitflags::bitflags! {
+    /// A hand entry's marks (`ChipHand::modifiers`, the original's modifier
+    /// flags): those the builder leaves, and those a game's screen marks a
+    /// pick with (`Pick::marks`: EXE5's capsules, EXE4's chip offered
+    /// again), which its chip-use rules declare (`chip_use.mark_bits`):
+    /// kept as they are. What a mark does at the chip's use is its game's to
+    /// say (the chip-use rules' `mark_damage` and `mark_heals`).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    pub struct Marks: u8 {
+        /// The chip is the folder's Regular chip.
+        const REGULAR = 0x01;
+        /// A paralyzing modifier chip folded in (EXE6's WhiCapsl).
+        const PARALYZE = 0x02;
+        /// An uninstalling modifier chip folded in (EXE6's Uninstll).
+        const UNINSTALL = 0x04;
+        const _ = !0;
+    }
+}
+
+/// As its byte, alone and in an array (`digest::hash_bits_slice`).
+impl std::hash::Hash for Marks {
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
+        self.bits().hash(h);
+    }
+    fn hash_slice<H: std::hash::Hasher>(data: &[Marks], h: &mut H) {
+        crate::digest::hash_bits_slice(data.iter().map(|w| w.bits().to_ne_bytes()), h);
+    }
 }
 
 /// Program Advances a player has formed this round (once each), by the
@@ -48,7 +63,7 @@ pub struct Pick {
     /// The marks the pick carries into the hand: what a button mixed into
     /// it (the slot's `marks`: EXE5's capsules) and its offer's own (EXE4's
     /// chip offered again, 0x0801F0B8).
-    pub marks: u8,
+    pub marks: Marks,
     /// Whether the hand's selection lists it: a chip dealt or offered, not
     /// one a picked button puts in the hand (EXE4's soul's, which
     /// 0x0801F11C leaves out, its chip of family 15) nor an offer that says
@@ -66,10 +81,10 @@ struct Entry {
     id: Option<ChipHandle>,
     damage: u16,
     bonus: u16,
-    modifiers: u8,
+    modifiers: Marks,
 }
 
-const EMPTY: Entry = Entry { id: None, damage: 0, bonus: 0, modifiers: 0 };
+const EMPTY: Entry = Entry { id: None, damage: 0, bonus: 0, modifiers: Marks::empty() };
 
 /// What the builder made.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -127,7 +142,7 @@ pub fn build(
             id: Some(p.chip.id),
             damage: damage(p.chip.id),
             bonus: 0,
-            modifiers: if p.regular { modifier_bits::REGULAR } else { 0 } | p.marks,
+            modifiers: if p.regular { Marks::REGULAR } else { Marks::empty() } | p.marks,
         };
     }
     let mut program_advance = None;
@@ -139,10 +154,10 @@ pub fn build(
             // it is the Regular chip if one of them was (EXE4's 0x0801F404
             // clears its flags: never).
             let modifiers = if rules.keeps_regular {
-                let regular = entries[start..start + len].iter().fold(0, |m, e| m | (e.modifiers & modifier_bits::REGULAR));
+                let regular = entries[start..start + len].iter().fold(Marks::empty(), |m, e| m | (e.modifiers & Marks::REGULAR));
                 entries[start].modifiers | regular
             } else {
-                0
+                Marks::empty()
             };
             entries[start] = Entry { id: Some(result), damage: damage(result), bonus: 0, modifiers };
             // The entries after the recipe move up behind it, up to and
@@ -274,13 +289,13 @@ fn fold_modifiers(entries: &mut [Entry; 6], library: &dyn Library) {
         }
         match m {
             ChipModifier::AttackPlus | ChipModifier::NaviPlus => entries[i - 1].bonus += entries[i].damage,
-            ChipModifier::Paralyze => entries[i - 1].modifiers |= modifier_bits::PARALYZE,
-            ChipModifier::Uninstall => entries[i - 1].modifiers |= modifier_bits::UNINSTALL,
+            ChipModifier::Paralyze => entries[i - 1].modifiers |= Marks::PARALYZE,
+            ChipModifier::Uninstall => entries[i - 1].modifiers |= Marks::UNINSTALL,
         }
         // (EXE4's 0x0801F17E: the modifier's Regular chip mark stays, on the
         // chip it folded into.)
         if library.layout().modifier_passes_regular {
-            entries[i - 1].modifiers |= entries[i].modifiers & modifier_bits::REGULAR;
+            entries[i - 1].modifiers.insert(entries[i].modifiers & Marks::REGULAR);
         }
         shift_up(entries, i, i + 1);
     }
@@ -387,7 +402,7 @@ mod tests {
     }
 
     fn pick(id: ChipId, code: u8) -> Pick {
-        Pick { chip: FolderChip::new(ChipHandle(id), ChipCode(code)), regular: false, marks: 0, listed: true, coded: true }
+        Pick { chip: FolderChip::new(ChipHandle(id), ChipCode(code)), regular: false, marks: Marks::empty(), listed: true, coded: true }
     }
 
     fn built(picks: &[Pick]) -> Built {
@@ -424,7 +439,7 @@ mod tests {
         // part stays past it, as in the game.
         assert_eq!(b.hand.ids, ids([0x140, NONE, CANNON, NONE, NONE, NONE]));
         assert_eq!(b.hand.damage[0], 300);
-        assert_eq!(b.hand.modifiers[0], modifier_bits::REGULAR);
+        assert_eq!(b.hand.modifiers[0], Marks::REGULAR);
         let picked = |code: u8| Some(FolderChip::new(ChipHandle(CANNON), ChipCode(code)));
         assert_eq!(b.hand.selection[..4], [picked(0), picked(1), picked(2), None]);
         assert_eq!(b.hand.turn, [1; 6]);
@@ -479,7 +494,7 @@ mod tests {
     fn white_capsule_and_uninstall() {
         let b = built(&[pick(CANNON, 0), pick(0xB8, 26), pick(CANNON, 1), pick(0xB9, 6), pick(DIMMING, 0)]);
         assert_eq!(b.hand.ids[..4], ids([CANNON, CANNON, DIMMING, NONE]));
-        assert_eq!(b.hand.modifiers[..2], [modifier_bits::PARALYZE, modifier_bits::UNINSTALL]);
+        assert_eq!(b.hand.modifiers[..2], [Marks::PARALYZE, Marks::UNINSTALL]);
         // Uninstll doesn't fold into a dimming.
         let b = built(&[pick(DIMMING, 0), pick(0xB9, 6)]);
         assert_eq!(b.hand.ids[..3], ids([DIMMING, 0xB9, NONE]));

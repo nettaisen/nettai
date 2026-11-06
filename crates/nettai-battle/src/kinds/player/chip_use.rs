@@ -9,6 +9,7 @@ use crate::battle::Battle;
 use crate::collision::StatusFlags;
 use crate::field::{PanelFlags, PanelType};
 use crate::content::{ChipData, ChipFamily, ChipFlags, ChipTraits, Content};
+use crate::custom::builder::Marks;
 use crate::object::{ObjectRef, PanelPos, Vec3};
 use nettai_content_api::{ChipHandle, WeaponHandle};
 
@@ -126,7 +127,7 @@ struct HandEntry {
     extra: u16,
     /// The entry's marks (`ChipHand::modifiers`), which the game's chip-use
     /// rules read (`mark_damage`, `mark_heals`).
-    modifiers: u8,
+    modifiers: crate::custom::builder::Marks,
     /// The type of panel the bonus came from, which the use turns Normal
     /// (the navi's `panel_bonus`: EXE5's sea, 0x0800D0A6's bonus kind 4).
     spends: Option<PanelType>,
@@ -141,7 +142,7 @@ fn hand_entry(b: &Battle, r: ObjectRef, charge: u8) -> HandEntry {
     if navi_record(b, r).actor_type != ActorType::Player {
         let requests = ai(b, r).requests & (Requests::CHIP | Requests::CHARGED_CHIP);
         // (The requests' low byte as the marks: what the caller left in r4.)
-        return HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: requests.bits() as u8, spends: None };
+        return HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: Marks::from_bits_retain(requests.bits() as u8), spends: None };
     }
     let hand = &b.hands[o.alliance as usize];
     let i = hand.cursor as usize;
@@ -267,7 +268,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     // the game's chip-use rules (EXE4's use reads none of them).
     let marks = b.game_rules().chip_use;
     for (bit, &add) in marks.mark_damage.iter().enumerate() {
-        if e.modifiers & (1 << bit) != 0 {
+        if e.modifiers.contains(Marks::from_bits_retain(1 << bit)) {
             damage |= add;
         }
     }
@@ -276,7 +277,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
         damage |= damage_flags::ERASE_CROSS;
     }
     ai_mut(b, r).attack.damage = damage;
-    heal_on_use(b, r, e.chip, e.modifiers & marks.mark_heals != 0);
+    heal_on_use(b, r, e.chip, e.modifiers.intersects(marks.mark_heals));
     // (The original adds one to the side's count 6 for a navi chip here,
     // `sub_800AB46(side, 6, 1)`; the engine keeps no such count: no game
     // reads it in a netbattle. docs/design/exe5-map.md §6.1.)
@@ -401,11 +402,11 @@ fn rules_substitute(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> O
     let chip = Some(sub);
     // sub_800EF02: anything but a player keeps the chip it carries.
     if navi_record(b, r).actor_type != ActorType::Player {
-        return Some(HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: 0, spends: None });
+        return Some(HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: Marks::empty(), spends: None });
     }
     let damage = crate::hand::chip_damage(b, chip, b.objects.get(r).alliance);
     let (extra, spends) = chip_bonus(b, r, chip, 0);
-    Some(HandEntry { chip, damage, extra, modifiers: 0, spends })
+    Some(HandEntry { chip, damage, extra, modifiers: Marks::empty(), spends })
 }
 
 /// `sub_800EE26`: the own-gauges mode's special chip (the side
@@ -414,7 +415,7 @@ fn rules_substitute(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> O
 fn slot_in_entry(b: &mut Battle, r: ObjectRef) -> HandEntry {
     let side = b.objects.get(r).alliance as usize;
     if navi_record(b, r).actor_type != ActorType::Player {
-        return HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: 0, spends: None };
+        return HandEntry { chip: carried_chip(b, r), damage: 0, extra: 0, modifiers: Marks::empty(), spends: None };
     }
     // The zeroed field is the zeroed chip.
     let chip = b.sides[side].special_chip.or_else(|| b.zeroed_chip());
@@ -431,7 +432,7 @@ fn slot_in_entry(b: &mut Battle, r: ObjectRef) -> HandEntry {
     if cd.flags.contains(ChipFlags::NAVI) {
         extra = extra.wrapping_add(std::mem::take(&mut s.special_navi_bonus));
     }
-    HandEntry { chip, damage, extra, modifiers: 0, spends }
+    HandEntry { chip, damage, extra, modifiers: Marks::empty(), spends }
 }
 
 /// `sub_800EE98`: the special chip costs gauge by its class (0x1500

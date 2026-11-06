@@ -193,11 +193,11 @@ fn exe5_a_capsule_leaves_with_its_pick() {
     let s = screen(&b);
     assert_eq!((s.slots[0].attached, s.slots[1].attached), (Some(8), Some(9)));
     let marks = s.slots[1].marks;
-    assert_ne!(marks, 0);
+    assert!(!marks.is_empty());
     choose(&mut b, ScreenChoice::Unpick(0));
     let s = screen(&b);
     assert_eq!(s.selection(), [1]);
-    assert_eq!((s.slots[0].attached, s.slots[0].marks), (None, 0), "the first capsule left with its Sword");
+    assert_eq!((s.slots[0].attached, s.slots[0].marks.is_empty()), (None, true), "the first capsule left with its Sword");
     assert_eq!((s.slots[1].attached, s.slots[1].marks), (Some(9), marks), "the second stays in its Sword");
     tick(&mut b, Some(ScreenChoice::Ok));
     let (hand, _) = b.custom.sides[0].built.clone().expect("OK built the hand");

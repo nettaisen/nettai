@@ -923,7 +923,7 @@ impl CoreApi for Battle {
             return Err(ApiError::Other(format!("custom.offer: a slot is 0 to 11, not {slot}")));
         };
         let code = crate::content::ChipCode(code.unwrap_or(crate::custom::screen::INVALID_CODE.0));
-        *place = Some(crate::custom::screen::Offer { chip: crate::custom::FolderChip { id: chip, code }, marks, listed, shades });
+        *place = Some(crate::custom::screen::Offer { chip: crate::custom::FolderChip { id: chip, code }, marks: crate::custom::builder::Marks::from_bits_retain(marks), listed, shades });
         Ok(())
     }
 
@@ -1129,7 +1129,7 @@ impl CoreApi for Battle {
 
     fn custom_attach_to_last_pick(&mut self, side: u8, button: &str, modifiers: u8) -> ApiResult<bool> {
         let slot = self.own_button_slot(side, button, "custom.attach_to_last_pick")?;
-        self.with_custom_screen(side, |screen, view, folder, _, _| screen.attach_to_last_pick(slot, modifiers, folder, view))
+        self.with_custom_screen(side, |screen, view, folder, _, _| screen.attach_to_last_pick(slot, crate::custom::builder::Marks::from_bits_retain(modifiers), folder, view))
             .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
     }
 
@@ -1314,7 +1314,7 @@ impl CoreApi for Battle {
             HandField::AttackBonus => int(h.attack_bonus[i] as i64),
             HandField::ChargeBonus => int(h.charge_bonus[i] as i64),
             HandField::Turn => int(h.turn[i] as i64),
-            HandField::Marks => int(h.modifiers[i] as i64),
+            HandField::Marks => int(h.modifiers[i].bits() as i64),
         }
     }
 
@@ -1338,7 +1338,7 @@ impl CoreApi for Battle {
             (HandField::AttackBonus, FieldValue::U16(x)) => h.attack_bonus[i] = x,
             (HandField::ChargeBonus, FieldValue::U16(x)) => h.charge_bonus[i] = x,
             (HandField::Turn, FieldValue::U8(x)) => h.turn[i] = x,
-            (HandField::Marks, FieldValue::U8(x)) => h.modifiers[i] = x,
+            (HandField::Marks, FieldValue::U8(x)) => h.modifiers[i] = crate::custom::builder::Marks::from_bits_retain(x),
             (f, v) => unreachable!("{f:?} stored as {v:?}"),
         }
         Ok(())

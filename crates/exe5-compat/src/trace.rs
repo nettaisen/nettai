@@ -1696,7 +1696,7 @@ fn engine_hand(b: &Battle, compat: &Compat, h: &nettai_battle::hand::ChipHand) -
         charge_bonus: h.charge_bonus,
         selection: h.selection.map(|c| c.map(|c| (chip(c.id), c.code.0))),
         turn: h.turn,
-        modifiers: h.modifiers,
+        modifiers: h.modifiers.map(|m| m.bits()),
     }
 }
 

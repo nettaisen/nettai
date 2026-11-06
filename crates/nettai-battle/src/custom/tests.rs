@@ -3,6 +3,7 @@
 
 use super::layer::{HiddenStage, Layer, Presented, Sub};
 use super::library::testing::{EVERY_CODE, TestLibrary, chip};
+use super::builder::Marks;
 use super::screen::{OK_SLOT, SPECIAL_SLOT};
 use super::*;
 use crate::input::{PlayerTick, ScreenChoice};
@@ -917,26 +918,26 @@ fn a_button_attached_to_a_pick_marks_it_into_the_hand() {
     p.wait(10);
     p.step(0);
     // Nothing picked: nothing to attach to.
-    assert!(!on_screen(&mut p, |s, f, v| s.attach_to_last_pick(8, 0x04, f, v)));
+    assert!(!on_screen(&mut p, |s, f, v| s.attach_to_last_pick(8, Marks::from_bits_retain(0x04), f, v)));
     p.press(keys::A);
-    assert!(on_screen(&mut p, |s, f, v| s.attach_to_last_pick(8, 0x04, f, v)));
+    assert!(on_screen(&mut p, |s, f, v| s.attach_to_last_pick(8, Marks::from_bits_retain(0x04), f, v)));
     let s = p.screen();
-    assert_eq!((s.slots[0].marks, s.slots[0].attached, s.slots[8].state), (0x04, Some(8), SlotState::Selected));
+    assert_eq!((s.slots[0].marks.bits(), s.slots[0].attached, s.slots[8].state), (0x04, Some(8), SlotState::Selected));
     assert!(on_screen(&mut p, |s, f, v| s.last_pick(f, v)).is_some_and(|l| l.attached));
     // A second button on the same chip is refused.
-    assert!(!on_screen(&mut p, |s, f, v| s.attach_to_last_pick(9, 0x10, f, v)));
-    assert_eq!(p.screen().slots[0].marks, 0x04);
+    assert!(!on_screen(&mut p, |s, f, v| s.attach_to_last_pick(9, Marks::from_bits_retain(0x10), f, v)));
+    assert_eq!(p.screen().slots[0].marks.bits(), 0x04);
     // B: the chip is taken back, its marks with it, and the button is free.
     p.press(keys::B);
     let s = p.screen();
-    assert_eq!((s.selected, s.slots[0].marks, s.slots[0].attached, s.slots[8].state), (0, 0, None, SlotState::Selectable));
+    assert_eq!((s.selected, s.slots[0].marks.bits(), s.slots[0].attached, s.slots[8].state), (0, 0, None, SlotState::Selectable));
     // Picked and attached again (the Regular chip's bit is never a
     // button's), then OK: the hand's modifiers carry the bits.
     p.press(keys::A);
-    assert!(on_screen(&mut p, |s, f, v| s.attach_to_last_pick(8, 0x04 | 0x01, f, v)));
-    assert_eq!(p.screen().slots[0].marks, 0x04);
+    assert!(on_screen(&mut p, |s, f, v| s.attach_to_last_pick(8, Marks::from_bits_retain(0x04 | 0x01), f, v)));
+    assert_eq!(p.screen().slots[0].marks.bits(), 0x04);
     let hand = confirm(&mut p);
-    assert_eq!((hand.ids[0], hand.modifiers[0]), (Some(ChipHandle(SHOT)), 0x04));
+    assert_eq!((hand.ids[0], hand.modifiers[0].bits()), (Some(ChipHandle(SHOT)), 0x04));
 }
 
 /// `custom.hold_last_pick` (EXE5's Arm Change): the last pick leaves the
@@ -1431,17 +1432,17 @@ fn a_pick_anywhere_is_taken_back_and_the_later_move_up() {
     p.step(0);
     choose(&mut p, ScreenChoice::Pick(0));
     choose(&mut p, ScreenChoice::Pick(1));
-    assert!(on_screen(&mut p, |s, f, v| s.attach_to_last_pick(8, 0x04, f, v)));
+    assert!(on_screen(&mut p, |s, f, v| s.attach_to_last_pick(8, Marks::from_bits_retain(0x04), f, v)));
     choose(&mut p, ScreenChoice::Pick(2));
-    assert!(on_screen(&mut p, |s, f, v| s.attach_to_last_pick(9, 0x10, f, v)));
+    assert!(on_screen(&mut p, |s, f, v| s.attach_to_last_pick(9, Marks::from_bits_retain(0x10), f, v)));
     assert_eq!(p.screen().selection(), [0, 1, 2]);
     assert_eq!(p.screen().slots[3].state, SlotState::Unavailable, "WAVE A goes with SHOT A, B and C by none");
     choose(&mut p, ScreenChoice::Unpick(1));
     let s = p.screen();
     assert_eq!(s.selection(), [0, 2]);
     assert_eq!(column_codes(&p), [Some(0), Some(2), None, None, None]);
-    assert_eq!((s.slots[1].state, s.slots[1].marks, s.slots[1].attached, s.slots[8].state), (SlotState::Selectable, 0, None, SlotState::Selectable));
-    assert_eq!((s.slots[2].marks, s.slots[2].attached, s.slots[9].state), (0x10, Some(9), SlotState::Selected));
+    assert_eq!((s.slots[1].state, s.slots[1].marks.bits(), s.slots[1].attached, s.slots[8].state), (SlotState::Selectable, 0, None, SlotState::Selectable));
+    assert_eq!((s.slots[2].marks.bits(), s.slots[2].attached, s.slots[9].state), (0x10, Some(9), SlotState::Selected));
     assert_eq!(p.sounds(), [look::ScreenSound::Back]);
     // The first: SHOT C alone is left, which MEGA C goes with and WAVE A
     // doesn't.
@@ -1456,7 +1457,7 @@ fn a_pick_anywhere_is_taken_back_and_the_later_move_up() {
     choose(&mut p, ScreenChoice::Pick(4));
     let hand = confirm(&mut p);
     assert_eq!(hand.ids[..3], [Some(ChipHandle(SHOT)), Some(ChipHandle(MEGA)), None]);
-    assert_eq!(hand.modifiers[..2], [0x10, 0]);
+    assert_eq!(hand.modifiers[..2].iter().map(|m| m.bits()).collect::<Vec<_>>(), [0x10, 0]);
 }
 
 /// `Unpick` of the last pick is B: the same screen and sounds on every
@@ -1473,7 +1474,7 @@ fn unpicking_the_last_pick_is_b() {
         ("a chip with a button", |p| {
             choose(p, ScreenChoice::Pick(0));
             choose(p, ScreenChoice::Pick(1));
-            assert!(on_screen(p, |s, f, v| s.attach_to_last_pick(8, 0x04, f, v)));
+            assert!(on_screen(p, |s, f, v| s.attach_to_last_pick(8, Marks::from_bits_retain(0x04), f, v)));
         }),
         ("a button in a chip's place", |p| {
             choose(p, ScreenChoice::Pick(1));

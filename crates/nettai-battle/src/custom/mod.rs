@@ -458,7 +458,7 @@ impl Side {
                 // (What the rules' offer says of its pick: its marks, and
                 // whether it is listed.)
                 let offer = screen.offers[slot as usize].filter(|_| matches!(kind, SlotKind::Offered(_)));
-                let marks = screen.slots[slot as usize].marks | offer.map_or(0, |o| o.marks);
+                let marks = screen.slots[slot as usize].marks | offer.map_or(builder::Marks::empty(), |o| o.marks);
                 let button = matches!(kind, SlotKind::Button { .. });
                 let listed = !button && offer.is_none_or(|o| o.listed);
                 Some(Pick { chip: screen::checked(chip, &view), regular, marks, listed, coded: !button })

@@ -599,7 +599,7 @@ pub fn chip_hand(b: &[u8], ids: &Ids) -> ChipHand {
         charge_bonus: u16s(0x26),
         selection: u16s(0x32).map(|v| (v != 0xFFFF).then(|| ids.folder_chip(v))),
         turn: b[0x3E..0x44].try_into().unwrap(),
-        modifiers: b[0x44..0x4A].try_into().unwrap(),
+        modifiers: std::array::from_fn(|i| nettai_battle::custom::builder::Marks::from_bits_retain(b[0x44 + i])),
     }
 }
 
@@ -620,7 +620,7 @@ pub fn chip_hand_bytes(h: &ChipHand, ids: &Ids) -> [u8; 0x50] {
     put(0x26, &h.charge_bonus);
     put(0x32, &selection);
     b[0x3E..0x44].copy_from_slice(&h.turn);
-    b[0x44..0x4A].copy_from_slice(&h.modifiers);
+    b[0x44..0x4A].copy_from_slice(&h.modifiers.map(|m| m.bits()));
     b
 }
 

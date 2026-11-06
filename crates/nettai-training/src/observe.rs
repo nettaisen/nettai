@@ -912,7 +912,7 @@ fn picks(b: &Battle, side: u8, screen: &Screen, extra: Option<u8>) -> Vec<Pick> 
             let kind = screen.slots[slot as usize].kind;
             let chip = screen.chip_in(slot, folder)?;
             let offer = screen.offers[slot as usize].filter(|_| matches!(kind, SlotKind::Offered(_)));
-            let marks = screen.slots[slot as usize].marks | offer.map_or(0, |o| o.marks);
+            let marks = screen.slots[slot as usize].marks | offer.map_or(nettai_battle::custom::builder::Marks::empty(), |o| o.marks);
             Some(Pick { chip, regular: matches!(kind, SlotKind::Chip { regular: true, .. }), marks, listed: offer.is_none_or(|o| o.listed), coded: true })
         })
         .collect()
@@ -945,8 +945,9 @@ fn encode_chips(v: &View, extra: &Extra, out: &mut Obs) {
         chip_facts(content, v.names, id, code, row, ids, &mut unprinted);
         row[chips::in_hand] = (hand.damage[i] + hand.attack_bonus[i]) as f32 / 400.0;
         row[chips::in_hand + 1] = hand.attack_bonus[i] as f32 / 100.0;
-        for bit in 0..3 {
-            row[chips::in_hand + 2 + bit] = flag(hand.modifiers[i] & (1 << bit) != 0);
+        use nettai_battle::custom::builder::Marks;
+        for (bit, mark) in [Marks::REGULAR, Marks::PARALYZE, Marks::UNINSTALL].into_iter().enumerate() {
+            row[chips::in_hand + 2 + bit] = flag(hand.modifiers[i].contains(mark));
         }
         put_ids(ids, 0, v.names.chip(id));
     }
@@ -988,7 +989,7 @@ fn encode_chips(v: &View, extra: &Extra, out: &mut Obs) {
             row[at + 9] = flag(cursor as usize == slot);
             row[at + 10] = screen.selection().iter().position(|&p| p as usize == slot).map_or(0.0, |p| (p + 1) as f32 / 5.0);
             row[at + 11] = s.uses_left as f32 / 3.0;
-            row[at + 12] = flag(s.marks != 0);
+            row[at + 12] = flag(!s.marks.is_empty());
             row[at + 13] = flag(s.attached.is_some());
             row[at + 14] = flag(matches!(s.kind, SlotKind::Chip { regular: true, .. }));
             row[at + 15] = flag(screen.offers[slot].is_some_and(|o| o.shades));

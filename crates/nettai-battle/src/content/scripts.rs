@@ -706,7 +706,7 @@ local step = { grounded = {}, floor_free = {} }
         );
         assert_eq!((r.chip_use.leave_on_use, r.chip_use.anti_navi_sparkle.z), (true, 16));
         // The game's named bits: its marks' damage and heal, its damage word's flags, its drag.
-        assert_eq!((r.chip_use.mark_damage, r.chip_use.mark_heals), ([0, 0x4000, 0x2000, 0, 0, 0, 0, 0], 0x10));
+        assert_eq!((r.chip_use.mark_damage, r.chip_use.mark_heals.bits()), ([0, 0x4000, 0x2000, 0, 0, 0, 0, 0], 0x10));
         let flags: Vec<_> = r.effects.damage_word.flags.iter().map(|f| (f.bit, f.hit_modifier, f.bug)).collect();
         assert_eq!(flags, vec![(0x4000, Some(0), None), (0x800, None, Some(0x1118))]);
         assert_eq!(r.push_reading.drag_bit, 0x40);
