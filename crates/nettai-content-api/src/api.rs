@@ -746,10 +746,11 @@ named_fields! {
     }
 }
 
-/// A single choice content names (a lifecycle's, a fade's, a pad's...): its
-/// names, each one of the choices, and their order (`ALL`, `NAMES`), which
-/// is the byte the engine keeps where the choice is a number.
-macro_rules! named_flags {
+/// An enum whose variants content knows by name: a single choice (a pad's,
+/// a fade's, an attack kind's...) or the members of a set (collision
+/// members, hit bits, panel flags). Its names, and their order (`ALL`,
+/// `NAMES`), which is the byte the engine keeps where a choice is a number.
+macro_rules! named_enum {
     ($(#[$m:meta])* pub enum $name:ident { $($(#[$vm:meta])* $var:ident = $str:literal,)* }) => {
         $(#[$m])*
         #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -810,7 +811,7 @@ named_fields! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// A member of a collision type (`new.collision`'s `flags`): what an
     /// object is, or what it reacts to, by the engine's names of its bits
     /// (nettai-battle's `collision::types`). The side-relative members are
@@ -857,7 +858,7 @@ named_flags! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// What a hit leaves in a collision's hit results besides the hitters'
     /// collision types (`Collision:hit_any` names them with the members).
     pub enum HitBit {
@@ -871,7 +872,7 @@ named_flags! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// The engine's names of a panel's flags (nettai-battle's
     /// `field::pflags`): besides them a panel condition names its game's
     /// type flags (its rules' `panels.type_flags`) and the collision types'
@@ -1037,7 +1038,7 @@ named_fields! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// Which of a navi's button records: the normal one, or the one kept
     /// while the battle is dimmed.
     pub enum Pad {
@@ -1048,7 +1049,7 @@ named_flags! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// The slot an action starts in (AIAttackVars+0x1C, `object_setAttack0..5`;
     /// the byte is its place here), which its end reads (`sub_801171C`).
     pub enum AttackKind {
@@ -1081,7 +1082,7 @@ impl AttackKind {
     }
 }
 
-named_flags! {
+named_enum! {
     /// A step's direction (`sub_800FA54`'s answer, `sub_80116AE`'s code:
     /// the byte is its place here plus 1, 0 none).
     pub enum StepDirection {
@@ -1117,7 +1118,7 @@ pub const CHARGE_LEVELS: [&str; 3] = ["none", "charging", "full"];
 /// What a navi charges with (AIData+9, by its byte): none, A, B.
 pub const CHARGE_SOURCES: [&str; 3] = ["none", "a", "b"];
 
-named_flags! {
+named_enum! {
     /// `sub_801156A`'s mode (the byte is its place here): what an object
     /// with HP does with this tick's damage.
     pub enum TakeDamageMode {
@@ -1130,7 +1131,7 @@ named_flags! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// What `sub_801156A` answers: its HP ran out (-1), it was hit in the
     /// `keeps_hp` mode (1), or neither (0).
     pub enum DamageTaken {
@@ -1150,7 +1151,7 @@ impl DamageTaken {
     }
 }
 
-named_flags! {
+named_enum! {
     /// The field-object registry's class an obstacle takes (the byte is its
     /// place here): `setFieldBattleObject_800F614`'s.
     pub enum ObstacleClass {
@@ -1161,7 +1162,7 @@ named_flags! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// A screen palette flash's variant (Param1, the byte its place here).
     pub enum PaletteFlashVariant {
         /// 0 (`sub_80E10C0`): white or red over one palette layer.
@@ -1171,7 +1172,7 @@ named_flags! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// The battle's counts of fight ticks (the rules' `flow.fight_cycles`,
     /// in its order).
     pub enum FightCycle {
@@ -1180,7 +1181,7 @@ named_flags! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// The bonuses a side stores for its special chip (`sub_8010488`, the
     /// byte its place here).
     pub enum SpecialBonus {
@@ -1245,7 +1246,7 @@ impl HudField {
     }
 }
 
-named_flags! {
+named_enum! {
     /// A screen fade content starts (`SetScreenFade`'s modes).
     pub enum ScreenFade {
         /// 0x44: the transformation sequencer's fade out (EXE5's dark
@@ -1304,7 +1305,7 @@ pub struct CustomPlayer {
     pub member: Option<u8>,
 }
 
-named_flags! {
+named_enum! {
     /// A side's special in progress (the own-gauges mode;
     /// `sub_802E4B8`): the SELECT special, or the rules' takeover of the
     /// side's navi (EXE6's Cross special).
@@ -1315,7 +1316,7 @@ named_flags! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// A step of a dimming controller, run by the dimming service
     /// (`dimming.rs`): a dimming chip's controller calls them from its
     /// update, in the order its routine does.
@@ -1371,7 +1372,7 @@ named_fields! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// A shared entry of an obstacle's action table (the obstacle
     /// framework, `kinds/obstacle.rs`): what an obstacle kind's table runs
     /// for the actions that aren't its own.
@@ -1394,7 +1395,7 @@ named_flags! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// What an obstacle's `obstacle.react` does with a body's, another
     /// obstacle's or a breaking hit's touch (the dispatchers differ there).
     pub enum ObstacleCrush {
@@ -1418,7 +1419,7 @@ named_flags! {
 }
 
 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
-named_flags! {
+named_enum! {
     /// When `obstacle.react` holds an obstacle still while dimmed.
     pub enum ObstacleHold {
         /// `sub_801B394` and the others: once it has appeared (its
@@ -1429,7 +1430,7 @@ named_flags! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// What a pushing hit (hit modifier 0x40) does in `obstacle.take_hits`.
     pub enum ObstaclePush {
         /// `sub_801AD9E`: pushes it, and its damage is forgotten.
@@ -1444,7 +1445,7 @@ named_flags! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// How an obstacle is leaving the field (its collision `f2` word).
     pub enum ObstacleRemoval {
         /// Broken: its HP ran out, its time is up, the battle is over.
@@ -1483,7 +1484,7 @@ named_fields! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// `sub_800F8CE`: how a removed obstacle's blink-out is going.
     pub enum BlinkOut {
         /// Not blinking out (removed some other way).
@@ -1493,7 +1494,7 @@ named_flags! {
     }
 }
 
-named_flags! {
+named_enum! {
     /// What a chip asks of an obstacle (`sub_800F884`, `sub_800F898`;
     /// EXE4's 0x0800B44C, ColdMan's: its flag2 0x2000 or
     /// 0x4000, EXE6's 0x1000 or 0x2000).
