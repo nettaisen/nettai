@@ -274,7 +274,7 @@ pub(crate) fn refresh_form_flags(b: &mut Battle, r: ObjectRef) {
 /// invulnerable for good and the controllers' state cleared
 /// (`sub_8014650`: `controller_fresh`, which EXE6's rules read).
 fn apply_effects(b: &mut Battle, r: ObjectRef, effects: FormEffects) {
-    if effects.has(FormEffects::CLEAR_STATUSES) {
+    if effects.contains(FormEffects::CLEAR_STATUSES) {
         clear_statuses_after_first_turn(b, r);
     }
     let mut flags1 = StatusFlags::empty();
@@ -284,24 +284,24 @@ fn apply_effects(b: &mut Battle, r: ObjectRef, effects: FormEffects) {
         (FormEffects::FLOAT_SHOES, StatusFlags::FLOATSHOE),
         (FormEffects::UNTOUCHABLE, StatusFlags::UNTOUCHABLE),
     ] {
-        if effects.has(effect) {
+        if effects.contains(effect) {
             flags1 |= flag;
         }
     }
     if !flags1.is_empty() {
         set_flag1(b, r, flags1);
     }
-    if effects.has(FormEffects::FLOATING_BODY) {
+    if effects.contains(FormEffects::FLOATING_BODY) {
         let hm = body_hit_modifier(b);
         super::reset_body_types(b, r, true, hm);
     }
-    if effects.has(FormEffects::TARGET_MARKER) {
+    if effects.contains(FormEffects::TARGET_MARKER) {
         spawn_target_marker(b, r);
     }
-    if effects.has(FormEffects::INVULNERABLE) {
+    if effects.contains(FormEffects::INVULNERABLE) {
         super::set_invulnerable(b, r, 0xFFFF);
     }
-    if effects.has(FormEffects::CONTROLLER_RESTART) {
+    if effects.contains(FormEffects::CONTROLLER_RESTART) {
         super::ai_mut(b, r).controller_fresh = true;
     }
 }

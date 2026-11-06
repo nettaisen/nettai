@@ -1159,7 +1159,7 @@ pub fn chip_info(content: &Content, chip: ChipHandle, rank: LibraryRank) -> Chip
         family_name: content.rules().chip_families.name(record.family).map(str::to_string),
         element: record.element,
         class: record.class,
-        dark: record.flags.has(ChipFlags::DARK),
+        dark: record.flags.contains(ChipFlags::DARK),
         mb: record.mb,
         attack: record.damage,
         codes: record.codes.clone(),

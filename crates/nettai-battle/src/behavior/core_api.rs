@@ -439,7 +439,7 @@ impl CoreApi for Battle {
 
     fn form_trait(&self, o: ObjectRef, name: &str) -> ApiResult<bool> {
         let bit = crate::content::FormTraits::named(name).ok_or_else(|| ApiError::Other(format!("no form trait is named {name:?}")))?;
-        Ok(kinds::player::form_of(self, o).traits.has(bit))
+        Ok(kinds::player::form_of(self, o).traits.contains(bit))
     }
 
     fn add_hit_mod(&mut self, o: ObjectRef, bits: u8) {
@@ -468,10 +468,10 @@ impl CoreApi for Battle {
             // Another object's chip word: zeroed, the zeroed chip.
             match o.chip.or_else(|| self.zeroed_chip()) {
                 Some(h) => self.content.chip(h).flags,
-                None => ChipFlags(0),
+                None => ChipFlags::empty(),
             }
         };
-        flags.0 & ChipFlags::HAS_DAMAGE != 0
+        flags.contains(ChipFlags::HAS_DAMAGE)
     }
 
     fn battle_info(&self, f: BattleInfo) -> Value {
@@ -2781,7 +2781,7 @@ impl CoreApi for Battle {
             CollisionField::PanelX => c.panel.x as i64,
             CollisionField::PanelY => c.panel.y as i64,
             CollisionField::Element => c.element as i64,
-            CollisionField::SecondaryElement => c.secondary_element as i64,
+            CollisionField::SecondaryElement => c.secondary_element.bits() as i64,
             CollisionField::Bug => (c.bugs & 0xFF) as i64,
             CollisionField::BugArg => (c.bugs >> 8) as i64,
             CollisionField::InflictedBug => (c.acc.inflicted_bugs & 0xFF) as i64,
@@ -2800,7 +2800,7 @@ impl CoreApi for Battle {
                 (_, d) => d as i64,
             },
             CollisionField::GuardDirs => c.guard_dirs as i64,
-            CollisionField::DamageElements => c.acc.damage_elements as i64,
+            CollisionField::DamageElements => c.acc.damage_elements.bits() as i64,
             CollisionField::HitModFinal => c.hit_mod_final as i64,
             // BARRIER_STATES
             CollisionField::Barrier => match c.barrier {
@@ -2932,7 +2932,7 @@ impl CoreApi for Battle {
             CollisionField::PanelX => c.panel.x = x as u8,
             CollisionField::PanelY => c.panel.y = x as u8,
             CollisionField::Element => c.element = x as u8,
-            CollisionField::SecondaryElement => c.secondary_element = x as u8,
+            CollisionField::SecondaryElement => c.secondary_element = crate::content::SecondaryElements::from_bits_retain(x as u8),
             CollisionField::Bug => c.bugs = c.bugs & 0xFF00 | x as u16,
             CollisionField::BugArg => c.bugs = c.bugs & 0xFF | (x as u16) << 8,
             CollisionField::InflictedBug => c.acc.inflicted_bugs = c.acc.inflicted_bugs & 0xFF00 | x as u16,

@@ -181,7 +181,7 @@ mod tests {
 
     /// The recorded folders' Giga chips (the rest are standard).
     fn library() -> TestLibrary {
-        let giga = || chip(ChipClass::Giga, EVERY_CODE, 0, 0);
+        let giga = || chip(ChipClass::Giga, EVERY_CODE, crate::content::ChipFlags::empty(), 0);
         TestLibrary::new([0x130, 0x132, 0x133, 0x134, 0x135, 0x136].map(|id| (id, giga())).to_vec(), Vec::new())
     }
 

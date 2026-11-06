@@ -110,7 +110,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let alliance = b.objects.get(r).alliance;
     let side = alliance as usize;
     // Shown on its owner's console only.
-    let shown = b.navi(side).changes_form() && b.form(side).traits.has(crate::content::FormTraits::SHOWS_TARGET_MARKER);
+    let shown = b.navi(side).changes_form() && b.form(side).traits.contains(crate::content::FormTraits::SHOWS_TARGET_MARKER);
     b.objects.get_mut(r).set_visible(shown);
     b.hide_from_other_side(r);
     if b.is_dimmed() {

@@ -162,7 +162,7 @@ impl Battle {
     pub(crate) fn register_dimming(&mut self, side: u8, chip: Option<ChipHandle>, controller: ObjectRef, user: ObjectRef) {
         // (The original's test is the chip's place in its table: the chips
         // past the Program Advances.)
-        let no_cut_in = chip.is_some_and(|h| self.content.chip(h).traits.has(ChipTraits::NO_CUT_IN));
+        let no_cut_in = chip.is_some_and(|h| self.content.chip(h).traits.contains(ChipTraits::NO_CUT_IN));
         self.start_dimming(side, no_cut_in, Some(controller), user);
     }
 
@@ -331,7 +331,7 @@ fn start_telop(b: &mut Battle, r: ObjectRef, side: u8, hidden: TelopHidden) {
     let named = o.telop_chip;
     // A controller's zeroed chip field names the zeroed chip.
     let chip = named.and_then(|c| c.chip.or_else(|| b.zeroed_chip()));
-    let shows_damage = chip.is_some_and(|c| b.content.chip(c).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0);
+    let shows_damage = chip.is_some_and(|c| b.content.chip(c).flags.contains(crate::content::ChipFlags::HAS_DAMAGE));
     let (damage, bonus) = match named {
         Some(c) if shows_damage => (c.damage.unwrap_or(o.damage), c.bonus),
         _ => (0, 0),

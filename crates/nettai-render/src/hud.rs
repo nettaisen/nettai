@@ -1547,7 +1547,7 @@ fn name_glyphs(b: &Battle, hud: &Hud, name: &str, chip: ChipHandle, problems: &m
 
 /// Whether a chip's damage shows after its name.
 fn shows_damage(b: &Battle, chip: ChipHandle) -> bool {
-    b.content.chip(chip).flags.0 & ChipFlags::HAS_DAMAGE != 0
+    b.content.chip(chip).flags.contains(ChipFlags::HAS_DAMAGE)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2180,7 +2180,7 @@ fn own_icon_parts<'a>(
     };
     let hand = &b.hands[side as usize];
     let mut chips: Vec<ChipHandle> = hand.ids.iter().skip(hand.cursor as usize).map_while(|c| *c).collect();
-    if chips.first().is_some_and(|&c| b.content.chip(c).traits.has(nettai_battle::content::ChipTraits::NO_ICON_WHEN_NEXT)) {
+    if chips.first().is_some_and(|&c| b.content.chip(c).traits.contains(nettai_battle::content::ChipTraits::NO_ICON_WHEN_NEXT)) {
         chips.remove(0);
     }
     let count = chips.len();

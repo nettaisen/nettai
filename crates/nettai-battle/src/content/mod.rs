@@ -99,25 +99,35 @@ pub enum Element {
     Wood = 4,
 }
 
-/// Secondary-element bits: an attack's extra elements, or what a navi is
-/// weak to. In a content file, a set of names (`{ sword = true }`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct SecondaryElements(pub u8);
+bitflags::bitflags! {
+    /// Secondary-element bits: an attack's extra elements, or what a navi is
+    /// weak to. In a content file, a set of names (`{ sword = true }`).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct SecondaryElements: u8 {
+        const BREAK = 0x10;
+        const WIND = 0x20;
+        const CURSOR = 0x40;
+        const SWORD = 0x80;
+        const _ = !0;
+    }
+}
 
 impl SecondaryElements {
-    pub const BREAK: u8 = 0x10;
-    pub const WIND: u8 = 0x20;
-    pub const CURSOR: u8 = 0x40;
-    pub const SWORD: u8 = 0x80;
+    /// The secondary elements of an element byte (`Object::element`): its
+    /// high nibble (its low one is the primary element's number).
+    pub const fn of_element_byte(byte: u8) -> SecondaryElements {
+        SecondaryElements::from_bits_retain(byte & 0xF0)
+    }
+
     pub(crate) const NAMES: &[(u32, &str)] = &[
-        (Self::BREAK as u32, "break"),
-        (Self::WIND as u32, "wind"),
-        (Self::CURSOR as u32, "cursor"),
-        (Self::SWORD as u32, "sword"),
+        (Self::BREAK.bits() as u32, "break"),
+        (Self::WIND.bits() as u32, "wind"),
+        (Self::CURSOR.bits() as u32, "cursor"),
+        (Self::SWORD.bits() as u32, "sword"),
     ];
 }
 
-flags::serde_flags!(SecondaryElements, u8);
+flags::serde_flags!(SecondaryElements);
 
 /// A panel relative to another, `dx` toward the facing side. In a
 /// content file, `[dx, dy]`.

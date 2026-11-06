@@ -52,7 +52,7 @@ fn exe6_forms_agree_with_their_kinds() {
             (FormTraits::MOOD_PALETTE, "mood_palette", kind == Some(Kind::Beast)),
             (FormTraits::CONTROLLED, "controlled", kind == Some(Kind::BeastOver)),
         ] {
-            if traits.has(bit) != wanted {
+            if traits.contains(bit) != wanted {
                 say(&format!("`{name}` is a trait of {}", if wanted { "this kind" } else { "other kinds" }));
             }
         }

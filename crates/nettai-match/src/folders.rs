@@ -220,7 +220,7 @@ pub fn about_entry(content: &Content, folder: &Folder, entry: usize, problem: &P
         };
     };
     let record = content.chip(held.id);
-    let dark = record.flags.has(ChipFlags::DARK);
+    let dark = record.flags.contains(ChipFlags::DARK);
     match (&problem.what, problem.entry) {
         (_, Some(_)) => problem.at(entry),
         (Wrong::Copies { chip, .. }, None) => *chip == held.id,

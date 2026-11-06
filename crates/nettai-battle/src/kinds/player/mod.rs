@@ -361,7 +361,7 @@ pub fn emotion(b: &Battle, side: u8) -> Emotion {
         angry: a.anger != 0,
         tired: a.tired,
         exhausted: a.exhausted,
-        in_form: !form_of(b, p).base && !form_of(b, p).traits.has(FormTraits::EMOTIONS_AS_BASE),
+        in_form: !form_of(b, p).base && !form_of(b, p).traits.contains(FormTraits::EMOTIONS_AS_BASE),
         battle_mode: battle_mode(b),
     };
     b.game_rules().emotion.of(&facts)
@@ -703,7 +703,7 @@ fn set_element(b: &mut Battle, r: ObjectRef, element: u8) {
     b.objects.get_mut(r).element = element;
     let c = coll_mut(b, r);
     c.element = element & 0xF;
-    c.secondary_element = element & 0xF0;
+    c.secondary_element = crate::content::SecondaryElements::of_element_byte(element);
 }
 
 /// `object_setInvulnerableTime`: invulnerable for `ticks` (0xFFFF: for
@@ -722,7 +722,7 @@ pub(crate) fn clear_statuses(b: &mut Battle, r: ObjectRef) {
     clear_flag2(b, r, end.requests);
     let c = coll_mut(b, r);
     for (t, timer) in c.status_timers.iter_mut().enumerate() {
-        if end.timers.0 & (1 << t) != 0 {
+        if end.timers.contains(crate::content::StatusTimers::of_timer(t)) {
             *timer = 0;
         }
     }
@@ -1126,7 +1126,7 @@ fn update_element(b: &mut Battle, r: ObjectRef) {
     };
     set_element(b, r, element);
     let weakness = if !base { b.content.form(s.form).weakness } else { b.content.navi(s.navi).weakness };
-    coll_mut(b, r).secondary_weakness = weakness.0;
+    coll_mut(b, r).secondary_weakness = weakness;
 }
 
 /// `sub_80144C0`: the full status reset (NaviCust state, hand bonuses,
@@ -1363,7 +1363,7 @@ fn palette_pick(b: &mut Battle, r: ObjectRef) -> u8 {
     }
     let (base, mood_palette, form_palette) = {
         let form = form_of(b, r);
-        (form.base, form.traits.has(FormTraits::MOOD_PALETTE), form.palette)
+        (form.base, form.traits.contains(FormTraits::MOOD_PALETTE), form.palette)
     };
     let no_charge = ai(b, r).status.contains(crate::actor::ActorStatus::NO_CHARGE);
     let full_synchro = emotion_role(b, b.objects.get(r).alliance) == Some(EmotionRole::FullSynchro);
@@ -1460,7 +1460,7 @@ fn charge_fire_chip(b: &mut Battle, r: ObjectRef, limit: u16) {
             (cd.flags, cd.element == crate::content::Element::Fire)
         }
     };
-    if !flags.has(crate::content::ChipFlags::HAS_DAMAGE) || !fire {
+    if !flags.contains(crate::content::ChipFlags::HAS_DAMAGE) || !fire {
         return;
     }
     if b.hands[side].charge_bonus[i] >= limit {

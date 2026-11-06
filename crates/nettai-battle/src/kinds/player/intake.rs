@@ -52,8 +52,8 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
     let s = stats(b, r);
     // (TomahawkMan and TomahawkCross: the navi's and the form's
     // `status_immune`.)
-    let immune = navi_of(b, r).traits.has(crate::content::NaviTraits::STATUS_IMMUNE)
-        || form_of(b, r).traits.has(crate::content::FormTraits::STATUS_IMMUNE);
+    let immune = navi_of(b, r).traits.contains(crate::content::NaviTraits::STATUS_IMMUNE)
+        || form_of(b, r).traits.contains(crate::content::FormTraits::STATUS_IMMUNE);
     if !(immune || s.bugs.status_immunity) {
         apply_status(b, r);
     }
@@ -183,7 +183,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
     }
     let regrowing = matches!(barrier, 4 | 8 | 0xA) && barrier_hp16(c) == 0;
     match rule.wind {
-        crate::content::BarrierWind::Pops if !regrowing && (c.acc.raw_elements & SecondaryElements::WIND != 0 || c.acc.raw_hit_flags.intersects(CollisionTypes::WIND | CollisionTypes::PULL | CollisionTypes::PUSHING)) => {
+        crate::content::BarrierWind::Pops if !regrowing && (c.acc.raw_elements.contains(SecondaryElements::WIND) || c.acc.raw_hit_flags.intersects(CollisionTypes::WIND | CollisionTypes::PULL | CollisionTypes::PUSHING)) => {
             // Popped (wind): absorbs everything until its visual clears it.
             barrier = 0x10;
             c.barrier = 0x10;
@@ -299,7 +299,7 @@ fn barrier(b: &mut Battle, r: ObjectRef) {
     absorb_hit(c);
     c.acc.exclamation = 0;
     c.acc.damage_multiplier = 0;
-    c.acc.damage_elements = 0;
+    c.acc.damage_elements = SecondaryElements::empty();
     c.acc.hit_flags.remove(CollisionTypes::COUNTERED | CollisionTypes::CHIP_DESTRUCTION);
 }
 
@@ -379,7 +379,7 @@ fn hp_bug_drain(b: &mut Battle, r: ObjectRef) {
 /// `sub_802CFF8`: a cursor hit cancels the side's defensive chip.
 fn drop_cursor_trap(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance;
-    if coll(b, r).acc.damage_elements & SecondaryElements::CURSOR != 0 && b.linked[side as usize].chip.is_some() {
+    if coll(b, r).acc.damage_elements.contains(SecondaryElements::CURSOR) && b.linked[side as usize].chip.is_some() {
         b.clear_linked(side);
         b.sound(crate::content::SoundRole::Fade);
     }
@@ -458,8 +458,8 @@ fn zero_trapped_hit(b: &mut Battle, r: ObjectRef) {
     absorb_hit(c);
     c.acc.exclamation = 0;
     c.acc.damage_multiplier = 0;
-    c.acc.damage_elements = 0;
-    c.acc.raw_elements = 0;
+    c.acc.damage_elements = SecondaryElements::empty();
+    c.acc.raw_elements = SecondaryElements::empty();
     c.status_timers[timer::PARALYZE] = 0;
     c.status_timers[timer::FREEZE] = 0;
     c.status_timers[timer::BUBBLE] = 0;

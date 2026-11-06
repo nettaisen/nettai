@@ -175,7 +175,7 @@ pub fn refresh_variable_damage(b: &mut Battle, side: u8) {
     let hand = &b.hands[side as usize];
     let i = hand.cursor as usize;
     let Some(&Some(id)) = hand.ids.get(i) else { return };
-    if !b.content.chip(id).flags.has(ChipFlags::VARIABLE_DAMAGE) {
+    if !b.content.chip(id).flags.contains(ChipFlags::VARIABLE_DAMAGE) {
         return;
     }
     let d = chip_damage(b, Some(id), side);

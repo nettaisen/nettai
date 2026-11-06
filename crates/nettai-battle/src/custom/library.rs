@@ -153,7 +153,7 @@ pub(crate) mod testing {
     pub type ChipId = u16;
 
     /// A chip record with only what the custom screen reads.
-    pub fn chip(class: ChipClass, codes: &[ChipCode], flags: u8, damage: u16) -> ChipData {
+    pub fn chip(class: ChipClass, codes: &[ChipCode], flags: ChipFlags, damage: u16) -> ChipData {
         ChipData {
             description_lines: crate::content::Shown(3),
             codes: codes.to_vec(),
@@ -163,7 +163,7 @@ pub(crate) mod testing {
             class,
             art_palette: None,
             mb: 0,
-            flags: ChipFlags(flags),
+            flags,
             hit_param: 0,
             lockout: 0,
             extra_flags: ExtraChipFlags::default(),
@@ -217,7 +217,7 @@ pub(crate) mod testing {
             TestLibrary {
                 chips,
                 program_advances,
-                plain: chip(ChipClass::Standard, EVERY_CODE, 0, 10),
+                plain: chip(ChipClass::Standard, EVERY_CODE, ChipFlags::empty(), 10),
                 // (The test content's layout: testdata/content/rules/custom_screen.luau.)
                 layout: crate::content::testing::rules().custom_screen,
             }

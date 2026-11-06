@@ -349,8 +349,8 @@ pub struct Accumulators {
     pub hit_flags_by_flip: [CollisionTypes; 2],
     pub exclamation: u8,
     pub damage_multiplier: u8,
-    pub damage_elements: u8,
-    pub raw_elements: u8,
+    pub damage_elements: SecondaryElements,
+    pub raw_elements: SecondaryElements,
     pub elec_damage: u16,
     pub hit_by: u32,
     pub final_damage: u16,
@@ -403,8 +403,8 @@ pub struct CollisionData {
     pub barrier_saved_hmf: u8,
     pub barrier_hp: u8,
     pub barrier_threshold: u8,
-    pub secondary_weakness: u8,
-    pub secondary_element: u8,
+    pub secondary_weakness: SecondaryElements,
+    pub secondary_element: SecondaryElements,
     pub barrier_timer: u16,
     /// Status timers: paralyze, confuse, blind, immobilize, flash,
     /// submerged, invulnerable, freeze, bubble.
@@ -646,7 +646,7 @@ impl Battle {
         s.parent = Some(obj);
         s.hit_mod_base = hit_mod;
         s.element = o.element & 0xF;
-        s.secondary_element = o.element & 0xF0;
+        s.secondary_element = SecondaryElements::of_element_byte(o.element);
         s.alliance = o.alliance;
         s.flip = o.flip;
         s.panel = o.panel;
@@ -920,7 +920,7 @@ impl Battle {
             .and_then(|row| row.get(hd.element as usize))
             .copied()
             .unwrap_or(0);
-        let w2 = (rd.secondary_weakness & hd.secondary_element != 0 || (rd.secondary_weakness == SecondaryElements::SWORD && hs.contains(CollisionTypes::SWORD)))
+        let w2 = (rd.secondary_weakness.intersects(hd.secondary_element) || (rd.secondary_weakness == SecondaryElements::SWORD && hs.contains(CollisionTypes::SWORD)))
             as u8;
         let mut m = 1 + w1 + w2;
         rm.acc.damage_multiplier = m - 1;

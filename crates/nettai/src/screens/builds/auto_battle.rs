@@ -281,7 +281,7 @@ impl AutoBattle {
             let problem = notice.unwrap_or_default();
             let Some(chip) = chip else { return ChipDetail { problem: problem.into(), fault: fault.into(), ..Default::default() } };
             let record = content.chip(chip);
-            let dark = record.flags.has(nettai_battle::content::ChipFlags::DARK);
+            let dark = record.flags.contains(nettai_battle::content::ChipFlags::DARK);
             let mut facts = vec![say.invoke_class(kind(record.class), dark), say.invoke_megabytes(record.mb as i32)];
             if record.damage > 0 {
                 facts.push(say.invoke_attack(record.damage as i32));

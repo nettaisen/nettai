@@ -104,10 +104,10 @@ fn chip_used(b: &mut Battle, r: ObjectRef, weapon: Option<WeaponHandle>) {
 /// (the variable swords), dimming chips, or an empty hand. True if it did.
 pub(crate) fn chain_next_chip(b: &mut Battle, r: ObjectRef) -> bool {
     let Some(chip) = hand_entry(b, r, 0).chip else { return false };
-    if b.content.chip(chip).traits.has(ChipTraits::NO_CHAIN) {
+    if b.content.chip(chip).traits.contains(ChipTraits::NO_CHAIN) {
         return false;
     }
-    if b.content.chip(chip).flags.has(ChipFlags::DIMMING) {
+    if b.content.chip(chip).flags.contains(ChipFlags::DIMMING) {
         return false;
     }
     let action = prepare(b, r, 0);
@@ -272,7 +272,7 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
         }
     }
     // sub_8012C4A
-    if deals_damage(cd.flags) && non_elemental(b, cd.family) && form_of(b, r).traits.has(crate::content::FormTraits::ERASES) {
+    if deals_damage(cd.flags) && non_elemental(b, cd.family) && form_of(b, r).traits.contains(crate::content::FormTraits::ERASES) {
         damage |= damage_flags::ERASE_CROSS;
     }
     ai_mut(b, r).attack.damage = damage;
@@ -337,7 +337,7 @@ fn charged_action(b: &Battle, r: ObjectRef, charge: u8) -> Option<super::NaviAct
 /// dimming chip) primes it, with the priming's sound.
 fn prime(b: &mut Battle, r: ObjectRef, cd: &ChipData) {
     let Some(priming) = &form_of(b, r).priming else { return };
-    if chip_matches(priming.by, cd) && !cd.flags.has(ChipFlags::DIMMING) {
+    if chip_matches(priming.by, cd) && !cd.flags.contains(ChipFlags::DIMMING) {
         let sound = priming.sound;
         ai_mut(b, r).primed = true;
         b.play_sound(sound);
@@ -386,7 +386,7 @@ pub(crate) fn chip_action(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>
 /// A chip that deals damage and isn't a dimming chip (the condition every
 /// damage bonus shares).
 fn deals_damage(flags: ChipFlags) -> bool {
-    flags.has(ChipFlags::HAS_DAMAGE) && !flags.has(ChipFlags::DIMMING)
+    flags.contains(ChipFlags::HAS_DAMAGE) && !flags.contains(ChipFlags::DIMMING)
 }
 
 /// `sub_8010D58`: the chip the side's rules put in the chip's place
@@ -425,10 +425,10 @@ fn slot_in_entry(b: &mut Battle, r: ObjectRef) -> HandEntry {
     let damage = crate::hand::chip_damage(b, chip, side as u8);
     let mut extra = extra;
     let s = &mut b.sides[side];
-    if cd.flags.has(ChipFlags::HAS_DAMAGE) {
+    if cd.flags.contains(ChipFlags::HAS_DAMAGE) {
         extra = extra.wrapping_add(std::mem::take(&mut s.special_attack_bonus));
     }
-    if cd.flags.has(ChipFlags::NAVI) {
+    if cd.flags.contains(ChipFlags::NAVI) {
         extra = extra.wrapping_add(std::mem::take(&mut s.special_navi_bonus));
     }
     HandEntry { chip, damage, extra, modifiers: 0, spends }
@@ -440,7 +440,7 @@ fn slot_in_entry(b: &mut Battle, r: ObjectRef) -> HandEntry {
 fn pay_for_special_chip(b: &mut Battle, side: usize, chip: Option<ChipHandle>) {
     // (sub_802E830 and the local player's HUD and sound.)
     let cd = entry_record(&b.content, chip);
-    if cd.extra_flags.0 & 0x80 != 0 {
+    if cd.extra_flags.contains(crate::content::ExtraChipFlags::FREE_SLOT_IN) {
         return;
     }
     let cost: u16 = match cd.class {
@@ -465,7 +465,7 @@ pub(crate) fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>
     let damage = crate::hand::chip_damage(b, chip, side);
     // (The elements of a chip's family: the hit kernel's table, the
     // arena's game's.)
-    let family = content.rules().family_elements(cd.family).0;
+    let family = content.rules().family_elements(cd.family);
     let a = &mut ai_mut(b, r).attack;
     a.chip = chip;
     // (The original copies the record's subtype and parameter bytes too:
@@ -474,7 +474,9 @@ pub(crate) fn load_attack(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>
     a.hit_param = cd.hit_param as u16;
     a.lockout = cd.lockout;
     a.extra = 0;
-    a.element = cd.element as u8 | family;
+    // (The element byte: the primary element's number, the secondary
+    // elements' bits over it.)
+    a.element = cd.element as u8 | family.bits();
     a.charged = 0;
     a.telop_hidden = false;
 }
@@ -499,7 +501,7 @@ fn form_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, charge: u8) ->
     let form = form_of(b, r);
     let Some(chip) = chip else { return (0, None) };
     let cd = b.content.chip(chip);
-    let damaging = cd.flags.has(ChipFlags::HAS_DAMAGE);
+    let damaging = cd.flags.contains(ChipFlags::HAS_DAMAGE);
     let a = ai(b, r);
     let a_charge_full = a.charge_source == 1 && a.charge_level >= 2;
     let form_bonus = form.chip_bonus.and_then(|bonus| {
@@ -535,9 +537,9 @@ fn link_navi_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> u16 {
     let s = stats(b, r);
     let Some(bonus) = &b.content.navi(s.navi).chip_bonus else { return 0 };
     let cd = b.content.chip(chip);
-    let fits = cd.flags.has(ChipFlags::HAS_DAMAGE)
+    let fits = cd.flags.contains(ChipFlags::HAS_DAMAGE)
         && cd.family == bonus.family
-        && (bonus.dimming_chips || !cd.flags.has(ChipFlags::DIMMING));
+        && (bonus.dimming_chips || !cd.flags.contains(ChipFlags::DIMMING));
     if !fits {
         return 0;
     }
@@ -547,7 +549,7 @@ fn link_navi_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> u16 {
 /// `sub_800F1DC`: StreamHd and the AuraHed chips hit harder while the
 /// user's barrier holds.
 fn aura_bonus(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> u16 {
-    if !chip.is_some_and(|h| b.content.chip(h).traits.has(ChipTraits::AURA_BONUS)) {
+    if !chip.is_some_and(|h| b.content.chip(h).traits.contains(ChipTraits::AURA_BONUS)) {
         return 0;
     }
     let c = super::coll(b, r);
@@ -607,7 +609,7 @@ enum Boost {
 /// neither Full Synchro nor anger does).
 fn double_damage(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>, damage: u16, charge: u8) -> (u16, Option<Boost>) {
     let cd = entry_record(&b.content, chip);
-    if !cd.flags.has(ChipFlags::HAS_DAMAGE) {
+    if !cd.flags.contains(ChipFlags::HAS_DAMAGE) {
         return (damage, None);
     }
     let boost = if ai(b, r).primed {
@@ -661,7 +663,7 @@ fn panel_doubles(b: &Battle, r: ObjectRef, cd: &ChipData) -> bool {
 /// `sub_8012ABC`: a form with `doubles_null` (Beast Over) doubles its
 /// damaging Null chips (not in battle mode 1).
 fn null_doubles(b: &Battle, r: ObjectRef, chip: Option<ChipHandle>) -> bool {
-    if super::battle_mode(b) == 1 || !form_of(b, r).traits.has(crate::content::FormTraits::DOUBLES_NULL) {
+    if super::battle_mode(b) == 1 || !form_of(b, r).traits.contains(crate::content::FormTraits::DOUBLES_NULL) {
         return false;
     }
     let cd = entry_record(&b.content, chip);
@@ -682,7 +684,7 @@ fn non_elemental(b: &Battle, family: ChipFamily) -> bool {
 fn heal_on_use(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>, mixed: bool) {
     let s = *stats(b, r);
     let cd = entry_record(&b.content, chip);
-    let form_heals = form_of(b, r).chip_heals.is_some_and(|rule| chip_matches(rule, cd)) && !cd.flags.has(ChipFlags::DIMMING);
+    let form_heals = form_of(b, r).chip_heals.is_some_and(|rule| chip_matches(rule, cd)) && !cd.flags.contains(ChipFlags::DIMMING);
     let heal = if form_heals { (s.max_base_hp as u32 + 0x13) / 0x14 } else { 0 };
     // EXE5's 0x0800FFF6: a heal mixed into the chip (the hand's modifier
     // 0x10: its pink capsule) is a tenth of the navi's maximum HP, rounded

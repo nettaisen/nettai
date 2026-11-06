@@ -92,7 +92,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     phase_timer(b, r);
     // A controlled form (EXE6's Beast Over): the side's rules' controller
     // decides (`sub_802D322`, the berserk).
-    if form_of(b, r).traits.has(crate::content::FormTraits::CONTROLLED) {
+    if form_of(b, r).traits.contains(crate::content::FormTraits::CONTROLLED) {
         match b.rules_controller(side as u8, r) {
             // A chip's use started: the hand's (1), or the attack's own (4).
             1 => {
@@ -455,9 +455,9 @@ fn after_chip(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
         (a.chip, a.damage, a.extra)
     };
     if let Some(used) = used
-        && chip.is_some_and(|c| b.content.chip(c).flags.0 & crate::content::ChipFlags::DIMMING == 0)
+        && chip.is_some_and(|c| !b.content.chip(c).flags.contains(crate::content::ChipFlags::DIMMING))
         && !b.roles().is_chip(crate::content::ChipRole::Invalid, used)
-        && !b.content.chip(used).traits.has(crate::content::ChipTraits::NOT_NAMED_ON_USE)
+        && !b.content.chip(used).traits.contains(crate::content::ChipTraits::NOT_NAMED_ON_USE)
     {
         let side = b.objects.get(r).alliance;
         b.show_used_chip(side, used, damage, bonus);
@@ -503,13 +503,13 @@ fn intercepted_by(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>, beat: 
     // The attack's chip; none reads as the pack's chip 0.
     let record = b.chip_field(chip).clone();
     let other = b.objects.get(r).alliance ^ 1;
-    let spared = b.game_rules().chip_use.beat_spares_dark && record.flags.0 & crate::content::ChipFlags::DARK != 0;
+    let spared = b.game_rules().chip_use.beat_spares_dark && record.flags.contains(crate::content::ChipFlags::DARK);
     let support = match b.stats[other as usize].support {
         Some(opp) if beat && opp.beat && matches!(record.class, ChipClass::Mega | ChipClass::Giga) && !spared => {
             b.stats[other as usize].support = Some(crate::setup::Supports { beat: false, ..opp });
             Support::Beat
         }
-        Some(opp) if opp.rush && record.extra_flags.has(ExtraChipFlags::RUSH_CANCELS) => {
+        Some(opp) if opp.rush && record.extra_flags.contains(ExtraChipFlags::RUSH_CANCELS) => {
             b.stats[other as usize].support = Some(crate::setup::Supports { rush: false, ..opp });
             Support::Rush
         }

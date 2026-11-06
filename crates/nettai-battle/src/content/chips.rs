@@ -123,130 +123,129 @@ impl<'de> Deserialize<'de> for ChipFamily {
     }
 }
 
-/// The chip record's flags. In a content file, a set of names
-/// (`{ has_damage = true }`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct ChipFlags(pub u8);
+bitflags::bitflags! {
+    /// The chip record's flags. In a content file, a set of names
+    /// (`{ has_damage = true }`).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct ChipFlags: u8 {
+        /// A dimming chip: its use starts a dimming; it can counter while dimmed.
+        const DIMMING = 0x01;
+        /// Deals damage: shown on the banner, boostable by Atk+ and forms.
+        const HAS_DAMAGE = 0x02;
+        /// Navi chip: boosted by Navi+.
+        const NAVI = 0x04;
+        /// In the standard library (menus only).
+        const STANDARD_LIBRARY = 0x08;
+        /// Damage shown as variable (menus only).
+        const DAMAGE_SHOWN_VARIABLE = 0x10;
+        /// A dark chip as the custom screen treats it: the cursor starts on it,
+        /// and while it rests on it the screen darkens and the music quiets
+        /// (`sub_802806C`, `sub_802A2B0`); its window frame is the dark one. No
+        /// EXE6 chip has it (docs/engine/unverified.md).
+        const DARK = 0x20;
+        /// In a library (menus only).
+        const LIBRARY = 0x40;
+        /// Damage recomputed every tick while this is the next chip.
+        const VARIABLE_DAMAGE = 0x80;
+        const _ = !0;
+    }
+}
 
 impl ChipFlags {
-    /// A dimming chip: its use starts a dimming; it can counter while dimmed.
-    pub const DIMMING: u8 = 0x01;
-    /// Deals damage: shown on the banner, boostable by Atk+ and forms.
-    pub const HAS_DAMAGE: u8 = 0x02;
-    /// Navi chip: boosted by Navi+.
-    pub const NAVI: u8 = 0x04;
-    /// In the standard library (menus only).
-    pub const STANDARD_LIBRARY: u8 = 0x08;
-    /// Damage shown as variable (menus only).
-    pub const DAMAGE_SHOWN_VARIABLE: u8 = 0x10;
-    /// A dark chip as the custom screen treats it: the cursor starts on it,
-    /// and while it rests on it the screen darkens and the music quiets
-    /// (`sub_802806C`, `sub_802A2B0`); its window frame is the dark one. No
-    /// EXE6 chip has it (docs/engine/unverified.md).
-    pub const DARK: u8 = 0x20;
-    /// In a library (menus only).
-    pub const LIBRARY: u8 = 0x40;
-    /// Damage recomputed every tick while this is the next chip.
-    pub const VARIABLE_DAMAGE: u8 = 0x80;
     pub(crate) const NAMES: &[(u32, &str)] = &[
-        (0x01, "dimming"),
-        (0x02, "has_damage"),
-        (0x04, "navi"),
-        (0x08, "standard_library"),
-        (0x10, "damage_shown_variable"),
-        (0x20, "dark"),
-        (0x40, "library"),
-        (0x80, "variable_damage"),
+        (Self::DIMMING.bits() as u32, "dimming"),
+        (Self::HAS_DAMAGE.bits() as u32, "has_damage"),
+        (Self::NAVI.bits() as u32, "navi"),
+        (Self::STANDARD_LIBRARY.bits() as u32, "standard_library"),
+        (Self::DAMAGE_SHOWN_VARIABLE.bits() as u32, "damage_shown_variable"),
+        (Self::DARK.bits() as u32, "dark"),
+        (Self::LIBRARY.bits() as u32, "library"),
+        (Self::VARIABLE_DAMAGE.bits() as u32, "variable_damage"),
     ];
-
-    pub fn has(self, bit: u8) -> bool {
-        self.0 & bit != 0
-    }
 }
 
-serde_flags!(ChipFlags, u8);
+serde_flags!(ChipFlags);
 
-/// The chip record's second flag byte, the bits the engine reads, by name
-/// (in a content file a set of them, `{ rush_cancels = true }`). The
-/// original's other bits only sort chips in its menus: content holds none
-/// of them.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct ExtraChipFlags(pub u8);
+bitflags::bitflags! {
+    /// The chip record's second flag byte, the bits the engine reads, by name
+    /// (in a content file a set of them, `{ rush_cancels = true }`). The
+    /// original's other bits only sort chips in its menus: content holds none
+    /// of them.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct ExtraChipFlags: u8 {
+        /// Canceled by the opponent's Rush (a NaviCust support).
+        const RUSH_CANCELS = 0x02;
+        /// The menus class it with the modifier chips (WhiCapsl, Uninstll and
+        /// the plus chips, which the custom screen folds into the chip before
+        /// them; the battle reads `ChipData::modifier`).
+        const MODIFIER = 0x40;
+        /// Costs no slot-in gauge (Battle Chip Gate slot-in only).
+        const FREE_SLOT_IN = 0x80;
+        const _ = !0;
+    }
+}
 
 impl ExtraChipFlags {
-    /// Canceled by the opponent's Rush (a NaviCust support).
-    pub const RUSH_CANCELS: u8 = 0x02;
-    /// The menus class it with the modifier chips (WhiCapsl, Uninstll and
-    /// the plus chips, which the custom screen folds into the chip before
-    /// them; the battle reads `ChipData::modifier`).
-    pub const MODIFIER: u8 = 0x40;
-    /// Costs no slot-in gauge (Battle Chip Gate slot-in only).
-    pub const FREE_SLOT_IN: u8 = 0x80;
-    pub(crate) const NAMES: &[(u32, &str)] = &[(0x02, "rush_cancels"), (0x40, "modifier"), (0x80, "free_slot_in")];
-
-    pub fn has(self, bit: u8) -> bool {
-        self.0 & bit != 0
-    }
+    pub(crate) const NAMES: &[(u32, &str)] = &[(Self::RUSH_CANCELS.bits() as u32, "rush_cancels"), (Self::MODIFIER.bits() as u32, "modifier"), (Self::FREE_SLOT_IN.bits() as u32, "free_slot_in")];
 }
 
-serde_flags!(ExtraChipFlags, u8);
+serde_flags!(ExtraChipFlags);
 
-/// What the rules ask of particular chips (docs/design/
-/// content-model-v2.md §7.5): the cases the original tells by a chip's
-/// place in its chip table. In a content file, a set of names
-/// (`{ no_chain = true }`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct ChipTraits(pub u16);
+bitflags::bitflags! {
+    /// What the rules ask of particular chips (docs/design/
+    /// content-model-v2.md §7.5): the cases the original tells by a chip's
+    /// place in its chip table. In a content file, a set of names
+    /// (`{ no_chain = true }`).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct ChipTraits: u16 {
+        /// The Beast rush doesn't chain it as the next chip (`sub_800FC30`:
+        /// the variable swords).
+        const NO_CHAIN = 0x01;
+        /// It hits harder while its user's barrier holds (`sub_800F1DC`: the
+        /// AuraHeds and StreamHd).
+        const AURA_BONUS = 0x02;
+        /// The other side can't cut in on the dimming it starts (`sub_800BF16`
+        /// with the chip's cut-in rule: the chips past the Program Advances).
+        const NO_CUT_IN = 0x04;
+        /// SlashCross charges it though its family isn't Sword (`sub_8013236`:
+        /// the elemental swords).
+        const ELEMENT_SWORD = 0x08;
+        /// It goes with any selection, and the selection's code and chip rules
+        /// leave it out (`sub_8028E4C`, `sub_8028EC8`: EXE6's BeastOut chip).
+        const GOES_WITH_ANY = 0x100;
+        /// The custom screen's chip window shows "???" for its damage on a
+        /// copy of code A, and its damage on any other: the original compares
+        /// the whole chip word, number and code, with the chip's number, so
+        /// only code A (0) matches (`sub_80284E2`: Muramasa, whose only code
+        /// is M; EXE5's 0x080243C0: Muramasa, CustSwrd and the three CusVolts,
+        /// of which CusVolt1 comes as an A).
+        const HIDES_DAMAGE_AS_A = 0x400;
+        /// Next in the hand, it shows no icon over its user: the icons there
+        /// start with the chip after it (EXE4's 0x0801502E: chips 0x160 to
+        /// 0x16F, the souls' chips).
+        const NO_ICON_WHEN_NEXT = 0x800;
+        /// Its use isn't named to the other player: its own action names it
+        /// when it comes to (EXE4's 0x080EECF6: chip 0x38, Slasher, named as
+        /// it slashes, 0x080ED642; EXE5's 0x080F04A4 and 0x080ED41E).
+        const NOT_NAMED_ON_USE = 0x1000;
+        const _ = !0;
+    }
+}
 
 impl ChipTraits {
-    /// The Beast rush doesn't chain it as the next chip (`sub_800FC30`:
-    /// the variable swords).
-    pub const NO_CHAIN: u16 = 0x01;
-    /// It hits harder while its user's barrier holds (`sub_800F1DC`: the
-    /// AuraHeds and StreamHd).
-    pub const AURA_BONUS: u16 = 0x02;
-    /// The other side can't cut in on the dimming it starts (`sub_800BF16`
-    /// with the chip's cut-in rule: the chips past the Program Advances).
-    pub const NO_CUT_IN: u16 = 0x04;
-    /// SlashCross charges it though its family isn't Sword (`sub_8013236`:
-    /// the elemental swords).
-    pub const ELEMENT_SWORD: u16 = 0x08;
-    /// It goes with any selection, and the selection's code and chip rules
-    /// leave it out (`sub_8028E4C`, `sub_8028EC8`: EXE6's BeastOut chip).
-    pub const GOES_WITH_ANY: u16 = 0x100;
-    /// The custom screen's chip window shows "???" for its damage on a
-    /// copy of code A, and its damage on any other: the original compares
-    /// the whole chip word, number and code, with the chip's number, so
-    /// only code A (0) matches (`sub_80284E2`: Muramasa, whose only code
-    /// is M; EXE5's 0x080243C0: Muramasa, CustSwrd and the three CusVolts,
-    /// of which CusVolt1 comes as an A).
-    pub const HIDES_DAMAGE_AS_A: u16 = 0x400;
-    /// Next in the hand, it shows no icon over its user: the icons there
-    /// start with the chip after it (EXE4's 0x0801502E: chips 0x160 to
-    /// 0x16F, the souls' chips).
-    pub const NO_ICON_WHEN_NEXT: u16 = 0x800;
-    /// Its use isn't named to the other player: its own action names it
-    /// when it comes to (EXE4's 0x080EECF6: chip 0x38, Slasher, named as
-    /// it slashes, 0x080ED642; EXE5's 0x080F04A4 and 0x080ED41E).
-    pub const NOT_NAMED_ON_USE: u16 = 0x1000;
     pub(crate) const NAMES: &[(u32, &str)] = &[
-        (0x01, "no_chain"),
-        (0x02, "aura_bonus"),
-        (0x04, "no_cut_in"),
-        (0x08, "element_sword"),
-        (0x100, "goes_with_any"),
-        (0x400, "hides_damage_as_a"),
-        (0x800, "no_icon_when_next"),
-        (0x1000, "not_named_on_use"),
+        (Self::NO_CHAIN.bits() as u32, "no_chain"),
+        (Self::AURA_BONUS.bits() as u32, "aura_bonus"),
+        (Self::NO_CUT_IN.bits() as u32, "no_cut_in"),
+        (Self::ELEMENT_SWORD.bits() as u32, "element_sword"),
+        (Self::GOES_WITH_ANY.bits() as u32, "goes_with_any"),
+        (Self::HIDES_DAMAGE_AS_A.bits() as u32, "hides_damage_as_a"),
+        (Self::NO_ICON_WHEN_NEXT.bits() as u32, "no_icon_when_next"),
+        (Self::NOT_NAMED_ON_USE.bits() as u32, "not_named_on_use"),
     ];
-
-    pub fn has(self, bit: u16) -> bool {
-        self.0 & bit != 0
-    }
-
 }
 
-serde_flags!(ChipTraits, u16);
+serde_flags!(ChipTraits);
 
 /// A trap chip: what the defensive-chip record that holds it catches (the
 /// rules' side of the trap chips, docs/engine/dimming-chips.md).

@@ -1641,11 +1641,11 @@ impl Window {
             }
             self.element_framed = framed.then_some(family);
         }
-        let shows = data.flags.0 & (ChipFlags::HAS_DAMAGE | ChipFlags::DAMAGE_SHOWN_VARIABLE) != 0;
+        let shows = data.flags.intersects(ChipFlags::HAS_DAMAGE | ChipFlags::DAMAGE_SHOWN_VARIABLE);
         let digits: Vec<usize> = if !shows {
             Vec::new()
-        } else if (data.traits.has(ChipTraits::HIDES_DAMAGE_AS_A) && c.code.0 == 0)
-            || (data.flags.0 & ChipFlags::DAMAGE_SHOWN_VARIABLE != 0
+        } else if (data.traits.contains(ChipTraits::HIDES_DAMAGE_AS_A) && c.code.0 == 0)
+            || (data.flags.contains(ChipFlags::DAMAGE_SHOWN_VARIABLE)
                 && v.b.content.rules().custom_screen.variable_damage_shows == VariableDamageShows::QuestionMarks)
         {
             // (The trait: the original compares the whole chip word,

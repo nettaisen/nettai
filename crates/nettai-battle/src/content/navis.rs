@@ -198,22 +198,22 @@ impl NaviData {
     }
 }
 
-/// What the rules ask of particular navis. In a content file, a set of
-/// names (`{ status_immune = true }`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct NaviTraits(pub u8);
-
-impl NaviTraits {
-    /// A hit's status doesn't take (`sub_801A4D0`'s caller: TomahawkMan).
-    pub const STATUS_IMMUNE: u8 = 0x01;
-    pub(crate) const NAMES: &[(u32, &str)] = &[(0x01, "status_immune")];
-
-    pub fn has(self, bit: u8) -> bool {
-        self.0 & bit != 0
+bitflags::bitflags! {
+    /// What the rules ask of particular navis. In a content file, a set of
+    /// names (`{ status_immune = true }`).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct NaviTraits: u8 {
+        /// A hit's status doesn't take (`sub_801A4D0`'s caller: TomahawkMan).
+        const STATUS_IMMUNE = 0x01;
+        const _ = !0;
     }
 }
 
-serde_flags!(NaviTraits, u8);
+impl NaviTraits {
+    pub(crate) const NAMES: &[(u32, &str)] = &[(Self::STATUS_IMMUNE.bits() as u32, "status_immune")];
+}
+
+serde_flags!(NaviTraits);
 
 /// A navi's forms (`forms`): that it has any says the navi changes form
 /// (MegaMan: where the original asks whether a navi is MegaMan). The table
@@ -599,7 +599,7 @@ pub struct RunMessage {
 impl FormData {
     /// What a NaviCust change gives the form back.
     pub fn refresh_effects(&self) -> FormEffects {
-        self.ability_refresh.unwrap_or(FormEffects(self.status_reset.0 & !FormEffects::TARGET_MARKER))
+        self.ability_refresh.unwrap_or(self.status_reset - FormEffects::TARGET_MARKER)
     }
 }
 
@@ -687,118 +687,118 @@ fn bonus_damage<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u16, D::Error>
     }
 }
 
-/// What a form's status reset gives the navi. In a content file, a set of
-/// names (`{ clear_statuses = true }`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct FormEffects(pub u16);
+bitflags::bitflags! {
+    /// What a form's status reset gives the navi. In a content file, a set of
+    /// names (`{ clear_statuses = true }`).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct FormEffects: u16 {
+        /// The statuses end (not in the first turn: the turn counter 1).
+        const CLEAR_STATUSES = 0x001;
+        const SUPER_ARMOR = 0x002;
+        const AIR_SHOES = 0x004;
+        const FLOAT_SHOES = 0x008;
+        /// The body floats (its collision type).
+        const FLOATING_BODY = 0x010;
+        /// Untouchable (ObjectFlags1 0x08000000): no hit reaches it, and poison
+        /// panels don't hurt it.
+        const UNTOUCHABLE = 0x020;
+        /// The target marker (EXE6's Beast forms' lock-on marker).
+        const TARGET_MARKER = 0x040;
+        /// Invulnerable for good.
+        const INVULNERABLE = 0x080;
+        /// The navi's controller starts over (EXE6's Beast Over's berserk).
+        const CONTROLLER_RESTART = 0x100;
+        const _ = !0;
+    }
+}
 
 impl FormEffects {
-    /// The statuses end (not in the first turn: the turn counter 1).
-    pub const CLEAR_STATUSES: u16 = 0x001;
-    pub const SUPER_ARMOR: u16 = 0x002;
-    pub const AIR_SHOES: u16 = 0x004;
-    pub const FLOAT_SHOES: u16 = 0x008;
-    /// The body floats (its collision type).
-    pub const FLOATING_BODY: u16 = 0x010;
-    /// Untouchable (ObjectFlags1 0x08000000): no hit reaches it, and poison
-    /// panels don't hurt it.
-    pub const UNTOUCHABLE: u16 = 0x020;
-    /// The target marker (EXE6's Beast forms' lock-on marker).
-    pub const TARGET_MARKER: u16 = 0x040;
-    /// Invulnerable for good.
-    pub const INVULNERABLE: u16 = 0x080;
-    /// The navi's controller starts over (EXE6's Beast Over's berserk).
-    pub const CONTROLLER_RESTART: u16 = 0x100;
     pub(crate) const NAMES: &[(u32, &str)] = &[
-        (0x001, "clear_statuses"),
-        (0x002, "super_armor"),
-        (0x004, "air_shoes"),
-        (0x008, "float_shoes"),
-        (0x010, "floating_body"),
-        (0x020, "untouchable"),
-        (0x040, "target_marker"),
-        (0x080, "invulnerable"),
-        (0x100, "controller_restart"),
+        (Self::CLEAR_STATUSES.bits() as u32, "clear_statuses"),
+        (Self::SUPER_ARMOR.bits() as u32, "super_armor"),
+        (Self::AIR_SHOES.bits() as u32, "air_shoes"),
+        (Self::FLOAT_SHOES.bits() as u32, "float_shoes"),
+        (Self::FLOATING_BODY.bits() as u32, "floating_body"),
+        (Self::UNTOUCHABLE.bits() as u32, "untouchable"),
+        (Self::TARGET_MARKER.bits() as u32, "target_marker"),
+        (Self::INVULNERABLE.bits() as u32, "invulnerable"),
+        (Self::CONTROLLER_RESTART.bits() as u32, "controller_restart"),
     ];
-
-    pub fn has(self, bit: u16) -> bool {
-        self.0 & bit != 0
-    }
 }
 
-serde_flags!(FormEffects, u16);
+serde_flags!(FormEffects);
 
-/// What the rules ask of particular forms. In a content file, a set of
-/// names (`{ erases = true }`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct FormTraits(pub u16);
+bitflags::bitflags! {
+    /// What the rules ask of particular forms. In a content file, a set of
+    /// names (`{ erases = true }`).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct FormTraits: u16 {
+        /// A hit's status doesn't take (TomahawkCross).
+        const STATUS_IMMUNE = 0x001;
+        /// Its damaging Null chips delete at once what has a 4 in its HP
+        /// (`sub_8012C4A`: EraseCross).
+        const ERASES = 0x002;
+        /// Its held buster doesn't fire while its B+Back special is asked for
+        /// (TenguCross and DustCross in Beast Out).
+        const SPECIAL_HOLDS_BUSTER = 0x004;
+        /// A magnet panel doesn't slide the navi (EXE5's MagnetSoul:
+        /// 0x08017216).
+        const STANDS_ON_MAGNET = 0x008;
+        /// The side's rules' controller decides the navi's idle (Beast Over's
+        /// berserk, `sub_802D322`): the player's buttons don't reach it
+        /// (`apply_actor_inputs`), and a full gauge opens the custom screen.
+        const CONTROLLED = 0x010;
+        /// The navi's target marker shows (`sub_80E1566`: EXE6's Beast forms,
+        /// 0x0B to 0x18).
+        const SHOWS_TARGET_MARKER = 0x020;
+        /// An afterimage of the navi lasts while it stays in a form with this
+        /// trait, not until its attack ends (`sub_80E341E`: EXE6's Beast forms).
+        const AFTERIMAGES_STAY = 0x040;
+        /// With a Null chip next, its A charge's time is the alternative
+        /// A-charge routine's (`sub_8012F62`: EXE6's Beast forms).
+        const ALT_CHARGE_TIME = 0x080;
+        /// Its damaging Null chips deal double, outside battle mode 1
+        /// (`sub_8012ABC`: Beast Over).
+        const DOUBLES_NULL = 0x100;
+        /// Its palette follows the mood: 4 in Full Synchro (mood 0xFF), else
+        /// 0, in place of its `palette` (`sub_80100EC`: Beast Out's).
+        const MOOD_PALETTE = 0x200;
+        /// The B button asks for nothing and no charge counts, under the
+        /// per-button controls (EXE4's dark soul: its decode skips the buster,
+        /// the rapid presses and the B+Left special, 0x0800BE28, and its charge
+        /// counts neither button, 0x0800BBB2; the level follows the count as it
+        /// is, which the dark soul's AI writes).
+        const IGNORES_B = 0x400;
+        /// Its side's emotion is found as out of a form (EXE4's dark soul,
+        /// which the emotion's routine reads as no soul, 0x0800F4BA).
+        const EMOTIONS_AS_BASE = 0x800;
+        const _ = !0;
+    }
+}
 
 impl FormTraits {
-    /// A hit's status doesn't take (TomahawkCross).
-    pub const STATUS_IMMUNE: u16 = 0x001;
-    /// Its damaging Null chips delete at once what has a 4 in its HP
-    /// (`sub_8012C4A`: EraseCross).
-    pub const ERASES: u16 = 0x002;
-    /// Its held buster doesn't fire while its B+Back special is asked for
-    /// (TenguCross and DustCross in Beast Out).
-    pub const SPECIAL_HOLDS_BUSTER: u16 = 0x004;
-    /// A magnet panel doesn't slide the navi (EXE5's MagnetSoul:
-    /// 0x08017216).
-    pub const STANDS_ON_MAGNET: u16 = 0x008;
-    /// The side's rules' controller decides the navi's idle (Beast Over's
-    /// berserk, `sub_802D322`): the player's buttons don't reach it
-    /// (`apply_actor_inputs`), and a full gauge opens the custom screen.
-    pub const CONTROLLED: u16 = 0x010;
-    /// The navi's target marker shows (`sub_80E1566`: EXE6's Beast forms,
-    /// 0x0B to 0x18).
-    pub const SHOWS_TARGET_MARKER: u16 = 0x020;
-    /// An afterimage of the navi lasts while it stays in a form with this
-    /// trait, not until its attack ends (`sub_80E341E`: EXE6's Beast forms).
-    pub const AFTERIMAGES_STAY: u16 = 0x040;
-    /// With a Null chip next, its A charge's time is the alternative
-    /// A-charge routine's (`sub_8012F62`: EXE6's Beast forms).
-    pub const ALT_CHARGE_TIME: u16 = 0x080;
-    /// Its damaging Null chips deal double, outside battle mode 1
-    /// (`sub_8012ABC`: Beast Over).
-    pub const DOUBLES_NULL: u16 = 0x100;
-    /// Its palette follows the mood: 4 in Full Synchro (mood 0xFF), else
-    /// 0, in place of its `palette` (`sub_80100EC`: Beast Out's).
-    pub const MOOD_PALETTE: u16 = 0x200;
-    /// The B button asks for nothing and no charge counts, under the
-    /// per-button controls (EXE4's dark soul: its decode skips the buster,
-    /// the rapid presses and the B+Left special, 0x0800BE28, and its charge
-    /// counts neither button, 0x0800BBB2; the level follows the count as it
-    /// is, which the dark soul's AI writes).
-    pub const IGNORES_B: u16 = 0x400;
-    /// Its side's emotion is found as out of a form (EXE4's dark soul,
-    /// which the emotion's routine reads as no soul, 0x0800F4BA).
-    pub const EMOTIONS_AS_BASE: u16 = 0x800;
     pub(crate) const NAMES: &[(u32, &str)] = &[
-        (0x001, "status_immune"),
-        (0x002, "erases"),
-        (0x004, "special_holds_buster"),
-        (0x008, "stands_on_magnet"),
-        (0x010, "controlled"),
-        (0x020, "shows_target_marker"),
-        (0x040, "afterimages_stay"),
-        (0x080, "alt_charge_time"),
-        (0x100, "doubles_null"),
-        (0x200, "mood_palette"),
-        (0x400, "ignores_b"),
-        (0x800, "emotions_as_base"),
+        (Self::STATUS_IMMUNE.bits() as u32, "status_immune"),
+        (Self::ERASES.bits() as u32, "erases"),
+        (Self::SPECIAL_HOLDS_BUSTER.bits() as u32, "special_holds_buster"),
+        (Self::STANDS_ON_MAGNET.bits() as u32, "stands_on_magnet"),
+        (Self::CONTROLLED.bits() as u32, "controlled"),
+        (Self::SHOWS_TARGET_MARKER.bits() as u32, "shows_target_marker"),
+        (Self::AFTERIMAGES_STAY.bits() as u32, "afterimages_stay"),
+        (Self::ALT_CHARGE_TIME.bits() as u32, "alt_charge_time"),
+        (Self::DOUBLES_NULL.bits() as u32, "doubles_null"),
+        (Self::MOOD_PALETTE.bits() as u32, "mood_palette"),
+        (Self::IGNORES_B.bits() as u32, "ignores_b"),
+        (Self::EMOTIONS_AS_BASE.bits() as u32, "emotions_as_base"),
     ];
 
-    pub fn has(self, bit: u16) -> bool {
-        self.0 & bit != 0
-    }
-
-    /// The trait's bit by its name in a form's `traits`.
-    pub fn named(name: &str) -> Option<u16> {
-        Self::NAMES.iter().find(|&&(_, n)| n == name).map(|&(bit, _)| bit as u16)
+    /// The trait by its name in a form's `traits`.
+    pub fn named(name: &str) -> Option<FormTraits> {
+        Self::NAMES.iter().find(|&&(_, n)| n == name).map(|&(bit, _)| FormTraits::from_bits_retain(bit as u16))
     }
 }
 
-serde_flags!(FormTraits, u16);
+serde_flags!(FormTraits);
 
 /// A form's or navi's weapons, by the button that uses each (none: the
 /// original's 0xFF).

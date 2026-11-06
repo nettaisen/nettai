@@ -20,7 +20,7 @@ use crate::spec::{self, chips, forms, general, objects, panels, rules, LOG_TICKS
 use nettai_battle::Battle;
 use nettai_battle::battle::{fight, mode};
 use nettai_battle::collision::{ATTACK_OF, CollisionTypes, StatusFlags};
-use nettai_battle::content::{ChipClass, ChipModifier, ChipUsage, Content, DamageFormula, ExtraChipFlags, Trap};
+use nettai_battle::content::{ChipClass, ChipFlags, ChipModifier, ChipTraits, ChipUsage, Content, DamageFormula, ExtraChipFlags, SecondaryElements, Trap};
 use nettai_battle::custom::builder::{self, Pick};
 use nettai_battle::custom::Layer;
 use nettai_battle::custom::layer::Sub;
@@ -761,18 +761,38 @@ fn chip_facts(content: &Content, names: &Names, h: ChipHandle, code: Option<u8>,
     };
     one_hot(row, at, 4, usage);
     at += 4;
-    for k in 0..8 {
-        row[at + k] = flag(c.flags.0 & (1 << k) != 0);
+    // (The flags, in their bits' order.)
+    let flags = [
+        ChipFlags::DIMMING,
+        ChipFlags::HAS_DAMAGE,
+        ChipFlags::NAVI,
+        ChipFlags::STANDARD_LIBRARY,
+        ChipFlags::DAMAGE_SHOWN_VARIABLE,
+        ChipFlags::DARK,
+        ChipFlags::LIBRARY,
+        ChipFlags::VARIABLE_DAMAGE,
+    ];
+    for (k, bit) in flags.into_iter().enumerate() {
+        row[at + k] = flag(c.flags.contains(bit));
     }
     at += 8;
     for (k, bit) in [ExtraChipFlags::RUSH_CANCELS, ExtraChipFlags::MODIFIER, ExtraChipFlags::FREE_SLOT_IN].iter().enumerate() {
-        row[at + k] = flag(c.extra_flags.has(*bit));
+        row[at + k] = flag(c.extra_flags.contains(*bit));
     }
     at += 3;
-    for k in 0..8 {
-        // (The named traits, in their order.)
-        let bit = [0x01, 0x02, 0x04, 0x08, 0x100, 0x400, 0x800, 0x1000][k];
-        row[at + k] = flag(c.traits.has(bit));
+    // (The named traits, in their order.)
+    let traits = [
+        ChipTraits::NO_CHAIN,
+        ChipTraits::AURA_BONUS,
+        ChipTraits::NO_CUT_IN,
+        ChipTraits::ELEMENT_SWORD,
+        ChipTraits::GOES_WITH_ANY,
+        ChipTraits::HIDES_DAMAGE_AS_A,
+        ChipTraits::NO_ICON_WHEN_NEXT,
+        ChipTraits::NOT_NAMED_ON_USE,
+    ];
+    for (k, bit) in traits.into_iter().enumerate() {
+        row[at + k] = flag(c.traits.contains(bit));
     }
     at += 8;
     let trap = match c.trap {
@@ -1112,8 +1132,9 @@ fn encode_forms(v: &View, extra: &Extra, out: &mut Obs) {
         let mut at = forms::facts;
         one_hot(row, at, 6, (f.element as usize).min(5));
         at += 6;
-        for k in 0..4 {
-            row[at + k] = flag(f.weakness.0 & (0x10 << k) != 0);
+        let weak = [SecondaryElements::BREAK, SecondaryElements::WIND, SecondaryElements::CURSOR, SecondaryElements::SWORD];
+        for (k, bit) in weak.into_iter().enumerate() {
+            row[at + k] = flag(f.weakness.contains(bit));
         }
         at += 4;
         row[at] = flag(f.base);

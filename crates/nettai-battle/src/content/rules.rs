@@ -1275,24 +1275,40 @@ impl StatusEndFlags {
 
 serde_flags!(StatusEndFlags(crate::collision::StatusFlags));
 
-/// Status timers a status end zeroes, a bit each by the timer's index
-/// (`collision::timer`), in a content file a set of their names
-/// (`StatusTimer`'s).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct StatusTimers(pub u16);
+bitflags::bitflags! {
+    /// Status timers a status end zeroes, a bit each by the timer's index
+    /// (`collision::timer`), in a content file a set of their names
+    /// (`StatusTimer`'s). (The flash's, submerged's and invulnerable's,
+    /// which no status end names, have none.)
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct StatusTimers: u16 {
+        const PARALYZE = 1 << crate::collision::timer::PARALYZE;
+        const CONFUSE = 1 << crate::collision::timer::CONFUSE;
+        const BLIND = 1 << crate::collision::timer::BLIND;
+        const IMMOBILIZE = 1 << crate::collision::timer::IMMOBILIZE;
+        const FREEZE = 1 << crate::collision::timer::FREEZE;
+        const BUBBLE = 1 << crate::collision::timer::BUBBLE;
+        const _ = !0;
+    }
+}
 
 impl StatusTimers {
     pub const NAMES: &'static [(u32, &'static str)] = &[
-        (1 << crate::collision::timer::PARALYZE, "paralyze"),
-        (1 << crate::collision::timer::CONFUSE, "confuse"),
-        (1 << crate::collision::timer::BLIND, "blind"),
-        (1 << crate::collision::timer::IMMOBILIZE, "immobilize"),
-        (1 << crate::collision::timer::FREEZE, "freeze"),
-        (1 << crate::collision::timer::BUBBLE, "bubble"),
+        (Self::PARALYZE.bits() as u32, "paralyze"),
+        (Self::CONFUSE.bits() as u32, "confuse"),
+        (Self::BLIND.bits() as u32, "blind"),
+        (Self::IMMOBILIZE.bits() as u32, "immobilize"),
+        (Self::FREEZE.bits() as u32, "freeze"),
+        (Self::BUBBLE.bits() as u32, "bubble"),
     ];
+
+    /// The timer of index `t` (`collision::timer`).
+    pub const fn of_timer(t: usize) -> StatusTimers {
+        StatusTimers::from_bits_retain(1 << t)
+    }
 }
 
-serde_flags!(StatusTimers, u16);
+serde_flags!(StatusTimers);
 
 /// What a navi's statuses' end clears (EXE6's `sub_801A264`, EXE4's
 /// 0x08013218): its statuses' flags, its requests (the collision's second

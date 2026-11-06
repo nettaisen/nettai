@@ -72,15 +72,15 @@ fn chip_charges(b: &Battle, r: ObjectRef, chip: ChipHandle) -> bool {
     }
     let c = b.content.chip(chip);
     let family = c.family;
-    let damaging = c.flags.has(ChipFlags::HAS_DAMAGE) && !c.flags.has(ChipFlags::DIMMING);
+    let damaging = c.flags.contains(ChipFlags::HAS_DAMAGE) && !c.flags.contains(ChipFlags::DIMMING);
     // The form's `charged_chips`: a family's damaging chips (ElecCross's
     // Null, SlashCross's Sword and the element swords, TomahawkCross's
     // Wood, SpoutCross's Aqua, GroundCross's Break, ChargeCross's Fire),
     // and in Beast Out any Null chip; EXE5's souls' (0x0801090A) a family's
     // chips that are neither dimming nor dark chips (`plain`).
-    let plain = !c.flags.has(ChipFlags::DIMMING) && !c.flags.has(ChipFlags::DARK);
+    let plain = !c.flags.contains(ChipFlags::DIMMING) && !c.flags.contains(ChipFlags::DARK);
     let charges = form_of(b, r).charged_chips.iter().any(|rule| {
-        (family == rule.family || (rule.element_swords && c.traits.has(ChipTraits::ELEMENT_SWORD)))
+        (family == rule.family || (rule.element_swords && c.traits.contains(ChipTraits::ELEMENT_SWORD)))
             && (damaging || !rule.damaging)
             && (plain || !rule.plain)
     });
@@ -231,7 +231,7 @@ fn decode_back_special(b: &mut Battle, r: ObjectRef) {
 /// some rapid busters). A full B charge from last tick makes it a charged
 /// shot.
 fn decode_buster(b: &mut Battle, r: ObjectRef, f0: Requests) {
-    let special_holds = form_of(b, r).traits.has(crate::content::FormTraits::SPECIAL_HOLDS_BUSTER);
+    let special_holds = form_of(b, r).traits.contains(crate::content::FormTraits::SPECIAL_HOLDS_BUSTER);
     let a = ai(b, r);
     if a.buster.is_none() || f0.intersects(Requests::BUSTER | Requests::CHARGED_SHOT) {
         return;
@@ -348,7 +348,7 @@ fn decode_per_button(b: &mut Battle, r: ObjectRef) {
     };
     // (0x0800BE28: a form that ignores B, the dark soul, goes straight to
     // the chip's part.)
-    if !form_of(b, r).traits.has(crate::content::FormTraits::IGNORES_B) {
+    if !form_of(b, r).traits.contains(crate::content::FormTraits::IGNORES_B) {
         decode_b(b, r, f0);
     }
     if !chips_enabled(b, r) || f0.intersects(Requests::CHIP | Requests::CHARGED_CHIP) || next_chip(b, r).is_none() {
@@ -433,7 +433,7 @@ fn accumulate_per_button(b: &mut Battle, r: ObjectRef) {
     // (0x0800BBB2: in a form that ignores B, the dark soul, nothing counts;
     // the level follows what the count holds all the same, 0x0800BB50: what
     // its AI writes there as it dodges.)
-    if form_of(b, r).traits.has(crate::content::FormTraits::IGNORES_B) {
+    if form_of(b, r).traits.contains(crate::content::FormTraits::IGNORES_B) {
         let source = ai(b, r).charge_source;
         let level = if source == 0 { 0 } else { charge_level(ai(b, r).charge_counter, charge_threshold(b, r, source)) };
         ai_mut(b, r).charge_level = level;
@@ -507,7 +507,7 @@ fn charge_threshold(b: &Battle, r: ObjectRef, source: u8) -> u16 {
     }
     let routine = if source == 2 {
         a.charge_shot
-    } else if form_of(b, r).traits.has(crate::content::FormTraits::ALT_CHARGE_TIME) && uses_alt_a_charge(b, r) {
+    } else if form_of(b, r).traits.contains(crate::content::FormTraits::ALT_CHARGE_TIME) && uses_alt_a_charge(b, r) {
         a.alt_a_charge
     } else {
         a.a_charge

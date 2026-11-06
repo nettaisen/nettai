@@ -79,7 +79,7 @@ impl Section {
             Section::Mega => class == ChipClass::Mega,
             Section::Giga => class == ChipClass::Giga,
             Section::ProgramAdvance => class == ChipClass::ProgramAdvance,
-            Section::Dark => flags.0 & ChipFlags::DARK != 0,
+            Section::Dark => flags.contains(ChipFlags::DARK),
             Section::Secret => true,
         }
     }

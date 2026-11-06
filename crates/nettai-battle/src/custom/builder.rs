@@ -239,10 +239,10 @@ fn codes_run(chips: &[FolderChip]) -> bool {
 /// (`sub_8029224`'s test).
 fn applies(m: ChipModifier, flags: ChipFlags) -> bool {
     match m {
-        ChipModifier::AttackPlus => flags.has(ChipFlags::HAS_DAMAGE),
-        ChipModifier::NaviPlus => flags.has(ChipFlags::NAVI),
-        ChipModifier::Paralyze => flags.has(ChipFlags::HAS_DAMAGE),
-        ChipModifier::Uninstall => flags.has(ChipFlags::HAS_DAMAGE) && !flags.has(ChipFlags::DIMMING),
+        ChipModifier::AttackPlus => flags.contains(ChipFlags::HAS_DAMAGE),
+        ChipModifier::NaviPlus => flags.contains(ChipFlags::NAVI),
+        ChipModifier::Paralyze => flags.contains(ChipFlags::HAS_DAMAGE),
+        ChipModifier::Uninstall => flags.contains(ChipFlags::HAS_DAMAGE) && !flags.contains(ChipFlags::DIMMING),
     }
 }
 
@@ -252,7 +252,7 @@ fn applies(m: ChipModifier, flags: ChipFlags) -> bool {
 /// `prev` ([`fold_modifiers`]'s test; a Program Advance the picks form
 /// aside). A chip that isn't a modifier never does.
 pub fn stays_unfolded(library: &dyn Library, prev: Option<ChipHandle>, chip: ChipHandle) -> bool {
-    library.chip(chip).modifier.is_some_and(|m| !applies(m, prev.map_or(ChipFlags(0), |p| library.chip(p).flags)))
+    library.chip(chip).modifier.is_some_and(|m| !applies(m, prev.map_or(ChipFlags::empty(), |p| library.chip(p).flags)))
 }
 
 /// `sub_8029224`: a modifier right after a chip it applies to folds into
@@ -267,7 +267,7 @@ fn fold_modifiers(entries: &mut [Entry; 6], library: &dyn Library) {
             i += 1;
             continue;
         };
-        let prev = entries[i - 1].id.map_or(ChipFlags(0), |p| library.chip(p).flags);
+        let prev = entries[i - 1].id.map_or(ChipFlags::empty(), |p| library.chip(p).flags);
         if !applies(m, prev) {
             i += 1;
             continue;
@@ -356,7 +356,7 @@ mod tests {
         TestLibrary::new(
             vec![
                 (CANNON, damaging),
-                (QUIET, chip(ChipClass::Standard, EVERY_CODE, 0, 0)),
+                (QUIET, chip(ChipClass::Standard, EVERY_CODE, ChipFlags::empty(), 0)),
                 (DIMMING, chip(ChipClass::Standard, EVERY_CODE, ChipFlags::HAS_DAMAGE | ChipFlags::DIMMING, 30)),
                 (NAVI, chip(ChipClass::Mega, EVERY_CODE, ChipFlags::NAVI, 100)),
                 (0xC0, modifier(ChipModifier::AttackPlus, 10)),
@@ -383,7 +383,7 @@ mod tests {
 
     /// A modifier chip (the ids are made up too).
     fn modifier(m: ChipModifier, damage: u16) -> ChipData {
-        ChipData { modifier: Some(m), ..chip(ChipClass::Standard, EVERY_CODE, 0, damage) }
+        ChipData { modifier: Some(m), ..chip(ChipClass::Standard, EVERY_CODE, ChipFlags::empty(), damage) }
     }
 
     fn pick(id: ChipId, code: u8) -> Pick {

@@ -106,7 +106,7 @@ pub fn spawn(b: &mut Battle, owner: ObjectRef, pos: Vec3, anim: u8, lifetime: u1
         o.flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
     }
     // sub_80E341E: tied to the form (EXE6's Beast forms), or to the attack.
-    let stays = b.form(alliance as usize).traits.has(crate::content::FormTraits::AFTERIMAGES_STAY);
+    let stays = b.form(alliance as usize).traits.contains(crate::content::FormTraits::AFTERIMAGES_STAY);
     let tether = if stays { Tether::Form } else { Tether::Attack };
     // Less green, with a ground shadow (the spawner's r7 is 0x01010014 - n).
     let look = PlainLook { color_shader: COLOR_SHADER, shadow: PlainShadow::Ground, ..Default::default() };
@@ -278,7 +278,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     let tether = vars(b, r).tether;
     let alliance = b.objects.get(r).alliance;
     let cut = match tether {
-        Tether::Form => !b.form(alliance as usize).traits.has(crate::content::FormTraits::AFTERIMAGES_STAY),
+        Tether::Form => !b.form(alliance as usize).traits.contains(crate::content::FormTraits::AFTERIMAGES_STAY),
         Tether::Attack => !crate::kinds::player::navi_action(b, owner).is_attack(),
         Tether::None => false,
     };

@@ -738,7 +738,7 @@ local step = { grounded = {}, floor_free = {} }
         // A status end's flags, requests and timers, sets of names (EXE4's: four
         // flags and timers, three of the statuses' requests).
         let end = r.status_end;
-        assert_eq!((end.flags.0.bits(), end.requests.bits(), end.timers.0), (0xE800, 0x68, 0b1111));
+        assert_eq!((end.flags.0.bits(), end.requests.bits(), end.timers.bits()), (0xE800, 0x68, 0b1111));
         // A side's status and requests by name.
         assert_eq!((r.custom_drain.status.bits(), r.intake.anti_traps.drops_requests.bits()), (5, 0x14));
         // No bits of the game's own declared, none.

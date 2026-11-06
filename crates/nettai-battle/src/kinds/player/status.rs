@@ -1454,7 +1454,7 @@ fn while_dimmed(b: &mut Battle, r: ObjectRef) {
         // 0x0801452E, the chips of the other kind of MegaMan), asked
         // before the use is prepared.
         let chip = super::next_chip(b, r);
-        let freezes = chip.is_some_and(|c| b.content.chip(c).flags.has(crate::content::ChipFlags::DIMMING));
+        let freezes = chip.is_some_and(|c| b.content.chip(c).flags.contains(crate::content::ChipFlags::DIMMING));
         let side = b.objects.get(r).alliance;
         if can_cut_in(b, r) && freezes && !b.rules_cut_in_barred(side, r, chip) {
             cut_in(b, r);

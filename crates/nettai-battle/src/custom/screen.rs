@@ -1855,7 +1855,7 @@ impl Screen {
             let c = rules.counted(c, view);
             // (A chip that goes with any selection constrains none: EXE6's
             // BeastOut chip.)
-            if view.library.chip(c.id).traits.has(crate::content::ChipTraits::GOES_WITH_ANY) {
+            if view.library.chip(c.id).traits.contains(crate::content::ChipTraits::GOES_WITH_ANY) {
                 continue;
             }
             if rules.apart.contains(&c.code) {
@@ -1915,7 +1915,7 @@ impl Together {
     fn goes_with(&self, c: FolderChip, view: &PlayerView) -> bool {
         let c = self.rules.counted(c, view);
         let (apart, unstarred) = (self.rules.apart, self.rules.unstarred);
-        if view.library.chip(c.id).traits.has(crate::content::ChipTraits::GOES_WITH_ANY) {
+        if view.library.chip(c.id).traits.contains(crate::content::ChipTraits::GOES_WITH_ANY) {
             true
         } else if apart.contains(&c.code) {
             self.special.is_none_or(|s| s == c.code)
@@ -2016,7 +2016,7 @@ fn past_limit(c: FolderChip, view: &PlayerView) -> bool {
 
 /// A chip with the dark flag (its record's `0x20`).
 pub(crate) fn is_dark(c: FolderChip, view: &PlayerView) -> bool {
-    view.library.chip(c.id).flags.has(crate::content::ChipFlags::DARK)
+    view.library.chip(c.id).flags.contains(crate::content::ChipFlags::DARK)
 }
 
 /// `sub_80280A2`: a link navi's own chip (`word_802A828`), unless it was

@@ -241,7 +241,7 @@ pub fn chip_window(a: &CustomScreen, c: &Content, chip: ChipHandle, code: u8, pr
     // its screen loads once, 0x0801DC28.)
     let frame = match class {
         _ if a.frame_palettes.len() == 1 => 0,
-        Some(_) if data.flags.has(ChipFlags::DARK) => 3,
+        Some(_) if data.flags.contains(ChipFlags::DARK) => 3,
         Some(n) => n,
         None => 0,
     };

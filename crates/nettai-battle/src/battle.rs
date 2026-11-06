@@ -1857,7 +1857,7 @@ impl Battle {
             let Some(a) = self.player_actor(side) else { continue };
             let over = self.is_battle_over();
             // (A controlled form, EXE6's Beast Over: the controller decides.)
-            let berserk = self.form(side as usize).traits.has(crate::content::FormTraits::CONTROLLED);
+            let berserk = self.form(side as usize).traits.contains(crate::content::FormTraits::CONTROLLED);
             let held = self.inputs[side as usize].held;
             let dimmed = self.is_dimmed();
             let switch = self.switch_inputs[side as usize];
@@ -2183,7 +2183,7 @@ impl Battle {
         }
         // (A controlled navi, EXE6's Beast Over, can't ask for it: a full
         // gauge opens it.)
-        let berserk = |side: usize| self.form(side).traits.has(crate::content::FormTraits::CONTROLLED);
+        let berserk = |side: usize| self.form(side).traits.contains(crate::content::FormTraits::CONTROLLED);
         ((berserk(0) || berserk(1)) && self.round.flags.contains(BattleFlags::GAUGE_FULL))
             || self.round.flags.contains(BattleFlags::CUSTOM_REQUESTED)
     }
@@ -2431,7 +2431,7 @@ impl Battle {
     /// 0x080164B4, the second block), the name takes the place of the
     /// side's telop there.
     pub(crate) fn show_used_chip(&mut self, side: u8, chip: ChipHandle, damage: u16, bonus: u16) {
-        let shows_damage = self.content.chip(chip).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0;
+        let shows_damage = self.content.chip(chip).flags.contains(crate::content::ChipFlags::HAS_DAMAGE);
         let (damage, bonus) = if shows_damage { (damage, bonus) } else { (0, 0) };
         if self.game_rules().effects.telops == crate::content::Telops::Apart && self.is_remote(side & 1) {
             self.remote_telop = Banner::default();
