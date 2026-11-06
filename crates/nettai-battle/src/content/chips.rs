@@ -311,8 +311,8 @@ pub enum DamageFormula {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case", deny_unknown_fields)]
 pub enum Counted {
-    /// The side's statistics counter `n` (`sub_800AB3A`).
-    SideStat(u8),
+    /// The side's statistic in a slot (`sub_800AB3A`), by its name.
+    SideStat(super::rules::SideStatSlot),
     /// The field's panels of this type the side owns
     /// (`object_dead_getPanelsTypeAllianceCount`).
     OwnPanels(crate::field::PanelType),

@@ -36,7 +36,7 @@ the rules' code.
 The original polls: many of its routines run every tick and mostly find nothing to do. The engine keeps their timing
 without a script call a tick, through four generic means (2026-10-28):
 
-- **`rules.listen(side, hook, on)`**: whether the engine calls a hook of the side's rules. Every hook is called until
+- **`rules.listening(side).hook = on`**: whether the engine calls a hook of the side's rules. Every hook is called until
   the rules turn it off; they turn it off where it can do nothing (EXE5's party supports and KnightMan's guard without
   partners) and on again at the event that lets it act (Chaos Unison's charge armed, a DarkInvs drive, the dark
   soul's emerging), or turn it off from inside the call that finds nothing left (the dark soul's AI out of the soul).
@@ -270,7 +270,7 @@ Each with what it was and what it is now.
   `b_charge_anim` (its full animation). A full charge released while it is armed asks the rules
   (`charge_released`) and raises one request, `rules_release`, which idle hands them (`release_taken`) where the
   original's 0x080F034E and 0x080F0382 run. The palette and the face are EXE5's (its `navi_palette`;
-  `battle.set_hud("face_variant_any_form", ...)` as it arms and drops the charge). Gone from Rust: `ChaosCharge`, `ActorField::{ChaosArmed,
+  `battle.hud(side).face_variant_any_form = ...` as it arms and drops the charge). Gone from Rust: `ChaosCharge`, `ActorField::{ChaosArmed,
   ChaosLevel}`, the `chaos_cycle` rule, `request::CHAOS_*`, `FormWeapons::chaos`, `SoulData::chaos_cycle`,
   `ActionRole::ChaosFailure`, `SpriteRole::ChargeGlowChaos`, the palette's branch and the end-of-kind-6 disarm
   (the failure's revert drops the charge with its status reset first: the EXE5 lab's 29 failures end disarmed).

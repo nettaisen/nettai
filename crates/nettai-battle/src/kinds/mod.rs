@@ -386,7 +386,7 @@ fn damage_taken(b: &Battle, side: u8, cap: u16) -> u16 {
 fn counted(b: &Battle, side: u8, of: &crate::content::Counted) -> usize {
     use crate::content::Counted as C;
     match *of {
-        C::SideStat(n) => b.side_stats[side as usize & 1][n as usize & 0xF] as usize,
+        C::SideStat(n) => b.side_stats[side as usize & 1][n.0 as usize & 0xF] as usize,
         // `object_dead_getPanelsTypeAllianceCount`: the field's panels.
         C::OwnPanels(t) => (1..=3u8)
             .flat_map(|y| (1..=6u8).map(move |x| (x, y)))

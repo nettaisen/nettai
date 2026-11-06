@@ -167,6 +167,7 @@ local rules_: Rules = {
     pools = require("@self/pools"),
     reactions = require("@self/reactions"),
     roles = require("@self/roles"),
+    side_stats = { recoveries = 5 },
     status = require("@self/status_rules"),
 }
 

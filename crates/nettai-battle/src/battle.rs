@@ -648,19 +648,19 @@ pub struct SideState {
 pub struct SideLooks {
     /// The emotion window shows the second set of the base form's faces
     /// (EXE5's Hub Style, NaviStats +0x4C: 0x0801AF8E adds 11 to the face;
-    /// `battle.set_hud("face_variant", ..)`, `kinds::player::shows_face_variant`).
+    /// `battle.hud(side).face_variant = ...`, `kinds::player::shows_face_variant`).
     pub face_variant: bool,
     /// And whatever its form (EXE5's Chaos Unison look while its charge is
     /// armed, 0x080125F6, which its rules set and clear).
     pub face_variant_any_form: bool,
     /// The emotion window shows the side's count (its navi's stat of the
     /// role `window_count`), else its empty box, as the side's rules say
-    /// for the round (`battle.set_hud("window_count", ..)`: EXE6's Beast Out turns,
+    /// for the round (`battle.hud(side).window_count = ...`: EXE6's Beast Out turns,
     /// `sub_801D814`).
     pub window_count: bool,
     /// The custom screen's enemy names show the side's navi by its variant
     /// name (EXE5's Hub Style in a link battle: 0x0801AE3A's NameID 0xEA;
-    /// `battle.set_hud("name_variant", ..)`).
+    /// `battle.hud(side).name_variant = ...`).
     pub name_variant: bool,
 }
 

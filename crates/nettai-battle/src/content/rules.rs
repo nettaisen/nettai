@@ -56,6 +56,71 @@ pub struct FlowRules {
     pub fight_cycles: [u8; 2],
 }
 
+/// The rule section `side_stats`: the slots of a side's statistics (the
+/// original's counters, 16 a side: `sub_800AB46` bumps one, `sub_800AB3A`
+/// reads it) that its game's content names, each by its name: the game's own
+/// layout (EXE5's slot 0 counts its chaos weapons; the engine counts a
+/// navi's reactions in slot 3 in every game). Content names a slot
+/// (`battle.side_stat(side, "reactions")`, a count formula's `side_stat`);
+/// the engine keeps the slot's number.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct SideStats(pub Vec<(String, u8)>);
+
+impl SideStats {
+    /// The statistics a side has: 16.
+    pub const SLOTS: u8 = 16;
+
+    /// The slot named `name`.
+    pub fn slot(&self, name: &str) -> Option<u8> {
+        self.0.iter().find(|(n, _)| n == name).map(|&(_, s)| s)
+    }
+
+    /// The slot named `name`, or why there is none (for an error).
+    pub fn named(&self, name: &str) -> Result<u8, String> {
+        self.slot(name).ok_or_else(|| {
+            let names: Vec<&str> = self.0.iter().map(|(n, _)| n.as_str()).collect();
+            format!("{name:?} is none of its game's side statistics (its rules' `side_stats`: {})", names.join(", "))
+        })
+    }
+}
+
+thread_local! {
+    /// The side statistics of the game whose content is being read.
+    static READING_SIDE_STATS: std::cell::RefCell<Option<SideStats>> = const { std::cell::RefCell::new(None) };
+}
+
+/// `f`, with a side statistic's name read as one of `stats` (the game's, as
+/// its content is defined).
+pub fn reading_side_stats<T>(stats: &SideStats, f: impl FnOnce() -> T) -> T {
+    let before = READING_SIDE_STATS.with(|r| r.replace(Some(stats.clone())));
+    let out = f();
+    READING_SIDE_STATS.with(|r| *r.borrow_mut() = before);
+    out
+}
+
+/// A slot of a side's statistics: in a content file, its name among the
+/// game's (`SideStats`); a number as the engine keeps it (what it writes).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
+pub struct SideStatSlot(pub u8);
+
+impl<'de> Deserialize<'de> for SideStatSlot {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<SideStatSlot, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum Named {
+            Slot(u8),
+            Name(String),
+        }
+        match Named::deserialize(d)? {
+            Named::Slot(n) => Ok(SideStatSlot(n)),
+            Named::Name(name) => READING_SIDE_STATS.with(|r| match r.borrow().as_ref() {
+                Some(stats) => stats.named(&name).map(SideStatSlot).map_err(serde::de::Error::custom),
+                None => Err(serde::de::Error::custom(format!("side statistic {name:?}: no game's side statistics are being read"))),
+            }),
+        }
+    }
+}
+
 /// A link battle's navi body damage (the rules' `status.link_body_damage`):
 /// the navi's damage as it is set up (`sub_80142B0`, EXE6's and EXE5's
 /// 0x080119AC: 10), which its body's collision takes, and whether its
@@ -2037,6 +2102,9 @@ pub struct Rules {
     /// its stages may name besides `setup::effects::NAMES`, and what
     /// `battle.has_effect` reads.
     pub effect_bits: Vec<(String, u32)>,
+    /// The slots of a side's statistics its content names (rule section
+    /// `side_stats`).
+    pub side_stats: SideStats,
     /// The battle's shared effects where a game's differ (rule section
     /// `effects`, the arena's game's).
     pub effects: EffectsRules,
