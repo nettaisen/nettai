@@ -53,7 +53,7 @@ What it leaves out is presentation: what is drawn (the `VISIBLE` flag, sprites, 
 shake offsets), where a drawn thing or an object without a collision stands (a hit spark's random jitter is in
 screen pixels; what such an object does in play shows in what it spawns), a body's pixel of jitter while it
 shakes in a dimming, a body parked off the field at the same X whatever its side, the judge's rolling digits, and
-values the code never reads (a bug code's garbage argument, header bits 0x40 and 0x80). Two values are compared
+values the code never reads (header bits 0x40 and 0x80). Two values are compared
 loosely: EXE4's direction after a move is absolute and after a slide by the side, and which wrote it isn't kept, so
 its 3 and 4 compare as one; and the attack's marker word, each action's own packing, is left out (what it decides
 shows in what the action places and hits). A body shaking in place by whole screen pixels (a heavy hit's shake,
@@ -330,8 +330,6 @@ for the same draw, each panel as likely for either side. These keep the original
   sprites that look each way by an animation of their own (LarkMan's swoop, SpoutMan's drip shower), SlashMan's
   charged waves' Z fraction (their spawner's side halfword), Count's charged shot jittering its navi in place:
   drawn only.
-- **Values nothing reads.** A bug code's argument that is the target type's table offset (`row * 8 + side * 4`,
-  EXE6's codes 0xF7 and 0xF8, whose routines read no argument).
 - **The NaviCust bug byte past a side's block (EXE5).** A code between the block's end and twice it writes side 1's
   stats when side 0's navi takes it, and nothing for side 1's. No chip of the three games inflicts such a code.
 - **EXE4's local console.** Its counter strikes and LifeSync look at which side is the local console's, not at

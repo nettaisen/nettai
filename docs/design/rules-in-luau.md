@@ -2613,12 +2613,12 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   | `status.emotions` | `exe6`, `exe5` | split since (below): `status.emotion`'s seven rules and `effects.full_synchro_aura`'s three |
 
 - **Still a bundle under one name** (each a whole routine of one game, named for its most visible difference):
-  `retype` (what is set, the dimmed mark, a bug code's high byte), `palette_flash` (the pause, and for variant 1 the dimming), `status.reactions` (the order, when the flash's timer runs, what a drag or a flinch resets), `status.reaction_actions` (since EXE4's port: `marked` or `plain`, whether the reaction actions mark the action in use, ground and count), `status.drag` (since EXE4's port: the drag's poses, paralyzed, SuperArmor and otherwise, and its `ending`, `resumes_paralysis`, `stands` or `keeps_pose`),
+  `retype` (what is set, the dimmed mark), `palette_flash` (the pause, and for variant 1 the dimming), `status.reactions` (the order, when the flash's timer runs, what a drag or a flinch resets), `status.reaction_actions` (since EXE4's port: `marked` or `plain`, whether the reaction actions mark the action in use, ground and count), `status.drag` (since EXE4's port: the drag's poses, paralyzed, SuperArmor and otherwise, and its `ending`, `resumes_paralysis`, `stands` or `keeps_pose`),
   `hp_loss` (the gauge, asking the rules at 0 HP, how a hit shows), `form_break` (which forms break, and the break's
   animation, overlay and collision region).
 - **`damage_word` is data since EXE4's port** (EXE4 decodes neither game's way: 14 bits of damage and one flag):
   the damage's mask and the flag bits in the order the game reads them, each a status by its role, a hit modifier,
-  a bug code (its high byte the target lookup's row offset where so) and whether the reading stops there.
+  a bug code (and its argument, where it states one) and whether the reading stops there.
 - **`push_reading` is data since EXE4's port** (EXE4 reads six bits, its pushes up and down among them): which
   modifier it reads (the final one, or EXE5's by the hitters' flip), how many bits from bit 2 (the first set picks
   the row; none, the row past them), a shift bit (EXE6's 0x80, five rows on) and an obstacle's rows (EXE6's

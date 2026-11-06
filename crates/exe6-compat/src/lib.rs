@@ -327,6 +327,10 @@ pub struct RuleNumbers {
     pub regions: BTreeMap<String, u8>,
     #[serde(default)]
     pub collision: BTreeMap<String, u8>,
+    /// Collision types (`byte_8019C7C`): each definition's row of the
+    /// original's table, by key.
+    #[serde(default)]
+    pub collision_types: BTreeMap<String, u8>,
     /// Likewise the sound and music (the song table's entries) and the
     /// banner (`pt_801EF84`) each role of those groups names.
     #[serde(default)]

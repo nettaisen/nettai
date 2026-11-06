@@ -189,6 +189,11 @@ pub struct RuleNumbers {
     /// Statuses (0x08018550): a hit's status byte, by key.
     #[serde(default)]
     pub statuses: BTreeMap<String, u8>,
+    /// Collision types (0x08012660): each definition's row of the original's
+    /// table, by key (tools/exe4/gen_rules.py writes them; no replay
+    /// reads them).
+    #[serde(default)]
+    pub collision_types: BTreeMap<String, u8>,
 }
 
 /// A netbattle stage (stages.toml): the settings records that are it (their

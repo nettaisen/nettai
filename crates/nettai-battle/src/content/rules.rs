@@ -715,11 +715,8 @@ pub struct DamageFlag {
     /// The hit modifier it sets in place of the hit's (none: it keeps the
     /// hit's).
     pub hit_modifier: Option<u8>,
-    /// The bug code its hits carry (low byte) and its argument (high byte);
-    /// the argument, where `bug_high_row`, the target lookup's row offset
-    /// (EXE6's: what the lookup left in r1).
+    /// The bug code its hits carry (low byte) and its argument (high byte).
     pub bug: Option<u16>,
-    pub bug_high_row: bool,
     /// The reading ends at this bit when the word has it.
     pub stop: bool,
 }
@@ -738,8 +735,6 @@ struct DamageFlagSection {
     #[serde(default)]
     bug_arg: Option<u8>,
     #[serde(default)]
-    bug_high_row: bool,
-    #[serde(default)]
     stop: bool,
 }
 
@@ -747,18 +742,14 @@ impl TryFrom<DamageFlagSection> for DamageFlag {
     type Error = String;
 
     fn try_from(f: DamageFlagSection) -> Result<DamageFlag, String> {
-        if f.bug.is_none() && (f.bug_arg.is_some() || f.bug_high_row) {
-            return Err(format!("damage word flag {:?}: `bug_arg` and `bug_high_row` go with a `bug`", f.flag));
-        }
-        if f.bug_arg.is_some() && f.bug_high_row {
-            return Err(format!("damage word flag {:?}: a bug's argument is `bug_arg` or the row (`bug_high_row`), not both", f.flag));
+        if f.bug.is_none() && f.bug_arg.is_some() {
+            return Err(format!("damage word flag {:?}: `bug_arg` goes with a `bug`", f.flag));
         }
         Ok(DamageFlag {
             bit: bits_by_name(nettai_content_api::NamedBits::DamageWord, std::slice::from_ref(&f.flag))? as u16,
             status: f.status,
             hit_modifier: f.hit_modifier.map(|set| bits_of_set(nettai_content_api::NamedBits::HitModifier, &set.0).map(|b| b as u8)).transpose()?,
             bug: f.bug.map(|code| code as u16 | (f.bug_arg.unwrap_or(0) as u16) << 8),
-            bug_high_row: f.bug_high_row,
             stop: f.stop,
         })
     }
@@ -861,9 +852,7 @@ pub enum RetypeRule {
     IsAndHits,
     /// What it is alone is set, never marked (EXE5's 0x08016B9E): its
     /// store of what it hits goes to the row number plus 0x34, a BIOS
-    /// address no write reaches, so it keeps hitting what it did. A bug
-    /// code's garbage high byte is the target lookup's offset, as the
-    /// setup's.
+    /// address no write reaches, so it keeps hitting what it did.
     IsAlone,
 }
 

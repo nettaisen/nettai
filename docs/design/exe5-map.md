@@ -2131,8 +2131,8 @@ tools/exe5/recipes.py writes EXE5's recipes (and the flag) into the Program Adva
 that have a use; rerun it as chips get theirs.
 
 **Rules.** The `effects` section's `retype = "is_alone"`: EXE5's retype (0x08016B9E, EXE6's `sub_801A9E8`'s counterpart)
-sets the self type only (no dimmed bit), leaves the target type and writes the target's `row_offset` plus four
-times the side into the next word. A hit's modifier goes into its side's slot by its flip (`hit_mod_by_side`).
+sets the self type only (no dimmed bit) and leaves the target type (its store goes to the row number plus 0x34,
+a BIOS address no write reaches). A hit's modifier goes into its side's slot by its flip (`hit_mod_by_side`).
 
 **Obstacles and stages.** The rock and its debris (content/exelib/rock), the boulder (content/exelib/boulder) are
 makers EXE6's chips/rockcube and objects/boulder wrap (same APIs). EXE5's rock (attack object 0x59, rows by

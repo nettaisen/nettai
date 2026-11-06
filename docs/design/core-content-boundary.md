@@ -209,8 +209,9 @@ The traces observe the state word, header flags, timers and positions. Some posi
 spawner's registers held. Content reproduces the value where it is knowable (a spawner passing `(panel.y,
 element, z)` as the position; `battle.loop_register()` for the update loop's leftover; `me:set_header_flags`
 for a byte read from the wrong address); where it is an address, compat marks the kind `scratch_position` and
-the comparison skips it. Garbage the ruleset produces (a decoded bug's high byte, which a collision type's
-`row_offset` gives) stays in the ruleset. The engine never exposes addresses.
+the comparison skips it. Garbage the ruleset produces stays in the ruleset. Garbage nothing reads is not reproduced (EXE6's decoded
+bug codes 0xF7 and 0xF8 have no argument, where the original's take a register's leftover). The engine never
+exposes addresses.
 
 ### 4.7 The pause handler
 

@@ -606,13 +606,9 @@ impl Battle {
         s.region = Some(anchor);
         s.counter_byte = o.stamina as u8;
         s.self_damage = o.damage;
-        s.self_flags = self.content.collision_type(self_type, o.alliance).0 | if dimmed { types::HITS_WHILE_DIMMED } else { 0 };
-        let (target_flags, row_offset) = self.content.collision_type(target_type, o.alliance);
-        s.target_flags = target_flags;
-        // The garbage high byte of any bug code: the table offset the
-        // target lookup left in r1.
-        let r1 = row_offset + o.alliance as u16 * 4;
-        decode_damage_word(s, r1, &word, self.content.defs.roles());
+        s.self_flags = self.content.collision_type(self_type, o.alliance) | if dimmed { types::HITS_WHILE_DIMMED } else { 0 };
+        s.target_flags = self.content.collision_type(target_type, o.alliance);
+        decode_damage_word(s, &word, self.content.defs.roles());
     }
 
     /// `sub_801A082`: redo the damage and collision-type part of the setup
@@ -626,25 +622,15 @@ impl Battle {
         // alone, EXE5's 0x08016B9E.)
         let alone = self.game_rules().effects.retype == crate::content::RetypeRule::IsAlone;
         let word = self.game_rules().effects.damage_word.clone();
-        let (target_flags, row_offset) = self.content.collision_type(target_type, alliance);
+        let target_flags = self.content.collision_type(target_type, alliance);
         let s = self.collision.get_mut(id);
         s.hit_mod_base = hit_mod;
         s.self_damage = damage;
-        s.self_flags = self.content.collision_type(self_type, alliance).0 | if dimmed && !alone { types::HITS_WHILE_DIMMED } else { 0 };
+        s.self_flags = self.content.collision_type(self_type, alliance) | if dimmed && !alone { types::HITS_WHILE_DIMMED } else { 0 };
         if !alone {
             s.target_flags = target_flags;
         }
-        // A bug code's garbage high byte is what `battle_isTimeStop` left in
-        // r1 (4, or 0x10000 while dimmed); EXE5's, what the target lookup
-        // left.
-        let r1 = if alone {
-            row_offset + alliance as u16 * 4
-        } else if dimmed {
-            0
-        } else {
-            4
-        };
-        decode_damage_word(s, r1, &word, self.content.defs.roles());
+        decode_damage_word(s, &word, self.content.defs.roles());
     }
 
     /// `object_presentCollisionData`: clear the accumulators and register.
@@ -988,9 +974,11 @@ impl Battle {
 
 /// `sub_8019F44`: decode a damage word (the rule `effects.damage_word`):
 /// the damage under its mask, doubled with 0x8000, then its flag bits in
-/// the game's order; `r1` is what the caller left there, a row-offset bug
-/// code's high byte.
-fn decode_damage_word(s: &mut CollisionData, r1: u16, word: &DamageWord, roles: &crate::content::Roles) {
+/// the game's order. (EXE6's codes 0xF8 and 0xF7 take as their argument
+/// whatever their caller left in r1, the setup's target type's table
+/// offset or the reset's dimming test's answer; no routine reads it, so a
+/// code's argument here is the flag's own, 0 unless it states one.)
+fn decode_damage_word(s: &mut CollisionData, word: &DamageWord, roles: &crate::content::Roles) {
     let d = s.self_damage;
     s.self_damage = d & word.damage;
     if d & 0x8000 != 0 {
@@ -1007,7 +995,7 @@ fn decode_damage_word(s: &mut CollisionData, r1: u16, word: &DamageWord, roles: 
             s.hit_mod_base = m;
         }
         if let Some(code) = f.bug {
-            s.bugs = if f.bug_high_row { (r1 << 8).wrapping_add(code) } else { code };
+            s.bugs = code;
         }
         if f.stop {
             return;

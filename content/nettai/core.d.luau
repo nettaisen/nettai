@@ -3766,11 +3766,9 @@ export type Region = RegionSpec
 
 -- A collision type: what an object is or what it hits, by its members
 -- (`flags`, a set of them: `{ own_attack = true, sword = true }`; the loader
--- refuses a name it doesn't know). `row_offset`: the
--- offset the original's lookup of the type's row leaves in a register (the
--- row's index times 8), which a damage word's bug code takes as its high
--- byte. (`CollisionType`, since `Collision` is an object's registration.)
-export type CollisionTypeSpec = { id: string?, flags: { [CollisionMember]: boolean }, row_offset: number? }
+-- refuses a name it doesn't know). (`CollisionType`, since `Collision` is an
+-- object's registration.)
+export type CollisionTypeSpec = { id: string?, flags: { [CollisionMember]: boolean } }
 export type CollisionType = CollisionTypeSpec
 
 -- What the rules need from content by role (rules/roles.luau, once per

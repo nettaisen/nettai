@@ -155,7 +155,7 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
         ("local function f(me: Object) me:death_hook(0x1A0) end", "a death hook by NameID"),
         ("local _ = battle.attach_point(0x1A0, 3, 0, 0)", "an attach point by NameID"),
         ("local function f(me: Object) me:setup_collision(4, 5, 0) end", "collision types by number"),
-        ("local _ = new.collision { side0 = 0x80000080, side1 = 0x40000080, row_offset = 0x20 }", "a collision type by words"),
+        ("local _ = new.collision { side0 = 0x80000080, side1 = 0x40000080 }", "a collision type by words"),
         ("local _ = field.flags(1, 1)", "a panel's flags word"),
         ("local _ = field.check(1, 1, 0x10, 0x0F880080)", "a panel condition by words"),
         ("local _ = field.check(1, 1, \"solid\", \"occupied\")", "a panel condition by names, required and forbidden"),

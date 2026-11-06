@@ -142,6 +142,11 @@ pub struct RuleNumbers {
     /// Statuses (0x0801CEC4): a hit's status byte, by key.
     #[serde(default)]
     pub statuses: BTreeMap<String, u8>,
+    /// Collision types (0x0801636C): each definition's row of the original's
+    /// table, by key (tools/exe5/gen_rules.py writes them; no replay
+    /// reads them).
+    #[serde(default)]
+    pub collision_types: BTreeMap<String, u8>,
 }
 
 /// An object kind (kinds.toml): EXE5's pool and index of it, and the

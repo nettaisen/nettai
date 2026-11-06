@@ -41,29 +41,6 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
     assert!(warnings.iter().any(|w| w.starts_with("test:objects/held/held.luau: only test:chips/holder uses")), "{warnings:?}");
 }
 
-#[test]
-fn a_collision_type_defined_twice_is_an_error() {
-    let mut c = testing::with_test_pack();
-    for (path, key) in [("lib/one", "one"), ("lib/two", "two"), ("lib/other", "other")] {
-        // (Rows no type of the test content is.)
-        let row_offset = if key == "other" { 0x7F8 } else { 0x7F0 };
-        c.scripts.modules.insert(
-            module(path),
-            format!("return new.collision {{ id = '{key}', flags = {{ reaches_float_shoe = true }}, row_offset = {row_offset} }}"),
-        );
-    }
-    testing::add_index(&mut c.scripts, testing::ROOT);
-    c.define().unwrap();
-    // (The test content's own types share rows with EXE6's, whose module
-    // it has too: only these are looked at.)
-    let twins: Vec<_> = nettai_content::lint::duplicate_collision_types(&c).into_iter().filter(|(row, _)| *row >= 0xFE).collect();
-    assert_eq!(twins, [(0xFE, vec![("one".to_string(), "test:lib/one".to_string()), ("two".to_string(), "test:lib/two".to_string())])]);
-    let mut r = Report::default();
-    nettai_content::lint::definitions(&c, &mut r);
-    let errors: Vec<&str> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| i.message.as_str()).collect();
-    assert!(errors.iter().any(|e| e.contains("collision type one is row 0xfe") && e.contains("two (test:lib/two.luau)")), "{errors:?}");
-}
-
 /// The repository's content directory.
 const CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content");
 

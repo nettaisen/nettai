@@ -16,10 +16,9 @@ local function spark(): Spark
 end
 
 -- A type of members `flags` (an own side's of the object's side, the
--- other side's mirrored). `row` is the row the type has in EXE6's table: a
--- bug code's high byte takes its offset.
-local function collision(id: string, row: number, flags: { [CollisionMember]: boolean }): CollisionType
-    return new.collision { id = "test/" .. id, flags = flags, row_offset = row * 8 }
+-- other side's mirrored).
+local function collision(id: string, flags: { [CollisionMember]: boolean }): CollisionType
+    return new.collision { id = "test/" .. id, flags = flags }
 end
 
 -- A navi's body: its side's body and player navi, which resolves while the
@@ -56,19 +55,17 @@ return {
         anchor = new.region { panels = { { 0, 0 } } },
     },
     collision = {
-        navi = collision("navi", 0x01, BODY),
+        navi = collision("navi", BODY),
         floating_navi = collision(
             "floating-navi",
-            0x10,
             { own_body = true, own_navi = true, floating = true, hits_while_dimmed = true, reaches_float_shoe = true }
         ),
         navi_target = collision(
             "navi-target",
-            0x02,
             { enemy_attack = true, enemy_object = true, enemy_body = true, enemy_other_body = true, neutral = true }
         ),
-        thrown_obstacle = collision("thrown-obstacle", 0x06, { own_attack = true, reaches_float_shoe = true }),
-        thrown_obstacle_target = collision("thrown-obstacle-target", 0x05, OTHERS),
+        thrown_obstacle = collision("thrown-obstacle", { own_attack = true, reaches_float_shoe = true }),
+        thrown_obstacle_target = collision("thrown-obstacle-target", OTHERS),
     },
     -- Made-up sounds, music, sprites and banners, one for each role (named
     -- `test-<kind>-<role>`; the test content gives each the id the tests

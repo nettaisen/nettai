@@ -780,7 +780,7 @@ These regions were not exercised in machgun.
    - `D & 0x2000` (uninstall): `Bugs = (r1<<8) + 0xF8`, then **return**.
    - Else `D & 0x1000` (erase-cross / skull): `Bugs = (r1<<8) + 0xF7`.
    - `D & 0x0800`: no effect.
-   - r1 here is the leftover `targetIdx*8 + alliance*4` from the Target lookup, so the Bugs high byte is "garbage". Reproduce it.
+   - r1 here is the leftover `targetIdx*8 + alliance*4` from the Target lookup (in `sub_801A082`, `battle_isTimeStop`'s answer), so the Bugs high byte is "garbage". No routine reads the argument of 0xF8 or 0xF7, and the engine leaves it 0: a deliberate departure (2026-11-06), the one byte of collision state where it differs, which no trace records.
 
 **`sub_801A082(r1, r2, r3)`** (0x0801A082) re-runs HitModifierBase, SelfDamage (from obj+0x2C), Self, Target, the dimming OR and `sub_8019F44` on an existing slot.
 - Used by `sub_801393A` (0x0801393A) to switch the navi between Self idx 0x10 (`ns+0x1B` FloatShoes: also `F1 |= 0x20`) and idx 1 (`F1 &= ~0x20`).
@@ -1516,7 +1516,7 @@ In tick 647 the navi's stage A computes FinalDamage 0 (the +0x8C slot is exclude
 7. Heat-on-grass damage goes into the null slot, unmultiplied, using the receiver's *collision* panel. Holy halving uses the *object* panel; barriers use the collision panel (§3.8, §4.2, §4.4).
 8. Element-5 / poison damage (+0x8C) bypasses FinalDamage, barriers, holy, Undershirt and the death-tick path (§4.5).
 9. Barriers are fed by the raw channel, which includes flashing/guarded/invulnerable hits (§4.2).
-10. `sub_8019F44`'s Bugs high byte is the leftover `targetIdx*8 + alliance*4` (§3.5).
+10. `sub_8019F44`'s Bugs high byte is the leftover `targetIdx*8 + alliance*4` (§3.5); the engine leaves it 0, nothing reading it.
 11. Hole timer off-by-one between chip breaks and step-off breaks; the initial roads expire after 0x708 ticks (§2.6.2).
 12. A cracked panel with a reservation never breaks; FloatShoes navis never break cracked panels (§2.6.2).
 13. Status-table garbage for 0x66/0x67 (writes +0x0A) and aliasing for nibbles ≥ 6 (§4.8).

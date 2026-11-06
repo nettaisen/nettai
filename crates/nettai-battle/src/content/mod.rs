@@ -677,12 +677,9 @@ impl Content {
         }
     }
 
-    /// A collision type's flag word for `alliance`'s side, and the offset
-    /// the original's lookup of its row leaves in a register (a bug code's
-    /// high byte, `sub_801A00E`).
-    pub fn collision_type(&self, h: nettai_content_api::CollisionHandle, alliance: u8) -> (u32, u16) {
-        let t = &self.defs.collisions[h.index()];
-        (t.flags[alliance as usize & 1], t.row_offset)
+    /// A collision type's flag word for `alliance`'s side (`sub_801A00E`).
+    pub fn collision_type(&self, h: nettai_content_api::CollisionHandle, alliance: u8) -> u32 {
+        self.defs.collisions[h.index()].flags[alliance as usize & 1]
     }
 
     /// The Program Advances, in the order they are tried (each chip holds

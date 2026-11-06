@@ -267,11 +267,6 @@ pub struct StatusDef {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CollisionTypeDef {
     pub flags: [u32; 2],
-    /// The offset the original's lookup of this type's row leaves in a
-    /// register (the row's index times 8), which a damage word's bug code
-    /// takes as its high byte (`sub_801A00E`): a quirk materialized where
-    /// it is used (docs/design/content-model-v2.md §3.3).
-    pub row_offset: u16,
 }
 
 
@@ -1838,14 +1833,13 @@ impl Defs {
         let mut collisions = Vec::new();
         for d in definitions.of(Registry::Collision) {
             let what = |e: &str| ContentError::new(format!("{}.luau: collision {}: {e}", d.module, d.key));
-            fields(d, &["id", "flags", "row_offset"])?;
+            fields(d, &["id", "flags"])?;
             let members = match d.spec.field("flags") {
                 Data::Nil => return Err(what("needs `flags`, the set of its members (`{ own_attack = true }`)")),
                 v => v.set().map_err(|m| what(&format!("`flags` {m}")))?,
             };
             let flags = crate::collision::type_words(members.into_iter()).map_err(|m| what(&m))?;
-            let row_offset = d.spec.field("row_offset").int().unwrap_or(0) as u16;
-            collisions.push(CollisionTypeDef { flags, row_offset });
+            collisions.push(CollisionTypeDef { flags });
         }
 
         // The roles: the game's, its rules' `roles` (docs/design/

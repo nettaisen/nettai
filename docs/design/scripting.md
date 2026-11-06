@@ -398,7 +398,8 @@ The lints cover what the checker can't see (`nettai-content-check`'s `lints`):
 - no module lives under compat/.
 
 `nettai-content check` adds what needs the definitions: roles left unfilled, kinds under `objects/` that one owner
-alone uses, a collision type defined twice. Reading compat refuses two keys with one of the original's numbers.
+alone uses. Reading compat refuses two keys with one of the original's numbers; nettai-verify's checks refuse two
+collision types of one row (compat's `collision_types`).
 
 Two tests guard that content names nothing by the original's numbers (`nettai-content-check`'s `guards`, with
 no exceptions): no folder under the content roots is named with one (`00f-gundels1`), and no module carries a

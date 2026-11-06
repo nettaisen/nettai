@@ -1118,6 +1118,7 @@ local step = { grounded = {}, floor_free = {} }
         for (spec, says) in [
             ("new.collision { id = 'x', flags = { own_atack = true } }", "`own_atack` is no collision type member"),
             ("new.collision { id = 'x', side0 = 0x80, flags = {} }", "`side0` is none of its fields"),
+            ("new.collision { id = 'x', flags = {}, row_offset = 0x20 }", "`row_offset` is none of its fields"),
             ("new.collision { id = 'x', flags = { sword = 1 } }", "`flags` `sword` is a number, not true or false"),
             ("new.collision { id = 'x', flags = { 'sword' } }", "`flags` is a table of booleans keyed by name"),
             ("new.region { id = 'x', field = { sold = true } }", "`sold` is no panel flag"),

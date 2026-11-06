@@ -108,7 +108,7 @@ Every definition belongs to one registry. The engine knows the registries and th
 | effect | `new.effect` | derived | sprite, animation, palette | (none) |
 | spark | `new.spark` | derived | sprite, animation, palette | (none) |
 | region | `new.region` | derived | panel offsets, or a whole-field condition by flag names | (none) |
-| collision | `new.collision` | derived (`rules/collision/attack`) | a collision type's members by name, the side-relative ones mirrored for side 1 | (none: gen-content knows a type by its row) |
+| collision | `new.collision` | derived (`rules/collision/attack`) | a collision type's members by name, the side-relative ones mirrored for side 1 | its row of the original's table, in rules.toml (`collision_types`) |
 | status | `new.status` | `id` where compat names it, else derived | requests, duration, timer | its byte, in rules.toml |
 | (lockon) | `new.record(LOCKON, ...)` | `id` (compat's rules.toml) | the Beast Out lock-on search | its mode byte |
 | record | `new.record(type, spec)`, of a record type declared once (`schema.record_type(name)`) | `id` where compat names it, else derived | only its type's name (Luau reads the fields) | (records.toml: SP slots, variants, barriers) |
@@ -626,7 +626,9 @@ types, a hitbox all four. The content API takes definitions only (`battle.effect
 and `collision.hit_effect` read and write a definition or nil), so a hitbox with no spark says `hit_effect =
 nil` where it said 0xFF, and a kind asks `c.region == nil` where it asked for region 0. What the ruleset shows
 and registers itself are roles (§7.4): `effects.*`, `sparks.*`, `regions.anchor`, `collision.*`. A collision
-type keeps `row_offset`, the bug code's garbage byte. rules/numbers.luau, which numbered the effects, sparks and
+type is its members alone: its row of the original's table is compat's (rules.toml's `collision_types`; until
+2026-11-06 a definition stated it, `row_offset`, whose offset EXE6's bug codes 0xF7 and 0xF8 took as an
+argument nothing reads). rules/numbers.luau, which numbered the effects, sparks and
 regions for v1 modules and the ruleset, is gone (weapons by handle took its last table), and `data.regions` and
 `data.rules.field_regions` went with it. The engine's test content defines its own for the roles
 (crates/nettai-battle/testdata/content/rules/role_definitions.luau: one made-up look for every effect, one for every spark,
@@ -1424,8 +1426,8 @@ lib/sparks.luau, lib/regions.luau). What it settled:
   and the chips name its modes.
 - **Shared definitions the generator also writes.** The exemplar made rules/collision.luau (ten types), lib/effects.luau,
   lib/sparks.luau and lib/regions.luau with the entries it uses. The generator must add the entries these
-  modules lack rather than skip them (it identifies a collision type by `row_offset`, a region or effect by its
-  numbers). The collision types' names other than `thrown` and `hits-navis` were made up by what their flags do:
+  modules lack rather than skip them (it identified a collision type by its row, now compat's `collision_types`, a
+  region or effect by its numbers). The collision types' names other than `thrown` and `hits-navis` were made up by what their flags do:
   `attack` (row 0x04), `piercing` (0x0B), `hit-by-other-side` (0x14), `hit-by-other-side-or-blockers` (0x0D),
   `own-object` (0x0C), `own-thrown-body` (0x4E), `neutral-object` (0x4F), `everything` (0x0F): to review.
 - **A definition is the chip** (3b): compat's key maps a recorded chip to it, and it runs its own action (the
@@ -2838,8 +2840,8 @@ kind's own state-machine byte, which the traces compare.
   effect object's and a spark's look, `CollisionData.region` and `hit_effect` (`Option`: none is no region, no
   spark), the collision types a setup takes, a hitbox's four. `Content::effect`, `spark`, `region` and
   `collision_type` take handles; there are no numbered tables and no numeric API for them (a number is a type
-  error and a runtime error). A collision type carries `row_offset`, the register value its
-  row's lookup leaves (index × 8) that a bug code's high byte takes: the quirk materialized in the definition.
+  error and a runtime error). A collision type is its members alone; compat's rules.toml gives each
+  definition's row of the original's table (`collision_types`), which only verification reads.
   `collision.region` and `collision.hit_effect` read and write definitions or nil (`set_region` and
   `set_hit_effect` are the same as methods); a hitbox's `region` and `hit_effect` may be nil (none), and its
   `target` and `self_type` are collision types. A new registration starts with no region and the plain spark
@@ -2988,8 +2990,8 @@ compat's numbers for them (stages.toml, records.toml, rules.toml), keeping the c
 So are the writers that extended the shared modules (`gen_collision`, `gen_regions`, `gen_effects`) and the
 numbered effect, spark and region tables of rules/numbers.luau, which the engine no longer has:
 rules/collision.luau, lib/effects.luau, lib/sparks.luau and lib/regions.luau are the committed definitions.
-`gen-content check` has its own model of the ROM's tables for them: a collision type must be the row its
-`row_offset` names, and every row must be defined; every effect and spark look and every region of the ROM's
+`gen-content check` has its own model of the ROM's tables for them: a collision type must be the row compat's
+`collision_types` gives it, no row two types, and every row must be defined; every effect and spark look and every region of the ROM's
 must be defined by something; and each role of rules/roles.luau that names one must name the ROM's entry of
 the number rules.toml gives the role (the numbers the ruleset's code held until step 12, which the generator
 writes from its own list).
@@ -3241,7 +3243,7 @@ strike is a role's action (lib/swords/stun_strike). Rush's spared chip is the de
    *As built.* `gen-content luau <rom> <content>` writes into the content root, leaving what people defined
    alone (a chip whose `define.chip` has no legacy marker keeps its module; its numbered record goes to
    chips/v1.luau as `v1/<key>`, which numbers reach) and extending the shared modules by what they lack
-   (rules/collision.luau by `row_offset`, lib/effects, lib/sparks and lib/regions by look and shape); a module
+   (rules/collision.luau by row, lib/effects, lib/sparks and lib/regions by look and shape); a module
    people wrote at a generated path (the sword family's action modules) gets its definitions in a
    `record.luau`/`records.luau` beside it. It deletes the 253 `chip.toml` and 46 `weapon.toml`, whose content
    is in the markers, and lists its made-up names in compat/curation.toml by module. The markers are one

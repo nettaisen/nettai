@@ -1,9 +1,10 @@
 //! What `nettai-content check` reports about the definitions once the define
 //! phase has run (docs/design/content-model-v2.md §7.7): the roles content
 //! hasn't filled, kinds under `objects/` that one owner alone uses
-//! (colocation, §4), and collision types defined twice (two definitions of
-//! one row of the original's table), and the collision types that test
-//! EXE6's 0x80 self bit which a module using another root's modules names.
+//! (colocation, §4), and the collision types that test EXE6's 0x80 self
+//! bit which a module using another root's modules names. (Two collision
+//! types of one row of the original's table are the verification
+//! workspace's to find, by compat's rows.)
 //! Duplicate keys, references to the
 //! wrong registry, unknown asset names and chips without exactly one use
 //! are the define phase's own errors; two keys with one of the original's
@@ -73,18 +74,6 @@ pub fn definitions(c: &Content, r: &mut Report) {
             unfilled("sprites", role.name(), roles.sprites.contains_key(&role));
         }
     }
-    for (row, twins) in duplicate_collision_types(c) {
-        let (first, rest) = twins.split_first().expect("two or more");
-        let others: Vec<String> = rest.iter().map(|(key, module)| format!("{key} ({module}.luau)")).collect();
-        r.error(
-            format!("{}.luau", first.1),
-            format!(
-                "collision type {} is row {row:#04x} of the original's table, and so is {}: define a type once and share it",
-                first.0,
-                others.join(", ")
-            ),
-        );
-    }
     for (key, module, required) in self_bit_targets(c) {
         r.warn(
             format!("{module}.luau"),
@@ -99,19 +88,6 @@ pub fn definitions(c: &Content, r: &mut Report) {
             format!("only {owners} uses this kind: move it into {owners}'s folder (docs/design/content-model-v2.md §4)"),
         );
     }
-}
-
-/// Collision types that are one row of the original's table (their
-/// `row_offset`, the row times 8): the row, and each definition's key and
-/// module, for the rows two or more define.
-pub fn duplicate_collision_types(c: &Content) -> Vec<(u8, Vec<(String, String)>)> {
-    let mut rows: BTreeMap<i64, Vec<(String, String)>> = BTreeMap::new();
-    for d in c.defs.definitions.of(Registry::Collision) {
-        if let Some(offset) = d.spec.field("row_offset").int() {
-            rows.entry(offset).or_default().push((d.key.clone(), d.module.clone()));
-        }
-    }
-    rows.into_iter().filter(|(_, twins)| twins.len() > 1).map(|(offset, twins)| ((offset / 8) as u8, twins)).collect()
 }
 
 /// Collision types of a game that requires a support pack (EXE5's, which uses

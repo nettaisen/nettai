@@ -117,7 +117,7 @@ registry, two definitions with one key, a chip without exactly one use. `nettai_
 the same before the define phase.
 
 `nettai-content check <game> [--content DIR] [--roms DIR]` runs the define phase and reports on the definitions:
-roles the content hasn't filled, kinds under `objects/` that one owner alone uses, collision types defined twice;
+roles the content hasn't filled, kinds under `objects/` that one owner alone uses;
 the strings, the library order and the look. It then extracts the game's assets from its ROMs (the folder given:
 the Legacy Collection's, or one of ROM files; else `$NETTAI_ROMS`, else the collection where Steam installed it) and
 holds them to the content: every asset the content names is there, each sprite with as many animations and frames,
