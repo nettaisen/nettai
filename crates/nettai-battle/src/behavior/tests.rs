@@ -1371,6 +1371,42 @@ fn content_errors_name_the_script() {
     assert!(e.contains("action gundels3/action") && e.contains("test:chips/gundels/action.luau") && e.contains("boom"), "{e}");
 }
 
+/// docs/design/scripting.md §2.1: an element, a turn, a sprite's parts, the
+/// header flags, a mood are names; the binding refuses the words and the
+/// names it doesn't know (luau-analyze lets a table's extra keys through).
+#[test]
+fn the_binding_takes_names_for_the_words() {
+    // What the names make.
+    let good = [
+        "assert(Element.new(\"fire\", { sword = true }).byte == 0x81 and Element.from_byte(0x81) == Element.new(\"fire\", { sword = true }))",
+        "assert(Element.fire.primary == \"fire\" and Element.new(\"null\", { [\"break\"] = true }).secondary[\"break\"] and Element.from_byte(9).primary == nil)",
+        "assert(me.flip == false and me.facing_side == me.alliance)",
+        "me.sprite.hidden_parts = { [6] = true }; assert(me.sprite.hidden_parts[6] and not me.sprite.hidden_parts[5])",
+    ];
+    for line in good {
+        assert_eq!(play_error(load(&in_update(line)).unwrap()), None, "`{line}`");
+    }
+    for (line, says) in [
+        ("me.element = 1", "expected an Element"),
+        ("me.element = Element.new(\"fire\", { swrd = true })", "not a secondary element"),
+        ("me.element = Element.new(\"fire\", { sword = 1 })", "true or false"),
+        ("me.element = Element.new(\"heat\")", "not an element"),
+        ("me.flip = 1", "expected a boolean"),
+        ("me.sprite:face_side(2)", "a side is 0 or 1"),
+        ("me.sprite.hidden_parts = { [2] = 1 }", "true or false"),
+        ("me.sprite.hidden_parts[32] = true", "parts 0 to 31"),
+        ("me:set_header_flags({ actve = true })", "is no header flag"),
+        ("me:set_header_flags({ active = 1 })", "true or false"),
+        ("battle.set_mood(0, 0xFF)", "\"full_synchro\", by name"),
+        ("me.collision:element_damage(1)", "an element is named"),
+        ("battle.effect(me.pos, nil :: any, 2)", "0 or 1"),
+        ("battle.afterimage(me, me.pos, { flip = 1, lifetime = 1 })", "no field of an afterimage's spec"),
+    ] {
+        let e = play_error(load(&in_update(line)).unwrap()).unwrap_or_else(|| panic!("`{line}` should stop the battle"));
+        assert!(e.contains(says), "`{line}`: {e}");
+    }
+}
+
 #[test]
 fn the_vm_is_not_part_of_the_battle() {
     let tape = scenario::record(900);

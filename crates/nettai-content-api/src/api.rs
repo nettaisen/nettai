@@ -1062,8 +1062,11 @@ impl StepDirection {
 /// four, or an absolute step's (`sub_80116AE`'s code 5).
 pub const BUFFERED_MOVES: [&str; 6] = ["none", "up", "down", "back", "forward", "absolute"];
 /// Which way a collision region's anchor last moved (CollisionData's
-/// direction, by its byte): none, the four, or other (two panels or more).
-pub const MOVE_DIRECTIONS: [&str; 6] = ["none", "up", "down", "back", "forward", "other"];
+/// direction, by its byte): none, the four, or other (two panels or more);
+/// in a game whose moves go by the field's left and right whatever the side
+/// (its reactions' `move_direction` "absolute": EXE4), the bytes 3 and 4 are
+/// left and right, the last two.
+pub const MOVE_DIRECTIONS: [&str; 8] = ["none", "up", "down", "back", "forward", "other", "left", "right"];
 /// A navi's charge (AIData+0x1B, by its byte): none, charging, full.
 pub const CHARGE_LEVELS: [&str; 3] = ["none", "charging", "full"];
 /// What a navi charges with (AIData+9, by its byte): none, A, B.
