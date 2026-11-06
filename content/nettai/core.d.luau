@@ -69,10 +69,13 @@
 -- constant) is read once; one built at the call is read at each. An element
 -- is a value made and read by names (`Element.new("fire", { sword = true })`,
 -- `e.primary`), a turn a boolean (`me.flip`), a sprite's parts a view by
--- index, and a sentinel a name or nil ("full_synchro", "holds"). The
--- original's numbers that are the game's own data (sound ids, animation
--- numbers, hit regions) are the scripts' constants, named where they're
--- defined.
+-- index, and a sentinel a name or nil ("full_synchro", "holds"). What a hit
+-- carries is named too: its hit modifier a set of its bits by name
+-- (`{ flinch = true }`), its damage word one value content copies whole and
+-- builds and reads by its parts' names (`damage_word`), a hand entry's marks
+-- a set by name. The original's numbers that are the game's own data (sound
+-- ids, animation numbers, hit regions, bug codes) are the scripts' constants,
+-- named where they're defined.
 
 export type Pool = "actor" | "attack" | "effect"
 -- ("finish" is the fourth state of kinds that have one after "destroy":
@@ -130,10 +133,33 @@ export type Emotion = string
 -- of the side's navi (EXE6's Cross special).
 export type SideSpecial = "none" | "select" | "takeover"
 -- What a chip the rules offer on the custom screen says of itself
--- (`custom.offer`): the marks its pick carries into its hand entry (none),
--- whether the hand's picks list it (they do), and whether the cursor on it
--- shades the screen as on a dark chip (not).
-export type Offer = { marks: number?, listed: boolean?, shades: boolean? }
+-- (`custom.offer`): the marks its pick carries into its hand entry (none; by name, `Marks`), whether the hand's picks
+-- list it (they do), and whether the cursor on it shades the screen as on a dark chip (not).
+export type Offer = { marks: Marks?, listed: boolean?, shades: boolean? }
+-- A hand entry's marks (the original's modifier flags), a set by name (`{ offered_again = true }`): the engine's
+-- `regular` (the folder's Regular chip) and its game's own, its rules' `chip_use.mark_bits` (EXE5's capsules mixed in,
+-- EXE4's chip offered again); a name none of them has, or a value that is no flag, is refused as the battle runs. Its
+-- game's chip-use rules say what they do at the use (`mark_damage`, `mark_heals`).
+export type Marks = { [string]: boolean }
+-- A hit modifier, what a hit asks of what it hits: a set of its bits by name (`{ flinch = true, flash = true }`), the
+-- engine's `flinch` and `flash` and its game's own, its rules' `reactions.hit_modifier_bits` (the pushes by the rows
+-- they pick, the drag); a name none of them has, or a value that is no flag, is refused as the battle runs. Or a
+-- modifier byte copied whole: one a collision's field gives, or one kept in a state (`hit_modifier.byte`). `{}` is
+-- none.
+export type HitModifier = { [string]: boolean } | HitModifierByte
+-- A hit modifier's byte, copied whole: what `hit_modifier.byte` gives, and a collision's modifier fields. Content keeps
+-- one in a state (a `schema.u8` field) and hands it back as it is, and reads its bits by name (`hit_modifier.bits`).
+declare extern type HitModifierByte with end
+-- A damage word's parts by name (`damage_word.of`): the amount (the damage, wrapped to its 16 bits), its flags, a set
+-- by name (the engine's `double` and its game's own, its rules' `effects.damage_word_bits`), and its counter byte: the
+-- counter strength (0 to 127: what a hit wears off the mood, and with which it counters a navi whose counter window is
+-- open) and whether it can't counter. Each part left out is none.
+export type DamageWordSpec = {
+    amount: number?,
+    flags: { [string]: boolean }?,
+    counter: number?,
+    cant_counter: boolean?,
+}
 -- What the HUD shows, a side's (`battle.hud(side)`'s properties), each a flag. Its navi's as the consoles show it:
 -- "face_variant", its emotion window shows its base form's second set of faces (`mugshot.variant`: EXE5's Hub
 -- Style); "face_variant_any_form", and whatever its form (EXE5's Chaos Unison look while its charge is armed);
@@ -601,8 +627,9 @@ end
 -- An entry of a side's hand (`battle.hand_entry(side, i)`, from 0, the hand from its first chip, used ones too): each
 -- field nil past its entries, and setting one there an error. Its chip (nil: the hand ends before it), its base damage,
 -- its Atk+ (or Navi+) bonus and the bonus a charge raises (what a form's A charge builds up, and EXE4's souls' status
--- resets give: the status reset clears it), the turn (from 0) it was picked in, and its marks (its modifier flags: what
--- its game's chip-use rules read at the use, `mark_damage` and `mark_heals`, and what its rules keep there).
+-- resets give: the status reset clears it), the turn (from 0) it was picked in, and its marks (`Marks`: a view of them
+-- by name, each read and written, or a set written whole; what its game's chip-use rules read at the use, `mark_damage`
+-- and `mark_heals`, and what its rules keep there).
 -- (@exelib/chip_hand reads and adds to them.)
 declare extern type HandEntry with
     chip: Chip?
@@ -610,7 +637,7 @@ declare extern type HandEntry with
     attack_bonus: number
     charge_bonus: number
     turn: number
-    marks: number
+    marks: Marks
 end
 
 -- An object's fields as side `side`'s console has them (`o:console(side)`): the consoles each decide `visible`, where
@@ -825,19 +852,23 @@ declare extern type Collision with
     -- The status it takes this window (its hits', a counter's, or one the
     -- rules put in their place: the NaviCust's hit bug), if any.
     status_final: Status?
-    -- Bug code (low byte) and argument (high byte).
-    bugs: number
+    -- The bug code its hits carry and its argument.
+    bug: number
+    bug_arg: number
     -- The bug code and argument the last resolution's hits brought (CollisionData+0x9C, +0x9D), which the navi takes.
-    inflicted_bugs: number
-    hit_mod_base: number
+    inflicted_bug: number
+    inflicted_bug_arg: number
+    -- The hit modifier its hits carry (written by name, or a byte copied whole; read as its byte).
+    hit_mod_base: HitModifier
     -- The damage it deals.
     self_damage: number
     -- What a panel type counts while the body stands on it (poison's drain,
     -- `sub_801A186`); the standing effects zero it on a type with no `stand`.
     standing_count: number
-    -- The counter byte (bits 0-6 counter strength, bit 7 can't counter),
-    -- which setup takes from the damage word's high half.
-    counter_byte: number
+    -- The counter byte, which setup takes from the damage word's high half: its counter strength (0 to 127: what a hit
+    -- wears off the mood, and with which it counters) and whether its hits can't counter. Each writes its own part.
+    counter: number
+    cant_counter: boolean
     -- The ticks left of its counter window (+0x0D; read-only): a hit with a
     -- counter byte counters it while they run.
     counter_timer: number
@@ -856,15 +887,15 @@ declare extern type Collision with
     direction: MoveDirection
     -- The secondary elements of what hit it this window (read-only).
     damage_elements: SecondaryElements
-    -- The hit modifiers of what hit it this window (HitModifierFinal; 0x3C
-    -- the pushes, 0x40 a pushing hit; read-only).
-    hit_mod_final: number
+    -- The hit modifiers of what hit it this window (HitModifierFinal, its byte: `hit_modifier.bits` reads its bits by
+    -- name; read-only).
+    hit_mod_final: HitModifierByte
     -- Its barrier: none, up, or popped (blown away by wind; written none or
     -- popped alone: a barrier goes up with `raise_barrier`); the barrier's
     -- HP byte; the hit modifier that popped it (read-only).
     barrier: BarrierState
     barrier_hp: number
-    barrier_pop_hit_mod: number
+    barrier_pop_hit_mod: HitModifierByte
     -- A bubble is its barrier (BblWrap's), and the barrier's timer (a bubble's 0 while it is down; read-only).
     bubble: boolean
     barrier_timer: number
@@ -905,9 +936,9 @@ declare extern type Collision with
     -- Add to the mood damage taken this window.
     function add_mood_damage(self, amount: number): ()
     -- Set hit modifier bits this window, both sides' too.
-    function add_hit_mod(self, bits: number): ()
+    function add_hit_mod(self, hit_mod: HitModifier): ()
     -- Set hit modifier bits this window, the final modifier's alone.
-    function add_final_hit_mod(self, bits: number): ()
+    function add_final_hit_mod(self, hit_mod: HitModifier): ()
 end
 
 -- A handle to an object slot. Like the game's pointers, it can outlive the
@@ -947,10 +978,9 @@ declare extern type Object with
     timer2: number
     hp: number
     max_hp: number
-    -- The damage word: damage (with flag bits) in the low half, the high
-    -- half (the counter byte in its low byte) in stamina.
-    damage: number
-    stamina: number
+    -- The damage word its hits carry (the damage with its flags in the low half, the counter byte above it), copied
+    -- whole (`damage_word` builds one by its parts and reads them).
+    damage_word: number
     -- What it is taken for (nil: a virus, as the original's NameID 0): a
     -- navi's or a form's identity, a field object's.
     identity: Identity?
@@ -1004,11 +1034,11 @@ declare extern type Object with
     -- another chip's sets.
     attack_chip: Chip?
     attack_element: Element
-    attack_damage: number
+    -- The attack's damage word (its damage with its flags, its hitboxes' counter byte above), what the routines hand
+    -- their hits, copied whole (`damage_word` builds one by its parts and reads them).
+    attack_word: number
     -- The attack's bonus from its hand entry (the Atk+ and charge bonuses; read-only).
     attack_extra: number
-    -- The attack's hitboxes' counter byte.
-    hit_param: number
     -- The attack's variant (AIAttackVars+3), as the anti-damage counters
     -- read it: what a stance's weapon sets, 0 from a trap's catch.
     attack_variant: number
@@ -1254,12 +1284,8 @@ declare extern type Object with
     -- Set up the registration from the object (side, panel, element,
     -- damage word): what it is and what it hits, as collision types
     -- (define.collision).
-    function setup_collision(self, self_type: CollisionType, target_type: CollisionType, hit_mod: number): ()
-    function reset_collision_types(self, self_type: CollisionType, target_type: CollisionType, hit_mod: number): ()
-    -- The damage word a hit carries: the damage (with its flag bits) in
-    -- the low half, the counter byte above (the object's damage and
-    -- stamina).
-    function set_damage_word(self, word: number): ()
+    function setup_collision(self, self_type: CollisionType, target_type: CollisionType, hit_mod: HitModifier): ()
+    function reset_collision_types(self, self_type: CollisionType, target_type: CollisionType, hit_mod: HitModifier): ()
     -- Replace the whole header flag byte with the flags `flags` sets (the
     -- others clear): what a spawner's bug leaves (the boulder's reads the
     -- byte from the wrong address). Everything else sets the flags each by
@@ -1531,10 +1557,9 @@ export type HitboxSpec = {
     -- Its collision types: what it reaches, what it is.
     target: CollisionType,
     self_type: CollisionType,
-    -- The damage word: damage (with flag bits) and the counter byte.
+    -- The damage word, whole (its damage with its flags, the counter byte above).
     damage: number,
-    stamina: number?,
-    hit_mod: number?,
+    hit_mod: HitModifier?,
     status: Status?,
     bug: number?,
     bug_arg: number?,
@@ -2258,6 +2283,48 @@ declare int: {
     mul32: (a: number, b: number) -> number,
 }
 
+-- A damage word by its parts' names, the original's layout: its damage, the low half, whose low 12 bits are the
+-- amount and whose top four the flags (0x8000 `double`, the engine's; the rest its game's, `effects.damage_word_bits`;
+-- EXE5's own `hp_bug` lies in the amount's bits); the counter byte above it, its counter strength and its can't-counter
+-- bit; and past that only what a carry leaves. A game's flags by name are known as the battle runs.
+declare damage_word: {
+    -- The word of these parts.
+    of: (parts: DamageWordSpec) -> number,
+    -- Its damage (the low half: the amount with its flags), its amount (the damage's low 12 bits), its flags (a view of
+    -- them by name: `damage_word.flags(w).double`), its flag bits as a word (the damage's top four: what the original's
+    -- code carries over to another damage), its counter strength, and whether it can't counter.
+    damage: (word: number) -> number,
+    amount: (word: number) -> number,
+    -- Its amount as its game's hits read it (the bits of the damage its rules' `effects.damage_word.damage` names:
+    -- EXE6's and EXE5's low 11, EXE4's 14), what a hit deals before it doubles.
+    read_amount: (word: number) -> number,
+    flags: (word: number) -> { [string]: boolean },
+    flag_word: (word: number) -> number,
+    counter: (word: number) -> number,
+    cant_counter: (word: number) -> boolean,
+    -- Its high half whole: the counter byte, and above it what a carry left (what the original reads as one where it
+    -- takes the counter byte as an amount: EXE5's AntiRecv's mood loss).
+    high_half: (word: number) -> number,
+    -- The word with a set of flags, and without them.
+    with: (word: number, flags: { [string]: boolean }) -> number,
+    without: (word: number, flags: { [string]: boolean }) -> number,
+    -- The word with a bonus added to it whole, wrapped to 32 bits: a sum past the low half carries into the counter
+    -- byte, as the original's add does (an Atk+ bonus, `navi.extra`).
+    plus: (word: number, bonus: number) -> number,
+    -- The word with a bonus added to its damage alone, a halfword's add: it wraps there, and nothing carries into the
+    -- counter byte (`strh` of the damage: the link chips' Atk+).
+    plus_damage: (word: number, bonus: number) -> number,
+    -- The word with another damage in its low half (wrapped to its 16 bits), its counter byte and what is above it
+    -- kept.
+    with_damage: (word: number, damage: number) -> number,
+}
+
+-- A hit modifier's byte (to keep one in a state), and a view of its bits by name (`hit_modifier.bits(m).drag`).
+declare hit_modifier: {
+    byte: (modifier: HitModifier) -> HitModifierByte,
+    bits: (modifier: HitModifier) -> { [string]: boolean },
+}
+
 -- ---- Definitions and assets (docs/design/content-model-v2.md §3) -----------------------------
 
 -- Assets, named while content loads (`asset.sound("throw")`, `asset.sprite("wide-wave")`) by the names the game's
@@ -2726,8 +2793,8 @@ export type RulesSpec = {
         -- shaders: the color shader the rules put over them (presentation;
         -- EXE4's 0x0800BB18, the dark soul's last ticks); none, as it is.
         navi_shader: ((side: number, navi: Object) -> number?)?,
-        -- The navi takes its hit's NaviCust bug (`sub_80139F6`, EXE5's 0x0801103E: `navi.collision.inflicted_bugs`,
-        -- its code and argument): the game's table writes the stat a code names (@exelib/navicust/bugs), and
+        -- The navi takes its hit's NaviCust bug (`sub_80139F6`, EXE5's 0x0801103E: `navi.collision.inflicted_bug`
+        -- and its `inflicted_bug_arg`): the game's table writes the stat a code names (@exelib/navicust/bugs), and
         -- answers "edited" (the abilities and form flags come back), nil (nothing of the stats changed) or "spared"
         -- (the weapons' reload skipped too). Asked on a tick something hit the navi.
         navi_bug: ((side: number, navi: Object) -> ("edited" | "spared")?)?,
@@ -2944,7 +3011,9 @@ export type ChipSpec = {
     -- their row at the side's level, lib/navi_level; the SP navi chips: by
     -- the side's deletion time for the chip, rules/sp_chips).
     damage: (number | DamageFormula | (side: number, chip: Chip) -> number)?,
-    hit_param: number?,
+    -- Its attack's counter byte: the counter strength (0 to 127; none 0) and whether it can't counter.
+    counter: number?,
+    cant_counter: boolean?,
     lockout: number?,
     -- The record's flags, a set of them (`{ has_damage = true }`).
     flags: { [ChipFlag]: boolean }?,
@@ -3648,7 +3717,7 @@ export type NaviBody = {
     hp: number,
     element: ElementName,
     body_damage: number,
-    collision: { body: CollisionType, target: CollisionType, hit_modifier: number },
+    collision: { body: CollisionType, target: CollisionType, hit_modifier: { [string]: boolean }? },
     flags: { [NaviBodyFlag]: boolean }?,
     hides_hp: boolean?,
 }
@@ -4023,10 +4092,10 @@ declare custom: {
     -- running.
     -- A button attached to the last pick (EXE5's capsules): the last pick, a
     -- chip with no button attached yet (`last_pick`'s `attached`), carries
-    -- `modifiers` into the hand (its entry's marks, which the game's
-    -- chip-use rules read at the use: `mark_damage` and `mark_heals`; EXE5's
-    -- 0x02, 0x04, 0x08 and 0x20 the damage word's 0x4000, 0x2000, 0x1000 and
-    -- 0x0800, its 0x10 a tenth of its user's HP healed), and the button is
+    -- `marks` into the hand (its entry's marks, which the game's chip-use
+    -- rules read at the use: `mark_damage` and `mark_heals`; EXE5's capsules'
+    -- paralysis, confusion, blindness and HP bug, and the pink one's tenth of
+    -- its user's HP healed), and the button is
     -- picked until the chip's pick is taken back. A button holding the last
     -- pick (EXE5's Arm Change): the last pick, a chip dealt from the folder,
     -- leaves the picks for the button, which is picked; B, with the picks as
@@ -4061,7 +4130,7 @@ declare custom: {
     set_form: (side: number, by: string, form: FormDef?, turns: number?, alternate: boolean?) -> (),
     last_pick: (side: number) -> { slot: number, chip: Chip, regular: boolean, navi_chip: boolean, attached: boolean }?,
     trade_last_pick: (side: number, button: string) -> boolean,
-    attach_to_last_pick: (side: number, button: string, modifiers: number) -> boolean,
+    attach_to_last_pick: (side: number, button: string, marks: Marks) -> boolean,
     hold_last_pick: (side: number, button: string) -> boolean,
     held_pick: (side: number, button: string) -> Chip?,
     set_held_icon: (side: number, button: string, shown: boolean) -> (),

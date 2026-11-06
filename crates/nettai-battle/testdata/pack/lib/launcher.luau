@@ -41,7 +41,7 @@ launcher.kind = new.kind {
         battle.effect(me.pos, BURST)
         battle.play_sound(TICK)
         me:create_collision()
-        me:setup_collision(THROWN, HITS, 0)
+        me:setup_collision(THROWN, HITS, {})
         me.collision:set_region(WIDE)
     end,
 }

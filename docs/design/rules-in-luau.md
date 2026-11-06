@@ -2632,9 +2632,13 @@ stated none of them. And the choices were named for the games (`retype = "exe5"`
   EXE5's 0x0800C988: slide type 2, a row by direction) or `{ push = { side 0's, side 1's } }` (EXE4's 0x0801335A,
   the table at 0x080133B4: a push bit by side and direction ORed into the final modifier, which the intake's
   reading of the hit modifiers then turns into a slide, or a drag).
-- **`reactions.push_reading.drag_bit`, since EXE4's port**: the modifier bit that makes a push a drag (and an
+- **`reactions.push_reading.drag`, since EXE4's port**: the modifier bit that makes a push a drag (and an
   obstacle's push): EXE6's and EXE5's 0x40, EXE4's 0x01, the flinch bit. The push bits are `bits` of them from
-  bit 2 (EXE6's 0x3C, EXE4's 0xFC, its 0x40 and 0x80 pushes up and down).
+  bit 2 (EXE6's 0x3C, EXE4's 0xFC, its 0x40 and 0x80 pushes up and down). Since the hit words' names (api-hit),
+  by name: the engine names the flinch and the flash, and a game declares the rest of its byte once
+  (`reactions.hit_modifier_bits`), which `drag` and `shift.modifier` name; so do a damage word's flags
+  (`effects.damage_word_bits`, which `damage_word.flags[].flag` names) and a hand entry's marks
+  (`chip_use.mark_bits`, which keys `mark_damage` and `mark_heals`).
 - **A panel type's `doubles`, since EXE4's port** (was the hit test's `elec_bonus_on_sea`): the element whose hits
   count once more, as null damage, on a body standing on it: fire on grass in all three games, and EXE5's elec on
   its sea, EXE4's elec on ice (0x08012CF2).

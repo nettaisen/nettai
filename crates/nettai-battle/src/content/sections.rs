@@ -540,12 +540,7 @@ impl Stated {
     /// `at` that names the first one that isn't), the others' tables empty
     /// where nothing states them.
     fn rules(self, at: &str) -> Result<Rules, ContentError> {
-        let missing = |name: &str| {
-            ContentError::new(format!(
-                "{at}: it states no `{name}` section: the rules state every rule of their game ({}), and the engine has no game's rules of its own",
-                REQUIRED.join(", ")
-            ))
-        };
+        let missing = |name: &str| missing_section(at, name);
         let chip_use = self.chip_use.ok_or_else(|| missing("chip_use"))?;
         let custom_screen = self.custom_screen.ok_or_else(|| missing("custom_screen"))?;
         let effects = self.effects.ok_or_else(|| missing("effects"))?;
@@ -618,6 +613,7 @@ impl Stated {
             flow,
             // (`rules` sets the rules' own, read before the sections.)
             effect_bits: Vec::new(),
+            own_bits: Default::default(),
             side_stats: self.side_stats.unwrap_or_default(),
             effects,
             chip_use,
@@ -626,6 +622,14 @@ impl Stated {
             pools,
         })
     }
+}
+
+/// The error of rules (at `at`) that state no section `name` of [`REQUIRED`].
+fn missing_section(at: &str, name: &str) -> ContentError {
+    ContentError::new(format!(
+        "{at}: it states no `{name}` section: the rules state every rule of their game ({}), and the engine has no game's rules of its own",
+        REQUIRED.join(", ")
+    ))
 }
 
 /// The content's rules: what its rules state over its Rust tables
@@ -646,28 +650,51 @@ fn rules(base: Option<&Rules>, game: Option<&str>, r: &SpecReader, definitions: 
     };
     let mut stated = base.map(Stated::of).unwrap_or_default();
     let at = format!("{}.luau: rules", nettai_content_api::keys::module_path(&d.module));
+    // (A section another's names are read against may be the one left out:
+    // that it is missing is the error, before what names in it.)
+    if base.is_none()
+        && let Some(name) = REQUIRED.iter().find(|name| matches!(d.spec.field(name), Data::Nil))
+    {
+        return Err(missing_section(&at, name));
+    }
     // The bits its game names of its own, declared once (each beside what
-    // reads it first): requests any section may name, and battle effects,
-    // which its stages and `battle.has_effect` name.
+    // reads it first): requests any section may name, battle effects,
+    // which its stages and `battle.has_effect` name, and the hit
+    // modifier's, the damage word's and the marks' (`NamedBits`), which its
+    // sections and content name.
     let declared = |section: &str, field: &str, engine: &[(u32, &str)]| {
         super::rules::declared_bits(d.spec.field(section).field(field), engine, &format!("{section}.{field}"))
             .map_err(|e| ContentError::new(format!("{at}: {e}")))
     };
     let own_requests = declared("reactions", "request_bits", super::rules::REQUEST_NAMES)?;
     let effect_bits = declared("flow", "effect_bits", crate::setup::effects::NAMES)?;
-    super::rules::reading_requests(&own_requests, || -> Result<(), ContentError> {
-        if let Data::Map(fields) = &d.spec {
-            for (field, spec) in fields {
-                let DataKey::Str(name) = field else { continue };
-                if SECTIONS.contains(&name.as_str()) {
-                    section(&mut stated, name, spec, &format!("{at}: {name}"), r)?;
+    let own_bits = super::rules::OwnBits {
+        hit_modifier: declared("reactions", "hit_modifier_bits", super::rules::HIT_MODIFIER_NAMES)?,
+        damage_word: declared("effects", "damage_word_bits", super::rules::DAMAGE_WORD_NAMES)?,
+        mark: declared("chip_use", "mark_bits", super::rules::MARK_NAMES)?,
+    };
+    if let Some((name, bit)) = own_bits.hit_modifier.iter().chain(&own_bits.mark).find(|x| x.1 > 0x80) {
+        return Err(ContentError::new(format!("{at}: {name} is {bit:#x}, past a byte")));
+    }
+    if let Some((name, bit)) = own_bits.damage_word.iter().find(|x| x.1 > 0x8000) {
+        return Err(ContentError::new(format!("{at}: effects.damage_word_bits.{name} is {bit:#x}, past the damage (the word's low half)")));
+    }
+    super::rules::reading_requests(&own_requests, || {
+        super::rules::reading_bits(&own_bits, || -> Result<(), ContentError> {
+            if let Data::Map(fields) = &d.spec {
+                for (field, spec) in fields {
+                    let DataKey::Str(name) = field else { continue };
+                    if SECTIONS.contains(&name.as_str()) {
+                        section(&mut stated, name, spec, &format!("{at}: {name}"), r)?;
+                    }
                 }
             }
-        }
-        Ok(())
+            Ok(())
+        })
     })?;
     let mut rules = stated.rules(&at)?;
     rules.effect_bits = effect_bits;
+    rules.own_bits = own_bits;
     Ok(Some(rules))
 }
 
@@ -835,7 +862,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 // (Its `request_bits`, the game's own requests, `rules` read
                 // first.)
                 let mut data = spec.clone();
-                super::reader::strip(&mut data, &["request_bits"]);
+                super::reader::strip(&mut data, &["request_bits", "hit_modifier_bits"]);
                 stated.reactions = Some(r.read(&data, &at).map_err(e)?);
             }
             "math" => stated.sine = Some(r.read::<MathSection>(spec, &at).map_err(e)?.sine),
@@ -902,7 +929,13 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
             "buster" => stated.buster = Some(r.read(spec, &at).map_err(e)?),
             "banners" => stated.holding_banners = Some(r.read::<BannersSection>(spec, &at).map_err(e)?.holding),
             "status" => stated.status = Some(r.read(spec, &at).map_err(e)?),
-            "chip_use" => stated.chip_use = Some(r.read(spec, &at).map_err(e)?),
+            "chip_use" => {
+                // (Its `mark_bits`, the game's own marks, `rules` read
+                // first.)
+                let mut data = spec.clone();
+                super::reader::strip(&mut data, &["mark_bits"]);
+                stated.chip_use = Some(r.read(&data, &at).map_err(e)?);
+            }
             "flow" => {
                 // (Its `effect_bits`, the game's own battle effects, `rules`
                 // read first.)
@@ -938,7 +971,13 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 super::reader::strip(&mut data, &["stages", "match_stages"]);
                 stated.link_pick = Some(r.read(&data, &at).map_err(e)?);
             }
-            "effects" => stated.effects = Some(r.read(spec, &at).map_err(e)?),
+            "effects" => {
+                // (Its `damage_word_bits`, the game's own damage word flags,
+                // `rules` read first.)
+                let mut data = spec.clone();
+                super::reader::strip(&mut data, &["damage_word_bits"]);
+                stated.effects = Some(r.read(&data, &at).map_err(e)?);
+            }
             "fresh_stats" => {
                 // (Its weapon is a definition, which `link` resolves once
                 // the definitions have their handles.)

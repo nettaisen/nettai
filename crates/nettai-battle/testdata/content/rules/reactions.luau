@@ -14,6 +14,17 @@ for i = 0, 31 do
 end
 
 return {
+    -- The hit modifier's bits of the game's own (the engine's, 0x01 a flinch and 0x02 a flash), which
+    -- its push reading and content name: the pushes by the row each picks (toward the navi's front:
+    -- forward or back, as far as it goes or a panel), the drag, and the rows turned (the pushes go up and down).
+    hit_modifier_bits = {
+        forward_far = 0x04,
+        back_far = 0x08,
+        forward = 0x10,
+        back = 0x20,
+        drag = 0x40,
+        vertical = 0x80,
+    },
     -- A push reads the first of bits 2 to 5 of the hits' final modifier,
     -- toward the navi's front; the 0x80 bit picks the last five rows. An
     -- obstacle's push reads the same bits from its own four rows, toward
@@ -21,8 +32,8 @@ return {
     push_reading = {
         reads = "final",
         bits = 4,
-        drag_bit = 0x40,
-        shift = { bit = 0x80, rows = 5 },
+        drag = "drag",
+        shift = { modifier = "vertical", rows = 5 },
         obstacle_rows = {
             { dx = -1, dy = 0, panels = 6 },
             { dx = 1, dy = 0, panels = 6 },

@@ -2399,6 +2399,27 @@ fn l_or_r_turns_the_navi_round_where_turning_is_enabled() {
     assert!(!b.objects.sprite(p0).look.hflip);
 }
 
+/// The hit words by name (the test pack's `test/hit-words`, on the test
+/// content's EXE6 rules): a hit modifier and a damage word built and read
+/// by name to the very words, and what the bindings refuse.
+#[test]
+fn the_hit_words_go_by_name() {
+    let (mut b, p0, p1) = fight_on_test_pack();
+    let r = crate::behavior::spawn_kind(&mut b, "test/hit-words", crate::object::Vec3::default()).unwrap();
+    tick(&mut b, p0, p1, 0);
+    assert_eq!(state_field(&b, r, "modifier"), 0x61, "flinch, back and drag");
+    assert_eq!(state_field(&b, r, "word"), 0x0094_C028, "40 doubled and paralyzing, counter strength 20 that can't counter");
+    let flag = |name: &str| {
+        let s = b.objects.state(r).unwrap();
+        let schema = b.content.defs.schema(s.id());
+        s.get(schema, schema.index_of(name).expect("the field")).load() == nettai_content_api::Value::Bool(true)
+    };
+    assert!(flag("drag") && flag("double"));
+    for refused in ["unknown_bit", "not_a_flag", "a_list", "unknown_view", "unknown_part", "unknown_flag", "counter_past"] {
+        assert!(flag(refused), "{refused}");
+    }
+}
+
 #[test]
 fn a_defined_kind_runs_by_its_handle_with_its_state() {
     let (mut b, p0, p1) = fight_on_test_pack();

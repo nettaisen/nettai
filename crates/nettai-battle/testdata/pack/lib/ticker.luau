@@ -7,6 +7,9 @@ export type State = { ticks: number, variant: Variant?, parent: any }
 
 local ticker = {}
 
+-- (The pack's kind that tries the hit words' names, reached through its family library.)
+ticker.hit_words = require("./hit_words")
+
 -- A kind: it counts ticks in its state and leaves after its variant's
 -- lifetime (or `LIFETIME`). `parent` is the kind that spawned it.
 local LIFETIME = 30

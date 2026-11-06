@@ -120,6 +120,21 @@ Conventions:
   game's rules (`{ name = bit }`: `reactions.request_bits`, `flow.effect_bits`), and named everywhere else;
   `battle.effects.<name>` reads such a battle effect, `battle.link()`, `battle.boss_rank()` and `battle.random()`
   the engine's. A loader refuses a name it doesn't know, and a number.
+- **What a hit carries goes by name.** A hit modifier is a set of its bits by name (`me:setup_collision(is, hits,
+  { flinch = true, flash = true })`, a hitbox's `hit_mod`): the engine's `flinch` and `flash` and its game's own,
+  declared in its rules' `reactions.hit_modifier_bits` (the pushes by the row each picks, EXE6's and EXE5's drag,
+  EXE6's turn of the rows), which `push_reading.drag` and `shift.modifier` name too; one kept in a state is its
+  byte (`hit_modifier.byte(m)`, typed `HitModifierByte`), handed back as it is, and `hit_modifier.bits(b).drag`
+  reads one by name. The damage word is one value content copies whole (`o.damage_word = me.damage_word`,
+  `navi.attack_word`, a hitbox's `damage`), built and read by its parts' names: `damage_word.of { amount = 40,
+  flags = { paralysis = true }, counter = 20, cant_counter = true }`, `damage_word.flags(w).double`; its flags
+  are the engine's `double` and its game's own (`effects.damage_word_bits`), and a bonus added to the whole word
+  is `damage_word.plus(w, n)`, which carries into the counter byte as the original's add does. A chip's counter
+  byte is its `counter` and `cant_counter`, a collision's its `counter` and `cant_counter`, a bug its code and
+  argument (`bug`, `bug_arg`). A hand entry's marks are a set by name too (`battle.hand_entry(side, i).marks
+  .installed`, an offer's `marks`, `custom.attach_to_last_pick`), declared in the chip-use rules' `mark_bits`,
+  whose `mark_damage` and `mark_heals` are keyed by them. A set's binding refuses a name its set hasn't and a
+  value that is no flag.
 - **Collision types, hit results and panel flags are names.** A collision type is the set of its members
   (`new.collision { flags = { own_attack = true, reaches_float_shoe = true } }`), of the object's side (`own_`)
   or the other (`enemy_`) where a member is of a side, so a type is the same for either side, mirrored; a hit is
@@ -161,7 +176,7 @@ core.d.luau is the reference; in outline:
   the hit spark, the region, the status its hits carry, results).
 - **Sprites**: load, animation, stepping, look (palette, flip, shadow, white, shader, alpha, mosaic, priority,
   hidden parts), frame flags, attach points.
-- **Navis**: the attack in progress (step, step-init, chip, element, damage, hit parameter, charged, lockout,
+- **Navis**: the attack in progress (step, step-init, chip, element, damage word, charged, lockout,
   bonus, marker), requests and state flags, the buttons (held, pressed, and the record kept while dimmed),
   the counter window, the reactive abort, `exit_attack`/`end_attack`/`set_attack`, what it runs
   (`navi_action`), the held direction, step targets and `start_move`, the buster's damage, absorbed obstacles,
@@ -461,7 +476,7 @@ function eraseman.summon(args: Summon): (user: Object, controller: Object, spec:
         o.element = spec.element
         o.related1 = user
         o.alliance, o.flip = user.alliance, user.flip
-        o:set_damage_word(spec.damage)
+        o.damage_word = spec.damage
         local s = o.state :: State
         s.controller = controller
         s.aim_ticks = args.aim_ticks
@@ -478,7 +493,8 @@ local eraseman: Chip = {
     codes = { "K", "*" },
     class = "mega",
     damage = 120,
-    hit_param = 138,
+    counter = 10,
+    cant_counter = true,
     flags = { dimming = true, has_damage = true, navi = true, library = true },
     -- ...the rest of its record...
     navi = navi.summon { aim_ticks = 20 },

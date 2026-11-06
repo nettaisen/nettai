@@ -174,6 +174,16 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
         ("local _ = battle.effects()", "the battle's effects as a word"),
         ("local _: StageDef = { layout = {}, panel_pattern = 0x38, mode = 0, battle_number = 0, effects = 0x88C, actors = {} }", "a stage's effects as a word"),
         ("local function f(c: ChipSpec) c.extra_flags = { 128 } end", "a chip's extra flag by number"),
+        // The hit words: the damage word whole, a hit modifier and marks by name, the counter byte by its parts.
+        ("local function f(me: Object) local _ = me.damage + me.stamina end", "a damage word by its halves"),
+        ("local function f(me: Object) me:set_damage_word(40) end", "the damage word set by a call"),
+        ("local function f(me: Object) local _ = me.attack_damage + me.hit_param end", "the attack's word by its halves"),
+        ("local function f(me: Object, c: CollisionType) me:setup_collision(c, c, 3) end", "a hit modifier by number"),
+        ("local function f(me: Object) me.collision:add_hit_mod(1) end", "a hit modifier added by number"),
+        ("local function f(me: Object) local _ = bit32.btest(me.collision.hit_mod_final, 0x40) end", "a hit modifier tested by its bit"),
+        ("local function f(me: Object) me.collision.counter_byte = 0x9E end", "the counter byte whole"),
+        ("local function f(me: Object) me.collision.bugs = 0x118 end", "a bug code and argument as one word"),
+        ("local _: Offer = { marks = 2 }", "an offer's marks by number"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
@@ -314,6 +324,9 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("local _: StatusDef = { duration = 90, timer = \"stun\" }", "not a status"),
         ("local function f(c: ChipSpec) c.extra_flags = { \"rush\" } end", "a chip's extra flags as a list"),
         ("local _: boolean = battle.effects[0x20000]", "a battle effect by its bit"),
+        ("local _ = damage_word.of { amount = 40, flags = { \"paralysis\" } }", "a damage word's flags as a list of names"),
+        ("local _ = hit_modifier.byte({ \"flinch\" })", "a hit modifier as a list of names"),
+        ("local function f(side: number) battle.hand_entry(side, 0).marks = 4 end", "a hand entry's marks by number"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
