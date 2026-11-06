@@ -7,7 +7,7 @@
 use super::super::ai_mut;
 use crate::actor::Requests;
 use crate::battle::{Battle, BattleFlags};
-use crate::collision::f1;
+use crate::collision::StatusFlags;
 use crate::hand::ChipHand;
 use crate::input::keys;
 use crate::object::{ObjectRef, PanelPos, Pool, state};
@@ -88,7 +88,7 @@ fn following(b: &Battle, r: ObjectRef) -> Vec<&str> {
     b.objects.in_order().skip_while(|&o| o != r).skip(1).map(|o| b.local_kind_key(o)).collect()
 }
 
-fn f1_of(b: &Battle, r: ObjectRef) -> u32 {
+fn f1_of(b: &Battle, r: ObjectRef) -> StatusFlags {
     b.collision.get(b.objects.get(r).collision.unwrap()).f1
 }
 
@@ -258,7 +258,7 @@ fn a_step_commits_on_the_third_tick_and_ends_on_the_twelfth() {
     let o = b.objects.get(p0);
     assert_eq!((act(&b, p0), o.anim, o.panel, o.future_panel), (MOVE, 4, PanelPos { x: 2, y: 2 }, PanelPos { x: 3, y: 2 }));
     assert_eq!(b.field.panel(3, 2).unwrap().reserver, Some(p0));
-    assert_ne!(f1_of(&b, p0) & f1::MOVING, 0);
+    assert!(f1_of(&b, p0).contains(StatusFlags::MOVING));
     run_to(&mut b, p, &mut t, 2, keys::RIGHT);
     assert_eq!(b.objects.get(p0).panel, PanelPos { x: 2, y: 2 });
     run_to(&mut b, p, &mut t, 3, keys::RIGHT);
@@ -267,7 +267,7 @@ fn a_step_commits_on_the_third_tick_and_ends_on_the_twelfth() {
     assert_eq!(b.field.panel(3, 2).unwrap().reserver, None);
     run_to(&mut b, p, &mut t, 8, keys::RIGHT);
     assert_eq!(b.objects.get(p0).anim, 0);
-    assert_eq!(f1_of(&b, p0) & (f1::MOVING | f1::MOVE_COMPLETE), f1::MOVE_COMPLETE);
+    assert_eq!(f1_of(&b, p0) & (StatusFlags::MOVING | StatusFlags::MOVE_COMPLETE), StatusFlags::MOVE_COMPLETE);
     run_to(&mut b, p, &mut t, 11, 0);
     assert_eq!(act(&b, p0), MOVE);
     run_to(&mut b, p, &mut t, 12, 0);
@@ -318,7 +318,7 @@ fn gun_del_sol_drains_4_hp_a_tick_in_the_sun() {
     run_to(&mut b, p, &mut t, 9, 0);
     assert_eq!(b.objects.get(p1).hp, 996);
     assert_eq!(act(&b, p1), IDLE);
-    assert_eq!(f1_of(&b, p1) & (f1::FLINCHING | f1::FLASHING), 0);
+    assert!(!f1_of(&b, p1).intersects(StatusFlags::FLINCHING | StatusFlags::FLASHING));
     // One hit a tick for the chip's firing time.
     let drained = 1000 - 4 * firing as u16;
     run_to(&mut b, p, &mut t, 8 + firing, 0);
@@ -354,7 +354,7 @@ fn a_blank_shot_raises_the_arm_and_recovers_from_its_own_panel() {
     // Tick 1: the arm is up.
     run_to(&mut b, p, &mut t, 1, 0);
     assert_eq!(b.objects.get(p0).anim, 0x0E);
-    assert_ne!(f1_of(&b, p0) & f1::USING_ACTION, 0);
+    assert!(f1_of(&b, p0).contains(StatusFlags::USING_ACTION));
     let arm = ai_mut(&mut b, p0).overlay.expect("the buster arm");
     // The arm is an attachment with the buster arm's look.
     assert!(shows(&b, arm, "buster-arm"), "the arm");
@@ -453,7 +453,7 @@ fn a_reflector_guards_for_its_ticks_then_its_shield_fades() {
     run_to(&mut b, p, &mut t, 1, 0);
     let shield = find_kind(&b, "rflectr/shield").expect("the shield");
     assert_eq!(b.objects.in_order().skip_while(|&o| o != p0).nth(1), Some(shield));
-    assert_ne!(f1_of(&b, p0) & f1::GUARD, 0);
+    assert!(f1_of(&b, p0).contains(StatusFlags::GUARD));
     let (at, s) = (b.objects.get(p0).pos, b.objects.get(shield).pos);
     assert_eq!((s.x - at.x, s.y - at.y, s.z - at.z), (4 << 16, 0, 24 << 16));
     // It guards for 60 ticks after that one.
@@ -461,7 +461,7 @@ fn a_reflector_guards_for_its_ticks_then_its_shield_fades() {
     assert_eq!(runs(&b, p0), "rflectr1/action");
     run_to(&mut b, p, &mut t, 62, 0);
     assert_eq!(act(&b, p0), IDLE);
-    assert_eq!(f1_of(&b, p0) & f1::GUARD, 0);
+    assert!(!f1_of(&b, p0).contains(StatusFlags::GUARD));
     // The shield fades for 14 ticks and goes.
     run_to(&mut b, p, &mut t, 77, 0);
     assert_eq!(find_kind(&b, "rflectr/shield"), Some(shield));
@@ -585,7 +585,7 @@ fn a_step_sword_steps_in_slashes_and_steps_back() {
     let o = b.objects.get(p0);
     assert_eq!((o.panel, o.future_panel), (PanelPos { x: 4, y: 2 }, PanelPos { x: 2, y: 2 }));
     assert_eq!(b.field.panel(2, 2).unwrap().reserver, Some(p0));
-    assert_ne!(f1_of(&b, p0) & f1::MOVING, 0);
+    assert!(f1_of(&b, p0).contains(StatusFlags::MOVING));
     let first = effects(&b, "engine/afterimage");
     assert_eq!(first.len(), 1);
     assert_eq!(b.objects.get(first[0]).pos.x, crate::kinds::player::panel_coordinates(2, 2).0);
@@ -624,7 +624,7 @@ fn a_step_sword_steps_in_slashes_and_steps_back() {
     run_to(&mut b, p, &mut t, 31, 0);
     assert_eq!(act(&b, p0), IDLE);
     assert_eq!(b.objects.get(p0).related[0], None);
-    assert_eq!(f1_of(&b, p0) & f1::MOVING, 0);
+    assert!(!f1_of(&b, p0).contains(StatusFlags::MOVING));
 }
 
 #[test]
@@ -1056,7 +1056,7 @@ fn groundcross_beast_dash_runs_the_enemy_over_and_lands_back() {
     assert_eq!(ai_mut(&mut b, p0).attack.step, 0);
     run_to(&mut b, p, &mut t, 7, 0);
     assert_eq!(of_kind(&b, "megaman/dash-hit").len(), 2);
-    assert_ne!(f1_of(&b, p0) & f1::INVULNERABLE, 0);
+    assert!(f1_of(&b, p0).contains(StatusFlags::INVULNERABLE));
     // Both hits run through the enemy: 90 damage and 20 per buster Attack
     // point (1 here) each.
     run_to(&mut b, p, &mut t, 27, 0);
@@ -1068,7 +1068,7 @@ fn groundcross_beast_dash_runs_the_enemy_over_and_lands_back() {
     run_to(&mut b, p, &mut t, 37, 0);
     let o = b.objects.get(p0);
     assert_eq!((act(&b, p0), o.panel, o.pos.z), (IDLE, PanelPos { x: 2, y: 2 }, 0));
-    assert_eq!(f1_of(&b, p0) & f1::INVULNERABLE, 0);
+    assert!(!f1_of(&b, p0).contains(StatusFlags::INVULNERABLE));
     assert_eq!(b.field.panel(2, 2).unwrap().reserver, None);
 }
 
@@ -1246,7 +1246,7 @@ fn chargecross_charged_shot_tackles_the_enemy() {
     // Nine ticks of wind-up, then the charge with its hit.
     run_to(&mut b, p, &mut t, 10, 0);
     assert_eq!(of_kind(&b, "megaman/dash-hit").len(), 1);
-    assert_ne!(f1_of(&b, p0) & f1::INVULNERABLE, 0);
+    assert!(f1_of(&b, p0).contains(StatusFlags::INVULNERABLE));
     // The hit strikes (30 damage and 20 per buster Attack point) and is
     // gone; the navi slows down, then drops back onto its panel.
     run_to(&mut b, p, &mut t, 40, 0);
@@ -1255,7 +1255,7 @@ fn chargecross_charged_shot_tackles_the_enemy() {
     run_to(&mut b, p, &mut t, 60, 0);
     let o = b.objects.get(p0);
     assert_eq!((act(&b, p0), o.panel), (IDLE, PanelPos { x: 2, y: 2 }));
-    assert_eq!(f1_of(&b, p0) & f1::INVULNERABLE, 0);
+    assert!(!f1_of(&b, p0).contains(StatusFlags::INVULNERABLE));
 }
 
 #[test]
@@ -1674,7 +1674,7 @@ fn heat_beast_charge_raises_fire_pillars_on_its_region() {
     let mut t = 0;
     run_to(&mut b, p, &mut t, 1, 0);
     assert_eq!(b.objects.get(p0).anim, 0x12);
-    assert_eq!(f1_of(&b, p0) & (f1::USING_ACTION | f1::MOVING), f1::USING_ACTION | f1::MOVING);
+    assert_eq!(f1_of(&b, p0) & (StatusFlags::USING_ACTION | StatusFlags::MOVING), StatusFlags::USING_ACTION | StatusFlags::MOVING);
     // When the wind-up ends: pillars on the panel in front and the two
     // columns past it.
     while of_kind(&b, "element-pillar").is_empty() {
@@ -1699,7 +1699,7 @@ fn heat_beast_charge_raises_fire_pillars_on_its_region() {
     let end = t + 75;
     run_to(&mut b, p, &mut t, end, 0);
     assert_eq!(act(&b, p0), IDLE);
-    assert_eq!(f1_of(&b, p0) & f1::MOVING, 0);
+    assert!(!f1_of(&b, p0).contains(StatusFlags::MOVING));
     assert!(of_kind(&b, "element-pillar").is_empty());
     assert_eq!(b.objects.get(p1).hp, 920);
 }
@@ -1887,7 +1887,7 @@ fn dustcross_back_special_pulls_the_rocks_in() {
     // Tick 1: the pose and the vortex (the dust cloud), kept alive.
     run_to(&mut b, p, &mut t, 1, keys::B);
     assert_eq!(b.objects.get(p0).anim, 0x17);
-    assert_ne!(f1_of(&b, p0) & (f1::USING_ACTION | f1::MOVING), 0);
+    assert!(f1_of(&b, p0).intersects(StatusFlags::USING_ACTION | StatusFlags::MOVING));
     let cloud = crate::content::testing::sprite_named(&b.content, "dust-cloud");
     let vortex = effects(&b, "engine/effect").into_iter().find(|&o| effect_look(&b, o).sprite == cloud);
     let vortex = vortex.expect("the vortex");
@@ -1946,7 +1946,7 @@ fn the_beast_claw_slashes_the_panel_ahead_twice() {
     assert_eq!(runs(&b, p0), "megaman/beast-claw/action");
     run_to(&mut b, p, &mut t, 30, 0);
     assert_eq!(act(&b, p0), IDLE);
-    assert_eq!(f1_of(&b, p0) & f1::USING_ACTION, 0);
+    assert!(!f1_of(&b, p0).contains(StatusFlags::USING_ACTION));
 }
 
 /// Run `b` and a copy of it taken now for `ticks` ticks with side 0

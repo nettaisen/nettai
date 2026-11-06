@@ -6,7 +6,7 @@
 use super::{EmotionRole, ai, ai_mut, emotion_role, flag1, form_of, navi_of, navi_record, set_attack, set_mood, stats};
 use crate::actor::{ActorType, AttackVars, Requests};
 use crate::battle::Battle;
-use crate::collision::f1;
+use crate::collision::StatusFlags;
 use crate::field::PanelType;
 use crate::content::{ChipData, ChipFamily, ChipFlags, ChipTraits, Content};
 use crate::object::{ObjectRef, PanelPos, Vec3};
@@ -33,7 +33,7 @@ const BONUS_SOUND: crate::content::SoundRole = crate::content::SoundRole::Damage
 /// returns 0xFFFF for no use), itself none for the game's 0.
 pub(crate) fn use_chip(b: &mut Battle, r: ObjectRef) -> Option<Option<ChipHandle>> {
     let requested = ai(b, r).requests & (Requests::CHIP | Requests::CHARGED_CHIP | Requests::ALT_CHIP);
-    if flag1(b, r) & f1::SLIDING != 0 || requested.is_empty() {
+    if flag1(b, r).contains(StatusFlags::SLIDING) || requested.is_empty() {
         return None;
     }
     let mut charge = 0;

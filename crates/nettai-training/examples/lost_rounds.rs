@@ -42,7 +42,7 @@
 
 use nettai_battle::Battle;
 use nettai_battle::battle::{fight, mode};
-use nettai_battle::collision::{ATTACK_OF, CollisionId, f1};
+use nettai_battle::collision::{ATTACK_OF, CollisionId, StatusFlags};
 use nettai_battle::input::keys;
 use nettai_battle::kinds::player::NaviAction;
 use nettai_content_api::{KindHandle, ObjectRef, PanelPos, Pool};
@@ -342,7 +342,7 @@ fn sees_object(b: &Battle, viewer: u8, r: ObjectRef) -> bool {
     let o = b.objects.get(r);
     let blinks = o.collision.is_some_and(|c| {
         let f = b.collision.get(c).f1;
-        f & (f1::FLASHING | f1::INVISIBLE) != 0 && f & f1::DEAD == 0
+        f.intersects(StatusFlags::FLASHING | StatusFlags::INVISIBLE) && !f.contains(StatusFlags::DEAD)
     });
     blinks && b.sees(viewer, o.alliance)
 }

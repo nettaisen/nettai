@@ -84,7 +84,7 @@ use crate::content::MoodHeld;
 use nettai_content_api::IdentityHandle;
 use crate::actor::{ActorData, ActorId, ActorStatus, ActorType, Requests};
 use crate::battle::{Battle, BattleFlags};
-use crate::collision::{CollisionData, CollisionId, f1, timer};
+use crate::collision::{CollisionData, CollisionId, StatusFlags, StatusRequests, timer};
 use crate::field::PanelType;
 use crate::content::NaviRecord;
 use nettai_content_api::{ChipHandle, WeaponHandle};
@@ -216,33 +216,33 @@ fn stats_mut(b: &mut Battle, r: ObjectRef) -> &mut NaviStats {
 }
 
 /// `object_getFlag`: status flags (ObjectFlags1).
-fn flag1(b: &Battle, r: ObjectRef) -> u32 {
+fn flag1(b: &Battle, r: ObjectRef) -> StatusFlags {
     coll(b, r).f1
 }
 
 /// `object_setFlag1`.
-fn set_flag1(b: &mut Battle, r: ObjectRef, bits: u32) {
-    coll_mut(b, r).f1 |= bits;
+fn set_flag1(b: &mut Battle, r: ObjectRef, bits: StatusFlags) {
+    coll_mut(b, r).f1.insert(bits);
 }
 
 /// `object_clearFlag`.
-fn clear_flag1(b: &mut Battle, r: ObjectRef, bits: u32) {
-    coll_mut(b, r).f1 &= !bits;
+fn clear_flag1(b: &mut Battle, r: ObjectRef, bits: StatusFlags) {
+    coll_mut(b, r).f1.remove(bits);
 }
 
 /// `object_getFlag2`: requests (ObjectFlags2).
-fn flag2(b: &Battle, r: ObjectRef) -> u32 {
+fn flag2(b: &Battle, r: ObjectRef) -> StatusRequests {
     coll(b, r).f2
 }
 
 /// `object_setFlag2`.
-fn set_flag2(b: &mut Battle, r: ObjectRef, bits: u32) {
-    coll_mut(b, r).f2 |= bits;
+fn set_flag2(b: &mut Battle, r: ObjectRef, bits: StatusRequests) {
+    coll_mut(b, r).f2.insert(bits);
 }
 
 /// `object_clearFlag2`.
-fn clear_flag2(b: &mut Battle, r: ObjectRef, bits: u32) {
-    coll_mut(b, r).f2 &= !bits;
+fn clear_flag2(b: &mut Battle, r: ObjectRef, bits: StatusRequests) {
+    coll_mut(b, r).f2.remove(bits);
 }
 
 /// `GetBattleEffects() & 8`: a link battle.
@@ -392,7 +392,7 @@ pub fn hold_emotion(b: &mut Battle, side: u8, e: Emotion) -> bool {
     let Some(r) = b.player(side) else { return false };
     let Some((_, w)) = b.game_rules().emotion.holdable().into_iter().find(|(h, _)| *h == e) else { return false };
     let angry = w.angry == Some(true);
-    if !angry && (ai(b, r).anger != 0 || flag1(b, r) & f1::ANGER != 0) {
+    if !angry && (ai(b, r).anger != 0 || flag1(b, r).contains(StatusFlags::ANGER)) {
         status::end_anger(b, r);
     }
     let a = ai_mut(b, r);
@@ -400,7 +400,7 @@ pub fn hold_emotion(b: &mut Battle, side: u8, e: Emotion) -> bool {
     a.exhausted = w.exhausted == Some(true);
     if angry {
         a.anger = status::ANGER_TICKS;
-        set_flag1(b, r, f1::ANGER);
+        set_flag1(b, r, StatusFlags::ANGER);
     }
     b.stats[side as usize].mood = match (w.mood, w.mood_below) {
         (Some(m), _) => m,
@@ -676,7 +676,7 @@ fn end_attack_with(b: &mut Battle, r: ObjectRef, hands_on: bool) {
         a.buffered_move = 0;
         a.requests.remove(Requests::ATTACKS | clears);
         reset_charge(b, r);
-        clear_flag1(b, r, f1::USING_ACTION);
+        clear_flag1(b, r, StatusFlags::USING_ACTION);
     }
     set_navi_action(b, r, NaviAction::Idle);
     let a = ai_mut(b, r);
@@ -710,7 +710,7 @@ fn set_element(b: &mut Battle, r: ObjectRef, element: u8) {
 /// good).
 fn set_invulnerable(b: &mut Battle, r: ObjectRef, ticks: u16) {
     coll_mut(b, r).status_timers[timer::INVULNERABLE] = ticks;
-    set_flag1(b, r, f1::INVULNERABLE);
+    set_flag1(b, r, StatusFlags::INVULNERABLE);
 }
 
 /// `sub_801A264`: the statuses end: their flags, requests and timers, the
@@ -731,19 +731,19 @@ pub(crate) fn clear_statuses(b: &mut Battle, r: ObjectRef) {
 /// `sub_800EB08`: end invulnerability.
 pub(crate) fn clear_invulnerable(b: &mut Battle, r: ObjectRef) {
     coll_mut(b, r).status_timers[timer::INVULNERABLE] = 0;
-    clear_flag1(b, r, f1::INVULNERABLE);
+    clear_flag1(b, r, StatusFlags::INVULNERABLE);
 }
 
 /// `sub_80101C4`: end the timed submerged state.
 fn cancel_submerged(b: &mut Battle, r: ObjectRef) {
     coll_mut(b, r).status_timers[timer::SUBMERGED] = 0;
-    clear_flag1(b, r, f1::SUBMERGED);
+    clear_flag1(b, r, StatusFlags::SUBMERGED);
 }
 
 /// `sub_801A284`: end paralysis.
 fn clear_paralysis(b: &mut Battle, r: ObjectRef) {
-    clear_flag1(b, r, f1::PARALYZED);
-    clear_flag2(b, r, 0x8);
+    clear_flag1(b, r, StatusFlags::PARALYZED);
+    clear_flag2(b, r, StatusRequests::PARALYZE);
     coll_mut(b, r).status_timers[timer::PARALYZE] = 0;
 }
 
@@ -754,8 +754,8 @@ fn clear_freeze(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_801A2B0`: pop the bubble and restore the navi's resting height.
 fn clear_bubble(b: &mut Battle, r: ObjectRef) {
-    clear_flag1(b, r, f1::BUBBLED);
-    clear_flag2(b, r, 0x2_0000);
+    clear_flag1(b, r, StatusFlags::BUBBLED);
+    clear_flag2(b, r, StatusRequests::BUBBLE);
     coll_mut(b, r).status_timers[timer::BUBBLE] = 0;
     let z16 = ai(b, r).bubble_base_z;
     let o = b.objects.get_mut(r);
@@ -1062,7 +1062,7 @@ fn reset_abilities(b: &mut Battle, r: ObjectRef) {
     a.back_special = w.back_special;
     // off_8013CA8 is 0x08000001: a guard left up (an action the custom
     // screen's form change cut short) comes down with it.
-    clear_flag1(b, r, f1::UNTOUCHABLE | f1::GUARD);
+    clear_flag1(b, r, StatusFlags::UNTOUCHABLE | StatusFlags::GUARD);
     // What the navi's stats raise again (EXE4's All Guard: the role hook
     // `abilities_reset`).
     if let Some(hook) = b.roles().try_hook(crate::content::HookRole::AbilitiesReset) {
@@ -1098,19 +1098,19 @@ fn apply_ability_flags(b: &mut Battle, r: ObjectRef) {
     let s = *stats(b, r);
     let hm = body_hit_modifier(b);
     if s.float_shoes {
-        set_flag1(b, r, f1::FLOATSHOE);
+        set_flag1(b, r, StatusFlags::FLOATSHOE);
         reset_body_types(b, r, true, hm);
     } else {
-        clear_flag1(b, r, f1::FLOATSHOE);
+        clear_flag1(b, r, StatusFlags::FLOATSHOE);
         reset_body_types(b, r, false, hm);
     }
-    let set = |b: &mut Battle, bit: u32, on: bool| {
+    let set = |b: &mut Battle, bit: StatusFlags, on: bool| {
         if on { set_flag1(b, r, bit) } else { clear_flag1(b, r, bit) }
     };
-    set(b, f1::AIRSHOE, s.air_shoes);
-    set_flag1(b, r, f1::AFFECTED_BY_ICE);
-    set(b, f1::UNDERSHIRT, s.undershirt);
-    set(b, f1::SUPERARMOR, s.super_armor);
+    set(b, StatusFlags::AIRSHOE, s.air_shoes);
+    set_flag1(b, r, StatusFlags::AFFECTED_BY_ICE);
+    set(b, StatusFlags::UNDERSHIRT, s.undershirt);
+    set(b, StatusFlags::SUPERARMOR, s.super_armor);
 }
 
 /// `sub_801086C`: element and secondary weakness from the navi and form.
@@ -1248,13 +1248,13 @@ fn style_hook(b: &mut Battle, r: ObjectRef) {
         // sub_8010474: invisible, flashing, with its sound.
         0 => {
             coll_mut(b, r).status_timers[timer::FLASH] = ticks;
-            set_flag1(b, r, f1::INVISIBLE);
+            set_flag1(b, r, StatusFlags::INVISIBLE);
             b.sound(crate::content::SoundRole::Invisible);
         }
         1 => set_invulnerable(b, r, ticks),
         2 => {
             coll_mut(b, r).status_timers[timer::BLIND] = ticks;
-            set_flag2(b, r, 0x20);
+            set_flag2(b, r, StatusRequests::BLIND);
         }
         _ => coll_mut(b, r).status_timers[timer::CONFUSE] = ticks,
     }
@@ -1433,7 +1433,7 @@ fn per_form_tick(b: &mut Battle, r: ObjectRef) {
     if navi.changes_form() {
         if form.hover != 0 {
             b.objects.get_mut(r).pos.z = (form.hover as i32) << 16;
-        } else if !runs_role(b, r, crate::content::ActionRole::Ungrounded) && flag1(b, r) & f1::BUBBLED == 0 {
+        } else if !runs_role(b, r, crate::content::ActionRole::Ungrounded) && !flag1(b, r).contains(StatusFlags::BUBBLED) {
             b.objects.get_mut(r).pos.z = 0;
         }
     }

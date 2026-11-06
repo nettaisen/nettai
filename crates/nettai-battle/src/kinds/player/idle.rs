@@ -12,7 +12,7 @@ use super::{
 };
 use crate::actor::{ActorStatus, Requests};
 use crate::battle::Battle;
-use crate::collision::f1;
+use crate::collision::StatusFlags;
 use crate::input::keys;
 use crate::object::ObjectRef;
 use nettai_content_api::{ChipHandle, WeaponHandle};
@@ -613,7 +613,7 @@ pub(crate) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
         StepKey::Left => keys::LEFT,
         StepKey::Right => keys::RIGHT,
     };
-    let sliding = flag1(b, r) & f1::SLIDING != 0;
+    let sliding = flag1(b, r).contains(StatusFlags::SLIDING);
     let held = if sliding { 0 } else { ai(b, r).pad.held };
     let Some(&key) = steps.keys.iter().find(|&&k| held & bit(k) != 0) else {
         // No key held (or sliding): the move bug's keys, as they are.
@@ -623,7 +623,7 @@ pub(crate) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
         }
         return steps.keys.iter().find(|&&k| bug as u16 & bit(k) != 0).map_or(0, |&k| direction_code(k));
     };
-    let key = if flag1(b, r) & f1::CONFUSED != 0 {
+    let key = if flag1(b, r).contains(StatusFlags::CONFUSED) {
         let c = steps.confused;
         match key {
             StepKey::Up => c.up,

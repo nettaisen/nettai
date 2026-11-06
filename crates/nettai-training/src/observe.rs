@@ -19,7 +19,7 @@ use crate::names;
 use crate::spec::{self, chips, forms, general, objects, panels, rules, LOG_TICKS};
 use nettai_battle::Battle;
 use nettai_battle::battle::{fight, mode};
-use nettai_battle::collision::{ATTACK_OF, f1, types};
+use nettai_battle::collision::{ATTACK_OF, StatusFlags, types};
 use nettai_battle::content::{ChipClass, ChipModifier, ChipUsage, Content, DamageFormula, ExtraChipFlags, Trap};
 use nettai_battle::custom::builder::{self, Pick};
 use nettai_battle::custom::Layer;
@@ -356,7 +356,7 @@ pub(crate) fn sees_object(b: &Battle, viewer: u8, r: ObjectRef) -> bool {
     let o = b.objects.get(r);
     let blinks = o.collision.is_some_and(|c| {
         let f = b.collision.get(c).f1;
-        f & (f1::FLASHING | f1::INVISIBLE) != 0 && f & f1::DEAD == 0
+        f.intersects(StatusFlags::FLASHING | StatusFlags::INVISIBLE) && !f.contains(StatusFlags::DEAD)
     });
     blinks && b.sees(viewer, o.alliance)
 }
@@ -551,28 +551,28 @@ fn encode_panels(v: &View, extra: &Extra, out: &mut Obs) {
 }
 
 /// The status bits an object's token holds, in order.
-const STATUS_BITS: [u32; 21] = [
-    f1::GUARD,
-    f1::INVISIBLE,
-    f1::SUBMERGED,
-    f1::INVULNERABLE,
-    f1::AIRSHOE,
-    f1::FLOATSHOE,
-    f1::MOVING,
-    f1::DEAD,
-    f1::FLASHING,
-    f1::FLINCHING,
-    f1::PARALYZED,
-    f1::SLIDING,
-    f1::BLIND,
-    f1::IMMOBILIZED,
-    f1::CONFUSED,
-    f1::FROZEN,
-    f1::SUPERARMOR,
-    f1::UNDERSHIRT,
-    f1::USING_ACTION,
-    f1::UNTOUCHABLE,
-    f1::BUBBLED,
+const STATUS_BITS: [StatusFlags; 21] = [
+    StatusFlags::GUARD,
+    StatusFlags::INVISIBLE,
+    StatusFlags::SUBMERGED,
+    StatusFlags::INVULNERABLE,
+    StatusFlags::AIRSHOE,
+    StatusFlags::FLOATSHOE,
+    StatusFlags::MOVING,
+    StatusFlags::DEAD,
+    StatusFlags::FLASHING,
+    StatusFlags::FLINCHING,
+    StatusFlags::PARALYZED,
+    StatusFlags::SLIDING,
+    StatusFlags::BLIND,
+    StatusFlags::IMMOBILIZED,
+    StatusFlags::CONFUSED,
+    StatusFlags::FROZEN,
+    StatusFlags::SUPERARMOR,
+    StatusFlags::UNDERSHIRT,
+    StatusFlags::USING_ACTION,
+    StatusFlags::UNTOUCHABLE,
+    StatusFlags::BUBBLED,
 ];
 
 fn encode_objects(v: &View, out: &mut Obs) {
@@ -667,7 +667,7 @@ fn encode_object(v: &View, r: ObjectRef, i: usize, out: &mut Obs) {
             }
         }
         for (k, bit) in STATUS_BITS.iter().enumerate() {
-            row[objects::status + k] = flag(c.f1 & bit != 0);
+            row[objects::status + k] = flag(c.f1.contains(*bit));
         }
         // (A status's time left and a barrier's HP show to no one but its
         // own side's player.)

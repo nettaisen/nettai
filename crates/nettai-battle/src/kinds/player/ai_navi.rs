@@ -306,7 +306,7 @@ fn flash_out(b: &mut Battle, r: ObjectRef) {
         b.objects.get_mut(r).timer = 90;
         // 0x0800DFC0: no bubble.
         super::coll_mut(b, r).status_timers[crate::collision::timer::BUBBLE] = 0;
-        super::clear_flag1(b, r, crate::collision::f1::BUBBLED);
+        super::clear_flag1(b, r, crate::collision::StatusFlags::BUBBLED);
         b.objects.get_mut(r).phase_init = 4;
     }
     let o = b.objects.get_mut(r);

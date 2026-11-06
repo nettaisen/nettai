@@ -6,7 +6,7 @@
 //! docs/engine/objects-and-player.md.
 
 use crate::battle::Battle;
-use crate::collision::{f1, link};
+use crate::collision::{StatusFlags, link};
 use crate::object::{ObjectFlags, ObjectRef, state};
 
 /// Floating, and popping.
@@ -98,7 +98,7 @@ fn follow(b: &mut Battle, r: ObjectRef) {
     let c = b.objects.get(owner).collision.expect("a bubble on an object without collision data");
     if b.collision.get(c).links[link::BUBBLE].is_some() {
         b.copy_visibility(owner, r);
-        if b.collision.get(c).f1 & f1::BUBBLED != 0 {
+        if b.collision.get(c).f1.contains(StatusFlags::BUBBLED) {
             return;
         }
     }

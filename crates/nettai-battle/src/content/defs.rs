@@ -2381,7 +2381,7 @@ mod tests {
         let effects = |key: &str| c.stage(c.defs.stage_by_key(key).unwrap_or_else(|| panic!("stage {key}"))).effects.bits();
         assert_eq!((effects("netbattle-1"), effects("netbattle-96"), effects("netbattle-97")), (0x88C, 0x8C, 0x20_088C));
         let paralysis = c.status(c.defs.status_by_key("paralyze-90").expect("paralyze-90"));
-        assert_eq!((paralysis.requests, paralysis.duration), (crate::collision::f2::PARALYZE, 90));
+        assert_eq!((paralysis.requests, paralysis.duration), (crate::collision::StatusRequests::PARALYZE, 90));
         // A name neither has is a load error.
         let mut wrong = Content::default();
         wrong.scripts = c.scripts.clone();

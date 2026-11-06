@@ -158,9 +158,9 @@ pub struct ActorBody {
     /// modifier (`object_setupCollisionData`'s, which struct 2 byte 3 and
     /// the NameID pick: EXE5's 0x08013C5A).
     pub collision: (nettai_content_api::CollisionHandle, nettai_content_api::CollisionHandle, u8),
-    /// The flag-1 bits it starts with (struct 2 byte 3's: superarmor,
+    /// The status flags it starts with (struct 2 byte 3's: superarmor,
     /// airshoe, floatshoe, affected by ice, untouchable; and its hook's).
-    pub flags: u32,
+    pub flags: crate::collision::StatusFlags,
     /// Its HP number never shows (EXE5's NameID 0x18D: 0x0801339C,
     /// 0x08104270).
     pub hides_hp: bool,
@@ -500,19 +500,19 @@ pub(crate) fn read(
                 }
                 other => return Err(what(format!("body.element is {other:?}, not an element"))),
             };
-            let mut flags = 0u32;
+            let mut flags = crate::collision::StatusFlags::empty();
             let names = match b.field("flags") {
                 Data::Nil => Vec::new(),
                 v => v.set().map_err(|m| what(format!("body.flags {m}")))?,
             };
             for n in names {
-                use crate::collision::f1;
+                use crate::collision::StatusFlags;
                 flags |= match n {
-                    "super_armor" => f1::SUPERARMOR,
-                    "air_shoe" => f1::AIRSHOE,
-                    "float_shoe" => f1::FLOATSHOE,
-                    "affected_by_ice" => f1::AFFECTED_BY_ICE,
-                    "untouchable" => f1::UNTOUCHABLE,
+                    "super_armor" => StatusFlags::SUPERARMOR,
+                    "air_shoe" => StatusFlags::AIRSHOE,
+                    "float_shoe" => StatusFlags::FLOATSHOE,
+                    "affected_by_ice" => StatusFlags::AFFECTED_BY_ICE,
+                    "untouchable" => StatusFlags::UNTOUCHABLE,
                     other => {
                         return Err(what(format!("body.flags has {other:?}, not super_armor, air_shoe, float_shoe, affected_by_ice or untouchable")));
                     }

@@ -12,7 +12,7 @@ use super::super::{
 use super::ActionVars;
 use crate::actor::{ActorStatus, ActorType};
 use crate::battle::Battle;
-use crate::collision::f1;
+use crate::collision::StatusFlags;
 use crate::object::{ObjectRef, PanelPos};
 
 /// How a step picks its destination (the game's move type byte).
@@ -166,9 +166,9 @@ fn set_animation(b: &mut Battle, r: ObjectRef, anim: u8) {
 
 /// `sub_80EB088`.
 fn begin(b: &mut Battle, r: ObjectRef) {
-    clear_flag1(b, r, f1::USING_ACTION);
+    clear_flag1(b, r, StatusFlags::USING_ACTION);
     // object_canMove (EXE4's, 0x0800AD2A: nor trapped by its panel)
-    if flag1(b, r) & (f1::IMMOBILIZED | f1::SLIDING | f1::MOVING) != 0 || b.trapped(r) {
+    if flag1(b, r).intersects(StatusFlags::IMMOBILIZED | StatusFlags::SLIDING | StatusFlags::MOVING) || b.trapped(r) {
         return leave(b, r);
     }
     ai_mut(b, r).attack.marker = 0;
@@ -189,7 +189,7 @@ fn begin(b: &mut Battle, r: ObjectRef) {
     b.reserve_panel(r, target.x, target.y);
     let here = b.objects.get(r).panel;
     ai_mut(b, r).status |= direction_bits(target, here);
-    set_flag1(b, r, f1::MOVING);
+    set_flag1(b, r, StatusFlags::MOVING);
     let side = b.objects.get(r).alliance;
     b.bump_side_stat(side, 4, 1);
     set_animation(b, r, 4);
@@ -221,7 +221,7 @@ fn offset(p: PanelPos, (dx, dy): (i8, i8)) -> PanelPos {
 /// `sub_800F964`: one panel toward `dir`, if the navi may step there; none
 /// while sliding.
 pub(crate) fn step_target(b: &Battle, r: ObjectRef, dir: u8) -> Option<PanelPos> {
-    if flag1(b, r) & f1::SLIDING != 0 {
+    if flag1(b, r).contains(StatusFlags::SLIDING) {
         return None;
     }
     let o = b.objects.get(r);
@@ -239,7 +239,7 @@ const FALLBACK_ORDERS: [[u8; 4]; 6] =
 /// else the other directions in `FALLBACK_ORDERS`' order; none while
 /// sliding.
 fn fallback_target(b: &Battle, r: ObjectRef, dir: u8) -> Option<PanelPos> {
-    if flag1(b, r) & f1::SLIDING != 0 {
+    if flag1(b, r).contains(StatusFlags::SLIDING) {
         return None;
     }
     let order = *FALLBACK_ORDERS
@@ -260,7 +260,7 @@ fn astray_target(b: &Battle, r: ObjectRef, dir: u8) -> Option<PanelPos> {
     if (dx, dy) == (0, 0) {
         panic!("an astray step toward {dir:#x} walks in place forever (sub_800D15A)");
     }
-    let airshoes = flag1(b, r) & f1::AIRSHOE != 0;
+    let airshoes = flag1(b, r).contains(StatusFlags::AIRSHOE);
     let cond = b.game_rules().panels.dash_step.get(airshoes, o.alliance);
     // sub_800D120 along the row, sub_800D15A along the column.
     let mut p = o.panel;
@@ -382,8 +382,8 @@ fn arrive(b: &mut Battle, r: ObjectRef) {
     if v.timer != 0 {
         return;
     }
-    clear_flag1(b, r, f1::MOVING);
-    set_flag1(b, r, f1::MOVE_COMPLETE);
+    clear_flag1(b, r, StatusFlags::MOVING);
+    set_flag1(b, r, StatusFlags::MOVE_COMPLETE);
     let v = vars(b, r);
     v.timer = v.end_lag;
     set_animation(b, r, 0);

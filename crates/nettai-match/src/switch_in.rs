@@ -6,7 +6,7 @@ use crate::double_attacks::fighting;
 use crate::testing::exe5_content;
 use nettai_battle::Battle;
 use nettai_battle::actor::ActorStatus;
-use nettai_battle::collision::f1;
+use nettai_battle::collision::StatusFlags;
 use nettai_battle::input::PlayerTick;
 
 /// Side 0 asks to switch to `member` (out of the normal mood: no Double
@@ -26,7 +26,7 @@ fn navi_status(b: &Battle) -> ActorStatus {
     b.actors.get(a).status
 }
 
-fn flags(b: &Battle) -> u32 {
+fn flags(b: &Battle) -> StatusFlags {
     let c = b.objects.get(b.player(0).unwrap()).collision.expect("the navi's collision");
     b.collision.get(c).f1
 }
@@ -58,12 +58,12 @@ fn toadman_switched_in_dives_on_sea() {
     switch_to(&mut b, 1);
     assert!(navi_status(&b).contains(ActorStatus::DIVES), "ToadMan dives");
     sea_under(&mut b);
-    assert_ne!(flags(&b) & f1::BUBBLED, 0, "under the sea's surface");
+    assert!(flags(&b).contains(StatusFlags::BUBBLED), "under the sea's surface");
     // (Switched out from under the surface, on the sea.)
     switch_to(&mut b, 0);
     assert!(!navi_status(&b).contains(ActorStatus::DIVES), "MegaMan doesn't dive");
     sea_under(&mut b);
-    assert_eq!(flags(&b) & f1::BUBBLED, 0, "MegaMan stands on the sea");
+    assert!(!flags(&b).contains(StatusFlags::BUBBLED), "MegaMan stands on the sea");
     let ripple = b.content.defs.kind_by_key("dive-ripple").expect("EXE5's dive ripple");
     assert!(b.objects.in_order().all(|q| b.objects.get(q).kind != ripple), "and no ripple is left over him");
 }

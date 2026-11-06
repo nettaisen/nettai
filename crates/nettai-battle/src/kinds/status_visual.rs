@@ -9,7 +9,7 @@
 //! in the navi's collision data. See docs/engine/objects-and-player.md.
 
 use crate::battle::Battle;
-use crate::collision::{f1, link};
+use crate::collision::{StatusFlags, link};
 use crate::content::{SoundRole, SpriteRole, StatusVisualPlace};
 use crate::object::{ObjectFlags, ObjectRef, state};
 
@@ -25,11 +25,11 @@ pub enum Status {
 
 impl Status {
     /// Its sprite (by role) and the navi's status flag it lasts while.
-    fn row(self) -> (SpriteRole, u32) {
+    fn row(self) -> (SpriteRole, StatusFlags) {
         match self {
-            Status::Confusion => (SpriteRole::Confusion, f1::CONFUSED),
-            Status::Blindness => (SpriteRole::Blindness, f1::BLIND),
-            Status::Immobilized => (SpriteRole::Immobilized, f1::IMMOBILIZED),
+            Status::Confusion => (SpriteRole::Confusion, StatusFlags::CONFUSED),
+            Status::Blindness => (SpriteRole::Blindness, StatusFlags::BLIND),
+            Status::Immobilized => (SpriteRole::Immobilized, StatusFlags::IMMOBILIZED),
         }
     }
 
@@ -163,7 +163,7 @@ fn follow(b: &mut Battle, r: ObjectRef) {
     let (_, flag) = status.row();
     let c = b.objects.get(owner).collision.expect("a status on an object without collision data");
     let linked = b.collision.get(c).links[status.link()].is_some();
-    if !linked || b.collision.get(c).f1 & flag == 0 {
+    if !linked || !b.collision.get(c).f1.intersects(flag) {
         b.collision.get_mut(c).links[status.link()] = None;
         b.objects.free(r);
         return;

@@ -8,7 +8,7 @@ use super::{
     form_of, navi_of, refresh_abilities, reload_base_weapons, set_flag2, stats, stats_mut,
 };
 use crate::battle::{Battle, BattleFlags};
-use crate::collision::{CollisionData, f1, hit, timer, types};
+use crate::collision::{CollisionData, StatusFlags, StatusRequests, hit, timer, types};
 use crate::content::{EffectRole, SecondaryElements, SparkRole, StatusRole};
 use crate::object::{ObjectRef, Vec3};
 
@@ -20,7 +20,7 @@ pub(super) fn collect_hits(b: &mut Battle, r: ObjectRef) {
         return;
     }
     b.remove_collision(coll_id(b, r));
-    if b.is_battle_over() || flag1(b, r) & f1::DEAD != 0 {
+    if b.is_battle_over() || flag1(b, r).contains(StatusFlags::DEAD) {
         return;
     }
     // (EXE5's lava burns first: 0x080178EC; EXE4's a player's, 0x08013128.)
@@ -102,7 +102,7 @@ pub(super) fn collect_hits_navi(b: &mut Battle, r: ObjectRef) {
         return;
     }
     b.remove_collision(coll_id(b, r));
-    if b.is_battle_over() || flag1(b, r) & f1::DEAD != 0 {
+    if b.is_battle_over() || flag1(b, r).contains(StatusFlags::DEAD) {
         return;
     }
     crate::kinds::common::panel_burn(b, r, false);
@@ -337,18 +337,18 @@ fn slide_triggers(b: &mut Battle, r: ObjectRef) {
     }
     if !cooldown_ended {
         let f = flag1(b, r);
-        if f & (f1::DRAG | f1::MOVING) != 0 {
+        if f.intersects(StatusFlags::DRAG | StatusFlags::MOVING) {
             return;
         }
         let kind = panel_kind(b, coll(b, r).panel);
         if b.call_panel(kind, nettai_content_api::PanelCall::Rest { body: r }) == Some(nettai_content_api::Value::Bool(true)) {
             return;
         }
-        if f & f1::MOVE_COMPLETE == 0 {
+        if !f.contains(StatusFlags::MOVE_COMPLETE) {
             return;
         }
     }
-    super::clear_flag1(b, r, f1::MOVE_COMPLETE);
+    super::clear_flag1(b, r, StatusFlags::MOVE_COMPLETE);
     let p = coll(b, r).panel;
     let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
     b.call_panel(kind, nettai_content_api::PanelCall::MoveEnd { body: r });
@@ -487,17 +487,17 @@ pub(crate) fn strip_body_programs(b: &mut Battle, r: ObjectRef, undershirt: bool
     if !super::is_megaman(b, r) {
         return false;
     }
-    super::clear_flag1(b, r, f1::SUPERARMOR);
+    super::clear_flag1(b, r, StatusFlags::SUPERARMOR);
     stats_mut(b, r).super_armor = false;
-    super::clear_flag1(b, r, f1::FLOATSHOE);
+    super::clear_flag1(b, r, StatusFlags::FLOATSHOE);
     let hm = super::body_hit_modifier(b);
     super::reset_body_types(b, r, false, hm);
     stats_mut(b, r).float_shoes = false;
     if undershirt {
-        super::clear_flag1(b, r, f1::UNDERSHIRT);
+        super::clear_flag1(b, r, StatusFlags::UNDERSHIRT);
         stats_mut(b, r).undershirt = false;
     }
-    super::clear_flag1(b, r, f1::AIRSHOE);
+    super::clear_flag1(b, r, StatusFlags::AIRSHOE);
     stats_mut(b, r).air_shoes = false;
     stats_mut(b, r).weapons.back_special = None;
     if super::in_base_form(b, r) {
@@ -548,22 +548,22 @@ pub fn take_navi_bug(b: &mut Battle, side: u8, bugs: u16) {
 /// none but the push's is set in it.)
 fn hit_modifier_requests(b: &mut Battle, r: ObjectRef) {
     let hm = coll(b, r).hit_mod_final;
-    if flag1(b, r) & (f1::SUPERARMOR | f1::ANGER) == 0 && hm & 1 != 0 {
-        set_flag2(b, r, 0x4);
+    if !flag1(b, r).intersects(StatusFlags::SUPERARMOR | StatusFlags::ANGER) && hm & 1 != 0 {
+        set_flag2(b, r, StatusRequests::FLINCH);
     }
     if hm & 2 != 0 {
-        set_flag2(b, r, 0x2);
+        set_flag2(b, r, StatusRequests::FLASH);
     }
     let reading = &b.game_rules().push_reading;
     if hm & reading.mask() == 0 {
         return;
     }
     if hm & reading.drag_bit != 0 {
-        set_flag2(b, r, 0x100);
-        clear_flag2(b, r, 0x4);
+        set_flag2(b, r, StatusRequests::DRAG);
+        clear_flag2(b, r, StatusRequests::FLINCH);
         b.objects.get_mut(r).slide_type = 1;
-    } else if flag1(b, r) & (f1::DRAG | f1::MOVING) == 0 {
-        set_flag2(b, r, 0x10);
+    } else if !flag1(b, r).intersects(StatusFlags::DRAG | StatusFlags::MOVING) {
+        set_flag2(b, r, StatusRequests::SLIDE);
         b.objects.get_mut(r).slide_type = 1;
     }
 }
@@ -576,8 +576,8 @@ fn counter_paralysis(b: &mut Battle, r: ObjectRef) {
         return;
     }
     coll_mut(b, r).status_final = Some(b.roles().status(StatusRole::CounterParalysis));
-    set_flag2(b, r, 0x4000);
-    clear_flag2(b, r, 0x6);
+    set_flag2(b, r, StatusRequests::COUNTER_PARALYSIS);
+    clear_flag2(b, r, StatusRequests::FLASH | StatusRequests::FLINCH);
 }
 
 /// `sub_8013F1E` (EXE5's 0x0801156E): a hit that asks the navi to flinch
@@ -585,7 +585,7 @@ fn counter_paralysis(b: &mut Battle, r: ObjectRef) {
 /// (`navi_flinched`: the NaviCust's hit bug, the `hit_status` stat, behind
 /// the game's gate, which may put a status in place of the hit's).
 fn navicust_hit_bug(b: &mut Battle, r: ObjectRef) {
-    if flag2(b, r) & 0x104 == 0 {
+    if !flag2(b, r).intersects(StatusRequests::FLINCH | StatusRequests::DRAG) {
         return;
     }
     let side = b.objects.get(r).alliance;
@@ -608,7 +608,7 @@ pub(crate) fn take_status(b: &mut Battle, r: ObjectRef, s: nettai_content_api::S
     coll_mut(b, r).status_timers[e.timer.timer()] = e.duration;
     set_flag2(b, r, e.requests);
     if e.cancels_flinch {
-        clear_flag2(b, r, 0x6);
+        clear_flag2(b, r, StatusRequests::FLASH | StatusRequests::FLINCH);
     }
 }
 
@@ -719,7 +719,7 @@ fn count_stun_ticks(b: &mut Battle, r: ObjectRef) {
     if b.is_dimmed() || b.paused {
         return;
     }
-    let stunned = flag1(b, r) & (f1::FLINCHING | f1::PARALYZED) != 0;
+    let stunned = flag1(b, r).intersects(StatusFlags::FLINCHING | StatusFlags::PARALYZED);
     let a = ai_mut(b, r);
     a.stun_ticks = if stunned { a.stun_ticks.wrapping_add(1) } else { 0 };
 }
@@ -728,13 +728,13 @@ fn count_stun_ticks(b: &mut Battle, r: ObjectRef) {
 /// (`emotion.anger_damage`: EXE6's and EXE5's 300; EXE4's 0x0800C540 none),
 /// a tick's hits of that much damage (base MegaMan only).
 fn anger_trigger(b: &mut Battle, r: ObjectRef) {
-    if battle_mode(b) == 1 || !super::is_megaman(b, r) || !super::in_base_form(b, r) || flag1(b, r) & f1::ANGER != 0 {
+    if battle_mode(b) == 1 || !super::is_megaman(b, r) || !super::in_base_form(b, r) || flag1(b, r).contains(StatusFlags::ANGER) {
         return;
     }
     let damage = b.game_rules().emotion.anger_damage;
     let hurt = damage.is_some_and(|d| coll(b, r).acc.final_damage >> 1 >= d >> 1);
     if ai(b, r).stun_ticks as i32 >= 0x78 || hurt {
-        set_flag2(b, r, 0x200);
+        set_flag2(b, r, StatusRequests::ANGER);
     }
 }
 
@@ -791,7 +791,7 @@ mod tests {
         b.round.flags.insert(BattleFlags::FIGHTING);
         let r = b.player(1).unwrap();
         b.set_panel_type(5, 2, crate::content::testing::panel("ice"));
-        super::super::set_flag1(&mut b, r, f1::AFFECTED_BY_ICE | f1::MOVE_COMPLETE);
+        super::super::set_flag1(&mut b, r, StatusFlags::AFFECTED_BY_ICE | StatusFlags::MOVE_COMPLETE);
         let c = coll_mut(&mut b, r);
         c.direction = direction;
         c.hit_mod_final = 0;
@@ -806,12 +806,12 @@ mod tests {
     fn ice_slides_by_its_rules() {
         let (mut b, r) = on_ice(3);
         slide_triggers(&mut b, r);
-        assert_eq!((coll(&b, r).hit_mod_final, flag2(&b, r) & 0x10, b.objects.get(r).slide_type), (0, 0x10, 2));
-        assert_eq!(flag1(&b, r) & f1::MOVE_COMPLETE, 0, "the move's end is taken");
+        assert_eq!((coll(&b, r).hit_mod_final, flag2(&b, r).contains(StatusRequests::SLIDE), b.objects.get(r).slide_type), (0, true, 2));
+        assert!(!flag1(&b, r).contains(StatusFlags::MOVE_COMPLETE), "the move's end is taken");
         let (mut b, r) = on_ice(1);
         coll_mut(&mut b, r).element = 2;
         slide_triggers(&mut b, r);
-        assert_eq!((flag2(&b, r) & 0x10, b.objects.get(r).slide_type), (0, 0), "an aqua body");
+        assert_eq!((flag2(&b, r).contains(StatusRequests::SLIDE), b.objects.get(r).slide_type), (false, 0), "an aqua body");
     }
 
     /// docs/design/exe4-map.md §18 item 7: the HP bug drains by the rule:
@@ -863,7 +863,7 @@ mod tests {
             coll_mut(&mut b, r).hit_mod_final = hm;
             hit_modifier_requests(&mut b, r);
             let f = flag2(&b, r);
-            ((f & 0x4 != 0, f & 0x10 != 0, f & 0x100 != 0), b.objects.get(r).slide_type)
+            ((f.contains(StatusRequests::FLINCH), f.contains(StatusRequests::SLIDE), f.contains(StatusRequests::DRAG)), b.objects.get(r).slide_type)
         };
         assert_eq!(requests(false, 0x44), ((false, false, true), 1));
         assert_eq!(requests(false, 0x05), ((true, true, false), 1));
@@ -897,7 +897,7 @@ mod tests {
     /// tests.)
     #[test]
     fn lava_burns_by_its_rules() {
-        let run = |dimmed: bool, status: u32| {
+        let run = |dimmed: bool, status: StatusFlags| {
             let (mut b, r) = fight_with(|_| {});
             let p = coll(&b, r).panel;
             let lava = crate::content::testing::panel("lava");
@@ -910,9 +910,9 @@ mod tests {
             let c = coll(&b, r);
             (c.acc.element_damage[1], c.acc.mood_damage, b.field.panels[p.y as usize][p.x as usize].kind == lava)
         };
-        assert_eq!(run(true, 0), (0, 0, true), "none while dimmed");
-        assert_eq!(run(false, 0x8000_0000), (0, 0, true), "a bubbled body spared");
-        assert_eq!(run(false, 0), (50, 0, false));
+        assert_eq!(run(true, StatusFlags::empty()), (0, 0, true), "none while dimmed");
+        assert_eq!(run(false, StatusFlags::BUBBLED), (0, 0, true), "a bubbled body spared");
+        assert_eq!(run(false, StatusFlags::empty()), (50, 0, false));
     }
 
     /// The test content's grass (`panel_types.grass(9)`, EXE6's) heals a

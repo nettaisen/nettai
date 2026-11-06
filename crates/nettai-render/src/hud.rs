@@ -1162,7 +1162,7 @@ pub fn draw<'a>(
     let blind = b
         .player(local)
         .and_then(|p| b.objects.get(p).collision)
-        .is_some_and(|c| b.collision.get(c).f1 & nettai_battle::collision::f1::BLIND != 0);
+        .is_some_and(|c| b.collision.get(c).f1.contains(nettai_battle::collision::StatusFlags::BLIND));
     // (On a screen of both, none under a navi: both navis' HP are in the
     // corners' boxes; and the right console's none under what the left's
     // numbers.)

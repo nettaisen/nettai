@@ -12,7 +12,7 @@ use super::{
 };
 use crate::actor::{ActorStatus, ActorType, Requests};
 use crate::battle::{Battle, BattleFlags};
-use crate::collision::{f1, link, timer};
+use crate::collision::{StatusFlags, StatusRequests, link, timer};
 use crate::object::{DragStep, ObjectRef, PanelPos, Vec3};
 
 /// `sub_801AF44`, including the action dispatch (`sub_801B9E6`). Its top
@@ -53,12 +53,12 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     if navi_action(b, r) == NaviAction::Bubble && coll(b, r).acc.final_damage != 0 {
         clear_bubble(b, r);
     }
-    if flag1(b, r) & f1::DEAD != 0 {
+    if flag1(b, r).contains(StatusFlags::DEAD) {
         return Flow::Tail;
     }
-    if flag2(b, r) & 1 != 0 {
-        clear_flag2(b, r, 1);
-        set_flag1(b, r, f1::DEAD);
+    if flag2(b, r).contains(StatusRequests::DESTROY) {
+        clear_flag2(b, r, StatusRequests::DESTROY);
+        set_flag1(b, r, StatusFlags::DEAD);
         set_attack(b, r, NaviAction::Deletion, 0);
         return Flow::Tail;
     }
@@ -97,24 +97,24 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
     if b.game_rules().reactions == crate::content::Reactions::FlashTimerFirst {
         return flash_timer_first_reactions(b, r);
     }
-    if flag2(b, r) & 0x100 != 0 {
+    if flag2(b, r).contains(StatusRequests::DRAG) {
         start_drag(b, r);
         return Flow::Tail;
     }
-    if flag1(b, r) & f1::DRAG != 0 {
+    if flag1(b, r).contains(StatusFlags::DRAG) {
         set_navi_action(b, r, NaviAction::Drag);
         return Flow::Tail;
     }
     b.objects.get_mut(r).drag_step = DragStep::Start;
-    if flag2(b, r) & 0x10 != 0 {
-        clear_flag2(b, r, 0x10);
+    if flag2(b, r).contains(StatusRequests::SLIDE) {
+        clear_flag2(b, r, StatusRequests::SLIDE);
         slide(b, r);
-    } else if flag1(b, r) & f1::SLIDING != 0 {
+    } else if flag1(b, r).contains(StatusFlags::SLIDING) {
         slide(b, r);
     } else {
         b.objects.get_mut(r).slide_state = 0;
     }
-    if flag2(b, r) & 4 != 0 {
+    if flag2(b, r).contains(StatusRequests::FLINCH) {
         flinch_request(b, r);
     }
     tick_flash(b, r);
@@ -133,42 +133,42 @@ fn apply(b: &mut Battle, r: ObjectRef) -> Flow {
 /// slides, a drag, a flinch, then the status timers.
 fn flash_timer_first_reactions(b: &mut Battle, r: ObjectRef) -> Flow {
     tick_flash(b, r);
-    if flag2(b, r) & 0x10 != 0 {
-        clear_flag2(b, r, 0x10);
+    if flag2(b, r).contains(StatusRequests::SLIDE) {
+        clear_flag2(b, r, StatusRequests::SLIDE);
         slide(b, r);
-    } else if flag1(b, r) & f1::SLIDING != 0 {
+    } else if flag1(b, r).contains(StatusFlags::SLIDING) {
         slide(b, r);
     } else {
         b.objects.get_mut(r).slide_state = 0;
     }
-    if flag2(b, r) & 0x100 != 0 {
+    if flag2(b, r).contains(StatusRequests::DRAG) {
         // 0x08017D04: the state word kept, a paralysis ended unless a
         // counter just made it; the drag from its start.
-        clear_flag2(b, r, 0x100);
+        clear_flag2(b, r, StatusRequests::DRAG);
         save_state_word(b, r);
-        if flag2(b, r) & 0x4000 == 0 {
+        if !flag2(b, r).contains(StatusRequests::COUNTER_PARALYSIS) {
             clear_paralysis(b, r);
         }
-        clear_flag2(b, r, 0x4000);
+        clear_flag2(b, r, StatusRequests::COUNTER_PARALYSIS);
         let o = b.objects.get_mut(r);
         o.phase = 0;
         o.drag_step = DragStep::Start;
         set_navi_action(b, r, NaviAction::Drag);
         return Flow::Tail;
     }
-    if flag1(b, r) & f1::DRAG != 0 {
+    if flag1(b, r).contains(StatusFlags::DRAG) {
         set_navi_action(b, r, NaviAction::Drag);
         return Flow::Tail;
     }
     b.objects.get_mut(r).drag_step = DragStep::Start;
-    if flag2(b, r) & 4 != 0 {
+    if flag2(b, r).contains(StatusRequests::FLINCH) {
         // 0x08017D58: a paralysis ended unless a counter just made it;
         // the flinch.
-        clear_flag2(b, r, 4);
-        if flag2(b, r) & 0x4000 == 0 {
+        clear_flag2(b, r, StatusRequests::FLINCH);
+        if !flag2(b, r).contains(StatusRequests::COUNTER_PARALYSIS) {
             clear_paralysis(b, r);
         }
-        clear_flag2(b, r, 0x4000);
+        clear_flag2(b, r, StatusRequests::COUNTER_PARALYSIS);
         set_attack(b, r, NaviAction::Flinch, 0);
     }
     tick_statuses(b, r);
@@ -183,7 +183,7 @@ fn flash_timer_first_reactions(b: &mut Battle, r: ObjectRef) -> Flow {
 /// `loc_801B142`: visibility, then the action (or the pause / dimming
 /// handler).
 fn tail(b: &mut Battle, r: ObjectRef) {
-    clear_flag2(b, r, 0x4000);
+    clear_flag2(b, r, StatusRequests::COUNTER_PARALYSIS);
     status_shader(b, r);
     update_visibility(b, r);
     counter_shader(b, r);
@@ -195,7 +195,7 @@ fn tail(b: &mut Battle, r: ObjectRef) {
     }
     charge_brings_glow(b, r);
     dive_ripple(b, r);
-    if flag1(b, r) & f1::DEAD != 0 {
+    if flag1(b, r).contains(StatusFlags::DEAD) {
         return dispatch(b, r);
     }
     // (A navi that stops at control has no pause handler: the object loop
@@ -407,7 +407,7 @@ fn apply_damage(b: &mut Battle, r: ObjectRef) {
         let a = ai_mut(b, r);
         a.total_damage_taken = (a.total_damage_taken as u32 + d as u32).min(0xFFFF) as u16;
         let hp = b.objects.get(r).hp;
-        if hp > 1 && flag1(b, r) & f1::UNDERSHIRT != 0 && hp <= d {
+        if hp > 1 && flag1(b, r).contains(StatusFlags::UNDERSHIRT) && hp <= d {
             d = hp - 1;
         }
         crate::kinds::subtract_hp(b, r, d);
@@ -445,7 +445,7 @@ fn apply_damage_shown_by_hp(b: &mut Battle, r: ObjectRef) {
         let a = ai_mut(b, r);
         a.total_damage_taken = (a.total_damage_taken as u32 + d as u32).min(0xFFFF) as u16;
         let hp = b.objects.get(r).hp;
-        if hp > 1 && flag1(b, r) & f1::UNDERSHIRT != 0 && hp <= d {
+        if hp > 1 && flag1(b, r).contains(StatusFlags::UNDERSHIRT) && hp <= d {
             d = hp - 1;
         }
         if crate::kinds::subtract_hp(b, r, d) {
@@ -483,7 +483,7 @@ fn apply_damage_asking_at_zero(b: &mut Battle, r: ObjectRef) {
         let a = ai_mut(b, r);
         a.total_damage_taken = (a.total_damage_taken as u32 + d as u32).min(0xFFFF) as u16;
         let hp = b.objects.get(r).hp;
-        if hp > 1 && flag1(b, r) & f1::UNDERSHIRT != 0 && hp <= d {
+        if hp > 1 && flag1(b, r).contains(StatusFlags::UNDERSHIRT) && hp <= d {
             d = hp - 1;
         }
         let side = b.objects.get(r).alliance as usize & 1;
@@ -528,7 +528,7 @@ fn fall(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).requests.contains(Requests::REVIVAL) || ai(b, r).status.contains(ActorStatus::REVIVING) {
         return;
     }
-    set_flag2(b, r, 1);
+    set_flag2(b, r, StatusRequests::DESTROY);
 }
 
 /// `sub_801A200` (EXE5's 0x08016FDC, EXE4's 0x080131F4): what the hits
@@ -644,17 +644,17 @@ fn unpaused_form_change(b: &mut Battle, r: ObjectRef) -> Option<Flow> {
 /// Stage B's drag request (`F2 & 0x100`): save the state, clear freeze
 /// and bubble (and paralysis, unless kept) and start action 5.
 fn start_drag(b: &mut Battle, r: ObjectRef) {
-    clear_flag2(b, r, 0x100);
+    clear_flag2(b, r, StatusRequests::DRAG);
     save_state_word(b, r);
     reset_attack_links(b, r);
     clear_freeze(b, r);
     clear_bubble(b, r);
     let f = flag2(b, r);
-    let keep_paralysis = f & 0x4000 != 0 || (f & 2 == 0 && navi_action(b, r) == NaviAction::Paralysis);
+    let keep_paralysis = f.contains(StatusRequests::COUNTER_PARALYSIS) || (!f.contains(StatusRequests::FLASH) && navi_action(b, r) == NaviAction::Paralysis);
     if !keep_paralysis {
         clear_paralysis(b, r);
     }
-    clear_flag2(b, r, 0x4000);
+    clear_flag2(b, r, StatusRequests::COUNTER_PARALYSIS);
     let o = b.objects.get_mut(r);
     o.phase = 0;
     o.drag_step = DragStep::Start;
@@ -691,7 +691,7 @@ fn anchor_collision(b: &mut Battle, r: ObjectRef) {
 /// `sub_80166D0`: onto the destination panel, then off in the slide's
 /// direction, if its first panel is open.
 fn start_slide(b: &mut Battle, r: ObjectRef) {
-    set_flag1(b, r, f1::SLIDING);
+    set_flag1(b, r, StatusFlags::SLIDING);
     let o = b.objects.get_mut(r);
     o.panel = o.future_panel;
     set_coordinates_from_panel(b, r);
@@ -716,7 +716,7 @@ fn start_slide(b: &mut Battle, r: ObjectRef) {
         ai_mut(b, r).slide_cooldown = 5;
     }
     b.objects.get_mut(r).slide_type = 0;
-    clear_flag1(b, r, f1::SLIDING);
+    clear_flag1(b, r, StatusFlags::SLIDING);
 }
 
 /// `sub_8016730`: move toward the destination; there, go on (one panel
@@ -792,7 +792,7 @@ fn continue_slide(b: &mut Battle, r: ObjectRef) {
     coll_mut(b, r).direction = dir;
     let o = b.objects.get_mut(r);
     o.slide_state = slide_state::START;
-    clear_flag1(b, r, f1::SLIDING);
+    clear_flag1(b, r, StatusFlags::SLIDING);
     b.objects.get_mut(r).slide_type = 0;
     anchor_collision(b, r);
 }
@@ -818,7 +818,7 @@ fn slide_direction(dx: i8, dy: i8, alliance: u8) -> u8 {
 /// Stage B's flinch request (`F2 & 4`): flinch unless paralyzed or frozen
 /// by a hit without the flash bit (§4.7).
 fn flinch_request(b: &mut Battle, r: ObjectRef) {
-    clear_flag2(b, r, 4);
+    clear_flag2(b, r, StatusRequests::FLINCH);
     reset_attack_links(b, r);
     let action = navi_action(b, r);
     // sub_801BA92
@@ -826,7 +826,7 @@ fn flinch_request(b: &mut Battle, r: ObjectRef) {
     if action == NaviAction::Paralysis {
         a = 1;
         let f = flag2(b, r);
-        if f & 0x4000 == 0 && f & 2 != 0 {
+        if !f.contains(StatusRequests::COUNTER_PARALYSIS) && f.contains(StatusRequests::FLASH) {
             clear_paralysis(b, r);
             a = 2;
         }
@@ -835,7 +835,7 @@ fn flinch_request(b: &mut Battle, r: ObjectRef) {
     let mut c = 0;
     if action == NaviAction::Freeze {
         c = 1;
-        if flag2(b, r) & 2 != 0 {
+        if flag2(b, r).contains(StatusRequests::FLASH) {
             clear_freeze(b, r);
             c = 2;
         }
@@ -844,7 +844,7 @@ fn flinch_request(b: &mut Battle, r: ObjectRef) {
     if both == 0 || both & 2 != 0 {
         set_attack(b, r, NaviAction::Flinch, 0);
     }
-    clear_flag2(b, r, 0x4000);
+    clear_flag2(b, r, StatusRequests::COUNTER_PARALYSIS);
 }
 
 // ---- Timers ------------------------------------------------------------------------
@@ -856,23 +856,23 @@ fn tick_flash(b: &mut Battle, r: ObjectRef) {
     if !b.round.flags.contains(BattleFlags::FIGHTING) && b.game_rules().reactions == crate::content::Reactions::FlashTimerLast {
         return;
     }
-    if coll(b, r).status_timers[timer::FLASH] == 0 && flag2(b, r) & 2 != 0 {
+    if coll(b, r).status_timers[timer::FLASH] == 0 && flag2(b, r).contains(StatusRequests::FLASH) {
         coll_mut(b, r).status_timers[timer::FLASH] = 120;
     }
-    clear_flag2(b, r, 2);
+    clear_flag2(b, r, StatusRequests::FLASH);
     let t = coll(b, r).status_timers[timer::FLASH];
     if t != 0 {
         let t = t as i32 - 1;
         coll_mut(b, r).status_timers[timer::FLASH] = t as u16;
         if t > 0 {
-            set_flag1(b, r, f1::FLASHING);
+            set_flag1(b, r, StatusFlags::FLASHING);
             return;
         }
-        if flag1(b, r) & f1::INVISIBLE != 0 {
+        if flag1(b, r).contains(StatusFlags::INVISIBLE) {
             b.sound(crate::content::SoundRole::Appear);
         }
     }
-    clear_flag1(b, r, f1::FLASHING | f1::INVISIBLE);
+    clear_flag1(b, r, StatusFlags::FLASHING | StatusFlags::INVISIBLE);
 }
 
 /// Count a status timer down (`t - 1` on the u16); true while it runs.
@@ -899,7 +899,7 @@ fn tick_statuses(b: &mut Battle, r: ObjectRef) {
     tick_paralysis(b, r, f2);
     if !tick_freeze(b, r, f2) {
         if !count_down(b, r, timer::BUBBLE) {
-            clear_flag1(b, r, f1::BUBBLED);
+            clear_flag1(b, r, StatusFlags::BUBBLED);
             coll_mut(b, r).links[link::BUBBLE] = None;
         } else if !bubble_active(b, r, f2) {
             // A stale bubble visual skips the confusion countdown.
@@ -916,31 +916,31 @@ fn tick_statuses(b: &mut Battle, r: ObjectRef) {
     if count_down(b, r, timer::CONFUSE) {
         confusion_active(b, r, f2);
     } else {
-        clear_flag1(b, r, f1::CONFUSED);
-        clear_flag2(b, r, 0x80);
+        clear_flag1(b, r, StatusFlags::CONFUSED);
+        clear_flag2(b, r, StatusRequests::CONFUSE);
         coll_mut(b, r).links[link::CONFUSE] = None;
     }
     tick_minor_statuses(b, r, f2);
 }
 
 /// Paralysis: a request stops the other statuses and enters action 4.
-fn tick_paralysis(b: &mut Battle, r: ObjectRef, f2: u32) {
+fn tick_paralysis(b: &mut Battle, r: ObjectRef, f2: StatusRequests) {
     if !count_down(b, r, timer::PARALYZE) {
-        clear_flag1(b, r, f1::PARALYZED);
-        clear_flag2(b, r, 0x8);
+        clear_flag1(b, r, StatusFlags::PARALYZED);
+        clear_flag2(b, r, StatusRequests::PARALYZE);
         return;
     }
-    if f2 & 0x8 != 0 {
-        clear_flag2(b, r, 0x88);
+    if f2.contains(StatusRequests::PARALYZE) {
+        clear_flag2(b, r, StatusRequests::PARALYZE | StatusRequests::CONFUSE);
         enter_status_action(b, r, NaviAction::Paralysis);
         let c = coll_mut(b, r);
         c.status_timers[timer::CONFUSE] = 0;
         c.status_timers[timer::FREEZE] = 0;
         c.status_timers[timer::BUBBLE] = 0;
     }
-    clear_flag1(b, r, f1::BUBBLED | f1::FROZEN | f1::CONFUSED);
-    if flag1(b, r) & f1::PARALYZED == 0 {
-        set_flag1(b, r, f1::PARALYZED);
+    clear_flag1(b, r, StatusFlags::BUBBLED | StatusFlags::FROZEN | StatusFlags::CONFUSED);
+    if !flag1(b, r).contains(StatusFlags::PARALYZED) {
+        set_flag1(b, r, StatusFlags::PARALYZED);
         enter_status_action(b, r, NaviAction::Paralysis);
     }
 }
@@ -948,24 +948,24 @@ fn tick_paralysis(b: &mut Battle, r: ObjectRef, f2: u32) {
 /// Freeze: like paralysis with action 6 and the ice visual. Returns true
 /// when a stale ice visual makes the game jump into the bubble's active
 /// branch (after spawning one it goes on to the bubble's countdown).
-fn tick_freeze(b: &mut Battle, r: ObjectRef, f2: u32) -> bool {
+fn tick_freeze(b: &mut Battle, r: ObjectRef, f2: StatusRequests) -> bool {
     if !count_down(b, r, timer::FREEZE) {
-        clear_flag1(b, r, f1::FROZEN);
+        clear_flag1(b, r, StatusFlags::FROZEN);
         return false;
     }
-    if f2 & 0x1_0000 != 0 {
-        clear_flag2(b, r, 0x3_0080);
+    if f2.contains(StatusRequests::FREEZE) {
+        clear_flag2(b, r, StatusRequests::CONFUSE | StatusRequests::FREEZE | StatusRequests::BUBBLE);
         enter_status_action(b, r, NaviAction::Freeze);
         let c = coll_mut(b, r);
         c.status_timers[timer::CONFUSE] = 0;
         c.status_timers[timer::PARALYZE] = 0;
         c.status_timers[timer::BUBBLE] = 0;
     }
-    clear_flag1(b, r, f1::BUBBLED | f1::CONFUSED);
-    if flag1(b, r) & f1::FROZEN != 0 {
+    clear_flag1(b, r, StatusFlags::BUBBLED | StatusFlags::CONFUSED);
+    if flag1(b, r).contains(StatusFlags::FROZEN) {
         return false;
     }
-    set_flag1(b, r, f1::FROZEN);
+    set_flag1(b, r, StatusFlags::FROZEN);
     enter_status_action(b, r, NaviAction::Freeze);
     if coll(b, r).links[link::FREEZE].is_some() {
         return true;
@@ -976,20 +976,20 @@ fn tick_freeze(b: &mut Battle, r: ObjectRef, f2: u32) -> bool {
 
 /// The bubble's active branch. Returns false when a stale bubble visual
 /// makes the game jump into the confusion's active branch.
-fn bubble_active(b: &mut Battle, r: ObjectRef, f2: u32) -> bool {
-    if f2 & 0x2_0000 != 0 {
-        clear_flag2(b, r, 0x2_0080);
+fn bubble_active(b: &mut Battle, r: ObjectRef, f2: StatusRequests) -> bool {
+    if f2.contains(StatusRequests::BUBBLE) {
+        clear_flag2(b, r, StatusRequests::CONFUSE | StatusRequests::BUBBLE);
         enter_status_action(b, r, NaviAction::Bubble);
         let c = coll_mut(b, r);
         c.status_timers[timer::CONFUSE] = 0;
         c.status_timers[timer::PARALYZE] = 0;
         c.status_timers[timer::FREEZE] = 0;
     }
-    clear_flag1(b, r, f1::CONFUSED);
-    if flag1(b, r) & f1::BUBBLED != 0 {
+    clear_flag1(b, r, StatusFlags::CONFUSED);
+    if flag1(b, r).contains(StatusFlags::BUBBLED) {
         return true;
     }
-    set_flag1(b, r, f1::BUBBLED);
+    set_flag1(b, r, StatusFlags::BUBBLED);
     enter_status_action(b, r, NaviAction::Bubble);
     if coll(b, r).links[link::BUBBLE].is_some() {
         return false;
@@ -999,43 +999,43 @@ fn bubble_active(b: &mut Battle, r: ObjectRef, f2: u32) -> bool {
 }
 
 /// The confusion's active branch.
-fn confusion_active(b: &mut Battle, r: ObjectRef, f2: u32) {
-    if f2 & 0x80 != 0 {
-        clear_flag2(b, r, 0x3_0088);
+fn confusion_active(b: &mut Battle, r: ObjectRef, f2: StatusRequests) {
+    if f2.contains(StatusRequests::CONFUSE) {
+        clear_flag2(b, r, StatusRequests::PARALYZE | StatusRequests::CONFUSE | StatusRequests::FREEZE | StatusRequests::BUBBLE);
         let c = coll_mut(b, r);
         c.status_timers[timer::PARALYZE] = 0;
         c.status_timers[timer::FREEZE] = 0;
         c.status_timers[timer::BUBBLE] = 0;
     }
-    set_flag1(b, r, f1::CONFUSED);
-    clear_flag1(b, r, f1::BUBBLED | f1::FROZEN | f1::PARALYZED);
+    set_flag1(b, r, StatusFlags::CONFUSED);
+    clear_flag1(b, r, StatusFlags::BUBBLED | StatusFlags::FROZEN | StatusFlags::PARALYZED);
     if coll(b, r).links[link::CONFUSE].is_none() {
         crate::kinds::status_visual::spawn(b, r, crate::kinds::status_visual::Status::Confusion);
     }
 }
 
 /// Immobilize, blind and the invulnerability timer.
-fn tick_minor_statuses(b: &mut Battle, r: ObjectRef, f2: u32) {
+fn tick_minor_statuses(b: &mut Battle, r: ObjectRef, f2: StatusRequests) {
     if !count_down(b, r, timer::IMMOBILIZE) {
-        clear_flag1(b, r, f1::IMMOBILIZED);
-    } else if f2 & 0x40 != 0 {
-        clear_flag2(b, r, 0x40);
-        set_flag1(b, r, f1::IMMOBILIZED);
+        clear_flag1(b, r, StatusFlags::IMMOBILIZED);
+    } else if f2.contains(StatusRequests::IMMOBILIZE) {
+        clear_flag2(b, r, StatusRequests::IMMOBILIZE);
+        set_flag1(b, r, StatusFlags::IMMOBILIZED);
     }
     if !count_down(b, r, timer::BLIND) {
-        clear_flag1(b, r, f1::BLIND);
+        clear_flag1(b, r, StatusFlags::BLIND);
         coll_mut(b, r).links[link::BLIND] = None;
-    } else if f2 & 0x20 != 0 {
-        clear_flag2(b, r, 0x20);
-        set_flag1(b, r, f1::BLIND);
+    } else if f2.contains(StatusRequests::BLIND) {
+        clear_flag2(b, r, StatusRequests::BLIND);
+        set_flag1(b, r, StatusFlags::BLIND);
         if coll(b, r).links[link::BLIND].is_none() {
             crate::kinds::status_visual::spawn(b, r, crate::kinds::status_visual::Status::Blindness);
         }
     }
     if count_down(b, r, timer::INVULNERABLE) {
-        set_flag1(b, r, f1::INVULNERABLE);
+        set_flag1(b, r, StatusFlags::INVULNERABLE);
     } else {
-        clear_flag1(b, r, f1::INVULNERABLE);
+        clear_flag1(b, r, StatusFlags::INVULNERABLE);
     }
 }
 
@@ -1046,7 +1046,7 @@ fn tick_submerged(b: &mut Battle, r: ObjectRef) {
     if t != 0xFFFF {
         let t = t as i32 - 1;
         if t < 0 {
-            clear_flag1(b, r, f1::SUBMERGED);
+            clear_flag1(b, r, StatusFlags::SUBMERGED);
             return;
         }
         coll_mut(b, r).status_timers[timer::SUBMERGED] = t as u16;
@@ -1054,10 +1054,10 @@ fn tick_submerged(b: &mut Battle, r: ObjectRef) {
             b.sound(crate::content::SoundRole::Appear);
         }
     }
-    if flag1(b, r) & f1::USING_ACTION != 0 {
-        clear_flag1(b, r, f1::SUBMERGED);
+    if flag1(b, r).contains(StatusFlags::USING_ACTION) {
+        clear_flag1(b, r, StatusFlags::SUBMERGED);
     } else {
-        set_flag1(b, r, f1::SUBMERGED);
+        set_flag1(b, r, StatusFlags::SUBMERGED);
     }
 }
 
@@ -1084,7 +1084,7 @@ fn tick_dive(b: &mut Battle, r: ObjectRef) {
     if t != 0xFFFF {
         let t = t as i32 - 1;
         if t < 0 {
-            clear_flag1(b, r, f1::BUBBLED);
+            clear_flag1(b, r, StatusFlags::BUBBLED);
             return;
         }
         coll_mut(b, r).dive_timer = t as u16;
@@ -1092,10 +1092,10 @@ fn tick_dive(b: &mut Battle, r: ObjectRef) {
             b.sound(crate::content::SoundRole::Appear);
         }
     }
-    if flag1(b, r) & (f1::USING_ACTION | f1::DRAG | f1::FLINCHING | f1::PARALYZED) != 0 {
-        clear_flag1(b, r, f1::BUBBLED);
+    if flag1(b, r).intersects(StatusFlags::USING_ACTION | StatusFlags::DRAG | StatusFlags::FLINCHING | StatusFlags::PARALYZED) {
+        clear_flag1(b, r, StatusFlags::BUBBLED);
     } else {
-        set_flag1(b, r, f1::BUBBLED);
+        set_flag1(b, r, StatusFlags::BUBBLED);
     }
 }
 
@@ -1108,8 +1108,8 @@ fn tick_dive(b: &mut Battle, r: ObjectRef) {
 /// sea and EXE4's PopUp put a player under: EXE6's timed submerged state
 /// has no starter, `timer::SUBMERGED`.)
 fn dive_ripple(b: &mut Battle, r: ObjectRef) {
-    let under = if b.game_rules().hit_test.bubbled_as_submerged { f1::BUBBLED | f1::SUBMERGED } else { f1::SUBMERGED };
-    if flag1(b, r) & under != 0 {
+    let under = if b.game_rules().hit_test.bubbled_as_submerged { StatusFlags::BUBBLED | StatusFlags::SUBMERGED } else { StatusFlags::SUBMERGED };
+    if flag1(b, r).intersects(under) {
         b.objects.get_mut(r).set_visible(false);
         if coll(b, r).links[link::RIPPLE].is_some() {
             return;
@@ -1153,20 +1153,20 @@ fn tick_anger(b: &mut Battle, r: ObjectRef) {
     }
     let side = b.objects.get(r).alliance;
     if matches!(emotion_role(b, side), Some(EmotionRole::WornOut | EmotionRole::Tired)) {
-        clear_flag2(b, r, 0x200);
-        clear_flag1(b, r, f1::ANGER);
+        clear_flag2(b, r, StatusRequests::ANGER);
+        clear_flag1(b, r, StatusFlags::ANGER);
         return;
     }
-    if flag1(b, r) & f1::ANGER == 0 {
-        if flag2(b, r) & 0x200 != 0 {
-            clear_flag2(b, r, 0x200);
-            set_flag1(b, r, f1::ANGER);
+    if !flag1(b, r).contains(StatusFlags::ANGER) {
+        if flag2(b, r).contains(StatusRequests::ANGER) {
+            clear_flag2(b, r, StatusRequests::ANGER);
+            set_flag1(b, r, StatusFlags::ANGER);
             ai_mut(b, r).anger = ANGER_TICKS;
             set_mood(b, side, 0x80);
         }
         return;
     }
-    clear_flag2(b, r, 0x200);
+    clear_flag2(b, r, StatusRequests::ANGER);
     let a = ai_mut(b, r);
     if a.anger != 0 {
         a.anger -= 1;
@@ -1186,8 +1186,8 @@ pub(crate) fn end_anger(b: &mut Battle, r: ObjectRef) {
     if !(through_setter && super::mood_is_held(b, side as u8)) {
         b.stats[side].mood = 0x80;
     }
-    clear_flag1(b, r, f1::ANGER);
-    clear_flag2(b, r, 0x200);
+    clear_flag1(b, r, StatusFlags::ANGER);
+    clear_flag2(b, r, StatusRequests::ANGER);
     let a = ai_mut(b, r);
     a.anger = 0;
     a.stun_ticks = 0;
@@ -1232,11 +1232,11 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
     if ai(b, r).anger != 0 {
         shader = 0x000F;
     }
-    if f & f1::IMMOBILIZED != 0 && b.game_rules().effects.immobilized_blinks {
+    if f.contains(StatusFlags::IMMOBILIZED) && b.game_rules().effects.immobilized_blinks {
         shader = blink(0xFFFF);
     }
     let action = navi_action(b, r);
-    if f & f1::INVULNERABLE != 0
+    if f.contains(StatusFlags::INVULNERABLE)
         // (Not in a form with its own glow: Beast Over.)
         && super::form_of(b, r).glow.is_none()
         && action != NaviAction::Entry
@@ -1251,10 +1251,10 @@ fn status_shader(b: &mut Battle, r: ObjectRef) {
     if tint != 0 {
         shader = (PLUS_TINT[(tint & 7) as usize] as u16) << 5;
     }
-    if f & f1::PARALYZED != 0 {
+    if f.contains(StatusFlags::PARALYZED) {
         shader = blink(0x03FF);
     }
-    if f & f1::FROZEN != 0 {
+    if f.contains(StatusFlags::FROZEN) {
         shader = 0x7E94;
     }
     b.objects.sprite_mut(r).look.set_color_shader(shader);
@@ -1313,11 +1313,11 @@ fn update_visibility(b: &mut Battle, r: ObjectRef) {
         b.objects.get_mut(r).set_visible(true);
     }
     let f = flag1(b, r);
-    if f & f1::DEAD != 0 {
+    if f.contains(StatusFlags::DEAD) {
         return;
     }
     let bit = coll(b, r).status_timers[timer::FLASH] & 2 != 0;
-    if f & (f1::FLASHING | f1::INVISIBLE) != 0 && bit != b.game_rules().flash_hides_on_clear {
+    if f.intersects(StatusFlags::FLASHING | StatusFlags::INVISIBLE) && bit != b.game_rules().flash_hides_on_clear {
         b.objects.get_mut(r).set_visible(false);
     }
     // On its own side's console: the HUD's HP numbers, which it shows and
@@ -1326,7 +1326,7 @@ fn update_visibility(b: &mut Battle, r: ObjectRef) {
     let alliance = b.objects.get(r).alliance;
     let hidden = [0u8, 1].map(|viewer| {
         viewer != alliance & 1
-            && b.player(viewer).and_then(|p| b.objects.get(p).collision).is_some_and(|c| b.collision.get(c).f1 & f1::BLIND != 0)
+            && b.player(viewer).and_then(|p| b.objects.get(p).collision).is_some_and(|c| b.collision.get(c).f1.contains(StatusFlags::BLIND))
     });
     b.hide_from(r, hidden);
 }
@@ -1632,7 +1632,7 @@ mod tests {
             hit.acc.final_damage = damage;
             hit.acc.element_damage[5] = poison;
             apply_damage(&mut b, r);
-            (b.objects.get(r).hp, b.sides[1].gauge, b.objects.sprite(r).look.white, flag2(&b, r) & 1 != 0)
+            (b.objects.get(r).hp, b.sides[1].gauge, b.objects.sprite(r).look.white, flag2(&b, r).contains(StatusRequests::DESTROY))
         };
         assert_eq!(after(100, 10, 0), (90, 0x4000 - 10 * 0x80, true, false));
         assert_eq!(after(100, 0, 5), (95, 0x4000, false, false), "the element-5 damage drains no gauge");

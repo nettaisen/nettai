@@ -117,13 +117,13 @@ impl Battle {
     /// EXE5's trace comparison skips the visual's VISIBLE bit there. nettai
     /// takes the first in every game: not in yet, the other side unseen.
     pub fn sees(&self, viewer: u8, alliance: u8) -> bool {
-        use crate::collision::f1;
+        use crate::collision::StatusFlags;
         if alliance & 1 == viewer & 1 {
             return true;
         }
         let Some(navi) = self.player(viewer & 1) else { return true };
         let Some(c) = self.objects.get(navi).collision else { return false };
-        self.collision.get(c).f1 & f1::BLIND == 0
+        !self.collision.get(c).f1.contains(StatusFlags::BLIND)
     }
 
     /// Whether `viewer`'s player sees object `r`: its `VISIBLE` flag, or
@@ -594,7 +594,7 @@ mod tests {
     /// the local side's.
     #[test]
     fn each_viewer_sees_what_its_console_would() {
-        use crate::collision::f1;
+        use crate::collision::StatusFlags;
         let mut b = battle();
         let no_buttons = [crate::input::PlayerTick::default(); 2];
         for _ in 0..4 {
@@ -605,7 +605,7 @@ mod tests {
         let blind = |b: &mut Battle, side: u8, on: bool| {
             let c = b.objects.get(navi(b, side)).collision.unwrap();
             let f = &mut b.collision.get_mut(c).f1;
-            *f = if on { *f | f1::BLIND } else { *f & !f1::BLIND };
+            *f = if on { *f | StatusFlags::BLIND } else { *f & !StatusFlags::BLIND };
         };
         for r in [n0, n1] {
             b.objects.get_mut(r).set_visible(true);

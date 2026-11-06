@@ -24,7 +24,7 @@ use nettai_content_api::{ObstacleHold, ObstaclePush};
 
 use crate::actor::{ActorData, ActorStatus, ActorType, Requests};
 use crate::battle::{Battle, LinkedRecord};
-use crate::collision::{CollisionData, f1, timer, types};
+use crate::collision::{CollisionData, StatusFlags, StatusRequests, timer, types};
 use crate::field::PanelType;
 use crate::input::keys;
 use crate::kinds::common::{self, Progress};
@@ -47,35 +47,35 @@ fn not_an_overlay(f: OverlayField, what: &str) -> ApiError {
     ApiError::Other(format!("`{}` is {what}'s, and this object is none", f.name()))
 }
 
-fn status_bit(flag: StatusFlag) -> u32 {
+fn status_bit(flag: StatusFlag) -> StatusFlags {
     match flag {
-        StatusFlag::Guard => f1::GUARD,
-        StatusFlag::Invisible => f1::INVISIBLE,
-        StatusFlag::Submerged => f1::SUBMERGED,
-        StatusFlag::Invulnerable => f1::INVULNERABLE,
-        StatusFlag::AirShoe => f1::AIRSHOE,
-        StatusFlag::FloatShoe => f1::FLOATSHOE,
-        StatusFlag::Moving => f1::MOVING,
-        StatusFlag::Dead => f1::DEAD,
-        StatusFlag::Flashing => f1::FLASHING,
-        StatusFlag::Flinching => f1::FLINCHING,
-        StatusFlag::Paralyzed => f1::PARALYZED,
-        StatusFlag::Sliding => f1::SLIDING,
-        StatusFlag::Blind => f1::BLIND,
-        StatusFlag::Immobilized => f1::IMMOBILIZED,
-        StatusFlag::Confused => f1::CONFUSED,
-        StatusFlag::Frozen => f1::FROZEN,
-        StatusFlag::SuperArmor => f1::SUPERARMOR,
-        StatusFlag::Undershirt => f1::UNDERSHIRT,
-        StatusFlag::MoveComplete => f1::MOVE_COMPLETE,
-        StatusFlag::Drag => f1::DRAG,
-        StatusFlag::Anger => f1::ANGER,
-        StatusFlag::UsingAction => f1::USING_ACTION,
-        StatusFlag::AffectedByIce => f1::AFFECTED_BY_ICE,
-        StatusFlag::Bubbled => f1::BUBBLED,
-        StatusFlag::HitWhileDimmed => f1::HIT_WHILE_DIMMED,
-        StatusFlag::Carried => kinds::obstacle::obstacle_f1::CARRIED,
-        StatusFlag::Untouchable => f1::UNTOUCHABLE,
+        StatusFlag::Guard => StatusFlags::GUARD,
+        StatusFlag::Invisible => StatusFlags::INVISIBLE,
+        StatusFlag::Submerged => StatusFlags::SUBMERGED,
+        StatusFlag::Invulnerable => StatusFlags::INVULNERABLE,
+        StatusFlag::AirShoe => StatusFlags::AIRSHOE,
+        StatusFlag::FloatShoe => StatusFlags::FLOATSHOE,
+        StatusFlag::Moving => StatusFlags::MOVING,
+        StatusFlag::Dead => StatusFlags::DEAD,
+        StatusFlag::Flashing => StatusFlags::FLASHING,
+        StatusFlag::Flinching => StatusFlags::FLINCHING,
+        StatusFlag::Paralyzed => StatusFlags::PARALYZED,
+        StatusFlag::Sliding => StatusFlags::SLIDING,
+        StatusFlag::Blind => StatusFlags::BLIND,
+        StatusFlag::Immobilized => StatusFlags::IMMOBILIZED,
+        StatusFlag::Confused => StatusFlags::CONFUSED,
+        StatusFlag::Frozen => StatusFlags::FROZEN,
+        StatusFlag::SuperArmor => StatusFlags::SUPERARMOR,
+        StatusFlag::Undershirt => StatusFlags::UNDERSHIRT,
+        StatusFlag::MoveComplete => StatusFlags::MOVE_COMPLETE,
+        StatusFlag::Drag => StatusFlags::DRAG,
+        StatusFlag::Anger => StatusFlags::ANGER,
+        StatusFlag::UsingAction => StatusFlags::USING_ACTION,
+        StatusFlag::AffectedByIce => StatusFlags::AFFECTED_BY_ICE,
+        StatusFlag::Bubbled => StatusFlags::BUBBLED,
+        StatusFlag::HitWhileDimmed => StatusFlags::HIT_WHILE_DIMMED,
+        StatusFlag::Carried => StatusFlags::CARRIED,
+        StatusFlag::Untouchable => StatusFlags::UNTOUCHABLE,
     }
 }
 
@@ -128,25 +128,18 @@ fn request_bit(f: RequestFlag) -> Requests {
     }
 }
 
-/// The collision's flag2 bits of the flinch, slide, drag and anger requests
-/// (`RequestFlag::Flinch`, `RequestFlag::Slide`, `RequestFlag::Drag`,
-/// `RequestFlag::Anger`).
-const FLINCH_REQUEST: u32 = 0x4;
-const SLIDE_REQUEST: u32 = 0x10;
-const DRAG_REQUEST: u32 = 0x100;
-const ANGER_REQUEST: u32 = 0x200;
 
 /// The counter byte's bit 7 (`CollisionData::counter_byte`): its hits can't
 /// counter. Bits 0-6 are its counter strength.
 const CANT_COUNTER: u8 = 0x80;
 
 /// The flag2 bit a request that isn't an action request reads.
-fn flag2_request(f: RequestFlag) -> Option<u32> {
+fn flag2_request(f: RequestFlag) -> Option<StatusRequests> {
     match f {
-        RequestFlag::Flinch => Some(FLINCH_REQUEST),
-        RequestFlag::Slide => Some(SLIDE_REQUEST),
-        RequestFlag::Drag => Some(DRAG_REQUEST),
-        RequestFlag::Anger => Some(ANGER_REQUEST),
+        RequestFlag::Flinch => Some(StatusRequests::FLINCH),
+        RequestFlag::Slide => Some(StatusRequests::SLIDE),
+        RequestFlag::Drag => Some(StatusRequests::DRAG),
+        RequestFlag::Anger => Some(StatusRequests::ANGER),
         _ => None,
     }
 }
@@ -1619,7 +1612,7 @@ impl CoreApi for Battle {
             return false;
         }
         let ob = self.objects.get(o);
-        let airshoe = ob.collision.is_some_and(|c| self.collision.get(c).f1 & f1::AIRSHOE != 0);
+        let airshoe = ob.collision.is_some_and(|c| self.collision.get(c).f1.contains(StatusFlags::AIRSHOE));
         let floor_free = airshoe || !self.field.is_solid(ob.panel.x, ob.panel.y);
         let rule = self.game_rules().panels.any_side_step.get(floor_free, ob.alliance);
         self.field.meets(p.x, p.y, rule)
@@ -2317,15 +2310,14 @@ impl CoreApi for Battle {
 
     fn request(&self, o: ObjectRef, f: RequestFlag) -> ApiResult<bool> {
         if let Some(bit) = flag2_request(f) {
-            return Ok(self.collision_of(o)?.f2 & bit != 0);
+            return Ok(self.collision_of(o)?.f2.contains(bit));
         }
         Ok(self.actor_of(o)?.requests.intersects(request_bit(f)))
     }
 
     fn set_request(&mut self, o: ObjectRef, f: RequestFlag, on: bool) -> ApiResult<()> {
         if let Some(bit) = flag2_request(f) {
-            let c = self.collision_of_mut(o)?;
-            c.f2 = if on { c.f2 | bit } else { c.f2 & !bit };
+            self.collision_of_mut(o)?.f2.set(bit, on);
             return Ok(());
         }
         let a = self.actor_of_mut(o)?;
@@ -2388,21 +2380,16 @@ impl CoreApi for Battle {
     }
 
     fn status(&self, o: ObjectRef, flag: StatusFlag) -> ApiResult<bool> {
-        Ok(self.collision_of(o)?.f1 & status_bit(flag) != 0)
+        Ok(self.collision_of(o)?.f1.contains(status_bit(flag)))
     }
 
     fn set_status(&mut self, o: ObjectRef, flag: StatusFlag, on: bool) -> ApiResult<()> {
-        let c = self.collision_of_mut(o)?;
-        if on {
-            c.f1 |= status_bit(flag);
-        } else {
-            c.f1 &= !status_bit(flag);
-        }
+        self.collision_of_mut(o)?.f1.set(status_bit(flag), on);
         Ok(())
     }
 
     fn clear_statuses(&mut self, o: ObjectRef) -> ApiResult<()> {
-        self.collision_of_mut(o)?.f1 = 0;
+        self.collision_of_mut(o)?.f1 = StatusFlags::empty();
         Ok(())
     }
 
@@ -2611,7 +2598,7 @@ impl CoreApi for Battle {
     }
 
     fn can_move(&self, o: ObjectRef) -> bool {
-        self.collision_of(o).is_ok_and(|c| c.f1 & (f1::IMMOBILIZED | f1::SLIDING | f1::MOVING) == 0) && !self.trapped(o)
+        self.collision_of(o).is_ok_and(|c| !c.f1.intersects(StatusFlags::IMMOBILIZED | StatusFlags::SLIDING | StatusFlags::MOVING)) && !self.trapped(o)
     }
 
     fn heal(&mut self, o: ObjectRef, amount: u16, anti_recovery: bool) -> bool {
@@ -3260,11 +3247,10 @@ impl CoreApi for Battle {
     }
 
     fn obstacle_present(&self, o: ObjectRef) -> bool {
-        use kinds::obstacle::f2;
         self.objects
             .get(o)
             .collision
-            .is_some_and(|c| self.collision.get(c).f2 & (f2::ABSORBED | f2::VANISH | f2::REMOVED) == 0)
+            .is_some_and(|c| !self.collision.get(c).f2.intersects(StatusRequests::ABSORBED | StatusRequests::VANISH | StatusRequests::REMOVED))
     }
 
     fn loop_register(&self) -> u32 {
@@ -3274,19 +3260,18 @@ impl CoreApi for Battle {
     // ---- Field objects (obstacles) -------------------------------------------
 
     fn obstacle_flag(&self, o: ObjectRef, flag: ObstacleFlag) -> ApiResult<bool> {
-        use kinds::obstacle::f2;
         let mask = match flag {
-            ObstacleFlag::Destroy => f2::DESTROY,
-            ObstacleFlag::Flinch => f2::FLINCH,
-            ObstacleFlag::Pushed => f2::PUSHED,
-            ObstacleFlag::Thrown => f2::THROWN,
-            ObstacleFlag::Encased => f2::ENCASED,
-            ObstacleFlag::Removed => f2::REMOVED,
-            ObstacleFlag::Vanish => f2::VANISH,
-            ObstacleFlag::Absorbed => f2::ABSORBED,
-            ObstacleFlag::AbsorbedBy0 => f2::ABSORBED_BY_0,
-            ObstacleFlag::AbsorbedBy1 => f2::ABSORBED_BY_1,
+            ObstacleFlag::Destroy => StatusRequests::DESTROY,
+            ObstacleFlag::Flinch => StatusRequests::FLINCH,
+            ObstacleFlag::Pushed => StatusRequests::PUSHED,
+            ObstacleFlag::Thrown => StatusRequests::THROWN,
+            ObstacleFlag::Encased => StatusRequests::ENCASED,
+            ObstacleFlag::Removed => StatusRequests::REMOVED,
+            ObstacleFlag::Vanish => StatusRequests::VANISH,
+            ObstacleFlag::Absorbed => StatusRequests::ABSORBED,
+            ObstacleFlag::AbsorbedBy0 => StatusRequests::ABSORBED_BY_0,
+            ObstacleFlag::AbsorbedBy1 => StatusRequests::ABSORBED_BY_1,
         };
-        Ok(self.collision_of(o)?.f2 & mask != 0)
+        Ok(self.collision_of(o)?.f2.intersects(mask))
     }
 }

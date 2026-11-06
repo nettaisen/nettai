@@ -6,7 +6,7 @@
 //! collision data. See docs/engine/objects-and-player.md §H5.
 
 use crate::battle::Battle;
-use crate::collision::{f1, link};
+use crate::collision::{StatusFlags, link};
 use crate::object::{ObjectFlags, ObjectRef, state};
 
 /// The navi's attach point it sits at, and how far it sits behind and
@@ -99,7 +99,7 @@ fn follow(b: &mut Battle, r: ObjectRef) {
     }
     b.copy_visibility(owner, r);
     let c = b.objects.get(owner).collision.expect("an ice block on an object without collision data");
-    if b.collision.get(c).links[link::FREEZE].is_some() && b.collision.get(c).f1 & f1::FROZEN != 0 {
+    if b.collision.get(c).links[link::FREEZE].is_some() && b.collision.get(c).f1.contains(StatusFlags::FROZEN) {
         return;
     }
     b.collision.get_mut(c).links[link::FREEZE] = None;

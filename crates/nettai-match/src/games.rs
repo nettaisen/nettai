@@ -938,7 +938,7 @@ fn exe4s_ice_pushes() {
     b.set_panel_type(p.x, p.y, ice);
     let c = b.objects.get(navi).collision.unwrap();
     let d = b.collision.get_mut(c);
-    d.f1 |= nettai_battle::collision::f1::AFFECTED_BY_ICE | nettai_battle::collision::f1::MOVE_COMPLETE;
+    d.f1.insert(nettai_battle::collision::StatusFlags::AFFECTED_BY_ICE | nettai_battle::collision::StatusFlags::MOVE_COMPLETE);
     // (Side 0's move forward: its push 0x10, a push forward.)
     d.direction = 4;
     b.round.flags.insert(BattleFlags::FIGHTING);

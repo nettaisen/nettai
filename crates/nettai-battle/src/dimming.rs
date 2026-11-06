@@ -462,11 +462,11 @@ pub fn hide_user_sparing(b: &mut Battle, user: ObjectRef) {
 /// hidden by the viewer's blindness.
 pub fn show_user(b: &mut Battle, user: ObjectRef) {
     let o = b.objects.get(user);
-    let f1 = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
+    let f1 = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(crate::collision::StatusFlags::empty());
     // sub_800EB6C: the other side's navi stays hidden from a blind viewer
     // (each console's rule, decided for both viewers).
     let alliance = o.alliance;
-    let submerged = f1 & crate::collision::f1::SUBMERGED != 0;
+    let submerged = f1.contains(crate::collision::StatusFlags::SUBMERGED);
     let shown = [0u8, 1].map(|v| (!submerged && b.sees(v, alliance)) || b.visible_to(user, v));
     b.set_visible_by_viewer(user, shown);
     set_vanished(b, user, false);

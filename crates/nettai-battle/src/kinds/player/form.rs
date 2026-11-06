@@ -8,7 +8,7 @@
 use nettai_content_api::{FormHandle, IdentityHandle, NaviHandle};
 use super::{ai, body_hit_modifier, form_of, set_flag1};
 use crate::battle::Battle;
-use crate::collision::f1;
+use crate::collision::StatusFlags;
 use crate::content::{FormEffects, Parts};
 use crate::kinds::common::{Progress, set_progress};
 use crate::kinds::{body_overlay, form_overlay, idle_overlay, target_marker};
@@ -277,18 +277,18 @@ fn apply_effects(b: &mut Battle, r: ObjectRef, effects: FormEffects) {
     if effects.has(FormEffects::CLEAR_STATUSES) {
         clear_statuses_after_first_turn(b, r);
     }
-    let mut flags1 = 0;
+    let mut flags1 = StatusFlags::empty();
     for (effect, flag) in [
-        (FormEffects::SUPER_ARMOR, f1::SUPERARMOR),
-        (FormEffects::AIR_SHOES, f1::AIRSHOE),
-        (FormEffects::FLOAT_SHOES, f1::FLOATSHOE),
-        (FormEffects::UNTOUCHABLE, f1::UNTOUCHABLE),
+        (FormEffects::SUPER_ARMOR, StatusFlags::SUPERARMOR),
+        (FormEffects::AIR_SHOES, StatusFlags::AIRSHOE),
+        (FormEffects::FLOAT_SHOES, StatusFlags::FLOATSHOE),
+        (FormEffects::UNTOUCHABLE, StatusFlags::UNTOUCHABLE),
     ] {
         if effects.has(effect) {
             flags1 |= flag;
         }
     }
-    if flags1 != 0 {
+    if !flags1.is_empty() {
         set_flag1(b, r, flags1);
     }
     if effects.has(FormEffects::FLOATING_BODY) {

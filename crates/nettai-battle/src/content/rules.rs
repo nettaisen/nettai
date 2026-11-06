@@ -1038,18 +1038,18 @@ pub struct RequestClears {
 /// set of names (`requests_by_name`).
 pub const REQUEST_NAMES: &[(u32, &str)] = &[
     // A hit's and the navi's own.
-    (crate::collision::f2::FLASH, "flash"),
-    (crate::collision::f2::FLINCH, "flinch"),
-    (crate::collision::f2::SLIDE, "slide"),
-    (crate::collision::f2::DRAG, "drag"),
-    (crate::collision::f2::ANGER, "anger"),
+    (crate::collision::StatusRequests::FLASH.bits(), "flash"),
+    (crate::collision::StatusRequests::FLINCH.bits(), "flinch"),
+    (crate::collision::StatusRequests::SLIDE.bits(), "slide"),
+    (crate::collision::StatusRequests::DRAG.bits(), "drag"),
+    (crate::collision::StatusRequests::ANGER.bits(), "anger"),
     // The statuses', by their timers' names.
-    (crate::collision::f2::PARALYZE, "paralyze"),
-    (crate::collision::f2::CONFUSE, "confuse"),
-    (crate::collision::f2::BLIND, "blind"),
-    (crate::collision::f2::IMMOBILIZE, "immobilize"),
-    (crate::collision::f2::FREEZE, "freeze"),
-    (crate::collision::f2::BUBBLE, "bubble"),
+    (crate::collision::StatusRequests::PARALYZE.bits(), "paralyze"),
+    (crate::collision::StatusRequests::CONFUSE.bits(), "confuse"),
+    (crate::collision::StatusRequests::BLIND.bits(), "blind"),
+    (crate::collision::StatusRequests::IMMOBILIZE.bits(), "immobilize"),
+    (crate::collision::StatusRequests::FREEZE.bits(), "freeze"),
+    (crate::collision::StatusRequests::BUBBLE.bits(), "bubble"),
 ];
 
 thread_local! {
@@ -1070,18 +1070,18 @@ pub(crate) fn reading_requests<T>(own: &[(String, u32)], f: impl FnOnce() -> T) 
 /// A set of request names (`{ paralyze = true }`: the engine's, and those
 /// the rules being read declare) as the request bits: an unknown name is an
 /// error.
-pub(crate) fn requests_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
+pub(crate) fn requests_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result<crate::collision::StatusRequests, D::Error> {
     let names = super::flags::set(d)?;
     OWN_REQUESTS.with(|own| {
         let own = own.borrow();
-        let mut bits = 0;
+        let mut bits = crate::collision::StatusRequests::empty();
         for n in &names {
             let bit = REQUEST_NAMES.iter().find(|x| x.1 == n).map(|x| x.0).or_else(|| own.iter().find(|x| x.0 == *n).map(|x| x.1));
             let Some(bit) = bit else {
                 let known: Vec<&str> = REQUEST_NAMES.iter().map(|x| x.1).chain(own.iter().map(|x| x.0.as_str())).collect();
                 return Err(serde::de::Error::custom(format!("unknown request {n:?} (the requests: {})", known.join(", "))));
             };
-            bits |= bit;
+            bits.insert(crate::collision::StatusRequests::from_bits_retain(bit));
         }
         Ok(bits)
     })
@@ -1257,23 +1257,23 @@ pub(crate) fn declared_bits(spec: &nettai_content_api::Data, engine: &[(u32, &st
     Ok(out)
 }
 
-/// Collision flags a status end clears, in a content file a set of their
-/// names (`StatusFlag`'s): the statuses'.
+/// Status flags (`collision::StatusFlags`) a status end clears, in a
+/// content file a set of their names (`StatusFlag`'s): the statuses'.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub struct StatusFlags(pub u32);
+pub struct StatusEndFlags(pub crate::collision::StatusFlags);
 
-impl StatusFlags {
+impl StatusEndFlags {
     pub const NAMES: &'static [(u32, &'static str)] = &[
-        (crate::collision::f1::PARALYZED, "paralyzed"),
-        (crate::collision::f1::BLIND, "blind"),
-        (crate::collision::f1::IMMOBILIZED, "immobilized"),
-        (crate::collision::f1::CONFUSED, "confused"),
-        (crate::collision::f1::FROZEN, "frozen"),
-        (crate::collision::f1::BUBBLED, "bubbled"),
+        (crate::collision::StatusFlags::PARALYZED.bits(), "paralyzed"),
+        (crate::collision::StatusFlags::BLIND.bits(), "blind"),
+        (crate::collision::StatusFlags::IMMOBILIZED.bits(), "immobilized"),
+        (crate::collision::StatusFlags::CONFUSED.bits(), "confused"),
+        (crate::collision::StatusFlags::FROZEN.bits(), "frozen"),
+        (crate::collision::StatusFlags::BUBBLED.bits(), "bubbled"),
     ];
 }
 
-serde_flags!(StatusFlags, u32);
+serde_flags!(StatusEndFlags(crate::collision::StatusFlags));
 
 /// Status timers a status end zeroes, a bit each by the timer's index
 /// (`collision::timer`), in a content file a set of their names
@@ -1306,9 +1306,9 @@ serde_flags!(StatusTimers, u16);
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StatusEnd {
-    pub flags: StatusFlags,
+    pub flags: StatusEndFlags,
     #[serde(deserialize_with = "requests_by_name")]
-    pub requests: u32,
+    pub requests: crate::collision::StatusRequests,
     pub timers: StatusTimers,
 }
 
@@ -1601,7 +1601,7 @@ pub struct AntiTraps {
     /// request but immobilization's and anger's; EXE5's and EXE4's none: a
     /// move that ends on ice as the trap catches a hit still slides).
     #[serde(deserialize_with = "requests_by_name")]
-    pub drops_requests: u32,
+    pub drops_requests: crate::collision::StatusRequests,
 }
 
 /// How a navi's barrier takes the tick's hits (`IntakeRules::barrier`:
@@ -2522,12 +2522,12 @@ pub struct DragPoses {
 }
 
 impl DragPoses {
-    /// The pose for a navi of status word `status`.
-    pub fn pose(&self, status: u32) -> u8 {
-        use crate::collision::f1;
+    /// The pose for a navi of status flags `status`.
+    pub fn pose(&self, status: crate::collision::StatusFlags) -> u8 {
+        use crate::collision::StatusFlags;
         match (self.paralyzed, self.super_armor) {
-            (Some(p), _) if status & f1::PARALYZED != 0 => p,
-            (_, Some(s)) if status & f1::SUPERARMOR != 0 => s,
+            (Some(p), _) if status.contains(StatusFlags::PARALYZED) => p,
+            (_, Some(s)) if status.contains(StatusFlags::SUPERARMOR) => s,
             _ => self.otherwise,
         }
     }
@@ -2853,17 +2853,17 @@ impl StatusTimer {
         }
     }
 
-    /// The request it raises (`collision::f2`): every status of the
-    /// original's table raises its own timer's.
-    pub fn request(self) -> u32 {
-        use crate::collision::f2;
+    /// The request it raises: every status of the original's table raises
+    /// its own timer's.
+    pub fn request(self) -> crate::collision::StatusRequests {
+        use crate::collision::StatusRequests;
         match self {
-            StatusTimer::Paralyze => f2::PARALYZE,
-            StatusTimer::Confuse => f2::CONFUSE,
-            StatusTimer::Blind => f2::BLIND,
-            StatusTimer::Immobilize => f2::IMMOBILIZE,
-            StatusTimer::Freeze => f2::FREEZE,
-            StatusTimer::Bubble => f2::BUBBLE,
+            StatusTimer::Paralyze => StatusRequests::PARALYZE,
+            StatusTimer::Confuse => StatusRequests::CONFUSE,
+            StatusTimer::Blind => StatusRequests::BLIND,
+            StatusTimer::Immobilize => StatusRequests::IMMOBILIZE,
+            StatusTimer::Freeze => StatusRequests::FREEZE,
+            StatusTimer::Bubble => StatusRequests::BUBBLE,
         }
     }
 }
@@ -2874,8 +2874,8 @@ impl StatusTimer {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(from = "StatusSpec")]
 pub struct StatusEffect {
-    /// Request bits (`collision::f2`).
-    pub requests: u32,
+    /// The requests it raises.
+    pub requests: crate::collision::StatusRequests,
     pub duration: u16,
     pub timer: StatusTimer,
     /// The hit that lands it doesn't flinch or flash its target: applying

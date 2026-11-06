@@ -12,6 +12,7 @@ use crate::actor::{ActorStatus, Requests};
 use crate::battle::Battle;
 use crate::content::ActionRole;
 use crate::kinds::player::{NaviAction, ai, ai_mut, clear_flag2, coll_mut, set_attack};
+use crate::collision::StatusRequests;
 use crate::object::ObjectRef;
 
 /// The counter action a trap's request starts: AntiDmg's, AntiSwrd's, the
@@ -49,7 +50,7 @@ fn drop_everything(b: &mut Battle, r: ObjectRef) {
     a.overlay = None;
     a.status.remove(ActorStatus::CONTROLLABLE | ActorStatus::TRAP_ARMED);
     // sub_800E9FA
-    clear_flag2(b, r, 0x3_01FE);
+    clear_flag2(b, r, StatusRequests::HIT_REQUESTS);
     let acc = &mut coll_mut(b, r).acc;
     acc.final_damage = 0;
     acc.element_damage = [0; 6];

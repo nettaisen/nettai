@@ -264,7 +264,7 @@ fn tick(b: &mut Battle, r: ObjectRef) {
     }
     // sub_80C464C: held still while the owner is dragged or paralyzed.
     if holds_while_stunned {
-        let stunned = b.objects.get(owner).collision.is_some_and(|c| b.collision.get(c).f1 & (crate::collision::f1::DRAG | crate::collision::f1::PARALYZED) != 0);
+        let stunned = b.objects.get(owner).collision.is_some_and(|c| b.collision.get(c).f1.intersects(crate::collision::StatusFlags::DRAG | crate::collision::StatusFlags::PARALYZED));
         if stunned {
             return;
         }

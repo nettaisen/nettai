@@ -8,7 +8,7 @@ use super::{
 };
 use crate::actor::{ActorStatus, Requests};
 use crate::battle::Battle;
-use crate::collision::{f1, timer};
+use crate::collision::{StatusFlags, StatusRequests, timer};
 use crate::content::{DragEnding, PushSource, ReactionActions, SlideVector};
 use crate::field;
 use crate::object::{DragStep, ObjectRef, PanelPos, state};
@@ -154,8 +154,8 @@ fn plain(b: &Battle) -> bool {
 
 /// The flag a reaction action marks the navi with besides its own: the
 /// action in use, unless the reactions are plain.
-fn in_use(b: &Battle) -> u32 {
-    if plain(b) { 0 } else { f1::USING_ACTION }
+fn in_use(b: &Battle) -> StatusFlags {
+    if plain(b) { StatusFlags::empty() } else { StatusFlags::USING_ACTION }
 }
 
 /// The entry the paralysis, freeze and bubble actions share: using an
@@ -165,7 +165,7 @@ fn in_use(b: &Battle) -> u32 {
 /// snapped sliding or not, at its height.)
 fn enter_reaction(b: &mut Battle, r: ObjectRef, anim: u8) {
     set_flag1(b, r, in_use(b));
-    clear_flag1(b, r, f1::DRAG | f1::FLINCHING | f1::MOVING | f1::GUARD);
+    clear_flag1(b, r, StatusFlags::DRAG | StatusFlags::FLINCHING | StatusFlags::MOVING | StatusFlags::GUARD);
     cancel_submerged(b, r);
     // (The original's mask, 0x20005F.)
     ai_mut(b, r).status.remove(
@@ -174,7 +174,7 @@ fn enter_reaction(b: &mut Battle, r: ObjectRef, anim: u8) {
     reset_charge(b, r);
     if plain(b) {
         snap_to_future_panel(b, r);
-    } else if flag1(b, r) & f1::SLIDING == 0 {
+    } else if !flag1(b, r).contains(StatusFlags::SLIDING) {
         snap_to_future_panel(b, r);
         b.objects.get_mut(r).pos.z = 0;
     }
@@ -307,7 +307,7 @@ fn let_go_overlay(b: &mut Battle, r: ObjectRef) {
 pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).phase_init == 0 {
         flinch_hook(b, r);
-        set_flag1(b, r, in_use(b) | f1::FLINCHING);
+        set_flag1(b, r, in_use(b) | StatusFlags::FLINCHING);
         clear_paralysis(b, r);
         if !plain(b) {
             clear_freeze(b, r);
@@ -318,9 +318,9 @@ pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
     ai_mut(b, r).status.remove(
         ActorStatus::MOVE_DIRECTIONS | ActorStatus::CONTROLLABLE | ActorStatus::CHIP_IN_PROGRESS | ActorStatus::HEAT_TRAP,
     );
-        clear_flag1(b, r, f1::DRAG | f1::MOVING | f1::GUARD);
+        clear_flag1(b, r, StatusFlags::DRAG | StatusFlags::MOVING | StatusFlags::GUARD);
         reset_charge(b, r);
-        if flag1(b, r) & f1::SLIDING == 0 {
+        if !flag1(b, r).contains(StatusFlags::SLIDING) {
             snap_to_future_panel(b, r);
             // (Plain, EXE4's 0x08010960: at its height.)
             if !plain(b) {
@@ -340,7 +340,7 @@ pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
     if t >= 0 {
         return;
     }
-    clear_flag1(b, r, in_use(b) | f1::FLINCHING);
+    clear_flag1(b, r, in_use(b) | StatusFlags::FLINCHING);
     // (EXE6's 0x1000043F, EXE5's 0x1843F: the reactions section's.)
     let clears = b.game_rules().request_clears.flinch.0;
     ai_mut(b, r).requests.remove(Requests::ATTACKS | clears);
@@ -353,7 +353,7 @@ pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
 
 /// Mashing buttons takes an extra tick off a status timer; returns true
 /// once the status flag is gone.
-fn mash(b: &mut Battle, r: ObjectRef, t: usize, flag: u32) -> bool {
+fn mash(b: &mut Battle, r: ObjectRef, t: usize, flag: StatusFlags) -> bool {
     if ai(b, r).pad.pressed != 0 {
         let c = coll_mut(b, r);
         let v = c.status_timers[t] as i16 as i32 - 1;
@@ -362,7 +362,7 @@ fn mash(b: &mut Battle, r: ObjectRef, t: usize, flag: u32) -> bool {
             clear_flag1(b, r, flag);
         }
     }
-    flag1(b, r) & flag == 0
+    !flag1(b, r).intersects(flag)
 }
 
 /// Action 4, `sub_80175B8`: paralyzed until the timer (or mashing) ends
@@ -373,7 +373,7 @@ pub(super) fn paralysis(b: &mut Battle, r: ObjectRef) {
         enter_reaction(b, r, 2);
         finish_reaction_entry(b, r, !plain(b));
     }
-    if mash(b, r, timer::PARALYZE, f1::PARALYZED) {
+    if mash(b, r, timer::PARALYZE, StatusFlags::PARALYZED) {
         end_reaction(b, r);
     }
 }
@@ -388,7 +388,7 @@ pub(super) fn freeze(b: &mut Battle, r: ObjectRef) {
         enter_reaction(b, r, 2);
         finish_reaction_entry(b, r, !plain(b));
     }
-    if mash(b, r, timer::FREEZE, f1::FROZEN) {
+    if mash(b, r, timer::FREEZE, StatusFlags::FROZEN) {
         end_reaction(b, r);
     }
 }
@@ -402,7 +402,7 @@ pub(super) fn bubble(b: &mut Battle, r: ObjectRef) {
         enter_reaction(b, r, 2);
         finish_reaction_entry(b, r, !plain(b));
     }
-    let popped = mash(b, r, timer::BUBBLE, f1::BUBBLED);
+    let popped = mash(b, r, timer::BUBBLE, StatusFlags::BUBBLED);
     let t = coll(b, r).status_timers[timer::BUBBLE] as i16 as i32;
     b.objects.get_mut(r).pos.z = (b.game_rules().bubble_bob[((t >> 2) & 0x1F) as usize] as i32) << 16;
     if popped {
@@ -429,7 +429,7 @@ pub(super) fn drag(b: &mut Battle, r: ObjectRef) {
 fn start_drag(b: &mut Battle, r: ObjectRef) {
     drag_hook(b, r);
     let plain = plain(b);
-    set_flag1(b, r, in_use(b) | f1::DRAG);
+    set_flag1(b, r, in_use(b) | StatusFlags::DRAG);
     b.objects.get_mut(r).related[0] = None;
     if !plain {
         ai_mut(b, r).overlay = None;
@@ -448,7 +448,7 @@ fn start_drag(b: &mut Battle, r: ObjectRef) {
     if !plain {
         b.objects.get_mut(r).pos.z &= !0xFFFF;
     }
-    clear_flag1(b, r, f1::SLIDING | f1::FLINCHING | f1::MOVING | f1::GUARD);
+    clear_flag1(b, r, StatusFlags::SLIDING | StatusFlags::FLINCHING | StatusFlags::MOVING | StatusFlags::GUARD);
     cancel_submerged(b, r);
     let fp = b.objects.get(r).future_panel;
     b.unreserve_panel(r, fp.x, fp.y);
@@ -547,7 +547,7 @@ fn recover_from_drag(b: &mut Battle, r: ObjectRef) {
     if ending != DragEnding::ResumesParalysis {
         // EXE5's (0x080144CE), EXE4's (0x08010C16): the drag and its use
         // cleared, its requests, idle (EXE5's standing, EXE4's in its pose).
-        clear_flag1(b, r, in_use(b) | f1::DRAG);
+        clear_flag1(b, r, in_use(b) | StatusFlags::DRAG);
         let clears = b.game_rules().request_clears.drag.0;
         ai_mut(b, r).requests.remove(Requests::ATTACKS | clears);
         if ending == DragEnding::Stands {
@@ -557,18 +557,18 @@ fn recover_from_drag(b: &mut Battle, r: ObjectRef) {
         }
         return set_action(b, r, NaviAction::Idle);
     }
-    if flag1(b, r) & f1::PARALYZED != 0 {
-        clear_flag1(b, r, f1::DRAG);
+    if flag1(b, r).contains(StatusFlags::PARALYZED) {
+        clear_flag1(b, r, StatusFlags::DRAG);
         set_action(b, r, NaviAction::Paralysis);
         return;
     }
-    clear_flag1(b, r, f1::USING_ACTION | f1::DRAG | f1::SLIDING | f1::PARALYZED);
+    clear_flag1(b, r, StatusFlags::USING_ACTION | StatusFlags::DRAG | StatusFlags::SLIDING | StatusFlags::PARALYZED);
     // (EXE6's 0x1000043F, EXE5's 0x1843F: the reactions section's.)
     let clears = b.game_rules().request_clears.drag.0;
     let a = ai_mut(b, r);
     a.requests.remove(Requests::ATTACKS | clears);
     a.status.remove(ActorStatus::HEAT_TRAP);
-    clear_flag2(b, r, 0x10);
+    clear_flag2(b, r, StatusRequests::SLIDE);
     let o = b.objects.get_mut(r);
     o.slide_state = 0;
     o.anim = 0;
@@ -647,7 +647,7 @@ pub(super) fn can_slide_to(b: &Battle, r: ObjectRef, p: PanelPos) -> bool {
     if !field::is_valid(p.x, p.y) {
         return false;
     }
-    let airshoes = flag1(b, r) & f1::AIRSHOE != 0;
+    let airshoes = flag1(b, r).contains(StatusFlags::AIRSHOE);
     b.field.meets(p.x, p.y, b.game_rules().panels.step.get(airshoes, b.objects.get(r).alliance))
 }
 
@@ -757,15 +757,15 @@ mod tests {
             let counted = |b: &Battle| b.side_stats[side as usize][3];
             let before = counted(&b);
             // A paralyzed navi dragged no panel away.
-            set_flag1(&mut b, r, f1::PARALYZED);
+            set_flag1(&mut b, r, StatusFlags::PARALYZED);
             coll_mut(&mut b, r).hit_mod_final = 0;
             b.objects.get_mut(r).slide_type = 1;
             start_drag(&mut b, r);
-            let drag = (b.objects.get(r).anim, flag1(&b, r) & f1::USING_ACTION != 0, counted(&b) - before);
+            let drag = (b.objects.get(r).anim, flag1(&b, r).contains(StatusFlags::USING_ACTION), counted(&b) - before);
             // Its end.
             b.objects.get_mut(r).timer = 0;
             recover_from_drag(&mut b, r);
-            let end = (super::super::navi_action(&b, r), flag1(&b, r) & f1::PARALYZED != 0);
+            let end = (super::super::navi_action(&b, r), flag1(&b, r).contains(StatusFlags::PARALYZED));
             (drag, end)
         };
         assert_eq!(run(false), ((2, true, 1), (NaviAction::Paralysis, true)));
@@ -799,7 +799,7 @@ mod tests {
     fn a_drags_pose_and_end_are_the_games() {
         use crate::content::{DragPoses, DragRule};
         let exe5 = DragRule { poses: DragPoses { paralyzed: None, super_armor: Some(0), otherwise: 1 }, ending: DragEnding::Stands };
-        let run = |rule: Option<DragRule>, status: u32| {
+        let run = |rule: Option<DragRule>, status: StatusFlags| {
             let (mut b, [_, r]) = fight_with(|rules| {
                 if let Some(rule) = rule {
                     rules.drag = rule;
@@ -814,17 +814,18 @@ mod tests {
             b.objects.get_mut(r).timer = 0;
             recover_from_drag(&mut b, r);
             let o = b.objects.get(r);
-            (pose, super::super::navi_action(&b, r), o.anim, flag1(&b, r) & (f1::PARALYZED | f1::DRAG | f1::USING_ACTION))
+            (pose, super::super::navi_action(&b, r), o.anim, flag1(&b, r) & (StatusFlags::PARALYZED | StatusFlags::DRAG | StatusFlags::USING_ACTION))
         };
-        let (p, sa) = (f1::PARALYZED, f1::SUPERARMOR);
+        let (p, sa) = (StatusFlags::PARALYZED, StatusFlags::SUPERARMOR);
         // The test content's, EXE6's.
-        assert_eq!(run(None, p | sa), (2, NaviAction::Paralysis, 7, p | f1::USING_ACTION), "the paralysis goes on, in use");
+        assert_eq!(run(None, p | sa), (2, NaviAction::Paralysis, 7, p | StatusFlags::USING_ACTION), "the paralysis goes on, in use");
         assert_eq!(run(None, sa).0, 0);
-        assert_eq!(run(None, 0), (1, NaviAction::Idle, 0, 0));
+        let none = StatusFlags::empty();
+        assert_eq!(run(None, none), (1, NaviAction::Idle, 0, none));
         // EXE5's.
         assert_eq!(run(Some(exe5), p | sa), (0, NaviAction::Idle, 0, p));
         assert_eq!(run(Some(exe5), p), (1, NaviAction::Idle, 0, p));
-        assert_eq!(run(Some(exe5), 0), (1, NaviAction::Idle, 0, 0));
+        assert_eq!(run(Some(exe5), none), (1, NaviAction::Idle, 0, none));
     }
 
     /// docs/design/exe5-map.md §15.2: lava (the test content's burns for 50,

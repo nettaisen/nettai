@@ -714,7 +714,7 @@ impl Battle {
     pub fn trapped(&self, r: ObjectRef) -> bool {
         let o = self.objects.get(r);
         let Some(p) = self.field.panel(o.panel.x, o.panel.y) else { return false };
-        let floats = o.collision.is_some_and(|c| self.collision.get(c).f1 & crate::collision::f1::FLOATSHOE != 0);
+        let floats = o.collision.is_some_and(|c| self.collision.get(c).f1.contains(crate::collision::StatusFlags::FLOATSHOE));
         self.content.rules().panels.rule(p.kind).traps && !floats
     }
 
@@ -872,7 +872,7 @@ impl Battle {
             return false;
         }
         let o = self.objects.get(obj);
-        let airshoes = o.collision.map(|c| self.collision.get(c).f1 & crate::collision::f1::AIRSHOE != 0).unwrap_or(false);
+        let airshoes = o.collision.map(|c| self.collision.get(c).f1.contains(crate::collision::StatusFlags::AIRSHOE)).unwrap_or(false);
         let floor_free = airshoes || !self.field.is_solid(o.panel.x, o.panel.y);
         self.field.meets(x, y, self.content.rules().panels.step.get(floor_free, o.alliance))
     }

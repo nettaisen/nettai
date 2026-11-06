@@ -2013,7 +2013,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, exchange:
                 Ok(n) => format!("{n:#04x}"),
                 Err(e) => format!("? ({e})"),
             };
-            let status = x.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
+            let status = x.collision.map(|c| b.collision.get(c).f1.bits()).unwrap_or(0);
             // NumberMan's face on NumberSoul's image copies the image's
             // spawn registers for a tick (0x0801201E's read of the transform
             // record): its +6, the turn's arm chip by number, where the

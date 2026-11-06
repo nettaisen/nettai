@@ -27,7 +27,7 @@
 use super::ActionVars;
 use crate::actor::{ActorStatus, Requests};
 use crate::battle::{Battle, BattleFlags};
-use crate::collision::{f1, timer};
+use crate::collision::{StatusFlags, StatusRequests, timer};
 use crate::kinds::common;
 use crate::kinds::player::{
     ai, ai_mut, clear_flag1, clear_flag2, clear_invulnerable, clear_statuses, coll_mut, exit_attack_state, form,
@@ -137,7 +137,7 @@ pub(in crate::kinds::player) fn change(b: &mut Battle, r: ObjectRef) {
                 a.status.insert(ActorStatus::SWITCHED);
                 a.status.remove(ActorStatus::TRAP_ARMED | ActorStatus::SWITCHING_NAVI | ActorStatus::HOVERING);
                 a.requests.remove(Requests::ANTI_SWORD_TRIGGERED | Requests::ANTI_DAMAGE_TRIGGERED);
-                clear_flag2(b, r, 0x4);
+                clear_flag2(b, r, StatusRequests::FLINCH);
                 settled(b, r);
                 exit_attack_state(b, r);
             }
@@ -178,7 +178,7 @@ pub(crate) fn in_battle(b: &mut Battle, r: ObjectRef) {
                 let a = ai_mut(b, r);
                 a.status.remove(ActorStatus::TRAP_ARMED | ActorStatus::SWITCHING_NAVI | ActorStatus::HOVERING);
                 a.requests.remove(Requests::ANTI_SWORD_TRIGGERED | Requests::ANTI_DAMAGE_TRIGGERED);
-                clear_flag2(b, r, 0x104);
+                clear_flag2(b, r, StatusRequests::FLINCH | StatusRequests::DRAG);
                 b.clear_flags(BattleFlags::DIMMED);
                 settled(b, r);
                 exit_attack_state(b, r);
@@ -209,7 +209,7 @@ pub(in crate::kinds::player) fn knock_out(b: &mut Battle, r: ObjectRef) {
                 let a = ai_mut(b, r);
                 a.status.remove(ActorStatus::TRAP_ARMED | ActorStatus::SWITCH_KNOCKOUT | ActorStatus::SWITCHED | ActorStatus::HOVERING);
                 a.requests.remove(Requests::NAVI_SWITCH | Requests::ANTI_SWORD_TRIGGERED | Requests::ANTI_DAMAGE_TRIGGERED);
-                clear_flag2(b, r, 0x4);
+                clear_flag2(b, r, StatusRequests::FLINCH);
                 exit_attack_state(b, r);
             }
         }
@@ -233,7 +233,11 @@ pub(in crate::kinds::player) fn knock_out(b: &mut Battle, r: ObjectRef) {
 
 /// What flags the landings clear (the GBA's `sub_802D738` passes the
 /// flags' mask to both clears; a party's, the DS's 0x101C41 and 0x110).
-const LANDING: u32 = f1::SLIDING | f1::PARALYZED | f1::FLINCHING | f1::MOVING | f1::GUARD;
+const LANDING: StatusFlags = StatusFlags::SLIDING
+    .union(StatusFlags::PARALYZED)
+    .union(StatusFlags::FLINCHING)
+    .union(StatusFlags::MOVING)
+    .union(StatusFlags::GUARD);
 
 /// `sub_802D738` / `sub_802D950`: onto the destination panel on the
 /// ground, facing the default way, out of any slide, paralysis, flinch,
@@ -245,12 +249,13 @@ fn land(b: &mut Battle, r: ObjectRef, knockout: bool) {
     if ai(b, r).attack.step_init == 0 {
         to_destination(b, r);
         if has_partners(b, r) {
-            clear_flag1(b, r, LANDING | f1::DRAG);
-            clear_flag2(b, r, 0x110);
+            clear_flag1(b, r, LANDING | StatusFlags::DRAG);
+            clear_flag2(b, r, StatusRequests::SLIDE | StatusRequests::DRAG);
             b.objects.get_mut(r).slide_state = 0;
         } else {
             clear_flag1(b, r, LANDING);
-            clear_flag2(b, r, LANDING);
+            // (The flags' mask on the requests, as the game passes it.)
+            clear_flag2(b, r, StatusRequests::from_bits_retain(LANDING.bits()));
         }
         common::set_animation(b, r, 4);
         b.objects.get_mut(r).related[0] = None;
@@ -329,8 +334,8 @@ fn party_land(b: &mut Battle, r: ObjectRef, how: Land) {
             b.consoles[side].rng.next();
         }
         b.sound(crate::content::SoundRole::NaviSwitch);
-        clear_flag1(b, r, LANDING | f1::DRAG);
-        clear_flag2(b, r, 0x110);
+        clear_flag1(b, r, LANDING | StatusFlags::DRAG);
+        clear_flag2(b, r, StatusRequests::SLIDE | StatusRequests::DRAG);
         b.objects.get_mut(r).slide_state = 0;
         common::set_animation(b, r, 0);
         if let Some(overlay) = b.objects.get(r).related[1] {
@@ -498,7 +503,7 @@ fn party_change(b: &mut Battle, r: ObjectRef, member: u8, in_battle: bool) {
     finish_party_change(b, r);
     // 0x02098804
     coll_mut(b, r).status_timers[timer::FLASH] = 0;
-    clear_flag1(b, r, f1::INVISIBLE);
+    clear_flag1(b, r, StatusFlags::INVISIBLE);
     b.sound(crate::content::SoundRole::Invisible);
     set_step(b, r, 8);
 }
@@ -516,8 +521,8 @@ fn take_back_reserve(b: &mut Battle, r: ObjectRef) {
     clear_statuses(b, r);
     reset_status(b, r);
     // sub_80143B4
-    clear_flag1(b, r, f1::ANGER);
-    clear_flag2(b, r, 0x200);
+    clear_flag1(b, r, StatusFlags::ANGER);
+    clear_flag2(b, r, StatusRequests::ANGER);
     let a = ai_mut(b, r);
     a.anger = 0;
     a.stun_ticks = 0;
@@ -556,8 +561,8 @@ pub(crate) fn take_back(b: &mut Battle, r: ObjectRef) {
     clear_statuses(b, r);
     reset_status(b, r);
     // sub_80143B4
-    clear_flag1(b, r, f1::ANGER);
-    clear_flag2(b, r, 0x200);
+    clear_flag1(b, r, StatusFlags::ANGER);
+    clear_flag2(b, r, StatusRequests::ANGER);
     let a = ai_mut(b, r);
     a.anger = 0;
     a.stun_ticks = 0;
@@ -581,11 +586,11 @@ pub(crate) fn take_back(b: &mut Battle, r: ObjectRef) {
 /// without its NaviCust part or weapon bytes, `sub_80144CA`), no
 /// invulnerability.
 fn finish_change(b: &mut Battle, r: ObjectRef) {
-    clear_flag2(b, r, 0x3_01FE);
+    clear_flag2(b, r, StatusRequests::HIT_REQUESTS);
     let acc = &mut coll_mut(b, r).acc;
     acc.final_damage = 0;
     acc.element_damage = [0; 6];
-    clear_flag1(b, r, f1::UNTOUCHABLE);
+    clear_flag1(b, r, StatusFlags::UNTOUCHABLE);
     update_element(b, r);
     // sub_8014216
     ai_mut(b, r).status.remove(ActorStatus::DIVES);

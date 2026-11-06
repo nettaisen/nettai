@@ -1099,7 +1099,7 @@ fn console_z(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, g
 
 fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, unknown: Unknown, game: Game) -> String {
     let o = b.objects.get(r);
-    let status = o.collision.map(|c| b.collision.get(c).f1).unwrap_or(0);
+    let status = o.collision.map(|c| b.collision.get(c).f1.bits()).unwrap_or(0);
     // The engine's identities as the original's numbers: the object's kind
     // as its slot, a navi's content action as its action number.
     let (index, action) = match (compat.object_slot(b, r), compat.navi_action(b, r)) {

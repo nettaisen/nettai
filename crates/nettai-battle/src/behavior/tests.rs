@@ -739,7 +739,7 @@ fn dimming_duel(ticks: usize) -> (std::collections::BTreeMap<String, usize>, Bat
         for side in 0..2 {
             let Some(p) = b.player(side) else { continue };
             let c = b.objects.get(p).collision.unwrap();
-            if b.collision.get(c).f1 & crate::collision::f1::INVISIBLE != 0 {
+            if b.collision.get(c).f1.contains(crate::collision::StatusFlags::INVISIBLE) {
                 invisible += 1;
             }
         }
@@ -932,7 +932,7 @@ fn a_stage_places_boulders_in_the_stage_slots() {
 /// there with a hit.
 #[test]
 fn a_thrown_rock_flies_to_its_target_and_breaks() {
-    use crate::kinds::obstacle::{f2, obstacle_f1};
+    use crate::collision::{StatusFlags, StatusRequests};
     use crate::object::{PanelPos, Pool};
     const ROCK: [&str; 1] = ["rockcube/rock"];
     let mut b = rock_battle();
@@ -943,12 +943,12 @@ fn a_thrown_rock_flies_to_its_target_and_breaks() {
     assert_eq!(b.objects.get(r).panel, PanelPos { x: 3, y: 3 });
     // sub_800F6AC(rock, side 0, (5, 2), 10 ticks of shaking, 60 damage).
     let c = b.objects.get(r).collision.unwrap();
-    b.collision.get_mut(c).f2 |= f2::THROWN_BY_0;
+    b.collision.get_mut(c).f2.insert(StatusRequests::THROWN_BY_0);
     let o = b.objects.get_mut(r);
     (o.slide_dx, o.slide_dy, o.slide_timer, o.damage) = (5, 2, 10, 60);
     run_only(&mut b, &ROCK);
-    assert_eq!(b.collision.get(c).f2 & f2::THROWN, 0);
-    assert_ne!(b.collision.get(c).f1 & obstacle_f1::CARRIED, 0);
+    assert!(!b.collision.get(c).f2.intersects(StatusRequests::THROWN));
+    assert!(b.collision.get(c).f1.contains(StatusFlags::CARRIED));
     assert_eq!(b.objects.get(r).alliance, 0);
     for _ in 0..32 {
         run_only(&mut b, &ROCK);
@@ -993,7 +993,7 @@ fn a_thrown_rock_flies_to_its_target_and_breaks() {
 /// 0x0800F830 would) and run it through `sub_801813A`'s 61 ticks: the rock
 /// it was, gone from the registry and destroyed, and what replaced it.
 fn encase_rock(ice: bool) -> (Battle, crate::object::ObjectRef) {
-    use crate::kinds::obstacle::{f2, obstacle_f1};
+    use crate::collision::{StatusFlags, StatusRequests};
     use crate::object::{ObjectFlags, Pool};
     const KINDS: [&str; 2] = ["rockcube/rock", "encased-bubble"];
     // The rock stage on the test pack's content, which fills the role.
@@ -1009,11 +1009,11 @@ fn encase_rock(ice: bool) -> (Battle, crate::object::ObjectRef) {
     run_only(&mut b, &KINDS);
     assert_eq!(b.field.objects.class_of(r), Some(0), "a stage rock takes a class-0 slot");
     let c = b.objects.get(r).collision.unwrap();
-    b.collision.get_mut(c).f2 |= if ice { f2::ENCASED_IN_ICE } else { f2::ENCASED_IN_BUBBLE };
+    b.collision.get_mut(c).f2.insert(if ice { StatusRequests::ENCASED_IN_ICE } else { StatusRequests::ENCASED_IN_BUBBLE });
     run_only(&mut b, &KINDS);
-    assert_eq!(b.collision.get(c).f2 & f2::ENCASED, 0);
-    let held = if ice { obstacle_f1::ENCASED_ICE } else { obstacle_f1::ENCASED_BUBBLE };
-    assert_ne!(b.collision.get(c).f1 & held, 0);
+    assert!(!b.collision.get(c).f2.intersects(StatusRequests::ENCASED));
+    let held = if ice { StatusFlags::ENCASED_ICE } else { StatusFlags::ENCASED_BUBBLE };
+    assert!(b.collision.get(c).f1.contains(held));
     assert_eq!((b.objects.get(r).prevent_anim, b.objects.get(r).shake_timer), (4, 0x3C));
     let mut hidden = 0;
     for _ in 0..0x3C {

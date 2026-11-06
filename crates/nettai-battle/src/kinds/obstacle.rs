@@ -23,7 +23,7 @@
 use nettai_content_api::RecordHandle;
 
 use crate::battle::{Battle, BattleFlags};
-use crate::collision::{CollisionId, f1, types};
+use crate::collision::{CollisionId, StatusFlags, StatusRequests, types};
 use crate::content::{CollisionRole, EffectRole, PushSource, SoundRole, SparkRole};
 use crate::field::{self, pflags};
 use crate::kinds::common::{self, Progress};
@@ -106,39 +106,37 @@ pub enum SharedAction {
     Bubbled,
 }
 
-/// Collision `f2` bits obstacles react to.
-pub mod f2 {
-    /// Destroy at the next reaction.
-    pub const DESTROY: u32 = 0x1;
-    /// Flinch request (a hit with hit modifier bit 0x1); a push cancels
-    /// it.
-    pub const FLINCH: u32 = 0x4;
-    /// Pushed by a hit (hit modifier 0x40).
-    pub const PUSHED: u32 = 0x100;
+/// The collision's second word's bits as obstacles read them (`f2`):
+/// besides `StatusRequests::DESTROY`, and `StatusRequests::FLINCH`, a
+/// flinch request (a hit with hit modifier bit 0x1), which a push cancels.
+impl StatusRequests {
+    /// Pushed by a hit (hit modifier 0x40): a navi's drag bit.
+    pub const PUSHED: StatusRequests = StatusRequests::DRAG;
     /// Picked up to be thrown by side 0 / side 1.
-    pub const THROWN_BY_0: u32 = 0x400;
-    pub const THROWN: u32 = 0xC00;
+    pub const THROWN_BY_0: StatusRequests = StatusRequests::from_bits_retain(0x400);
+    pub const THROWN_BY_1: StatusRequests = StatusRequests::from_bits_retain(0x800);
+    pub const THROWN: StatusRequests = StatusRequests::THROWN_BY_0.union(StatusRequests::THROWN_BY_1);
     /// Encased in ice (0x1000) or a bubble (0x2000).
-    pub const ENCASED_IN_ICE: u32 = 0x1000;
-    pub const ENCASED_IN_BUBBLE: u32 = 0x2000;
-    pub const ENCASED: u32 = ENCASED_IN_ICE | ENCASED_IN_BUBBLE;
+    pub const ENCASED_IN_ICE: StatusRequests = StatusRequests::from_bits_retain(0x1000);
+    pub const ENCASED_IN_BUBBLE: StatusRequests = StatusRequests::from_bits_retain(0x2000);
+    pub const ENCASED: StatusRequests = StatusRequests::ENCASED_IN_ICE.union(StatusRequests::ENCASED_IN_BUBBLE);
     /// Removed by a chip.
-    pub const REMOVED: u32 = 0x8000;
+    pub const REMOVED: StatusRequests = StatusRequests::from_bits_retain(0x8000);
     /// Removed by blinking out.
-    pub const VANISH: u32 = 0x4_0000;
+    pub const VANISH: StatusRequests = StatusRequests::from_bits_retain(0x4_0000);
     /// Absorbed by side 0 / side 1.
-    pub const ABSORBED_BY_0: u32 = 0x10_0000;
-    pub const ABSORBED_BY_1: u32 = 0x20_0000;
-    pub const ABSORBED: u32 = ABSORBED_BY_0 | ABSORBED_BY_1;
+    pub const ABSORBED_BY_0: StatusRequests = StatusRequests::from_bits_retain(0x10_0000);
+    pub const ABSORBED_BY_1: StatusRequests = StatusRequests::from_bits_retain(0x20_0000);
+    pub const ABSORBED: StatusRequests = StatusRequests::ABSORBED_BY_0.union(StatusRequests::ABSORBED_BY_1);
 }
 
-/// Collision `f1` bits only obstacles use.
-pub mod obstacle_f1 {
+/// Status flags (`f1`) only obstacles use.
+impl StatusFlags {
     /// Being carried to be thrown.
-    pub const CARRIED: u32 = 0x0400_0000;
+    pub const CARRIED: StatusFlags = StatusFlags::from_bits_retain(0x0400_0000);
     /// Encased in ice / in a bubble.
-    pub const ENCASED_ICE: u32 = 0x1000_0000;
-    pub const ENCASED_BUBBLE: u32 = 0x2000_0000;
+    pub const ENCASED_ICE: StatusFlags = StatusFlags::from_bits_retain(0x1000_0000);
+    pub const ENCASED_BUBBLE: StatusFlags = StatusFlags::from_bits_retain(0x2000_0000);
 }
 
 /// What a touch by a body, another obstacle or a breaking hit does (the
@@ -242,33 +240,33 @@ fn collision(b: &Battle, r: ObjectRef) -> CollisionId {
     b.objects.get(r).collision.expect("obstacle without collision data")
 }
 
-fn f1_of(b: &Battle, r: ObjectRef) -> u32 {
+fn f1_of(b: &Battle, r: ObjectRef) -> StatusFlags {
     b.collision.get(collision(b, r)).f1
 }
 
 /// The collision `f2` word: requests other objects make of this one.
-pub fn f2_of(b: &Battle, r: ObjectRef) -> u32 {
+pub fn f2_of(b: &Battle, r: ObjectRef) -> StatusRequests {
     b.collision.get(collision(b, r)).f2
 }
 
-fn set_f1(b: &mut Battle, r: ObjectRef, bits: u32) {
+fn set_f1(b: &mut Battle, r: ObjectRef, bits: StatusFlags) {
     let c = collision(b, r);
-    b.collision.get_mut(c).f1 |= bits;
+    b.collision.get_mut(c).f1.insert(bits);
 }
 
-fn clear_f1(b: &mut Battle, r: ObjectRef, bits: u32) {
+fn clear_f1(b: &mut Battle, r: ObjectRef, bits: StatusFlags) {
     let c = collision(b, r);
-    b.collision.get_mut(c).f1 &= !bits;
+    b.collision.get_mut(c).f1.remove(bits);
 }
 
-fn set_f2(b: &mut Battle, r: ObjectRef, bits: u32) {
+fn set_f2(b: &mut Battle, r: ObjectRef, bits: StatusRequests) {
     let c = collision(b, r);
-    b.collision.get_mut(c).f2 |= bits;
+    b.collision.get_mut(c).f2.insert(bits);
 }
 
-fn clear_f2(b: &mut Battle, r: ObjectRef, bits: u32) {
+fn clear_f2(b: &mut Battle, r: ObjectRef, bits: StatusRequests) {
     let c = collision(b, r);
-    b.collision.get_mut(c).f2 &= !bits;
+    b.collision.get_mut(c).f2.remove(bits);
 }
 
 /// `object_clearCollisionRegion`: it covers no panel.
@@ -298,7 +296,7 @@ pub fn unregister(b: &mut Battle, r: ObjectRef) {
 /// `sub_800F884`: a chip removes `obj`.
 pub fn remove(b: &mut Battle, obj: ObjectRef) {
     if b.objects.get(obj).collision.is_some() {
-        set_f2(b, obj, f2::REMOVED);
+        set_f2(b, obj, StatusRequests::REMOVED);
     }
 }
 
@@ -306,7 +304,7 @@ pub fn remove(b: &mut Battle, obj: ObjectRef) {
 pub fn vanish(b: &mut Battle, obj: ObjectRef) {
     remove(b, obj);
     if b.objects.get(obj).collision.is_some() {
-        set_f2(b, obj, f2::VANISH);
+        set_f2(b, obj, StatusRequests::VANISH);
     }
 }
 
@@ -315,7 +313,7 @@ pub fn vanish(b: &mut Battle, obj: ObjectRef) {
 /// (Without a collision the original writes into the BIOS: nothing.)
 pub fn encase(b: &mut Battle, obj: ObjectRef, ice: bool) {
     if b.objects.get(obj).collision.is_some() {
-        set_f2(b, obj, if ice { f2::ENCASED_IN_ICE } else { f2::ENCASED_IN_BUBBLE });
+        set_f2(b, obj, if ice { StatusRequests::ENCASED_IN_ICE } else { StatusRequests::ENCASED_IN_BUBBLE });
     }
 }
 
@@ -325,7 +323,8 @@ pub fn absorb(b: &mut Battle, obj: ObjectRef, absorber: ObjectRef) {
     remove(b, obj);
     if b.objects.get(obj).collision.is_some() {
         let side = b.objects.get(absorber).alliance;
-        set_f2(b, obj, f2::ABSORBED_BY_0 << side);
+        // (The side's bit by a shift, as the original's.)
+        set_f2(b, obj, StatusRequests::from_bits_retain(StatusRequests::ABSORBED_BY_0.bits() << side));
     }
 }
 
@@ -340,7 +339,7 @@ pub fn absorb_all(b: &mut Battle, absorber: ObjectRef) {
             continue;
         }
         let Some(c) = o.collision else { continue };
-        if b.collision.get(c).f2 & (f2::ABSORBED | f2::VANISH | f2::REMOVED) != 0 {
+        if b.collision.get(c).f2.intersects(StatusRequests::ABSORBED | StatusRequests::VANISH | StatusRequests::REMOVED) {
             continue;
         }
         absorb(b, obj, absorber);
@@ -362,7 +361,7 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
         return;
     }
     b.remove_collision(c);
-    if b.is_battle_over() || f1_of(b, r) & f1::DEAD != 0 {
+    if b.is_battle_over() || f1_of(b, r).contains(StatusFlags::DEAD) {
         return;
     }
     // (EXE5's lava burns first: 0x08017A18 and its variants.)
@@ -378,9 +377,9 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
     }
     let hit_mod = b.collision.get(c).hit_mod_final;
     // (f1 0x40 marks objects that can't be pushed.)
-    if push != Push::Ignored && f1_of(b, r) & f1::MOVING == 0 && b.game_rules().push_reading.drags(hit_mod) {
-        set_f2(b, r, f2::PUSHED);
-        clear_f2(b, r, f2::FLINCH);
+    if push != Push::Ignored && !f1_of(b, r).contains(StatusFlags::MOVING) && b.game_rules().push_reading.drags(hit_mod) {
+        set_f2(b, r, StatusRequests::PUSHED);
+        clear_f2(b, r, StatusRequests::FLINCH);
         if push == Push::ForgetsDamage {
             // `sub_801A6A6`.
             let acc = &mut b.collision.get_mut(c).acc;
@@ -400,10 +399,10 @@ pub fn take_hits(b: &mut Battle, r: ObjectRef, push: Push) {
 /// (MOVE_COMPLETE) is consumed, and the panel under the obstacle's
 /// collision has its say (its type's `move_end`: ice pushes it on).
 fn move_end(b: &mut Battle, r: ObjectRef, c: CollisionId) {
-    if f1_of(b, r) & f1::MOVE_COMPLETE == 0 {
+    if !f1_of(b, r).contains(StatusFlags::MOVE_COMPLETE) {
         return;
     }
-    clear_f1(b, r, f1::MOVE_COMPLETE);
+    clear_f1(b, r, StatusFlags::MOVE_COMPLETE);
     let p = b.collision.get(c).panel;
     let Some(kind) = b.field.panel(p.x, p.y).map(|p| p.kind) else { return };
     b.call_panel(kind, nettai_content_api::PanelCall::MoveEnd { body: r });
@@ -502,31 +501,31 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u
             true
         } else {
             conversion_step(b, r);
-            let removed = crush != Crush::DestroysSparingBodies && f2_of(b, r) & f2::REMOVED != 0;
+            let removed = crush != Crush::DestroysSparingBodies && f2_of(b, r).contains(StatusRequests::REMOVED);
             removed || b.objects.get(r).hp == 0
         }
     };
     if destroy {
-        set_f2(b, r, f2::DESTROY);
+        set_f2(b, r, StatusRequests::DESTROY);
     }
 
-    if f1_of(b, r) & f1::DEAD == 0 {
-        if f2_of(b, r) & f2::DESTROY != 0 {
-            clear_f2(b, r, f2::DESTROY);
-            set_f1(b, r, f1::DEAD);
+    if !f1_of(b, r).contains(StatusFlags::DEAD) {
+        if f2_of(b, r).contains(StatusRequests::DESTROY) {
+            clear_f2(b, r, StatusRequests::DESTROY);
+            set_f1(b, r, StatusFlags::DEAD);
             Action::Destroyed.start(b, r);
-        } else if f2_of(b, r) & f2::THROWN != 0 {
+        } else if f2_of(b, r).intersects(StatusRequests::THROWN) {
             b.objects.get_mut(r).prevent_anim = 0;
             thrown(b, r);
             return None;
-        } else if f1_of(b, r) & obstacle_f1::CARRIED != 0 {
+        } else if f1_of(b, r).contains(StatusFlags::CARRIED) {
             thrown(b, r);
             return None;
-        } else if f2_of(b, r) & f2::ENCASED != 0 {
+        } else if f2_of(b, r).intersects(StatusRequests::ENCASED) {
             b.objects.get_mut(r).prevent_anim = 0;
             encased(b, r);
             return None;
-        } else if f1_of(b, r) & (obstacle_f1::ENCASED_ICE | obstacle_f1::ENCASED_BUBBLE) != 0 {
+        } else if f1_of(b, r).intersects(StatusFlags::ENCASED_ICE | StatusFlags::ENCASED_BUBBLE) {
             encased(b, r);
             return None;
         } else if b.is_dimmed() {
@@ -536,8 +535,8 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u
             }
         } else {
             b.objects.get_mut(r).prevent_anim = 0;
-            if f2_of(b, r) & f2::PUSHED != 0 {
-                clear_f2(b, r, f2::PUSHED);
+            if f2_of(b, r).contains(StatusRequests::PUSHED) {
+                clear_f2(b, r, StatusRequests::PUSHED);
                 let o = b.objects.get_mut(r);
                 if o.saved_state.is_none() {
                     o.saved_state =
@@ -547,7 +546,7 @@ pub fn react(b: &mut Battle, r: ObjectRef, crush: Crush, hold: Hold) -> Option<u
                 o.action = Action::Slide as u8;
                 o.phase = 0;
                 o.drag_step = DragStep::Start;
-            } else if f1_of(b, r) & f1::DRAG != 0 {
+            } else if f1_of(b, r).contains(StatusFlags::DRAG) {
                 b.objects.get_mut(r).action = Action::Slide as u8;
             } else {
                 b.objects.get_mut(r).drag_step = DragStep::Start;
@@ -610,7 +609,7 @@ fn update_visibility(b: &mut Battle, r: ObjectRef) {
     // (Players always have collision data.)
     let hidden = [0u8, 1].map(|viewer| {
         viewer != alliance & 1
-            && b.player(viewer).and_then(|p| b.objects.get(p).collision).is_some_and(|c| b.collision.get(c).f1 & f1::BLIND != 0)
+            && b.player(viewer).and_then(|p| b.objects.get(p).collision).is_some_and(|c| b.collision.get(c).f1.contains(StatusFlags::BLIND))
     });
     b.hide_from(r, hidden);
 }
@@ -661,11 +660,11 @@ pub fn request_throw(b: &mut Battle, r: ObjectRef, side: u8, x: u8, y: u8, shake
     let o = b.objects.get_mut(r);
     (o.slide_dx, o.slide_dy, o.slide_timer) = (x, y, shake);
     (o.damage, o.stamina) = (damage as u16, (damage >> 16) as u16);
-    set_f2(b, r, if side == 0 { f2::THROWN_BY_0 } else { f2::THROWN & !f2::THROWN_BY_0 });
+    set_f2(b, r, if side == 0 { StatusRequests::THROWN_BY_0 } else { StatusRequests::THROWN_BY_1 });
 }
 
 /// `sub_8018002`: picked up and thrown, the request `sub_800F6AC` makes
-/// (EXE5's Poltergeist; nothing in EXE6): the thrower's side (`f2::THROWN`),
+/// (EXE5's Poltergeist; nothing in EXE6): the thrower's side (`StatusRequests::THROWN`),
 /// the target panel in `slide_dx`/`slide_dy` (+0x1C, +0x1D), the ticks it
 /// shakes in `slide_timer` (+0x1E) and the damage word. It rises 64 px in
 /// 32 ticks, shakes, flies onto the target panel at 8 px a tick and breaks
@@ -676,10 +675,10 @@ fn thrown(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).prevent_anim {
         // sub_801802C: taken by the thrower's side.
         0 => {
-            let side = if f2_of(b, r) & f2::THROWN_BY_0 != 0 { 0 } else { 1 };
+            let side = if f2_of(b, r).contains(StatusRequests::THROWN_BY_0) { 0 } else { 1 };
             b.objects.get_mut(r).alliance = side;
-            clear_f2(b, r, f2::THROWN);
-            set_f1(b, r, obstacle_f1::CARRIED);
+            clear_f2(b, r, StatusRequests::THROWN);
+            set_f1(b, r, StatusFlags::CARRIED);
             let o = b.objects.get_mut(r);
             o.vel.z = bios_div(THROW_HEIGHT.wrapping_sub(o.pos.z), THROW_RISE_TICKS as i32);
             let fp = o.future_panel;
@@ -865,9 +864,9 @@ fn encased(b: &mut Battle, r: ObjectRef) {
             if let Some(hook) = b.content.defs.kind(kind).encased {
                 crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::Encased { obstacle: r });
             }
-            let ice = f2_of(b, r) & f2::ENCASED_IN_ICE != 0;
-            set_f1(b, r, if ice { obstacle_f1::ENCASED_ICE } else { obstacle_f1::ENCASED_BUBBLE });
-            clear_f2(b, r, f2::ENCASED);
+            let ice = f2_of(b, r).contains(StatusRequests::ENCASED_IN_ICE);
+            set_f1(b, r, if ice { StatusFlags::ENCASED_ICE } else { StatusFlags::ENCASED_BUBBLE });
+            clear_f2(b, r, StatusRequests::ENCASED);
             b.objects.get_mut(r).shake_timer = ENCASE_TICKS;
             let fp = b.objects.get(r).future_panel;
             b.unreserve_panel(r, fp.x, fp.y);
@@ -893,7 +892,7 @@ fn encased(b: &mut Battle, r: ObjectRef) {
             // the role's (sub_80E544C, the game's wind registry, first).
             let class = b.field.objects.class_of(r);
             unregister(b, r);
-            let ice = f1_of(b, r) & obstacle_f1::ENCASED_ICE != 0;
+            let ice = f1_of(b, r).contains(StatusFlags::ENCASED_ICE);
             // (A game without the role has nothing for it to do: EXE5,
             // docs/design/exe5-map.md §15.3 item 4.)
             if let Some(hook) = b.roles().try_hook(crate::content::HookRole::Encased) {
@@ -1028,13 +1027,13 @@ fn can_enter(b: &Battle, r: ObjectRef, kind: Slide, to: Option<PanelPos>) -> boo
 /// `sub_8017E44` / `sub_8017CE0`: onto the panel it was heading for, and
 /// off toward the next one the push points to, or rest if it can't go.
 fn start_slide(b: &mut Battle, r: ObjectRef, kind: Slide) {
-    set_f1(b, r, f1::DRAG);
+    set_f1(b, r, StatusFlags::DRAG);
     let o = b.objects.get_mut(r);
     o.related[0] = None;
     o.panel = o.future_panel;
     common::set_coordinates_from_panels(b, r);
     b.update_collision_panels(r);
-    clear_f1(b, r, f1::SLIDING | f1::MOVING);
+    clear_f1(b, r, StatusFlags::SLIDING | StatusFlags::MOVING);
     let fp = b.objects.get(r).future_panel;
     b.unreserve_panel(r, fp.x, fp.y);
     let v = push_vector(b, r);
@@ -1149,7 +1148,7 @@ fn rest_after_slide(b: &mut Battle, r: ObjectRef) {
     if left >= 0 {
         return;
     }
-    clear_f1(b, r, f1::DRAG);
+    clear_f1(b, r, StatusFlags::DRAG);
     let o = b.objects.get_mut(r);
     let w = o.saved_state.take().unwrap_or_default();
     common::set_progress(b, r, Progress { state: w.state, action: w.action, phase: w.phase, phase_init: w.phase_init });
@@ -1217,11 +1216,11 @@ fn closer_target(b: &Battle, r: ObjectRef, a: ObjectRef, held: ObjectRef) -> Obj
 /// How the obstacle is leaving, from its `f2` word.
 pub fn removal(b: &Battle, r: ObjectRef) -> Removal {
     let f2 = f2_of(b, r);
-    if f2 & f2::REMOVED == 0 {
+    if !f2.contains(StatusRequests::REMOVED) {
         Removal::Broken
-    } else if f2 & f2::ABSORBED != 0 {
-        Removal::Absorbed { side: (f2 & f2::ABSORBED_BY_1 != 0) as u8 }
-    } else if f2 & f2::VANISH != 0 {
+    } else if f2.intersects(StatusRequests::ABSORBED) {
+        Removal::Absorbed { side: (f2.contains(StatusRequests::ABSORBED_BY_1)) as u8 }
+    } else if f2.contains(StatusRequests::VANISH) {
         Removal::Vanished
     } else {
         Removal::Removed
@@ -1237,9 +1236,9 @@ pub enum BlinkOut {
     Done,
 }
 
-/// `sub_800F8CE`: blink for 20 ticks when removed with `f2::VANISH`.
+/// `sub_800F8CE`: blink for 20 ticks when removed with `StatusRequests::VANISH`.
 pub fn blink_out(b: &mut Battle, r: ObjectRef) -> BlinkOut {
-    if f2_of(b, r) & f2::VANISH == 0 {
+    if !f2_of(b, r).contains(StatusRequests::VANISH) {
         return BlinkOut::No;
     }
     let o = b.objects.get_mut(r);
@@ -1265,7 +1264,7 @@ pub fn blink_out(b: &mut Battle, r: ObjectRef) -> BlinkOut {
 /// facing, running neither while paused nor while dimmed.
 pub fn fly_to_absorber(b: &mut Battle, r: ObjectRef, look: RecordHandle) {
     use nettai_content_api::{Registry, Value};
-    let side = (f2_of(b, r) & f2::ABSORBED_BY_1 != 0) as u8;
+    let side = (f2_of(b, r).contains(StatusRequests::ABSORBED_BY_1)) as u8;
     let o = b.objects.get(r);
     let (pos, anim, alliance, flip) = (o.pos, o.anim, o.alliance, o.flip);
     let sprite = b.objects.sprite(r).look;

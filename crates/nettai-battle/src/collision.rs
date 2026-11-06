@@ -19,76 +19,104 @@ pub const SLOTS: usize = 32;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CollisionId(pub u8);
 
-/// Status flags (`f1`).
-pub mod f1 {
-    pub const GUARD: u32 = 1 << 0;
-    pub const INVISIBLE: u32 = 1 << 1;
-    /// Submerged: collides only with collision types that have
-    /// `types::REACHES_SUBMERGED` or `types::BREAKS_GUARD`, in both
-    /// directions (`sub_3007218`). DiveMan's AI sets it
-    /// while he dives (`sub_80FDEFC`). The timed form (`timer::SUBMERGED`)
-    /// is held while its timer runs and no action is in use (`sub_8010162`);
-    /// its only starter, actor #0x5D variant 1 (`sub_80C49E4`), EXE6 never
-    /// spawns, EXE4's PopUp does (0x080CD0E2). See
-    /// field-collision-damage.md §4.10.1.
-    pub const SUBMERGED: u32 = 1 << 2;
-    pub const INVULNERABLE: u32 = 1 << 3;
-    pub const AIRSHOE: u32 = 1 << 4;
-    pub const FLOATSHOE: u32 = 1 << 5;
-    pub const MOVING: u32 = 1 << 6;
-    pub const DEAD: u32 = 1 << 8;
-    pub const FLASHING: u32 = 1 << 9;
-    pub const FLINCHING: u32 = 1 << 10;
-    pub const PARALYZED: u32 = 1 << 11;
-    pub const SLIDING: u32 = 1 << 12;
-    pub const BLIND: u32 = 1 << 13;
-    pub const IMMOBILIZED: u32 = 1 << 14;
-    pub const CONFUSED: u32 = 1 << 15;
-    pub const FROZEN: u32 = 1 << 16;
-    pub const SUPERARMOR: u32 = 1 << 17;
-    pub const UNDERSHIRT: u32 = 1 << 18;
-    pub const MOVE_COMPLETE: u32 = 1 << 19;
-    pub const DRAG: u32 = 1 << 20;
-    pub const ANGER: u32 = 1 << 21;
-    pub const USING_ACTION: u32 = 1 << 22;
-    /// Only swords and guard breakers (`types::SWORD`, `types::BREAKS_GUARD`)
-    /// reach it, and it reaches only bodies and those (`sub_3007218`).
-    /// Nothing sets it.
-    pub const SWORD_ONLY: u32 = 1 << 23;
-    pub const AFFECTED_BY_ICE: u32 = 1 << 25;
-    /// Untouchable: `sub_3007218` drops every pair in which either side
-    /// has it, so no hit reaches it and it hits nothing; poison panels
-    /// don't hurt it either (`sub_801A186`). Falzar Beast Over's form flags
-    /// set it (`sub_8014674`), which is why nothing can hit that form.
-    pub const UNTOUCHABLE: u32 = 1 << 27;
-    pub const BUBBLED: u32 = 1 << 31;
-    /// Hits still reach it while the battle is dimmed (`sub_3007218`; else
-    /// only hitters set up while dimmed do): ElemTrap's trap sets it.
-    pub const HIT_WHILE_DIMMED: u32 = 1 << 24;
+bitflags::bitflags! {
+    /// Status flags (`CollisionData::f1`). (Obstacles name three bits of
+    /// their own: `kinds::obstacle`.)
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct StatusFlags: u32 {
+        const GUARD = 1 << 0;
+        const INVISIBLE = 1 << 1;
+        /// Submerged: collides only with collision types that have
+        /// `types::REACHES_SUBMERGED` or `types::BREAKS_GUARD`, in both
+        /// directions (`sub_3007218`). DiveMan's AI sets it
+        /// while he dives (`sub_80FDEFC`). The timed form (`timer::SUBMERGED`)
+        /// is held while its timer runs and no action is in use (`sub_8010162`);
+        /// its only starter, actor #0x5D variant 1 (`sub_80C49E4`), EXE6 never
+        /// spawns, EXE4's PopUp does (0x080CD0E2). See
+        /// field-collision-damage.md §4.10.1.
+        const SUBMERGED = 1 << 2;
+        const INVULNERABLE = 1 << 3;
+        const AIRSHOE = 1 << 4;
+        const FLOATSHOE = 1 << 5;
+        const MOVING = 1 << 6;
+        const DEAD = 1 << 8;
+        const FLASHING = 1 << 9;
+        const FLINCHING = 1 << 10;
+        const PARALYZED = 1 << 11;
+        const SLIDING = 1 << 12;
+        const BLIND = 1 << 13;
+        const IMMOBILIZED = 1 << 14;
+        const CONFUSED = 1 << 15;
+        const FROZEN = 1 << 16;
+        const SUPERARMOR = 1 << 17;
+        const UNDERSHIRT = 1 << 18;
+        const MOVE_COMPLETE = 1 << 19;
+        const DRAG = 1 << 20;
+        const ANGER = 1 << 21;
+        const USING_ACTION = 1 << 22;
+        /// Only swords and guard breakers (`types::SWORD`, `types::BREAKS_GUARD`)
+        /// reach it, and it reaches only bodies and those (`sub_3007218`).
+        /// Nothing sets it.
+        const SWORD_ONLY = 1 << 23;
+        const AFFECTED_BY_ICE = 1 << 25;
+        /// Untouchable: `sub_3007218` drops every pair in which either side
+        /// has it, so no hit reaches it and it hits nothing; poison panels
+        /// don't hurt it either (`sub_801A186`). Falzar Beast Over's form flags
+        /// set it (`sub_8014674`), which is why nothing can hit that form.
+        const UNTOUCHABLE = 1 << 27;
+        const BUBBLED = 1 << 31;
+        /// Hits still reach it while the battle is dimmed (`sub_3007218`; else
+        /// only hitters set up while dimmed do): ElemTrap's trap sets it.
+        const HIT_WHILE_DIMMED = 1 << 24;
+        const _ = !0;
+    }
 }
 
-/// A navi's requests in its collision's second word (`f2`): what its hits
-/// and statuses ask of its next status update. Content names them in its
-/// rules (`content::Requests`); a status raises its timer's
-/// (`content::StatusTimer::request`). (Obstacles read the word their own
-/// way: `kinds::obstacle::f2`.)
-pub mod f2 {
-    /// A hit's flash (hit modifier 0x02).
-    pub const FLASH: u32 = 1 << 1;
-    /// A hit's flinch (hit modifier 0x01).
-    pub const FLINCH: u32 = 1 << 2;
-    pub const PARALYZE: u32 = 1 << 3;
-    /// A push's slide.
-    pub const SLIDE: u32 = 1 << 4;
-    pub const BLIND: u32 = 1 << 5;
-    pub const IMMOBILIZE: u32 = 1 << 6;
-    pub const CONFUSE: u32 = 1 << 7;
-    /// A push's drag (the game's drag bit).
-    pub const DRAG: u32 = 1 << 8;
-    /// Anger, at the navi's next status update.
-    pub const ANGER: u32 = 1 << 9;
-    pub const FREEZE: u32 = 1 << 16;
-    pub const BUBBLE: u32 = 1 << 17;
+bitflags::bitflags! {
+    /// A navi's requests in its collision's second word (`CollisionData::f2`):
+    /// what its hits and statuses ask of its next status update. Content names
+    /// them in its rules (`content::Requests`); a status raises its timer's
+    /// (`content::StatusTimer::request`). (Obstacles read the word their own
+    /// way, which `kinds::obstacle` names.)
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct StatusRequests: u32 {
+        /// Destroyed at the next reaction: a navi deleted (the death of
+        /// `applyDamageToPlayer_801ba12`, outside a Cross), an obstacle broken.
+        const DESTROY = 1 << 0;
+        /// A hit's flash (hit modifier 0x02).
+        const FLASH = 1 << 1;
+        /// A hit's flinch (hit modifier 0x01).
+        const FLINCH = 1 << 2;
+        const PARALYZE = 1 << 3;
+        /// A push's slide.
+        const SLIDE = 1 << 4;
+        const BLIND = 1 << 5;
+        const IMMOBILIZE = 1 << 6;
+        const CONFUSE = 1 << 7;
+        /// A push's drag (the game's drag bit).
+        const DRAG = 1 << 8;
+        /// Anger, at the navi's next status update.
+        const ANGER = 1 << 9;
+        /// A counter hit's paralysis, this update (`sub_800EB26`): the
+        /// flinch or drag it lands with doesn't end it. The update's tail
+        /// clears it.
+        const COUNTER_PARALYSIS = 1 << 14;
+        const FREEZE = 1 << 16;
+        const BUBBLE = 1 << 17;
+        /// What dropping the hit in progress clears (`sub_800E9FA`: 0x301FE):
+        /// every request but anger.
+        const HIT_REQUESTS = Self::FLASH.bits()
+            | Self::FLINCH.bits()
+            | Self::PARALYZE.bits()
+            | Self::SLIDE.bits()
+            | Self::BLIND.bits()
+            | Self::IMMOBILIZE.bits()
+            | Self::CONFUSE.bits()
+            | Self::DRAG.bits()
+            | Self::FREEZE.bits()
+            | Self::BUBBLE.bits();
+        const _ = !0;
+    }
 }
 
 /// Collision type bits (docs/engine/field-collision-damage.md §3.3): what
@@ -122,7 +150,7 @@ pub mod types {
     pub const REACHES_SET_OBJECTS: u32 = 1 << 18;
     /// Hits while the battle is dimmed: setup gives it to what is set up
     /// while dimmed (`sub_3007218` lets only these, and receivers with
-    /// `f1::HIT_WHILE_DIMMED`, hit then).
+    /// `StatusFlags::HIT_WHILE_DIMMED`, hit then).
     pub const HITS_WHILE_DIMMED: u32 = 1 << 16;
     /// Doesn't reach a floating body, nor is it reached by a floating
     /// hitter (`sub_3007218`).
@@ -131,10 +159,10 @@ pub mod types {
     /// lets `BREAKS_GUARD` break the guard (`sub_3007218`).
     pub const NO_GUARD_SPARK: u32 = 1 << 14;
     /// Counts as a sword against a sword weakness and AntiSword, and
-    /// reaches `f1::SWORD_ONLY`.
+    /// reaches `StatusFlags::SWORD_ONLY`.
     pub const SWORD: u32 = 1 << 13;
     /// Breaks a guard (EXE6's only with `NO_GUARD_SPARK`), reaches
-    /// submerged and `f1::SWORD_ONLY` bodies, doesn't push an obstacle
+    /// submerged and `StatusFlags::SWORD_ONLY` bodies, doesn't push an obstacle
     /// that any hit pushes, and keeps a `PIERCING` hit from ending a flash.
     pub const BREAKS_GUARD: u32 = 1 << 12;
     /// A pushing attack (AirShot's shot, a tornado): pops a barrier.
@@ -150,7 +178,7 @@ pub mod types {
     pub const PULL: u32 = 1 << 9;
     /// Counts as a drain on the receiver.
     pub const DRAIN: u32 = 1 << 8;
-    /// Reaches `f1::FLOATSHOE` bodies, and is reached by them, where the
+    /// Reaches `StatusFlags::FLOATSHOE` bodies, and is reached by them, where the
     /// game's hit test asks for it (`float_shoe_needs_self_bit`).
     pub const REACHES_FLOATSHOE: u32 = 1 << 7;
     /// Wind: pops a barrier (EXE4's takes it away).
@@ -368,8 +396,8 @@ pub struct CollisionData {
     /// What I react to.
     pub target_flags: u32,
     pub parent: Option<ObjectRef>,
-    pub f1: u32,
-    pub f2: u32,
+    pub f1: StatusFlags,
+    pub f2: StatusRequests,
     /// This slot's bit (`0x80000000 >> slot`).
     pub bit: u32,
     /// Status visual objects and other links (0x48..0x67).
@@ -402,7 +430,7 @@ pub mod timer {
     pub const BLIND: usize = 2;
     pub const IMMOBILIZE: usize = 3;
     pub const FLASH: usize = 4;
-    /// CollisionData+0x26: holds `f1::SUBMERGED` (0xFFFF =
+    /// CollisionData+0x26: holds `StatusFlags::SUBMERGED` (0xFFFF =
     /// indefinitely); started by `sub_80101AE`, ended by any hit
     /// (`sub_8010198`) or by `sub_80101C4`.
     pub const SUBMERGED: usize = 5;
@@ -743,24 +771,24 @@ impl Battle {
     fn resolve_hit(&mut self, r: CollisionId, h: CollisionId) {
         let hd = *self.collision.get(h);
         let rd = *self.collision.get(r);
-        if self.is_dimmed() && !(rd.f1 & f1::HIT_WHILE_DIMMED != 0 || hd.self_flags & types::HITS_WHILE_DIMMED != 0) {
+        if self.is_dimmed() && !(rd.f1.contains(StatusFlags::HIT_WHILE_DIMMED) || hd.self_flags & types::HITS_WHILE_DIMMED != 0) {
             return;
         }
         // (The game's hit test, the reactions section's `hit_test`: EXE5's,
         // 0x0801691C, counts a bubbled body as submerged, elec reaching
         // either, has no FloatShoe test, and its guard breaks to 0x1002.)
         let test = self.content.rules().hit_test;
-        let submerged = if test.bubbled_as_submerged { f1::SUBMERGED | f1::BUBBLED } else { f1::SUBMERGED };
+        let submerged = if test.bubbled_as_submerged { StatusFlags::SUBMERGED | StatusFlags::BUBBLED } else { StatusFlags::SUBMERGED };
         let elec = |element: u8| test.elec_reaches_submerged && element == 3;
         let self_bit = test.float_shoe_needs_self_bit;
         // The hitter's state against the receiver's type.
         let f = hd.f1;
         let rs = rd.self_flags;
-        if (f & (f1::INVISIBLE | f1::FLASHING) != 0 && rs & types::PIERCING == 0)
-            || (f & submerged != 0 && rs & (types::REACHES_SUBMERGED | types::BREAKS_GUARD) == 0 && !elec(rd.element))
-            || (f & f1::SWORD_ONLY != 0 && rs & (types::BODIES | types::SWORD | types::BREAKS_GUARD) == 0)
-            || f & f1::UNTOUCHABLE != 0
-            || (self_bit && f & f1::FLOATSHOE != 0 && rs & types::REACHES_FLOATSHOE == 0)
+        if (f.intersects(StatusFlags::INVISIBLE | StatusFlags::FLASHING) && rs & types::PIERCING == 0)
+            || (f.intersects(submerged) && rs & (types::REACHES_SUBMERGED | types::BREAKS_GUARD) == 0 && !elec(rd.element))
+            || (f.contains(StatusFlags::SWORD_ONLY) && rs & (types::BODIES | types::SWORD | types::BREAKS_GUARD) == 0)
+            || f.contains(StatusFlags::UNTOUCHABLE)
+            || (self_bit && f.contains(StatusFlags::FLOATSHOE) && rs & types::REACHES_FLOATSHOE == 0)
         {
             return;
         }
@@ -768,16 +796,16 @@ impl Battle {
         // untouchable state to the invulnerable test, after the guard).
         let f = rd.f1;
         let hs = hd.self_flags;
-        if (f & (f1::INVISIBLE | f1::FLASHING) != 0 && hs & types::PIERCING == 0)
-            || (f & submerged != 0 && hs & (types::REACHES_SUBMERGED | types::BREAKS_GUARD) == 0 && !elec(hd.element))
-            || (f & f1::SWORD_ONLY != 0 && hs & (types::SWORD | types::BREAKS_GUARD) == 0)
-            || (!test.guard_before_untouchable && f & f1::UNTOUCHABLE != 0)
-            || (self_bit && f & f1::FLOATSHOE != 0 && hs & types::REACHES_FLOATSHOE == 0)
+        if (f.intersects(StatusFlags::INVISIBLE | StatusFlags::FLASHING) && hs & types::PIERCING == 0)
+            || (f.intersects(submerged) && hs & (types::REACHES_SUBMERGED | types::BREAKS_GUARD) == 0 && !elec(hd.element))
+            || (f.contains(StatusFlags::SWORD_ONLY) && hs & (types::SWORD | types::BREAKS_GUARD) == 0)
+            || (!test.guard_before_untouchable && f.contains(StatusFlags::UNTOUCHABLE))
+            || (self_bit && f.contains(StatusFlags::FLOATSHOE) && hs & types::REACHES_FLOATSHOE == 0)
         {
             return;
         }
         // Guard.
-        if rd.f1 & f1::GUARD != 0 {
+        if rd.f1.contains(StatusFlags::GUARD) {
             let brk = if hs & types::NO_GUARD_SPARK != 0 { types::BREAKS_GUARD | types::BREAK } else { test.guard_breaks_to };
             if hs & brk == 0 {
                 let hm = self.collision.get_mut(h);
@@ -801,7 +829,7 @@ impl Battle {
         if (rs & types::FLOATING != 0 && hs & types::GROUND_ONLY != 0) || (rs & types::GROUND_ONLY != 0 && hs & types::FLOATING != 0) {
             return;
         }
-        if rd.f1 & f1::INVULNERABLE != 0 || (test.guard_before_untouchable && rd.f1 & f1::UNTOUCHABLE != 0) {
+        if rd.f1.contains(StatusFlags::INVULNERABLE) || (test.guard_before_untouchable && rd.f1.contains(StatusFlags::UNTOUCHABLE)) {
             return;
         }
         let rm = self.collision.get_mut(r);
@@ -877,14 +905,14 @@ impl Battle {
             as u8;
         let mut m = 1 + w1 + w2;
         rm.acc.damage_multiplier = m - 1;
-        let thaw = rd.f1 & f1::FROZEN != 0 && (rm.acc.hit_flags & types::BREAK != 0 || hd.secondary_element == SecondaryElements::BREAK);
+        let thaw = rd.f1.contains(StatusFlags::FROZEN) && (rm.acc.hit_flags & types::BREAK != 0 || hd.secondary_element == SecondaryElements::BREAK);
         if thaw {
             m += 1;
         }
         // (EXE6's bubble; EXE5's kernel has none: its flag 0x80000000 is a
         // body under the sea's surface, `hit_test.bubbled_as_submerged`,
         // whose elec hits its panel doubles.)
-        if !test.bubbled_as_submerged && rd.f1 & f1::BUBBLED != 0 && hd.element == 3 {
+        if !test.bubbled_as_submerged && rd.f1.contains(StatusFlags::BUBBLED) && hd.element == 3 {
             m += 1;
         }
         rm.acc.exclamation = m - 1;
@@ -919,12 +947,12 @@ impl Battle {
     fn accumulate_raw(&mut self, r: CollisionId, h: CollisionId) {
         let hd = *self.collision.get(h);
         let rd = *self.collision.get(r);
-        if self.is_dimmed() && !(rd.f1 & f1::HIT_WHILE_DIMMED != 0 || hd.self_flags & types::HITS_WHILE_DIMMED != 0) {
+        if self.is_dimmed() && !(rd.f1.contains(StatusFlags::HIT_WHILE_DIMMED) || hd.self_flags & types::HITS_WHILE_DIMMED != 0) {
             return;
         }
         let self_bit = self.content.rules().hit_test.float_shoe_needs_self_bit;
-        if self_bit && ((hd.f1 & f1::FLOATSHOE != 0 && rd.self_flags & types::REACHES_FLOATSHOE == 0)
-                || (rd.f1 & f1::FLOATSHOE != 0 && hd.self_flags & types::REACHES_FLOATSHOE == 0)) {
+        if self_bit && ((hd.f1.contains(StatusFlags::FLOATSHOE) && rd.self_flags & types::REACHES_FLOATSHOE == 0)
+                || (rd.f1.contains(StatusFlags::FLOATSHOE) && hd.self_flags & types::REACHES_FLOATSHOE == 0)) {
             return;
         }
         let bonus = self.panel_bonus(&rd, &hd);
@@ -1045,9 +1073,9 @@ mod tests {
     /// `types`: whether the guard held (the hitter told it was guarded).
     fn guarded(test: HitTest, types: u32) -> bool {
         let (mut b, [h, r]) = fight(test);
-        b.collision.get_mut(r).f1 |= f1::GUARD;
+        b.collision.get_mut(r).f1.insert(StatusFlags::GUARD);
         b.collision.get_mut(h).self_flags = types;
-        b.collision.get_mut(h).f1 = 0;
+        b.collision.get_mut(h).f1 = StatusFlags::empty();
         b.resolve_hit(r, h);
         b.collision.get(h).acc.hit_flags & hit::GUARDED != 0
     }
@@ -1074,9 +1102,9 @@ mod tests {
     fn an_untouchable_guard_turns_hits_aside_where_the_rules_say() {
         let outcome = |after: bool| {
             let (mut b, [h, r]) = fight(HitTest { guard_before_untouchable: after, ..tests()[1] });
-            b.collision.get_mut(r).f1 |= f1::GUARD | f1::UNTOUCHABLE;
+            b.collision.get_mut(r).f1.insert(StatusFlags::GUARD | StatusFlags::UNTOUCHABLE);
             b.collision.get_mut(h).self_flags = types::ATTACK_SIDE0;
-            b.collision.get_mut(h).f1 = 0;
+            b.collision.get_mut(h).f1 = StatusFlags::empty();
             b.resolve_hit(r, h);
             (b.collision.get(h).acc.hit_flags & hit::GUARDED != 0, b.collision.get(r).acc.hit_flags & hit::GUARD_SPARK != 0)
         };
@@ -1084,9 +1112,9 @@ mod tests {
         assert_eq!(outcome(true), (true, true));
         // Without a guard, untouchable either way.
         let (mut b, [h, r]) = fight(HitTest { guard_before_untouchable: true, ..tests()[1] });
-        b.collision.get_mut(r).f1 |= f1::UNTOUCHABLE;
+        b.collision.get_mut(r).f1.insert(StatusFlags::UNTOUCHABLE);
         b.collision.get_mut(h).self_flags = types::ATTACK_SIDE0;
-        b.collision.get_mut(h).f1 = 0;
+        b.collision.get_mut(h).f1 = StatusFlags::empty();
         b.resolve_hit(r, h);
         assert_eq!(b.collision.get(r).acc.hit_flags, 0);
     }

@@ -7,7 +7,7 @@
 
 use crate::actor::{ActorStatus, Requests};
 use crate::battle::{Battle, BattleFlags};
-use crate::collision::{f1, link, timer};
+use crate::collision::{StatusFlags, StatusRequests, link, timer};
 use crate::content::{EffectRole, SoundRole};
 use super::ActionVars;
 use crate::kinds::player::{
@@ -79,10 +79,10 @@ pub(crate) fn drop_statuses(b: &mut Battle, r: ObjectRef) {
     clear_flag1(
         b,
         r,
-        f1::BUBBLED | f1::DRAG | f1::FROZEN | f1::SLIDING | f1::PARALYZED | f1::FLINCHING | f1::MOVING,
+        StatusFlags::BUBBLED | StatusFlags::DRAG | StatusFlags::FROZEN | StatusFlags::SLIDING | StatusFlags::PARALYZED | StatusFlags::FLINCHING | StatusFlags::MOVING,
     );
     // The slide request.
-    clear_flag2(b, r, 0x10);
+    clear_flag2(b, r, StatusRequests::SLIDE);
     b.objects.get_mut(r).slide_state = 0;
     ai_mut(b, r).status.remove(ActorStatus::HEAT_TRAP | ActorStatus::TRAP_ARMED);
     let c = coll_mut(b, r);
@@ -121,8 +121,8 @@ pub(in crate::kinds::player) fn revert(b: &mut Battle, r: ObjectRef) {
         if let Some(e) = effect::spawn(b, Vec3 { z: pos.z.wrapping_add(0x14_0000), ..pos }, look, 0, 0, 0) {
             b.objects.get_mut(e).flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
         }
-        clear_flag1(b, r, f1::UNTOUCHABLE | f1::SLIDING | f1::FLINCHING | f1::MOVING);
-        clear_flag2(b, r, 0x10);
+        clear_flag1(b, r, StatusFlags::UNTOUCHABLE | StatusFlags::SLIDING | StatusFlags::FLINCHING | StatusFlags::MOVING);
+        clear_flag2(b, r, StatusRequests::SLIDE);
         b.objects.get_mut(r).slide_state = 0;
         let current = stats(b, r).form;
         form::take_off_overlay(b, r, current);
@@ -203,8 +203,8 @@ fn spend_form(b: &mut Battle, r: ObjectRef) {
 
 /// `sub_80143B4`: anger ends, without touching the mood.
 fn calm_down(b: &mut Battle, r: ObjectRef) {
-    clear_flag1(b, r, f1::ANGER);
-    clear_flag2(b, r, 0x200);
+    clear_flag1(b, r, StatusFlags::ANGER);
+    clear_flag2(b, r, StatusRequests::ANGER);
     let a = ai_mut(b, r);
     a.anger = 0;
     a.stun_ticks = 0;
@@ -242,9 +242,9 @@ pub(in crate::kinds::player) fn break_form(b: &mut Battle, r: ObjectRef) -> bool
         if let Some(e) = effect::spawn(b, Vec3 { z: pos.z.wrapping_add(0x14_0000), ..pos }, look, 0, 0, 0) {
             b.objects.get_mut(e).flags.insert(ObjectFlags::RUN_WHILE_PAUSED);
         }
-        let moving = f1::SLIDING | f1::PARALYZED | f1::FLINCHING | f1::MOVING;
-        clear_flag1(b, r, if any_form { moving } else { moving | f1::BUBBLED | f1::DRAG | f1::FROZEN });
-        clear_flag2(b, r, 0x10);
+        let moving = StatusFlags::SLIDING | StatusFlags::PARALYZED | StatusFlags::FLINCHING | StatusFlags::MOVING;
+        clear_flag1(b, r, if any_form { moving } else { moving | StatusFlags::BUBBLED | StatusFlags::DRAG | StatusFlags::FROZEN });
+        clear_flag2(b, r, StatusRequests::SLIDE);
         b.objects.get_mut(r).slide_state = 0;
         if !any_form {
             keep_overlay_stepping(b, r);

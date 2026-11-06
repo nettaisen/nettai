@@ -221,8 +221,8 @@ pub fn subtract_hp(b: &mut Battle, r: ObjectRef, amount: u16) -> bool {
 pub fn thaw(b: &mut Battle, r: ObjectRef) {
     let Some(c) = b.objects.get(r).collision else { return };
     let s = b.collision.get_mut(c);
-    s.f1 &= !crate::collision::f1::FROZEN;
-    s.f2 &= !crate::collision::f1::FROZEN;
+    s.f1.remove(crate::collision::StatusFlags::FROZEN);
+    s.f2.remove(crate::collision::StatusRequests::FREEZE);
     s.status_timers[crate::collision::timer::FREEZE] = 0;
 }
 

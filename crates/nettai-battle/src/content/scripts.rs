@@ -738,9 +738,9 @@ local step = { grounded = {}, floor_free = {} }
         // A status end's flags, requests and timers, sets of names (EXE4's: four
         // flags and timers, three of the statuses' requests).
         let end = r.status_end;
-        assert_eq!((end.flags.0, end.requests, end.timers.0), (0xE800, 0x68, 0b1111));
+        assert_eq!((end.flags.0.bits(), end.requests.bits(), end.timers.0), (0xE800, 0x68, 0b1111));
         // A side's status and requests by name.
-        assert_eq!((r.custom_drain.status.bits(), r.intake.anti_traps.drops_requests), (5, 0x14));
+        assert_eq!((r.custom_drain.status.bits(), r.intake.anti_traps.drops_requests.bits()), (5, 0x14));
         // No bits of the game's own declared, none.
         assert!(r.effect_bits.is_empty());
         // What it may leave out reads as nothing, for every game.
@@ -798,9 +798,9 @@ local step = { grounded = {}, floor_free = {} }
             game(text.replace(from, to))
         };
         let c = named("requests = { paralyze = true, blind = true, immobilize = true }", "requests = { paralyze = true, blind = true, immobilize = true, counter_mark = true }").unwrap_or_else(|e| panic!("{e}"));
-        assert_eq!(c.rules().status_end.requests, 0x8068);
+        assert_eq!(c.rules().status_end.requests.bits(), 0x8068);
         let c = named("drops_requests = { flinch = true, slide = true }", "drops_requests = { counter_mark = true }").unwrap_or_else(|e| panic!("{e}"));
-        assert_eq!(c.rules().intake.anti_traps.drops_requests, 0x8000);
+        assert_eq!(c.rules().intake.anti_traps.drops_requests.bits(), 0x8000);
         let e = game(rules(None, None, Some(("requests = { paralyze = true, blind = true, immobilize = true }", "requests = { paralyze = true, counter_mark = true }")))).unwrap_err();
         assert!(e.contains("rules: reactions.status_end.requests: unknown request \"counter_mark\" (the requests: flash, flinch, slide,"), "{e}");
         let e = game(rules(None, None, Some(("requests = { paralyze = true, blind = true, immobilize = true }", "requests = 0x8068")))).unwrap_err();
@@ -873,7 +873,7 @@ local step = { grounded = {}, floor_free = {} }
         };
         let c = with_status("duration = 30, timer = 'bubble'").unwrap_or_else(|e| panic!("{e}"));
         let bubble = c.status(c.defs.status_by_key("stun").expect("the status"));
-        assert_eq!((bubble.requests, bubble.duration, bubble.timer), (0x2_0000, 30, crate::content::StatusTimer::Bubble));
+        assert_eq!((bubble.requests.bits(), bubble.duration, bubble.timer), (0x2_0000, 30, crate::content::StatusTimer::Bubble));
         let e = with_status("requests = 0x20000, duration = 30, timer = 'bubble'").unwrap_err();
         assert!(e.contains("status stun: stun.requests: unknown field `requests`"), "{e}");
         let e = with_status("duration = 30, timer = 'flash'").unwrap_err();
