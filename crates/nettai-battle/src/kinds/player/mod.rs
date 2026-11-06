@@ -84,7 +84,7 @@ use crate::content::MoodHeld;
 use nettai_content_api::IdentityHandle;
 use crate::actor::{ActorData, ActorId, ActorStatus, ActorType, Requests};
 use crate::battle::{Battle, BattleFlags};
-use crate::collision::{CollisionData, CollisionId, StatusFlags, StatusRequests, timer};
+use crate::collision::{CollisionData, CollisionId, HitModifiers, StatusFlags, StatusRequests, timer};
 use crate::field::PanelType;
 use crate::content::NaviRecord;
 use nettai_content_api::{ChipHandle, WeaponHandle};
@@ -261,8 +261,8 @@ pub(crate) fn battle_mode(b: &Battle) -> u8 {
 }
 
 /// `sub_80107C0`: the hit modifier bodies inflict (3 in link battles).
-fn body_hit_modifier(b: &Battle) -> u8 {
-    if is_link(b) { 3 } else { 0 }
+fn body_hit_modifier(b: &Battle) -> crate::collision::HitModifiers {
+    if is_link(b) { HitModifiers::FLINCH | HitModifiers::FLASH } else { HitModifiers::empty() }
 }
 
 /// A navi's body's collision types: what it is (floating or not) and what
@@ -276,7 +276,7 @@ fn body_types(b: &Battle, floating: bool) -> (nettai_content_api::CollisionHandl
 
 /// `sub_801A082` for a navi's body: it becomes the floating body or the
 /// plain one again.
-fn reset_body_types(b: &mut Battle, r: ObjectRef, floating: bool, hit_mod: u8) {
+fn reset_body_types(b: &mut Battle, r: ObjectRef, floating: bool, hit_mod: HitModifiers) {
     let (body, target) = body_types(b, floating);
     b.reset_collision_types(r, body, target, hit_mod);
 }

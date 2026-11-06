@@ -8,7 +8,7 @@ use super::{
     form_of, navi_of, refresh_abilities, reload_base_weapons, set_flag2, stats, stats_mut,
 };
 use crate::battle::{Battle, BattleFlags};
-use crate::collision::{CollisionData, CollisionTypes, StatusFlags, StatusRequests, timer};
+use crate::collision::{CollisionData, CollisionTypes, HitModifiers, StatusFlags, StatusRequests, timer};
 use crate::content::{EffectRole, SecondaryElements, SparkRole, StatusRole};
 use crate::object::{ObjectRef, Vec3};
 
@@ -142,9 +142,9 @@ fn absorb_hit(c: &mut CollisionData) {
     c.acc.mood_damage = 0;
     c.acc.counter = 0;
     c.acc.drain_hits = 0;
-    c.hit_mod_final = 0;
+    c.hit_mod_final = HitModifiers::empty();
     // (EXE5's by-side modifiers go with it: an absorbed hit pushes nothing.)
-    c.hit_mod_by_side = [0; 2];
+    c.hit_mod_by_side = [HitModifiers::empty(); 2];
     c.status_final = None;
     c.acc.inflicted_bugs = 0;
 }
@@ -548,17 +548,17 @@ pub fn take_navi_bug(b: &mut Battle, side: u8, bugs: u16) {
 /// none but the push's is set in it.)
 fn hit_modifier_requests(b: &mut Battle, r: ObjectRef) {
     let hm = coll(b, r).hit_mod_final;
-    if !flag1(b, r).intersects(StatusFlags::SUPERARMOR | StatusFlags::ANGER) && hm & 1 != 0 {
+    if !flag1(b, r).intersects(StatusFlags::SUPERARMOR | StatusFlags::ANGER) && hm.contains(HitModifiers::FLINCH) {
         set_flag2(b, r, StatusRequests::FLINCH);
     }
-    if hm & 2 != 0 {
+    if hm.contains(HitModifiers::FLASH) {
         set_flag2(b, r, StatusRequests::FLASH);
     }
     let reading = &b.game_rules().push_reading;
-    if hm & reading.mask() == 0 {
+    if !hm.intersects(reading.mask()) {
         return;
     }
-    if hm & reading.drag_bit != 0 {
+    if hm.intersects(reading.drag_bit) {
         set_flag2(b, r, StatusRequests::DRAG);
         clear_flag2(b, r, StatusRequests::FLINCH);
         b.objects.get_mut(r).slide_type = 1;
@@ -794,7 +794,7 @@ mod tests {
         super::super::set_flag1(&mut b, r, StatusFlags::AFFECTED_BY_ICE | StatusFlags::MOVE_COMPLETE);
         let c = coll_mut(&mut b, r);
         c.direction = direction;
-        c.hit_mod_final = 0;
+        c.hit_mod_final = HitModifiers::empty();
         (b, r)
     }
 
@@ -806,7 +806,7 @@ mod tests {
     fn ice_slides_by_its_rules() {
         let (mut b, r) = on_ice(3);
         slide_triggers(&mut b, r);
-        assert_eq!((coll(&b, r).hit_mod_final, flag2(&b, r).contains(StatusRequests::SLIDE), b.objects.get(r).slide_type), (0, true, 2));
+        assert_eq!((coll(&b, r).hit_mod_final.is_empty(), flag2(&b, r).contains(StatusRequests::SLIDE), b.objects.get(r).slide_type), (true, true, 2));
         assert!(!flag1(&b, r).contains(StatusFlags::MOVE_COMPLETE), "the move's end is taken");
         let (mut b, r) = on_ice(1);
         coll_mut(&mut b, r).element = 2;
@@ -856,11 +856,11 @@ mod tests {
                 c.define().unwrap_or_else(|e| panic!("{e}"));
                 let rules = c.rules_mut();
                 rules.push_reading.bits = 6;
-                rules.push_reading.drag_bit = 0x01;
+                rules.push_reading.drag_bit = HitModifiers::FLINCH;
                 rules.push_reading.shift = None;
                 b.content = Arc::new(c);
             }
-            coll_mut(&mut b, r).hit_mod_final = hm;
+            coll_mut(&mut b, r).hit_mod_final = HitModifiers::from_bits_retain(hm);
             hit_modifier_requests(&mut b, r);
             let f = flag2(&b, r);
             ((f.contains(StatusRequests::FLINCH), f.contains(StatusRequests::SLIDE), f.contains(StatusRequests::DRAG)), b.objects.get(r).slide_type)

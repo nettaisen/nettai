@@ -157,7 +157,7 @@ pub struct ActorBody {
     /// Its body's collision: what it is, what it reacts to and its hit
     /// modifier (`object_setupCollisionData`'s, which struct 2 byte 3 and
     /// the NameID pick: EXE5's 0x08013C5A).
-    pub collision: (nettai_content_api::CollisionHandle, nettai_content_api::CollisionHandle, u8),
+    pub collision: (nettai_content_api::CollisionHandle, nettai_content_api::CollisionHandle, crate::collision::HitModifiers),
     /// The status flags it starts with (struct 2 byte 3's: superarmor,
     /// airshoe, floatshoe, affected by ice, untouchable; and its hook's).
     pub flags: crate::collision::StatusFlags,
@@ -549,7 +549,7 @@ pub(crate) fn read(
                     }
                     let set = nettai_content_api::NamedBits::HitModifier;
                     own_bits.bits(set, &all).map_err(|e| what(format!("body.collision.hit_modifier: {e}")))?;
-                    own_bits.bits(set, &on).map_err(|e| what(format!("body.collision.hit_modifier: {e}")))? as u8
+                    crate::collision::HitModifiers::from_bits_retain(own_bits.bits(set, &on).map_err(|e| what(format!("body.collision.hit_modifier: {e}")))? as u8)
                 }),
                 flags,
                 hides_hp: flag(b.field("hides_hp"), "body.hides_hp", false)?,

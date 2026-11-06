@@ -377,6 +377,34 @@ pub fn type_words<'a>(names: impl IntoIterator<Item = &'a str>) -> Result<[Colli
 }
 
 
+bitflags::bitflags! {
+    /// A hit's modifier byte (`CollisionData::hit_mod_base`, the hits' in
+    /// `hit_mod_final`): what a hit does to what it hits besides its damage.
+    /// The engine reads a flinch and a flash in every game (`sub_801AEB0`);
+    /// the rest of the byte is each game's, declared in its rules (the
+    /// reactions section's `hit_modifier_bits`: the pushes, which
+    /// `content::PushReading` reads by their place from bit 2, and the
+    /// drag), kept as they are.
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+    pub struct HitModifiers: u8 {
+        /// The hit flinches (`StatusRequests::FLINCH`).
+        const FLINCH = 0x01;
+        /// The hit flashes (`StatusRequests::FLASH`).
+        const FLASH = 0x02;
+        const _ = !0;
+    }
+}
+
+/// As its byte, alone and in an array (`digest::hash_bits_slice`).
+impl std::hash::Hash for HitModifiers {
+    fn hash<H: std::hash::Hasher>(&self, h: &mut H) {
+        self.bits().hash(h);
+    }
+    fn hash_slice<H: std::hash::Hasher>(data: &[HitModifiers], h: &mut H) {
+        crate::digest::hash_bits_slice(data.iter().map(|w| w.bits().to_ne_bytes()), h);
+    }
+}
+
 /// The collision type bits of an attack of each side (side 0's, side
 /// 1's).
 pub const ATTACK_OF: [CollisionTypes; 2] = [CollisionTypes::ATTACK_SIDE0, CollisionTypes::ATTACK_SIDE1];
@@ -446,20 +474,20 @@ pub struct CollisionData {
     /// Last move direction: 0 none, 1 up, 2 down, 3 back, 4 forward, 5 other.
     pub direction: u8,
     pub counter_timer: u8,
-    pub hit_mod_base: u8,
-    pub hit_mod_final: u8,
+    pub hit_mod_base: HitModifiers,
+    pub hit_mod_final: HitModifiers,
     /// The hit modifiers of the hits it took by the hitter's flip (EXE5's
     /// +0x18 and +0x19, 0x08016AA6: an unflipped hitter's, of either side,
     /// and a flipped one's), which a push that reads by the hitter's flip
     /// takes (`PushSource::ByHitterFlip`, EXE5's); EXE6's keeps them unread.
-    pub hit_mod_by_side: [u8; 2],
+    pub hit_mod_by_side: [HitModifiers; 2],
     /// The status its hits carry, and the one the hits it took landed.
     pub status_base: Option<StatusHandle>,
     pub status_final: Option<StatusHandle>,
     /// Bug code (low byte) and argument (high byte).
     pub bugs: u16,
     pub barrier_weak: u8,
-    pub barrier_saved_hmf: u8,
+    pub barrier_saved_hmf: HitModifiers,
     pub barrier_hp: u8,
     pub barrier_threshold: u8,
     pub secondary_weakness: SecondaryElements,
@@ -695,7 +723,7 @@ impl Battle {
     }
 
     /// `object_setupCollisionData`.
-    pub fn setup_collision(&mut self, obj: ObjectRef, self_type: CollisionHandle, target_type: CollisionHandle, hit_mod: u8) {
+    pub fn setup_collision(&mut self, obj: ObjectRef, self_type: CollisionHandle, target_type: CollisionHandle, hit_mod: HitModifiers) {
         let o = self.objects.get(obj).clone();
         let Some(id) = o.collision else { return };
         let dimmed = self.is_dimmed();
@@ -719,7 +747,7 @@ impl Battle {
 
     /// `sub_801A082`: redo the damage and collision-type part of the setup
     /// (after a change of damage or of what the object is).
-    pub fn reset_collision_types(&mut self, obj: ObjectRef, self_type: CollisionHandle, target_type: CollisionHandle, hit_mod: u8) {
+    pub fn reset_collision_types(&mut self, obj: ObjectRef, self_type: CollisionHandle, target_type: CollisionHandle, hit_mod: HitModifiers) {
         let o = self.objects.get(obj);
         let Some(id) = o.collision else { return };
         let (alliance, damage) = (o.alliance, o.damage);
@@ -744,9 +772,9 @@ impl Battle {
         let dimmed = self.is_dimmed();
         let s = self.collision.get_mut(id);
         if !dimmed {
-            s.hit_mod_final = 0;
+            s.hit_mod_final = HitModifiers::empty();
             // (EXE5's clear, 0x08016B22, takes its two by-side bytes too.)
-            s.hit_mod_by_side = [0; 2];
+            s.hit_mod_by_side = [HitModifiers::empty(); 2];
             s.guard_dirs = 0;
         }
         s.status_final = None;

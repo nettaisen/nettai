@@ -24,7 +24,7 @@ use nettai_content_api::{ObstacleHold, ObstaclePush};
 
 use crate::actor::{ActorData, ActorStatus, ActorType, Requests};
 use crate::battle::{Battle, LinkedRecord};
-use crate::collision::{CollisionData, CollisionTypes, StatusFlags, StatusRequests, timer};
+use crate::collision::{CollisionData, CollisionTypes, HitModifiers, StatusFlags, StatusRequests, timer};
 use crate::field::{PanelFlags, PanelType};
 use crate::input::keys;
 use crate::kinds::common::{self, Progress};
@@ -434,7 +434,7 @@ impl CoreApi for Battle {
 
     fn add_final_hit_mod(&mut self, o: ObjectRef, bits: u8) {
         let c = self.objects.get(o).collision.unwrap_or_else(|| panic!("add_final_hit_mod: {o:?} has no collision data"));
-        self.collision.get_mut(c).hit_mod_final |= bits;
+        self.collision.get_mut(c).hit_mod_final.insert(HitModifiers::from_bits_retain(bits));
     }
 
     fn form_trait(&self, o: ObjectRef, name: &str) -> ApiResult<bool> {
@@ -445,6 +445,7 @@ impl CoreApi for Battle {
     fn add_hit_mod(&mut self, o: ObjectRef, bits: u8) {
         let c = self.objects.get(o).collision.unwrap_or_else(|| panic!("add_hit_mod: {o:?} has no collision data"));
         let d = self.collision.get_mut(c);
+        let bits = HitModifiers::from_bits_retain(bits);
         d.hit_mod_final |= bits;
         d.hit_mod_by_side[0] |= bits;
         d.hit_mod_by_side[1] |= bits;
@@ -2070,7 +2071,7 @@ impl CoreApi for Battle {
             self_type: s.self_type,
             damage: s.damage,
             stamina: s.stamina,
-            hit_mod: s.hit_mod,
+            hit_mod: HitModifiers::from_bits_retain(s.hit_mod),
             status: s.status,
             bug: s.bug,
             bug_arg: s.bug_arg,
@@ -2745,11 +2746,11 @@ impl CoreApi for Battle {
     }
 
     fn setup_collision(&mut self, o: ObjectRef, self_type: CollisionHandle, target_type: CollisionHandle, hit_mod: u8) {
-        Battle::setup_collision(self, o, self_type, target_type, hit_mod);
+        Battle::setup_collision(self, o, self_type, target_type, HitModifiers::from_bits_retain(hit_mod));
     }
 
     fn reset_collision_types(&mut self, o: ObjectRef, self_type: CollisionHandle, target_type: CollisionHandle, hit_mod: u8) {
-        Battle::reset_collision_types(self, o, self_type, target_type, hit_mod);
+        Battle::reset_collision_types(self, o, self_type, target_type, HitModifiers::from_bits_retain(hit_mod));
     }
 
     fn collision_get(&self, o: ObjectRef, f: CollisionField) -> ApiResult<Value> {
@@ -2786,7 +2787,7 @@ impl CoreApi for Battle {
             CollisionField::BugArg => (c.bugs >> 8) as i64,
             CollisionField::InflictedBug => (c.acc.inflicted_bugs & 0xFF) as i64,
             CollisionField::InflictedBugArg => (c.acc.inflicted_bugs >> 8) as i64,
-            CollisionField::HitModBase => c.hit_mod_base as i64,
+            CollisionField::HitModBase => c.hit_mod_base.bits() as i64,
             CollisionField::SelfDamage => c.self_damage as i64,
             CollisionField::StandingCount => c.standing_count as i64,
             CollisionField::Counter => (c.counter_byte & !CANT_COUNTER) as i64,
@@ -2801,7 +2802,7 @@ impl CoreApi for Battle {
             },
             CollisionField::GuardDirs => c.guard_dirs as i64,
             CollisionField::DamageElements => c.acc.damage_elements.bits() as i64,
-            CollisionField::HitModFinal => c.hit_mod_final as i64,
+            CollisionField::HitModFinal => c.hit_mod_final.bits() as i64,
             // BARRIER_STATES
             CollisionField::Barrier => match c.barrier {
                 0 => 0,
@@ -2809,7 +2810,7 @@ impl CoreApi for Battle {
                 _ => 1,
             },
             CollisionField::BarrierHp => c.barrier_hp as i64,
-            CollisionField::BarrierPopHitMod => c.barrier_saved_hmf as i64,
+            CollisionField::BarrierPopHitMod => c.barrier_saved_hmf.bits() as i64,
             CollisionField::Bubble => (c.barrier == 8) as i64,
             CollisionField::BarrierTimer => c.barrier_timer as i64,
         }))
@@ -2937,7 +2938,7 @@ impl CoreApi for Battle {
             CollisionField::BugArg => c.bugs = c.bugs & 0xFF | (x as u16) << 8,
             CollisionField::InflictedBug => c.acc.inflicted_bugs = c.acc.inflicted_bugs & 0xFF00 | x as u16,
             CollisionField::InflictedBugArg => c.acc.inflicted_bugs = c.acc.inflicted_bugs & 0xFF | (x as u16) << 8,
-            CollisionField::HitModBase => c.hit_mod_base = x as u8,
+            CollisionField::HitModBase => c.hit_mod_base = HitModifiers::from_bits_retain(x as u8),
             CollisionField::SelfDamage => c.self_damage = x as u16,
             CollisionField::StandingCount => c.standing_count = x as u8,
             CollisionField::FinalDamage

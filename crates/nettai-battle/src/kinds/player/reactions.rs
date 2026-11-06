@@ -595,7 +595,7 @@ pub(super) fn slide_vector(b: &Battle, r: ObjectRef) -> SlideVector {
                 PushSource::Final => {
                     let hm = coll(b, r).hit_mod_final;
                     let off = match reading.shift {
-                        Some(s) if hm & s.bit != 0 => s.rows as usize,
+                        Some(s) if hm.intersects(s.bit) => s.rows as usize,
                         _ => 0,
                     };
                     facing(b.game_rules().push_vectors[reading.first(hm) + off])
@@ -654,6 +654,7 @@ pub(super) fn can_slide_to(b: &Battle, r: ObjectRef, p: PanelPos) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::collision::HitModifiers;
     use crate::battle::BattleFlags;
     use crate::content::{Content, testing};
     use std::sync::Arc;
@@ -687,8 +688,8 @@ mod tests {
     fn push(reads: PushSource, from0: u8, from1: u8) -> SlideVector {
         let (mut b, [_, r]) = fight(reads);
         let c = coll_mut(&mut b, r);
-        c.hit_mod_final = from0 | from1;
-        c.hit_mod_by_side = [from0, from1];
+        c.hit_mod_final = HitModifiers::from_bits_retain(from0 | from1);
+        c.hit_mod_by_side = [from0, from1].map(HitModifiers::from_bits_retain);
         b.objects.get_mut(r).slide_type = 1;
         slide_vector(&b, r)
     }
@@ -725,7 +726,7 @@ mod tests {
         });
         b.objects.get_mut(r).slide_type = 1;
         let mut at = |hm: u8| {
-            coll_mut(&mut b, r).hit_mod_final = hm;
+            coll_mut(&mut b, r).hit_mod_final = HitModifiers::from_bits_retain(hm);
             let v = slide_vector(&b, r);
             (v.dx, v.dy, v.tiles)
         };
@@ -758,7 +759,7 @@ mod tests {
             let before = counted(&b);
             // A paralyzed navi dragged no panel away.
             set_flag1(&mut b, r, StatusFlags::PARALYZED);
-            coll_mut(&mut b, r).hit_mod_final = 0;
+            coll_mut(&mut b, r).hit_mod_final = HitModifiers::empty();
             b.objects.get_mut(r).slide_type = 1;
             start_drag(&mut b, r);
             let drag = (b.objects.get(r).anim, flag1(&b, r).contains(StatusFlags::USING_ACTION), counted(&b) - before);
@@ -806,7 +807,7 @@ mod tests {
                 }
             });
             set_flag1(&mut b, r, status);
-            coll_mut(&mut b, r).hit_mod_final = 0;
+            coll_mut(&mut b, r).hit_mod_final = HitModifiers::empty();
             b.objects.get_mut(r).slide_type = 1;
             start_drag(&mut b, r);
             let pose = b.objects.get(r).anim;
@@ -839,7 +840,7 @@ mod tests {
         let before = sparks(&b);
         crate::kinds::common::panel_burn(&mut b, r, true);
         assert_eq!(coll(&b, r).acc.element_damage[1], 50);
-        assert_eq!(coll(&b, r).hit_mod_final & 3, 3, "a hit");
+        assert!(coll(&b, r).hit_mod_final.contains(HitModifiers::FLINCH | HitModifiers::FLASH), "a hit");
         assert_eq!(b.field.panels[2][5].kind, crate::content::testing::panel("normal"));
         assert_eq!(sparks(&b), before + 1, "its burn shows");
         // A navi of fire stands on it.
@@ -923,7 +924,7 @@ mod tests {
             b.round.flags.insert(BattleFlags::FIGHTING);
             let r = b.player(1).unwrap();
             // A push up a panel (EXE6's 0x80 rows: bit 2, row 5).
-            coll_mut(&mut b, r).hit_mod_final = 0x84;
+            coll_mut(&mut b, r).hit_mod_final = HitModifiers::from_bits_retain(0x84);
             b.objects.get_mut(r).slide_type = 1;
             start_drag(&mut b, r);
             b.objects.get(r).vel.y

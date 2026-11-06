@@ -23,7 +23,7 @@
 use nettai_content_api::RecordHandle;
 
 use crate::battle::{Battle, BattleFlags};
-use crate::collision::{CollisionId, CollisionTypes, StatusFlags, StatusRequests};
+use crate::collision::{CollisionId, CollisionTypes, HitModifiers, StatusFlags, StatusRequests};
 use crate::content::{CollisionRole, EffectRole, PushSource, SoundRole, SparkRole};
 use crate::field::{self, PanelFlags};
 use crate::kinds::common::{self, Progress};
@@ -165,8 +165,8 @@ pub enum Removal {
 }
 
 /// Hit modifier bit of a pushing hit, as a [`Push::AnyHit`] obstacle
-/// (EXE6's and EXE5's) tests it.
-const PUSHING_HIT: u8 = 0x40;
+/// (EXE6's and EXE5's) tests it: their drag bit.
+const PUSHING_HIT: HitModifiers = HitModifiers::from_bits_retain(0x40);
 
 /// Collision types that break an obstacle outright when they touch it:
 /// bodies, other obstacles (neutral objects), and breaking hits.
@@ -184,8 +184,9 @@ const PUSHERS: [CollisionTypes; 2] = [
 const UNPUSHING_HIT: CollisionTypes = CollisionTypes::BREAKS_GUARD;
 
 /// The hit modifier a [`Push::AnyHit`] obstacle takes from any hit:
-/// pushed (0x40) a panel away (0x20), flinching (0x01).
-const ANY_HIT_PUSH: u8 = 0x61;
+/// pushed (0x40) a panel away (0x20: EXE6's and EXE5's push back),
+/// flinching.
+const ANY_HIT_PUSH: HitModifiers = PUSHING_HIT.union(HitModifiers::from_bits_retain(0x20)).union(HitModifiers::FLINCH);
 
 /// Panels a slide may enter: solid ones without other bodies or obstacles
 /// on them (`sub_800F534`); a knockback's also nothing else on them and
@@ -384,7 +385,7 @@ fn move_end(b: &mut Battle, r: ObjectRef, c: CollisionId) {
 /// other mix, nothing.
 fn push_on_any_hit_by_flip(b: &mut Battle, c: CollisionId) {
     let d = b.collision.get(c);
-    if d.acc.hit_flags.intersects(UNPUSHING_HIT) || d.hit_mod_final & PUSHING_HIT != 0 {
+    if d.acc.hit_flags.intersects(UNPUSHING_HIT) || d.hit_mod_final.intersects(PUSHING_HIT) {
         return;
     }
     let [unflipped, flipped] = d.acc.hit_flags_by_flip;
@@ -405,7 +406,7 @@ fn push_on_any_hit_by_flip(b: &mut Battle, c: CollisionId) {
 fn push_on_any_hit(b: &mut Battle, c: CollisionId) {
     let d = b.collision.get(c);
     let hits = d.acc.hit_flags;
-    if hits.intersects(UNPUSHING_HIT) || d.hit_mod_final & PUSHING_HIT != 0 {
+    if hits.intersects(UNPUSHING_HIT) || d.hit_mod_final.intersects(PUSHING_HIT) {
         return;
     }
     // byte_801AEA0, by (side 0 hit it) + 2 * (side 1 hit it): only one
@@ -617,7 +618,7 @@ const THROW_SPEED: i32 = 0x8_0000;
 /// panel, the thrown obstacle's spark and collision types (the roles
 /// `sparks.thrown_obstacle`, `collision.thrown_obstacle` and
 /// `collision.thrown_obstacle_target`), hit modifier 3.
-const THROW_HIT_MOD: u8 = 3;
+const THROW_HIT_MOD: HitModifiers = HitModifiers::FLINCH.union(HitModifiers::FLASH);
 
 /// `sub_800F6AC`: ask `r` to be picked up by `side` and thrown at (x, y)
 /// after shaking `shake` ticks, with the damage word: +0x1C, +0x1D and

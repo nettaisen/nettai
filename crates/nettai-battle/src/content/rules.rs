@@ -714,7 +714,7 @@ pub struct DamageFlag {
     pub status: Option<super::StatusRole>,
     /// The hit modifier it sets in place of the hit's (none: it keeps the
     /// hit's).
-    pub hit_modifier: Option<u8>,
+    pub hit_modifier: Option<crate::collision::HitModifiers>,
     /// The bug code its hits carry (low byte) and its argument (high byte).
     pub bug: Option<u16>,
     /// The reading ends at this bit when the word has it.
@@ -748,7 +748,7 @@ impl TryFrom<DamageFlagSection> for DamageFlag {
         Ok(DamageFlag {
             bit: bits_by_name(nettai_content_api::NamedBits::DamageWord, std::slice::from_ref(&f.flag))? as u16,
             status: f.status,
-            hit_modifier: f.hit_modifier.map(|set| bits_of_set(nettai_content_api::NamedBits::HitModifier, &set.0).map(|b| b as u8)).transpose()?,
+            hit_modifier: f.hit_modifier.map(|set| bits_of_set(nettai_content_api::NamedBits::HitModifier, &set.0).map(|b| crate::collision::HitModifiers::from_bits_retain(b as u8))).transpose()?,
             bug: f.bug.map(|code| code as u16 | (f.bug_arg.unwrap_or(0) as u16) << 8),
             stop: f.stop,
         })
@@ -1162,9 +1162,9 @@ fn bits_by_name(set: nettai_content_api::NamedBits, names: &[String]) -> Result<
 }
 
 /// A hit modifier bit by its name.
-fn hit_modifier_bit_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u8, D::Error> {
+fn hit_modifier_bit_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result<crate::collision::HitModifiers, D::Error> {
     let name: String = Deserialize::deserialize(d)?;
-    bits_by_name(nettai_content_api::NamedBits::HitModifier, &[name]).map(|b| b as u8).map_err(serde::de::Error::custom)
+    bits_by_name(nettai_content_api::NamedBits::HitModifier, &[name]).map(|b| crate::collision::HitModifiers::from_bits_retain(b as u8)).map_err(serde::de::Error::custom)
 }
 
 /// A table keyed by names (a set of flags, `{ flinch = true }`; a table of
@@ -1385,7 +1385,7 @@ pub struct PushReading {
     /// name (`drag`: the section's `hit_modifier_bits`, or the engine's
     /// flinch).
     #[serde(rename = "drag", deserialize_with = "hit_modifier_bit_by_name")]
-    pub drag_bit: u8,
+    pub drag_bit: crate::collision::HitModifiers,
     #[serde(default)]
     pub shift: Option<PushShift>,
     /// An obstacle's rows, turned toward the pusher's side.
@@ -1416,26 +1416,27 @@ pub enum PushSource {
 #[serde(deny_unknown_fields)]
 pub struct PushShift {
     #[serde(rename = "modifier", deserialize_with = "hit_modifier_bit_by_name")]
-    pub bit: u8,
+    pub bit: crate::collision::HitModifiers,
     pub rows: u8,
 }
 
 impl PushReading {
-    /// The row the first set bit of `modifier`'s `bits` from bit 2 picks;
-    /// none set: the row past them.
-    pub fn first(&self, modifier: u8) -> usize {
-        (0..self.bits as usize).find(|&i| (modifier >> 2) & (1 << i) != 0).unwrap_or(self.bits as usize)
+    /// The row the first set bit of `modifier`'s `bits` from bit 2 picks
+    /// (by the bit's place: the rows are the pushes'); none set: the row past
+    /// them.
+    pub fn first(&self, modifier: crate::collision::HitModifiers) -> usize {
+        (0..self.bits as usize).find(|&i| (modifier.bits() >> 2) & (1 << i) != 0).unwrap_or(self.bits as usize)
     }
 
     /// The modifier's push bits: `bits` of them from bit 2 (EXE6's 0x3C,
     /// EXE4's 0xFC).
-    pub fn mask(&self) -> u8 {
-        (((1u16 << self.bits) - 1) << 2) as u8
+    pub fn mask(&self) -> crate::collision::HitModifiers {
+        crate::collision::HitModifiers::from_bits_retain((((1u16 << self.bits) - 1) << 2) as u8)
     }
 
     /// Whether `modifier` pushes as a drag: a push bit and the drag bit.
-    pub fn drags(&self, modifier: u8) -> bool {
-        modifier & self.mask() != 0 && modifier & self.drag_bit != 0
+    pub fn drags(&self, modifier: crate::collision::HitModifiers) -> bool {
+        modifier.intersects(self.mask()) && modifier.intersects(self.drag_bit)
     }
 }
 

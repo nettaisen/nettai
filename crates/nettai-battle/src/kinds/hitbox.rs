@@ -17,7 +17,7 @@ pub struct Vars {
     pub hit_effect: Option<SparkHandle>,
     pub target: CollisionHandle,
     pub self_type: CollisionHandle,
-    pub hit_mod: u8,
+    pub hit_mod: crate::collision::HitModifiers,
     pub status: Option<nettai_content_api::StatusHandle>,
     pub bug: u8,
     pub bug_arg: u8,
@@ -41,7 +41,7 @@ pub struct HitboxSpec {
     /// The damage word (damage | flag bits) and the counter byte.
     pub damage: u16,
     pub stamina: u16,
-    pub hit_mod: u8,
+    pub hit_mod: crate::collision::HitModifiers,
     pub status: Option<nettai_content_api::StatusHandle>,
     pub bug: u8,
     pub bug_arg: u8,
