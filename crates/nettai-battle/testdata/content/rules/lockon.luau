@@ -44,7 +44,7 @@ local lockon = {
     moonbld = stay("moonbld"),
     search = {
         column_shifts = { -1, -2 },
-        clear_path = { forbid = { "occupied" } },
+        clear_path = { occupied = false },
     },
 }
 lockon.LOCKON = LOCKON

@@ -45,20 +45,31 @@
 --
 -- Names, not numbers. A set of named members is a view whose members are
 -- properties: an object's status flags and timers, a navi's requests, flags
--- and buttons, a side's HUD, a hand's entry (`me.status.guard = true`,
--- `me.held.a`, `battle.hud(side).gauge`). A choice is one of its names, a
--- literal union the checker holds content to (`me.lifecycle = "destroy"`,
--- `me:set_attack(action, "chip")`, `me:start_move("up")`); one a game
--- names (a panel type, an emotion) is checked against the game's own as it
--- runs. Content holds no bit layout: the engine's bit values, offsets and
--- the numbers it keeps a choice as stay in the engine, and a game's own
--- layouts are declared once, in its rules. Collision types, hit results
--- and panel flags are names too: a collision type by its members
--- (`new.collision`), a hit by them (`Collision:hit_any`), a panel by its
--- flags (`field.check`, `field.any`), each a side's own (`own_`) or the other
--- side's (`enemy_`) where it is of a side. The original's numbers that are
--- the game's own data (sound ids, animation numbers, hit regions) are the
--- scripts' constants, named where they're defined.
+-- and buttons, a side's HUD, a hand's entry, what hit a collision, the
+-- battle's effects (`me.status.guard = true`, `me.held.a`,
+-- `battle.hud(side).gauge`, `c.hit_by.sword`). A set content states is a
+-- table of booleans keyed by member (`flags = { solid = true, holy = true }`),
+-- a member set to false the same as one left out; a condition is the same
+-- table, true where the member must hold and false where it must not
+-- (`{ solid = true, occupied = false }`). Whatever takes one refuses a name
+-- it doesn't know and a value that isn't a boolean (the checker holds a
+-- definition's sets to their names, but not a table passed to a call). A
+-- list is a list only where its order counts (a stage's `layout` and
+-- `actors`, a chip's `codes`). A choice is one of its names, a literal union
+-- the checker holds content to (`me.lifecycle = "destroy"`,
+-- `me:set_attack(action, "chip")`, `me:start_move("up")`); one a game names
+-- (a panel type, an emotion) is checked against the game's own as it runs.
+-- Content holds no bit layout: the engine's bit values, offsets and the
+-- numbers it keeps a choice as stay in the engine, and a game's own layouts
+-- are declared once, in its rules. Collision types, hit results and panel
+-- flags are names too: a collision type by its members (`new.collision`), a
+-- hit by them (`c.hit_by`, `Collision:hit_any`), a panel by its flags
+-- (`field.check`, `field.any`), each a side's own (`own_`) or the other side's
+-- (`enemy_`) where it is of a side. A set or condition a module keeps (a
+-- constant) is read once; one built at the call is read at each. The
+-- original's numbers that are the game's own data (sound ids, animation
+-- numbers, hit regions) are the scripts' constants, named where they're
+-- defined.
 
 export type Pool = "actor" | "attack" | "effect"
 -- ("finish" is the fourth state of kinds that have one after "destroy":
@@ -67,13 +78,13 @@ export type Lifecycle = "init" | "update" | "destroy" | "finish"
 -- How an object follows another (`Object:follow`).
 export type FollowSpec = {
     offset: Vec3?,
-    looks: { SpriteFieldName }?,
+    looks: { [SpriteFieldName]: boolean }?,
     visibility: boolean?,
     held: ObjectFieldOfObject?,
     held_in_state: string?,
     while_dimmed: boolean?,
 }
--- A sprite's field, by name (`FollowSpec.looks`).
+-- A sprite's field, by name (`FollowSpec.looks`: a set of them).
 export type SpriteFieldName =
     "palette"
     | "hflip"
@@ -201,12 +212,14 @@ export type CollisionMember =
     | "reaches_submerged"
     | "piercing"
     | "break"
--- What a collision's hit results hold (`Collision:hit_any`): the collision
--- types of what it hit and what hit it (their members), and a guard that
--- turned its hit aside (`guarded`, the hitter's), a counter hit (`countered`,
--- the receiver's), its guard turning aside a hit that shows a guard spark
--- (`guard_spark`, the receiver's).
+-- What a collision's hit results hold (`c.hit_by`, `Collision:hit_any`): the
+-- collision types of what it hit and what hit it (their members), and a guard
+-- that turned its hit aside (`guarded`, the hitter's), a counter hit
+-- (`countered`, the receiver's), its guard turning aside a hit that shows a
+-- guard spark (`guard_spark`, the receiver's).
 export type HitName = CollisionMember | "guarded" | "countered" | "guard_spark"
+-- A set of hit results' names (`Collision:hit_any`).
+export type HitNames = { [HitName]: boolean }
 -- A panel's flag, by name: the engine's (`solid`: something can stand on it;
 -- `own_area`, `enemy_area`: it is the side's, the other side's; `cracked`;
 -- `reserved`; `any_body`: a body or another body of either side, or a neutral
@@ -217,9 +230,9 @@ export type HitName = CollisionMember | "guarded" | "countered" | "guard_spark"
 -- navis of a side, neutral, floating, blocker, reaches_set_objects). A name
 -- none of these is refused as the battle runs, or as content loads.
 export type PanelFlag = string
--- Panel flags: a name, or a list of names (all of them, or any, as the test says). A name, or a list a module keeps,
--- is read once.
-export type PanelFlags = PanelFlag | { PanelFlag }
+-- A set of panel flags, keyed by flag (`field.any`: `{ own_body = true, neutral = true }`). One a module keeps is read
+-- once.
+export type PanelFlags = { [PanelFlag]: boolean }
 -- A side's statistic, by name: one of its game's (its rules' `side_stats`).
 export type SideStat = string
 -- Status flags of an object with collision data.
@@ -616,6 +629,50 @@ declare extern type SpriteConsole with
     mosaic: number?
     hidden_parts: number
 end
+-- What a collision's last resolution's hit results hold (`c.hit_by`), each a property (read-only): the members of the
+-- collision types of what it hit and what hit it (an `own_` or `enemy_` member by the object's side), and the hit
+-- bits (see HitName). (`c.hit_by["break"]`: `break` is a keyword.)
+declare extern type HitBy with
+    own_attack: boolean
+    enemy_attack: boolean
+    own_object: boolean
+    enemy_object: boolean
+    own_body: boolean
+    enemy_body: boolean
+    own_other_body: boolean
+    enemy_other_body: boolean
+    own_navi: boolean
+    enemy_navi: boolean
+    neutral: boolean
+    floating: boolean
+    blocker: boolean
+    reaches_set_objects: boolean
+    hits_while_dimmed: boolean
+    ground_only: boolean
+    no_guard_spark: boolean
+    sword: boolean
+    breaks_guard: boolean
+    pushing: boolean
+    dark: boolean
+    pull: boolean
+    drain: boolean
+    reaches_float_shoe: boolean
+    wind: boolean
+    chip_destruction: boolean
+    reaches_submerged: boolean
+    piercing: boolean
+    ["break"]: boolean
+    guarded: boolean
+    countered: boolean
+    guard_spark: boolean
+end
+
+-- The battle's effects its game's rules declare of their own (`battle.effects`), each a property by its name
+-- (read-only; another name is an error).
+declare extern type BattleEffects with
+    [string]: boolean
+end
+
 -- A 16.16 fixed-point vector (x right, y down the field, z up). Immutable.
 declare extern type Vec3 with
     x: number
@@ -762,14 +819,18 @@ declare extern type Collision with
     -- The damage taken this window in an element (0 null, 1 fire, 2 aqua,
     -- 3 elec, 4 wood; 5 the sixth slot).
     function element_damage(self, element: number): number
+    -- What the last resolution's hit results hold, each a property (an
+    -- `own_` or `enemy_` member by the object's side; read-only):
+    -- `c.hit_by.sword`, `c.hit_by.guarded`.
+    hit_by: HitBy
     -- `sub_801A4DC`: the objects whose collisions hit it this window, in
     -- slot order.
-    function hit_by(self): { Object }
-    -- The last resolution's hit results hold any of `names` (an `own_` or
-    -- `enemy_` member by the object's side): `c:hit_any("sword")`,
-    -- `c:hit_any(ENEMY_BODIES)`. A name, or a list a module keeps, is read
-    -- once.
-    function hit_any(self, names: HitName | { HitName }): boolean
+    function hitters(self): { Object }
+    -- The last resolution's hit results hold any of a set's members (`own_`
+    -- and `enemy_` ones by the object's side): `c:hit_any(ENEMY_BODIES)`,
+    -- `ENEMY_BODIES` a module's constant `{ enemy_body = true,
+    -- enemy_other_body = true }`, which is read once.
+    function hit_any(self, names: HitNames): boolean
     -- Add to the damage taken this window in an element (0 to 4, 5 the
     -- sixth slot), and to the raw damage barriers and traps see where `raw`.
     function add_damage(self, element: number, amount: number, raw: boolean): ()
@@ -1443,11 +1504,10 @@ export type LinkedChip = {
 }
 
 export type Panel = { kind: PanelType, alliance: number, home: number }
--- What a panel must be, as data keeps it (a region, the rules' step rules, a
--- look's): every flag of `require` holds and none of `forbid` (`own_`, `enemy_`
--- and the areas of a side the test gives: `field.check(x, y, c.require,
--- c.forbid, side)`). Keyed `require` and `forbid` alone.
-export type PanelCondition = { require: PanelFlags?, forbid: PanelFlags? }
+-- What a panel must be (`field.check`; a region's, the rules' step rules, a look's): a table of booleans keyed by
+-- panel flag, true where the flag must hold and false where it must not (`{ solid = true, occupied = false }`; `own_`,
+-- `enemy_` and the areas are of the side the test gives). One a module keeps is read once.
+export type PanelCondition = { [PanelFlag]: boolean }
 
 -- A side's damage-carry record: the side's largest damage this tick and
 -- last tick, the object that set the record, and the target that takes
@@ -1557,11 +1617,11 @@ declare battle: {
     -- A random battle (battle effect 0x200000: EXE6's random link battle's
     -- stages).
     random: () -> boolean,
-    -- Whether the battle has the effect `name`, one its game's rules declare
-    -- of their own (their `flow.effect_bits`: EXE5's "karma_held"); the
-    -- engine's are `link`, `boss_rank` and `random`. Another name is an
-    -- error.
-    has_effect: (name: string) -> boolean,
+    -- The battle's effects its game's rules declare of their own (their
+    -- `flow.effect_bits`), each a property: `battle.effects.karma_held`
+    -- (EXE5's; read-only). The engine's are `link`, `boss_rank` and
+    -- `random`; another name is an error.
+    effects: BattleEffects,
     mode: () -> number,
     panel_pattern: () -> number,
     -- Every navi is in (the intro's bit 2).
@@ -1803,13 +1863,14 @@ declare field: {
     -- the other way round). With `side`, along X in the canonical side's
     -- frame (docs/engine/side-symmetry.md); without, as it is (along Y).
     passed: (new: number, old: number, target: number, side: number?) -> boolean,
-    -- `object_checkPanelParameters`: the panel is on the field, every flag of
-    -- `require` holds and none of `forbid` (nil: none), their side-relative
-    -- names (`own_body`, `enemy_area`) of `side` (needed only for those):
-    -- `field.check(x, y, "solid", "occupied")`.
-    check: (x: number, y: number, require: PanelFlags?, forbid: PanelFlags?, side: number?) -> boolean,
-    -- The panel's flags have any of `flags` (side-relative ones of `side`; not
-    -- a side's area, which `check` tests): false off the field.
+    -- `object_checkPanelParameters`: the panel is on the field and meets
+    -- `condition` (nil: none), its side-relative names (`own_body`,
+    -- `enemy_area`) of `side` (needed only for those):
+    -- `field.check(x, y, SOLID_FREE)`, `SOLID_FREE` a module's constant
+    -- `{ solid = true, occupied = false }`.
+    check: (x: number, y: number, condition: PanelCondition?, side: number?) -> boolean,
+    -- The panel's flags have any of a set's members (side-relative ones of
+    -- `side`; not a side's area, which `check` tests): false off the field.
     any: (x: number, y: number, flags: PanelFlags, side: number?) -> boolean,
     -- The low byte of the panel's flags word: its type's number, solid 0x10,
     -- side 1's area 0x20, cracked 0x40, reserved 0x80 (0 off the field). No
@@ -2389,8 +2450,10 @@ export type WindowSpec = {
 -- which any section may name (`reactions.status_end.requests`,
 -- `status.anti_traps.drops_requests`); and `flow.effect_bits`, battle
 -- effects besides the engine's (`StageDef.effects`), which its stages name
--- and `battle.has_effect` reads. A side's status (`status.custom_drain`'s
--- `status`) is "selecting" or "custom_screen".
+-- and `battle.effects` reads. A side's status (`status.custom_drain`'s
+-- `status`) is "selecting" or "custom_screen". A set of names a section
+-- states is a table of booleans keyed by name (`{ paralyze = true }`), a
+-- condition the same with false for what must not hold.
 export type RuleSection = {}
 export type RulesSpec = {
     -- What a side keeps through a round (its state, which only the rules' own
@@ -2804,11 +2867,12 @@ export type ChipSpec = {
     damage: (number | DamageFormula | (side: number, chip: Chip) -> number)?,
     hit_param: number?,
     lockout: number?,
-    flags: { string }?,
+    -- The record's flags, a set of them (`{ has_damage = true }`).
+    flags: { [ChipFlag]: boolean }?,
     -- The record's second flag byte, the bits the engine reads: "rush_cancels"
     -- (the opponent's Rush cancels it), "modifier" (the menus class it with
     -- the modifier chips), "free_slot_in" (it costs no slot-in gauge).
-    extra_flags: { "rush_cancels" | "modifier" | "free_slot_in" }?,
+    extra_flags: { [ExtraChipFlag]: boolean }?,
     slot_in_limit: number?,
     -- What the rules ask of the chip: "no_chain" (the Beast rush's
     -- chain leaves it out), "aura_bonus" (it hits harder while the user's
@@ -2821,7 +2885,7 @@ export type ChipSpec = {
     -- over its user: EXE4's souls' chips), "not_named_on_use" (its use isn't
     -- named to the other player: its own action names it, EXE4's Slasher as
     -- it slashes).
-    traits: { ChipTrait }?,
+    traits: { [ChipTrait]: boolean }?,
     -- The trap it is while a side's defensive-chip record holds it.
     trap: TrapKind?,
     modifier: any?,
@@ -2847,6 +2911,20 @@ export type Chip = ChipSpec
 -- A chip's class: a folder's standard, Mega and Giga chips, none a folder holds (a cross's or a beast's attack, the
 -- engine's own chips), a Program Advance.
 export type ChipClass = "standard" | "mega" | "giga" | "special" | "program_advance"
+-- A chip record's flag (`ChipSpec.flags`): a dimming chip; it deals damage (shown on the banner, boosted by Atk+ and
+-- forms); a navi chip (boosted by Navi+); in the standard library; its damage shown as variable; a dark chip as the
+-- custom screen treats it; in a library; its damage recomputed every tick while it is the next chip.
+export type ChipFlag =
+    "dimming"
+    | "has_damage"
+    | "navi"
+    | "standard_library"
+    | "damage_shown_variable"
+    | "dark"
+    | "library"
+    | "variable_damage"
+-- A chip record's second flag byte's bits the engine reads (`ChipSpec.extra_flags`).
+export type ExtraChipFlag = "rush_cancels" | "modifier" | "free_slot_in"
 -- What the rules ask of a chip (`ChipSpec.traits`).
 export type ChipTrait =
     "no_chain"
@@ -2857,6 +2935,8 @@ export type ChipTrait =
     | "hides_damage_as_a"
     | "no_icon_when_next"
     | "not_named_on_use"
+-- What the rules ask of a navi (`NaviDef.traits`): "status_immune", a hit's status doesn't take.
+export type NaviTrait = "status_immune"
 -- A trap chip: what the defensive-chip record that holds it catches.
 export type TrapKind = "anti_damage" | "anti_sword" | "body_guard" | "anti_navi" | "anti_recovery"
 
@@ -2890,7 +2970,7 @@ export type NaviDef = {
     -- The battle sprite (a navi that changes form draws its form's).
     sprite: SpriteAsset,
     element: ElementName,
-    weakness: { SecondaryElement }?,
+    weakness: { [SecondaryElement]: boolean }?,
     buster_bonus: number,
     -- Ticks of lag after a move, by navi variant.
     move_lag: { number },
@@ -2937,7 +3017,7 @@ export type NaviDef = {
     -- charge; EXE6's ChargeMan's by his level, `byte_802136D`).
     fire_charge: ((side: number) -> number?)?,
     -- "status_immune": a hit's status doesn't take.
-    traits: { "status_immune" }?,
+    traits: { [NaviTrait]: boolean }?,
     -- What lifts its charge glow: while its animation is one of `anims` the
     -- glow shows `pixels` above its attach point 0 (EXE5's GyroMan's in the
     -- air).
@@ -3109,7 +3189,7 @@ export type FormDef = {
     id: string?,
     sprite: SpriteAsset,
     element: ElementName,
-    weakness: { SecondaryElement }?,
+    weakness: { [SecondaryElement]: boolean }?,
     buster_bonus: number,
     -- Its game's base form: what the game's navis are in before they change
     -- form (one a game).
@@ -3149,13 +3229,13 @@ export type FormDef = {
     charge_doubles: ChipMatch?,
     chip_heals: ChipMatch?,
     -- The families whose damaging chips, not dimming chips, paralyze when used uncharged.
-    paralyzing_chips: { ChipFamily }?,
+    paralyzing_chips: { [ChipFamily]: boolean }?,
     -- Its A charge builds up the next Fire chip's damage, up to this much.
     fire_charge: number?,
     -- What its status reset gives the navi, and what a NaviCust change
     -- gives back (none: the reset's, without the target marker).
-    status_reset: { FormEffect }?,
-    ability_refresh: { FormEffect }?,
+    status_reset: { [FormEffect]: boolean }?,
+    ability_refresh: { [FormEffect]: boolean }?,
     -- The height it floats at, in pixels.
     hover: number?,
     -- Its glow: the navi's color shader by the battle time, an entry a
@@ -3203,7 +3283,7 @@ export type FormDef = {
     -- What a chip's use from idle does besides in it, as the hand moves on past the chip (`navi.attack_chip`): EXE4's
     -- RollSoul's heal (0x080EED04).
     chip_used: ((navi: Object) -> ())?,
-    traits: { FormTrait }?,
+    traits: { [FormTrait]: boolean }?,
     -- The buster arm the navi raises in it (lib/buster): its animation,
     -- and what it adds to the arm's palette.
     buster_arm: { anim: number, palette_add: number? }?,
@@ -3234,11 +3314,12 @@ export type StageDef = {
     music: Sound?,
     mode: number,
     battle_number: number,
-    -- The battle effects a round on it runs with, by name: the engine's
-    -- ("boss_rank", "full_hp", "link", "set", "random", "no_switch_voice")
-    -- and those its game's rules declare of their own (`flow.effect_bits`:
-    -- "shuffled_folder"). The loader refuses another name.
-    effects: { string }?,
+    -- The battle effects a round on it runs with, a set of their names: the
+    -- engine's ("boss_rank", "full_hp", "link", "set", "random",
+    -- "no_switch_voice") and those its game's rules declare of their own
+    -- (`flow.effect_bits`: "shuffled_folder"). The loader refuses another
+    -- name.
+    effects: { [string]: boolean }?,
     actors: { StageActor },
 }
 -- What a status is: the status timer it sets and the request it raises.
@@ -3394,6 +3475,8 @@ export type SetupOverview = {
 --   virus, navi: what no netbattle object is (an object with no identity
 --     is a virus).
 export type IdentityClass = "player" | "field_object" | "virus" | "navi"
+-- A hook of an object's that touches what it wears (`IdentitySpec.overlay_hooks`).
+export type OverlayHook = "death" | "refresh" | "flinch" | "flinch_checked" | "drag" | "lets_go"
 export type IdentitySpec = {
     id: string?,
     class: IdentityClass,
@@ -3433,7 +3516,7 @@ export type IdentitySpec = {
     -- paralysis starts, what the navi wears is let go where an attack held
     -- it shown or hidden (one routine in the three tables: EXE5's
     -- KnightMan's ball and chain).
-    overlay_hooks: { "death" | "refresh" | "flinch" | "flinch_checked" | "drag" | "lets_go" }?,
+    overlay_hooks: { [OverlayHook]: boolean }?,
     -- The Full Synchro aura's animation around it (a player's has one).
     aura_anim: number?,
     -- The anger tick passes over it (EXE5's actor records of AI index 23:
@@ -3475,6 +3558,8 @@ export type IdentitySpec = {
 -- deals; its body's collision (what it is, what it reacts to, its hit
 -- modifier); the status flags it starts with; and whether its HP number
 -- never shows.
+-- A status flag a navi no player controls starts with (`NaviBody.flags`).
+export type NaviBodyFlag = "super_armor" | "air_shoe" | "float_shoe" | "affected_by_ice" | "untouchable"
 export type NaviBody = {
     sprite: SpriteAsset,
     shadow: boolean?,
@@ -3484,7 +3569,7 @@ export type NaviBody = {
     element: ElementName,
     body_damage: number,
     collision: { body: CollisionType, target: CollisionType, hit_modifier: number },
-    flags: { "super_armor" | "air_shoe" | "float_shoe" | "affected_by_ice" | "untouchable" }?,
+    flags: { [NaviBodyFlag]: boolean }?,
     hides_hp: boolean?,
 }
 -- A body overlay (actor object #0x56): a second sprite over a navi's body,
@@ -3531,11 +3616,12 @@ export type RegionSpec = { panels: { { number } }?, field: PanelCondition?, side
 export type Region = RegionSpec
 
 -- A collision type: what an object is or what it hits, by its members
--- (`flags`; the loader refuses a name it doesn't know). `row_offset`: the
+-- (`flags`, a set of them: `{ own_attack = true, sword = true }`; the loader
+-- refuses a name it doesn't know). `row_offset`: the
 -- offset the original's lookup of the type's row leaves in a register (the
 -- row's index times 8), which a damage word's bug code takes as its high
 -- byte. (`CollisionType`, since `Collision` is an object's registration.)
-export type CollisionTypeSpec = { id: string?, flags: { CollisionMember }, row_offset: number? }
+export type CollisionTypeSpec = { id: string?, flags: { [CollisionMember]: boolean }, row_offset: number? }
 export type CollisionType = CollisionTypeSpec
 
 -- What the rules need from content by role (rules/roles.luau, once per
@@ -4016,8 +4102,8 @@ declare rules: {
     -- again where it would do something (a hook asked every tick, while
     -- nothing can come of it).
     listening: (side: number) -> RulesListening,
-    -- The panel types (by name) on which the engine calls side `side`'s
-    -- `navi_panel` for a navi standing on one, in place of the last; none at
-    -- first. A game's rules' alone.
-    listen_panels: (side: number, kinds: { string }) -> (),
+    -- The panel types (a set of their names, `{ holy = true }`) on which the
+    -- engine calls side `side`'s `navi_panel` for a navi standing on one, in
+    -- place of the last; none at first. A game's rules' alone.
+    listen_panels: (side: number, kinds: { [PanelType]: boolean }) -> (),
 }

@@ -1222,6 +1222,69 @@ fn in_update(line: &str) -> Content {
     patched(GUN_DEL_SOL, &[(UPDATE, &format!("{UPDATE}    {line}\n"))])
 }
 
+/// Sets and conditions are tables of booleans keyed by member, read by the
+/// binding into the words their names stand for: a table a module keeps
+/// (frozen: read once and kept) and one built at the call read alike, a member
+/// set to false is one left out of a set, and a question about one member is
+/// a view's property (`c.hit_by.guarded`).
+#[test]
+fn sets_and_conditions_read_as_keyed_booleans() {
+    let c = patched(
+        GUN_DEL_SOL,
+        &[
+            (
+                "local action = {}",
+                "local SOLID_FREE: PanelCondition = { solid = true, occupied = false }\n\
+                 local ENEMY: HitNames = { enemy_body = true, enemy_object = true }\n\
+                 local action = {}",
+            ),
+            (
+                UPDATE,
+                &format!(
+                    "{UPDATE}    for x = 0, 7 do for y = 0, 4 do\n\
+                     \x20       assert(field.check(x, y, SOLID_FREE) == field.check(x, y, {{ solid = true, occupied = false }}))\n\
+                     \x20       assert(field.check(x, y, {{ solid = true, holy = false }}, me.alliance) == (field.check(x, y, {{ solid = true }}) and not field.any(x, y, {{ holy = true }})))\n\
+                     \x20       assert(field.any(x, y, {{ solid = true, holy = false }}) == field.any(x, y, {{ solid = true }}))\n\
+                     \x20       assert(field.check(x, y, {{ own_area = true }}, me.alliance) ~= field.check(x, y, {{ enemy_area = true }}, me.alliance) or not field.check(x, y))\n\
+                     \x20   end end\n\
+                     \x20   local c = me.collision\n\
+                     \x20   assert(c:hit_any(ENEMY) == c:hit_any({{ enemy_body = true, enemy_object = true, guarded = false }}))\n\
+                     \x20   assert(c.hit_by.guarded == c:hit_any({{ guarded = true }}))\n\
+                     \x20   assert(c.hit_by.enemy_body == c:hit_any({{ enemy_body = true }}))\n\
+                     \x20   assert(c.hit_by[\"break\"] == c:hit_any({{ [\"break\"] = true }}))\n"
+                ),
+            ),
+        ],
+    );
+    assert_eq!(play_error(load(&c).unwrap()), None);
+}
+
+/// What a binding that takes a set or a condition refuses: a name it doesn't
+/// know, a value that isn't a boolean, a list of names, a name by itself (a
+/// question about one member is a view's), a side's area where a panel's bit
+/// is asked; and a view's member it doesn't have. luau-analyze lets a
+/// table's extra keys through, so the binding checks them itself.
+#[test]
+fn sets_and_conditions_refuse_what_isnt_one() {
+    for (line, says) in [
+        ("local _ = field.check(1, 1, { solid = 1 })", "not true or false"),
+        ("local _ = field.check(1, 1, { sold = true })", "`sold` is no panel flag"),
+        ("local _ = field.check(1, 1, { \"solid\" })", "a table of booleans keyed by name"),
+        ("local _ = field.check(1, 1, \"solid\" :: any)", "a table of booleans keyed by name (`{ name = true }`), not string"),
+        ("local _ = field.any(1, 1, { own_area = true }, 0)", "field.any: a side's area is no bit of a panel's"),
+        ("local _ = field.check(1, 1, { own_body = true })", "field.check: its names are of a side"),
+        ("local _ = me.collision:hit_any({ swrod = true })", "`swrod` is no hit's name"),
+        ("local _ = me.collision:hit_any({ sword = \"yes\" } :: any)", "hit_any: `sword` is string, not true or false"),
+        ("local _ = me.collision:hit_any(\"sword\" :: any)", "hit_any: a table of booleans keyed by name"),
+        ("local _ = (me.collision.hit_by :: any).swrod", "swrod"),
+        ("local _ = battle.effects.karma_held", "no battle effect of its game's rules is named \"karma_held\""),
+        ("(battle.effects :: any).link = true", "battle.effects.link is read-only"),
+    ] {
+        let e = play_error(load(&in_update(line)).unwrap()).unwrap_or_else(|| panic!("`{line}` ran"));
+        assert!(e.contains(says), "`{line}`: {e}");
+    }
+}
+
 #[test]
 fn state_in_module_locals_is_rejected_at_load() {
     // (The sun beam's code is the support pack's.)

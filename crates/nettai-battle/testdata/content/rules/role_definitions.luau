@@ -18,15 +18,25 @@ end
 -- A type of members `flags` (an own side's of the object's side, the
 -- other side's mirrored). `row` is the row the type has in EXE6's table: a
 -- bug code's high byte takes its offset.
-local function collision(id: string, row: number, flags: { CollisionMember }): CollisionType
+local function collision(id: string, row: number, flags: { [CollisionMember]: boolean }): CollisionType
     return new.collision { id = "test/" .. id, flags = flags, row_offset = row * 8 }
 end
 
 -- A navi's body: its side's body and player navi, which resolves while the
 -- battle is dimmed and reaches floating bodies.
-local BODY: { CollisionMember } = { "own_body", "own_navi", "hits_while_dimmed", "reaches_float_shoe" }
+local BODY: { [CollisionMember]: boolean } = {
+    own_body = true,
+    own_navi = true,
+    hits_while_dimmed = true,
+    reaches_float_shoe = true,
+}
 -- The other side's objects and bodies, and neutral objects.
-local OTHERS: { CollisionMember } = { "enemy_object", "enemy_body", "enemy_other_body", "neutral" }
+local OTHERS: { [CollisionMember]: boolean } = {
+    enemy_object = true,
+    enemy_body = true,
+    enemy_other_body = true,
+    neutral = true,
+}
 
 return {
     effects = {
@@ -50,14 +60,14 @@ return {
         floating_navi = collision(
             "floating-navi",
             0x10,
-            { "own_body", "own_navi", "floating", "hits_while_dimmed", "reaches_float_shoe" }
+            { own_body = true, own_navi = true, floating = true, hits_while_dimmed = true, reaches_float_shoe = true }
         ),
         navi_target = collision(
             "navi-target",
             0x02,
-            { "enemy_attack", "enemy_object", "enemy_body", "enemy_other_body", "neutral" }
+            { enemy_attack = true, enemy_object = true, enemy_body = true, enemy_other_body = true, neutral = true }
         ),
-        thrown_obstacle = collision("thrown-obstacle", 0x06, { "own_attack", "reaches_float_shoe" }),
+        thrown_obstacle = collision("thrown-obstacle", 0x06, { own_attack = true, reaches_float_shoe = true }),
         thrown_obstacle_target = collision("thrown-obstacle-target", 0x05, OTHERS),
     },
     -- Made-up sounds, music, sprites and banners, one for each role (named

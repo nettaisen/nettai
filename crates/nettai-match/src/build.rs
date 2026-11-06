@@ -396,7 +396,11 @@ impl Builds {
                 Some(Slots { field, names, entry: text("entry")?, slot: text("slot")?, own: text("own")? })
             }
         };
-        let at_defaults = items(data.field("at_defaults")).iter().filter_map(|f| if let Data::Str(f) = f { Some(f.clone()) } else { None }).collect();
+        // (A set of the facts' names, `{ sun = true }`.)
+        let at_defaults = match data.field("at_defaults") {
+            Data::Nil => Vec::new(),
+            v => v.set().map_err(|m| format!("{module}: `at_defaults` {m}"))?.into_iter().map(str::to_string).collect(),
+        };
         let new = data.field("new");
         let mut new_folder = Folder::EMPTY;
         let stated = items(new.field("folder"));

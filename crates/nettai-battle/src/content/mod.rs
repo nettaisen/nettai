@@ -100,7 +100,7 @@ pub enum Element {
 }
 
 /// Secondary-element bits: an attack's extra elements, or what a navi is
-/// weak to. In a content file, a list of names (`["sword"]`).
+/// weak to. In a content file, a set of names (`{ sword = true }`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct SecondaryElements(pub u8);
 

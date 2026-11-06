@@ -158,6 +158,15 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
         ("local _ = new.collision { side0 = 0x80000080, side1 = 0x40000080, row_offset = 0x20 }", "a collision type by words"),
         ("local _ = field.flags(1, 1)", "a panel's flags word"),
         ("local _ = field.check(1, 1, 0x10, 0x0F880080)", "a panel condition by words"),
+        ("local _ = field.check(1, 1, \"solid\", \"occupied\")", "a panel condition by names, required and forbidden"),
+        ("local _ = field.any(1, 1, \"neutral\")", "a set of panel flags by a name"),
+        ("local _ = new.region { field = { require = { \"solid\" } } }", "a region's condition by lists of names"),
+        ("local _ = new.collision { flags = { \"own_attack\" } }", "a collision type's members as a list"),
+        ("local function f(me: Object) local _ = me.collision:hit_any(\"guarded\") end", "a hit's name by itself"),
+        ("local function f(me: Object) local _ = me.collision:hit_by() end", "the hitters by `hit_by`"),
+        ("local _: StageDef = { layout = {}, panel_pattern = 0x38, mode = 0, battle_number = 0, effects = { \"link\" }, actors = {} }", "a stage's effects as a list"),
+        ("local function f(c: ChipSpec) c.flags = { \"has_damage\" } end", "a chip's flags as a list"),
+        ("local _: boolean = battle.has_effect(\"karma_held\")", "a battle effect by a call"),
         ("local _ = new.region { field = { require = 0x20, forbid = 0 } }", "a region's condition by words"),
         ("local function f(me: Object) local _ = me.collision.hit_flags end", "hit results as a word"),
         // A status raises its timer's request; the rows past the original's table, a collision offset, are gone.
@@ -275,16 +284,20 @@ fn misuse_of_the_core_api_is_a_type_error() {
         // Dimming chip subtypes 2, 3, 5, 15 and 27.
         ("field.blink(1, 1, 3, 0)", "a blink to a panel type by number"),
         // Collision types and hit results by their members' names.
-        ("local _ = new.collision { flags = { \"own_atack\" } }", "not a collision type member"),
-        ("local function f(me: Object) local _ = me.collision:hit_any({ \"swrod\" }) end", "not a hit's name"),
+        ("local _ = new.collision { flags = { own_atack = true } }", "not a collision type member"),
+        ("local _ = new.collision { flags = { own_attack = 1 } }", "a collision type member that isn't true or false"),
+        ("local function f(me: Object) local _ = me.collision.hit_by.swrod end", "not a hit's name"),
+        ("local _: HitNames = { swrod = true }", "not a hit's name in a set"),
+        ("local _: Chip = { flags = { has_damag = true } }", "not a chip flag"),
+        ("local _: FormDef = { sprite = asset.sprite(\"x\"), element = \"null\", buster_bonus = 0, traits = { erase = true } }", "not a form trait"),
         ("local function f(me: Object) me.collision.hit = 1 end", "a hit that isn't a boolean"),
         // The Gregar and Falzar chips.
         ("battle.hud().chips = false", "not a HUD field"),
         ("battle.hud(\"gauge\").gauge = false", "a HUD field for a side"),
         ("local _ = battle.hand_entry(0, 0).bonus", "not a hand entry's field"),
         ("local _: StatusDef = { duration = 90, timer = \"stun\" }", "not a status"),
-        ("local function f(c: ChipSpec) c.extra_flags = { \"rush\" } end", "not a chip's extra flag"),
-        ("local _: boolean = battle.has_effect(0x20000)", "a battle effect by its bit"),
+        ("local function f(c: ChipSpec) c.extra_flags = { \"rush\" } end", "a chip's extra flags as a list"),
+        ("local _: boolean = battle.effects[0x20000]", "a battle effect by its bit"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");

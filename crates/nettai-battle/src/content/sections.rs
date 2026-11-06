@@ -41,8 +41,8 @@ struct ElementsSection {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct PanelTypeSection {
-    /// The flags it sets, by name (`PanelRules::type_word`).
-    #[serde(deserialize_with = "super::rules::name_list")]
+    /// The flags it sets, a set of names (`PanelRules::type_word`).
+    #[serde(deserialize_with = "super::flags::set")]
     flags: Vec<String>,
     #[serde(default)]
     carries: Option<SlideVector>,
@@ -85,14 +85,24 @@ struct MendSection {
 }
 
 /// A panel condition by names (`PanelRules::condition`), as content states
-/// one: every name of `require` holds and none of `forbid`.
+/// one (`{ solid = true, occupied = false }`): every name of `require` (set
+/// to true) holds and none of `forbid` (set to false).
 #[derive(Deserialize, Clone, Default)]
-#[serde(deny_unknown_fields)]
+#[serde(from = "Condition")]
 pub(crate) struct NamedCondition {
-    #[serde(default, deserialize_with = "super::rules::name_list")]
     pub require: Vec<String>,
-    #[serde(default, deserialize_with = "super::rules::name_list")]
     pub forbid: Vec<String>,
+}
+
+/// A condition as serde reads one.
+#[derive(Deserialize)]
+#[serde(transparent)]
+struct Condition(#[serde(deserialize_with = "super::flags::condition")] (Vec<String>, Vec<String>));
+
+impl From<Condition> for NamedCondition {
+    fn from(Condition((require, forbid)): Condition) -> NamedCondition {
+        NamedCondition { require, forbid }
+    }
 }
 
 impl NamedCondition {
@@ -138,8 +148,9 @@ struct PanelsSection {
     dash_step: StepSection,
     any_side_step: StepSection,
     reservations: super::rules::Reservations,
-    /// The flags a type owns, by name, besides its number (always its).
-    #[serde(deserialize_with = "super::rules::name_list")]
+    /// The flags a type owns, a set of names, besides its number (always
+    /// its).
+    #[serde(deserialize_with = "super::flags::set")]
     type_mask: Vec<String>,
     #[serde(default)]
     cycle: Option<u32>,

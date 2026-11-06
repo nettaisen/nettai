@@ -774,10 +774,14 @@ impl Rulesets {
         for c in items(data.field("categories")) {
             let Data::Str(fact) = c.field("fact") else { return Err(format!("{module}: a category names its `fact`")) };
             let (registry, of, _) = definitions_of(content, fact).ok_or_else(|| format!("{module}: {fact} is no fact of {game}'s that names definitions"))?;
-            let classes: Vec<ChipClass> = items(c.field("classes"))
-                .iter()
-                .map(|n| n.str().and_then(|n| ChipClass::deserialize(IntoDeserializer::<serde::de::value::Error>::into_deserializer(n)).ok()).ok_or_else(|| format!("{module}: {fact}: {n:?} is no chip class")))
-                .collect::<Result<_, String>>()?;
+            // (A set of chip classes, `{ program_advance = true }`.)
+            let classes: Vec<ChipClass> = match c.field("classes") {
+                Data::Nil => Vec::new(),
+                v => v.set().map_err(|m| format!("{module}: {fact}: `classes` {m}"))?,
+            }
+            .into_iter()
+            .map(|n| ChipClass::deserialize(IntoDeserializer::<serde::de::value::Error>::into_deserializer(n)).map_err(|_| format!("{module}: {fact}: {n:?} is no chip class")))
+            .collect::<Result<_, String>>()?;
             let having = match c.field("having") {
                 Data::Str(h) => Some(h.as_str()),
                 Data::Nil => None,

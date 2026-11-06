@@ -198,8 +198,8 @@ impl NaviData {
     }
 }
 
-/// What the rules ask of particular navis. In a content file, a list of
-/// names.
+/// What the rules ask of particular navis. In a content file, a set of
+/// names (`{ status_immune = true }`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct NaviTraits(pub u8);
 
@@ -365,8 +365,9 @@ pub struct FormData {
     #[serde(default)]
     pub chip_heals: Option<ChipMatch>,
     /// The families whose damaging chips, not dimming chips, paralyze
-    /// when used uncharged (EXE4's 0x0800C4C4).
-    #[serde(default)]
+    /// when used uncharged (EXE4's 0x0800C4C4): in a content file a set of
+    /// their names (`{ elec = true }`), here by number.
+    #[serde(default, deserialize_with = "super::chips::family_set")]
     pub paralyzing_chips: Vec<ChipFamily>,
     /// Its A charge builds up the next Fire chip's damage, up to this
     /// much (`sub_80F0608`).
@@ -667,8 +668,8 @@ pub struct ChargedBonus {
     pub doubles: bool,
 }
 
-/// What a form's status reset gives the navi. In a content file, a list of
-/// names.
+/// What a form's status reset gives the navi. In a content file, a set of
+/// names (`{ clear_statuses = true }`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct FormEffects(pub u16);
 
@@ -708,8 +709,8 @@ impl FormEffects {
 
 serde_flags!(FormEffects, u16);
 
-/// What the rules ask of particular forms. In a content file, a list of
-/// names.
+/// What the rules ask of particular forms. In a content file, a set of
+/// names (`{ erases = true }`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct FormTraits(pub u16);
 

@@ -956,7 +956,7 @@ pub enum OverlayRestart {
     Reload,
 }
 
-/// Requests an end clears, in a content file a list of their names: the
+/// Requests an end clears, in a content file a set of their names: the
 /// anti-sword trigger, the mode-9 A press, the rules' own B charge's release
 /// (EXE5's Chaos Unison releases), a chip's and a charged chip's.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -1002,7 +1002,7 @@ pub struct RequestClears {
 /// their names here, and those its game declares of its own (the reactions
 /// section's `request_bits`: EXE4's counter mark), which
 /// [`reading_requests`] gives while the rules are read. In a content file a
-/// list of names (`requests_by_name`).
+/// set of names (`requests_by_name`).
 pub const REQUEST_NAMES: &[(u32, &str)] = &[
     // A hit's and the navi's own.
     (crate::collision::f2::FLASH, "flash"),
@@ -1034,11 +1034,11 @@ pub(crate) fn reading_requests<T>(own: &[(String, u32)], f: impl FnOnce() -> T) 
     out
 }
 
-/// A list of request names (the engine's, and those the rules being read
-/// declare) as the request bits: an unknown name, or a number, is an
+/// A set of request names (`{ paralyze = true }`: the engine's, and those
+/// the rules being read declare) as the request bits: an unknown name is an
 /// error.
 pub(crate) fn requests_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
-    let names: Vec<String> = Deserialize::deserialize(d)?;
+    let names = super::flags::set(d)?;
     OWN_REQUESTS.with(|own| {
         let own = own.borrow();
         let mut bits = 0;
@@ -1083,7 +1083,7 @@ pub(crate) fn declared_bits(spec: &nettai_content_api::Data, engine: &[(u32, &st
     Ok(out)
 }
 
-/// Collision flags a status end clears, in a content file a list of their
+/// Collision flags a status end clears, in a content file a set of their
 /// names (`StatusFlag`'s): the statuses'.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct StatusFlags(pub u32);
@@ -1102,7 +1102,7 @@ impl StatusFlags {
 serde_flags!(StatusFlags, u32);
 
 /// Status timers a status end zeroes, a bit each by the timer's index
-/// (`collision::timer`), in a content file a list of their names
+/// (`collision::timer`), in a content file a set of their names
 /// (`StatusTimer`'s).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct StatusTimers(pub u16);
@@ -1122,7 +1122,7 @@ serde_flags!(StatusTimers, u16);
 
 /// What a navi's statuses' end clears (EXE6's `sub_801A264`, EXE4's
 /// 0x08013218): its statuses' flags, its requests (the collision's second
-/// word, in a content file a list of their names: [`REQUEST_NAMES`] and
+/// word, in a content file a set of their names: [`REQUEST_NAMES`] and
 /// the game's own) and its timers. EXE6's: the six statuses' flags
 /// (0x8001E800), their requests (0x300E8) and the six timers; EXE4's, a
 /// game with no freeze and no bubble, the four others' flags (0xE800), the
@@ -1325,7 +1325,7 @@ pub struct HpDrainRule {
 /// The custom screen's HP bug (`sub_80102AC`, EXE5's 0x0800E034, EXE4's
 /// 0x0800C194): a point of HP every period while the side's status (the
 /// link's status byte, BattleState +0x14: `battle::remote_status`) has one
-/// of `status`'s bits, in a content file a list of their names
+/// of `status`'s bits, in a content file a set of their names
 /// ([`REMOTE_STATUS_NAMES`]): EXE6's and EXE5's its screen is up or its
 /// selection runs, EXE4's its selection runs.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
@@ -1342,10 +1342,10 @@ pub const REMOTE_STATUS_NAMES: &[(u8, &str)] = &[
     (crate::battle::remote_status::CUSTOM_SCREEN, "custom_screen"),
 ];
 
-/// A list of a side's status names as its bits: an unknown name, or a
-/// number, is an error.
+/// A set of a side's status names (`{ selecting = true }`) as its bits: an
+/// unknown name is an error.
 fn remote_status_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u8, D::Error> {
-    let names: Vec<String> = Deserialize::deserialize(d)?;
+    let names = super::flags::set(d)?;
     let mut bits = 0;
     for n in &names {
         let Some(&(bit, _)) = REMOTE_STATUS_NAMES.iter().find(|x| x.1 == n) else {
@@ -1417,7 +1417,7 @@ pub struct AntiTraps {
     #[serde(deserialize_with = "hit_names")]
     pub sword_spares: u32,
     /// A caught hit drops these of the navi's pending requests (its flags2,
-    /// in a content file a list of their names: [`REQUEST_NAMES`]) too, a
+    /// in a content file a set of their names: [`REQUEST_NAMES`]) too, a
     /// panel's slide asked for that tick among them (EXE6's 0x301BE, every
     /// request but immobilization's and anger's; EXE5's and EXE4's none: a
     /// move that ends on ice as the trap catches a hit still slides).
@@ -2595,25 +2595,11 @@ impl StepRuleSet {
     }
 }
 
-/// Names as content states them: a name, or a list of names.
-pub(crate) fn name_list<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<String>, D::Error> {
-    #[derive(Deserialize)]
-    #[serde(untagged)]
-    enum Names {
-        One(String),
-        Many(Vec<String>),
-    }
-    Ok(match Names::deserialize(d)? {
-        Names::One(n) => vec![n],
-        Names::Many(n) => n,
-    })
-}
-
 /// Side-free collision type members' bits from their names
 /// (`collision::type_words`): a rule word content states by names.
 fn collision_names<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
     use serde::de::Error;
-    let names = name_list(d)?;
+    let names = super::flags::set(d)?;
     let [w0, w1] = crate::collision::type_words(names.iter().map(String::as_str)).map_err(D::Error::custom)?;
     if w0 != w1 {
         return Err(D::Error::custom("a rule's collision type members are of no side (own_ and enemy_ need one)"));
@@ -2625,7 +2611,7 @@ fn collision_names<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u32, D::Err
 /// side): a rule word content states by names.
 fn hit_names<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
     use serde::de::Error;
-    let names = name_list(d)?;
+    let names = super::flags::set(d)?;
     names.iter().try_fold(0, |w, n| Ok(w | crate::collision::hit_name_bits(n, None).map_err(D::Error::custom)?))
 }
 

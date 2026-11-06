@@ -62,7 +62,7 @@ local function chip(key: string, n: number, fields: { [string]: any }): Chip
         damage = 0,
         hit_param = 0,
         lockout = 0,
-        flags = { "standard_library" },
+        flags = { standard_library = true },
         slot_in_limit = 3,
     }
     for k, v in fields do
@@ -79,7 +79,7 @@ end
 -- A thrown chip.
 local function thrown(key: string, n: number, damage: number, action: Action?): Chip
     return chip(key, n, {
-        flags = { "has_damage", "standard_library" },
+        flags = { has_damage = true, standard_library = true },
         hit_param = 30,
         damage = damage,
         action = action,
@@ -89,7 +89,7 @@ end
 -- A sword chip.
 local function blade(key: string, n: number, action: Action?): Chip
     return chip(key, n, {
-        flags = { "has_damage", "standard_library" },
+        flags = { has_damage = true, standard_library = true },
         family = "sword",
         hit_param = 30,
         damage = 80,
@@ -100,7 +100,7 @@ end
 -- A navi chip, with its own controller (EXE6's lib/navi_chips/chip).
 local function navi_chip(key: string, n: number, damage: number, summon: NaviChipSummon, fields: { [string]: any }?): Chip
     local all: { [string]: any } = {
-        flags = { "has_damage", "navi", "library" },
+        flags = { has_damage = true, navi = true, library = true },
         class = "mega",
         damage = damage,
         navi = navi_chips.make { id = "test/" .. key .. "/controller", summon = summon },
@@ -131,7 +131,7 @@ local FLAME_HOOK_FLAMES = hook.flames {
 -- An instant chip whose effect spawns an object.
 local function spawning(key: string, n: number, instant: (user: Object, spec: InstantChipSpec) -> ()): Chip
     return chip(key, n, {
-        flags = { "has_damage", "standard_library" },
+        flags = { has_damage = true, standard_library = true },
         hit_param = 0x30,
         damage = 40,
         lockout = 20,
@@ -143,7 +143,7 @@ end
 -- (navis/<navi>/chip), with made-up damage.
 local function link_chip(key: string, n: number, of: Chip): Chip
     return chip(key, n, {
-        flags = { "has_damage", "library" },
+        flags = { has_damage = true, library = true },
         class = "special",
         hit_param = 0x30,
         damage = 60,
@@ -170,27 +170,27 @@ local chips: { [string]: Chip } = {
         -- (The counter part's made-up extension.)
         test_weight = 3,
         test_tag = { level = 2, kind = "b" },
-        flags = { "dimming", "standard_library" },
-        extra_flags = { "rush_cancels" },
+        flags = { dimming = true, standard_library = true },
+        extra_flags = { rush_cancels = true },
         family = "plus",
         dimming = invisible.hook(360),
     }),
     ["test/eraser"] = navi_chip("eraser", 0x06, 60, eraseman.summon { aim_ticks = 16 }, { family = "cursor", hit_param = 100 }),
     -- A trap chip that sets no object.
-    ["test/trap"] = chip("trap", 0x09, { flags = { "dimming", "standard_library" }, dimming = traps.hook() }),
+    ["test/trap"] = chip("trap", 0x09, { flags = { dimming = true, standard_library = true }, dimming = traps.hook() }),
     ["test/elem-trap"] = chip("elem-trap", 0x30, {
-        flags = { "dimming", "has_damage", "standard_library" },
+        flags = { dimming = true, has_damage = true, standard_library = true },
         damage = 40,
         dimming = elemtrap.dimming,
     }),
     ["test/time-bomb"] = chip("time-bomb", 0x31, {
-        flags = { "dimming", "has_damage", "standard_library" },
+        flags = { dimming = true, has_damage = true, standard_library = true },
         hit_param = 100,
         damage = 50,
         dimming = timebom_chips.timebom1.dimming,
     }),
     ["test/time-bomb-plus"] = chip("time-bomb-plus", 0x32, {
-        flags = { "dimming", "has_damage", "standard_library" },
+        flags = { dimming = true, has_damage = true, standard_library = true },
         hit_param = 100,
         damage = 70,
         dimming = timebom_chips.timebom.dimming,

@@ -84,6 +84,18 @@ pub(crate) fn reading_non_elemental() -> Option<ChipFamily> {
     READING.with(|r| r.borrow().as_ref().map(|f| f.non_elemental))
 }
 
+/// A set of family names (`{ elec = true }`: the game's being read), by
+/// number.
+pub(crate) fn family_set<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<ChipFamily>, D::Error> {
+    use serde::de::IntoDeserializer;
+    let mut families = Vec::new();
+    for name in super::flags::set(d)? {
+        families.push(ChipFamily::deserialize(name.into_deserializer())?);
+    }
+    families.sort();
+    Ok(families)
+}
+
 impl Serialize for ChipFamily {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         s.serialize_u8(self.0)
@@ -111,7 +123,8 @@ impl<'de> Deserialize<'de> for ChipFamily {
     }
 }
 
-/// The chip record's flags. In a content file, a list of names.
+/// The chip record's flags. In a content file, a set of names
+/// (`{ has_damage = true }`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ChipFlags(pub u8);
 
@@ -154,8 +167,9 @@ impl ChipFlags {
 serde_flags!(ChipFlags, u8);
 
 /// The chip record's second flag byte, the bits the engine reads, by name
-/// (in a content file a list of the names alone). The original's other
-/// bits only sort chips in its menus: content holds none of them.
+/// (in a content file a set of them, `{ rush_cancels = true }`). The
+/// original's other bits only sort chips in its menus: content holds none
+/// of them.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ExtraChipFlags(pub u8);
 
@@ -175,11 +189,12 @@ impl ExtraChipFlags {
     }
 }
 
-serde_flags!(ExtraChipFlags, u8, names_only);
+serde_flags!(ExtraChipFlags, u8);
 
 /// What the rules ask of particular chips (docs/design/
 /// content-model-v2.md §7.5): the cases the original tells by a chip's
-/// place in its chip table. In a content file, a list of names.
+/// place in its chip table. In a content file, a set of names
+/// (`{ no_chain = true }`).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct ChipTraits(pub u16);
 

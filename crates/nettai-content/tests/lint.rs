@@ -49,7 +49,7 @@ fn a_collision_type_defined_twice_is_an_error() {
         let row_offset = if key == "other" { 0x7F8 } else { 0x7F0 };
         c.scripts.modules.insert(
             module(path),
-            format!("return new.collision {{ id = '{key}', flags = {{ 'reaches_float_shoe' }}, row_offset = {row_offset} }}"),
+            format!("return new.collision {{ id = '{key}', flags = {{ reaches_float_shoe = true }}, row_offset = {row_offset} }}"),
         );
     }
     testing::add_index(&mut c.scripts, testing::ROOT);

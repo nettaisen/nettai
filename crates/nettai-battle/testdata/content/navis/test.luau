@@ -143,7 +143,7 @@ local function navi(sprite: string, ai_index: number, megaman: boolean, hooks: H
             aura_anim = ai_index,
             ice = "medium",
             parts = if hooks then { own = hooks.put_on } else nil,
-            overlay_hooks = if megaman then { "death", "refresh", "flinch", "drag" } else nil,
+            overlay_hooks = if megaman then { death = true, refresh = true, flinch = true, drag = true } else nil,
             attach_points = attach_points(),
         },
     }

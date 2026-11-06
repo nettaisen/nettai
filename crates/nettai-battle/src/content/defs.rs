@@ -1779,15 +1779,6 @@ impl Defs {
             }
             Ok(())
         };
-        // (A name, or a list of names: an empty table is one.)
-        let names = |v: &Data| -> Option<Vec<String>> {
-            match v {
-                Data::Str(s) => Some(vec![s.clone()]),
-                Data::List(items) => items.iter().map(|i| i.str().map(str::to_string)).collect(),
-                Data::Map(entries) if entries.is_empty() => Some(Vec::new()),
-                _ => None,
-            }
-        };
         let panel_names = content.rules.as_ref().map(|r| r.panels.type_flags.clone()).unwrap_or_default();
         let mut regions: Vec<super::Region> = Vec::new();
         for d in definitions.of(Registry::Region) {
@@ -1811,20 +1802,11 @@ impl Defs {
                 // region's `side` where it names a side's.)
                 (Data::Nil, field @ (Data::Map(_) | Data::List(_))) => {
                     // (`{}` is every panel.)
-                    let entries = match field {
-                        Data::Map(entries) => entries.as_slice(),
-                        Data::List(items) if items.is_empty() => &[],
-                        _ => return Err(what("`field` is a condition: `{ require = {...}, forbid = {...} }`")),
+                    let (require, forbid) = field.condition().map_err(|m| what(&format!("`field` {m}: a condition, `{{ solid = true, occupied = false }}`")))?;
+                    let c = super::sections::NamedCondition {
+                        require: require.into_iter().map(str::to_string).collect(),
+                        forbid: forbid.into_iter().map(str::to_string).collect(),
                     };
-                    let mut c = super::sections::NamedCondition::default();
-                    for (k, v) in entries {
-                        let list = match k.to_string().as_str() {
-                            "require" => &mut c.require,
-                            "forbid" => &mut c.forbid,
-                            other => return Err(what(&format!("`field.{other}` is none of a condition's fields (require, forbid)"))),
-                        };
-                        *list = names(v).ok_or_else(|| what(&format!("`field.{k}` is a panel flag's name, or a list of them")))?;
-                    }
                     let side = match d.spec.field("side") {
                         Data::Nil => None,
                         Data::Int(s @ 0..=1) => Some(*s as u8),
@@ -1840,8 +1822,11 @@ impl Defs {
         for d in definitions.of(Registry::Collision) {
             let what = |e: &str| ContentError::new(format!("{}.luau: collision {}: {e}", d.module, d.key));
             fields(d, &["id", "flags", "row_offset"])?;
-            let members = names(d.spec.field("flags")).ok_or_else(|| what("needs `flags`, its members' names"))?;
-            let flags = crate::collision::type_words(members.iter().map(String::as_str)).map_err(|m| what(&m))?;
+            let members = match d.spec.field("flags") {
+                Data::Nil => return Err(what("needs `flags`, the set of its members (`{ own_attack = true }`)")),
+                v => v.set().map_err(|m| what(&format!("`flags` {m}")))?,
+            };
+            let flags = crate::collision::type_words(members.into_iter()).map_err(|m| what(&m))?;
             let row_offset = d.spec.field("row_offset").int().unwrap_or(0) as u16;
             collisions.push(CollisionTypeDef { flags, row_offset });
         }
@@ -2390,7 +2375,7 @@ mod tests {
         let mut wrong = Content::default();
         wrong.scripts = c.scripts.clone();
         let stages = wrong.scripts.module_mut("exe6", "stages").expect("exe6's stages");
-        *stages = stages.replacen("\"karma_changes\" }", "\"karma_change\" }", 1);
+        *stages = stages.replacen("karma_changes = true }", "karma_change = true }", 1);
         let e = wrong.define().unwrap_err().message;
         assert!(e.contains("stage netbattle-1: `effects` names \"karma_change\", no battle effect of its game (boss_rank,"), "{e}");
     }

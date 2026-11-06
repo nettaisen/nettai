@@ -594,7 +594,7 @@ local step = { grounded = {}, floor_free = {} }
             (
                 "panels",
                 r#"
-        types = { missing = { flags = {} }, broken = { flags = {} }, normal = { flags = { "solid" } } },
+        types = { missing = { flags = {} }, broken = { flags = {} }, normal = { flags = { solid = true } } },
         mend = { normal = 600, battle_mode_1 = 480 },
         start_visible = row(5, row(8, true)),
         front_edges = row(5, row(8, false)),
@@ -604,7 +604,7 @@ local step = { grounded = {}, floor_free = {} }
         dash_step = step,
         any_side_step = step,
         reservations = "unmarked",
-        type_mask = { "solid", "cracked" },"#,
+        type_mask = { solid = true, cracked = true },"#,
             ),
             (
                 "pools",
@@ -618,7 +618,7 @@ local step = { grounded = {}, floor_free = {} }
                 r#"
         push = row(10, none),
         push_reading = { reads = "by_hitter_flip", bits = 4, drag_bit = 0x40, obstacle_rows = { { dx = -1, dy = 0, panels = 6 } } },
-        hit_test = { float_shoe_needs_self_bit = true, bubbled_as_submerged = false, elec_reaches_submerged = true, guard_breaks_to = { "breaks_guard", "break" }, guard_before_untouchable = false, guard_marks_direction = true },
+        hit_test = { float_shoe_needs_self_bit = true, bubbled_as_submerged = false, elec_reaches_submerged = true, guard_breaks_to = { breaks_guard = true, ["break"] = true }, guard_before_untouchable = false, guard_marks_direction = true },
         obstacle_slide_bounds = false,
         move_direction = "by_side",
         bubble_bob = row(32, 0),
@@ -629,14 +629,14 @@ local step = { grounded = {}, floor_free = {} }
         idle_entry_counter = true,
         dead_player = "kept",
         attack_end_lockout = "by_kind",
-        request_clears = { attack = { "mode9_a" }, paralysis = { "mode9_a" }, flinch = { "anti_sword_triggered" }, drag = { 0x400 }, cut_in = { "chip", "charged_chip" } },
-        status_end = { flags = { "paralyzed", "blind", "immobilized", "confused" }, requests = { "paralyze", "blind", "immobilize" }, timers = { "paralyze", 0x2, "blind", "immobilize" } },"#,
+        request_clears = { attack = { mode9_a = true }, paralysis = { mode9_a = true }, flinch = { anti_sword_triggered = true }, drag = { anti_sword_triggered = true }, cut_in = { chip = true, charged_chip = true } },
+        status_end = { flags = { paralyzed = true, blind = true, immobilized = true, confused = true }, requests = { paralyze = true, blind = true, immobilize = true }, timers = { paralyze = true, confuse = true, blind = true, immobilize = true } },"#,
             ),
             (
                 "status",
                 r#"
         hp_drain = { periods = row(8, 30), stops_while_paused = true },
-        custom_drain = { periods = "stat", status = { "selecting", "custom_screen" } },
+        custom_drain = { periods = "stat", status = { selecting = true, custom_screen = true } },
         form_tick = false,
         form_keeps_back_special = false,
         flash_hides_on_clear = true,
@@ -648,7 +648,7 @@ local step = { grounded = {}, floor_free = {} }
         hp_loss = "hp_alone",
         hit_sound = "by_console",
         barrier = { stops_while_paused = true, wind = "pops" },
-        anti_traps = { damage_min = 10, armed_swallows_below = true, sword_spares = { "guard_spark" }, drops_requests = { "flinch", "slide" } },
+        anti_traps = { damage_min = 10, armed_swallows_below = true, sword_spares = { guard_spark = true }, drops_requests = { flinch = true, slide = true } },
         chip_destruction = "next",
         emotion = { mood_held = "at_zero", anger_end = "resets_mood", order = { { emotion = "worn_out", when = { { mood = 0 }, { exhausted = true } } }, { emotion = "worried", when = { { mood_below = 40, in_form = false } } }, { emotion = "normal" } }, roles = { worn_out = "worn_out" }, hit_mood = "counter_counts", hitter_gain = "to_full", full_synchro_spent = 0x99, anger_boost_sound = false },
         form_break = "marked_forms",
@@ -726,9 +726,8 @@ local step = { grounded = {}, floor_free = {} }
         assert_eq!((f.reg_up, f.custom_level, f.mood), (7, 6, 0x70));
         assert_eq!((f.stats, f.mode9_a), (Default::default(), None), "none stated: none of the game's own, no weapon");
         assert_eq!((r.panels.numbered(2), r.panels.numbered(3)), (Some(crate::field::PanelType(2)), None), "its own numbers, no others");
-        // A status end's flags and timers by name or number, its requests by
-        // name (EXE4's: four flags and timers, three of the statuses'
-        // requests).
+        // A status end's flags, requests and timers, sets of names (EXE4's: four
+        // flags and timers, three of the statuses' requests).
         let end = r.status_end;
         assert_eq!((end.flags.0, end.requests, end.timers.0), (0xE800, 0x68, 0b1111));
         // A side's status and requests by name.
@@ -770,10 +769,11 @@ local step = { grounded = {}, floor_free = {} }
         // A field of a table of settings, too.
         let e = game(rules(None, None, Some((" elec_reaches_submerged = true,", "")))).unwrap_err();
         assert!(e.contains("rules: reactions.hit_test: missing field `elec_reaches_submerged`"), "{e}");
-        // Requests, a side's status and battle effects by name: the engine's,
-        // and those the game declares of its own, once (EXE4's counter mark;
-        // EXE5's battle effects), which any section names. A number, or a
-        // name neither has, is refused.
+        // Requests, a side's status and battle effects by name, sets of them
+        // keyed by name: the engine's, and those the game declares of its own,
+        // once (EXE4's counter mark; EXE5's battle effects), which any section
+        // names. A number, a list, a name neither has, or a member that isn't
+        // true or false, is refused.
         let own = |reactions: &str, flow: &str| -> Result<Content, String> {
             let text = rules(None, None, Some(("idle_entry_counter = true,", &format!("idle_entry_counter = true,\n        {reactions}"))));
             game(text.replace("intro_steps_on_init = false,", &format!("intro_steps_on_init = false,\n        {flow}")))
@@ -784,17 +784,19 @@ local step = { grounded = {}, floor_free = {} }
             let text = rules(None, None, Some(("idle_entry_counter = true,", "idle_entry_counter = true,\n        request_bits = { counter_mark = 0x8000 },")));
             game(text.replace(from, to))
         };
-        let c = named("requests = { \"paralyze\", \"blind\", \"immobilize\" }", "requests = { \"paralyze\", \"blind\", \"immobilize\", \"counter_mark\" }").unwrap_or_else(|e| panic!("{e}"));
+        let c = named("requests = { paralyze = true, blind = true, immobilize = true }", "requests = { paralyze = true, blind = true, immobilize = true, counter_mark = true }").unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(c.rules().status_end.requests, 0x8068);
-        let c = named("drops_requests = { \"flinch\", \"slide\" }", "drops_requests = { \"counter_mark\" }").unwrap_or_else(|e| panic!("{e}"));
+        let c = named("drops_requests = { flinch = true, slide = true }", "drops_requests = { counter_mark = true }").unwrap_or_else(|e| panic!("{e}"));
         assert_eq!(c.rules().intake.anti_traps.drops_requests, 0x8000);
-        let e = game(rules(None, None, Some(("requests = { \"paralyze\", \"blind\", \"immobilize\" }", "requests = { \"paralyze\", \"counter_mark\" }")))).unwrap_err();
+        let e = game(rules(None, None, Some(("requests = { paralyze = true, blind = true, immobilize = true }", "requests = { paralyze = true, counter_mark = true }")))).unwrap_err();
         assert!(e.contains("rules: reactions.status_end.requests: unknown request \"counter_mark\" (the requests: flash, flinch, slide,"), "{e}");
-        let e = game(rules(None, None, Some(("requests = { \"paralyze\", \"blind\", \"immobilize\" }", "requests = 0x8068")))).unwrap_err();
-        assert!(e.contains("rules: reactions.status_end.requests: invalid type: integer `32872`, expected a sequence"), "{e}");
-        let e = game(rules(None, None, Some(("drops_requests = { \"flinch\", \"slide\" }", "drops_requests = { 0x4 }")))).unwrap_err();
-        assert!(e.contains("rules: status.anti_traps.drops_requests[0]: invalid type: integer `4`, expected a string"), "{e}");
-        let e = game(rules(None, None, Some(("status = { \"selecting\", \"custom_screen\" }", "status = { \"choosing\" }")))).unwrap_err();
+        let e = game(rules(None, None, Some(("requests = { paralyze = true, blind = true, immobilize = true }", "requests = 0x8068")))).unwrap_err();
+        assert!(e.contains("rules: reactions.status_end.requests: invalid type: integer `32872`, expected a table of booleans keyed by name"), "{e}");
+        let e = game(rules(None, None, Some(("drops_requests = { flinch = true, slide = true }", "drops_requests = { \"flinch\" }")))).unwrap_err();
+        assert!(e.contains("rules: status.anti_traps.drops_requests: a set is a table of booleans keyed by name (`{ name = true }`), not a list"), "{e}");
+        let e = game(rules(None, None, Some(("drops_requests = { flinch = true, slide = true }", "drops_requests = { flinch = 1 }")))).unwrap_err();
+        assert!(e.contains("rules: status.anti_traps.drops_requests.flinch: invalid type: integer `1`, expected true or false"), "{e}");
+        let e = game(rules(None, None, Some(("status = { selecting = true, custom_screen = true }", "status = { choosing = true }")))).unwrap_err();
         assert!(e.contains("unknown status \"choosing\" (a side's status: selecting, custom_screen)"), "{e}");
         let e = own("request_bits = { flinch = 0x8000 },", "").unwrap_err();
         assert!(e.contains("rules: reactions.request_bits.flinch: the engine names 0x8000 or \"flinch\""), "{e}");
@@ -1069,20 +1071,23 @@ local step = { grounded = {}, floor_free = {} }
     }
 
     /// Collision types and whole-field regions are named (their members,
-    /// panel flags), and a name the loader doesn't know is refused: a misspelled
-    /// key or name of a table literal passes luau-analyze.
+    /// panel flags, sets of them keyed by name), and a name the loader
+    /// doesn't know, a value that is no boolean or a list is refused: a
+    /// misspelled key of a table literal passes luau-analyze.
     #[test]
     fn the_loader_refuses_names_it_doesnt_know() {
         use crate::content::{PanelCondition, Region, testing};
         use nettai_content_api::Registry;
         for (spec, says) in [
-            ("new.collision { id = 'x', flags = { 'own_atack' } }", "`own_atack` is no collision type member"),
+            ("new.collision { id = 'x', flags = { own_atack = true } }", "`own_atack` is no collision type member"),
             ("new.collision { id = 'x', side0 = 0x80, flags = {} }", "`side0` is none of its fields"),
-            ("new.collision { id = 'x', flags = { 'sword', 'sword' } }", "`sword` is named twice"),
-            ("new.region { id = 'x', field = { require = { 'sold' } } }", "`sold` is no panel flag"),
-            ("new.region { id = 'x', field = { requires = { 'solid' } } }", "`field.requires` is none of a condition's fields"),
-            ("new.region { id = 'x', field = { require = 'own_area' } }", "of a side"),
-            ("new.region { id = 'x', field = { require = 'sword' } }", "no panel holds"),
+            ("new.collision { id = 'x', flags = { sword = 1 } }", "`flags` `sword` is a number, not true or false"),
+            ("new.collision { id = 'x', flags = { 'sword' } }", "`flags` is a table of booleans keyed by name"),
+            ("new.region { id = 'x', field = { sold = true } }", "`sold` is no panel flag"),
+            ("new.region { id = 'x', field = { solid = 'yes' } }", "`field` `solid` is a string, not true or false"),
+            ("new.region { id = 'x', field = { require = { 'solid' } } }", "`field` `require` is a list, not true or false"),
+            ("new.region { id = 'x', field = { own_area = true } }", "of a side"),
+            ("new.region { id = 'x', field = { sword = true } }", "no panel holds"),
         ] {
             let mut c = testing::with_test_pack();
             c.scripts.modules.insert(Scripts::name(testing::ROOT, "lib/named"), format!("return {spec}"));
@@ -1095,8 +1100,8 @@ local step = { grounded = {}, floor_free = {} }
         let mut c = testing::with_test_pack();
         c.scripts.modules.insert(
             Scripts::name(testing::ROOT, "lib/named"),
-            "return { new.region { id = 'a', field = { require = { 'solid', 'own_area' }, forbid = 'enemy_navi' }, side = 0 }, \
-             new.region { id = 'b', field = { require = { 'solid', 'own_area' }, forbid = 'enemy_navi' }, side = 1 } }"
+            "return { new.region { id = 'a', field = { solid = true, own_area = true, enemy_navi = false }, side = 0 }, \
+             new.region { id = 'b', field = { solid = true, own_area = true, enemy_navi = false }, side = 1 } }"
                 .into(),
         );
         testing::add_index(&mut c.scripts, testing::ROOT);

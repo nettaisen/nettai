@@ -102,4 +102,58 @@ impl Data {
     pub fn is_nil(&self) -> bool {
         matches!(self, Data::Nil)
     }
+
+    /// A set of names, as content states one: a table of booleans keyed by
+    /// member (`{ solid = true, holy = true }`), a member set to false the
+    /// same as one left out. Its members (those set to true), in name order;
+    /// `{}` none. A key that is no name, or a value that is no boolean, is an
+    /// error (what is wrong, for the caller to place).
+    pub fn set(&self) -> Result<Vec<&str>, String> {
+        let (holds, _) = self.condition()?;
+        Ok(holds)
+    }
+
+    /// A condition on named members, as content states one: a table of
+    /// booleans keyed by member, true where the member must hold and false
+    /// where it must not (`{ solid = true, occupied = false }`). Its members
+    /// that must hold, and those that must not, each in name order; `{}`
+    /// none. A key that is no name, or a value that is no boolean, is an
+    /// error.
+    pub fn condition(&self) -> Result<(Vec<&str>, Vec<&str>), String> {
+        let entries = match self {
+            Data::Map(entries) => entries.as_slice(),
+            // (An empty table reads as an empty list.)
+            Data::List(items) if items.is_empty() => &[],
+            Data::List(_) => return Err("is a table of booleans keyed by name (`{ name = true }`), not a list".into()),
+            other => return Err(format!("is a table of booleans keyed by name (`{{ name = true }}`), not {}", other.kind())),
+        };
+        let (mut holds, mut not) = (Vec::new(), Vec::new());
+        for (k, v) in entries {
+            let Key::Str(name) = k else {
+                return Err(format!("has the key {k}, no name: a table of booleans keyed by name (`{{ name = true }}`)"));
+            };
+            match v {
+                Data::Bool(true) => holds.push(name.as_str()),
+                Data::Bool(false) => not.push(name.as_str()),
+                other => return Err(format!("`{name}` is {}, not true or false", other.kind())),
+            }
+        }
+        Ok((holds, not))
+    }
+
+    /// What kind of value this is, for messages.
+    pub fn kind(&self) -> &'static str {
+        match self {
+            Data::Nil => "nil",
+            Data::Bool(_) => "a boolean",
+            Data::Int(_) => "a number",
+            Data::Str(_) => "a string",
+            Data::List(_) => "a list",
+            Data::Map(_) => "a table",
+            Data::Ref(..) => "a definition",
+            Data::Asset(..) => "an asset",
+            Data::Function => "a function",
+            Data::Type(_) => "a field's type",
+        }
+    }
 }

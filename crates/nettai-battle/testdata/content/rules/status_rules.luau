@@ -7,7 +7,7 @@
 return {
     hp_drain = { periods = { 0, 60, 50, 40, 30, 20, 10, 5 }, stops_while_paused = true },
     -- The custom screen's HP bug: EXE6's periods, while the screen is up.
-    custom_drain = { periods = { 0, 40, 30, 20, 10, 5, 3, 2 }, status = { "selecting", "custom_screen" } },
+    custom_drain = { periods = { 0, 40, 30, 20, 10, 5, 3, 2 }, status = { selecting = true, custom_screen = true } },
     -- The per-form tick runs (the Fire chips' charge, a form's height).
     form_tick = true,
     form_keeps_back_special = false,
@@ -30,8 +30,18 @@ return {
     anti_traps = {
         damage_min = 10,
         armed_swallows_below = true,
-        sword_spares = { "guard_spark" },
-        drops_requests = { "flash", "flinch", "slide", "drag", "paralyze", "confuse", "blind", "freeze", "bubble" },
+        sword_spares = { guard_spark = true },
+        drops_requests = {
+            flash = true,
+            flinch = true,
+            slide = true,
+            drag = true,
+            paralyze = true,
+            confuse = true,
+            blind = true,
+            freeze = true,
+            bubble = true,
+        },
     },
     chip_destruction = "next",
     -- Worn out (exhausted, or a mood of 0) before anger, then held tired, Full

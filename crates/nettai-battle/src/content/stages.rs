@@ -27,7 +27,7 @@ pub struct StageData {
     pub mode: u8,
     pub battle_number: u8,
     /// `effects` bits (`setup::effects`) a round on it runs with unless its
-    /// settings say otherwise. In a content file a list of their names: the
+    /// settings say otherwise. In a content file a set of their names: the
     /// engine's (`setup::effects::NAMES`) and its game's (its rules'
     /// `flow.effect_bits`).
     pub effects: u32,
@@ -118,24 +118,18 @@ pub(crate) fn read(
         names.join(", ")
     };
     let mut effects = 0;
-    match spec.field("effects") {
-        Data::Nil => {}
-        Data::List(names) => {
-            for n in names {
-                let Data::Str(n) = n else {
-                    return Err(what(format!("`effects` lists battle effects by name ({})", known())));
-                };
-                let bit = crate::setup::effects::NAMES
-                    .iter()
-                    .find(|x| x.1 == n)
-                    .map(|x| x.0)
-                    .or_else(|| effect_bits.iter().find(|x| x.0 == *n).map(|x| x.1))
-                    .ok_or_else(|| what(format!("`effects` names {n:?}, no battle effect of its game ({})", known())))?;
-                effects |= bit;
-            }
-        }
-        Data::Map(m) if m.is_empty() => {}
-        _ => return Err(what(format!("`effects` lists battle effects by name ({})", known()))),
+    let names = match spec.field("effects") {
+        Data::Nil => Vec::new(),
+        v => v.set().map_err(|m| what(format!("`effects` {m}: the battle effects by name ({})", known())))?,
+    };
+    for n in names {
+        let bit = crate::setup::effects::NAMES
+            .iter()
+            .find(|x| x.1 == n)
+            .map(|x| x.0)
+            .or_else(|| effect_bits.iter().find(|x| x.0 == n).map(|x| x.1))
+            .ok_or_else(|| what(format!("`effects` names {n:?}, no battle effect of its game ({})", known())))?;
+        effects |= bit;
     }
 
     let entries = match spec.field("actors") {

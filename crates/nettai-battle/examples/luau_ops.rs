@@ -26,7 +26,7 @@ const OPS: [(&str, &str); 15] = [
     ("state write `s.ticks = 5`", "s.ticks = 5"),
     ("enum state read `s.slot`", "local _ = s.slot"),
     ("library call `battle.dimmed()`", "local _ = battle.dimmed()"),
-    ("panel check `field.check(3, 2, \"solid\", \"occupied\")`", "local _ = field.check(3, 2, \"solid\", \"occupied\")"),
+    ("panel check `field.check(3, 2, { solid = true, occupied = false })`", "local _ = field.check(3, 2, { solid = true, occupied = false })"),
     ("string field `me.lifecycle`", "local _ = me.lifecycle"),
     ("Vec3 field `me.pos`", "local _ = me.pos"),
     ("handle field `me.related1`", "local _ = me.related1"),

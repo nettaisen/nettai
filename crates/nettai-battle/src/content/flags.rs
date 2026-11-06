@@ -1,93 +1,101 @@
-//! Flag bytes in content files: a list of the set bits' names, with any
-//! bit that has no name as its number (`["has_damage", 32]`), or, for a
-//! word whose every bit content may set has a name, its names alone.
-//! Nothing is derived: the value is exactly the bits the list names.
+//! Sets of names in content files: a table of booleans keyed by member
+//! (`{ dimming = true, has_damage = true }`), a member set to false the same
+//! as one left out; and conditions, the same table where false means the
+//! member must not hold (`{ solid = true, occupied = false }`). A flag word
+//! whose every bit content may set has a name reads as the bits its set
+//! names; nothing is derived. A key that is no name the set has, or a value
+//! that is no boolean, is an error.
 
-use serde::de::{self, SeqAccess, Visitor};
-use serde::ser::SerializeSeq;
-use serde::{Deserializer, Serializer};
-
-/// A named bit or a raw one, as listed in a file.
-#[derive(serde::Deserialize)]
-#[serde(untagged)]
-enum Bit {
-    Name(String),
-    Number(u32),
-}
+use serde::de::{self, MapAccess, SeqAccess, Visitor};
+use serde::ser::SerializeMap;
+use serde::{Deserialize, Deserializer, Serializer};
 
 pub(crate) fn serialize<S: Serializer>(bits: u32, names: &[(u32, &str)], s: S) -> Result<S::Ok, S::Error> {
-    let named: u32 = names.iter().map(|&(b, _)| b).fold(0, |a, b| a | b);
-    let mut seq = s.serialize_seq(None)?;
+    let mut map = s.serialize_map(None)?;
     for &(bit, name) in names {
         if bits & bit != 0 {
-            seq.serialize_element(name)?;
+            map.serialize_entry(name, &true)?;
         }
     }
-    for k in 0..32 {
-        let bit = 1u32 << k;
-        if bits & bit != 0 && named & bit == 0 {
-            seq.serialize_element(&bit)?;
-        }
-    }
-    seq.end()
+    map.end()
 }
 
-pub(crate) fn deserialize<'de, D: Deserializer<'de>>(
-    d: D,
-    names: &'static [(u32, &'static str)],
-    max: u32,
-    numbers: bool,
-) -> Result<u32, D::Error> {
-    struct V {
-        names: &'static [(u32, &'static str)],
-        max: u32,
-        numbers: bool,
+/// A member's value in a set: true or false.
+struct Member(bool);
+
+impl<'de> Deserialize<'de> for Member {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Member, D::Error> {
+        struct V;
+        impl Visitor<'_> for V {
+            type Value = Member;
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("true or false")
+            }
+            fn visit_bool<E: de::Error>(self, b: bool) -> Result<Member, E> {
+                Ok(Member(b))
+            }
+        }
+        d.deserialize_bool(V)
     }
+}
+
+/// A set's or a condition's members: (those set to true, those set to
+/// false), each in the order the table gives them.
+fn members<'de, D: Deserializer<'de>>(d: D) -> Result<(Vec<String>, Vec<String>), D::Error> {
+    struct V;
     impl<'de> Visitor<'de> for V {
-        type Value = u32;
+        type Value = (Vec<String>, Vec<String>);
         fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-            let names: Vec<&str> = self.names.iter().map(|n| n.1).collect();
-            if self.numbers {
-                write!(f, "a list of flag names ({}) or bit values", names.join(", "))
-            } else {
-                write!(f, "a list of flag names ({})", names.join(", "))
-            }
+            f.write_str("a table of booleans keyed by name (`{ name = true }`)")
         }
-        fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<u32, A::Error> {
-            let mut v = 0u32;
-            while let Some(bit) = seq.next_element::<Bit>()? {
-                v |= match bit {
-                    Bit::Name(n) => match self.names.iter().find(|x| x.1 == n) {
-                        Some(&(b, _)) => b,
-                        None => {
-                            let names: Vec<&str> = self.names.iter().map(|n| n.1).collect();
-                            return Err(de::Error::custom(format!("unknown flag {n:?} (the flags: {})", names.join(", "))));
-                        }
-                    },
-                    Bit::Number(b) if !self.numbers => {
-                        let names: Vec<&str> = self.names.iter().map(|n| n.1).collect();
-                        return Err(de::Error::custom(format!("{b:#x} is a number: name the flag ({})", names.join(", "))));
-                    }
-                    Bit::Number(b) if b.count_ones() == 1 && b <= self.max => b,
-                    Bit::Number(b) => return Err(de::Error::custom(format!("{b:#x} is not a single bit that fits"))),
-                };
+        fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+            let (mut holds, mut not) = (Vec::new(), Vec::new());
+            while let Some(name) = map.next_key::<String>()? {
+                let Member(on) = map.next_value()?;
+                if on { holds.push(name) } else { not.push(name) }
             }
-            Ok(v)
+            Ok((holds, not))
+        }
+        // (Luau's `{}` reads as an empty list.)
+        fn visit_seq<A: SeqAccess<'de>>(self, mut seq: A) -> Result<Self::Value, A::Error> {
+            if seq.next_element::<de::IgnoredAny>()?.is_some() {
+                return Err(de::Error::custom("a set is a table of booleans keyed by name (`{ name = true }`), not a list"));
+            }
+            Ok((Vec::new(), Vec::new()))
         }
     }
-    d.deserialize_seq(V { names, max, numbers })
+    d.deserialize_any(V)
+}
+
+/// A set of names (`{ name = true }`): its members.
+pub(crate) fn set<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<String>, D::Error> {
+    Ok(members(d)?.0)
+}
+
+/// A condition (`{ solid = true, occupied = false }`): the members that
+/// must hold, and those that must not.
+pub(crate) fn condition<'de, D: Deserializer<'de>>(d: D) -> Result<(Vec<String>, Vec<String>), D::Error> {
+    members(d)
+}
+
+pub(crate) fn deserialize<'de, D: Deserializer<'de>>(d: D, names: &'static [(u32, &'static str)]) -> Result<u32, D::Error> {
+    let mut v = 0u32;
+    for n in set(d)? {
+        v |= match names.iter().find(|x| x.1 == n) {
+            Some(&(b, _)) => b,
+            None => {
+                let names: Vec<&str> = names.iter().map(|n| n.1).collect();
+                return Err(de::Error::custom(format!("unknown flag {n:?} (the flags: {})", names.join(", "))));
+            }
+        };
+    }
+    Ok(v)
 }
 
 /// `impl Serialize, Deserialize` for a flags newtype `T(pub int)` with a
-/// `NAMES` table; with `names_only`, a list that holds a number is refused.
+/// `NAMES` table: a set of its names (`{ name = true }`).
 macro_rules! serde_flags {
     ($t:ty, $int:ty) => {
-        crate::content::flags::serde_flags!($t, $int, true);
-    };
-    ($t:ty, $int:ty, names_only) => {
-        crate::content::flags::serde_flags!($t, $int, false);
-    };
-    ($t:ty, $int:ty, $numbers:literal) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 crate::content::flags::serialize(self.0 as u32, <$t>::NAMES, s)
@@ -95,7 +103,7 @@ macro_rules! serde_flags {
         }
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<$t, D::Error> {
-                crate::content::flags::deserialize(d, <$t>::NAMES, <$int>::MAX as u32, $numbers).map(|v| Self(v as $int))
+                crate::content::flags::deserialize(d, <$t>::NAMES).map(|v| Self(v as $int))
             }
         }
     };

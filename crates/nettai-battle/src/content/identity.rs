@@ -434,24 +434,21 @@ pub(crate) fn read(
             refresh: matches!(parts, Some(Parts::Body(_) | Parts::Bodies(..) | Parts::BeastHead { .. })),
             ..OverlayHooks::default()
         },
-        Data::List(names) => {
+        v => {
             let mut h = OverlayHooks::default();
-            for n in names {
+            for n in v.set().map_err(|m| what(format!("`overlay_hooks` {m}")))? {
                 match n {
-                    Data::Str(s) if s == "death" => h.death = true,
-                    Data::Str(s) if s == "refresh" => h.refresh = true,
-                    Data::Str(s) if s == "flinch" => h.flinch = true,
-                    Data::Str(s) if s == "flinch_checked" => (h.flinch, h.flinch_checked) = (true, true),
-                    Data::Str(s) if s == "drag" => h.drag = true,
-                    Data::Str(s) if s == "lets_go" => h.lets_go = true,
+                    "death" => h.death = true,
+                    "refresh" => h.refresh = true,
+                    "flinch" => h.flinch = true,
+                    "flinch_checked" => (h.flinch, h.flinch_checked) = (true, true),
+                    "drag" => h.drag = true,
+                    "lets_go" => h.lets_go = true,
                     other => return Err(what(format!("`overlay_hooks` has {other:?}, not death, refresh, flinch, flinch_checked, drag or lets_go"))),
                 }
             }
             h
         }
-        // (An empty table reads as a map.)
-        Data::Map(m) if m.is_empty() => OverlayHooks::default(),
-        other => return Err(what(format!("`overlay_hooks` is {other:?}, not a list of names"))),
     };
     let aura_anim = match spec.field("aura_anim") {
         Data::Nil => None,
@@ -502,26 +499,22 @@ pub(crate) fn read(
                 other => return Err(what(format!("body.element is {other:?}, not an element"))),
             };
             let mut flags = 0u32;
-            match b.field("flags") {
-                Data::Nil => {}
-                Data::List(names) => {
-                    for n in names {
-                        use crate::collision::f1;
-                        flags |= match n {
-                            Data::Str(s) if s == "super_armor" => f1::SUPERARMOR,
-                            Data::Str(s) if s == "air_shoe" => f1::AIRSHOE,
-                            Data::Str(s) if s == "float_shoe" => f1::FLOATSHOE,
-                            Data::Str(s) if s == "affected_by_ice" => f1::AFFECTED_BY_ICE,
-                            Data::Str(s) if s == "untouchable" => f1::UNTOUCHABLE,
-                            other => {
-                                return Err(what(format!(
-                                    "body.flags has {other:?}, not super_armor, air_shoe, float_shoe, affected_by_ice or untouchable"
-                                )));
-                            }
-                        };
+            let names = match b.field("flags") {
+                Data::Nil => Vec::new(),
+                v => v.set().map_err(|m| what(format!("body.flags {m}")))?,
+            };
+            for n in names {
+                use crate::collision::f1;
+                flags |= match n {
+                    "super_armor" => f1::SUPERARMOR,
+                    "air_shoe" => f1::AIRSHOE,
+                    "float_shoe" => f1::FLOATSHOE,
+                    "affected_by_ice" => f1::AFFECTED_BY_ICE,
+                    "untouchable" => f1::UNTOUCHABLE,
+                    other => {
+                        return Err(what(format!("body.flags has {other:?}, not super_armor, air_shoe, float_shoe, affected_by_ice or untouchable")));
                     }
-                }
-                other => return Err(what(format!("body.flags is {other:?}, not a list of names"))),
+                };
             }
             Some(ActorBody {
                 sprite: sprite(b.field("sprite"), "body.sprite")?,

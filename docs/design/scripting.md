@@ -91,8 +91,10 @@ Conventions:
 - **Names, not bits.** A set of named members is a view whose members are properties: an object's status flags
   and timers, a navi's requests, flags and buttons, what other objects ask of a field object, its form's
   traits, a side's HUD, a hand's entry, the hooks a side's rules listen to, the fields a console has its own
-  way (`me.status.using_action = true`, `me.status_timers.paralyze`, `me.held.a`, `battle.hud(side).gauge`,
-  `battle.hand_entry(side, i).marks`, `rules.listening(side).controller = false`, `o:console(side).visible`).
+  way, what hit a collision, the battle's effects of its game's own (`me.status.using_action = true`,
+  `me.status_timers.paralyze`, `me.held.a`, `battle.hud(side).gauge`, `battle.hand_entry(side, i).marks`,
+  `rules.listening(side).controller = false`, `o:console(side).visible`, `c.hit_by.guarded`,
+  `battle.effects.karma_held`).
   The binding keeps each view as it keeps a handle, so reading a member allocates nothing; a name held in a
   variable indexes the view cast to `any` (`(me.requests :: any)[r] = false`), the checker refusing a dynamic
   key on a view. A choice is a checked literal union (`me.lifecycle = "destroy"`, `me:set_attack(action,
@@ -101,22 +103,33 @@ Conventions:
   against the game's own as it runs. Content holds no bit layout: the engine's bit values and offsets stay in
   the engine, and a game's own layouts are declared once, in its rules. The original's numbers that are a
   routine's own immediates (animation numbers, tick counts, bug codes) are the scripts' named constants.
+- **Sets are tables of booleans keyed by member.** What content states as a set of names is a table keyed by
+  them (`flags = { has_damage = true, library = true }`), a member set to false the same as one left out; a
+  condition is the same table, true where the member must hold and false where it must not (`{ solid = true,
+  occupied = false }`). A list is a list only where its order counts (a stage's `layout` and `actors`, a chip's
+  `codes`, the panel types' `numbers`, the emotions' order). The engine's sets are typed in `core.d.luau` as tables
+  keyed by their names' union (`{ [ChipFlag]: boolean }`), so the checker holds a definition's set, and a set a
+  constant is annotated with, to the names; a set of names a game declares (panel types, battle effects, families)
+  is `{ [string]: boolean }`. luau-analyze lets a table passed straight to a call through, so every loader and
+  binding refuses a name it doesn't know, a value that isn't a boolean, and a list.
 - **Definitions and rule sections name their bits.** A status is its timer (`new.status { duration = 90, timer =
-  "paralyze" }`), and the loader gives it that timer's request. A stage's battle effects (`effects = { "full_hp",
-  "link" }`), the rules' requests (`reactions.status_end.requests`, `status.anti_traps.drops_requests`), a side's
-  status (`status.custom_drain.status`) and a chip's `extra_flags` are lists of names. A bit only its game has is
-  declared once, in that game's rules (`{ name = bit }`: `reactions.request_bits`, `flow.effect_bits`), and named
-  everywhere else; `battle.has_effect(name)` reads such a battle effect, `battle.link()`, `battle.boss_rank()` and
-  `battle.random()` the engine's. A loader refuses a name it doesn't know, and a number.
-- **Collision types, hit results and panel flags are names.** A collision type is a list of its members
-  (`new.collision { flags = { "own_attack", "reaches_float_shoe" } }`), of the object's side (`own_`) or the
-  other (`enemy_`) where a member is of a side, so a type is the same for either side, mirrored; a hit is
-  tested by them (`c:hit_any("enemy_body")`, `c.hit`); a panel by its flags (`field.check(x, y, "solid", {
-  "own_body", "enemy_area" }, side)`, `field.any`): the engine's, the game's type flags (each declared once, in
-  its rules' `panels.type_flags`), and the members a panel holds of what is registered on it. Data keeps a
-  panel condition as `{ require = ..., forbid = ... }` (regions, the step rules). A loader or the binding turns
-  the names into the very words the engine keeps; a name it doesn't know is an error (luau-analyze lets a
-  misspelled key of a table literal through), and a name, or a list a module keeps (frozen), is read once.
+  "paralyze" }`), and the loader gives it that timer's request. A stage's battle effects (`effects = { full_hp =
+  true, link = true }`), the rules' requests (`reactions.status_end.requests`, `status.anti_traps.drops_requests`),
+  a side's status (`status.custom_drain.status`), a chip's `flags`, `extra_flags` and `traits`, a form's `traits`
+  and `status_reset`, a navi's `weakness` are sets of names. A bit only its game has is declared once, in that
+  game's rules (`{ name = bit }`: `reactions.request_bits`, `flow.effect_bits`), and named everywhere else;
+  `battle.effects.<name>` reads such a battle effect, `battle.link()`, `battle.boss_rank()` and `battle.random()`
+  the engine's. A loader refuses a name it doesn't know, and a number.
+- **Collision types, hit results and panel flags are names.** A collision type is the set of its members
+  (`new.collision { flags = { own_attack = true, reaches_float_shoe = true } }`), of the object's side (`own_`)
+  or the other (`enemy_`) where a member is of a side, so a type is the same for either side, mirrored; a hit is
+  tested by them (`c.hit_by.enemy_body`, a set's `c:hit_any(BODIES)`, `c.hit`); a panel by its flags
+  (`field.check(x, y, SOLID_FREE, side)` with `SOLID_FREE` a condition, `field.any(x, y, BODIES, side)` with a
+  set): the engine's, the game's type flags (each declared once, in its rules' `panels.type_flags`), and the
+  members a panel holds of what is registered on it. A region's `field` and the rules' step rules are
+  conditions too. A loader or the binding turns the names into the very words the engine keeps; a name it
+  doesn't know is an error. A set or condition a module keeps (a constant, frozen with the module) is read once
+  and kept by itself; a table built at the call is read at each call, so content states its sets as constants.
 - **No floats anywhere.** `Vec3` is three `i32` in 16.16 fixed point with wrapping `+` and `-`.
 - **Faithful stores.** Where the game's store width matters, the API has both: `me:set_lifecycle("destroy")` is
   the word store (state, action, phase and phase-init: the game's `str CUR_STATE_DESTROY`), `me.lifecycle =
@@ -448,7 +461,7 @@ local eraseman: Chip = {
     class = "mega",
     damage = 120,
     hit_param = 138,
-    flags = { "dimming", "has_damage", "navi", "library" },
+    flags = { dimming = true, has_damage = true, navi = true, library = true },
     -- ...the rest of its record...
     navi = navi.summon { aim_ticks = 20 },
 }
@@ -510,7 +523,7 @@ Where the time goes (`examples/luau_ops`, interpreted):
 |---|---|
 | Loop iteration (the VM itself) | 11 ns |
 | Library call `battle.dimmed()` | 52 ns |
-| `field.check(3, 2, "solid", "occupied")` | not measured since `field.flags` (72 ns) went |
+| `field.check(3, 2, { solid = true, occupied = false })` | not measured since `field.flags` (72 ns) went |
 | Method `me:set_animation(0)` | 89 ns |
 | Field read `me.anim` / write | 162 / 181 ns |
 | Content state read `s.ticks` / write | 138 / 190 ns |
