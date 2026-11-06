@@ -45,10 +45,14 @@
 --
 -- Names, not numbers: flags, timers, buttons, panel types and lifecycle
 -- states are strings ("using_action", "paralyze", "a", "cracked",
--- "destroy"); the engine's bit values and offsets stay in the engine. The
--- original's numbers that are the game's own data (sound ids, animation
--- numbers, collision types, hit regions, panel flag words it matches as
--- whole words) are the scripts' constants, named where they're defined.
+-- "destroy"); the engine's bit values and offsets stay in the engine.
+-- Collision types, hit results and panel flags are named too: a collision
+-- type by its members (`new.collision`), what hit an object by them
+-- (`Collision:hit_any`), a panel by its flags (`field.check`, `field.any`),
+-- each a side's own (`own_`) or the other side's (`enemy_`) where it is of a
+-- side. The original's numbers that are the game's own data (sound ids,
+-- animation numbers, hit regions) are the scripts' constants, named where
+-- they're defined.
 
 export type Pool = "actor" | "attack" | "effect"
 -- ("finish" is the fourth state of kinds that have one after "destroy":
@@ -118,6 +122,72 @@ export type HudField =
 export type ScreenFade = "transform_out" | "transform_in" | "dim" | "undim"
 -- A panel type, by name: one of its game's (its rules' `panels.numbers`).
 export type PanelType = string
+-- A member of a collision type (`new.collision`'s `flags`): what an object is,
+-- or what it reacts to. Of a side: its attacks, objects, bodies (a navi's, a
+-- body of the rules'), other bodies (what a chip sets down that stands in the
+-- way) and player navi, the object's own side's (`own_`) or the other side's
+-- (`enemy_`), so a type is the same for either side, mirrored. Of no side: a
+-- neutral object; a floating body (FloatShoes); a blocker; what reaches the
+-- objects a chip sets down that any side's hit sets off (`reaches_set_objects`:
+-- their target has it); what hits while the battle is dimmed; a hit that
+-- reaches only the ground (`ground_only`); one a guard turns aside showing no
+-- spark (`no_guard_spark`, which breaks the guard with `breaks_guard` in
+-- EXE6); a sword (against a sword weakness and AntiSword); one that breaks a
+-- guard (`breaks_guard`); a pushing attack, a pull, wind (each pops a
+-- barrier); the dark chips' attacks' mark (`dark`: no type reaches it); a
+-- drain; what reaches FloatShoe bodies; chip destruction (the held chip of the
+-- navi it hits); what reaches submerged bodies; what pierces invisibility and
+-- flashing (`piercing`); and a break (a guard by the game's `guard_breaks_to`,
+-- ice, obstacles).
+export type CollisionMember =
+    "own_attack"
+    | "enemy_attack"
+    | "own_object"
+    | "enemy_object"
+    | "own_body"
+    | "enemy_body"
+    | "own_other_body"
+    | "enemy_other_body"
+    | "own_navi"
+    | "enemy_navi"
+    | "neutral"
+    | "floating"
+    | "blocker"
+    | "reaches_set_objects"
+    | "hits_while_dimmed"
+    | "ground_only"
+    | "no_guard_spark"
+    | "sword"
+    | "breaks_guard"
+    | "pushing"
+    | "dark"
+    | "pull"
+    | "drain"
+    | "reaches_float_shoe"
+    | "wind"
+    | "chip_destruction"
+    | "reaches_submerged"
+    | "piercing"
+    | "break"
+-- What a collision's hit results hold (`Collision:hit_any`): the collision
+-- types of what it hit and what hit it (their members), and a guard that
+-- turned its hit aside (`guarded`, the hitter's), a counter hit (`countered`,
+-- the receiver's), its guard turning aside a hit that shows a guard spark
+-- (`guard_spark`, the receiver's).
+export type HitName = CollisionMember | "guarded" | "countered" | "guard_spark"
+-- A panel's flag, by name: the engine's (`solid`: something can stand on it;
+-- `own_area`, `enemy_area`: it is the side's, the other side's; `cracked`;
+-- `reserved`; `any_body`: a body or another body of either side, or a neutral
+-- object; `occupied`: any body, a blocker, or a reservation), its game's type
+-- flags (its rules' `panels.type_flags`: EXE6's poison, road, grass, ice,
+-- volcano, holy, broken, missing, on_field), or a collision type member of
+-- what is registered on it (of the attacks, objects, bodies, other bodies and
+-- navis of a side, neutral, floating, blocker, reaches_set_objects). A name
+-- none of these is refused as the battle runs, or as content loads.
+export type PanelFlag = string
+-- Panel flags: a name, or a list of names (all of them, or any, as the test says). A name, or a list a module keeps,
+-- is read once.
+export type PanelFlags = PanelFlag | { PanelFlag }
 -- Status flags of an object with collision data.
 export type StatusFlag =
     "guard"
@@ -365,8 +435,10 @@ declare extern type Collision with
     -- The ticks left of its counter window (+0x0D; read-only): a hit with a
     -- counter byte counters it while they run.
     counter_timer: number
-    -- What the last resolution hit (some kinds clear it).
-    hit_flags: number
+    -- The last resolution hit something, or something hit it (its hit results
+    -- aren't none). Set to false, they are cleared (some kinds clear them);
+    -- never set to true.
+    hit: boolean
     -- Its hits reach while the battle is dimmed (its self flags' 0x10000:
     -- what a setup while dimmed gives it, and a retype while dimmed but
     -- EXE5's, which leaves it out; the DS's Double Attacks' bullets set it
@@ -410,6 +482,11 @@ declare extern type Collision with
     -- `sub_801A4DC`: the objects whose collisions hit it this window, in
     -- slot order.
     function hit_by(self): { Object }
+    -- The last resolution's hit results hold any of `names` (an `own_` or
+    -- `enemy_` member by the object's side): `c:hit_any("sword")`,
+    -- `c:hit_any(ENEMY_BODIES)`. A name, or a list a module keeps, is read
+    -- once.
+    function hit_any(self, names: HitName | { HitName }): boolean
     -- Add to the damage taken this window in an element (0 to 4, 5 the
     -- sixth slot), and to the raw damage barriers and traps see where `raw`.
     function add_damage(self, element: number, amount: number, raw: boolean): ()
@@ -1097,8 +1174,11 @@ export type LinkedChip = {
 }
 
 export type Panel = { kind: PanelType, alliance: number, home: number }
--- A panel flags word has every `require` bit and no `forbid` bit.
-export type PanelCondition = { require: number, forbid: number }
+-- What a panel must be, as data keeps it (a region, the rules' step rules, a
+-- look's): every flag of `require` holds and none of `forbid` (`own_`, `enemy_`
+-- and the areas of a side the test gives: `field.check(x, y, c.require,
+-- c.forbid, side)`). Keyed `require` and `forbid` alone.
+export type PanelCondition = { require: PanelFlags?, forbid: PanelFlags? }
 
 -- A side's damage-carry record: the side's largest damage this tick and
 -- last tick, the object that set the record, and the target that takes
@@ -1460,10 +1540,19 @@ declare field: {
     -- the other way round). With `side`, along X in the canonical side's
     -- frame (docs/engine/side-symmetry.md); without, as it is (along Y).
     passed: (new: number, old: number, target: number, side: number?) -> boolean,
-    -- A panel's cached flags word (0 off the field).
-    flags: (x: number, y: number) -> number,
-    -- The flags word has every `require` bit and no `forbid` bit.
-    check: (x: number, y: number, require: number, forbid: number) -> boolean,
+    -- `object_checkPanelParameters`: the panel is on the field, every flag of
+    -- `require` holds and none of `forbid` (nil: none), their side-relative
+    -- names (`own_body`, `enemy_area`) of `side` (needed only for those):
+    -- `field.check(x, y, "solid", "occupied")`.
+    check: (x: number, y: number, require: PanelFlags?, forbid: PanelFlags?, side: number?) -> boolean,
+    -- The panel's flags have any of `flags` (side-relative ones of `side`; not
+    -- a side's area, which `check` tests): false off the field.
+    any: (x: number, y: number, flags: PanelFlags, side: number?) -> boolean,
+    -- The low byte of the panel's flags word: its type's number, solid 0x10,
+    -- side 1's area 0x20, cracked 0x40, reserved 0x80 (0 off the field). No
+    -- test of the panel reads it: EXE5's GyroMan's chip keeps it as a panel
+    -- row, as the original's register still holds it.
+    low_byte: (x: number, y: number) -> number,
     panel: (x: number, y: number) -> Panel?,
     -- A side's registered field objects (the obstacles it owns), in the
     -- registry's slot order.
@@ -3017,16 +3106,17 @@ export type Effect = EffectSpec
 export type Spark = EffectSpec
 
 -- A hit region: panels around the anchor (`{ dx, dy }`, dx toward the
--- side's front), or the whole field's panels that meet a condition.
-export type RegionSpec = { panels: { { number } }?, field: PanelCondition? }
+-- side's front), or the whole field's panels that meet a condition, where its
+-- side-relative names are of `side` (needed only for those).
+export type RegionSpec = { panels: { { number } }?, field: PanelCondition?, side: number? }
 export type Region = RegionSpec
 
--- A collision type: what an object is or what it hits, as a flag word per
--- side. `row_offset`: the offset the original's lookup of the type's row
--- leaves in a register (the row's index times 8), which a damage word's
--- bug code takes as its high byte. (`CollisionType`, since `Collision` is
--- an object's registration.)
-export type CollisionTypeSpec = { id: string?, side0: number, side1: number, row_offset: number? }
+-- A collision type: what an object is or what it hits, by its members
+-- (`flags`; the loader refuses a name it doesn't know). `row_offset`: the
+-- offset the original's lookup of the type's row leaves in a register (the
+-- row's index times 8), which a damage word's bug code takes as its high
+-- byte. (`CollisionType`, since `Collision` is an object's registration.)
+export type CollisionTypeSpec = { id: string?, flags: { CollisionMember }, row_offset: number? }
 export type CollisionType = CollisionTypeSpec
 
 -- What the rules need from content by role (rules/roles.luau, once per

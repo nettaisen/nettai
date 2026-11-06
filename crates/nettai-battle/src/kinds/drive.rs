@@ -90,7 +90,7 @@ fn fly(b: &mut Battle, me: ObjectRef, f: Fly) -> bool {
     // (The update reads its hits after taking its collision out, which tests it against what came onto its
     // panels since it was presented, such as a navi stepping onto them; that test can hit it. Where one would
     // run, the update runs instead: read before it, the hit was missed, and the shot hit again.)
-    let hit = CoreApi::collision_get(b, me, CollisionField::HitFlags).expect("a flying object's collision") != Value::Int(0);
+    let hit = CoreApi::collision_get(b, me, CollisionField::Hit).expect("a flying object's collision") == Value::Bool(true);
     let meets = b.removal_tests_another(b.objects.get(me).collision.expect("a flying object's collision"));
     if CoreApi::is_battle_over(b) || hit || meets || (left < 0 && !CoreApi::panel_valid(b, next)) {
         end(b, me);

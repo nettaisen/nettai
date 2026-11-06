@@ -1465,6 +1465,10 @@ impl CoreApi for Battle {
         self.field.check(p.x, p.y, require, forbid)
     }
 
+    fn panel_flag_bits(&self, name: &str, side: Option<u8>) -> Result<nettai_content_api::PanelBits, String> {
+        self.game_rules().panels.flag_names().flag_bits(name, side)
+    }
+
     fn panel_info(&self, p: PanelPos) -> Option<PanelInfo> {
         let panel = self.field.panel(p.x, p.y)?;
         Some(PanelInfo { kind: panel.kind.0, alliance: panel.alliance, home: panel.home })
@@ -2738,6 +2742,7 @@ impl CoreApi for Battle {
             CollisionField::Region => return def(Registry::Region, c.region.map(|h| h.0)),
             CollisionField::HitEffect => return def(Registry::Spark, c.hit_effect.map(|h| h.0)),
             CollisionField::HitsWhileDimmed => return Ok(Value::Bool(c.self_flags & types::HITS_WHILE_DIMMED != 0)),
+            CollisionField::Hit => return Ok(Value::Bool(c.acc.hit_flags != 0)),
             CollisionField::ConfusionVisual => return Ok(c.links[crate::collision::link::CONFUSE].into()),
             CollisionField::BlindnessVisual => return Ok(c.links[crate::collision::link::BLIND].into()),
             _ => {}
@@ -2748,6 +2753,7 @@ impl CoreApi for Battle {
             | CollisionField::StatusBase
             | CollisionField::StatusFinal
             | CollisionField::HitsWhileDimmed
+            | CollisionField::Hit
             | CollisionField::ConfusionVisual
             | CollisionField::BlindnessVisual => unreachable!("handled above"),
             CollisionField::PanelX => c.panel.x as i64,
@@ -2761,7 +2767,6 @@ impl CoreApi for Battle {
             CollisionField::StandingCount => c.standing_count as i64,
             CollisionField::CounterByte => c.counter_byte as i64,
             CollisionField::CounterTimer => c.counter_timer as i64,
-            CollisionField::HitFlags => c.acc.hit_flags as i64,
             CollisionField::FinalDamage => c.acc.final_damage as i64,
             CollisionField::Direction => c.direction as i64,
             CollisionField::GuardDirs => c.guard_dirs as i64,
@@ -2778,6 +2783,21 @@ impl CoreApi for Battle {
             CollisionField::Bubble => (c.barrier == 8) as i64,
             CollisionField::BarrierTimer => c.barrier_timer as i64,
         }))
+    }
+
+    fn collision_hit_any(&self, o: ObjectRef, bits: [u32; 2]) -> ApiResult<bool> {
+        let hit = self.collision_of(o)?.acc.hit_flags;
+        let side = self.objects.get(o).alliance;
+        let bits = match side {
+            0 | 1 => bits[side as usize],
+            _ if bits[0] == bits[1] => bits[0],
+            _ => return Err(ApiError::Other(format!("hit_any: an object of side {side} has no own or enemy side"))),
+        };
+        Ok(hit & bits != 0)
+    }
+
+    fn hit_bits(&self, name: &str, side: Option<u8>) -> Result<u32, String> {
+        crate::collision::hit_name_bits(name, side)
     }
 
     fn collision_element_damage(&self, o: ObjectRef, element: u8) -> ApiResult<u16> {
@@ -2826,6 +2846,14 @@ impl CoreApi for Battle {
                 c.self_flags = if on { c.self_flags | types::HITS_WHILE_DIMMED } else { c.self_flags & !types::HITS_WHILE_DIMMED };
                 return Ok(());
             }
+            // (Cleared only: what hit it is the resolution's to say.)
+            (CollisionField::Hit, FieldValue::Bool(hit)) => {
+                if hit {
+                    return Err(ApiError::Other("hit: written false only, which clears the hit results".into()));
+                }
+                c.acc.hit_flags = 0;
+                return Ok(());
+            }
             (CollisionField::ConfusionVisual, FieldValue::Object(r)) => {
                 c.links[crate::collision::link::CONFUSE] = r;
                 return Ok(());
@@ -2853,6 +2881,7 @@ impl CoreApi for Battle {
             | CollisionField::StatusBase
             | CollisionField::StatusFinal
             | CollisionField::HitsWhileDimmed
+            | CollisionField::Hit
             | CollisionField::ConfusionVisual
             | CollisionField::BlindnessVisual
             | CollisionField::Barrier => unreachable!("handled above"),
@@ -2866,7 +2895,6 @@ impl CoreApi for Battle {
             CollisionField::SelfDamage => c.self_damage = x as u16,
             CollisionField::StandingCount => c.standing_count = x as u8,
             CollisionField::CounterByte => c.counter_byte = x as u8,
-            CollisionField::HitFlags => c.acc.hit_flags = x as u32,
             CollisionField::FinalDamage
             | CollisionField::CounterTimer
             | CollisionField::GuardDirs

@@ -21,7 +21,7 @@ local F, B, U, D = { dx = 1, dy = 0 }, { dx = -1, dy = 0 }, { dx = 0, dy = -1 },
 
 local function road(dx: number, dy: number)
     return {
-        flags = 0x00010210,
+        flags = { "solid", "road", "on_field" },
         expires = 0x708,
         cleared_by = "wood",
         carries = { dx = dx, dy = dy, panels = 1 },
@@ -44,49 +44,60 @@ local function rows(first: number, last: number): { { boolean } }
     return grid
 end
 
--- Steps: onto a free panel of one's own side (0x20 marks side 1's), solid
--- unless the body is floor-free.
-local OCCUPIED = 0x0F880080
+-- Steps: onto a free panel of one's own side, solid unless the body is
+-- floor-free.
 local own = {
-    grounded = {
-        { require = 0x00000010, forbid = 0x0F8800A0 },
-        { require = 0x00000030, forbid = OCCUPIED },
-    },
-    floor_free = {
-        { require = 0x00000000, forbid = 0x0F8800A0 },
-        { require = 0x00000020, forbid = OCCUPIED },
-    },
+    grounded = { require = { "solid", "own_area" }, forbid = { "occupied" } },
+    floor_free = { require = { "own_area" }, forbid = { "occupied" } },
 }
 
 return {
+    -- The flags the types set besides the engine's: EXE6's, and EXE5's sea.
+    type_flags = {
+        poison = 0x100,
+        road = 0x200,
+        grass = 0x400,
+        ice = 0x800,
+        volcano = 0x1000,
+        holy = 0x2000,
+        broken = 0x4000,
+        missing = 0x8000,
+        on_field = 0x10000,
+        sea = 0x20000,
+    },
     types = {
-        missing = { flags = 0x00010000 },
-        broken = { flags = 0x00010000 },
-        normal = { flags = 0x00010010 },
-        cracked = { flags = 0x00010050 },
-        poison = { flags = 0x00010110, stand = panel_types.poison },
-        holy = { flags = 0x00012010, damage_shift = 1 },
-        grass = { flags = 0x00010410, cleared_by = "fire", doubles = "fire", stand = panel_types.grass(9) },
+        missing = { flags = { "on_field" } },
+        broken = { flags = { "on_field" } },
+        normal = { flags = { "solid", "on_field" } },
+        cracked = { flags = { "solid", "cracked", "on_field" } },
+        poison = { flags = { "solid", "poison", "on_field" }, stand = panel_types.poison },
+        holy = { flags = { "solid", "holy", "on_field" }, damage_shift = 1 },
+        grass = {
+            flags = { "solid", "grass", "on_field" },
+            cleared_by = "fire",
+            doubles = "fire",
+            stand = panel_types.grass(9),
+        },
         ice = {
-            flags = 0x00010810,
+            flags = { "solid", "ice", "on_field" },
             move_end = panel_types.ice_slides,
             slide = panel_types.ice,
             hit = panel_types.freezes(statuses.freeze_150),
         },
-        volcano = { flags = 0x00011010, cleared_by = "aqua", tick = eruption.volcano },
+        volcano = { flags = { "solid", "volcano", "on_field" }, cleared_by = "aqua", tick = eruption.volcano },
         road_up = road(0, -1),
         road_down = road(0, 1),
         road_left = road(-1, 0),
         road_right = road(1, 0),
         magnet = {
-            flags = 0x00010210,
+            flags = { "solid", "road", "on_field" },
             cleared_by = "wood",
             carries_by_move = { {}, { F, U, B, D }, { B, D, F, U }, { U, B, D, F }, { D, F, U, B }, { D, F, U, B } },
             move_end = panel_types.magnet,
             slide = panel_types.carries,
         },
         lava = {
-            flags = 0x00011010,
+            flags = { "solid", "volcano", "on_field" },
             expires = 960,
             cleared_by = "aqua",
             burn = panel_types.burn {
@@ -96,7 +107,7 @@ return {
             },
         },
         sea = {
-            flags = 0x00030010,
+            flags = { "solid", "on_field", "sea" },
             expires = 960,
             submerges = true,
             stand = panel_types.drains("fire"),
@@ -130,15 +141,15 @@ return {
     step = own,
     dash_step = own,
     any_side_step = {
-        grounded = { { require = 0x00000010, forbid = OCCUPIED }, { require = 0x00000010, forbid = OCCUPIED } },
-        floor_free = { { require = 0x00000000, forbid = OCCUPIED }, { require = 0x00000000, forbid = OCCUPIED } },
+        grounded = { require = { "solid" }, forbid = { "occupied" } },
+        floor_free = { forbid = { "occupied" } },
     },
     -- A broken panel mends after 0x258 ticks, 0x1E0 in battle mode 1.
     mend = { normal = 0x258, battle_mode_1 = 0x1E0 },
     -- A reservation marks its holder, whose destroy releases it.
     reservations = "marked",
     -- The flags' bits a type owns, which a crack, a break or poison clears.
-    type_mask = 0x00003F5F,
+    type_mask = { "solid", "cracked", "poison", "road", "grass", "ice", "volcano", "holy" },
     -- The field's cycle, which the volcanos erupt by.
     cycle = 0x8C,
 }

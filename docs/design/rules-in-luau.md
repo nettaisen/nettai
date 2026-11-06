@@ -3583,3 +3583,21 @@ that work, in the same order, and the values are content's:
   and clears through the accessor each game passes (the fan's look's `wind`; EXE4's rules/wind, EXE5's and EXE6's
   rules/api); the role `encased` clears it where the engine did (`sub_80E544C` at `sub_801813A`'s end, before what
   the obstacle becomes). `battle.wind`, `set_wind`, `clear_wind` and `field.winds` are gone.
+
+### Collision types, hit results and panel flags by name (2026-11-06, branch api-field, for 0.27)
+
+The rules' and content's words for collision types, hit results and panel conditions are names; the loaders and the
+binding turn them into the very words the engine kept, which a dump of every converted definition's words showed the
+same before and after:
+
+- **`panels.type_flags`**: each game declares the flags its types set besides the engine's once, by name (EXE6's
+  poison, road, grass, ice, volcano, holy, broken, missing and on_field; EXE5's magnet, lava and sea in road's and
+  volcano's places and 0x20000; EXE4's pitfall, lava and metal), each one bit of the flags word's bits 8 to 17. A type's
+  `flags` and the `type_mask` are lists of those and the engine's `solid` and `cracked` (the mask has the type's
+  number always).
+- **The step rules** (`step`, `dash_step`, `any_side_step`) are one condition each, grounded and floor-free, in
+  side-relative names (`own_area`, `own_body`, `enemy_other_body`, `occupied`): side 1's is side 0's mirrored, as every
+  game's rows were.
+- **`reactions.hit_test.guard_breaks_to`** is a list of collision type members (EXE6's `break`, EXE5's and EXE4's
+  `breaks_guard` and `break`), and **`status.intake.anti_traps.sword_spares`** a list of hit names (EXE6's
+  `guard_spark`).

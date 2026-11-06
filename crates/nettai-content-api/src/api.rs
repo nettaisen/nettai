@@ -451,8 +451,11 @@ named_fields! {
         /// The ticks left of its counter window (CollisionData+0x0D): a
         /// hit with a counter byte counters it while they run.
         CounterTimer = "counter_timer", U8, ro;
-        /// What the last resolution hit (writable: some kinds clear it).
-        HitFlags = "hit_flags", U32, rw;
+        /// The last resolution hit something, or something hit it (its hit
+        /// results aren't none: `Collision:hit_any` tests them by name).
+        /// Written false, they are cleared (some kinds clear them); never
+        /// written true.
+        Hit = "hit", Bool, rw;
         /// Its hits reach while the battle is dimmed (its self flags'
         /// 0x10000: what a setup while dimmed gives it, and a retype while
         /// dimmed but EXE5's, 0x08016B9E, which leaves it out).
@@ -754,6 +757,99 @@ named_flags! {
         /// (Falzar Beast Over's form, EXE5's DarkInvs drive).
         Untouchable = "untouchable",
     }
+}
+
+named_flags! {
+    /// A member of a collision type (`new.collision`'s `flags`): what an
+    /// object is, or what it reacts to, by the engine's names of its bits
+    /// (nettai-battle's `collision::types`). The side-relative members are
+    /// of the object's side (`own_`) or of the other side (`enemy_`), so a
+    /// type's word for side 1 is its word for side 0 mirrored.
+    pub enum CollisionMember {
+        OwnAttack = "own_attack",
+        EnemyAttack = "enemy_attack",
+        OwnObject = "own_object",
+        EnemyObject = "enemy_object",
+        /// A body: a navi's (`own_navi` with it), a body of the rules'.
+        OwnBody = "own_body",
+        EnemyBody = "enemy_body",
+        /// Another body: what a chip sets down that stands in the way.
+        OwnOtherBody = "own_other_body",
+        EnemyOtherBody = "enemy_other_body",
+        Neutral = "neutral",
+        /// A side's player navi (the field regions of the panels that hold
+        /// it test it).
+        OwnNavi = "own_navi",
+        EnemyNavi = "enemy_navi",
+        Floating = "floating",
+        Blocker = "blocker",
+        /// The objects a chip sets down that any side's hit sets off react
+        /// to it (their target has it).
+        ReachesSetObjects = "reaches_set_objects",
+        HitsWhileDimmed = "hits_while_dimmed",
+        GroundOnly = "ground_only",
+        NoGuardSpark = "no_guard_spark",
+        Sword = "sword",
+        BreaksGuard = "breaks_guard",
+        Pushing = "pushing",
+        /// The dark chips' attacks carry it; no type reaches it (EXE5's rules
+        /// test a hit by it).
+        Dark = "dark",
+        Pull = "pull",
+        Drain = "drain",
+        ReachesFloatShoe = "reaches_float_shoe",
+        Wind = "wind",
+        ChipDestruction = "chip_destruction",
+        ReachesSubmerged = "reaches_submerged",
+        Piercing = "piercing",
+        Break = "break",
+    }
+}
+
+named_flags! {
+    /// What a hit leaves in a collision's hit results besides the hitters'
+    /// collision types (`Collision:hit_any` names them with the members).
+    pub enum HitBit {
+        /// A guard turned its hit aside (the hitter's).
+        Guarded = "guarded",
+        /// A counter hit (the receiver's).
+        Countered = "countered",
+        /// Its guard turned aside a hit that shows a guard spark (the
+        /// receiver's).
+        GuardSpark = "guard_spark",
+    }
+}
+
+named_flags! {
+    /// The engine's names of a panel's flags (nettai-battle's
+    /// `field::pflags`): besides them a panel condition names its game's
+    /// type flags (its rules' `panels.type_flags`) and the collision types'
+    /// members registered on the panel (the high half: `own_body`, ...).
+    pub enum PanelFlag {
+        /// Something can stand on it (not missing or broken).
+        Solid = "solid",
+        /// The panel is the side's, or the other side's (side-relative).
+        OwnArea = "own_area",
+        EnemyArea = "enemy_area",
+        Cracked = "cracked",
+        /// Something reserved it.
+        Reserved = "reserved",
+        /// Any body: a body or another body of either side, or a neutral
+        /// object.
+        AnyBody = "any_body",
+        /// Any body, a blocker, or a reservation.
+        Occupied = "occupied",
+    }
+}
+
+/// What a name in a panel condition stands for, for a side
+/// (`CoreApi::panel_flag_bits`): the bits it holds when they are all set
+/// (`set`) and all clear (`clear`; the other side's area is the alliance bit
+/// set for side 0, clear for side 1).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct PanelBits {
+    pub set: u32,
+    pub clear: u32,
 }
 
 named_flags! {
@@ -1785,10 +1881,18 @@ pub trait CoreApi {
     fn panel_valid(&self, p: PanelPos) -> bool;
     /// The center of a panel, 16.16 (x, y).
     fn panel_center(&self, p: PanelPos) -> (i32, i32);
-    /// A panel's cached flags word (0 off the field).
+    /// A panel's cached flags word (0 off the field). Content tests it by
+    /// names (`field.check`, `field.any`: [`CoreApi::panel_flag_bits`]).
     fn panel_flags(&self, p: PanelPos) -> u32;
-    /// The flags word has every `require` bit and no `forbid` bit.
+    /// `object_checkPanelParameters`: the panel is on the field and its
+    /// flags word has every `require` bit and no `forbid` bit.
     fn panel_check(&self, p: PanelPos, require: u32, forbid: u32) -> bool;
+    /// What a name in a panel condition stands for, for `side` (a
+    /// side-relative name needs one): the engine's [`PanelFlag`]s, the
+    /// game's type flags (its rules' `panels.type_flags`), the collision
+    /// types' members a panel holds of what is registered on it. An unknown
+    /// name is an error that says what the names are.
+    fn panel_flag_bits(&self, name: &str, side: Option<u8>) -> Result<PanelBits, String>;
     fn panel_info(&self, p: PanelPos) -> Option<PanelInfo>;
     /// A side's registered field objects (the obstacles it owns: the
     /// registry's three slots at BattleState+0xA0 + side * 0xC), in slot
@@ -2231,6 +2335,15 @@ pub trait CoreApi {
     /// `sub_801A082`: redo the types (and damage) of a registration.
     fn reset_collision_types(&mut self, o: ObjectRef, self_type: crate::CollisionHandle, target_type: crate::CollisionHandle, hit_mod: u8);
     fn collision_get(&self, o: ObjectRef, f: CollisionField) -> ApiResult<Value>;
+    /// The last resolution's hit results have any of `bits` (by the
+    /// object's side: side 0's, side 1's; a side-relative name's bits differ
+    /// by side, which an object of no side can't test). Content names them
+    /// (`Collision:hit_any`: [`CollisionMember`]s and [`HitBit`]s).
+    fn collision_hit_any(&self, o: ObjectRef, bits: [u32; 2]) -> ApiResult<bool>;
+    /// What a name in a hit test stands for, for `side` (a side-relative
+    /// member needs one): a [`CollisionMember`]'s bits or a [`HitBit`]. An
+    /// unknown name is an error that says what the names are.
+    fn hit_bits(&self, name: &str, side: Option<u8>) -> Result<u32, String>;
     /// The damage taken this window in element `element` (0 null, 1 fire,
     /// 2 aqua, 3 elec, 4 wood, 5 the sixth slot), as totaled.
     fn collision_element_damage(&self, o: ObjectRef, element: u8) -> ApiResult<u16>;

@@ -15,38 +15,18 @@ local function spark(): Spark
     return new.spark { sprite = sprites["test-spark"], anim = 0, palette = 0, steps = 4 }
 end
 
--- A collision type's flag words: an attack, an object and a body of each
--- side, another body, a neutral object, a player's body, a floating body;
--- what resolves while the battle is dimmed, what reaches floating bodies.
-local ATTACK = { [0] = 0x80000000, [1] = 0x40000000 }
-local OBJECT = { [0] = 0x20000000, [1] = 0x10000000 }
-local BODY = { [0] = 0x08000000, [1] = 0x04000000 }
-local OTHER_BODY = { [0] = 0x02000000, [1] = 0x01000000 }
-local NEUTRAL = 0x00800000
-local PLAYER = { [0] = 0x00400000, [1] = 0x00200000 }
-local FLOATING = 0x00100000
-local WHILE_DIMMED = 0x00010000
-local REACHES_FLOATING = 0x0080
-
--- A type whose flags `flags` gives for each side. `row` is the row the
--- type has in EXE6's table: a bug code's high byte takes its offset.
-local function collision(id: string, row: number, flags: (side: number) -> number): CollisionType
-    return new.collision { id = "test/" .. id, side0 = flags(0), side1 = flags(1), row_offset = row * 8 }
+-- A type of members `flags` (an own side's of the object's side, the
+-- other side's mirrored). `row` is the row the type has in EXE6's table: a
+-- bug code's high byte takes its offset.
+local function collision(id: string, row: number, flags: { CollisionMember }): CollisionType
+    return new.collision { id = "test/" .. id, flags = flags, row_offset = row * 8 }
 end
 
-local function body(side: number): number
-    return bit32.bor(BODY[side], PLAYER[side], WHILE_DIMMED, REACHES_FLOATING)
-end
-
-local function attack(side: number): number
-    return bit32.bor(ATTACK[side], REACHES_FLOATING)
-end
-
+-- A navi's body: its side's body and player navi, which resolves while the
+-- battle is dimmed and reaches floating bodies.
+local BODY: { CollisionMember } = { "own_body", "own_navi", "hits_while_dimmed", "reaches_float_shoe" }
 -- The other side's objects and bodies, and neutral objects.
-local function others(side: number): number
-    local other = 1 - side
-    return bit32.bor(OBJECT[other], BODY[other], OTHER_BODY[other], NEUTRAL)
-end
+local OTHERS: { CollisionMember } = { "enemy_object", "enemy_body", "enemy_other_body", "neutral" }
 
 return {
     effects = {
@@ -66,15 +46,19 @@ return {
         anchor = new.region { panels = { { 0, 0 } } },
     },
     collision = {
-        navi = collision("navi", 0x01, body),
-        floating_navi = collision("floating-navi", 0x10, function(side)
-            return bit32.bor(body(side), FLOATING)
-        end),
-        navi_target = collision("navi-target", 0x02, function(side)
-            return bit32.bor(ATTACK[1 - side], others(side))
-        end),
-        thrown_obstacle = collision("thrown-obstacle", 0x06, attack),
-        thrown_obstacle_target = collision("thrown-obstacle-target", 0x05, others),
+        navi = collision("navi", 0x01, BODY),
+        floating_navi = collision(
+            "floating-navi",
+            0x10,
+            { "own_body", "own_navi", "floating", "hits_while_dimmed", "reaches_float_shoe" }
+        ),
+        navi_target = collision(
+            "navi-target",
+            0x02,
+            { "enemy_attack", "enemy_object", "enemy_body", "enemy_other_body", "neutral" }
+        ),
+        thrown_obstacle = collision("thrown-obstacle", 0x06, { "own_attack", "reaches_float_shoe" }),
+        thrown_obstacle_target = collision("thrown-obstacle-target", 0x05, OTHERS),
     },
     -- Made-up sounds, music, sprites and banners, one for each role (named
     -- `test-<kind>-<role>`; the test content gives each the id the tests

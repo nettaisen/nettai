@@ -458,7 +458,7 @@ mod tests {
 
     #[test]
     fn what_the_namespace_refuses() {
-        let e = content(vec![folder("game", &[("rules/turns", "return new.collision { id = 'game:turns', side0 = 0, side1 = 0 }")])]).unwrap_err();
+        let e = content(vec![folder("game", &[("rules/turns", "return new.collision { id = 'game:turns', flags = {} }")])]).unwrap_err();
         assert!(e.contains("\"game:turns\" is not a valid id"), "{e}");
         // A section is the rules' field by the engine's name.
         let e = content(vec![folder("game", &[("rules/init", "return { Pools = { actor = 16 } }")])]).unwrap_err();
@@ -487,8 +487,7 @@ local function row(n: number, v: any): { any }
     return t
 end
 local none = { dx = 0, dy = 0, panels = 0 }
-local any_panel = { require = 0, forbid = 0 }
-local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, any_panel } }
+local step = { grounded = {}, floor_free = {} }
 "#;
         // The sections the rules state, a field a line.
         const STATED: &[(&str, &str)] = &[
@@ -595,7 +594,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
             (
                 "panels",
                 r#"
-        types = { missing = { flags = 0 }, broken = { flags = 0 }, normal = { flags = 0x10 } },
+        types = { missing = { flags = {} }, broken = { flags = {} }, normal = { flags = { "solid" } } },
         mend = { normal = 600, battle_mode_1 = 480 },
         start_visible = row(5, row(8, true)),
         front_edges = row(5, row(8, false)),
@@ -605,7 +604,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         dash_step = step,
         any_side_step = step,
         reservations = "unmarked",
-        type_mask = 0x3F5F,"#,
+        type_mask = { "solid", "cracked" },"#,
             ),
             (
                 "pools",
@@ -619,7 +618,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 r#"
         push = row(10, none),
         push_reading = { reads = "by_hitter_flip", bits = 4, drag_bit = 0x40, obstacle_rows = { { dx = -1, dy = 0, panels = 6 } } },
-        hit_test = { float_shoe_needs_self_bit = true, bubbled_as_submerged = false, elec_reaches_submerged = true, guard_breaks_to = 0x1002, guard_before_untouchable = false, guard_marks_direction = true },
+        hit_test = { float_shoe_needs_self_bit = true, bubbled_as_submerged = false, elec_reaches_submerged = true, guard_breaks_to = { "breaks_guard", "break" }, guard_before_untouchable = false, guard_marks_direction = true },
         obstacle_slide_bounds = false,
         move_direction = "by_side",
         bubble_bob = row(32, 0),
@@ -649,7 +648,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         hp_loss = "hp_alone",
         hit_sound = "by_console",
         barrier = { stops_while_paused = true, wind = "pops" },
-        anti_traps = { damage_min = 10, armed_swallows_below = true, sword_spares = 0x20000, drops_requests = 0x301BE },
+        anti_traps = { damage_min = 10, armed_swallows_below = true, sword_spares = { "guard_spark" }, drops_requests = 0x301BE },
         chip_destruction = "next",
         emotion = { mood_held = "at_zero", anger_end = "resets_mood", order = { { emotion = "worn_out", when = { { mood = 0 }, { exhausted = true } } }, { emotion = "worried", when = { { mood_below = 40, in_form = false } } }, { emotion = "normal" } }, roles = { worn_out = "worn_out" }, hit_mood = "counter_counts", hitter_gain = "to_full", full_synchro_spent = 0x99, anger_boost_sound = false },
         form_break = "marked_forms",
@@ -1008,5 +1007,47 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         c.scripts.add_game("game", [("init".to_string(), "return { chips = { y = require('@lib/x') } }".to_string())].into());
         let e = c.define().unwrap_err().message;
         assert!(e.contains("lib/x.luau: chip y: support pack lib defines nothing a game has"), "{e}");
+    }
+
+    /// Collision types and whole-field regions are named (their members,
+    /// panel flags), and a name the loader doesn't know is refused: a misspelled
+    /// key or name of a table literal passes luau-analyze.
+    #[test]
+    fn the_loader_refuses_names_it_doesnt_know() {
+        use crate::content::{PanelCondition, Region, testing};
+        use nettai_content_api::Registry;
+        for (spec, says) in [
+            ("new.collision { id = 'x', flags = { 'own_atack' } }", "`own_atack` is no collision type member"),
+            ("new.collision { id = 'x', side0 = 0x80, flags = {} }", "`side0` is none of its fields"),
+            ("new.collision { id = 'x', flags = { 'sword', 'sword' } }", "`sword` is named twice"),
+            ("new.region { id = 'x', field = { require = { 'sold' } } }", "`sold` is no panel flag"),
+            ("new.region { id = 'x', field = { requires = { 'solid' } } }", "`field.requires` is none of a condition's fields"),
+            ("new.region { id = 'x', field = { require = 'own_area' } }", "of a side"),
+            ("new.region { id = 'x', field = { require = 'sword' } }", "no panel holds"),
+        ] {
+            let mut c = testing::with_test_pack();
+            c.scripts.modules.insert(Scripts::name(testing::ROOT, "lib/named"), format!("return {spec}"));
+            testing::add_index(&mut c.scripts, testing::ROOT);
+            let e = c.define().unwrap_err().message;
+            assert!(e.contains(says), "`{spec}`: {e}");
+        }
+        // A region of a side names that side's flags: the same words as the
+        // other side's mirrored.
+        let mut c = testing::with_test_pack();
+        c.scripts.modules.insert(
+            Scripts::name(testing::ROOT, "lib/named"),
+            "return { new.region { id = 'a', field = { require = { 'solid', 'own_area' }, forbid = 'enemy_navi' }, side = 0 }, \
+             new.region { id = 'b', field = { require = { 'solid', 'own_area' }, forbid = 'enemy_navi' }, side = 1 } }"
+                .into(),
+        );
+        testing::add_index(&mut c.scripts, testing::ROOT);
+        c.define().unwrap();
+        let region = |key: &str| {
+            let i = c.defs.definitions.of(Registry::Region).iter().position(|d| d.key == key).expect("the region");
+            c.defs.regions[i].clone()
+        };
+        use crate::collision::types;
+        assert_eq!(region("a"), Region::Field(PanelCondition { require: 0x10, forbid: 0x20 | types::NAVI_SIDE1 }));
+        assert_eq!(region("b"), Region::Field(PanelCondition { require: 0x30, forbid: types::NAVI_SIDE0 }));
     }
 }

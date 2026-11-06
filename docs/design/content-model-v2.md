@@ -107,8 +107,8 @@ Every definition belongs to one registry. The engine knows the registries and th
 | stage | the root's `stages` | its id there (a match's arena) | layout, actors, music, background, settings | battle settings index and actor-list address |
 | effect | `new.effect` | derived | sprite, animation, palette | (none) |
 | spark | `new.spark` | derived | sprite, animation, palette | (none) |
-| region | `new.region` | derived | panel offsets, or a whole-field condition | (none) |
-| collision | `new.collision` | derived (`rules/collision/attack`) | a collision type's flag words by side | (none: gen-content knows a type by its row) |
+| region | `new.region` | derived | panel offsets, or a whole-field condition by flag names | (none) |
+| collision | `new.collision` | derived (`rules/collision/attack`) | a collision type's members by name, the side-relative ones mirrored for side 1 | (none: gen-content knows a type by its row) |
 | status | `new.status` | `id` where compat names it, else derived | requests, duration, timer | its byte, in rules.toml |
 | (lockon) | `new.record("lockon", ...)` | `id` (compat's rules.toml) | the Beast Out lock-on search | its mode byte |
 | record | `new.record(type, spec)` | `id` where compat names it, else derived | only its type name (Luau reads the fields) | (records.toml: SP slots, variants, barriers) |

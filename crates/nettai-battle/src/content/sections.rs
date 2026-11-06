@@ -41,7 +41,9 @@ struct ElementsSection {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct PanelTypeSection {
-    flags: u32,
+    /// The flags it sets, by name (`PanelRules::type_word`).
+    #[serde(deserialize_with = "super::rules::name_list")]
+    flags: Vec<String>,
     #[serde(default)]
     carries: Option<SlideVector>,
     /// A sound asset, as the content names it.
@@ -82,22 +84,48 @@ struct MendSection {
     battle_mode_1: u16,
 }
 
-#[derive(Deserialize, Clone, Copy)]
+/// A panel condition by names (`PanelRules::condition`), as content states
+/// one: every name of `require` holds and none of `forbid`.
+#[derive(Deserialize, Clone, Default)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct NamedCondition {
+    #[serde(default, deserialize_with = "super::rules::name_list")]
+    pub require: Vec<String>,
+    #[serde(default, deserialize_with = "super::rules::name_list")]
+    pub forbid: Vec<String>,
+}
+
+impl NamedCondition {
+    /// Its words for `side` (side-relative names need one).
+    pub fn words(&self, panels: super::rules::PanelNames, side: Option<u8>) -> Result<PanelCondition, String> {
+        panels.condition(self.require.iter().map(String::as_str), self.forbid.iter().map(String::as_str), side)
+    }
+}
+
+/// A step rule: what a panel must be to step onto, grounded and floor-free,
+/// in side-relative names (a side's rule is the other side's mirrored).
+#[derive(Deserialize, Clone)]
 #[serde(deny_unknown_fields)]
 struct StepSection {
-    grounded: [PanelCondition; 2],
-    floor_free: [PanelCondition; 2],
+    grounded: NamedCondition,
+    floor_free: NamedCondition,
 }
 
 impl StepSection {
-    fn rules(self) -> StepRuleSet {
-        StepRuleSet { grounded: self.grounded, floor_free: self.floor_free }
+    fn rules(&self, panels: super::rules::PanelNames) -> Result<StepRuleSet, String> {
+        let both = |c: &NamedCondition| -> Result<[PanelCondition; 2], String> { Ok([c.words(panels, Some(0))?, c.words(panels, Some(1))?]) };
+        Ok(StepRuleSet { grounded: both(&self.grounded)?, floor_free: both(&self.floor_free)? })
     }
 }
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct PanelsSection {
+    /// The flags the types set besides the engine's, by name: each one bit
+    /// of the flags word's bits 8 to 17 (`PanelRules::type_flags`; none
+    /// stated, none).
+    #[serde(default)]
+    type_flags: BTreeMap<String, u32>,
     types: BTreeMap<String, PanelTypeSection>,
     mend: MendSection,
     start_visible: [[bool; 8]; 5],
@@ -110,7 +138,9 @@ struct PanelsSection {
     dash_step: StepSection,
     any_side_step: StepSection,
     reservations: super::rules::Reservations,
-    type_mask: u32,
+    /// The flags a type owns, by name, besides its number (always its).
+    #[serde(deserialize_with = "super::rules::name_list")]
+    type_mask: Vec<String>,
     #[serde(default)]
     cycle: Option<u32>,
     #[serde(default)]
@@ -657,6 +687,24 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     }
                 }
                 let s: PanelsSection = r.read(&spec, &at).map_err(e)?;
+                // The type flags, each one bit the engine's names leave (bits
+                // 8 to 17; the high half's bits 18 to 31 are the collision
+                // types' a panel holds), named apart from the engine's.
+                let mut type_flags: Vec<(String, u32)> = Vec::new();
+                for (name, &bit) in &s.type_flags {
+                    if bit.count_ones() != 1 || bit & 0x0003_FF00 == 0 {
+                        return Err(e(format!("{at}.type_flags.{name}: {bit:#x} is not one bit of the flags word's bits 8 to 17")));
+                    }
+                    if let Some((other, _)) = type_flags.iter().find(|(_, b)| *b == bit) {
+                        return Err(e(format!("{at}.type_flags: {name} and {other} are the same bit")));
+                    }
+                    if nettai_content_api::PanelFlag::from_name(name).is_some() || nettai_content_api::CollisionMember::from_name(name).is_some() {
+                        return Err(e(format!("{at}.type_flags.{name}: the engine names {name:?} already")));
+                    }
+                    type_flags.push((name.clone(), bit));
+                }
+                type_flags.sort_by_key(|&(_, bit)| bit);
+                let named = super::rules::PanelNames(&type_flags);
                 // The game's types, by its numbers (docs/design/exe5-map.md
                 // §15.3 item 1): EXE6's 13, EXE5's 11, EXE4's 12.
                 let mut types = Vec::with_capacity(s.numbers.len());
@@ -696,8 +744,9 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                         }
                         None => None,
                     };
+                    let flags = named.type_word(rule.flags.iter().map(String::as_str)).map_err(|m| e(format!("{at}.types.{name}.flags: {m}")))?;
                     types.push(PanelTypeRule {
-                        flags: rule.flags,
+                        flags,
                         carries: rule.carries,
                         trail_sound: rule.trail_sound.map(crate::sound::SoundId),
                         expires: rule.expires,
@@ -730,20 +779,24 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     normal: role("normal", &s.roles.normal)?,
                 };
                 let names = s.numbers.clone();
+                let step = |what: &str, rule: &StepSection| rule.rules(named).map_err(|m| e(format!("{at}.{what}: {m}")));
+                let type_mask = named.type_word(s.type_mask.iter().map(String::as_str)).map_err(|m| e(format!("{at}.type_mask: {m}")))?
+                    | crate::field::pflags::TYPE_MASK;
                 stated.panels = Some(PanelRules {
                     types,
                     cycle: s.cycle,
                     names,
+                    type_flags: type_flags.clone(),
                     roles,
                     start_visible: s.start_visible,
                     front_edges: s.front_edges,
-                    step: s.step.rules(),
-                    dash_step: s.dash_step.rules(),
-                    any_side_step: s.any_side_step.rules(),
+                    step: step("step", &s.step)?,
+                    dash_step: step("dash_step", &s.dash_step)?,
+                    any_side_step: step("any_side_step", &s.any_side_step)?,
                     mend: s.mend.normal,
                     mend_in_battle_mode_1: s.mend.battle_mode_1,
                     reservations: s.reservations,
-                    type_mask: s.type_mask,
+                    type_mask,
                     drawn: s.drawn,
                 });
             }

@@ -155,6 +155,11 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
         ("local function f(me: Object) me:death_hook(0x1A0) end", "a death hook by NameID"),
         ("local _ = battle.attach_point(0x1A0, 3, 0, 0)", "an attach point by NameID"),
         ("local function f(me: Object) me:setup_collision(4, 5, 0) end", "collision types by number"),
+        ("local _ = new.collision { side0 = 0x80000080, side1 = 0x40000080, row_offset = 0x20 }", "a collision type by words"),
+        ("local _ = field.flags(1, 1)", "a panel's flags word"),
+        ("local _ = field.check(1, 1, 0x10, 0x0F880080)", "a panel condition by words"),
+        ("local _ = new.region { field = { require = 0x20, forbid = 0 } }", "a region's condition by words"),
+        ("local function f(me: Object) local _ = me.collision.hit_flags end", "hit results as a word"),
     ] {
         let problems = checker.check(why, &format!("--!strict\n{bad}\n")).unwrap();
         assert!(!problems.is_empty(), "{why}: `{bad}` should not type-check");
@@ -204,6 +209,10 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("local function f(me: Object) local _ = obstacle.react(me, \"breaks\", \"never\") end", "not a dimming hold"),
         // Dimming chip subtypes 2, 3, 5, 15 and 27.
         ("field.blink(1, 1, 3, 0)", "a blink to a panel type by number"),
+        // Collision types and hit results by their members' names.
+        ("local _ = new.collision { flags = { \"own_atack\" } }", "not a collision type member"),
+        ("local function f(me: Object) local _ = me.collision:hit_any({ \"swrod\" }) end", "not a hit's name"),
+        ("local function f(me: Object) me.collision.hit = 1 end", "a hit that isn't a boolean"),
         // The Gregar and Falzar chips.
         ("battle.set_hud(\"chips\", false)", "not a HUD field"),
         ("battle.set_hud({ \"gauge\" }, false)", "a list of HUD fields, not one"),

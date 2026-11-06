@@ -6,7 +6,9 @@
 //! Every call goes straight to the engine through [`CoreApi`]; nothing is
 //! cached or deferred, so later objects in the same tick see a change at
 //! once, as in the game. (A handle, which only names what it reads, is made
-//! once and given again: [`Handles`].)
+//! once and given again: [`Handles`]; and names of panel flags and hit
+//! results, which say the same whatever the battle, are resolved once:
+//! [`Names`].)
 //!
 //! Numbers: Luau numbers are doubles. Integer arithmetic on doubles is exact
 //! up to 2^53, far beyond the engine's 32-bit values, so scripts compute
@@ -1232,6 +1234,12 @@ impl UserData for Collision {
         methods.add_method("hit_by", |lua, this, ()| {
             let hitters = with(|api, _| api.collision_hit_by(this.0).map_err(api_error))?;
             object_list(lua, hitters)
+        });
+        // The hit results have any of the names' bits (side-relative ones
+        // by the object's side).
+        methods.add_method("hit_any", |lua, this, names: LuaValue| {
+            let bits = Names::hits(lua, &names)?;
+            with(|api, _| api.collision_hit_any(this.0, bits).map_err(api_error))
         });
         methods.add_method("add_damage", |_, this, (element, amount, raw): (LuaValue, LuaValue, bool)| {
             let (element, amount) = (u8_arg(element, "element")?, u16_arg(amount, "amount")?);
@@ -2887,14 +2895,20 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             side => nettai_content_api::passed_x(new, old, target, int(&side, "side")? as u8),
         })
     });
-    lib_fn!(lua, t, "flags", |_, (x, y): (LuaValue, LuaValue)| {
+    lib_fn!(lua, t, "check", |lua, (x, y, require, forbid, side): (LuaValue, LuaValue, LuaValue, LuaValue, LuaValue)| {
         let p = panel(x, y)?;
-        with(|api, _| Ok(api.panel_flags(p)))
-    });
-    lib_fn!(lua, t, "check", |_, (x, y, require, forbid): (LuaValue, LuaValue, LuaValue, LuaValue)| {
-        let p = panel(x, y)?;
-        let (require, forbid) = (int(&require, "require")? as u32, int(&forbid, "forbid")? as u32);
+        let words = Names::condition(lua, &require, &forbid)?;
+        let (require, forbid) = Names::for_side(words, &side, "field.check")?;
         with(|api, _| Ok(api.panel_check(p, require, forbid)))
+    });
+    lib_fn!(lua, t, "any", |lua, (x, y, names, side): (LuaValue, LuaValue, LuaValue, LuaValue)| {
+        let p = panel(x, y)?;
+        let bits = Names::for_side(Names::any(lua, &names)?, &side, "field.any")?;
+        with(|api, _| Ok(api.panel_flags(p) & bits != 0))
+    });
+    lib_fn!(lua, t, "low_byte", |_, (x, y): (LuaValue, LuaValue)| {
+        let p = panel(x, y)?;
+        with(|api, _| Ok(api.panel_flags(p) & 0xFF))
     });
     let panel_keys = keys(lua, ["kind", "alliance", "home"])?;
     lib_fn!(lua, t, "panel", move |lua, (x, y): (LuaValue, LuaValue)| {
@@ -3020,6 +3034,161 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.set_panel_visible(p, visible)))
     });
     Ok(t)
+}
+
+/// Names of panel flags and hit results (a name, or a list of them),
+/// resolved by the engine ([`CoreApi::panel_flag_bits`],
+/// [`CoreApi::hit_bits`]) into the bits they stand for, side 0's and side
+/// 1's. A name, and a list frozen through (a module's constant: what content
+/// passes), is resolved once and kept by itself in a table whose keys are
+/// weak, so a list collected takes its entry with it; any other list is
+/// resolved at each call. What is kept depends on the names alone, not on
+/// the battle.
+pub(crate) struct Names;
+
+/// A resolution [`Names`] keeps: side 0's and side 1's bits.
+struct NamesWords<T>([T; 2]);
+
+impl<T: 'static> UserData for NamesWords<T> {}
+
+/// What names are resolved as: panel flags (set and clear bits) or hit
+/// results.
+#[derive(Clone, Copy)]
+enum NamesOf {
+    Panel,
+    Hit,
+}
+
+impl Names {
+    /// The kept resolution of `v`, or `resolve`'s, kept if `v` is a name or
+    /// a list frozen through.
+    fn cached<T: Copy + 'static>(
+        lua: &Lua,
+        of: NamesOf,
+        v: &LuaValue,
+        keep: bool,
+        resolve: impl FnOnce() -> mlua::Result<[T; 2]>,
+    ) -> mlua::Result<[T; 2]> {
+        if !keep {
+            return resolve();
+        }
+        let key = match of {
+            NamesOf::Panel => "nettai.panel_names",
+            NamesOf::Hit => "nettai.hit_names",
+        };
+        let cache: mlua::Table = match lua.named_registry_value::<Option<mlua::Table>>(key)? {
+            Some(c) => c,
+            None => {
+                let c = lua.create_table()?;
+                let meta = lua.create_table()?;
+                meta.raw_set("__mode", "k")?;
+                c.set_metatable(Some(meta))?;
+                lua.set_named_registry_value(key, &c)?;
+                c
+            }
+        };
+        if let Some(ud) = cache.raw_get::<Option<AnyUserData>>(v)?
+            && let Ok(r) = ud.borrow::<NamesWords<T>>()
+        {
+            return Ok(r.0);
+        }
+        let words = resolve()?;
+        cache.raw_set(v, lua.create_userdata(NamesWords(words))?)?;
+        Ok(words)
+    }
+
+    /// The names `v` gives (a name, or a list of names and nothing else),
+    /// and whether they can be kept (a name; a frozen list).
+    fn read(v: &LuaValue, what: &str) -> mlua::Result<(Vec<mlua::LuaString>, bool)> {
+        match v {
+            LuaValue::String(s) => Ok((vec![s.clone()], true)),
+            LuaValue::Table(t) => {
+                let mut names = Vec::with_capacity(t.raw_len());
+                for v in t.sequence_values::<LuaValue>() {
+                    match v? {
+                        LuaValue::String(s) => names.push(s),
+                        other => return Err(mlua::Error::runtime(format!("{what}: {} is no name", other.type_name()))),
+                    }
+                }
+                if t.clone().pairs::<LuaValue, LuaValue>().count() != names.len() {
+                    return Err(mlua::Error::runtime(format!("{what}: a list of names, and nothing else")));
+                }
+                Ok((names, t.is_readonly()))
+            }
+            other => Err(mlua::Error::runtime(format!("{what}: a name or a list of names, not {}", other.type_name()))),
+        }
+    }
+
+    /// Panel flags' bits (`field.check`'s `require` and `forbid`,
+    /// `field.any`), side 0's and side 1's: (the bits set, the bits clear)
+    /// where all of the names hold; none for nil.
+    fn panel(lua: &Lua, v: &LuaValue, what: &str) -> mlua::Result<[(u32, u32); 2]> {
+        if v.is_nil() {
+            return Ok([(0, 0); 2]);
+        }
+        let (names, keep) = Names::read(v, what)?;
+        Names::cached(lua, NamesOf::Panel, v, keep, || {
+            let mut bits = [(0u32, 0u32); 2];
+            with(|api, _| {
+                for (side, b) in bits.iter_mut().enumerate() {
+                    for name in &names {
+                        let n = api.panel_flag_bits(&name.to_str()?, Some(side as u8)).map_err(|m| mlua::Error::runtime(format!("{what}: {m}")))?;
+                        b.0 |= n.set;
+                        b.1 |= n.clear;
+                    }
+                }
+                Ok(())
+            })?;
+            Ok(bits)
+        })
+    }
+
+    /// Hit results' bits (`Collision:hit_any`), side 0's and side 1's.
+    fn hits(lua: &Lua, v: &LuaValue) -> mlua::Result<[u32; 2]> {
+        let (names, keep) = Names::read(v, "hit_any")?;
+        Names::cached(lua, NamesOf::Hit, v, keep, || {
+            let mut bits = [0u32; 2];
+            with(|api, _| {
+                for (side, w) in bits.iter_mut().enumerate() {
+                    for name in &names {
+                        *w |= api.hit_bits(&name.to_str()?, Some(side as u8)).map_err(|m| mlua::Error::runtime(format!("hit_any: {m}")))?;
+                    }
+                }
+                Ok(())
+            })?;
+            Ok(bits)
+        })
+    }
+
+    /// `field.check`'s words, side 0's and side 1's: (require, forbid).
+    fn condition(lua: &Lua, require: &LuaValue, forbid: &LuaValue) -> mlua::Result<[(u32, u32); 2]> {
+        let (r, f) = (Names::panel(lua, require, "field.check")?, Names::panel(lua, forbid, "field.check")?);
+        Ok([0, 1].map(|s| (r[s].0 | f[s].1, f[s].0 | r[s].1)))
+    }
+
+    /// `field.any`'s bits, side 0's and side 1's: a side's area, which is a
+    /// bit clear for one side, isn't one.
+    fn any(lua: &Lua, names: &LuaValue) -> mlua::Result<[u32; 2]> {
+        let bits = Names::panel(lua, names, "field.any")?;
+        if bits.iter().any(|b| b.1 != 0) {
+            return Err(mlua::Error::runtime("field.any: a side's area is no bit of a panel's: field.check tests it"));
+        }
+        Ok(bits.map(|b| b.0))
+    }
+
+    /// `words` for the side a call gives: a side's own where they differ by
+    /// side, which takes one.
+    fn for_side<T: Copy + PartialEq>(words: [T; 2], side: &LuaValue, what: &str) -> mlua::Result<T> {
+        match side {
+            LuaValue::Nil if words[0] == words[1] => Ok(words[0]),
+            LuaValue::Nil => Err(mlua::Error::runtime(format!("{what}: its names are of a side (own_, enemy_, an area): give the side"))),
+            side => match int(side, "side")? {
+                s @ 0..=1 => Ok(words[s as usize]),
+                _ if words[0] == words[1] => Ok(words[0]),
+                s => Err(mlua::Error::runtime(format!("{what}: side {s} has no own or enemy side"))),
+            },
+        }
+    }
 }
 
 /// A panel type's name: one of the game's (its panel rules' `numbers`), as

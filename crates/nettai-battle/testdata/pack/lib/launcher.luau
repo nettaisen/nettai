@@ -10,8 +10,11 @@ local sprites = require("../../sprites")
 local SHORT = ticker.variant { lifetime = 5 }
 local BURST = new.effect { sprite = sprites["test-burst"], anim = 2, steps = 1 }
 local WIDE = new.region { panels = { { 1, -1 }, { 1, 0 }, { 1, 1 } } }
-local THROWN = new.collision { id = "test/thrown", side0 = 0x80000088, side1 = 0x40000088 }
-local HITS = new.collision { id = "test/hits-navis", side0 = 0x15800000, side1 = 0x2a800000 }
+local THROWN = new.collision { id = "test/thrown", flags = { "own_attack", "reaches_float_shoe", "reaches_submerged" } }
+local HITS = new.collision {
+    id = "test/hits-navis",
+    flags = { "enemy_object", "enemy_body", "enemy_other_body", "neutral" },
+}
 local TICK = asset.sound("test-tick")
 
 local launcher = {}

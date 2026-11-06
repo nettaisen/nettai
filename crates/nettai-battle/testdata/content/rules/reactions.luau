@@ -37,7 +37,7 @@ return {
         float_shoe_needs_self_bit = true,
         bubbled_as_submerged = false,
         elec_reaches_submerged = false,
-        guard_breaks_to = 0x0002,
+        guard_breaks_to = { "break" },
         guard_before_untouchable = false,
         guard_marks_direction = true,
     },

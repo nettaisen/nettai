@@ -85,6 +85,10 @@ pub mod pflags {
     pub const OCCUPIED: u32 = BODY | types::BLOCKER | RESERVED;
     /// Any body.
     pub const BODY: u32 = types::BODIES | types::OTHER_BODIES | types::NEUTRAL;
+    /// The collision types' bits a panel holds of what is registered on it
+    /// (`Collision::panel_self_flags` takes their high half, whose bits 16
+    /// and 17 the types' flags share).
+    pub const COLLISION_TYPES: u32 = 0xFFFC_0000;
 }
 
 /// What a panel showed when it was last drawn (drawn only): whether it

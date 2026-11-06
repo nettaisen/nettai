@@ -132,9 +132,10 @@ pub fn self_bit_targets(c: &Content) -> Vec<(String, String, String)> {
     if c.rules().hit_test.float_shoe_needs_self_bit {
         return out;
     }
-    for d in c.defs.definitions.of(Registry::Collision) {
+    for (d, t) in c.defs.definitions.of(Registry::Collision).iter().zip(&c.defs.collisions) {
         let root = c.game();
-        let tests = ["side0", "side1"].iter().any(|k| d.spec.field(k).int().is_some_and(|w| w & 0x80 != 0));
+        // (Its words, as the loader made them of its members' names.)
+        let tests = t.flags.iter().any(|w| w & nettai_battle::collision::types::REACHES_FLOATSHOE != 0);
         if !tests {
             continue;
         }

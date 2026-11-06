@@ -90,9 +90,17 @@ Conventions:
   and an asset as the value `asset.*` returned. The binding turns each into its handle.
 - **Names, not bits.** Status flags, status timers, navi requests and state bits, buttons, panel types,
   lifecycle states and shadows are names (`"using_action"`, `"paralyze"`, `"a"`, `"cracked"`, `"destroy"`); the
-  engine's bit values and offsets stay in the engine. The original's numbers that are a routine's own
-  immediates (animation numbers, tick counts, panel flag words it matches as whole words, bug codes) are the
-  scripts' named constants.
+  engine's bit values and offsets stay in the engine. So are collision types, hit results and panel flags: a
+  collision type is a list of its members (`new.collision { flags = { "own_attack", "reaches_float_shoe" } }`),
+  of the object's side (`own_`) or the other (`enemy_`) where a member is of a side, so a type is the same for
+  either side, mirrored; a hit is tested by them (`c:hit_any("enemy_body")`); a panel by its flags
+  (`field.check(x, y, "solid", { "own_body", "enemy_area" }, side)`, `field.any`): the engine's, the game's
+  type flags (each declared once, in its rules' `panels.type_flags`), and the members a panel holds of what
+  is registered on it; data keeps a panel condition as `{ require = ..., forbid = ... }` (regions, the step
+  rules). A loader or the binding turns the names into the very words the engine keeps; a name it doesn't
+  know is an error (luau-analyze lets a misspelled key of a table literal through), and a name, or a list a
+  module keeps (frozen), is read once. The original's numbers that are a routine's own
+  immediates (animation numbers, tick counts, bug codes) are the scripts' named constants.
 - **No floats anywhere.** `Vec3` is three `i32` in 16.16 fixed point with wrapping `+` and `-`.
 - **Faithful stores.** Where the game's store width matters, the API has both: `me:set_lifecycle("destroy")` is
   the word store (state, action, phase and phase-init: the game's `str CUR_STATE_DESTROY`), `me.lifecycle =
@@ -120,8 +128,8 @@ core.d.luau is the reference; in outline:
   emotion, players and alive actors, the simulation RNG, the chip hand, the defensive-chip record, the custom
   gauge, the primitives content spawns (`effect`, `hitbox`, `spark`, `afterimage`, `form_overlay`,
   `palette_flash`).
-- **The field** (`field`): validity, centers, flags words and checks, panels and columns, alliance and column
-  timers, types, cracking, solidity, highlights.
+- **The field** (`field`): validity, centers, checks of the panels' flags by name, panels and columns,
+  alliance and column timers, types, cracking, solidity, highlights.
 - **Services** the ruleset provides: `dimming` (the steps of a dimming chip's controller: begin, dim, the telop
   and the wait for a cut-in, AntiNavi, undim, finish, hiding and showing a navi chip's user), `navi_chip` (a
   navi chip's navi reports it is done; the user's warp) and `obstacle` (the steps of a field obstacle's update,
@@ -479,7 +487,7 @@ Where the time goes (`examples/luau_ops`, interpreted):
 |---|---|
 | Loop iteration (the VM itself) | 11 ns |
 | Library call `battle.dimmed()` | 52 ns |
-| `field.flags(3, 2)` | 72 ns |
+| `field.check(3, 2, "solid", "occupied")` | not measured since `field.flags` (72 ns) went |
 | Method `me:set_animation(0)` | 89 ns |
 | Field read `me.anim` / write | 162 / 181 ns |
 | Content state read `s.ticks` / write | 138 / 190 ns |

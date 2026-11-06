@@ -1757,10 +1757,42 @@ impl Defs {
         };
         let effects = definitions.of(Registry::Effect).iter().map(look).collect::<Result<Vec<_>, _>>()?;
         let sparks = definitions.of(Registry::Spark).iter().map(look).collect::<Result<Vec<_>, _>>()?;
+        // (A spec's fields, each of `known`: luau-analyze lets a misspelled
+        // field of a table literal through.)
+        let fields = |d: &Definition, known: &[&str]| -> Result<(), ContentError> {
+            if let Data::Map(entries) = &d.spec {
+                for (k, _) in entries {
+                    if !matches!(k, nettai_content_api::DataKey::Str(f) if known.contains(&f.as_str())) {
+                        return Err(ContentError::new(format!(
+                            "{}.luau: {} {}: `{k}` is none of its fields ({})",
+                            d.module,
+                            d.registry,
+                            d.key,
+                            known.join(", ")
+                        )));
+                    }
+                }
+            }
+            Ok(())
+        };
+        // (A name, or a list of names: an empty table is one.)
+        let names = |v: &Data| -> Option<Vec<String>> {
+            match v {
+                Data::Str(s) => Some(vec![s.clone()]),
+                Data::List(items) => items.iter().map(|i| i.str().map(str::to_string)).collect(),
+                Data::Map(entries) if entries.is_empty() => Some(Vec::new()),
+                _ => None,
+            }
+        };
+        let panel_names = content.rules.as_ref().map(|r| r.panels.type_flags.clone()).unwrap_or_default();
         let mut regions: Vec<super::Region> = Vec::new();
         for d in definitions.of(Registry::Region) {
             let what = |e: &str| ContentError::new(format!("{}.luau: region {}: {e}", d.module, d.key));
+            fields(d, &["id", "panels", "field", "side"])?;
             regions.push(match (d.spec.field("panels"), d.spec.field("field")) {
+                (Data::List(_), Data::Nil) if !d.spec.field("side").is_nil() => {
+                    return Err(what("`side` is the side a `field` condition's names are of: a region of `panels` has none"));
+                }
                 (Data::List(items), Data::Nil) => {
                     let mut panels = Vec::new();
                     for p in items {
@@ -1771,22 +1803,43 @@ impl Defs {
                     }
                     super::Region::Panels(panels)
                 }
-                (Data::Nil, Data::Map(_)) => {
-                    let word = |k: &str| d.spec.field("field").field(k).int().unwrap_or(0) as u32;
-                    super::Region::Field(super::PanelCondition { require: word("require"), forbid: word("forbid") })
+                // (The panels that meet a condition, in names relative to the
+                // region's `side` where it names a side's.)
+                (Data::Nil, field @ (Data::Map(_) | Data::List(_))) => {
+                    // (`{}` is every panel.)
+                    let entries = match field {
+                        Data::Map(entries) => entries.as_slice(),
+                        Data::List(items) if items.is_empty() => &[],
+                        _ => return Err(what("`field` is a condition: `{ require = {...}, forbid = {...} }`")),
+                    };
+                    let mut c = super::sections::NamedCondition::default();
+                    for (k, v) in entries {
+                        let list = match k.to_string().as_str() {
+                            "require" => &mut c.require,
+                            "forbid" => &mut c.forbid,
+                            other => return Err(what(&format!("`field.{other}` is none of a condition's fields (require, forbid)"))),
+                        };
+                        *list = names(v).ok_or_else(|| what(&format!("`field.{k}` is a panel flag's name, or a list of them")))?;
+                    }
+                    let side = match d.spec.field("side") {
+                        Data::Nil => None,
+                        Data::Int(s @ 0..=1) => Some(*s as u8),
+                        _ => return Err(what("`side` is 0 or 1")),
+                    };
+                    let words = c.words(super::rules::PanelNames(&panel_names), side).map_err(|m| what(&format!("`field`: {m}")))?;
+                    super::Region::Field(words)
                 }
                 _ => return Err(what("needs exactly one of `panels` and `field`")),
             });
         }
         let mut collisions = Vec::new();
         for d in definitions.of(Registry::Collision) {
-            let word = |k: &str| -> Result<u32, ContentError> {
-                d.spec.field(k).int().map(|i| i as u32).ok_or_else(|| {
-                    ContentError::new(format!("{}.luau: collision {} needs `{k}` (a flag word)", d.module, d.key))
-                })
-            };
+            let what = |e: &str| ContentError::new(format!("{}.luau: collision {}: {e}", d.module, d.key));
+            fields(d, &["id", "flags", "row_offset"])?;
+            let members = names(d.spec.field("flags")).ok_or_else(|| what("needs `flags`, its members' names"))?;
+            let flags = crate::collision::type_words(members.iter().map(String::as_str)).map_err(|m| what(&m))?;
             let row_offset = d.spec.field("row_offset").int().unwrap_or(0) as u16;
-            collisions.push(CollisionTypeDef { flags: [word("side0")?, word("side1")?], row_offset });
+            collisions.push(CollisionTypeDef { flags, row_offset });
         }
 
         // The roles: the game's, its rules' `roles` (docs/design/

@@ -1111,8 +1111,11 @@ pub struct HitTest {
     pub bubbled_as_submerged: bool,
     /// An elec hit reaches a submerged body whatever its type (EXE5's).
     pub elec_reaches_submerged: bool,
-    /// The type bits a guard breaks to (EXE6's 0x2, EXE5's 0x1002); a type
-    /// with 0x4000 breaks one by 0x1002 in either.
+    /// The collision type members a guard breaks to (EXE6's `break`, 0x2;
+    /// EXE5's `breaks_guard` and `break`, 0x1002); a type with
+    /// `no_guard_spark` (0x4000) breaks one by those two in either. Content
+    /// names them (`collision_names`).
+    #[serde(deserialize_with = "collision_names")]
     pub guard_breaks_to: u32,
     /// An untouchable receiver (flag 0x08000000) is tested with the
     /// invulnerable one, after its guard and the air/ground test, so its
@@ -1232,8 +1235,10 @@ pub struct AntiTraps {
     /// With the trap the navi's own status arms, a hit under the least is
     /// swallowed all the same (EXE6's; EXE5's arms AntiDmg's own test).
     pub armed_swallows_below: bool,
-    /// A sword's hit (hit flags 0x2000) with any of these flags isn't
-    /// AntiSwrd's (EXE6's 0x20000; EXE5's and EXE4's none).
+    /// A sword's hit (the hit results' `sword`) with any of these isn't
+    /// AntiSwrd's (EXE6's `guard_spark`, 0x20000; EXE5's and EXE4's none).
+    /// Content names them (`hit_names`).
+    #[serde(deserialize_with = "hit_names")]
     pub sword_spares: u32,
     /// A caught hit drops these of the navi's pending requests (its flags2)
     /// too, a panel's slide asked for that tick among them (EXE6's 0x301BE;
@@ -1985,6 +1990,11 @@ pub struct PanelRules {
     pub cycle: Option<u32>,
     /// Each type's name, by number (the section's `numbers`).
     pub names: Vec<String>,
+    /// The flag bits the types set besides the engine's (`field::pflags`),
+    /// each by its name: one bit of the flags word's bits 8 to 17 (the
+    /// section's `type_flags`: EXE6's poison 0x100 to missing 0x8000, and
+    /// 0x10000 on every type). A panel condition names them.
+    pub type_flags: Vec<(String, u32)>,
     /// The types the engine's own code needs (the section's `roles`).
     pub roles: PanelRoles,
     /// Whether each panel shows at the start of a round, `[y][x]`.
@@ -2174,7 +2184,117 @@ pub struct PanelRoles {
     pub normal: PanelType,
 }
 
+/// The names a panel condition takes, by a game's type flags
+/// ([`PanelRules::type_flags`]; [`PanelRules::flag_names`]).
+#[derive(Clone, Copy, Debug)]
+pub struct PanelNames<'a>(pub &'a [(String, u32)]);
+
+impl PanelNames<'_> {
+    /// What a name in a panel condition stands for, for `side` (a
+    /// side-relative name needs one): one of the engine's
+    /// ([`nettai_content_api::PanelFlag`]), one of the game's type flags
+    /// ([`PanelRules::type_flags`]), or a collision type member a panel holds
+    /// of what is registered on it (the flags word's bits 18 to 31: of the
+    /// objects, bodies, navis and attacks of a side, neutral, floating,
+    /// blocker; `collision::member_bits`).
+    pub fn flag_bits(&self, name: &str, side: Option<u8>) -> Result<nettai_content_api::PanelBits, String> {
+        use crate::field::pflags;
+        use nettai_content_api::{CollisionMember, PanelBits, PanelFlag};
+        let set = |b: u32| Ok(PanelBits { set: b, clear: 0 });
+        let side_of = || side.map(|s| s & 1).ok_or_else(|| format!("`{name}` is of a side, and nothing gives one here"));
+        if let Some(f) = PanelFlag::from_name(name) {
+            return match f {
+                PanelFlag::Solid => set(pflags::SOLID),
+                PanelFlag::Cracked => set(pflags::CRACKED),
+                PanelFlag::Reserved => set(pflags::RESERVED),
+                PanelFlag::AnyBody => set(pflags::BODY),
+                PanelFlag::Occupied => set(pflags::OCCUPIED),
+                // (The alliance bit is side 1's: side 0's area is the
+                // panels without it.)
+                PanelFlag::OwnArea | PanelFlag::EnemyArea => {
+                    let side_1 = (f == PanelFlag::OwnArea) == (side_of()? == 1);
+                    Ok(if side_1 { PanelBits { set: pflags::ALLIANCE_1, clear: 0 } } else { PanelBits { set: 0, clear: pflags::ALLIANCE_1 } })
+                }
+            };
+        }
+        if let Some((_, bit)) = self.0.iter().find(|(n, _)| n == name) {
+            return set(*bit);
+        }
+        if let Some(m) = CollisionMember::from_name(name) {
+            let [w0, w1] = crate::collision::member_bits(m);
+            if (w0 | w1) & !pflags::COLLISION_TYPES != 0 {
+                return Err(format!("`{name}` is a collision type's, which no panel holds (a panel holds bits 18 to 31 of what is registered on it)"));
+            }
+            return set(if w0 == w1 { w0 } else if side_of()? == 0 { w0 } else { w1 });
+        }
+        let engine: Vec<&str> = PanelFlag::ALL.iter().map(|f| f.name()).collect();
+        let game: Vec<&str> = self.0.iter().map(|(n, _)| n.as_str()).collect();
+        Err(format!(
+            "`{name}` is no panel flag (the engine's: {}; the game's type flags: {}; or a collision type member a panel holds: own_body, enemy_navi, neutral, ...)",
+            engine.join(", "),
+            game.join(", ")
+        ))
+    }
+
+    /// A panel condition from its names, for `side`: every name of
+    /// `require` holds and none of `forbid` (`flag_bits`). Without a side,
+    /// the condition is one that is the same for either side (of no side's
+    /// names, or of both sides' alike: `own_navi` and `enemy_navi`).
+    pub fn condition<'a>(
+        &self,
+        require: impl IntoIterator<Item = &'a str> + Clone,
+        forbid: impl IntoIterator<Item = &'a str> + Clone,
+        side: Option<u8>,
+    ) -> Result<super::PanelCondition, String> {
+        let of = |side: u8| -> Result<super::PanelCondition, String> {
+            let mut c = super::PanelCondition::default();
+            for name in require.clone() {
+                let b = self.flag_bits(name, Some(side))?;
+                c.require |= b.set;
+                c.forbid |= b.clear;
+            }
+            for name in forbid.clone() {
+                let b = self.flag_bits(name, Some(side))?;
+                c.forbid |= b.set;
+                c.require |= b.clear;
+            }
+            Ok(c)
+        };
+        match side {
+            Some(s) => of(s & 1),
+            None => {
+                let (c0, c1) = (of(0)?, of(1)?);
+                if c0 != c1 {
+                    return Err("its names are of a side (own_, enemy_, an area), and nothing gives one here".into());
+                }
+                Ok(c0)
+            }
+        }
+    }
+
+    /// The flags word a type's or the type mask's names make (`flag_bits`:
+    /// the engine's `solid` and `cracked` and the game's type flags).
+    pub fn type_word<'a>(&self, names: impl IntoIterator<Item = &'a str>) -> Result<u32, String> {
+        use nettai_content_api::PanelFlag;
+        let mut w = 0;
+        for name in names {
+            let own = matches!(PanelFlag::from_name(name), Some(PanelFlag::Solid | PanelFlag::Cracked));
+            if !own && !self.0.iter().any(|(n, _)| n == name) {
+                let game: Vec<&str> = self.0.iter().map(|(n, _)| n.as_str()).collect();
+                return Err(format!("`{name}` is no flag a type sets (solid, cracked, and the type flags: {})", game.join(", ")));
+            }
+            w |= self.flag_bits(name, None)?.set;
+        }
+        Ok(w)
+    }
+}
+
 impl PanelRules {
+    /// The names its panel conditions take ([`PanelNames`]).
+    pub fn flag_names(&self) -> PanelNames<'_> {
+        PanelNames(&self.type_flags)
+    }
+
     /// The panel type the game numbers `n` (a panel trail's byte), if the
     /// game has one.
     pub fn numbered(&self, n: u8) -> Option<PanelType> {
@@ -2287,6 +2407,40 @@ impl StepRuleSet {
         let rules = if floor_free { &self.floor_free } else { &self.grounded };
         rules[alliance as usize & 1]
     }
+}
+
+/// Names as content states them: a name, or a list of names.
+pub(crate) fn name_list<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<String>, D::Error> {
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Names {
+        One(String),
+        Many(Vec<String>),
+    }
+    Ok(match Names::deserialize(d)? {
+        Names::One(n) => vec![n],
+        Names::Many(n) => n,
+    })
+}
+
+/// Side-free collision type members' bits from their names
+/// (`collision::type_words`): a rule word content states by names.
+fn collision_names<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
+    use serde::de::Error;
+    let names = name_list(d)?;
+    let [w0, w1] = crate::collision::type_words(names.iter().map(String::as_str)).map_err(D::Error::custom)?;
+    if w0 != w1 {
+        return Err(D::Error::custom("a rule's collision type members are of no side (own_ and enemy_ need one)"));
+    }
+    Ok(w0)
+}
+
+/// Hit results' bits from their names (`collision::hit_name_bits`, of no
+/// side): a rule word content states by names.
+fn hit_names<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u32, D::Error> {
+    use serde::de::Error;
+    let names = name_list(d)?;
+    names.iter().try_fold(0, |w, n| Ok(w | crate::collision::hit_name_bits(n, None).map_err(D::Error::custom)?))
 }
 
 /// The status timer a status effect sets (a collision field).

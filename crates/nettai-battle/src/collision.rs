@@ -69,10 +69,10 @@ pub mod f1 {
 
 /// Collision type bits (docs/engine/field-collision-damage.md §3.3): what
 /// an object is (`self_flags`) and what it reacts to (`target_flags`), as
-/// content's collision types give them. A hit leaves the hitter's in the
-/// receiver's `hit_flags` and `raw_hit_flags`; panels' flags carry the
-/// high half of what is registered on them. Only the bits the engine
-/// tests are named: the rest matter only through `target & self`.
+/// content's collision types give them (by name: [`member_bits`]). A hit
+/// leaves the hitter's in the receiver's `hit_flags` and `raw_hit_flags`;
+/// panels' flags carry the high half of what is registered on them. Bits
+/// the engine doesn't test matter only through `target & self`.
 pub mod types {
     pub const ATTACK_SIDE0: u32 = 1 << 31;
     pub const ATTACK_SIDE1: u32 = 1 << 30;
@@ -83,8 +83,19 @@ pub mod types {
     pub const OTHER_BODY_SIDE0: u32 = 1 << 25;
     pub const OTHER_BODY_SIDE1: u32 = 1 << 24;
     pub const NEUTRAL: u32 = 1 << 23;
+    /// A side's player navi (its body's types have it with `BODY_SIDE0`
+    /// or `BODY_SIDE1`): the field regions 0x84 and 0x85 are the panels
+    /// that hold it (field-collision-damage.md §3.4).
+    pub const NAVI_SIDE0: u32 = 1 << 22;
+    pub const NAVI_SIDE1: u32 = 1 << 21;
     pub const FLOATING: u32 = 1 << 20;
     pub const BLOCKER: u32 = 1 << 19;
+    /// Reaches the objects a chip sets down that any side's hit sets off:
+    /// their target type has it (row 0x0D: a FlashBomb set down, RlngLog's
+    /// log, ColArmy's soldiers, a VDoll, SideBub), so an attack with it
+    /// reaches those of its own side too. Mines, the generic hitbox (row
+    /// 0x48) and the attacks of both sides carry it. No routine tests it.
+    pub const REACHES_SET_OBJECTS: u32 = 1 << 18;
     /// Hits while the battle is dimmed: setup gives it to what is set up
     /// while dimmed (`sub_3007218` lets only these, and receivers with
     /// `f1::HIT_WHILE_DIMMED`, hit then).
@@ -104,6 +115,13 @@ pub mod types {
     pub const BREAKS_GUARD: u32 = 1 << 12;
     /// A pushing attack (AirShot's shot, a tornado): pops a barrier.
     pub const PUSHING: u32 = 1 << 11;
+    /// What the dark chips' attacks carry (EXE5's DarkWide, DrkSword,
+    /// DrkLance, BlakWing and the dark meteors, thunder and circle; EXE4's
+    /// ElemDark), and a few others (DrilArm's second drill, a bugged
+    /// tornado). No type reaches it and the engine doesn't test it; EXE5's
+    /// rules do (a dark hit's NaviCust hit bug spares a light navi:
+    /// content/exe5/rules/light_dark).
+    pub const DARK: u32 = 1 << 10;
     /// A pull (a gust, DustBrk's): pops a barrier.
     pub const PULL: u32 = 1 << 9;
     /// Counts as a drain on the receiver.
@@ -128,6 +146,93 @@ pub mod types {
     pub const OBJECTS: u32 = OBJECT_SIDE0 | OBJECT_SIDE1;
     pub const BODIES: u32 = BODY_SIDE0 | BODY_SIDE1;
     pub const OTHER_BODIES: u32 = OTHER_BODY_SIDE0 | OTHER_BODY_SIDE1;
+    pub const NAVIS: u32 = NAVI_SIDE0 | NAVI_SIDE1;
+}
+
+/// A collision type member's bits (content names them: `new.collision`'s
+/// `flags`, docs/design/scripting.md): side 0's and side 1's, each the
+/// other's mirror image (a member of the object's own side, `own_`, or the
+/// other's, `enemy_`; the rest are the same bit for both).
+pub fn member_bits(m: nettai_content_api::CollisionMember) -> [u32; 2] {
+    use nettai_content_api::CollisionMember as M;
+    use types::*;
+    let same = |b: u32| [b, b];
+    match m {
+        M::OwnAttack => [ATTACK_SIDE0, ATTACK_SIDE1],
+        M::EnemyAttack => [ATTACK_SIDE1, ATTACK_SIDE0],
+        M::OwnObject => [OBJECT_SIDE0, OBJECT_SIDE1],
+        M::EnemyObject => [OBJECT_SIDE1, OBJECT_SIDE0],
+        M::OwnBody => [BODY_SIDE0, BODY_SIDE1],
+        M::EnemyBody => [BODY_SIDE1, BODY_SIDE0],
+        M::OwnOtherBody => [OTHER_BODY_SIDE0, OTHER_BODY_SIDE1],
+        M::EnemyOtherBody => [OTHER_BODY_SIDE1, OTHER_BODY_SIDE0],
+        M::OwnNavi => [NAVI_SIDE0, NAVI_SIDE1],
+        M::EnemyNavi => [NAVI_SIDE1, NAVI_SIDE0],
+        M::Neutral => same(NEUTRAL),
+        M::Floating => same(FLOATING),
+        M::Blocker => same(BLOCKER),
+        M::ReachesSetObjects => same(REACHES_SET_OBJECTS),
+        M::HitsWhileDimmed => same(HITS_WHILE_DIMMED),
+        M::GroundOnly => same(GROUND_ONLY),
+        M::NoGuardSpark => same(NO_GUARD_SPARK),
+        M::Sword => same(SWORD),
+        M::BreaksGuard => same(BREAKS_GUARD),
+        M::Pushing => same(PUSHING),
+        M::Dark => same(DARK),
+        M::Pull => same(PULL),
+        M::Drain => same(DRAIN),
+        M::ReachesFloatShoe => same(REACHES_FLOATSHOE),
+        M::Wind => same(WIND),
+        M::ChipDestruction => same(CHIP_DESTRUCTION),
+        M::ReachesSubmerged => same(REACHES_SUBMERGED),
+        M::Piercing => same(PIERCING),
+        M::Break => same(BREAK),
+    }
+}
+
+/// The bits a name in a hit test stands for, for an object of `side`
+/// (`Collision:hit_any`, the rules' `anti_traps.sword_spares`): a
+/// collision type member ([`member_bits`]) or one of the [`hit`] bits.
+/// A side-relative member without a side is refused.
+pub fn hit_name_bits(name: &str, side: Option<u8>) -> Result<u32, String> {
+    use nettai_content_api::{CollisionMember, HitBit};
+    if let Some(b) = HitBit::from_name(name) {
+        return Ok(match b {
+            HitBit::Guarded => hit::GUARDED,
+            HitBit::Countered => hit::COUNTERED,
+            HitBit::GuardSpark => hit::GUARD_SPARK,
+        });
+    }
+    let Some(m) = CollisionMember::from_name(name) else {
+        let names: Vec<&str> = CollisionMember::ALL.iter().map(|m| m.name()).chain(HitBit::ALL.iter().map(|b| b.name())).collect();
+        return Err(format!("`{name}` is no hit's name (the collision types' members and the hit bits: {})", names.join(", ")));
+    };
+    let [w0, w1] = member_bits(m);
+    match side {
+        _ if w0 == w1 => Ok(w0),
+        Some(s) => Ok(if s & 1 == 0 { w0 } else { w1 }),
+        None => Err(format!("`{name}` is of a side, and nothing gives one here")),
+    }
+}
+
+/// A collision type's two words from its members' names (`new.collision`'s
+/// `flags`), side 0's and side 1's.
+pub fn type_words<'a>(names: impl IntoIterator<Item = &'a str>) -> Result<[u32; 2], String> {
+    use nettai_content_api::CollisionMember;
+    let mut words = [0u32; 2];
+    for name in names {
+        let m = CollisionMember::from_name(name).ok_or_else(|| {
+            let names: Vec<&str> = CollisionMember::ALL.iter().map(|m| m.name()).collect();
+            format!("`{name}` is no collision type member (they are {})", names.join(", "))
+        })?;
+        let bits = member_bits(m);
+        if words[0] & bits[0] != 0 {
+            return Err(format!("`{name}` is named twice"));
+        }
+        words[0] |= bits[0];
+        words[1] |= bits[1];
+    }
+    Ok(words)
 }
 
 /// What a hit leaves in `Accumulators::hit_flags` besides the hitters'
