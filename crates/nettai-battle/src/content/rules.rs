@@ -224,16 +224,21 @@ pub struct ChipUseRules {
     /// down the field, and up.
     pub anti_navi_sparkle: SparkleOffset,
     /// What a hand entry's marks (`ChipHand::modifiers`) add to the attack's
-    /// damage word at its chip's use, by the mark's bit number. EXE6's
-    /// `sub_8012C34`: 0x02 the word's 0x4000 (WhiCapsl folded in:
-    /// paralysis) and 0x04 its 0x2000 (Uninstll). EXE5's 0x08010368: those
-    /// (its white and yellow capsules') and 0x08 its 0x1000, 0x20 its
-    /// 0x0800 (the black and the purple). EXE4's use adds none: its 0x02
-    /// marks a chip offered again (0x0801F0B8) and its 0x04 an entry whose
-    /// hand was installed (0x0801EA1E).
+    /// damage word at its chip's use, by the mark's bit number; in a content
+    /// file a table of damage word flags by mark name (`{ white =
+    /// "paralysis" }`, the section's `mark_bits` and the effects section's
+    /// `damage_word_bits`). EXE6's `sub_8012C34`: 0x02 the word's 0x4000
+    /// (WhiCapsl folded in: paralysis) and 0x04 its 0x2000 (Uninstll).
+    /// EXE5's 0x08010368: those (its white and yellow capsules') and 0x08
+    /// its 0x1000, 0x20 its 0x0800 (the black and the purple). EXE4's use
+    /// adds none: its 0x02 marks a chip offered again (0x0801F0B8) and its
+    /// 0x04 an entry whose hand was installed (0x0801EA1E).
+    #[serde(deserialize_with = "mark_damage_by_name")]
     pub mark_damage: [u16; 8],
-    /// The marks with which the use heals its user a tenth of its HP
-    /// (EXE5's 0x0800FFF6: 0x10, its pink capsule's; 0: none).
+    /// The marks with which the use heals its user a tenth of its HP, in a
+    /// content file a set of marks by name (`{ pink = true }`: EXE5's
+    /// 0x0800FFF6, its pink capsule's; none: none).
+    #[serde(deserialize_with = "marks_by_name")]
     pub mark_heals: u8,
     /// The opponent's NaviCust support Beat lets a dark chip go: EXE4's
     /// (0x0800C86C tests the record's flag 0x20) takes a Mega or Giga chip
@@ -698,26 +703,65 @@ pub struct DamageWord {
 }
 
 /// A flag bit of a damage word (`DamageWord::flags`): what its hits carry
-/// when the word has it, and whether the reading stops there.
+/// when the word has it, and whether the reading stops there. In a content
+/// file its flag by name (`flag`, the section's `damage_word_bits`), its
+/// hit modifier by its bits' names and its bug as a code and an argument.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(try_from = "DamageFlagSection")]
 pub struct DamageFlag {
     pub bit: u16,
     /// The status its hits carry (the role naming it, `statuses`).
-    #[serde(default)]
     pub status: Option<super::StatusRole>,
-    /// The hit modifier it sets (1 a flinch, 0 none).
-    #[serde(default)]
+    /// The hit modifier it sets in place of the hit's (none: it keeps the
+    /// hit's).
     pub hit_modifier: Option<u8>,
-    /// The bug code its hits carry; its high byte, where `bug_high_row`,
-    /// the target lookup's row offset (EXE6's: what the lookup left in r1).
-    #[serde(default)]
+    /// The bug code its hits carry (low byte) and its argument (high byte);
+    /// the argument, where `bug_high_row`, the target lookup's row offset
+    /// (EXE6's: what the lookup left in r1).
     pub bug: Option<u16>,
-    #[serde(default)]
     pub bug_high_row: bool,
     /// The reading ends at this bit when the word has it.
-    #[serde(default)]
     pub stop: bool,
+}
+
+/// A [`DamageFlag`] as its section states it.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DamageFlagSection {
+    flag: String,
+    #[serde(default)]
+    status: Option<super::StatusRole>,
+    #[serde(default)]
+    hit_modifier: Option<ByName<bool>>,
+    #[serde(default)]
+    bug: Option<u8>,
+    #[serde(default)]
+    bug_arg: Option<u8>,
+    #[serde(default)]
+    bug_high_row: bool,
+    #[serde(default)]
+    stop: bool,
+}
+
+impl TryFrom<DamageFlagSection> for DamageFlag {
+    type Error = String;
+
+    fn try_from(f: DamageFlagSection) -> Result<DamageFlag, String> {
+        if f.bug.is_none() && (f.bug_arg.is_some() || f.bug_high_row) {
+            return Err(format!("damage word flag {:?}: `bug_arg` and `bug_high_row` go with a `bug`", f.flag));
+        }
+        if f.bug_arg.is_some() && f.bug_high_row {
+            return Err(format!("damage word flag {:?}: a bug's argument is `bug_arg` or the row (`bug_high_row`), not both", f.flag));
+        }
+        Ok(DamageFlag {
+            bit: bits_by_name(nettai_content_api::NamedBits::DamageWord, std::slice::from_ref(&f.flag))? as u16,
+            status: f.status,
+            hit_modifier: f.hit_modifier.map(|set| bits_of_set(nettai_content_api::NamedBits::HitModifier, &set.0).map(|b| b as u8)).transpose()?,
+            bug: f.bug.map(|code| code as u16 | (f.bug_arg.unwrap_or(0) as u16) << 8),
+            bug_high_row: f.bug_high_row,
+            stop: f.stop,
+        })
+    }
 }
 
 /// What holds a screen palette flash (effect object #0x0A) while the battle
@@ -1054,6 +1098,147 @@ pub(crate) fn requests_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result
     })
 }
 
+/// The hit modifier bits the engine reads in every game (`sub_801AEB0`):
+/// a flinch, and a flash. A game's rules declare the rest of the byte (the
+/// reactions section's `hit_modifier_bits`: the pushes, the drag).
+pub const HIT_MODIFIER_NAMES: &[(u32, &str)] = &[(0x01, "flinch"), (0x02, "flash")];
+
+/// The damage word flag the engine reads in every game (`sub_8019F44`): the
+/// damage doubled. A game's rules declare their own (the effects section's
+/// `damage_word_bits`).
+pub const DAMAGE_WORD_NAMES: &[(u32, &str)] = &[(0x8000, "double")];
+
+/// The mark the engine gives a hand entry in every game: the folder's
+/// Regular chip. A game's rules declare their own (the chip-use section's
+/// `mark_bits`).
+pub const MARK_NAMES: &[(u32, &str)] = &[(crate::custom::builder::modifier_bits::REGULAR as u32, "regular")];
+
+/// The bits of the named words a game's rules declare of their own
+/// (`NamedBits`), by name, in name order.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct OwnBits {
+    pub hit_modifier: Vec<(String, u32)>,
+    pub damage_word: Vec<(String, u32)>,
+    pub mark: Vec<(String, u32)>,
+}
+
+impl OwnBits {
+    /// The engine's names of a set, its game's own, and where those are
+    /// declared.
+    pub fn of(&self, set: nettai_content_api::NamedBits) -> (&'static [(u32, &'static str)], &[(String, u32)], &'static str) {
+        use nettai_content_api::NamedBits;
+        match set {
+            NamedBits::HitModifier => (HIT_MODIFIER_NAMES, &self.hit_modifier, "reactions.hit_modifier_bits"),
+            NamedBits::DamageWord => (DAMAGE_WORD_NAMES, &self.damage_word, "effects.damage_word_bits"),
+            NamedBits::Mark => (MARK_NAMES, &self.mark, "chip_use.mark_bits"),
+        }
+    }
+
+    /// The bits of `names` in `set`; an unknown name is an error.
+    pub fn bits(&self, set: nettai_content_api::NamedBits, names: &[impl AsRef<str>]) -> Result<u32, String> {
+        let (engine, own, declared) = self.of(set);
+        let mut bits = 0;
+        for n in names {
+            let n = n.as_ref();
+            let bit = engine.iter().find(|x| x.1 == n).map(|x| x.0).or_else(|| own.iter().find(|x| x.0 == n).map(|x| x.1));
+            let Some(bit) = bit else {
+                let known: Vec<&str> = engine.iter().map(|x| x.1).chain(own.iter().map(|x| x.0.as_str())).collect();
+                return Err(format!("unknown {} {n:?} (the engine's and its game's rules' `{declared}`: {})", set.what(), known.join(", ")));
+            };
+            bits |= bit;
+        }
+        Ok(bits)
+    }
+}
+
+thread_local! {
+    /// The named words' bits the rules being read declare
+    /// ([`reading_bits`]).
+    static OWN_BITS: std::cell::RefCell<OwnBits> = std::cell::RefCell::new(OwnBits::default());
+}
+
+/// `f` with `own`, the bits of the named words a game's rules declare,
+/// readable by name besides the engine's.
+pub(crate) fn reading_bits<T>(own: &OwnBits, f: impl FnOnce() -> T) -> T {
+    let before = OWN_BITS.with(|r| r.replace(own.clone()));
+    let out = f();
+    OWN_BITS.with(|r| *r.borrow_mut() = before);
+    out
+}
+
+/// The bits of `names` in `set`, by the engine's names and those of the
+/// rules being read.
+fn bits_by_name(set: nettai_content_api::NamedBits, names: &[String]) -> Result<u32, String> {
+    OWN_BITS.with(|own| own.borrow().bits(set, names))
+}
+
+/// A hit modifier bit by its name.
+fn hit_modifier_bit_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u8, D::Error> {
+    let name: String = Deserialize::deserialize(d)?;
+    bits_by_name(nettai_content_api::NamedBits::HitModifier, &[name]).map(|b| b as u8).map_err(serde::de::Error::custom)
+}
+
+/// A table keyed by names (a set of flags, `{ flinch = true }`; a table of
+/// names by name): an empty table reads as an empty list (Luau can't tell
+/// them apart), which is an empty one too.
+#[derive(Debug, Default)]
+struct ByName<V>(std::collections::BTreeMap<String, V>);
+
+impl<'de, V: Deserialize<'de>> Deserialize<'de> for ByName<V> {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        struct Visit<V>(std::marker::PhantomData<V>);
+        impl<'de, V: Deserialize<'de>> serde::de::Visitor<'de> for Visit<V> {
+            type Value = ByName<V>;
+            fn expecting(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                f.write_str("a map")
+            }
+            fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<ByName<V>, A::Error> {
+                let mut out = std::collections::BTreeMap::new();
+                while let Some((k, v)) = map.next_entry::<String, V>()? {
+                    out.insert(k, v);
+                }
+                Ok(ByName(out))
+            }
+            fn visit_seq<A: serde::de::SeqAccess<'de>>(self, mut seq: A) -> Result<ByName<V>, A::Error> {
+                match seq.next_element::<serde::de::IgnoredAny>()? {
+                    None => Ok(ByName(Default::default())),
+                    Some(_) => Err(serde::de::Error::invalid_type(serde::de::Unexpected::Seq, &self)),
+                }
+            }
+        }
+        d.deserialize_any(Visit(std::marker::PhantomData))
+    }
+}
+
+/// The bits of a set (`{ name = true }`) in `set`, by the engine's names and
+/// those of the rules being read: a member set false is none.
+fn bits_of_set(set: nettai_content_api::NamedBits, members: &std::collections::BTreeMap<String, bool>) -> Result<u32, String> {
+    let names: Vec<&String> = members.iter().filter(|x| *x.1).map(|x| x.0).collect();
+    // (A member set false is still a name its set has.)
+    let all: Vec<&String> = members.keys().collect();
+    OWN_BITS.with(|own| own.borrow().bits(set, &all))?;
+    OWN_BITS.with(|own| own.borrow().bits(set, &names))
+}
+
+/// A set of marks (`{ pink = true }`) as their bits.
+fn marks_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result<u8, D::Error> {
+    let members: ByName<bool> = Deserialize::deserialize(d)?;
+    bits_of_set(nettai_content_api::NamedBits::Mark, &members.0).map(|b| b as u8).map_err(serde::de::Error::custom)
+}
+
+/// A table of damage word flags by mark name as what each mark's bit adds.
+fn mark_damage_by_name<'de, D: serde::Deserializer<'de>>(d: D) -> Result<[u16; 8], D::Error> {
+    use nettai_content_api::NamedBits;
+    let by_mark: ByName<String> = Deserialize::deserialize(d)?;
+    let mut out = [0u16; 8];
+    for (mark, flag) in by_mark.0 {
+        let bit = bits_by_name(NamedBits::Mark, std::slice::from_ref(&mark)).map_err(serde::de::Error::custom)?;
+        let add = bits_by_name(NamedBits::DamageWord, &[flag]).map_err(serde::de::Error::custom)?;
+        out[bit.trailing_zeros() as usize] = add as u16;
+    }
+    Ok(out)
+}
+
 /// A game's own bits of a word, as its rules declare them (`{ name = bit }`):
 /// each a single bit, its name and bit none of `engine`'s, its bit no other
 /// name's. `what` names the declaration in errors.
@@ -1191,6 +1376,10 @@ pub enum StanceCounter {
 pub struct PushReading {
     pub reads: PushSource,
     pub bits: u8,
+    /// The modifier bit that makes a push a drag, in a content file by
+    /// name (`drag`: the section's `hit_modifier_bits`, or the engine's
+    /// flinch).
+    #[serde(rename = "drag", deserialize_with = "hit_modifier_bit_by_name")]
     pub drag_bit: u8,
     #[serde(default)]
     pub shift: Option<PushShift>,
@@ -1217,10 +1406,11 @@ pub enum PushSource {
 }
 
 /// A modifier bit that moves a navi's pick of a push row `rows` on
-/// (`PushReading::shift`).
+/// (`PushReading::shift`), in a content file by name (`modifier`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct PushShift {
+    #[serde(rename = "modifier", deserialize_with = "hit_modifier_bit_by_name")]
     pub bit: u8,
     pub rows: u8,
 }
@@ -2125,6 +2315,12 @@ pub struct Rules {
     /// its stages may name besides `setup::effects::NAMES`, and what
     /// `battle.has_effect` reads.
     pub effect_bits: Vec<(String, u32)>,
+    /// The hit modifier's, the damage word's and a hand entry's bits its
+    /// game names of its own (the sections' `hit_modifier_bits`,
+    /// `damage_word_bits` and `mark_bits`): what content names besides the
+    /// engine's (`HIT_MODIFIER_NAMES`, `DAMAGE_WORD_NAMES`, `MARK_NAMES`),
+    /// and what `CoreApi::named_bit` reads.
+    pub own_bits: OwnBits,
     /// The slots of a side's statistics its content names (rule section
     /// `side_stats`).
     pub side_stats: SideStats,
@@ -2165,6 +2361,12 @@ impl PoolSizes {
 }
 
 impl Rules {
+    /// The engine's names of a set of named bits, its game's own, and where
+    /// those are declared.
+    pub fn named_bits(&self, set: nettai_content_api::NamedBits) -> (&'static [(u32, &'static str)], &[(String, u32)], &'static str) {
+        self.own_bits.of(set)
+    }
+
     /// Whether a banner stays up until removed.
     pub fn banner_holds(&self, id: BannerId) -> bool {
         self.holding_banners.contains(&id)

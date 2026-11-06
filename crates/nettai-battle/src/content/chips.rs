@@ -356,8 +356,9 @@ pub struct ChipData {
     pub mb: u8,
     #[serde(default)]
     pub flags: ChipFlags,
-    /// Counter/stagger strength carried to the attack's hitbox (the high
-    /// half of its damage word).
+    /// The counter byte carried to the attack's hitbox (the high half of
+    /// its damage word): its counter strength (bits 0-6) and can't-counter
+    /// (bit 7), in a content file `counter` and `cant_counter`.
     pub hit_param: u8,
     /// Input lockout after the attack ends, in ticks.
     pub lockout: u8,

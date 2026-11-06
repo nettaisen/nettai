@@ -60,7 +60,7 @@ local function chip(key: string, n: number, fields: { [string]: any }): Chip
         rarity = 0,
         mb = 10,
         damage = 0,
-        hit_param = 0,
+        counter = 0,
         lockout = 0,
         flags = { "standard_library" },
         slot_in_limit = 3,
@@ -80,7 +80,7 @@ end
 local function thrown(key: string, n: number, damage: number, action: Action?): Chip
     return chip(key, n, {
         flags = { "has_damage", "standard_library" },
-        hit_param = 30,
+        counter = 30,
         damage = damage,
         action = action,
     })
@@ -91,7 +91,7 @@ local function blade(key: string, n: number, action: Action?): Chip
     return chip(key, n, {
         flags = { "has_damage", "standard_library" },
         family = "sword",
-        hit_param = 30,
+        counter = 30,
         damage = 80,
         action = action,
     })
@@ -132,7 +132,7 @@ local FLAME_HOOK_FLAMES = hook.flames {
 local function spawning(key: string, n: number, instant: (user: Object, spec: InstantChipSpec) -> ()): Chip
     return chip(key, n, {
         flags = { "has_damage", "standard_library" },
-        hit_param = 0x30,
+        counter = 48,
         damage = 40,
         lockout = 20,
         instant = instant,
@@ -145,7 +145,7 @@ local function link_chip(key: string, n: number, of: Chip): Chip
     return chip(key, n, {
         flags = { "has_damage", "library" },
         class = "special",
-        hit_param = 0x30,
+        counter = 48,
         damage = 60,
         action = of.action,
     })
@@ -175,7 +175,7 @@ local chips: { [string]: Chip } = {
         family = "plus",
         dimming = invisible.hook(360),
     }),
-    ["test/eraser"] = navi_chip("eraser", 0x06, 60, eraseman.summon { aim_ticks = 16 }, { family = "cursor", hit_param = 100 }),
+    ["test/eraser"] = navi_chip("eraser", 0x06, 60, eraseman.summon { aim_ticks = 16 }, { family = "cursor", counter = 100 }),
     -- A trap chip that sets no object.
     ["test/trap"] = chip("trap", 0x09, { flags = { "dimming", "standard_library" }, dimming = traps.hook() }),
     ["test/elem-trap"] = chip("elem-trap", 0x30, {
@@ -185,13 +185,13 @@ local chips: { [string]: Chip } = {
     }),
     ["test/time-bomb"] = chip("time-bomb", 0x31, {
         flags = { "dimming", "has_damage", "standard_library" },
-        hit_param = 100,
+        counter = 100,
         damage = 50,
         dimming = timebom_chips.timebom1.dimming,
     }),
     ["test/time-bomb-plus"] = chip("time-bomb-plus", 0x32, {
         flags = { "dimming", "has_damage", "standard_library" },
-        hit_param = 100,
+        counter = 100,
         damage = 70,
         dimming = timebom_chips.timebom.dimming,
     }),
@@ -226,7 +226,7 @@ local chips: { [string]: Chip } = {
     ["test/blade"] = blade("blade", 0x109, wideswrd.action),
     ["test/step-blade"] = blade("step-blade", 0x10A, stepswrd.action),
     ["test/stun-blade"] = blade("stun-blade", 0x10B, assnswrd.action),
-    ["test/elements"] = navi_chip("elements", 0x110, 50, elmntman.summon { cycle_ticks = 4 }, { hit_param = 100 }),
+    ["test/elements"] = navi_chip("elements", 0x110, 50, elmntman.summon { cycle_ticks = 4 }, { counter = 100 }),
     ["test/spout"] = navi_chip("spout", 0x111, 40, spoutman.summon, { element = "aqua" }),
     ["test/heat"] = navi_chip("heat", 0x112, 40, heatman.summon),
     ["test/elec"] = navi_chip("elec", 0x113, 40, elecman.summon),

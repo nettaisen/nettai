@@ -496,8 +496,9 @@ local step = { grounded = {}, floor_free = {} }
                 r#"
         leave_on_use = true,
         anti_navi_sparkle = { dy = 0, z = 16 },
-        mark_damage = { 0, 0x4000, 0x2000, 0, 0, 0, 0, 0 },
-        mark_heals = 0,
+        mark_bits = { paralyze = 0x02, uninstall = 0x04, heals = 0x10 },
+        mark_damage = { paralyze = "paralysis", uninstall = "uninstall" },
+        mark_heals = { heals = true, regular = false },
         beat_spares_dark = false,
         window_hides_every_console = false,
         charged_null_alt_routine = true,
@@ -535,7 +536,8 @@ local step = { grounded = {}, floor_free = {} }
         spark_steps_at_start = true,
         hit_marker_steps = { weakness = 18, bug = 18 },
         retype = "is_and_hits",
-        damage_word = { damage = 0x7FF, flags = { { bit = 0x4000, status = "damage_word_paralysis", hit_modifier = 0, stop = true }, { bit = 0x800, bug = 0x1118 } } },
+        damage_word_bits = { paralysis = 0x4000, uninstall = 0x2000, hp_bug = 0x800 },
+        damage_word = { damage = 0x7FF, flags = { { flag = "paralysis", status = "damage_word_paralysis", hit_modifier = { flinch = false }, stop = true }, { flag = "hp_bug", bug = 0x18, bug_arg = 0x11 } } },
         palette_flash = "mode_runs_through_pause",
         palette_flash_order = "after_fades",
         afterimages_run_while_paused = true,
@@ -617,7 +619,8 @@ local step = { grounded = {}, floor_free = {} }
                 "reactions",
                 r#"
         push = row(10, none),
-        push_reading = { reads = "by_hitter_flip", bits = 4, drag_bit = 0x40, obstacle_rows = { { dx = -1, dy = 0, panels = 6 } } },
+        hit_modifier_bits = { back = 0x20, drag = 0x40 },
+        push_reading = { reads = "by_hitter_flip", bits = 4, drag = "drag", obstacle_rows = { { dx = -1, dy = 0, panels = 6 } } },
         hit_test = { float_shoe_needs_self_bit = true, bubbled_as_submerged = false, elec_reaches_submerged = true, guard_breaks_to = { "breaks_guard", "break" }, guard_before_untouchable = false, guard_marks_direction = true },
         obstacle_slide_bounds = false,
         move_direction = "by_side",
@@ -702,6 +705,12 @@ local step = { grounded = {}, floor_free = {} }
             (ShakeRule::BattleRng, 0x7FF, 2, RetypeRule::IsAndHits, ObstacleActions::OwnFrom6)
         );
         assert_eq!((r.chip_use.leave_on_use, r.chip_use.anti_navi_sparkle.z), (true, 16));
+        // The game's named bits: its marks' damage and heal, its damage word's flags, its drag.
+        assert_eq!((r.chip_use.mark_damage, r.chip_use.mark_heals), ([0, 0x4000, 0x2000, 0, 0, 0, 0, 0], 0x10));
+        let flags: Vec<_> = r.effects.damage_word.flags.iter().map(|f| (f.bit, f.hit_modifier, f.bug)).collect();
+        assert_eq!(flags, vec![(0x4000, Some(0), None), (0x800, None, Some(0x1118))]);
+        assert_eq!(r.push_reading.drag_bit, 0x40);
+        assert_eq!(r.own_bits.mark, vec![("heals".to_string(), 0x10), ("paralyze".into(), 0x02), ("uninstall".into(), 0x04)]);
         let s = &r.custom_screen;
         assert_eq!((s.first_choosing_tick_reads_keys, s.status_until), (false, crate::content::StatusUntil::Sending));
         assert!(matches!(&s.slots[11].moves, crate::content::SlotMoves::Candidates { keys, up, .. } if keys.len() == 1 && up.is_empty()));
@@ -750,6 +759,10 @@ local step = { grounded = {}, floor_free = {} }
         for (section, body) in STATED {
             for line in body.lines().filter(|l| !l.trim().is_empty()) {
                 let field = line.trim_start().split(' ').next().unwrap();
+                // (A game's own bits it declares are none unless stated: what names them is refused without.)
+                if field.ends_with("_bits") {
+                    continue;
+                }
                 let e = game(rules(None, Some((section, field)), None)).expect_err(field);
                 assert!(e.contains(&format!("game/rules/init.luau: rules: {section}: missing field `{field}`")), "{section}.{field}: {e}");
                 fields += 1;
@@ -806,6 +819,30 @@ local step = { grounded = {}, floor_free = {} }
         assert!(e.contains("rules: flow.effect_bits.link: the engine names 0x8 or \"link\""), "{e}");
         let e = own("", "effect_bits = { a = 0x80, b = 0x80 },").unwrap_err();
         assert!(e.contains("rules: flow.effect_bits.b and flow.effect_bits.a are both 0x80"), "{e}");
+        // The hit words' bits by name: the hit modifier's, the damage word's
+        // flags and the marks, the engine's and those the game declares,
+        // each set a table of flags by name. A name neither has, a value
+        // that is no flag, a number, or a declared name the engine has, is
+        // refused.
+        let hit_words = |from: &str, to: &str| game(rules(None, None, Some((from, to))));
+        let e = hit_words("drag = \"drag\"", "drag = \"pull\"").unwrap_err();
+        assert!(e.contains("rules: reactions.push_reading.drag: unknown hit modifier \"pull\" (the engine's and its game's rules' `reactions.hit_modifier_bits`: flinch, flash, back, drag)"), "{e}");
+        let e = hit_words("hit_modifier = { flinch = false }", "hit_modifier = { flinch = 1 }").unwrap_err();
+        assert!(e.contains("rules: effects.damage_word.flags[0].hit_modifier.flinch: invalid type: integer `1`, expected a boolean"), "{e}");
+        let e = hit_words("hit_modifier = { flinch = false }", "hit_modifier = { shove = true }").unwrap_err();
+        assert!(e.contains("unknown hit modifier \"shove\""), "{e}");
+        let e = hit_words("hit_modifier = { flinch = false }", "hit_modifier = { \"flinch\" }").unwrap_err();
+        assert!(e.contains("rules: effects.damage_word.flags[0].hit_modifier: invalid type: sequence, expected a map"), "{e}");
+        let e = hit_words("{ flag = \"hp_bug\"", "{ flag = \"hp\"").unwrap_err();
+        assert!(e.contains("unknown damage word flag \"hp\" (the engine's and its game's rules' `effects.damage_word_bits`: double, hp_bug, paralysis, uninstall)"), "{e}");
+        let e = hit_words("mark_heals = { heals = true, regular = false }", "mark_heals = { pink = true }").unwrap_err();
+        assert!(e.contains("rules: chip_use.mark_heals: unknown mark \"pink\""), "{e}");
+        let e = hit_words("mark_damage = { paralyze = \"paralysis\"", "mark_damage = { paralyze = \"stun\"").unwrap_err();
+        assert!(e.contains("rules: chip_use.mark_damage: unknown damage word flag \"stun\""), "{e}");
+        let e = hit_words("mark_bits = { paralyze = 0x02,", "mark_bits = { regular = 0x02,").unwrap_err();
+        assert!(e.contains("rules: chip_use.mark_bits.regular: the engine names 0x2 or \"regular\""), "{e}");
+        let e = hit_words("hit_modifier_bits = { back = 0x20,", "hit_modifier_bits = { back = 0x100,").unwrap_err();
+        assert!(e.contains("rules: back is 0x100, past a byte"), "{e}");
         // The fresh stats' weapon is a weapon the content defines.
         let with_weapon = |weapon: &str| -> Result<Content, String> {
             let mut c = Content::default();

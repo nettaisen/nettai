@@ -954,7 +954,7 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
         }
         other => return Err(what(format!("`art_palette` is {other}: 16 BGR555 colors (below 0x8000)"))),
     }
-    let defaults: [(&str, Json); 13] = [
+    let defaults: [(&str, Json); 12] = [
         ("codes", Json::Array(Vec::new())),
         ("element", "null".into()),
         // (A chip that names no family is of the game's non-elemental one.)
@@ -964,7 +964,6 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
         ("mb", 0.into()),
         ("flags", Json::Array(Vec::new())),
         ("extra_flags", Json::Array(Vec::new())),
-        ("hit_param", 0.into()),
         ("lockout", 0.into()),
         ("damage", 0.into()),
         ("slot_in_limit", 0.into()),
@@ -980,6 +979,23 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
         let v = json(field)?;
         o.insert(field.into(), if v.is_null() { default } else { v });
     }
+    // The counter byte its attack carries (its hit parameter): `counter`,
+    // its counter strength, and `cant_counter`. (A chip's fields are its
+    // game's too, so an unknown one isn't refused; the word is, by name.)
+    if !matches!(spec.field("hit_param"), Data::Nil) {
+        return Err(what("`hit_param` is no field: its counter byte is `counter` (its strength) and `cant_counter`".into()));
+    }
+    let counter = match spec.field("counter") {
+        Data::Nil => 0,
+        Data::Int(c) if (0..=0x7F).contains(c) => *c,
+        other => return Err(what(format!("`counter` is {other:?}: a counter strength, 0 to 127"))),
+    };
+    let cant_counter = match spec.field("cant_counter") {
+        Data::Nil => false,
+        Data::Bool(b) => *b,
+        other => return Err(what(format!("`cant_counter` is {other:?}: a flag"))),
+    };
+    o.insert("hit_param".into(), (counter | if cant_counter { 0x80 } else { 0 }).into());
     // `damage`: a number, or a formula (`{ formula = "hp_lost" }`), or a
     // function of the side.
     match o["damage"].take() {
@@ -1505,7 +1521,8 @@ impl Defs {
                 },
                 _ => None,
             };
-            identities.push(super::identity::read(d, &content.assets, &definitions, own_part)?);
+            let own_bits = content.rules.as_ref().map(|r| r.own_bits.clone()).unwrap_or_default();
+            identities.push(super::identity::read(d, &content.assets, &definitions, own_part, &own_bits)?);
         }
         if identities.windows(2).any(|w| w[0].key >= w[1].key) {
             return Err(ContentError::new("the identities are not in key order (the define phase sorts each registry)"));

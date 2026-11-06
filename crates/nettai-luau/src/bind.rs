@@ -26,7 +26,7 @@ use std::ptr::NonNull;
 
 use nettai_content_api::{
     ActorField, ApiError, BattleInfo, CollisionField, CoreApi, DimmingStep, FieldType,
-    HandField, HitboxSpec, HookCall, HudField, Key, Lifecycle, LinkedChip, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction, OverlayField,
+    HandField, HitboxSpec, HookCall, HudField, Key, Lifecycle, LinkedChip, NamedBits, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction, OverlayField,
     AssetKind, SpawnAt,
     ObstacleCrush, ObstacleRequest, Pad, PanelPos, Registry, RequestFlag, ScreenFade, SpriteField, SpriteId,
     StateId, StatusFlag, StatusTimer, Value, Vec3,
@@ -360,6 +360,99 @@ fn side_arg(v: LuaValue) -> mlua::Result<u8> {
 
 fn u16_arg(v: LuaValue, what: &str) -> mlua::Result<u16> {
     Ok(int(&v, what)? as u16)
+}
+
+/// The bits a set of names gives in a set of named bits (`NamedBits`): a
+/// table of flags keyed by the members' names (`{ flinch = true }`), the
+/// engine's names and those its game's rules declare; a member set false is
+/// none. An unknown name, a value that is no flag, or anything but such a
+/// table is an error (luau-analyze lets a table literal's extra keys
+/// through).
+fn named_bits(api: &dyn CoreApi, set: NamedBits, v: &LuaValue, what: &str) -> mlua::Result<u32> {
+    let LuaValue::Table(t) = v else {
+        return Err(mlua::Error::runtime(format!("{what}: expected a set of {}s (`{{ name = true }}`), got {}", set.what(), v.type_name())));
+    };
+    let mut bits = 0;
+    for pair in t.pairs::<LuaValue, LuaValue>() {
+        let (k, on) = pair?;
+        let (LuaValue::String(name), LuaValue::Boolean(on)) = (&k, &on) else {
+            return Err(mlua::Error::runtime(format!(
+                "{what}: a set of {}s is keyed by their names, each true or false (`{{ name = true }}`), not {k:?} = {on:?}",
+                set.what()
+            )));
+        };
+        let bit = api.named_bit(set, &name.to_str()?).map_err(|e| mlua::Error::runtime(format!("{what}: {e}")))?;
+        if *on {
+            bits |= bit;
+        }
+    }
+    Ok(bits)
+}
+
+/// A read-only view of a word's bits by name (`hit_modifier.bits`,
+/// `damage_word.flags`): each member's name reads whether the word has
+/// it; a name its set hasn't is an error.
+#[derive(Clone, Copy)]
+struct BitsView(NamedBits, u32);
+
+impl UserData for BitsView {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
+        methods.add_meta_method(mlua::MetaMethod::Index, |_, this, name: mlua::LuaString| {
+            let bit = with(|api, _| api.named_bit(this.0, &name.to_str()?).map_err(api_error))?;
+            Ok(this.1 & bit != 0)
+        });
+        methods.add_meta_method(mlua::MetaMethod::NewIndex, |_, this, (_, _): (LuaValue, LuaValue)| -> mlua::Result<()> {
+            Err(mlua::Error::runtime(format!("a word's {}s are read here, not written", this.0.what())))
+        });
+    }
+}
+
+/// `battle.hand_entry(side, i).marks`: an entry's marks by name, each read
+/// and written (`NamedBits::Mark`).
+#[derive(Clone, Copy)]
+struct HandMarks(u8, u8);
+
+impl UserData for HandMarks {
+    fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
+        methods.add_meta_method(mlua::MetaMethod::Index, |_, this, name: mlua::LuaString| {
+            with(|api, _| {
+                let bit = api.named_bit(NamedBits::Mark, &name.to_str()?).map_err(api_error)?;
+                let Value::Int(marks) = api.hand_entry(this.0, this.1, HandField::Marks) else { return Ok(false) };
+                Ok(marks as u32 & bit != 0)
+            })
+        });
+        methods.add_meta_method(mlua::MetaMethod::NewIndex, |_, this, (name, on): (mlua::LuaString, bool)| {
+            with(|api, _| {
+                let bit = api.named_bit(NamedBits::Mark, &name.to_str()?).map_err(api_error)?;
+                let Value::Int(marks) = api.hand_entry(this.0, this.1, HandField::Marks) else {
+                    return Err(mlua::Error::runtime("marks: the hand has no such entry"));
+                };
+                let marks = if on { marks as u32 | bit } else { marks as u32 & !bit };
+                api.set_hand_entry(this.0, this.1, HandField::Marks, Value::Int(marks as i64)).map_err(api_error)
+            })
+        });
+    }
+}
+
+/// A hit modifier: a set of its bits by name (`NamedBits::HitModifier`), or
+/// a modifier byte copied whole (one the engine or a state holds).
+fn hit_modifier_arg(api: &dyn CoreApi, v: &LuaValue, what: &str) -> mlua::Result<u8> {
+    match v {
+        LuaValue::Table(_) => Ok(named_bits(api, NamedBits::HitModifier, v, what)? as u8),
+        LuaValue::Integer(_) | LuaValue::Number(_) => match int(v, what)? {
+            b @ 0..=0xFF => Ok(b as u8),
+            b => Err(mlua::Error::runtime(format!("{what}: {b:#x} is no hit modifier byte"))),
+        },
+        v => Err(mlua::Error::runtime(format!("{what}: expected a hit modifier (a set of its bits by name), got {}", v.type_name()))),
+    }
+}
+
+/// A damage word: a whole number of 32 bits.
+fn word_arg(v: &LuaValue, what: &str) -> mlua::Result<u32> {
+    match int(v, what)? {
+        w @ 0..=0xFFFF_FFFF => Ok(w as u32),
+        w => Err(mlua::Error::runtime(format!("{what}: {w} is no damage word (0 to 0xFFFFFFFF)"))),
+    }
 }
 
 fn panel(x: LuaValue, y: LuaValue) -> mlua::Result<PanelPos> {
@@ -1040,8 +1133,8 @@ impl UserData for Object {
         methods.add_method(
             "setup_collision",
             |_, this, (self_type, target_type, hit_mod): (LuaValue, LuaValue, LuaValue)| {
-                let h = u8_arg(hit_mod, "hit mod")?;
                 with(|api, b| {
+                    let h = hit_modifier_arg(api, &hit_mod, "setup_collision: hit modifier")?;
                     let s = CollisionHandle(def_arg(b, &self_type, Registry::Collision, "setup_collision")?);
                     let t = CollisionHandle(def_arg(b, &target_type, Registry::Collision, "setup_collision")?);
                     Ok(api.setup_collision(this.0, s, t, h))
@@ -1051,8 +1144,8 @@ impl UserData for Object {
         methods.add_method(
             "reset_collision_types",
             |_, this, (self_type, target_type, hit_mod): (LuaValue, LuaValue, LuaValue)| {
-                let h = u8_arg(hit_mod, "hit mod")?;
                 with(|api, b| {
+                    let h = hit_modifier_arg(api, &hit_mod, "reset_collision_types: hit modifier")?;
                     let s = CollisionHandle(def_arg(b, &self_type, Registry::Collision, "reset_collision_types")?);
                     let t = CollisionHandle(def_arg(b, &target_type, Registry::Collision, "reset_collision_types")?);
                     Ok(api.reset_collision_types(this.0, s, t, h))
@@ -1170,15 +1263,6 @@ impl UserData for Object {
         methods.add_method("load_chip_attack", |_, this, chip: LuaValue| {
             let chip = bound(|b| def_arg(b, &chip, Registry::Chip, "load_chip_attack"))?;
             with(|api, _| api.load_chip_attack(this.0, chip).map_err(api_error))
-        });
-        methods.add_method("set_damage_word", |_, this, word: LuaValue| {
-            // The damage (with its flag bits) and, above it, the counter
-            // byte a hit carries: the object's damage and stamina.
-            let word = int(&word, "damage word")? as u32;
-            with(|api, _| {
-                api.set(this.0, ObjectField::Damage, Value::Int((word & 0xFFFF) as i64)).map_err(api_error)?;
-                api.set(this.0, ObjectField::Stamina, Value::Int((word >> 16) as i64)).map_err(api_error)
-            })
         });
         methods.add_method("reset_attack_links", |_, this, ()| with(|api, _| Ok(api.reset_attack_links(this.0))));
         methods.add_method("held_direction", |_, this, ()| {
@@ -1406,6 +1490,13 @@ impl UserData for Collision {
             if f.writable() {
                 fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
                     let o = this.borrow::<Collision>()?.0;
+                    // (A hit modifier by its bits' names, or a byte copied whole.)
+                    if f == CollisionField::HitModBase {
+                        return with(|api, _| {
+                            let bits = hit_modifier_arg(api, &v, f.name())?;
+                            api.collision_set(o, f, Value::Int(bits as i64)).map_err(api_error)
+                        });
+                    }
                     let v = take(v, f.field_type(), shown, f.name())?;
                     with(|api, _| api.collision_set(o, f, v).map_err(api_error))
                 });
@@ -1489,13 +1580,17 @@ impl UserData for Collision {
             let amount = u16_arg(amount, "amount")?;
             with(|api, _| Ok(api.add_mood_damage(this.0, amount)))
         });
-        methods.add_method("add_hit_mod", |_, this, bits: LuaValue| {
-            let bits = u8_arg(bits, "bits")?;
-            with(|api, _| Ok(api.add_hit_mod(this.0, bits)))
+        methods.add_method("add_hit_mod", |_, this, hit_mod: LuaValue| {
+            with(|api, _| {
+                let bits = hit_modifier_arg(api, &hit_mod, "add_hit_mod")?;
+                Ok(api.add_hit_mod(this.0, bits))
+            })
         });
-        methods.add_method("add_final_hit_mod", |_, this, bits: LuaValue| {
-            let bits = u8_arg(bits, "bits")?;
-            with(|api, _| Ok(api.add_final_hit_mod(this.0, bits)))
+        methods.add_method("add_final_hit_mod", |_, this, hit_mod: LuaValue| {
+            with(|api, _| {
+                let bits = hit_modifier_arg(api, &hit_mod, "add_final_hit_mod")?;
+                Ok(api.add_final_hit_mod(this.0, bits))
+            })
         });
     }
 }
@@ -2240,10 +2335,21 @@ impl UserData for HandEntry {
         for &f in HandField::ALL {
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| Ok(api.hand_entry(this.0, this.1, f)))?;
+                // (Its marks by name, a view: `NamedBits::Mark`.)
+                if let (HandField::Marks, Value::Int(_)) = (f, &v) {
+                    let HandEntry(side, i) = *this;
+                    return Ok(LuaValue::UserData(lua.create_userdata(HandMarks(side, i))?));
+                }
                 from_api(lua, v, f.field_type())
             });
             fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
                 let HandEntry(side, i) = *this.borrow::<HandEntry>()?;
+                if f == HandField::Marks {
+                    return with(|api, _| {
+                        let bits = named_bits(api, NamedBits::Mark, &v, "marks")?;
+                        api.set_hand_entry(side, i, f, Value::Int(bits as i64)).map_err(api_error)
+                    });
+                }
                 let v = to_api(v, f.field_type(), f.name())?;
                 with(|api, _| api.set_hand_entry(side, i, f, v).map_err(api_error))
             });
@@ -2382,6 +2488,8 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     g.set("Vec3", vec3)?;
 
     g.set("int", int_lib(lua)?)?;
+    g.set("damage_word", damage_word_lib(lua)?)?;
+    g.set("hit_modifier", hit_modifier_lib(lua)?)?;
     g.set("schema", crate::schema::lib(lua)?)?;
     g.set("Element", crate::element::lib(lua)?)?;
     g.set("rules", rules_lib(lua)?)?;
@@ -2491,13 +2599,17 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             let chip = bound(|b| chip_arg(b, &chip, "chip"))?.ok_or_else(|| mlua::Error::runtime("custom.offer: no chip"))?;
             let code = code_arg(&code, "custom.offer")?;
             // (What the offer says of itself: no marks, listed, not shading.)
-            let (mut marks, mut listed, mut shades) = (0, true, false);
+            let (mut marks, mut listed, mut shades) = (LuaValue::Nil, true, false);
             if let Some(what) = what {
-                marks = what.raw_get::<Option<LuaValue>>("marks")?.map(|m| u8_arg(m, "marks")).transpose()?.unwrap_or(0);
+                marks = what.raw_get::<LuaValue>("marks")?;
                 listed = what.raw_get::<Option<bool>>("listed")?.unwrap_or(true);
                 shades = what.raw_get::<Option<bool>>("shades")?.unwrap_or(false);
             }
-            with(|api, _| api.custom_offer(side, slot, chip, code, marks, listed, shades).map_err(api_error))
+            with(|api, _| {
+                // (Its marks by name: `NamedBits::Mark`.)
+                let marks = if marks.is_nil() { 0 } else { named_bits(api, NamedBits::Mark, &marks, "custom.offer: marks")? as u8 };
+                api.custom_offer(side, slot, chip, code, marks, listed, shades).map_err(api_error)
+            })
         }
     );
     lib_fn!(lua, t, "hand_size", |_, side: LuaValue| {
@@ -2621,11 +2733,13 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         t.raw_set("attached", p.attached)?;
         Ok(LuaValue::Table(t))
     });
-    lib_fn!(lua, t, "attach_to_last_pick", move |_, (side, button, modifiers): (LuaValue, String, LuaValue)| {
+    lib_fn!(lua, t, "attach_to_last_pick", move |_, (side, button, marks): (LuaValue, String, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
         own("custom.attach_to_last_pick")?;
-        let modifiers = u8_arg(modifiers, "modifiers")?;
-        with(|api, _| api.custom_attach_to_last_pick(side, &button, modifiers).map_err(api_error))
+        with(|api, _| {
+            let marks = named_bits(api, NamedBits::Mark, &marks, "custom.attach_to_last_pick: marks")? as u8;
+            api.custom_attach_to_last_pick(side, &button, marks).map_err(api_error)
+        })
     });
     lib_fn!(lua, t, "hold_last_pick", move |_, (side, button): (LuaValue, String)| {
         let side = u8_arg(side, "side")? & 1;
@@ -3300,6 +3414,21 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             let h = def(key, Registry::Collision)?;
             h.map(CollisionHandle).ok_or_else(|| mlua::Error::runtime(format!("battle.hitbox: `{key}` is a collision type (new.collision)")))
         };
+        // (luau-analyze lets a table literal's extra keys through.)
+        const KEYS: [&str; 13] =
+            ["panel_x", "panel_y", "element", "z", "region", "hit_effect", "target", "self_type", "damage", "hit_mod", "status", "bug", "bug_arg"];
+        for pair in spec.pairs::<LuaValue, LuaValue>() {
+            let (k, _) = pair?;
+            if !matches!(&k, LuaValue::String(k) if KEYS.iter().any(|n| k.as_bytes() == n.as_bytes())) {
+                return Err(mlua::Error::runtime(format!("battle.hitbox: a hitbox has no field {k:?} (it has {})", KEYS.join(", "))));
+            }
+        }
+        let word = match spec.raw_get::<LuaValue>("damage")? {
+            LuaValue::Nil => 0,
+            w => word_arg(&w, "battle.hitbox: damage")?,
+        };
+        let hit_mod: LuaValue = spec.raw_get("hit_mod")?;
+        let hit_mod = if hit_mod.is_nil() { 0 } else { with(|api, _| hit_modifier_arg(api, &hit_mod, "battle.hitbox: hit_mod"))? };
         let s = HitboxSpec {
             panel: PanelPos { x: table_int(&spec, "panel_x")? as u8, y: table_int(&spec, "panel_y")? as u8 },
             element: crate::element::arg(&spec.raw_get("element")?, "battle.hitbox's element")?,
@@ -3308,9 +3437,9 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             hit_effect: def("hit_effect", Registry::Spark)?.map(SparkHandle),
             target: collision("target")?,
             self_type: collision("self_type")?,
-            damage: table_int(&spec, "damage")? as u16,
-            stamina: table_int(&spec, "stamina")? as u16,
-            hit_mod: table_int(&spec, "hit_mod")? as u8,
+            damage: word as u16,
+            stamina: (word >> 16) as u16,
+            hit_mod,
             // A status definition, or nothing.
             status: {
                 let v: LuaValue = spec.raw_get("status")?;
@@ -3882,6 +4011,91 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             lua.create_function(move |_, o: Me| with(|api, _| Ok(api.obstacle_request(o.0, r))))?,
         )?;
     }
+    Ok(t)
+}
+
+/// The damage word's parts, by the original's layout: the damage (the low
+/// half), whose low twelve bits are the amount and whose top four the
+/// flags; the counter byte above it, its counter strength (bits 16-22) and
+/// its can't-counter bit (23); and above that only what a carry leaves.
+mod word {
+    pub const DAMAGE: u32 = 0xFFFF;
+    pub const AMOUNT: u32 = 0x0FFF;
+    pub const FLAGS: u32 = 0xF000;
+    pub const COUNTER_SHIFT: u32 = 16;
+    pub const COUNTER: u32 = 0x7F;
+    pub const CANT_COUNTER: u32 = 0x80 << COUNTER_SHIFT;
+}
+
+/// `damage_word`: a damage word built and read by its parts' names (the
+/// amount, the flags by name, the counter strength and can't-counter); a
+/// word content copies whole it passes as one value.
+fn damage_word_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
+    let t = lua.create_table()?;
+    let flags = |v: &LuaValue, what: &str| -> mlua::Result<u32> { with(|api, _| named_bits(api, NamedBits::DamageWord, v, what)) };
+    lib_fn!(lua, t, "of", move |_, spec: mlua::Table| {
+        const KEYS: [&str; 4] = ["amount", "flags", "counter", "cant_counter"];
+        for pair in spec.pairs::<LuaValue, LuaValue>() {
+            let (k, _) = pair?;
+            if !matches!(&k, LuaValue::String(k) if KEYS.iter().any(|n| k.as_bytes() == n.as_bytes())) {
+                return Err(mlua::Error::runtime(format!("damage_word.of: a damage word has no part {k:?} (it has {})", KEYS.join(", "))));
+            }
+        }
+        // (Wrapped to the damage's halfword, as its store is.)
+        let amount = table_int(&spec, "amount")? as u16 as u32;
+        let counter = match table_int(&spec, "counter")? {
+            c @ 0..=0x7F => c as u32,
+            c => return Err(mlua::Error::runtime(format!("damage_word.of: counter {c} is past a counter strength's 127"))),
+        };
+        let cant = spec.raw_get::<Option<bool>>("cant_counter")?.unwrap_or(false);
+        let named: LuaValue = spec.raw_get("flags")?;
+        let named = if named.is_nil() { 0 } else { flags(&named, "damage_word.of: flags")? };
+        Ok(amount | named | counter << word::COUNTER_SHIFT | if cant { word::CANT_COUNTER } else { 0 })
+    });
+    lib_fn!(lua, t, "damage", |_, w: LuaValue| Ok(word_arg(&w, "damage_word.damage")? & word::DAMAGE));
+    lib_fn!(lua, t, "amount", |_, w: LuaValue| Ok(word_arg(&w, "damage_word.amount")? & word::AMOUNT));
+    lib_fn!(lua, t, "read_amount", |_, w: LuaValue| {
+        let w = word_arg(&w, "damage_word.read_amount")?;
+        with(|api, _| Ok(w & api.damage_amount_bits() as u32))
+    });
+    lib_fn!(lua, t, "flag_word", |_, w: LuaValue| Ok(word_arg(&w, "damage_word.flag_word")? & word::FLAGS));
+    lib_fn!(lua, t, "flags", |_, w: LuaValue| Ok(BitsView(NamedBits::DamageWord, word_arg(&w, "damage_word.flags")?)));
+    lib_fn!(lua, t, "high_half", |_, w: LuaValue| Ok(word_arg(&w, "damage_word.high_half")? >> word::COUNTER_SHIFT));
+    lib_fn!(lua, t, "counter", |_, w: LuaValue| Ok(word_arg(&w, "damage_word.counter")? >> word::COUNTER_SHIFT & word::COUNTER));
+    lib_fn!(lua, t, "cant_counter", |_, w: LuaValue| Ok(word_arg(&w, "damage_word.cant_counter")? & word::CANT_COUNTER != 0));
+    lib_fn!(lua, t, "with", move |_, (w, names): (LuaValue, LuaValue)| {
+        Ok(word_arg(&w, "damage_word.with")? | flags(&names, "damage_word.with")?)
+    });
+    lib_fn!(lua, t, "without", move |_, (w, names): (LuaValue, LuaValue)| {
+        Ok(word_arg(&w, "damage_word.without")? & !flags(&names, "damage_word.without")?)
+    });
+    lib_fn!(lua, t, "plus", |_, (w, n): (LuaValue, LuaValue)| {
+        let w = word_arg(&w, "damage_word.plus")?;
+        let n = int(&n, "damage_word.plus: bonus")?;
+        Ok((w as i64 + n).rem_euclid(1 << 32) as u32)
+    });
+    lib_fn!(lua, t, "plus_damage", |_, (w, n): (LuaValue, LuaValue)| {
+        let w = word_arg(&w, "damage_word.plus_damage")?;
+        let n = int(&n, "damage_word.plus_damage: bonus")?;
+        // (A halfword's add: it wraps, nothing carries.)
+        let d = ((w & word::DAMAGE) as i64 + n) as u16;
+        Ok(w & !word::DAMAGE | d as u32)
+    });
+    lib_fn!(lua, t, "with_damage", |_, (w, d): (LuaValue, LuaValue)| {
+        let w = word_arg(&w, "damage_word.with_damage")?;
+        // (Wrapped to the damage's halfword, as its store is.)
+        let d = int(&d, "damage_word.with_damage: damage")? as u16;
+        Ok(w & !word::DAMAGE | d as u32)
+    });
+    Ok(t)
+}
+
+/// `hit_modifier`: a hit modifier's byte, to keep in a state, and a view of
+/// its bits by name.
+fn hit_modifier_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
+    let t = lua.create_table()?;
+    lib_fn!(lua, t, "byte", |_, m: LuaValue| with(|api, _| hit_modifier_arg(api, &m, "hit_modifier.byte")));
+    lib_fn!(lua, t, "bits", |_, m: LuaValue| Ok(BitsView(NamedBits::HitModifier, with(|api, _| hit_modifier_arg(api, &m, "hit_modifier.bits"))? as u32)));
     Ok(t)
 }
 

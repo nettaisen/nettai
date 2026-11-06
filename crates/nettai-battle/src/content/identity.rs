@@ -287,12 +287,14 @@ fn pixels(v: &nettai_content_api::Data, field: &str) -> Result<Option<(i8, i8)>,
 
 /// An identity definition as the engine holds it (its owner is set by the
 /// navi or form that names it). `own_part`: the function its `parts.own`
-/// is, when it has one.
+/// is, when it has one; `own_bits`: the named bits its game's rules
+/// declare (its body's hit modifier names them).
 pub(crate) fn read(
     d: &nettai_content_api::Definition,
     assets: &nettai_content_api::AssetNames,
     definitions: &nettai_content_api::Definitions,
     own_part: Option<nettai_content_api::FnId>,
+    own_bits: &super::rules::OwnBits,
 ) -> Result<Identity, nettai_content_api::ContentError> {
     use nettai_content_api::{AssetKind, ContentError, Data};
     let what = |m: String| ContentError::new(format!("{}.luau: identity {}: {m}", d.module, d.key));
@@ -534,7 +536,28 @@ pub(crate) fn read(
                 hp,
                 element,
                 body_damage: word("body_damage")?,
-                collision: (collision("body")?, collision("target")?, byte(b.field("collision").field("hit_modifier"), "body.collision.hit_modifier")?),
+                collision: (collision("body")?, collision("target")?, {
+                    // (Its hit modifier, a set of its bits by name: `NamedBits::HitModifier`.)
+                    let (mut on, mut all) = (Vec::new(), Vec::new());
+                    match b.field("collision").field("hit_modifier") {
+                        Data::Nil => {}
+                        Data::Map(members) => {
+                            for (k, v) in members {
+                                let name = k.to_string();
+                                match v {
+                                    Data::Bool(true) => on.push(name.clone()),
+                                    Data::Bool(false) => {}
+                                    other => return Err(what(format!("body.collision.hit_modifier.{name} is {other:?}, not true or false"))),
+                                }
+                                all.push(name);
+                            }
+                        }
+                        other => return Err(what(format!("body.collision.hit_modifier is {other:?}, not a set of its bits (`{{ flinch = true }}`)"))),
+                    }
+                    let set = nettai_content_api::NamedBits::HitModifier;
+                    own_bits.bits(set, &all).map_err(|e| what(format!("body.collision.hit_modifier: {e}")))?;
+                    own_bits.bits(set, &on).map_err(|e| what(format!("body.collision.hit_modifier: {e}")))? as u8
+                }),
                 flags,
                 hides_hp: flag(b.field("hides_hp"), "body.hides_hp", false)?,
             })

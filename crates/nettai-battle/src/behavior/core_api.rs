@@ -7,7 +7,7 @@ use nettai_content_api::api::ApiResult;
 use nettai_content_api::api::ObstacleFlag;
 use nettai_content_api::{
     ActorField, ApiError, BattleInfo, BlinkOut, CollisionField, ColumnInfo, CoreApi, DimmingStep,
-    FieldType, FieldValue, HandField, HitboxSpec, HudField, Key, Lifecycle, LinkedChip, NaviStat, NaviState,
+    FieldType, FieldValue, HandField, HitboxSpec, HudField, Key, Lifecycle, LinkedChip, NamedBits, NaviStat, NaviState,
     ObjectField, ObstacleAction, OverlayField, SideSpecial, ObstacleCrush, ObstacleRemoval, ObstacleRequest, Pad, PanelInfo, RequestFlag,
     PartyInfo, ScreenFade, Shadow, StatsOf,
     SpriteField, SpriteId, StatusFlag, StatusTimer, Value,
@@ -135,6 +135,10 @@ const FLINCH_REQUEST: u32 = 0x4;
 const SLIDE_REQUEST: u32 = 0x10;
 const DRAG_REQUEST: u32 = 0x100;
 const ANGER_REQUEST: u32 = 0x200;
+
+/// The counter byte's bit 7 (`CollisionData::counter_byte`): its hits can't
+/// counter. Bits 0-6 are its counter strength.
+const CANT_COUNTER: u8 = 0x80;
 
 /// The flag2 bit a request that isn't an action request reads.
 fn flag2_request(f: RequestFlag) -> Option<u32> {
@@ -507,6 +511,23 @@ impl CoreApi for Battle {
             )));
         };
         Ok(self.setup.settings.effects & bit != 0)
+    }
+
+    fn named_bit(&self, set: NamedBits, name: &str) -> ApiResult<u32> {
+        let (engine, own, declared) = self.content.rules().named_bits(set);
+        engine
+            .iter()
+            .find(|x| x.1 == name)
+            .map(|x| x.0)
+            .or_else(|| own.iter().find(|x| x.0 == name).map(|x| x.1))
+            .ok_or_else(|| {
+                let names: Vec<&str> = engine.iter().map(|x| x.1).chain(own.iter().map(|x| x.0.as_str())).collect();
+                ApiError::Other(format!("no {} is named {name:?} (the engine's and its game's rules' `{declared}`: {})", set.what(), names.join(", ")))
+            })
+    }
+
+    fn damage_amount_bits(&self) -> u16 {
+        self.game_rules().effects.damage_word.damage
     }
 
     fn shake_camera(&mut self, magnitude: u16, ticks: u16) {
@@ -1809,8 +1830,7 @@ impl CoreApi for Battle {
             ObjectField::Timer2 => i(ob.timer2 as i64),
             ObjectField::Hp => i(ob.hp as i64),
             ObjectField::MaxHp => i(ob.max_hp as i64),
-            ObjectField::Damage => i(ob.damage as i64),
-            ObjectField::Stamina => i(ob.stamina as i64),
+            ObjectField::DamageWord => i(ob.damage as i64 | (ob.stamina as i64) << 16),
             ObjectField::Identity => ob.identity.map_or(Value::Nil, |h| Value::Def(Registry::Identity, h.0)),
             ObjectField::PreventAnim => i(ob.prevent_anim as i64),
             ObjectField::ChipsHeld => i(ob.chips_held as i64),
@@ -1880,8 +1900,7 @@ impl CoreApi for Battle {
             (ObjectField::Timer2, FieldValue::U16(x)) => ob.timer2 = x,
             (ObjectField::Hp, FieldValue::U16(x)) => ob.hp = x,
             (ObjectField::MaxHp, FieldValue::U16(x)) => ob.max_hp = x,
-            (ObjectField::Damage, FieldValue::U16(x)) => ob.damage = x,
-            (ObjectField::Stamina, FieldValue::U16(x)) => ob.stamina = x,
+            (ObjectField::DamageWord, FieldValue::U32(x)) => (ob.damage, ob.stamina) = (x as u16, (x >> 16) as u16),
             (ObjectField::Identity, FieldValue::Ref(None)) => ob.identity = None,
             (ObjectField::Identity, FieldValue::Ref(Some((Registry::Identity, h)))) => {
                 ob.identity = Some(nettai_content_api::IdentityHandle(h));
@@ -2174,9 +2193,8 @@ impl CoreApi for Battle {
             ActorField::Step => i(at.step as i64),
             ActorField::StepInit => i(at.step_init as i64),
             ActorField::AttackElement => i(at.element as i64),
-            ActorField::AttackDamage => i(at.damage as i64),
+            ActorField::AttackWord => i(at.damage as i64 | (at.hit_param as i64) << 16),
             ActorField::AttackExtra => i(at.extra as i64),
-            ActorField::HitParam => i(at.hit_param as i64),
             ActorField::AttackVariant => i(at.variant as i64),
             ActorField::Charged => i(at.charged as i64),
             ActorField::AttackLockout => i(at.lockout as i64),
@@ -2255,8 +2273,7 @@ impl CoreApi for Battle {
             (ActorField::Step, FieldValue::U8(x)) => at.step = x,
             (ActorField::StepInit, FieldValue::U8(x)) => at.step_init = x,
             (ActorField::AttackElement, FieldValue::U8(x)) => at.element = x,
-            (ActorField::AttackDamage, FieldValue::U16(x)) => at.damage = x,
-            (ActorField::HitParam, FieldValue::U16(x)) => at.hit_param = x,
+            (ActorField::AttackWord, FieldValue::U32(x)) => (at.damage, at.hit_param) = (x as u16, (x >> 16) as u16),
             (ActorField::AttackVariant, FieldValue::U8(x)) => at.variant = x,
             (ActorField::Charged, FieldValue::U8(x)) => at.charged = x,
             (ActorField::AttackLockout, FieldValue::U8(x)) => at.lockout = x,
@@ -2765,6 +2782,7 @@ impl CoreApi for Battle {
             CollisionField::Region => return def(Registry::Region, c.region.map(|h| h.0)),
             CollisionField::HitEffect => return def(Registry::Spark, c.hit_effect.map(|h| h.0)),
             CollisionField::HitsWhileDimmed => return Ok(Value::Bool(c.self_flags & types::HITS_WHILE_DIMMED != 0)),
+            CollisionField::CantCounter => return Ok(Value::Bool(c.counter_byte & CANT_COUNTER != 0)),
             CollisionField::Hit => return Ok(Value::Bool(c.acc.hit_flags != 0)),
             CollisionField::ConfusionVisual => return Ok(c.links[crate::collision::link::CONFUSE].into()),
             CollisionField::BlindnessVisual => return Ok(c.links[crate::collision::link::BLIND].into()),
@@ -2776,6 +2794,7 @@ impl CoreApi for Battle {
             | CollisionField::StatusBase
             | CollisionField::StatusFinal
             | CollisionField::HitsWhileDimmed
+            | CollisionField::CantCounter
             | CollisionField::Hit
             | CollisionField::ConfusionVisual
             | CollisionField::BlindnessVisual => unreachable!("handled above"),
@@ -2783,12 +2802,14 @@ impl CoreApi for Battle {
             CollisionField::PanelY => c.panel.y as i64,
             CollisionField::Element => c.element as i64,
             CollisionField::SecondaryElement => c.secondary_element as i64,
-            CollisionField::Bugs => c.bugs as i64,
-            CollisionField::InflictedBugs => c.acc.inflicted_bugs as i64,
+            CollisionField::Bug => (c.bugs & 0xFF) as i64,
+            CollisionField::BugArg => (c.bugs >> 8) as i64,
+            CollisionField::InflictedBug => (c.acc.inflicted_bugs & 0xFF) as i64,
+            CollisionField::InflictedBugArg => (c.acc.inflicted_bugs >> 8) as i64,
             CollisionField::HitModBase => c.hit_mod_base as i64,
             CollisionField::SelfDamage => c.self_damage as i64,
             CollisionField::StandingCount => c.standing_count as i64,
-            CollisionField::CounterByte => c.counter_byte as i64,
+            CollisionField::Counter => (c.counter_byte & !CANT_COUNTER) as i64,
             CollisionField::CounterTimer => c.counter_timer as i64,
             CollisionField::FinalDamage => c.acc.final_damage as i64,
             // (`MOVE_DIRECTIONS`: a game whose moves go by the field's
@@ -2875,6 +2896,17 @@ impl CoreApi for Battle {
                 c.self_flags = if on { c.self_flags | types::HITS_WHILE_DIMMED } else { c.self_flags & !types::HITS_WHILE_DIMMED };
                 return Ok(());
             }
+            (CollisionField::CantCounter, FieldValue::Bool(on)) => {
+                c.counter_byte = if on { c.counter_byte | CANT_COUNTER } else { c.counter_byte & !CANT_COUNTER };
+                return Ok(());
+            }
+            (CollisionField::Counter, FieldValue::U8(x)) => {
+                if x & CANT_COUNTER != 0 {
+                    return Err(ApiError::Other(format!("counter: {x} is past a counter strength's 127")));
+                }
+                c.counter_byte = c.counter_byte & CANT_COUNTER | x;
+                return Ok(());
+            }
             // (Cleared only: what hit it is the resolution's to say.)
             (CollisionField::Hit, FieldValue::Bool(hit)) => {
                 if hit {
@@ -2913,17 +2945,20 @@ impl CoreApi for Battle {
             | CollisionField::Hit
             | CollisionField::ConfusionVisual
             | CollisionField::BlindnessVisual
+            | CollisionField::CantCounter
+            | CollisionField::Counter
             | CollisionField::Barrier => unreachable!("handled above"),
             CollisionField::PanelX => c.panel.x = x as u8,
             CollisionField::PanelY => c.panel.y = x as u8,
             CollisionField::Element => c.element = x as u8,
             CollisionField::SecondaryElement => c.secondary_element = x as u8,
-            CollisionField::Bugs => c.bugs = x as u16,
-            CollisionField::InflictedBugs => c.acc.inflicted_bugs = x as u16,
+            CollisionField::Bug => c.bugs = c.bugs & 0xFF00 | x as u16,
+            CollisionField::BugArg => c.bugs = c.bugs & 0xFF | (x as u16) << 8,
+            CollisionField::InflictedBug => c.acc.inflicted_bugs = c.acc.inflicted_bugs & 0xFF00 | x as u16,
+            CollisionField::InflictedBugArg => c.acc.inflicted_bugs = c.acc.inflicted_bugs & 0xFF | (x as u16) << 8,
             CollisionField::HitModBase => c.hit_mod_base = x as u8,
             CollisionField::SelfDamage => c.self_damage = x as u16,
             CollisionField::StandingCount => c.standing_count = x as u8,
-            CollisionField::CounterByte => c.counter_byte = x as u8,
             CollisionField::FinalDamage
             | CollisionField::CounterTimer
             | CollisionField::GuardDirs

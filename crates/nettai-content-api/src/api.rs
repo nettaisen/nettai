@@ -194,10 +194,16 @@ named_fields! {
         Timer2 = "timer2", U16, rw;
         Hp = "hp", U16, rw;
         MaxHp = "max_hp", U16, rw;
-        /// Attack power plus flag bits (the damage word's low half).
-        Damage = "damage", U16, rw;
-        /// The damage word's high half (the counter byte in its low byte).
-        Stamina = "stamina", U16, rw;
+        /// The damage word its hits carry (the game's damage, +0x2C, and
+        /// stamina, +0x2E, as one word): the damage with its flag bits in
+        /// the low half, the counter byte above it (`damage_word.of` builds
+        /// one by names). Content copies it whole.
+        DamageWord = "damage_word", U32, rw;
+        /// It holds a panel reservation (released when it is destroyed).
+        /// (Here, in the place of the damage word's second half: a follower's
+        /// held field hashes by its variant's place, `Held`, so the fields
+        /// after keep theirs.)
+        HoldsReservation = "holds_reservation", Bool, rw;
         /// What it is taken for (none: a virus).
         Identity = "identity", Ref(Registry::Identity, None), rw;
         /// Holds an object's sprite (and more, by kind: `PreventAnim`).
@@ -232,8 +238,6 @@ named_fields! {
         /// Where a navi's slide is ([`SLIDE_STEPS`]): to start, or sliding
         /// toward its next panel.
         SlideStep = "slide_step", enum_type(&SLIDE_STEPS), rw;
-        /// It holds a panel reservation (released when it is destroyed).
-        HoldsReservation = "holds_reservation", Bool, rw;
     }
 }
 
@@ -253,13 +257,20 @@ named_fields! {
         AttackChip = "attack_chip", Ref(Registry::Chip, None), rw;
         /// The attack's element byte (primary | secondary bits).
         AttackElement = "attack_element", U8, rw;
-        /// The attack's damage (with its flag bits).
-        AttackDamage = "attack_damage", U16, rw;
+        /// The attack's damage word (AIAttackVars+8, its damage with its
+        /// flag bits, and +0xA, its hit parameter: the counter byte), what
+        /// the routines hand their hits (`damage_word.of` builds one by
+        /// names). Content copies it whole.
+        AttackWord = "attack_word", U32, rw;
         /// The attack's bonus from its hand entry (AIAttackVars+6: the
         /// Atk+ and charge bonuses), read-only.
         AttackExtra = "attack_extra", U16, ro;
-        /// The attack's hit parameter (its hitbox's counter byte).
-        HitParam = "hit_param", U16, rw;
+        /// The consecutive ticks spent flinching or paralyzed (AIData+0x4C;
+        /// 120 make MegaMan angry), what anger's end zeroes with
+        /// `anger_ticks` (`sub_80143A6`). (Here, in the place of the attack's
+        /// hit parameter: a follower's held field hashes by its variant's
+        /// place, `Held`, so the fields after keep theirs.)
+        StunTicks = "stun_ticks", U32, rw;
         /// The attack's variant (AIAttackVars+3), as the anti-damage
         /// counters read it.
         AttackVariant = "attack_variant", U8, rw;
@@ -374,11 +385,9 @@ named_fields! {
         /// reads).
         NoChargeTimer = "no_charge_timer", U16, rw;
         InAutoBattle = "in_auto_battle", Bool, rw;
-        /// The ticks of anger left (AIData's anger count), and the
-        /// consecutive ticks spent flinching or paralyzed (AIData+0x4C; 120
-        /// make MegaMan angry): what anger's end zeroes (`sub_80143A6`).
+        /// The ticks of anger left (AIData's anger count): what anger's end
+        /// zeroes (`sub_80143A6`).
         AngerTicks = "anger_ticks", U16, rw;
-        StunTicks = "stun_ticks", U32, rw;
     }
 }
 
@@ -435,11 +444,16 @@ named_fields! {
         /// The status it takes this window (its hits', a counter's, or one
         /// the rules put in their place: the NaviCust's hit bug), or none.
         StatusFinal = "status_final", Ref(Registry::Status, None), rw;
-        /// Bug code (low byte) and argument (high byte).
-        Bugs = "bugs", U16, rw;
+        /// The bug code its hits carry and its argument (the halfword's low
+        /// and high byte).
+        Bug = "bug", U8, rw;
+        BugArg = "bug_arg", U8, rw;
         /// The bug code and argument the last resolution's hits brought
         /// (CollisionData+0x9C, +0x9D), which the navi takes.
-        InflictedBugs = "inflicted_bugs", U16, rw;
+        InflictedBug = "inflicted_bug", U8, rw;
+        InflictedBugArg = "inflicted_bug_arg", U8, rw;
+        /// The hit modifier its hits carry (a binding reads and writes it by
+        /// its bits' names, the engine's and its game's: `HitModifierBits`).
         HitModBase = "hit_mod_base", U8, rw;
         /// The damage it deals (the object's damage at setup).
         SelfDamage = "self_damage", U16, rw;
@@ -447,10 +461,12 @@ named_fields! {
         /// poison's drain, `sub_801A186`); the standing effects zero it on a
         /// type that has no `stand`.
         StandingCount = "standing_count", U8, rw;
-        /// The counter byte (CollisionData+0x07: bits 0-6 counter
-        /// strength, bit 7 can't counter), which setup takes from the
-        /// damage word's high half.
-        CounterByte = "counter_byte", U8, rw;
+        /// The counter byte (CollisionData+0x07), which setup takes from
+        /// the damage word's high half: its counter strength (bits 0-6:
+        /// what a hit wears off the mood, and with which it counters) and
+        /// whether its hits can't counter (bit 7). Each writes its own bits.
+        Counter = "counter", U8, rw;
+        CantCounter = "cant_counter", Bool, rw;
         /// The ticks left of its counter window (CollisionData+0x0D): a
         /// hit with a counter byte counters it while they run.
         CounterTimer = "counter_timer", U8, ro;
@@ -661,8 +677,37 @@ named_fields! {
         Turn = "turn", U8, rw;
         /// Its marks (its modifier flags: what its game's chip-use rules
         /// read at the use, and what its rules keep there: EXE4's install
-        /// marks each entry 0x04 as it takes a dark chip's cost, 0x0801EA1E).
+        /// marks each entry as it takes a dark chip's cost, 0x0801EA1E). A
+        /// binding reads and writes them by name (`NamedBits::Mark`).
         Marks = "marks", U8, rw;
+    }
+}
+
+/// A word whose bits content names, each set of names the engine's and
+/// its game's rules' own (`CoreApi::named_bit`): the bits whose meaning
+/// differs by game are declared once, in the game's rules.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum NamedBits {
+    /// A hit modifier (a collision's `HitModBase`, a hitbox's): the
+    /// engine's flinch and flash, and the game's rules' own (the reactions
+    /// section's `hit_modifier_bits`: the pushes, the drag).
+    HitModifier,
+    /// The flag bits of a damage word's damage: the engine's double, and
+    /// the game's rules' own (the effects section's `damage_word_bits`).
+    DamageWord,
+    /// A hand entry's marks (`HandField::Marks`): the engine's regular,
+    /// and the game's rules' own (the chip-use section's `mark_bits`).
+    Mark,
+}
+
+impl NamedBits {
+    /// What the set is called in messages.
+    pub fn what(self) -> &'static str {
+        match self {
+            NamedBits::HitModifier => "hit modifier",
+            NamedBits::DamageWord => "damage word flag",
+            NamedBits::Mark => "mark",
+        }
     }
 }
 
@@ -1532,9 +1577,11 @@ pub struct HitboxSpec {
     /// Its collision types: what it reaches, what it is.
     pub target: crate::CollisionHandle,
     pub self_type: crate::CollisionHandle,
-    /// The damage word (damage | flag bits) and the counter byte.
+    /// The damage word's halves: the damage with its flag bits, and the
+    /// counter byte above it (content gives the word whole).
     pub damage: u16,
     pub stamina: u16,
+    /// The hit modifier (content gives its bits' names: `NamedBits`).
     pub hit_mod: u8,
     pub status: Option<crate::StatusHandle>,
     pub bug: u8,
@@ -1714,6 +1761,13 @@ pub trait CoreApi {
     /// engine's are `BattleInfo`'s (`Link`, `BossRank`, `Random`). Another
     /// name is an error.
     fn has_effect(&self, name: &str) -> ApiResult<bool>;
+    /// The bit `name` names in the set `set`: one of the engine's names,
+    /// or of those its game's rules declare (`NamedBits`). Another name is
+    /// an error.
+    fn named_bit(&self, set: NamedBits, name: &str) -> ApiResult<u32>;
+    /// The bits of a damage word's damage its game's hits read as the
+    /// amount (the rules' `effects.damage_word.damage`).
+    fn damage_amount_bits(&self) -> u16;
     /// Report a sound effect both players hear (output only; nothing in
     /// the simulation reads it).
     fn play_sound(&mut self, sound: u16);
