@@ -64,6 +64,9 @@ pub struct BindPlan {
     pub entries: Vec<(Registry, u16, String)>,
     /// The assets content can name (`asset.sprite("bomb")`).
     pub assets: AssetNames,
+    /// The names the game defines, by kind (`PanelType.cracked`): what its
+    /// value tables hold, and all they hold.
+    pub names: crate::GameNames,
 }
 
 /// What a runtime loaded that the binding reads: the state layouts.

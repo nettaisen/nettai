@@ -306,14 +306,15 @@ impl Battle {
             .ok_or_else(|| ApiError::Other(format!("the rules have no window named {name:?}")))
     }
 
-    /// Which of the rules' buttons or windows `name` is, as the screen keeps
+    /// Which of the rules' buttons or windows `part` is, as the screen keeps
     /// whose pick holds its form: a button's place, or 0x100 past a
     /// window's.
-    fn screen_owner(&self, name: &str) -> ApiResult<u16> {
-        if let Ok(b) = self.own_button(name) {
-            return Ok(b.0);
+    fn screen_owner(&self, part: nettai_content_api::api::ScreenPart) -> ApiResult<u16> {
+        use nettai_content_api::api::ScreenPart;
+        match part {
+            ScreenPart::Button(name) => self.own_button(name).map(|b| b.0),
+            ScreenPart::Window(name) => self.own_window(name).map(|w| 0x100 + w.0),
         }
-        self.own_window(name).map(|w| 0x100 + w.0).map_err(|_| ApiError::Other(format!("the rules have no button or window named {name:?}")))
     }
 
     fn custom_screen_mut(&mut self, side: u8) -> ApiResult<&mut crate::custom::screen::Screen> {
@@ -1088,7 +1089,7 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn custom_set_form(&mut self, side: u8, by: &str, form: Option<nettai_content_api::FormHandle>, turns: u8, alternate: bool) -> ApiResult<()> {
+    fn custom_set_form(&mut self, side: u8, by: nettai_content_api::api::ScreenPart, form: Option<nettai_content_api::FormHandle>, turns: u8, alternate: bool) -> ApiResult<()> {
         let owner = self.screen_owner(by)?;
         let screen = self.custom_screen_mut(side)?;
         screen.form = form;
@@ -1098,7 +1099,7 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn custom_form_taken(&self, side: u8, by: &str) -> ApiResult<bool> {
+    fn custom_form_taken(&self, side: u8, by: nettai_content_api::api::ScreenPart) -> ApiResult<bool> {
         let owner = self.screen_owner(by)?;
         let screen = self.custom_screen(side)?;
         Ok(screen.form.is_some() && screen.form_owner != Some(owner))

@@ -58,6 +58,12 @@ impl<'a> SpecReader<'a> {
             }
             Data::Function => return Err(format!("{at}: a function isn't data")),
             Data::Type(_) => return Err(format!("{at}: a field's type (`schema`) isn't data")),
+            // A name a game defines, by its kind's tag (`{ "$PanelType": "cracked" }`: super::names).
+            Data::Name(kind, name) => {
+                let mut tagged = Map::new();
+                tagged.insert(super::names::tag(*kind), Json::String(name.clone()));
+                Json::Object(tagged)
+            }
         })
     }
 

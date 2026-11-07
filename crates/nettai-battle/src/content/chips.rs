@@ -87,10 +87,9 @@ pub(crate) fn reading_non_elemental() -> Option<ChipFamily> {
 /// A set of family names (`{ elec = true }`: the game's being read), by
 /// number.
 pub(crate) fn family_set<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<ChipFamily>, D::Error> {
-    use serde::de::IntoDeserializer;
     let mut families = Vec::new();
     for name in super::flags::set(d)? {
-        families.push(ChipFamily::deserialize(name.into_deserializer())?);
+        families.push(ChipFamily::named(&name).map_err(serde::de::Error::custom)?);
     }
     families.sort();
     Ok(families)
@@ -102,23 +101,26 @@ impl Serialize for ChipFamily {
     }
 }
 
+impl ChipFamily {
+    /// The family named `name` among the game's being read.
+    fn named(name: &str) -> Result<ChipFamily, String> {
+        READING.with(|r| match r.borrow().as_ref() {
+            Some(families) => families
+                .by_name(name)
+                .ok_or_else(|| format!("{name:?} is none of its game's chip families ({})", families.names().join(", "))),
+            None => Err(format!("chip family {name:?}: no game's families are being read")),
+        })
+    }
+}
+
 impl<'de> Deserialize<'de> for ChipFamily {
-    /// A family's name (one of the game's being read), or its number.
+    /// A family (`Family.sword`: one of the game's being read), or its
+    /// number.
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<ChipFamily, D::Error> {
-        #[derive(Deserialize)]
-        #[serde(untagged)]
-        enum Named {
-            Number(u8),
-            Name(String),
-        }
-        match Named::deserialize(d)? {
-            Named::Number(n) => Ok(ChipFamily(n)),
-            Named::Name(name) => READING.with(|r| match r.borrow().as_ref() {
-                Some(families) => families.by_name(&name).ok_or_else(|| {
-                    serde::de::Error::custom(format!("{name:?} is none of its game's chip families ({})", families.names().join(", ")))
-                }),
-                None => Err(serde::de::Error::custom(format!("chip family {name:?}: no game's families are being read"))),
-            }),
+        use super::names::{NameOrNumber, name_or_number};
+        match name_or_number(d, nettai_content_api::NameKind::Family, true)? {
+            NameOrNumber::Number(n) => u8::try_from(n).map(ChipFamily).map_err(serde::de::Error::custom),
+            NameOrNumber::Name(name) => ChipFamily::named(&name).map_err(serde::de::Error::custom),
         }
     }
 }

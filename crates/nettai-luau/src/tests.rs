@@ -558,6 +558,7 @@ fn a_plan_binds_definition_slots() {
         handles,
         entries: Vec::new(),
         assets: assets.names,
+        names: Default::default(),
     };
     assert!(LuauContent::load(&p, &plan, Options::default()).is_ok());
     // A plan made from other assets is refused.

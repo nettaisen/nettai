@@ -39,6 +39,7 @@ mod custom;
 mod defs;
 mod flags;
 mod identity;
+pub(crate) mod names;
 mod navis;
 mod reader;
 mod roles;
@@ -87,8 +88,10 @@ impl<T> std::ops::Deref for Shown<T> {
     }
 }
 
-/// An attack's primary element (a chip's element, a navi's or form's).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+/// An attack's primary element (a chip's element, a navi's or form's). In
+/// a content file, an `Element` value (`Element.fire`: the byte it is,
+/// without secondary elements).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Element {
     #[default]
@@ -97,6 +100,28 @@ pub enum Element {
     Aqua = 2,
     Elec = 3,
     Wood = 4,
+}
+
+impl Element {
+    /// The element whose number is `n` (none past the wood).
+    pub fn of_number(n: u8) -> Option<Element> {
+        [Element::Null, Element::Fire, Element::Aqua, Element::Elec, Element::Wood].get(n as usize).copied()
+    }
+}
+
+impl<'de> Deserialize<'de> for Element {
+    /// An `Element` value's byte: a primary element of the five, without
+    /// secondary elements.
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Element, D::Error> {
+        use serde::de::Error;
+        match serde_json::Value::deserialize(d)? {
+            serde_json::Value::Number(n) => n.as_u64().and_then(|n| u8::try_from(n).ok()).and_then(Element::of_number).ok_or_else(|| {
+                D::Error::custom(format!("element byte {n}: an element here is one of the five (`Element.null`, `.fire`, `.aqua`, `.elec`, `.wood`), without secondary elements"))
+            }),
+            serde_json::Value::String(s) => Err(D::Error::custom(format!("{s:?} is a string: an element is an `Element` value (`Element.{s}`)"))),
+            v => Err(D::Error::custom(format!("an element is an `Element` value (`Element.fire`), not {v}"))),
+        }
+    }
 }
 
 bitflags::bitflags! {
@@ -204,6 +229,11 @@ impl std::fmt::Display for ContentHash {
     }
 }
 
+/// The module of a game's builds (`exe6:rules/builds`): what tools read
+/// of them, as data (nettai-match's `build`), and its `groups`, which are
+/// the game's versions (docs/design/versions.md §2.2).
+pub const BUILDS_MODULE: &str = "rules/builds";
+
 /// Everything the simulation reads besides its own state and code. See
 /// the module docs.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
@@ -227,6 +257,9 @@ pub struct Content {
     /// is read: what number the game's assets give each is a frontend's
     /// (`nettai_content_api::AssetNumbers`).
     pub assets: nettai_content_api::AssetNames,
+    /// The names the game defines, by kind (`PanelType.cracked`): what its
+    /// value tables hold (made by [`Content::define`]).
+    pub names: nettai_content_api::GameNames,
     /// The assets the content makes from files of its own, not its ROMs'
     /// (its `backgrounds.toml`'s, `music.toml`'s and `sprites.toml`'s, which
     /// also times a ROM's sprite otherwise): made by [`Content::define`], and
@@ -341,8 +374,10 @@ impl Content {
                 self.scripts.games().join(" and ")
             )));
         }
-        let nettai_luau::DefinePhase { definitions, compiled, assets, mut recipes } =
-            nettai_luau::define(&self.scripts.pack_to_define(), nettai_luau::Options::default())?;
+        // (The game's builds, whose groups are its versions.)
+        let builds: Vec<String> = self.scripts.games().iter().map(|g| format!("{g}{}{BUILDS_MODULE}", nettai_content_api::keys::SEPARATOR)).collect();
+        let nettai_luau::DefinePhase { definitions, compiled, assets, mut recipes, names, module_data } =
+            nettai_luau::define(&self.scripts.pack_to_define().with_data_of(builds.clone()), nettai_luau::Options::default())?;
         self.scripts.recipe = self.scripts.games().first().and_then(|g| recipes.remove(g));
         // The assets the modules name.
         self.assets = assets.names;
@@ -371,6 +406,18 @@ impl Content {
         crate::field::reading_panel_types(&panel_types, || chips::reading_families(&families, || sections::link(self)))?;
         // (The forms' faces, keyed by the rules' emotions.)
         navis::check_faces(self)?;
+        // The names the game defines: what the modules read of them is
+        // the game's.
+        let versions = builds
+            .iter()
+            .filter_map(|m| module_data.get(m))
+            .flat_map(|d| match d.field("groups") {
+                nettai_content_api::Data::List(groups) => groups.iter().filter_map(|g| g.field("id").str().map(str::to_string)).collect(),
+                _ => Vec::new(),
+            })
+            .collect();
+        self.names = names::game_names(self, versions);
+        nettai_luau::check_names(&names, &self.names)?;
         self.check_background_music()?;
         self.count_strings();
         Ok(())

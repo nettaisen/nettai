@@ -34,7 +34,7 @@ pub struct NaviData {
     /// Falzar's link navis), by the name its game's graphics keep a version's
     /// pictures under; none: every version's. Presentation only (a console
     /// of another version has no portrait of it).
-    #[serde(default)]
+    #[serde(default, deserialize_with = "super::names::version_opt")]
     pub version: Option<String>,
     /// Extra height, in whole pixels, of the navi's image as it merges
     /// with MegaMan in a Cross.
@@ -335,7 +335,7 @@ pub struct FormData {
     /// may read it (EXE6's: a Beast's roar, the Crosses a Beast goes with);
     /// to the engine it is presentation only (whose pictures name it in its
     /// window and show its Beast, which console has its face).
-    #[serde(default)]
+    #[serde(default, deserialize_with = "super::names::version_opt")]
     pub version: Option<String>,
     /// The lines of a Cross's description, which R shows in the Cross
     /// window (its text is the content's strings): the box takes keys a
