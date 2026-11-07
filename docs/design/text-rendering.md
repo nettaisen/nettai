@@ -1486,7 +1486,8 @@ Nothing is a game's in Rust, and no style is added to the packs (but the window'
   half the face's right and bottom edges, so a lone pixel of a letter's own shading isn't one); the face's
   color on each of the capitals' rows (the bands of the banners: cream, pale, white, pale, cream down the letter); the
   capitals' rows, from the first letter (or all, for a set of digits); the letters' columns. The text layer draws a
-  `textlayer::Ink`: the fill blended between the rows' middles at the output's resolution, and the rim as the glyphs'
+  `textlayer::Ink`: the fill a band per picture row, as sharp as the picture's (never blended between rows: the
+  user, "they should probably all be stepped instead of gradient everywhere"), and the rim as the glyphs'
   coverage grown by a disk of a frame pixel and that again half a pixel right and down, as the pictures' rims are
   heavier there (`vfont::Mask::dilated`).
 - `bar_colors(picture)`: a banner's bar is the colors of its first cell, where that cell is a bar's end (every row of

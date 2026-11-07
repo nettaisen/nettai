@@ -909,7 +909,7 @@ pub fn draw<'a>(
                     // (A ring mark is drawn about the capitals, 1.15 times
                     // their height: the picture's ring is the first letter.)
                     // (In the picture's bands, as CUSTOM: `gauge_word`.)
-                    let look = ringed(look, words).stepped();
+                    let look = ringed(look, words);
                     text.push(Plane::Hud, look.in_place(words, (13 * 8, 8), 8));
                 }
                 None => {
@@ -2267,9 +2267,7 @@ fn gauge_word(b: &Battle, hud: &Hud, text: &TextSink, problems: &mut Problems) -
     let x = (GAUGE_COLUMN + *cells.first()? as i32) * 8;
     let l = &found.letters;
     let lettering = Lettering { font, ..Lettering::wide(l.top, l.cap) };
-    // (Its colors in the picture's bands, not a ramp: the user, "remove the
-    // gradient on the custom bar in enhanced mode".)
-    let look = crate::lettering::Look { role: Role::Lettering(lettering), ..crate::lettering::Look::of(l, &hud.gauge_palette, Lettering::wide) }.stepped();
+    let look = crate::lettering::Look { role: Role::Lettering(lettering), ..crate::lettering::Look::of(l, &hud.gauge_palette, Lettering::wide) };
     let [from, to] = l.span.map(i32::from);
     let item = look.item(words, Rect::new(x + from, 0, to - from, 8), crate::custom::align_of(found.align));
     Some((cells, found.blank.clone(), item))

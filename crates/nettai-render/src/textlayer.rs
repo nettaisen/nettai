@@ -186,19 +186,14 @@ impl TextItem {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Ink {
     /// The face's color on each of the capitals' rows, top to bottom (BGR555,
-    /// before the fades), as the picture has them: drawn blended between
-    /// the rows' middles, so the bands run smoothly at the output's
-    /// resolution. One color: a flat face.
+    /// before the fades), as the picture has them: each row's a band, as
+    /// sharp as the picture's, never blended. One color: a flat face.
     pub fill: Vec<u16>,
     /// The rim's color (BGR555): an outline around the face, as the
     /// picture's is. None: no rim.
     pub rim: Option<u16>,
     /// The rim's width in frame pixels (the pictures' lettering's: 1).
     pub rim_width: f32,
-    /// Each of the picture's rows its own color, the bands as sharp as the
-    /// picture's rather than blended (the custom gauge's words: the user,
-    /// "remove the gradient on the custom bar in enhanced mode").
-    pub stepped: bool,
 }
 
 /// A drawing in place of a picture ([`TextItem::drawn`]): its pieces,

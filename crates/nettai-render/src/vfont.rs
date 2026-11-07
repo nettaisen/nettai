@@ -1354,11 +1354,10 @@ impl TextRenderer {
             let fill: Vec<u32> = if ink.fill.is_empty() { vec![color(item.face)] } else { ink.fill.iter().map(|&c| color(c)).collect() };
             let shadow = item.shadow.map(color);
             for y in area.1..area.3 {
-                // The face's color on this output row: the picture's row
-                // its middle falls on, blended between rows' middles (or
-                // that row's alone, `Ink::stepped`).
+                // The face's color on this output row: that of the
+                // picture's row its middle falls on.
                 let row = unsquash((y as f32 + 0.5 - place.y as f32) / s) - cap_top - 0.5;
-                let face = if ink.stepped { row_color(&fill, row) } else { fill_color(&fill, row) };
+                let face = row_color(&fill, row);
                 for x in area.0..area.2 {
                     if let Some((rgb, rim)) = &rim {
                         let a = rim.at(x, y);
@@ -1479,7 +1478,7 @@ impl TextRenderer {
         let face_top = top + f.glyphs.first().map_or(0.0, |g| g.1[1]);
         for y in area.1..area.3 {
             let row = mid + ((y as f32 + 0.5 - place.y as f32) / s - mid) / k - face_top - 0.5;
-            let face = fill_color(&fill, row);
+            let face = row_color(&fill, row);
             for x in area.0..area.2 {
                 if let Some((rgb, rim)) = &rim {
                     let a = rim.at(x, y);
@@ -1619,30 +1618,12 @@ pub(crate) const RIM: f32 = 1.0;
 /// digit's ink some 90 texels high in a box of 4 rows: 23 texels a pixel).
 const NUMBER_SPREAD: f32 = 40.0;
 
-/// The fill's color at `row` (the capitals' rows from the first's middle,
-/// continuous): blended between the two rows it falls between, the first's
-/// or the last's past them.
-/// The face's color of the picture's row that `row` (from the first row's
-/// middle, as [`fill_color`] takes it) falls in: a band a row, no blend.
+/// The face's color of the picture's row that `row` (the capitals' rows
+/// from the first row's middle, continuous) falls in: a band a row, as the
+/// picture's rows are, never blended; the first's or the last's past them.
 fn row_color(fill: &[u32], row: f32) -> u32 {
     let last = fill.len() - 1;
     fill[((row + 0.5).floor().max(0.0) as usize).min(last)]
-}
-
-fn fill_color(fill: &[u32], row: f32) -> u32 {
-    let last = fill.len() - 1;
-    let r = row.clamp(0.0, last as f32);
-    let i = (r.floor() as usize).min(last);
-    let (a, b) = (fill[i], fill[(i + 1).min(last)]);
-    let t = r - i as f32;
-    if t <= 0.0 || a == b {
-        return a;
-    }
-    let mix = |shift: u32| {
-        let (ca, cb) = (((a >> shift) & 0xFF) as f32, ((b >> shift) & 0xFF) as f32);
-        ((ca + (cb - ca) * t).round() as u32) << shift
-    };
-    mix(16) | mix(8) | mix(0)
 }
 
 /// The lettering items painted kept ([`TextRenderer`]'s `painted`) before
@@ -2025,7 +2006,7 @@ mod tests {
                     TextItem { vscale: Some(0xC0 + 0x10 * n as i32), align: Align::Center, ..TextItem::new(words[(n + 1) % 6], Role::FittedCell, Rect::new(80, 40, 80, 16), 0x03FF, Some(0x0010)) },
                     TextItem { fades: [Fade::Black(n as u8 * 3), Fade::None], shown: Some(n + 1), ..TextItem::new(words[(n + 3) % 6], Role::Cell, Rect::new(120, 70, 96, 16), 0x7C00, Some(0x0000)) },
                     TextItem {
-                        ink: Some(Ink { fill: vec![0x7FFF, 0x5294, 0x318C], rim: Some(0x0000), rim_width: 1.0, stepped: n % 2 == 0 }),
+                        ink: Some(Ink { fill: vec![0x7FFF, 0x5294, 0x318C], rim: Some(0x0000), rim_width: 1.0 }),
                         ..TextItem::new("COUNTER HIT!", Role::Cell, Rect::new(40, 90, 120, 16), 0x7FFF, Some(0x2108))
                     },
                 ];
