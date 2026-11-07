@@ -95,7 +95,7 @@ roles (rules/roles.luau: what it starts, spawns and shows itself), never by numb
      collision.hits_navis, 0)`, `battle.effect(pos, effects.explosion)`, `collision:set_hit_effect(sparks.erase)`,
      `me:set_attack(action, 2)`. A hitbox with no spark or status gives `nil`. An object the original gives a
      NameID takes an identity (`me.identity = IDENTITY`, a `new.identity` in its module).
-   - Mind the game's store widths (`me.lifecycle = "destroy"` is `strb`, `me:set_lifecycle(...)` the word
+   - Mind the game's store widths (`me.lifecycle = Lifecycle.destroy` is `strb`, `me:enter_destroy()` the word
      store), its sprite-stepping routine (`update_sprite`, `update_sprite_while_dimmed`,
      `update_sprite_while_paused`, `step_sprite`), and the order of RNG draws.
 4. **Compat.** Every key the traces see must be compat's: a chip's (chips.toml), a kind's (kinds.toml, with

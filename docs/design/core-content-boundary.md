@@ -129,7 +129,7 @@ These are the game's, kept bit-exact; the API exposes them and must not smooth t
   unless it runs while paused, and while dimmed unless it runs while dimmed. A dimming that starts in the
   middle of the loop gates the objects after it in the same tick.
 - **State words.** An object's lifecycle, action, phase and phase-init are observable and keep the original's
-  values (jump-table offsets 0, 4, 8, ...). `me:set_lifecycle` is the game's word store (all four),
+  values (jump-table offsets 0, 4, 8, ...). `me:enter_destroy()` and its siblings are the game's word store (all four),
   `me.lifecycle =` its byte store. A navi's action is a definition, not a byte; its phase is the attack's
   `step` and `step_init`.
 - **Timers** count down as each routine writes them: the test is on the new value, the widened new value or

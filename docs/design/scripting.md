@@ -97,10 +97,19 @@ Conventions:
   `battle.effects.karma_held`).
   The binding keeps each view as it keeps a handle, so reading a member allocates nothing; a name held in a
   variable indexes the view cast to `any` (`(me.requests :: any)[r] = false`), the checker refusing a dynamic
-  key on a view. A choice is a checked literal union (`me.lifecycle = "destroy"`, `me:set_attack(action,
-  "chip")`, `me:start_move("up")`, `me:take_damage("damage_sound") == "broken"`), never the number the engine
-  keeps it as; one a game names (a panel type, an emotion, a side statistic) is a string the engine checks
-  against the game's own as it runs. Content holds no bit layout: the engine's bit values and offsets stay in
+  key on a view. A choice the engine knows is a value of its table, a global per choice (`DragStep.slide`,
+  `ChipClass.mega`, `ScreenSound.pick`, `me:set_attack(action, AttackKind.chip)`, `me:start_move(StepDirection.up)`,
+  `me:take_damage(TakeDamageMode.damage_sound) == DamageTaken.broken`), and so is what a hook answers
+  (`ControlOutcome.chip`, `BugOutcome.edited`, `ButtonState.selectable`, `SlideAnswer.stop`), never the number the
+  engine keeps it as nor its name as a string: a value is opaque (`tostring` shows `DragStep.slide`), made once a
+  VM and compared with `==`; each kind's type in `core.d.luau` is an extern type extending `Choice`; a member a
+  table hasn't is an error, and whatever takes a choice refuses a string (crates/nettai-content-api's `choice`
+  lists the kinds, in the engine's order where it keeps one as a byte). A definition's choice reads back as
+  `Data::Choice`, which its loader takes; a state's field that holds one is `schema.choice` of its table (`state =
+  { source = schema.choice(ChargeSource) }`: the byte a list of the names was, and a list that is a kind's members
+  is refused). An action that reads as a verb is a method instead: the lifecycle's transitions
+  (`me:enter_destroy()`). A choice a game names (a panel type, an emotion, a side statistic) is a string the engine
+  checks against the game's own as it runs. Content holds no bit layout: the engine's bit values and offsets stay in
   the engine, and a game's own layouts are declared once, in its rules. The original's numbers that are a
   routine's own immediates (animation numbers, tick counts, bug codes) are the scripts' named constants.
 - **Sets are tables of booleans keyed by member.** What content states as a set of names is a table keyed by
@@ -154,14 +163,14 @@ Conventions:
   or is mirrored and turned upside down by booleans (`hflip`, `vflip`), an effect or an afterimage faces a side's
   way (`battle.effect(pos, fx, me.facing_side)`). A sprite's parts are a view by index (`sprite.hidden_parts[6] =
   true`), the header flags a table of names (`me:set_header_flags { active = true }`), a guard's directions a
-  question (`c:guarded_from(me.flip)`). A sentinel is a name or nil: Full Synchro's mood (`"full_synchro"`), a
-  count that holds (`"holds"`), a charged chip's bonus of its damage again (`"again"`), a barrier with no timer, a
-  folder entry that is none. A set is a table of names to booleans (`{ sword = true }`), never a list; the binding
+  question (`c:guarded_from(me.flip)`). A sentinel is a value or nil: Full Synchro's mood (`Mood.full_synchro`), a
+  count that holds (`Timer.holds`), a charged chip's bonus of its damage again (`ChargedBonus.again`), a stage's
+  navi (`Place.navi`), a barrier with no timer, a folder entry that is none. A set is a table of names to booleans (`{ sword = true }`), never a list; the binding
   refuses a name it doesn't know and a value that isn't a boolean.
 - **No floats anywhere.** `Vec3` is three `i32` in 16.16 fixed point with wrapping `+` and `-`.
-- **Faithful stores.** Where the game's store width matters, the API has both: `me:set_lifecycle("destroy")` is
-  the word store (state, action, phase and phase-init: the game's `str CUR_STATE_DESTROY`), `me.lifecycle =
-  "destroy"` the byte store that keeps the action and phase (`strb`). The sprite-stepping routines are distinct
+- **Faithful stores.** Where the game's store width matters, the API has both: `me:enter_destroy()` (and
+  `enter_init`, `enter_update`, `enter_finish`) is the word store (state, action, phase and phase-init: the game's
+  `str CUR_STATE_DESTROY`), `me.lifecycle = Lifecycle.destroy` the byte store that keeps the action and phase (`strb`). The sprite-stepping routines are distinct
   calls (`update_sprite`, `update_sprite_while_dimmed`, `update_sprite_while_paused`, `step_sprite`), each gated
   as its routine is.
 
@@ -445,14 +454,14 @@ three chips of the series, which compose the hook with their own arguments.
 
 eraseman.kind = new.kind {
     id = "eraseman/navi",
-    pool = "actor",
+    pool = Pool.actor,
     state = { cycle = schema.u8, aim = schema.u8, controller = schema.object, aim_ticks = schema.u8 },
     -- `sub_80BB608`.
     update = function(me: Object)
         local l = me.lifecycle
-        if l == "init" then
+        if l == Lifecycle.init then
             init(me)
-        elseif l == "update" then
+        elseif l == Lifecycle.update then
             local action = ACTIONS[me.action]
             if not action then
                 error(string.format("EraseMan action %#x reads past his table", me.action))
