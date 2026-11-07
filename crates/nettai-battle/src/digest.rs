@@ -394,4 +394,38 @@ mod tests {
         // between builds).
         assert_eq!(stable_hash(&(1u8, 0x1234u16, -1i32, true, [5u16, 6])), 0xc5b0_6c2d_cdf9_1f35);
     }
+
+    /// The state's flag words are their integers: the same size, and the
+    /// same digest alone and in an array (and a short array or a long one,
+    /// past `hash_bits_slice`'s stack buffer).
+    #[test]
+    fn flag_words_hash_as_their_integers() {
+        use crate::actor::{ActorStatus, Requests};
+        use crate::battle::{BattleFlags, RemoteStatus};
+        use crate::collision::{CollisionTypes, HitModifiers, StatusFlags, StatusRequests};
+        use crate::custom::builder::Marks;
+        use crate::field::PanelFlags;
+        use crate::input::Keys;
+        use crate::object::ObjectFlags;
+        use crate::setup::BattleEffects;
+        use std::mem::size_of;
+        assert_eq!(
+            [size_of::<StatusFlags>(), size_of::<StatusRequests>(), size_of::<CollisionTypes>(), size_of::<PanelFlags>()],
+            [4; 4]
+        );
+        assert_eq!([size_of::<Requests>(), size_of::<ActorStatus>(), size_of::<BattleEffects>()], [4; 3]);
+        assert_eq!([size_of::<BattleFlags>(), size_of::<Keys>()], [2; 2]);
+        assert_eq!([size_of::<ObjectFlags>(), size_of::<RemoteStatus>(), size_of::<HitModifiers>(), size_of::<Marks>()], [1; 4]);
+        let words = [0x8000_0001u32, 0x20, 0x0400_0000];
+        assert_eq!(stable_hash(&StatusFlags::from_bits_retain(words[0])), stable_hash(&words[0]));
+        assert_eq!(stable_hash(&words.map(CollisionTypes::from_bits_retain)), stable_hash(&words));
+        let long: Vec<u32> = (0..40).map(|i| 1 << (i % 32)).collect();
+        let typed: Vec<CollisionTypes> = long.iter().map(|&w| CollisionTypes::from_bits_retain(w)).collect();
+        assert_eq!(stable_hash(&typed), stable_hash(&long));
+        let bytes = [0x05u8, 0x80, 0x41, 0, 0xFF, 0x10];
+        assert_eq!(stable_hash(&bytes.map(Marks::from_bits_retain)), stable_hash(&bytes));
+        assert_eq!(stable_hash(&bytes.map(HitModifiers::from_bits_retain)), stable_hash(&bytes));
+        assert_eq!(stable_hash(&[bytes[0], bytes[1]].map(RemoteStatus::from_bits_retain)), stable_hash(&[bytes[0], bytes[1]]));
+        assert_eq!(stable_hash(&Keys::from_bits_retain(0xFC03)), stable_hash(&0xFC03u16));
+    }
 }

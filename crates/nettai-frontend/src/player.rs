@@ -264,7 +264,7 @@ impl Player {
     // ---- Running ----------------------------------------------------------
 
     /// Run the ticks due after `elapsed` more time, with `buttons` held (the
-    /// GBA's button mask, `nettai_battle::input::keys`): `elapsed` at the
+    /// GBA's button mask, `nettai_battle::input::Keys`): `elapsed` at the
     /// original's rate times the speed, the part of a tick left over kept
     /// for the next call. None while paused or stopped. The ticks run.
     ///

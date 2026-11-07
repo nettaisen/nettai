@@ -191,7 +191,7 @@ condition that keeps a netbattle out; `excl.py` has all 50.
 Three more things are out of scope without a rule in the audit, since no routine is theirs alone:
 
 - **The random battle** (battle effects 0x200000; the 96 settings records from 0x60 on, another match type's) is
-  out of scope by decision. The port keeps the flag (`setup::effects::RANDOM`) and what already reads it (the
+  out of scope by decision. The port keeps the flag (`setup::BattleEffects::RANDOM`) and what already reads it (the
   custom screen); the stats and folder the original takes from a second place for it (`sub_800B144`,
   `sub_800A3E4`) would be the setup's to supply, and nothing records it.
 - **NaviStats+0x54** (HP lost when the custom screen opens, `sub_8013FD0`) stays 0 in a netbattle. Its one setter

@@ -1349,7 +1349,7 @@ F1 &= ~0x202
 
 ### 4.10.1 Submerged (F1 0x4)
 
-ObjectFlags1 bit 0x4 is the engine's `f1::SUBMERGED`: the object is below the surface, and only some attacks
+ObjectFlags1 bit 0x4 is the engine's `StatusFlags::SUBMERGED`: the object is below the surface, and only some attacks
 reach it. **It never occurs in a netbattle**: its only live source is DiveMan's AI.
 
 **Collision rule** (`sub_3007218`, the pair test, §3.8). A pair is skipped when one side is submerged and the

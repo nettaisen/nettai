@@ -814,7 +814,7 @@ named_fields! {
 named_enum! {
     /// A member of a collision type (`new.collision`'s `flags`): what an
     /// object is, or what it reacts to, by the engine's names of its bits
-    /// (nettai-battle's `collision::types`). The side-relative members are
+    /// (nettai-battle's `collision::CollisionTypes`). The side-relative members are
     /// of the object's side (`own_`) or of the other side (`enemy_`), so a
     /// type's word for side 1 is its word for side 0 mirrored.
     pub enum CollisionMember {
@@ -874,7 +874,7 @@ named_enum! {
 
 named_enum! {
     /// The engine's names of a panel's flags (nettai-battle's
-    /// `field::pflags`): besides them a panel condition names its game's
+    /// `field::PanelFlags`): besides them a panel condition names its game's
     /// type flags (its rules' `panels.type_flags`) and the collision types'
     /// members registered on the panel (the high half: `own_body`, ...).
     pub enum PanelFlag {

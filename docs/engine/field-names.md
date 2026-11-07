@@ -228,3 +228,31 @@ what they start. "No setter found" is from the same heuristic scan as above.
 | `attachment::Params` | Param1..4 of T1#5 | Kind, animation, animate while dimmed, palette offset (`sub_80B8CF8`). |
 | `forms/cross-merge`'s state (content/exe6/rules/forms/merge.luau) | +0x62, ExtraVars+4/+0xC/+0x10/+0x14, +0x68 of T1#0x1B | Swings left, swing step, lift, extra height, sound played, side of the next swing. |
 | `body_overlay::Vars` | Param1..4 and ExtraVars[0] of T1#0x56 | Variant, own palette, always step, animation offset, forced in front. |
+
+## Flag words as types (bitsets pass)
+
+Each flag word that was an integer with a module of masks is a `bitflags` type, declared where its module was. The
+fields keep their names; their bits are the type's associated constants (`f1::PARALYZED` is
+`StatusFlags::PARALYZED`). Every type keeps the bits it doesn't name (`const _ = !0`) but netplay's `TickFlags`,
+whose wire refuses them.
+
+| Word | Was | Type |
+|---|---|---|
+| A collision's status flags (`CollisionData::f1`, ObjectFlags1) | `collision::f1`, `kinds::obstacle::obstacle_f1` | `collision::StatusFlags` |
+| A collision's requests (`CollisionData::f2`, ObjectFlags2) | `collision::f2`, `kinds::obstacle::f2` | `collision::StatusRequests` |
+| Collision types, and a hit's results in `hit_flags` | `collision::types`, `collision::hit` | `collision::CollisionTypes` |
+| A hit's modifier byte (`hit_mod_base`, `hit_mod_final`) | literals, the rules' names | `collision::HitModifiers` |
+| A panel's flags (`Panel::flags`, `latch`) | `field::pflags` | `field::PanelFlags` |
+| The object header byte (`Object::flags`) | `object::flags` | `object::ObjectFlags` |
+| A navi's requests and status (`ActorData::requests`, `status`) | `actor::request`, `actor::status` | `actor::Requests`, `actor::ActorStatus` |
+| The battle flags and the link's status bytes | `battle::battle_flags`, `battle::remote_status` | `battle::BattleFlags`, `battle::RemoteStatus` |
+| A round's battle effects | `setup::effects` | `setup::BattleEffects` |
+| The buttons | `input::keys` | `input::Keys` |
+| A hand entry's marks (`ChipHand::modifiers`) | `custom::builder::modifier_bits` | `custom::builder::Marks` |
+| The content's flag sets | newtypes with `has()` | `ChipFlags`, `ExtraChipFlags`, `ChipTraits`, `NaviTraits`, `FormEffects`, `FormTraits`, `SecondaryElements`, `StatusTimers` |
+| The rules' status-end flags | `content::StatusFlags(u32)` | `content::StatusEndFlags(StatusFlags)` |
+| netplay's tick event flags | `nettai_netplay::battle::flags` | `nettai_netplay::battle::TickFlags` |
+| The app's battle buttons (the GBA's and the party switches) | `input::SWITCH_*` over a `u16` | `nettai::input::Buttons` |
+
+A type held in an array of the state (`hit_flags_by_flip`, `hit_mod_by_side`, `remote_status`, a hand's marks) hashes
+as the array of integers it was (`digest::hash_bits_slice`), so the digest and the content's hash are the same.

@@ -2186,7 +2186,7 @@ plain Luau library with a single definition.
     of the game's own.
   - EXE5's patch-cards.toml keeps each team's card 111 under `[by-version.protoman]` and `[by-version.colonel]`: a
     card's key may now be a team's name (`protoman`).
-- **Flag 0x40's names.** The engine's bit is `battle_flags::OWN_GAUGES` (each side its own custom gauge), whose doc
+- **Flag 0x40's names.** The engine's bit is `BattleFlags::OWN_GAUGES` (each side its own custom gauge), whose doc
   comment names both games' modes and setters; the content API is `battle.own_gauges()`; the damage formulas'
   field is `operation_battle` and a recipe's `operation_battle_only`. EXE5's modules ask `operation_battle()`
   (content/exe5/lib/operation_battle.luau), EXE6's `chip_gate_battle()` (content/exe6/lib/chip_gate_battle.luau),

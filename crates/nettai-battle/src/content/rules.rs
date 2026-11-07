@@ -1031,7 +1031,7 @@ pub struct RequestClears {
     pub cut_in: RequestSet,
 }
 
-/// A navi's requests (`collision::f2`) the rules name: the engine's, by
+/// A navi's requests (`collision::StatusRequests`) the rules name: the engine's, by
 /// their names here, and those its game declares of its own (the reactions
 /// section's `request_bits`: EXE4's counter mark), which
 /// [`reading_requests`] gives while the rules are read. In a content file a
@@ -2402,7 +2402,7 @@ pub struct PanelRules {
     pub cycle: Option<u32>,
     /// Each type's name, by number (the section's `numbers`).
     pub names: Vec<String>,
-    /// The flag bits the types set besides the engine's (`field::pflags`),
+    /// The flag bits the types set besides the engine's (`field::PanelFlags`),
     /// each by its name: one bit of the flags word's bits 8 to 17 (the
     /// section's `type_flags`: EXE6's poison 0x100 to missing 0x8000, and
     /// 0x10000 on every type). A panel condition names them.

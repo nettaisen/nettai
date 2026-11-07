@@ -1008,7 +1008,7 @@ impl Battle {
     }
 
     /// How many times content has read `side`'s keys `keys` (a mask of
-    /// `input::keys`) while dimmed so far (wrapping): more after a tick
+    /// `input::Keys`) while dimmed so far (wrapping): more after a tick
     /// than before it, a press of them on that tick was read. No part of
     /// the simulation ([`crate::dimming::KeyReads`]).
     pub fn dimmed_key_reads(&self, side: u8, keys: Keys) -> u32 {

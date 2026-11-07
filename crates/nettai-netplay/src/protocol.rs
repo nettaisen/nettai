@@ -115,7 +115,7 @@ pub type Frame = rennet::Frame<Netplay>;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Element {
     /// One tick of the player's input: its word (`PlayerTick::word`: the
-    /// buttons they hold, the GBA's bits, `nettai_battle::input::keys`,
+    /// buttons they hold, the GBA's bits, `nettai_battle::input::Keys`,
     /// their switch request, their microphone heard or not and their custom
     /// screen's choice) and the game's flags for the tick's events
     /// ([`WireInput`]).
