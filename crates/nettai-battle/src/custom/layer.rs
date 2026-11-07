@@ -238,7 +238,8 @@ pub struct Layer {
     pub pick_cursor: Option<u8>,
     /// The pointer went off the slots and picks (onto nothing, another
     /// target, off the picture): the cursor is on nothing, drawn nowhere,
-    /// shading no dark chip, the chip window empty, until the pointer is
+    /// shading no dark chip, the chip window saying no chip is selected (as
+    /// OK's with no picks), until the pointer is
     /// over a slot or a pick again or a key brings it back to its slot
     /// (`cursor`, which it keeps). It lasts from a screen to the next: a
     /// pointer that went away in the fight is away as the screen opens.
@@ -712,7 +713,8 @@ impl Layer {
     }
 
     /// The cursor onto nothing, for the pointer off the slots and picks
-    /// (silently: nothing moves into sight), the chip window emptied.
+    /// (silently: nothing moves into sight), the chip window drawn for
+    /// nothing.
     fn go_away(&mut self) {
         if !self.away {
             self.plan.chip_window = true;
@@ -762,9 +764,9 @@ impl Layer {
     }
 
     /// The chip window drawn for where the cursor is: the slot's, a pick's,
-    /// or empty, on nothing.
+    /// or, on nothing, OK's with no picks ("NO DATA SELECTED").
     fn draw_chip_window(&mut self, p: &Presented) {
-        self.chip_window.empty = self.away;
+        self.chip_window.nothing = self.away;
         if !self.away {
             p.screen.chip_window_at(self.shown_slot(p.screen), &mut self.chip_window, p.folder, &p.view);
         }

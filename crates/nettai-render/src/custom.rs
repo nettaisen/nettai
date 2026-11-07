@@ -1531,12 +1531,11 @@ impl Window {
             w.blank_element(a);
             w.tiles.fill(w.layout.digits, 6, w.layout.detail_blank);
         };
-        // (Drawn for nothing, the pointer away: the window empty, its frame
-        // in the standard colors, its ground where the picture goes.)
-        if cw.empty {
-            let standard = a.frame_palettes.first().copied().unwrap_or([0; 16]);
-            let ground = Picture { tiles: Tiles { pixels: vec![BLANK_8; a.pictures.ok.tiles.pixels.len()] }, palette: standard };
-            blank_details(self, &ground);
+        // (Drawn for nothing, the pointer away: no chip is selected, so the
+        // window shows what OK's does with no picks, "NO DATA SELECTED".)
+        if cw.nothing {
+            blank_details(self, &a.pictures.ok);
+            self.help = Some(("pictures.ok".to_string(), a.letters.pictures.ok.clone()));
             return;
         }
         match v.screen.slots[slot as usize].kind {

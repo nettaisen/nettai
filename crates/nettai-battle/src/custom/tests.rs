@@ -1699,7 +1699,7 @@ fn the_cursor_goes_on_a_pick_by_pointer_only() {
 
 /// The pointer off the slots and picks puts the cursor on nothing: none
 /// drawn, nor the element icon (EXE4's, with a chip shown), the chip window
-/// empty, the slot kept, through the next screen's opening; over a slot, or
+/// drawn for nothing (NO DATA SELECTED), the slot kept, through the next screen's opening; over a slot, or
 /// a direction, A or R, brings it back (the key doing no more), START to OK.
 #[test]
 fn the_pointer_away_leaves_the_cursor_on_nothing() {
@@ -1711,10 +1711,10 @@ fn the_pointer_away_leaves_the_cursor_on_nothing() {
     p.layer.point(Gesture::Over(Target::Slot(1)));
     p.step(Keys::empty());
     assert!(p.layer.look.drawn.cursor.is_some() && p.layer.look.drawn.element);
-    assert_eq!((p.layer.chip_window.slot, p.layer.chip_window.empty), (1, false));
+    assert_eq!((p.layer.chip_window.slot, p.layer.chip_window.nothing), (1, false));
     p.layer.point(Gesture::Away);
     p.step(Keys::empty());
-    assert_eq!((p.layer.cursor, p.layer.away, p.layer.chip_window.empty), (1, true, true));
+    assert_eq!((p.layer.cursor, p.layer.away, p.layer.chip_window.nothing), (1, true, true));
     assert_eq!((p.layer.look.drawn.cursor, p.layer.look.drawn.element), (None, false));
     assert!(!p.sounds().contains(&look::ScreenSound::Cursor));
     p.wait(4);
@@ -1731,7 +1731,7 @@ fn the_pointer_away_leaves_the_cursor_on_nothing() {
         assert_eq!((given.choice, p.layer.cursor, p.layer.away, p.layer.sub), (None, 1, false, Sub::None), "{key:#x}");
         assert!(p.sounds().contains(&look::ScreenSound::Cursor), "{key:#x}");
         assert!(p.layer.look.drawn.cursor.is_some() && p.layer.look.drawn.element, "{key:#x}");
-        assert!(!p.layer.chip_window.empty, "{key:#x}");
+        assert!(!p.layer.chip_window.nothing, "{key:#x}");
         p.step(Keys::empty());
         assert!(p.screen().selection().is_empty());
     }
@@ -1752,7 +1752,7 @@ fn the_pointer_away_leaves_the_cursor_on_nothing() {
     p.open();
     p.wait(10);
     p.step(Keys::empty());
-    assert_eq!((p.layer.cursor, p.layer.away, p.layer.look.drawn.cursor, p.layer.chip_window.empty), (0, true, None, true));
+    assert_eq!((p.layer.cursor, p.layer.away, p.layer.look.drawn.cursor, p.layer.chip_window.nothing), (0, true, None, true));
     // Over a slot: there.
     p.layer.point(Gesture::Over(Target::Slot(2)));
     p.step(Keys::empty());

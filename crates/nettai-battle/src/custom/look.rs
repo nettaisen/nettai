@@ -198,8 +198,9 @@ pub struct ChipWindow {
     /// its start and draws the window again at its end).
     pub uses: u8,
     /// Drawn for nothing, the cursor on nothing (`Layer::away`): the window
-    /// empty, the rest as it was last drawn for a slot.
-    pub empty: bool,
+    /// says no chip is selected, as OK's does with no picks ("NO DATA
+    /// SELECTED"), the rest as it was last drawn for a slot.
+    pub nothing: bool,
 }
 
 /// What a tick of the screen asked: of the window's drawing (the layer

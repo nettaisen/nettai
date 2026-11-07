@@ -396,9 +396,9 @@ fn a_long_press_describes() {
     assert!(p.battle().presented(0).unwrap().screen.selection().is_empty(), "its letting go picks nothing");
 }
 
-/// The mouse moved off the targets (the user: "when the mouse cursor isn't hovering over anything on the custom screen
-/// the selection should be empty"; "can you blank it"): the cursor on nothing, none drawn, no element icon, the chip
-/// window empty; back over a chip, all of them again. Each game, at both sizes.
+/// The mouse moved off the targets: the cursor on nothing, none drawn, no element icon, the chip window drawn for
+/// nothing, as OK's is with no picks (NO DATA SELECTED); back over a chip, all of them again. Each game, at both
+/// sizes.
 #[test]
 #[ignore = "requires the original ROMs: $NETTAI_ROMS, else the Legacy Collection installed through Steam"]
 fn the_pointer_away_shows_nothing_selected() {
@@ -418,23 +418,29 @@ fn the_pointer_away_shows_nothing_selected() {
             };
             moved(&mut p, chip);
             let on = *p.layers()[0].unwrap();
-            assert!(!on.away && !on.chip_window.empty && on.look.drawn.cursor.is_some(), "{label}: over a chip");
+            assert!(!on.away && !on.chip_window.nothing && on.look.drawn.cursor.is_some(), "{label}: over a chip");
             let on_frame = p.frame();
             moved(&mut p, off);
             let away = *p.layers()[0].unwrap();
-            assert!(away.away && away.chip_window.empty, "{label}: away");
+            assert!(away.away && away.chip_window.nothing, "{label}: away");
             assert_eq!((away.look.drawn.cursor, away.look.drawn.element), (None, false), "{label}: no cursor, no element icon");
-            // The chip window empty: the same layer with the chip's window draws another.
+            // The chip window drawn for nothing: not the chip's, and just what OK's draws with no picks.
             let battle = p.battle().clone();
-            let mut shown = away;
-            shown.chip_window = on.chip_window;
+            let mut chip_shown = away;
+            chip_shown.chip_window = on.chip_window;
+            let mut ok_shown = away;
+            ok_shown.chip_window.nothing = false;
+            ok_shown.chip_window.slot = nettai_battle::custom::screen::OK_SLOT;
+            ok_shown.chip_window.picks = 0;
             let a = p.renderer().render(&battle, [Some(&away), None]);
-            let b = p.renderer().render(&battle, [Some(&shown), None]);
-            assert!(!differences(&a, &b).is_empty(), "{label}: the chip window emptied");
+            let b = p.renderer().render(&battle, [Some(&chip_shown), None]);
+            assert!(!differences(&a, &b).is_empty(), "{label}: the chip window isn't the chip's");
+            let ok = p.renderer().render(&battle, [Some(&ok_shown), None]);
+            assert!(differences(&a, &ok).is_empty(), "{label}: the chip window is OK's with no picks");
             assert!(!differences(&on_frame, &a).is_empty(), "{label}: the frame changed");
             moved(&mut p, chip);
             let back = *p.layers()[0].unwrap();
-            assert!(!back.away && !back.chip_window.empty && back.look.drawn.cursor.is_some(), "{label}: over a chip again");
+            assert!(!back.away && !back.chip_window.nothing && back.look.drawn.cursor.is_some(), "{label}: over a chip again");
         }
     }
 }
