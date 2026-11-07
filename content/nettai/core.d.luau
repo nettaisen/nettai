@@ -69,7 +69,12 @@
 -- constant) is read once; one built at the call is read at each. An element
 -- is a value made and read by names (`Element.new("fire", { sword = true })`,
 -- `e.primary`), a turn a boolean (`me.flip`), a sprite's parts a view by
--- index, and a sentinel a name or nil ("full_synchro", "holds"). What a hit
+-- index, and a sentinel a value or nil (`Mood.full_synchro`, `Timer.holds`).
+-- A choice the engine
+-- knows is a value of its table (`DragStep.slide`, `ChipClass.mega`: an
+-- extern type each, compared with `==`; a member a table hasn't is an
+-- error), and so is what a hook answers (`ControlOutcome.chip`); an action
+-- that reads as a verb is a method (`me:enter_destroy()`). What a hit
 -- carries is named too: its hit modifier a set of its bits by name
 -- (`{ flinch = true }`), its damage word one value content copies whole and
 -- builds and reads by its parts' names (`damage_word`), a hand entry's marks
@@ -77,10 +82,16 @@
 -- ids, animation numbers, hit regions, bug codes) are the scripts' constants,
 -- named where they're defined.
 
-export type Pool = "actor" | "attack" | "effect"
+-- A value of a choice the engine knows: each kind's type extends it, and each kind's table (`DragStep`) holds the
+-- kind's values by name. A state's field that holds a kind's values is `schema.choice` of its table
+-- (`state = { source = schema.choice(ChargeSource) }`).
+declare extern type Choice with end
+declare extern type Pool extends Choice with end
+declare Pool: { actor: Pool, attack: Pool, effect: Pool }
 -- ("finish" is the fourth state of kinds that have one after "destroy":
 -- for them "destroy" is a last running phase, and "finish" frees them.)
-export type Lifecycle = "init" | "update" | "destroy" | "finish"
+declare extern type Lifecycle extends Choice with end
+declare Lifecycle: { init: Lifecycle, update: Lifecycle, destroy: Lifecycle, finish: Lifecycle }
 -- How an object follows another (`Object:follow`).
 export type FollowSpec = {
     offset: Vec3?,
@@ -122,8 +133,14 @@ export type ObjectFieldOfObject =
 -- it is a shadow, not drawn), "with_sprite" (`sprite_noShadow`: the sprite
 -- has no shadow part, and the first part is drawn as the rest are).
 -- "hidden" on a sprite without a shadow part hides its first part.
-export type Shadow = "hidden" | "ground" | "with_sprite"
-export type ActorType = "virus" | "navi" | "player"
+declare extern type Shadow extends Choice with end
+declare Shadow: { hidden: Shadow, ground: Shadow, with_sprite: Shadow }
+declare extern type ActorType extends Choice with end
+declare ActorType: { virus: ActorType, navi: ActorType, player: ActorType }
+declare extern type GaugeSpeed extends Choice with end
+declare GaugeSpeed: { normal: GaugeSpeed, fast: GaugeSpeed, slow: GaugeSpeed }
+declare extern type Tether extends Choice with end
+declare Tether: { form: Tether, attack: Tether }
 -- A side's emotion: a name of its game's (its rules' status section's `emotion.order`: EXE6's "normal", "tired",
 -- "full_synchro", "angry", "worn_out"; EXE5's "worried" in place of "tired").
 export type Emotion = string
@@ -131,7 +148,8 @@ export type Emotion = string
 -- `battle.own_gauges`).
 -- A side's special in progress: the SELECT special, or the rules' takeover
 -- of the side's navi (EXE6's Cross special).
-export type SideSpecial = "none" | "select" | "takeover"
+declare extern type SideSpecial extends Choice with end
+declare SideSpecial: { none: SideSpecial, select: SideSpecial, takeover: SideSpecial }
 -- What a chip the rules offer on the custom screen says of itself
 -- (`custom.offer`): the marks its pick carries into its hand entry (none; by name, `Marks`), whether the hand's picks
 -- list it (they do), and whether the cursor on it shades the screen as on a dark chip (not).
@@ -191,7 +209,8 @@ export type HudField =
     | "hp_box"
 -- A screen fade content starts (`SetScreenFade`'s modes): the
 -- transformation sequencer's fade out (0x44, to full) and back in (0x40).
-export type ScreenFade = "transform_out" | "transform_in" | "dim" | "undim"
+declare extern type ScreenFade extends Choice with end
+declare ScreenFade: { transform_out: ScreenFade, transform_in: ScreenFade, dim: ScreenFade, undim: ScreenFade }
 -- A panel type, by name: one of its game's (its rules' `panels.numbers`).
 export type PanelType = string
 -- A member of a collision type (`new.collision`'s `flags`): what an object is,
@@ -375,81 +394,135 @@ export type NaviFlag =
     | "hovering"
 export type Key = "a" | "b" | "select" | "start" | "right" | "left" | "up" | "down" | "r" | "l"
 -- A navi's drag reaction step.
-export type DragStep = "start" | "slide" | "recover"
+declare extern type DragStep extends Choice with end
+declare DragStep: { start: DragStep, slide: DragStep, recover: DragStep }
 -- A navi's slide type: none, a push's, by the arena's rows and the move's
 -- direction (the rules' `reactions.slide_rows`: ice's), the panel's own carry
 -- (a type's `carries` or `carries_by_move`: a road's, EXE5's magnet's).
-export type SlideType = "none" | "push" | "rows" | "panel"
+declare extern type SlideType extends Choice with end
+declare SlideType: { none: SlideType, push: SlideType, rows: SlideType, panel: SlideType }
+declare extern type SlideStep extends Choice with end
+declare SlideStep: { start: SlideStep, sliding: SlideStep }
 -- What reaches a panel in a panel type's `slide`: a navi's slide, its drag,
 -- an obstacle's slide.
-export type SlideHow = "slide" | "drag" | "obstacle"
+declare extern type SlideHow extends Choice with end
+declare SlideHow: { slide: SlideHow, drag: SlideHow, obstacle: SlideHow }
 -- A panel type's `slide`'s answer: one panel further, carried the type's way
 -- (a navi's slide), stopped.
-export type SlideAnswer = "on" | "carry" | "stop"
+declare extern type SlideAnswer extends Choice with end
+declare SlideAnswer: { on: SlideAnswer, carry: SlideAnswer, stop: SlideAnswer }
 -- The slot an action starts in (`me:set_attack`, `start_chip_attack`, `start_weapon`; `me.attack_kind`), which its end
 -- reads: "plain" (a reaction, or an action the rules start), "buster" (the weapons the buttons fire), "chip" (its end
 -- hands the chip lockout on and tells the rules it ended), "special" (the B+Back special: its end hands its cooldown
 -- on), "move" (a step: its end leaves the requests, the charge and the lockouts alone), "unspent_chip" (a chip's attack
 -- the hand doesn't move past: EXE6's Cross special, EXE5's chaos weapon), "misfire" (a B charge the rules arm released
 -- out of its window, EXE5's chaos failure: it ends as a plain action does).
-export type AttackKind = "plain" | "buster" | "chip" | "special" | "move" | "unspent_chip" | "misfire"
+declare extern type AttackKind extends Choice with end
+declare AttackKind: {
+    plain: AttackKind,
+    buster: AttackKind,
+    chip: AttackKind,
+    special: AttackKind,
+    move: AttackKind,
+    unspent_chip: AttackKind,
+    misfire: AttackKind,
+}
 -- A step's direction (`me:held_direction`, `step_target`, `start_move`).
-export type StepDirection = "up" | "down" | "back" | "forward"
+declare extern type StepDirection extends Choice with end
+declare StepDirection: { up: StepDirection, down: StepDirection, back: StepDirection, forward: StepDirection }
 -- A buffered auto-step's direction (`me.buffered_move`): none, the four, or an absolute step's.
-export type BufferedMove = "none" | StepDirection | "absolute"
+declare extern type BufferedMove extends Choice with end
+declare BufferedMove: {
+    none: BufferedMove,
+    up: BufferedMove,
+    down: BufferedMove,
+    back: BufferedMove,
+    forward: BufferedMove,
+    absolute: BufferedMove,
+}
 -- Which way a collision region's anchor last moved (`collision.direction`): none, the four, or other (two panels or
 -- more). In a game whose moves go by the field's left and right whatever the side (its reactions' `move_direction`
 -- "absolute": EXE4's), across is "left" or "right", never "back" or "forward".
-export type MoveDirection = "none" | StepDirection | "other" | "left" | "right"
+declare extern type MoveDirection extends Choice with end
+declare MoveDirection: {
+    none: MoveDirection,
+    up: MoveDirection,
+    down: MoveDirection,
+    back: MoveDirection,
+    forward: MoveDirection,
+    other: MoveDirection,
+    left: MoveDirection,
+    right: MoveDirection,
+}
 -- A navi's charge (`me.charge_level`), and what it charges with (`me.charge_source`).
-export type ChargeLevel = "none" | "charging" | "full"
-export type ChargeSource = "none" | "a" | "b"
+declare extern type ChargeLevel extends Choice with end
+declare ChargeLevel: { none: ChargeLevel, charging: ChargeLevel, full: ChargeLevel }
+declare extern type ChargeSource extends Choice with end
+declare ChargeSource: { none: ChargeSource, a: ChargeSource, b: ChargeSource }
 -- The engine's own actions, as `me:navi_action()` names them.
-export type EngineAction =
-    "entry"
-    | "take_control"
-    | "deletion"
-    | "flinch"
-    | "paralysis"
-    | "drag"
-    | "freeze"
-    | "bubble"
-    | "idle"
-    | "move"
-    | "dimming_chip"
-    | "hand_off_chip"
-    | "instant_chip"
-    | "form_change"
-    | "navi_switch"
-    | "switch_knockout"
+declare extern type EngineAction extends Choice with end
+declare EngineAction: {
+    entry: EngineAction,
+    take_control: EngineAction,
+    deletion: EngineAction,
+    flinch: EngineAction,
+    paralysis: EngineAction,
+    drag: EngineAction,
+    freeze: EngineAction,
+    bubble: EngineAction,
+    idle: EngineAction,
+    move: EngineAction,
+    dimming_chip: EngineAction,
+    hand_off_chip: EngineAction,
+    instant_chip: EngineAction,
+    form_change: EngineAction,
+    navi_switch: EngineAction,
+    switch_knockout: EngineAction,
+}
 -- `me:take_damage`'s mode: the HP lost and the damage sound ("damage_sound"), no HP lost and no sound ("keeps_hp"),
 -- the HP lost and the hit sound ("hit_sound"); each flashes white while hit.
-export type TakeDamageMode = "damage_sound" | "keeps_hp" | "hit_sound"
+declare extern type TakeDamageMode extends Choice with end
+declare TakeDamageMode: { damage_sound: TakeDamageMode, keeps_hp: TakeDamageMode, hit_sound: TakeDamageMode }
 -- What `me:take_damage` answers: its HP ran out ("broken"), it was hit in the "keeps_hp" mode ("hit"), or neither.
-export type DamageTaken = "none" | "hit" | "broken"
+declare extern type DamageTaken extends Choice with end
+declare DamageTaken: { none: DamageTaken, hit: DamageTaken, broken: DamageTaken }
 -- The field-object registry's class an obstacle takes (`obstacle.register`): two a side (a third evicts the oldest),
 -- or one (a second evicts the first).
-export type ObstacleClass = "two_a_side" | "one_a_side"
+declare extern type ObstacleClass extends Choice with end
+declare ObstacleClass: { two_a_side: ObstacleClass, one_a_side: ObstacleClass }
 -- A screen palette flash's variant (`battle.palette_flash`): white or red over one palette layer, or white over two.
-export type PaletteFlashVariant = "one_layer" | "two_layers"
+declare extern type PaletteFlashVariant extends Choice with end
+declare PaletteFlashVariant: { one_layer: PaletteFlashVariant, two_layers: PaletteFlashVariant }
 -- The battle's counts of fight ticks (`battle.cycle`): the rules' `flow.fight_cycles`, in its order.
-export type FightCycle = "first" | "second"
+declare extern type FightCycle extends Choice with end
+declare FightCycle: { first: FightCycle, second: FightCycle }
 -- The bonuses a side stores for its special chip (`battle.add_special_bonus`): the Atk+ bonus a damaging chip spends,
 -- the Navi+ bonus a navi chip spends.
-export type SpecialBonus = "attack" | "navi"
+declare extern type SpecialBonus extends Choice with end
+declare SpecialBonus: { attack: SpecialBonus, navi: SpecialBonus }
 -- A sound of the custom screen's own (`custom.play`).
-export type CustomSound =
-    "pick"
-    | "refused"
-    | "back"
-    | "cancel"
-    | "cursor"
-    | "description"
-    | "program_advance_part"
-    | "program_advance"
-    | "redeal"
+declare extern type ScreenSound extends Choice with end
+declare ScreenSound: {
+    pick: ScreenSound,
+    refused: ScreenSound,
+    back: ScreenSound,
+    cancel: ScreenSound,
+    cursor: ScreenSound,
+    description: ScreenSound,
+    program_advance_part: ScreenSound,
+    program_advance: ScreenSound,
+    redeal: ScreenSound,
+}
 -- A fade of the custom screen's (`custom.fade`).
-export type CustomFade = "half_out" | "half_out_back" | "end_to_white" | "intro_from_white" | "flash" | "flash_back"
+declare extern type CustomFade extends Choice with end
+declare CustomFade: {
+    half_out: CustomFade,
+    half_out_back: CustomFade,
+    end_to_white: CustomFade,
+    intro_from_white: CustomFade,
+    flash: CustomFade,
+    flash_back: CustomFade,
+}
 -- An object's status flags (its collision data's), each a property: `me.status.guard`,
 -- `me.status.using_action = true`.
 declare extern type Statuses with
@@ -761,8 +834,14 @@ declare Element: {
     drain: Element,
 }
 
--- A navi's mood (0 worn out, 0x80 normal, up to 254), or Full Synchro.
-export type Mood = number | "full_synchro"
+declare extern type ChargedBonus extends Choice with end
+declare ChargedBonus: { again: ChargedBonus }
+declare extern type Timer extends Choice with end
+declare Timer: { holds: Timer }
+-- A navi's mood (0 worn out, 0x80 normal, up to 254), or Full Synchro (`Mood.full_synchro`).
+declare extern type Mood extends Choice with end
+declare Mood: { full_synchro: Mood }
+export type NaviMood = number | Mood
 
 -- The header flag byte, by name (`set_header_flags`): those the object's flag fields are (`active` its slot in use),
 -- and the top two bits, which nothing reads. Those left out are clear; a name not one of them or a value not true or
@@ -948,8 +1027,9 @@ declare extern type Object with
     -- Its kind (read-only): compare with a kind definition
     -- (`me.kind == bomb.kind`).
     kind: Kind
-    -- Setting it changes only the lifecycle state (the game's byte store);
-    -- `set_lifecycle` also starts from the first action and phase.
+    -- Setting it changes only the lifecycle state (the game's byte store,
+    -- `me.lifecycle = Lifecycle.destroy`); `enter_destroy` and the other
+    -- `enter_` methods also start from the first action and phase.
     lifecycle: Lifecycle
     -- The object's action and phase; their meaning is the kind's. (A navi
     -- has no action byte: `navi_action`, `set_attack`.)
@@ -1012,7 +1092,7 @@ declare extern type Object with
     -- A navi's slide type, which its slide request starts, and where its
     -- slide is: to start, or sliding toward its next panel.
     slide_type: SlideType
-    slide_step: "start" | "sliding"
+    slide_step: SlideStep
     -- It holds a panel reservation (released when it is destroyed).
     holds_reservation: boolean
     sprite: Sprite
@@ -1143,10 +1223,10 @@ declare extern type Object with
     primed: boolean
     -- Writable: EXE5's no-charge drive (DarkInvs): its ticks left
     -- (AIData+0x36; counted down in the intake while the navi has the
-    -- no-charge state, asking for the stun strike at 0; "holds": never
+    -- no-charge state, asking for the stun strike at 0; `Timer.holds`: never
     -- counted down), and the auto battle AI driving it (AIData+0xF0, which
     -- VarSwrd's pick reads).
-    no_charge_timer: number | "holds"
+    no_charge_timer: number | Timer
     in_auto_battle: boolean
     -- Writable: the ticks of anger left, and the consecutive ticks spent
     -- flinching or paralyzed (120 make MegaMan angry): what anger's end
@@ -1185,9 +1265,13 @@ declare extern type Object with
     function console(self, side: number): ObjectConsole
 
 
-    -- Enter a lifecycle state from its first action and phase (the game's
-    -- word store).
-    function set_lifecycle(self, state: Lifecycle): ()
+    -- Enter a lifecycle state from its first action and phase (the game's word store; `me.lifecycle = ...` changes
+    -- the state alone): init, update, destroy (which frees it at its next update, or, for kinds with a fourth state,
+    -- runs its last phase), finish (the fourth state, which frees it).
+    function enter_init(self): ()
+    function enter_update(self): ()
+    function enter_destroy(self): ()
+    function enter_finish(self): ()
     -- Switch to an action from its first phase (not a navi's).
     function set_action(self, action: number): ()
     -- Free the slot now.
@@ -1454,7 +1538,7 @@ declare extern type Navi with
     attack: number
     rapid: number
     charge: number
-    mood: Mood
+    mood: NaviMood
     -- (`form` is writable too: a game's form change puts the navi in it.)
     -- The form the navi started the battle in (writable: a bug code puts
     -- the base form there), and its base form.
@@ -1500,7 +1584,7 @@ declare extern type Navi with
     buster_weapon: Weapon?
     -- The barrier the navi enters with (nil: none).
     first_barrier: Barrier?
-    gauge: "normal" | "fast" | "slow"
+    gauge: GaugeSpeed
     -- The supports; none with the NaviCust's support bug (setting one
     -- then leaves it so).
     rush: boolean
@@ -1584,7 +1668,7 @@ export type AfterimageSpec = {
     palette: number?,
     shadow: Shadow?,
     steady: boolean?,
-    tether: ("form" | "attack")?,
+    tether: Tether?,
 }
 
 -- A side's defensive-chip record (the chip; nil: no record).
@@ -1612,7 +1696,12 @@ export type Column = { home: number, timer: number }
 -- How a form overlay's sprite steps once the navis are in (its Param3):
 -- `object_updateSprite` (not while dimmed; it stops running while paused),
 -- `object_updateSpriteTimestop`, or `sub_801BCD0` (paused or not).
-export type FormOverlayStepping = "normal" | "while_dimmed" | "always"
+declare extern type FormOverlayStepping extends Choice with end
+declare FormOverlayStepping: {
+    normal: FormOverlayStepping,
+    while_dimmed: FormOverlayStepping,
+    always: FormOverlayStepping,
+}
 
 -- A form overlay (`battle.form_overlay`): its sprite (Param1, Param2),
 -- stepping (Param3), the offset to the owner's animation it plays
@@ -1628,12 +1717,19 @@ export type FormOverlaySpec = {
 }
 
 -- A navi's barrier (Collision.barrier).
-export type BarrierState = "none" | "up" | "popped"
+declare extern type BarrierState extends Choice with end
+declare BarrierState: { none: BarrierState, up: BarrierState, popped: BarrierState }
 -- How a barrier behaves once raised (`sub_801A802`): worn down and timed
 -- out; back with 1 HP 240 ticks after it is worn down, and broken by elec
 -- (BblWrap's bubble); regenerating up to 200 HP; or back whole a while after it is worn down, as the rules' barrier
 -- tick says (`status.intake.barrier.regrowing`: EXE4's BlakBarr).
-export type BarrierBehavior = "plain" | "bubble" | "regenerating" | "regrowing"
+declare extern type BarrierBehavior extends Choice with end
+declare BarrierBehavior: {
+    plain: BarrierBehavior,
+    bubble: BarrierBehavior,
+    regenerating: BarrierBehavior,
+    regrowing: BarrierBehavior,
+}
 -- `sub_801A7CC`'s row (`me:raise_barrier`): its HP, the damage a hit must
 -- reach to wear it, its timer (nil: none, it never runs out) and the
 -- element whose damage breaks it (nil: none; not null).
@@ -1793,7 +1889,7 @@ declare battle: {
     mic_level: (side: number) -> number,
     emotion: (side: number) -> Emotion,
     -- Unless the navi's emotion is held.
-    set_mood: (side: number, mood: Mood) -> (),
+    set_mood: (side: number, mood: NaviMood) -> (),
     -- A definition's name in the content's own strings (its locales'
     -- language), else its key: for what the rules say to a tool
     -- (`validate`).
@@ -2154,13 +2250,34 @@ export type PlaceSpec = {
 -- original's test).
 export type AbsorbedLook = { sprite: SpriteAsset, keeps_parts: boolean?, own_facing: boolean? }
 
-export type ObstacleCrush = "breaks" | "destroys" | "spares_bodies" | "ignores" | "destroys_sparing_bodies"
+declare extern type ObstacleCrush extends Choice with end
+declare ObstacleCrush: {
+    breaks: ObstacleCrush,
+    destroys: ObstacleCrush,
+    spares_bodies: ObstacleCrush,
+    ignores: ObstacleCrush,
+    destroys_sparing_bodies: ObstacleCrush,
+}
 -- Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework:
-export type ObstacleHold = "after_appearing" | "always"
-export type ObstaclePush = "forgets_damage" | "keeps_damage" | "any_hit" | "ignored"
-export type ObstacleRemoval = "broken" | "removed" | "vanished" | "absorbed"
+declare extern type ObstacleHold extends Choice with end
+declare ObstacleHold: { after_appearing: ObstacleHold, always: ObstacleHold }
+declare extern type ObstaclePush extends Choice with end
+declare ObstaclePush: {
+    forgets_damage: ObstaclePush,
+    keeps_damage: ObstaclePush,
+    any_hit: ObstaclePush,
+    ignored: ObstaclePush,
+}
+declare extern type ObstacleRemoval extends Choice with end
+declare ObstacleRemoval: {
+    broken: ObstacleRemoval,
+    removed: ObstacleRemoval,
+    vanished: ObstacleRemoval,
+    absorbed: ObstacleRemoval,
+}
 -- How a removed field object's blink-out goes.
-export type BlinkOut = "no" | "blinking" | "done"
+declare extern type BlinkOut extends Choice with end
+declare BlinkOut: { no: BlinkOut, blinking: BlinkOut, done: BlinkOut }
 
 -- The obstacle framework: the steps of a field obstacle's update (rocks,
 -- cubes and the like, without actor data), which its update calls in its
@@ -2387,30 +2504,32 @@ export type ExtensionField = SchemaType | { [any]: any }
 -- The roles the engine knows a field by: a player's setup fact ("navi", "folder", "regular_chip", "tag_chips",
 -- "version", "form_list", "level", "hp"), a navi stat a frontend shows ("window_count"), and the state fields the
 -- custom screen's views show.
-export type SchemaRoleName =
-    "navi"
-    | "folder"
-    | "regular_chip"
-    | "tag_chips"
-    | "version"
-    | "form_list"
-    | "level"
-    | "hp"
-    | "window_count"
-    | "form_list.offered"
-    | "form_list.count"
-    | "form_list.marked"
-    | "form_list.chosen"
-    | "form_list.chosen_place"
-    | "form_offer.form"
-    | "form_offer.alternate"
-    | "form_offer.turns"
-    | "form_offer.turn_limit"
-    | "offer_flight.step"
-    | "offer_flight.count"
-    | "chip_flight.step"
-    | "chip_flight.count"
-    | "chip_flight.button"
+declare extern type SchemaRole extends Choice with end
+declare SchemaRole: {
+    navi: SchemaRole,
+    folder: SchemaRole,
+    regular_chip: SchemaRole,
+    tag_chips: SchemaRole,
+    version: SchemaRole,
+    form_list: SchemaRole,
+    level: SchemaRole,
+    hp: SchemaRole,
+    window_count: SchemaRole,
+    form_list_offered: SchemaRole,
+    form_list_count: SchemaRole,
+    form_list_marked: SchemaRole,
+    form_list_chosen: SchemaRole,
+    form_list_chosen_place: SchemaRole,
+    form_offer_form: SchemaRole,
+    form_offer_alternate: SchemaRole,
+    form_offer_turns: SchemaRole,
+    form_offer_turn_limit: SchemaRole,
+    offer_flight_step: SchemaRole,
+    offer_flight_count: SchemaRole,
+    chip_flight_step: SchemaRole,
+    chip_flight_count: SchemaRole,
+    chip_flight_button: SchemaRole,
+}
 
 -- The types a state's fields are of:
 -- - `bool`, `u8`, `u16`, `u32`, `i8`, `i16`, `i32` (a number the field
@@ -2467,10 +2586,12 @@ declare schema: {
     mugshot: SchemaType,
     array: (of: SchemaType, length: number) -> SchemaType,
     optional: (of: SchemaType) -> SchemaType,
+    -- A field that holds a choice's values (`schema.choice(ChargeSource)`).
+    choice: (kind: any) -> SchemaType,
     entry: (collection: string) -> SchemaType,
     record_type: (name: string) -> RecordType,
     list: (of: SchemaField, max: number) -> SchemaType,
-    role: (role: SchemaRoleName, of: SchemaField) -> SchemaType,
+    role: (role: SchemaRole, of: SchemaField) -> SchemaType,
 }
 
 -- An object kind: one behavior; what differs between uses goes in its
@@ -2509,7 +2630,20 @@ export type Kind = KindSpec
 -- the form it gave, which the emotion window counts: `schema.role`);
 -- "chip_picture", its picture in the chip window is also the picture of the
 -- chip the rules' role `button_chip` names.
-export type ButtonView = "form_offer" | "chip_picture"
+declare extern type ButtonState extends Choice with end
+declare ButtonState: { selectable: ButtonState, unavailable: ButtonState, selected: ButtonState }
+declare extern type ControlOutcome extends Choice with end
+declare ControlOutcome: {
+    nothing: ControlOutcome,
+    chip: ControlOutcome,
+    buster: ControlOutcome,
+    moved: ControlOutcome,
+    own_chip: ControlOutcome,
+}
+declare extern type BugOutcome extends Choice with end
+declare BugOutcome: { edited: BugOutcome, spared: BugOutcome }
+declare extern type ButtonView extends Choice with end
+declare ButtonView: { form_offer: ButtonView, chip_picture: ButtonView }
 -- What a frontend draws while a window is up (§4.8). "form_chosen": a form
 -- of the rules' form list chosen (`custom.choose_form`; the rules' state
 -- keeps the fields of the roles `form_list.offered`, a u8 array of the
@@ -2523,7 +2657,8 @@ export type ButtonView = "form_offer" | "chip_picture"
 -- which of the screen's buttons that show a chip, from 1,
 -- `chip_flight.step` and `chip_flight.count`). The engine finds each by its
 -- role (`schema.role(role, T)`), never by a field's name.
-export type WindowView = "form_chosen" | "offer_flight" | "chip_flight"
+declare extern type WindowView extends Choice with end
+declare WindowView: { form_chosen: WindowView, offer_flight: WindowView, chip_flight: WindowView }
 -- A custom-screen button of the rules (docs/design/rules-in-luau.md §4.4).
 export type ButtonSpec = {
     -- Its first slot, and how many it takes (1 or 2).
@@ -2542,7 +2677,7 @@ export type ButtonSpec = {
     shown: (side: number) -> boolean,
     -- At the open and after each pick, unless it is picked or used up.
     -- None: selectable at the open, then left as it is.
-    state: ((side: number) -> ("selectable" | "unavailable"))?,
+    state: ((side: number) -> ButtonState?)?,
     -- A on it.
     pressed: (side: number) -> (),
     -- Its pick in place `place` (from 0) of the picks was taken back (B on
@@ -2765,7 +2900,7 @@ export type RulesSpec = {
         -- decisions: what it did ("nothing", "chip": a chip's use started,
         -- "buster": the buster is to fire, "moved": a step started), which
         -- the framework carries out as idle does.
-        controller: ((side: number, navi: Object) -> ("nothing" | "chip" | "buster" | "moved")?)?,
+        controller: ((side: number, navi: Object) -> ControlOutcome?)?,
         -- The framework reverts the navi to its base form, its form not yet
         -- changed (`sub_80158CC`).
         form_reverted: ((side: number, navi: Object) -> ())?,
@@ -2781,7 +2916,7 @@ export type RulesSpec = {
         -- The mood the side's navi starts the round with (`sub_8015C2C`'s
         -- 0x80, where `sub_8013892` sets it; EXE5's by the light/dark value,
         -- 0x0801283A); none, 0x80.
-        starting_mood: ((side: number) -> Mood?)?,
+        starting_mood: ((side: number) -> NaviMood?)?,
         -- Each tick, the sprite palette of the side's navi of a player's
         -- kind (presentation; `sub_801002C`, EXE5's 0x0800DD94); none, the
         -- framework's (EXE6's). Asked again only when the navi, its side's
@@ -2797,7 +2932,7 @@ export type RulesSpec = {
         -- and its `inflicted_bug_arg`): the game's table writes the stat a code names (@exelib/navicust/bugs), and
         -- answers "edited" (the abilities and form flags come back), nil (nothing of the stats changed) or "spared"
         -- (the weapons' reload skipped too). Asked on a tick something hit the navi.
-        navi_bug: ((side: number, navi: Object) -> ("edited" | "spared")?)?,
+        navi_bug: ((side: number, navi: Object) -> BugOutcome?)?,
         -- Any navi (a player's or not) takes the bugs its hit's code brings every navi (`sub_801A6B4`,
         -- `sub_801A720`: the HP bug's level, paralysis and blindness), before its status and damage; asked when a hit
         -- brought a code.
@@ -2834,7 +2969,7 @@ export type RulesSpec = {
         -- A switch of the side's party settled, in battle or while paused (`battle.paused()` tells them apart),
         -- before the switch's action ends: `navi` the incoming navi, `member` the outgoing member, `mood` the
         -- outgoing navi's mood as it left (before its anger ended).
-        navi_switched: ((side: number, navi: Object, member: number, mood: Mood) -> ())?,
+        navi_switched: ((side: number, navi: Object, member: number, mood: NaviMood) -> ())?,
         -- Each fight tick the side's microphone level isn't 0 (`battle.mic_level`), just before the navis copy their
         -- input (the DS's shout heal).
         mic_heard: ((side: number) -> ())?,
@@ -2884,7 +3019,7 @@ export type RulesSpec = {
         -- as `controller` answers, or "own_chip" (an attack of its own
         -- started: the attack's chip). The rules end it
         -- (`battle.end_takeover`).
-        takeover: ((side: number, navi: Object) -> ("nothing" | "chip" | "buster" | "moved" | "own_chip")?)?,
+        takeover: ((side: number, navi: Object) -> ControlOutcome?)?,
     }?,
     -- The sections every game states.
     chip_use: RuleSection,
@@ -2959,7 +3094,7 @@ export type WeaponSpec = {
     -- As an A-charge without an attack of its own: the charged chip is the
     -- chip itself with the charge's bonus ("bonus"), or that after
     -- GroundCross's falling rocks ("rock_barrage").
-    charged_chip: ("bonus" | "rock_barrage")?,
+    charged_chip: ChargedChip?,
 }
 export type Weapon = WeaponSpec
 
@@ -2975,20 +3110,34 @@ export type Weapon = WeaponSpec
 -- side and the chip instead, `ChipSpec`'s `damage`: EXE5's team navis' own
 -- chips by their level, both games' SP navi chips by the side's deletion
 -- time, rules/sp_chips.)
-export type DamageFormula =
-    { formula: "opponent_hp" }
-    | { formula: "gauge", full: number? }
-    | { formula: "gauge_level", base: number }
-    | { formula: "hp_lost", cap: number? }
-    | { formula: "hp_last_digits" }
-    | { formula: "half_opponent_max_hp" }
-    | { formula: "navi_level", base: number, per_level: number }
-    | { formula: "count", of: DamageCount, by_count: { number }, operation_battle: number? }
+declare extern type Formula extends Choice with end
+declare Formula: {
+    opponent_hp: Formula,
+    gauge: Formula,
+    gauge_level: Formula,
+    hp_lost: Formula,
+    hp_last_digits: Formula,
+    half_opponent_max_hp: Formula,
+    navi_level: Formula,
+    count: Formula,
+}
+declare extern type Counted extends Choice with end
+declare Counted: { turns_before: Counted }
+export type DamageFormula = {
+    formula: Formula,
+    full: number?,
+    base: number?,
+    cap: number?,
+    per_level: number?,
+    of: DamageCount?,
+    by_count: { number }?,
+    operation_battle: number?,
+}
 
 -- What a count formula counts: a side statistic, the side's panels of a
 -- type, the field's panels of a type (either side's), the turns before this
 -- one.
-export type DamageCount = { side_stat: SideStat } | { own_panels: PanelType } | { panels: PanelType } | "turns_before"
+export type DamageCount = { side_stat: SideStat } | { own_panels: PanelType } | { panels: PanelType } | Counted
 
 export type ChipSpec = {
     -- Its id, its key in the game's root (`chips.cannon`): the loader's to
@@ -3058,7 +3207,16 @@ export type ChipSpec = {
 export type Chip = ChipSpec
 -- A chip's class: a folder's standard, Mega and Giga chips, none a folder holds (a cross's or a beast's attack, the
 -- engine's own chips), a Program Advance.
-export type ChipClass = "standard" | "mega" | "giga" | "special" | "program_advance"
+declare extern type ChargedChip extends Choice with end
+declare ChargedChip: { bonus: ChargedChip, rock_barrage: ChargedChip }
+declare extern type ChipClass extends Choice with end
+declare ChipClass: {
+    standard: ChipClass,
+    mega: ChipClass,
+    giga: ChipClass,
+    special: ChipClass,
+    program_advance: ChipClass,
+}
 -- A chip record's flag (`ChipSpec.flags`): a dimming chip; it deals damage (shown on the banner, boosted by Atk+ and
 -- forms); a navi chip (boosted by Navi+); in the standard library; its damage shown as variable; a dark chip as the
 -- custom screen treats it; in a library; its damage recomputed every tick while it is the next chip.
@@ -3086,7 +3244,14 @@ export type ChipTrait =
 -- What the rules ask of a navi (`NaviDef.traits`): "status_immune", a hit's status doesn't take.
 export type NaviTrait = "status_immune"
 -- A trap chip: what the defensive-chip record that holds it catches.
-export type TrapKind = "anti_damage" | "anti_sword" | "body_guard" | "anti_navi" | "anti_recovery"
+declare extern type TrapKind extends Choice with end
+declare TrapKind: {
+    anti_damage: TrapKind,
+    anti_sword: TrapKind,
+    body_guard: TrapKind,
+    anti_navi: TrapKind,
+    anti_recovery: TrapKind,
+}
 
 -- A chip family, by name: one of its game's (its rules' `elements.families`).
 export type ChipFamily = string
@@ -3157,7 +3322,7 @@ export type NaviDef = {
     charged_chips: { family: ChipFamily, damaging: boolean, when: ((side: number) -> boolean)?, plain: boolean? }?,
     -- What a chip it charged gains (damage "again": its damage again), where
     -- its form states no `charged_bonus`: a form's comes first.
-    charged_bonus: { damage: (number | "again")?, paralyzes: boolean?, doubles: boolean? }?,
+    charged_bonus: { damage: (number | ChargedBonus)?, paralyzes: boolean?, doubles: boolean? }?,
     -- The chips a charge doubles (`sub_8012AFA`).
     charge_doubles: ChipMatch?,
     -- Its A charge builds up the next Fire chip's damage, up to a limit: a
@@ -3372,7 +3537,7 @@ export type FormDef = {
     charged_chips: { { family: ChipFamily, damaging: boolean, element_swords: boolean?, plain: boolean? } }?,
     -- What a charged chip gains in it (damage "again": its damage again;
     -- `doubles`: the damage word's doubling).
-    charged_bonus: { damage: (number | "again")?, paralyzes: boolean?, doubles: boolean? }?,
+    charged_bonus: { damage: (number | ChargedBonus)?, paralyzes: boolean?, doubles: boolean? }?,
     -- The chips a charge doubles, and those whose use heals a twentieth of
     -- the base HP.
     charge_doubles: ChipMatch?,
@@ -3440,11 +3605,13 @@ export type FormDef = {
     -- `game`, `cross_of`, `beast`, ...; content/exe6/types.d.luau types them).
     [string]: any,
 }
+declare extern type Place extends Choice with end
+declare Place: { navi: Place }
 -- Something a stage places when the round starts: a navi of `side`, or a
 -- field object by its kind (which needs a `place`), with one of the kind's
 -- variants, its side or its HP where the kind takes one.
 export type StageActor = {
-    place: "navi" | Kind,
+    place: Place | Kind,
     side: number?,
     x: number,
     y: number,
@@ -3472,7 +3639,15 @@ export type StageDef = {
     actors: { StageActor },
 }
 -- What a status is: the status timer it sets and the request it raises.
-export type StatusKind = "paralyze" | "confuse" | "blind" | "immobilize" | "freeze" | "bubble"
+declare extern type StatusKind extends Choice with end
+declare StatusKind: {
+    paralyze: StatusKind,
+    confuse: StatusKind,
+    blind: StatusKind,
+    immobilize: StatusKind,
+    freeze: StatusKind,
+    bubble: StatusKind,
+}
 -- A status (rules/status): for how long, and what it is (`timer`: the timer
 -- it runs on and the request it raises on its target, that timer's).
 -- `cancels_flinch`: the hit that lands it doesn't flinch or flash its
@@ -3505,29 +3680,31 @@ export type Status = StatusDef
 --   board); `overlap` (a piece over the piece at entry `other`, from 1); `slot` (the entry `def`, of one of the
 --   game's collections, sits in slot `value` and belongs in slot `own`, both from 0: a build's alone, the rules'
 --   `build_check`); `invalid` (anything else no save holds).
-export type SetupProblemKind =
-    "folder_size"
-    | "chip_not_allowed"
-    | "chip_code"
-    | "copies"
-    | "mega"
-    | "giga"
-    | "dark"
-    | "regular_memory"
-    | "tag_memory"
-    | "regular_entry"
-    | "tag_entries"
-    | "tag_regular"
-    | "no_tags"
-    | "range"
-    | "not_taken"
-    | "missing"
-    | "twice"
-    | "budget"
-    | "off_board"
-    | "overlap"
-    | "slot"
-    | "invalid"
+declare extern type SetupProblemKind extends Choice with end
+declare SetupProblemKind: {
+    folder_size: SetupProblemKind,
+    chip_not_allowed: SetupProblemKind,
+    chip_code: SetupProblemKind,
+    copies: SetupProblemKind,
+    mega: SetupProblemKind,
+    giga: SetupProblemKind,
+    dark: SetupProblemKind,
+    regular_memory: SetupProblemKind,
+    tag_memory: SetupProblemKind,
+    regular_entry: SetupProblemKind,
+    tag_entries: SetupProblemKind,
+    tag_regular: SetupProblemKind,
+    no_tags: SetupProblemKind,
+    range: SetupProblemKind,
+    not_taken: SetupProblemKind,
+    missing: SetupProblemKind,
+    twice: SetupProblemKind,
+    budget: SetupProblemKind,
+    off_board: SetupProblemKind,
+    overlap: SetupProblemKind,
+    slot: SetupProblemKind,
+    invalid: SetupProblemKind,
+}
 export type SetupProblem = {
     kind: SetupProblemKind,
     text: string,
@@ -3623,7 +3800,10 @@ export type SetupOverview = {
 --   field_object: a rock, a statue, a mine;
 --   virus, navi: what no netbattle object is (an object with no identity
 --     is a virus).
-export type IdentityClass = "player" | "field_object" | "virus" | "navi"
+declare extern type IceSize extends Choice with end
+declare IceSize: { small: IceSize, medium: IceSize, large: IceSize }
+declare extern type IdentityClass extends Choice with end
+declare IdentityClass: { player: IdentityClass, field_object: IdentityClass, virus: IdentityClass, navi: IdentityClass }
 -- A hook of an object's that touches what it wears (`IdentitySpec.overlay_hooks`).
 export type OverlayHook = "death" | "refresh" | "flinch" | "flinch_checked" | "drag" | "lets_go"
 export type IdentitySpec = {
@@ -3695,7 +3875,7 @@ export type IdentitySpec = {
     -- `status_mark` (EXE4's actor record's +6 and +7).
     status_mark: { number }?,
     -- The ice block that fits it (none: small).
-    ice: ("small" | "medium" | "large")?,
+    ice: IceSize?,
     -- What it is as a navi no player controls (actor type navi, which a
     -- battle brings: `battle.spawn_navi`), from the original's enemy structs
     -- by NameID and its AI index's post-init hook.
@@ -4061,10 +4241,10 @@ declare custom: {
     sacrifice: (side: number) -> (),
     redeal: (side: number) -> (),
     last_pick_is_chip: (side: number) -> boolean,
-    cursor_state: (side: number) -> "selectable" | "unavailable" | "selected",
+    cursor_state: (side: number) -> ButtonState,
     -- For the rules' buttons and windows: the button pressed picked (in its
     -- `pressed`);
-    -- a screen sound (`CustomSound`), and a sound
+    -- a screen sound (`ScreenSound`), and a sound
     -- of the rules' own in the screen's order (`play_sound`); the last
     -- pick's column cell; one of the rules'
     -- windows opened (`ticks`: the ticks it has had already), and its ticks
@@ -4104,7 +4284,7 @@ declare custom: {
     -- chip a button holds, and its icon in the column cell it left, shown or
     -- not.
     pick: (side: number) -> (),
-    play: (side: number, sound: CustomSound) -> (),
+    play: (side: number, sound: ScreenSound) -> (),
     play_sound: (side: number, sound: Sound) -> (),
     set_column_icon: (side: number, chip: Chip?) -> (),
     open_window: (side: number, window: string, ticks: number?) -> (),
@@ -4116,7 +4296,7 @@ declare custom: {
     fade: (side: number, mode: CustomFade, speed: number) -> (),
     set_face: (side: number, form: FormDef?) -> (),
     pick_first: (side: number, icon: Chip?) -> (),
-    set_button_state: (side: number, button: string, state: "selectable" | "unavailable" | "selected") -> (),
+    set_button_state: (side: number, button: string, state: ButtonState) -> (),
     -- The uses one of the rules' buttons has left on this screen (its `uses`
     -- as the screen opened), read and written: for a button whose rules
     -- count them.

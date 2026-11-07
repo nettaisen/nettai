@@ -29,6 +29,7 @@
 //! what is deterministic (`sandbox`).
 
 mod bind;
+mod choice;
 pub mod coverage;
 mod define;
 mod element;

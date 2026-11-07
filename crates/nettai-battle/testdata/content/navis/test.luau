@@ -48,13 +48,13 @@ local landing = new.action {
 type WornState = { ticks: number, marks: { number } }
 local worn = new.kind {
     id = "test/worn",
-    pool = "actor",
+    pool = Pool.actor,
     state = { ticks = schema.u16, marks = schema.array(schema.u32, 24) },
     update = function(me: Object)
         local l = me.lifecycle
-        if l == "init" then
-            me:set_lifecycle("update")
-        elseif l == "update" then
+        if l == Lifecycle.init then
+            me:enter_update()
+        elseif l == Lifecycle.update then
             local s = me.state :: WornState
             s.ticks += 1
             s.marks[24] = s.ticks * 3
@@ -106,7 +106,7 @@ local HOOKS: Hooks = {
             own.take_off = false
         elseif own.land then
             own.land = false
-            navi:set_attack(landing, "plain")
+            navi:set_attack(landing, AttackKind.plain)
         end
     end,
 }
@@ -135,13 +135,13 @@ local function navi(sprite: string, ai_index: number, megaman: boolean, hooks: H
         switch_hp = { 100, 150 },
         forms = if megaman then { gregar = { form_list = {} }, falzar = { form_list = {} } } else nil,
         identity = new.identity {
-            class = "player",
+            class = IdentityClass.player,
             changes_form = megaman,
             version = 0,
-            actor_type = "player",
+            actor_type = ActorType.player,
             ai_index = ai_index,
             aura_anim = ai_index,
-            ice = "medium",
+            ice = IceSize.medium,
             parts = if hooks then { own = hooks.put_on } else nil,
             overlay_hooks = if megaman then { death = true, refresh = true, flinch = true, drag = true } else nil,
             attach_points = attach_points(),

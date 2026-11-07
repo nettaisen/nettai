@@ -703,6 +703,20 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
     {
         let at = at.to_string();
         let e = |m: String| ContentError::new(m);
+        // (A mood an emotion's case states is a byte or `Mood.full_synchro`.)
+        if name == "status"
+            && let Data::List(order) = spec.field("emotion").field("order")
+        {
+            for (i, case) in order.iter().enumerate() {
+                let Data::List(when) = case.field("when") else { continue };
+                for (j, w) in when.iter().enumerate() {
+                    if let mood @ (Data::Str(_) | Data::Choice(_)) = w.field("mood") {
+                        super::reader::choice_name(mood, nettai_content_api::ChoiceKind::Mood, &format!("{at}: emotion.order[{}].when[{}].mood", i + 1, j + 1))
+                            .map_err(e)?;
+                    }
+                }
+            }
+        }
         match name {
             "elements" => {
                 let s: ElementsSection = r.read(spec, &at).map_err(e)?;

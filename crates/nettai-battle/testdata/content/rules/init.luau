@@ -61,7 +61,7 @@ local rules_: Rules = {
     },
     -- EXE6's stats of its own (content/exe6/rules).
     stats = {
-        beast_out_counter = schema.role("window_count", schema.u8),
+        beast_out_counter = schema.role(SchemaRole.window_count, schema.u8),
         sun = schema.bool,
         chip_drops = schema.u8,
         encounters = schema.u8,

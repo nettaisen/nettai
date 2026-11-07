@@ -11,7 +11,7 @@ end
 
 hit_words.kind = new.kind {
     id = "test/hit-words",
-    pool = "effect",
+    pool = Pool.effect,
     state = {
         modifier = schema.u8,
         word = schema.u32,

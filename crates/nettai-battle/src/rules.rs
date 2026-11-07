@@ -1018,8 +1018,8 @@ impl Problem {
         items
             .into_iter()
             .map(|p| {
-                let (Data::Str(kind), Data::Str(text)) = (p.field("kind"), p.field("text")) else {
-                    panic!("the rules' {hook}: a problem is a table with its `kind` and its `text`, not {p:?}");
+                let (Some(kind), Data::Str(text)) = (nettai_content_api::Choice::name_in(p.field("kind"), nettai_content_api::ChoiceKind::SetupProblemKind), p.field("text")) else {
+                    panic!("the rules' {hook}: a problem is a table with its `kind` (a `SetupProblemKind`) and its `text`, not {p:?}");
                 };
                 let field = match p.field("field") {
                     Data::Str(f) => Some(f.clone()),
@@ -1030,7 +1030,7 @@ impl Problem {
                     Data::Nil => None,
                     other => panic!("the rules' {hook}: a problem's entry is a list's place, from 1, not {other:?}"),
                 };
-                Problem { kind: kind.clone(), text: text.clone(), field, entry, data: p }
+                Problem { kind: kind.to_string(), text: text.clone(), field, entry, data: p }
             })
             .collect()
     }
@@ -1369,7 +1369,7 @@ mod tests {
             *src = src.replacen(marker, &format!("        {state},\n{marker}"), 1);
             let windows = "    windows = { beast_out";
             assert!(src.contains(windows), "{windows}");
-            *src = src.replacen(windows, &format!("    windows = {{ w = {{ view = \"{view}\", update = function(side: number): boolean return false end }}, beast_out"), 1);
+            *src = src.replacen(windows, &format!("    windows = {{ w = {{ view = WindowView.{view}, update = function(side: number): boolean return false end }}, beast_out"), 1);
             c.define().map(|_| c).map_err(|e| e.message)
         };
         let refused = |from: &str, to: &str, said: &[&str]| {
@@ -1384,7 +1384,7 @@ mod tests {
         let button_named = |c: &Content, name: &str| c.defs.rules().unwrap().buttons.iter().copied().find(|&b| c.defs.button(b).name == name);
         // A window's view: a name of the engine's, whose fields the rules
         // keep as the view's types.
-        window_refused("mark = schema.u8", "form_lst", &["rules/init.luau: rules", "window `w`: `view` is \"form_lst\"", "form_chosen"]);
+        window_refused("mark = schema.u8", "form_lst", &["rules/init.luau", "WindowView has no member \"form_lst\""]);
         window_refused(
             "mark = schema.u8",
             "offer_flight",
@@ -1393,7 +1393,7 @@ mod tests {
         // (By its role, never by a game's name for it.)
         window_refused("unite_step = schema.u8, unite_count = schema.u8", "offer_flight", &["the role `offer_flight.step` (a u8): the rules' state has none"]);
         let roled = |step: &str| {
-            format!("flight_step = schema.role(\"offer_flight.step\", schema.{step}), flight_count = schema.role(\"offer_flight.count\", schema.u8)")
+            format!("flight_step = schema.role(SchemaRole.offer_flight_step, schema.{step}), flight_count = schema.role(SchemaRole.offer_flight_count, schema.u8)")
         };
         window_refused(&roled("bool"), "offer_flight", &["the state field of the role `offer_flight.step` (`flight_step`) as a u8: it is Bool"]);
         let content = window_patched(&roled("u8"), "offer_flight").expect("a view with its fields");
@@ -1404,10 +1404,10 @@ mod tests {
         let buttons = "    buttons = { beast_out";
         let button = |view: &str| {
             format!(
-                "    buttons = {{ b = {{ slot = 8, view = \"{view}\", shown = function(side: number): boolean return false end, pressed = function(side: number) end }}, beast_out"
+                "    buttons = {{ b = {{ slot = 8, view = ButtonView.{view}, shown = function(side: number): boolean return false end, pressed = function(side: number) end }}, beast_out"
             )
         };
-        refused(buttons, &button("soul"), &["button `b`: `view` is \"soul\"", "form_offer, chip_picture"]);
+        refused(buttons, &button("soul"), &["ButtonView has no member \"soul\""]);
         refused(buttons, &button("form_offer"), &["button `b` has the view `form_offer`", "the state field of the role `form_offer.form` (a form)"]);
         let content = patched(buttons, &button("chip_picture")).expect("a view that shows no field");
         assert_eq!(content.defs.button(button_named(&content, "b").expect("the button")).view, Some(ButtonView::ChipPicture));
@@ -1417,18 +1417,18 @@ mod tests {
         bonus = schema.u8,";
         refused(
             setup,
-            "        crosses = schema.role(\"form_list\", schema.u8),
+            "        crosses = schema.role(SchemaRole.form_list, schema.u8),
         bonus = schema.u8,",
             &["rules/init.luau: rules", "their setup field `crosses` is the fact a player brings as `form_list`, an array of forms"],
         );
-        let content = patched(setup, "        crosses = schema.role(\"form_list\", schema.array(schema.form, 5)),
+        let content = patched(setup, "        crosses = schema.role(SchemaRole.form_list, schema.array(schema.form, 5)),
         bonus = schema.u8,").expect("a fact of its type");
         assert_eq!(content.defs.fact_name(PlayerFact::FormList), Some("crosses"));
         let content = patched(setup, "        form_list = schema.array(schema.form, 5),
         bonus = schema.u8,").expect("a fact by its name");
         assert_eq!(content.defs.fact_name(PlayerFact::FormList), Some("form_list"));
         // (A field named for another role than its own is that role's alone.)
-        let content = patched(setup, "        form_list = schema.role(\"level\", schema.optional(schema.u8)),
+        let content = patched(setup, "        form_list = schema.role(SchemaRole.level, schema.optional(schema.u8)),
         bonus = schema.u8,").expect("a role elsewhere");
         assert_eq!((content.defs.fact_name(PlayerFact::FormList), content.defs.fact_name(PlayerFact::Level)), (None, Some("form_list")));
     }

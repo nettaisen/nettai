@@ -871,13 +871,15 @@ local step = { grounded = {}, floor_free = {} }
             c.define().map_err(|e| e.message)?;
             Ok(c)
         };
-        let c = with_status("duration = 30, timer = 'bubble'").unwrap_or_else(|e| panic!("{e}"));
+        let c = with_status("duration = 30, timer = StatusKind.bubble").unwrap_or_else(|e| panic!("{e}"));
         let bubble = c.status(c.defs.status_by_key("stun").expect("the status"));
         assert_eq!((bubble.requests.bits(), bubble.duration, bubble.timer), (0x2_0000, 30, crate::content::StatusTimer::Bubble));
-        let e = with_status("requests = 0x20000, duration = 30, timer = 'bubble'").unwrap_err();
+        let e = with_status("requests = 0x20000, duration = 30, timer = StatusKind.bubble").unwrap_err();
         assert!(e.contains("status stun: stun.requests: unknown field `requests`"), "{e}");
-        let e = with_status("duration = 30, timer = 'flash'").unwrap_err();
-        assert!(e.contains("status stun: stun.timer: unknown variant `flash`"), "{e}");
+        let e = with_status("duration = 30, timer = StatusKind.flash").unwrap_err();
+        assert!(e.contains("StatusKind has no member \"flash\""), "{e}");
+        let e = with_status("duration = 30, timer = 'bubble'").unwrap_err();
+        assert!(e.contains("status stun: `timer`: expected a StatusKind (`StatusKind.paralyze`), got the string \"bubble\""), "{e}");
         // A rule is one of the engine's, by name.
         let e = game(rules(None, None, Some(("shake = \"battle_rng\"", "shake = \"exe5\"")))).unwrap_err();
         assert!(e.contains("rules: effects.shake: unknown variant `exe5`, expected `console_rng` or `battle_rng`"), "{e}");

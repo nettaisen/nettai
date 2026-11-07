@@ -296,15 +296,12 @@ pub(crate) fn read(
     own_part: Option<nettai_content_api::FnId>,
     own_bits: &super::rules::OwnBits,
 ) -> Result<Identity, nettai_content_api::ContentError> {
-    use nettai_content_api::{AssetKind, ContentError, Data};
+    use nettai_content_api::{AssetKind, ChoiceKind, ContentError, Data};
     let what = |m: String| ContentError::new(format!("{}.luau: identity {}: {m}", d.module, d.key));
     let spec = &d.spec;
-    let class = match spec.field("class") {
-        Data::Str(s) => IdentityClass::from_name(s).ok_or_else(|| {
-            let names: Vec<&str> = IdentityClass::NAMES.iter().map(|(n, _)| *n).collect();
-            what(format!("`class` {s:?} is none of {}", names.join(", ")))
-        })?,
-        _ => return Err(what("needs a `class`".into())),
+    let class = match super::reader::choice_name(spec.field("class"), ChoiceKind::IdentityClass, "`class`").map_err(what)? {
+        Some(name) => IdentityClass::from_name(name).expect("every identity class is one"),
+        None => return Err(what("needs a `class`".into())),
     };
     let byte = |v: &Data, field: &str| -> Result<u8, ContentError> {
         match v {
@@ -325,13 +322,11 @@ pub(crate) fn read(
         Data::Nil if class.is_player() => ActorType::Player,
         Data::Nil if class.is_navi() => ActorType::Navi,
         Data::Nil => ActorType::Virus,
-        Data::Str(s) => match s.as_str() {
-            "virus" => ActorType::Virus,
-            "navi" => ActorType::Navi,
-            "player" => ActorType::Player,
-            other => return Err(what(format!("`actor_type` {other:?} is not virus, navi or player"))),
+        other => match super::reader::choice_name(other, ChoiceKind::ActorType, "`actor_type`").map_err(what)? {
+            Some("navi") => ActorType::Navi,
+            Some("player") => ActorType::Player,
+            _ => ActorType::Virus,
         },
-        other => return Err(what(format!("`actor_type` is {other:?}, not a name"))),
     };
     let attach_points = match spec.field("attach_points") {
         Data::Nil => Vec::new(),
@@ -459,12 +454,10 @@ pub(crate) fn read(
     if class.is_player() && aura_anim.is_none() {
         return Err(what("a player's identity says its Full Synchro aura's animation (`aura_anim`)".into()));
     }
-    let ice = match spec.field("ice") {
-        Data::Nil => IceSize::Small,
-        Data::Str(s) if s == "small" => IceSize::Small,
-        Data::Str(s) if s == "medium" => IceSize::Medium,
-        Data::Str(s) if s == "large" => IceSize::Large,
-        other => return Err(what(format!("`ice` is {other:?}, not small, medium or large"))),
+    let ice = match super::reader::choice_name(spec.field("ice"), ChoiceKind::IceSize, "`ice`").map_err(what)? {
+        None | Some("small") => IceSize::Small,
+        Some("medium") => IceSize::Medium,
+        _ => IceSize::Large,
     };
     let body = match spec.field("body") {
         Data::Nil => None,

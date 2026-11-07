@@ -18,7 +18,7 @@ local TICKER_VARIANT = schema.record_type("ticker-variant")
 
 ticker.kind = new.kind {
     id = "test/ticker",
-    pool = "effect",
+    pool = Pool.effect,
     state = { ticks = schema.u16, variant = TICKER_VARIANT, parent = schema.kind },
     update = function(me: Object)
         local s = me.state :: State
@@ -60,7 +60,7 @@ function ticker.action(spec: Spec): any
             if s.ticks >= spec.length then
                 s.ticks = 0
                 if spec.next then
-                    me:set_attack(spec.next, "buster")
+                    me:set_attack(spec.next, AttackKind.buster)
                 else
                     me:exit_attack()
                 end

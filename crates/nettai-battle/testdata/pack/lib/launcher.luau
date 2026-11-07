@@ -24,7 +24,7 @@ local launcher = {}
 
 launcher.kind = new.kind {
     id = "test/launcher",
-    pool = "attack",
+    pool = Pool.attack,
     state = { launched = schema.bool },
     update = function(me: Object)
         local s = me.state :: { launched: boolean }
@@ -53,7 +53,7 @@ local OTHER = new.record(OTHER_VARIANT, { lifetime = 1 })
 
 launcher.misuse = new.kind {
     id = "test/misuse",
-    pool = "effect",
+    pool = Pool.effect,
     update = function(me: Object)
         local o = battle.spawn(ticker.kind, me.pos)
         if o then

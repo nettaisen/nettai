@@ -131,6 +131,15 @@ pub(crate) fn lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             Ok(SchemaType::Is(FieldType::optional(ty).map_err(|e| err(format!("schema.optional: {e}")))?))
         })?,
     )?;
+    // A field that holds a choice of the engine's: the kind's values (the
+    // byte the member's place is).
+    t.raw_set(
+        "choice",
+        lua.create_function(move |lua, kind: LuaValue| match crate::choice::table_kind(lua, &kind) {
+            Some(k) => Ok(SchemaType::Is(FieldType::Enum(k.members().iter().map(|m| m.to_string()).collect()))),
+            None => Err(err(format!("schema.choice takes a choice's table (`schema.choice(ChargeSource)`), not {}", not_a_type(&kind)))),
+        })?,
+    )?;
     t.raw_set(
         "entry",
         lua.create_function(move |_, collection: LuaValue| {
@@ -153,10 +162,8 @@ pub(crate) fn lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     t.raw_set(
         "role",
         lua.create_function(|_, (role, of): (LuaValue, LuaValue)| {
-            let LuaValue::String(role) = role else {
-                return Err(mlua::Error::runtime(format!("schema.role's role is a name, not a {}", role.type_name())));
-            };
-            Ok(SchemaType::Role { role: role.to_str()?.to_string(), of: field_type(of, "schema.role's field")? })
+            let role = crate::choice::name(&role, nettai_content_api::ChoiceKind::SchemaRole, "schema.role's role")?;
+            Ok(SchemaType::Role { role: role.to_string(), of: field_type(of, "schema.role's field")? })
         })?,
     )?;
     Ok(t)

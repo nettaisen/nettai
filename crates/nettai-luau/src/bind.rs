@@ -25,13 +25,14 @@ use std::marker::PhantomData;
 use std::ptr::NonNull;
 
 use nettai_content_api::{
+    ChoiceKind,
     ActorField, ApiError, BattleInfo, CollisionField, CoreApi, DimmingStep, FieldType,
-    HandField, HitboxSpec, HookCall, HudField, Key, Lifecycle, LinkedChip, NamedBits, NaviStat, NaviState, OVERLAY_STEPPINGS, ObjectField, ObstacleAction, OverlayField,
+    HandField, HitboxSpec, HookCall, HudField, Key, Lifecycle, LinkedChip, NamedBits, NaviStat, NaviState, ObjectField, ObstacleAction, OverlayField,
     AssetKind, SpawnAt,
     ObstacleCrush, ObstacleRequest, Pad, PanelPos, Registry, RequestFlag, ScreenFade, SpriteField, SpriteId,
     StateId, StatusFlag, StatusTimer, Value, Vec3,
 };
-use nettai_content_api::{ObjectRef, PanelCall, RulesHook, SlideAnswer};
+use nettai_content_api::{ObjectRef, PanelCall, RulesHook};
 use nettai_content_api::{AttackKind, DamageTaken, FightCycle, ObstacleClass, PaletteFlashVariant, SpecialBonus, StepDirection, TakeDamageMode};
 use nettai_content_api::{ChipHandle, CollisionHandle, EffectHandle, RegionHandle, SparkHandle};
 
@@ -461,11 +462,6 @@ fn panel(x: LuaValue, y: LuaValue) -> mlua::Result<PanelPos> {
     Ok(PanelPos { x: u8_arg(x, "panel x")?, y: u8_arg(y, "panel y")? })
 }
 
-/// A name from a set of names (a flag, a key, a lifecycle state...).
-fn named<T>(s: &impl NameArg, what: &str, parse: impl Fn(&str) -> Option<T>) -> mlua::Result<T> {
-    s.with_str(|s| parse(s).ok_or_else(|| mlua::Error::runtime(format!("{s:?} is not a {what}"))))?
-}
-
 /// A string a script passes, read as text.
 trait NameArg {
     fn with_str<R>(&self, f: impl FnOnce(&str) -> R) -> mlua::Result<R>;
@@ -663,6 +659,9 @@ fn to_api_as(v: LuaValue, ty: &FieldType, what: What) -> mlua::Result<Value> {
                     _ => return Err(mlua::Error::runtime(format!("{}: {:?} is no chip code (a letter A to Z, or *)", what(), &*s))),
                 }
             }
+            FieldType::Enum(names) if let Some(kind) = crate::choice::kind_of(names) => {
+                return Err(crate::choice::expected(&LuaValue::String(s), kind, &what()));
+            }
             FieldType::Enum(names) => {
                 let s = s.to_str()?;
                 let i = names.iter().position(|n| *n == *s).ok_or_else(|| {
@@ -671,6 +670,12 @@ fn to_api_as(v: LuaValue, ty: &FieldType, what: What) -> mlua::Result<Value> {
                 Value::Int(i as i64)
             }
             _ => return Err(mlua::Error::runtime(format!("{}: expected {ty}, got a string", what()))),
+        },
+        // (A field a kind's table declares holds the kind's values.)
+        LuaValue::UserData(_) if let (FieldType::Enum(names), Some(c)) = (ty, crate::choice::of(&v)) => match crate::choice::kind_of(names) {
+            Some(kind) if kind == c.kind => Value::Int(i64::from(c.index)),
+            Some(kind) => return Err(crate::choice::expected(&v, kind, &what())),
+            None => return Err(mlua::Error::runtime(format!("{}: expected one of {}, got {c}", what(), names.join(", ")))),
         },
         LuaValue::UserData(ud) => {
             if let Ok(o) = ud.borrow::<Object>() {
@@ -698,6 +703,9 @@ fn from_api(lua: &Lua, v: Value, ty: &FieldType) -> mlua::Result<LuaValue> {
         Value::Int(i) => match ty {
             // (An enum nothing has stated is nil: a player's setup's, which
             // no round starts with.)
+            FieldType::Enum(names) if let Some(kind) = crate::choice::kind_of(names) => {
+                if (i as usize) < names.len() { crate::choice::value_of(lua, kind, i as u8)? } else { LuaValue::Nil }
+            }
             FieldType::Enum(names) => match names.get(i as usize) {
                 Some(name) => LuaValue::String(lua.create_string(name)?),
                 None => LuaValue::Nil,
@@ -726,9 +734,9 @@ enum Shown {
     /// A byte that is 0 or 1, the object turned against its side's way (its
     /// flip): a boolean.
     Turned,
-    /// A navi's mood: a number, or "full_synchro" for the byte 0xFF.
+    /// A navi's mood: a number, or `Mood.full_synchro` for the byte 0xFF.
     Mood,
-    /// A count that holds at 0xFFFF: a number, or "holds".
+    /// A count that holds at 0xFFFF: a number, or `Timer.holds`.
     Holds,
     /// A byte that is 0xFF for none: a number, or nil.
     NoneAt0xFF,
@@ -736,6 +744,23 @@ enum Shown {
     /// table of parts (from 0) to whether each is hidden (`{ [6] = true }`);
     /// read as a view by part (`HiddenParts`).
     Parts,
+    /// A choice the engine keeps as its member's place: the kind's value
+    /// (`DragStep.slide`).
+    Choice(ChoiceKind),
+}
+
+impl Shown {
+    /// How a field of type `ty` is shown when nothing else says: a choice
+    /// as its kind's value (an engine field of named variants is one of the
+    /// engine's choices), anything else as its type says.
+    fn of(ty: &FieldType) -> Shown {
+        match ty {
+            FieldType::Enum(names) => Shown::Choice(
+                crate::choice::kind_of(names).unwrap_or_else(|| panic!("the engine's field of {} is no choice", names.join(" | "))),
+            ),
+            _ => Shown::Plain,
+        }
+    }
 }
 
 /// An engine value of a field shown as `shown`.
@@ -746,27 +771,31 @@ fn show(lua: &Lua, v: Value, ty: &FieldType, shown: Shown) -> mlua::Result<LuaVa
         Shown::Element => LuaValue::UserData(crate::element::value(lua, i as u8)?),
         Shown::Secondary => LuaValue::UserData(crate::element::secondary_value(lua, i as u8)?),
         Shown::Turned => LuaValue::Boolean(i != 0),
-        Shown::Mood if i == 0xFF => LuaValue::String(lua.create_string("full_synchro")?),
-        Shown::Holds if i == 0xFFFF => LuaValue::String(lua.create_string("holds")?),
+        Shown::Mood if i == 0xFF => crate::choice::value_of(lua, ChoiceKind::Mood, 0)?,
+        Shown::Holds if i == 0xFFFF => crate::choice::value_of(lua, ChoiceKind::Timer, 0)?,
         Shown::NoneAt0xFF if i == 0xFF => LuaValue::Nil,
         Shown::Mood | Shown::Holds | Shown::NoneAt0xFF => LuaValue::Number(i as f64),
         Shown::Parts => unreachable!("hidden parts read as a view"),
+        Shown::Choice(kind) if (i as usize) < kind.members().len() => crate::choice::value_of(lua, kind, i as u8)?,
+        // (A choice nothing has stated.)
+        Shown::Choice(_) => LuaValue::Nil,
     })
 }
 
 /// A Luau value going into a field shown as `shown`.
 fn take(v: LuaValue, ty: &FieldType, shown: Shown, what: &str) -> mlua::Result<Value> {
-    let word = |v: LuaValue, sentinel: i64, name: &str| -> mlua::Result<Value> {
+    // (A word with a sentinel: a number, or the sentinel's value, the only
+    // member of its kind.)
+    let word = |v: LuaValue, sentinel: i64, kind: ChoiceKind| -> mlua::Result<Value> {
         match &v {
-            LuaValue::String(s) if &*s.to_str()? == name => Ok(Value::Int(sentinel)),
             LuaValue::Number(_) | LuaValue::Integer(_) => {
                 let n = int(&v, what)?;
                 if n == sentinel {
-                    return Err(mlua::Error::runtime(format!("{what}: {sentinel:#x} is {name:?}, by name")));
+                    return Err(mlua::Error::runtime(format!("{what}: {sentinel:#x} is {}", nettai_content_api::Choice { kind, index: 0 })));
                 }
                 Ok(Value::Int(n))
             }
-            v => Err(mlua::Error::runtime(format!("{what}: expected a number or {name:?}, got {}", v.type_name()))),
+            v => crate::choice::arg(v, kind, what).map(|_| Value::Int(sentinel)),
         }
     };
     match shown {
@@ -777,8 +806,8 @@ fn take(v: LuaValue, ty: &FieldType, shown: Shown, what: &str) -> mlua::Result<V
             LuaValue::Boolean(b) => Ok(Value::Int(i64::from(b))),
             v => Err(mlua::Error::runtime(format!("{what}: expected a boolean (turned), got {}", v.type_name()))),
         },
-        Shown::Mood => word(v, 0xFF, "full_synchro"),
-        Shown::Holds => word(v, 0xFFFF, "holds"),
+        Shown::Mood => word(v, 0xFF, ChoiceKind::Mood),
+        Shown::Holds => word(v, 0xFFFF, ChoiceKind::Timer),
         Shown::NoneAt0xFF => match v {
             LuaValue::Nil => Ok(Value::Int(0xFF)),
             v => {
@@ -790,6 +819,8 @@ fn take(v: LuaValue, ty: &FieldType, shown: Shown, what: &str) -> mlua::Result<V
             }
         },
         Shown::Parts => Ok(Value::Int(i64::from(parts_word(&v, what)?))),
+        Shown::Choice(_) if v.is_nil() => Ok(Value::Nil),
+        Shown::Choice(kind) => Ok(Value::Int(i64::from(crate::choice::arg(&v, kind, what)?.index))),
     }
 }
 
@@ -891,7 +922,7 @@ impl UserData for Object {
             let shown = match f {
                 ObjectField::Element => Shown::Element,
                 ObjectField::Flip => Shown::Turned,
-                _ => Shown::Plain,
+                _ => Shown::of(f.field_type()),
             };
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| api.get(this.0, f).map_err(api_error))?;
@@ -918,7 +949,7 @@ impl UserData for Object {
             let shown = match f {
                 ActorField::AttackElement => Shown::Element,
                 ActorField::NoChargeTimer => Shown::Holds,
-                _ => Shown::Plain,
+                _ => Shown::of(f.field_type()),
             };
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| api.actor_get(this.0, f).map_err(api_error))?;
@@ -935,15 +966,15 @@ impl UserData for Object {
         for &f in OverlayField::ALL {
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| api.overlay_get(this.0, f).map_err(api_error))?;
-                from_api(lua, v, f.field_type())
+                show(lua, v, f.field_type(), Shown::of(f.field_type()))
             });
             fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
                 let o = object_of(&this)?;
-                let v = to_api(v, f.field_type(), f.name())?;
+                let v = take(v, f.field_type(), Shown::of(f.field_type()), f.name())?;
                 with(|api, _| api.overlay_set(o, f, v).map_err(api_error))
             });
         }
-        fields.add_field_method_get("pool", |_, this| Ok(this.0.pool.name()));
+        fields.add_field_method_get("pool", |lua, this| crate::choice::value_of(lua, ChoiceKind::Pool, this.0.pool as u8));
         fields.add_field_method_get("kind", |lua, this| {
             let kind = with(|api, _| Ok(api.object_kind(this.0)))?;
             match kind {
@@ -951,10 +982,13 @@ impl UserData for Object {
                 None => Ok(LuaValue::Nil),
             }
         });
-        fields.add_field_method_get("lifecycle", |_, this| with(|api, _| Ok(api.lifecycle(this.0).name())));
-        fields.add_field_function_set("lifecycle", |_, this, name: Name| {
+        fields.add_field_method_get("lifecycle", |lua, this| {
+            let l = with(|api, _| Ok(api.lifecycle(this.0)))?;
+            crate::choice::value_of(lua, ChoiceKind::Lifecycle, l as u8)
+        });
+        fields.add_field_function_set("lifecycle", |_, this, v: LuaValue| {
             let o = object_of(&this)?;
-            let l = named(&name, "lifecycle state", Lifecycle::from_name)?;
+            let l = crate::choice::parsed(&v, ChoiceKind::Lifecycle, "lifecycle", Lifecycle::from_name)?;
             with(|api, _| Ok(api.set_lifecycle_only(o, l)))
         });
         fields.add_field_method_get("facing", |_, this| with(|api, _| Ok(api.facing(this.0))));
@@ -985,11 +1019,15 @@ impl UserData for Object {
         // Its fields as a console has them.
         methods.add_method("console", |lua, this, side: LuaValue| view(lua, View::ObjectConsole(this.0, side_arg(side)?)));
 
-        // Lifecycle.
-        methods.add_method("set_lifecycle", |_, this, name: Name| {
-            let l = named(&name, "lifecycle state", Lifecycle::from_name)?;
-            with(|api, _| Ok(api.set_lifecycle(this.0, l)))
-        });
+        // Lifecycle: entering a state, from its first action and phase.
+        for (method, l) in [
+            ("enter_init", Lifecycle::Init),
+            ("enter_update", Lifecycle::Update),
+            ("enter_destroy", Lifecycle::Destroy),
+            ("enter_finish", Lifecycle::Finish),
+        ] {
+            methods.add_method(method, move |_, this, ()| with(|api, _| Ok(api.set_lifecycle(this.0, l))));
+        }
         methods.add_method("set_action", |_, this, a: LuaValue| {
             let a = u8_arg(a, "action")?;
             with(|api, _| api.set_action(this.0, a).map_err(api_error))
@@ -1156,16 +1194,13 @@ impl UserData for Object {
             },
         );
         methods.add_method("hit_spark", |_, this, ()| with(|api, _| Ok(api.hit_spark(this.0))));
-        methods.add_method("take_damage", |_, this, mode: Name| {
-            let mode = named(&mode, "damage mode", TakeDamageMode::from_name)? as u8;
+        methods.add_method("take_damage", |lua, this, mode: LuaValue| {
+            let mode = crate::choice::parsed(&mode, ChoiceKind::TakeDamageMode, "damage mode", TakeDamageMode::from_name)? as u8;
             let taken = with(|api, _| Ok(api.take_damage(this.0, mode)))?;
-            Ok(DamageTaken::of(taken).name())
+            crate::choice::named(lua, ChoiceKind::DamageTaken, DamageTaken::of(taken).name())
         });
         methods.add_method("raise_barrier", |_, this, t: mlua::Table| {
-            let behavior: mlua::LuaString = t.raw_get("behavior")?;
-            let behavior = named(&behavior, "barrier behavior", |s| {
-                nettai_content_api::api::BARRIER_BEHAVIORS.iter().position(|n| *n == s)
-            })? as u8;
+            let behavior = crate::choice::arg(&t.raw_get("behavior")?, ChoiceKind::BarrierBehavior, "barrier `behavior`")?.index;
             let byte = |k: &str| -> mlua::Result<u8> {
                 u8::try_from(table_int(&t, k)?).map_err(|_| mlua::Error::runtime(format!("barrier `{k}` is not a byte")))
             };
@@ -1239,8 +1274,8 @@ impl UserData for Object {
         });
         methods.add_method("form_change_terms", |_, this, ()| with(|api, _| Ok(api.form_change_terms(this.0))));
         methods.add_method("end_attack", |_, this, ()| with(|api, _| Ok(api.end_attack(this.0))));
-        methods.add_method("set_attack", |_, this, (action, kind): (LuaValue, Name)| {
-            let kind = named(&kind, "attack kind", AttackKind::from_name)?.byte();
+        methods.add_method("set_attack", |_, this, (action, kind): (LuaValue, LuaValue)| {
+            let kind = crate::choice::parsed(&kind, ChoiceKind::AttackKind, "attack kind", AttackKind::from_name)?.byte();
             with(|api, b| match b.def(&action) {
                 Some((Registry::Action, h)) => api.set_content_attack(this.0, h, kind).map_err(api_error),
                 Some((r, _)) => Err(mlua::Error::runtime(format!("set_attack: a {r} is not an action"))),
@@ -1256,7 +1291,7 @@ impl UserData for Object {
                 nettai_content_api::NaviAction::Content(h) => {
                     from_api(lua, Value::Def(Registry::Action, h), &FieldType::Ref(Registry::Action, None))
                 }
-                nettai_content_api::NaviAction::Engine(name) => Ok(LuaValue::String(lua.create_string(name)?)),
+                nettai_content_api::NaviAction::Engine(name) => crate::choice::named(lua, ChoiceKind::EngineAction, name),
             }
         });
         methods.add_method("rush_cancels", |_, this, chip: LuaValue| {
@@ -1268,17 +1303,17 @@ impl UserData for Object {
             with(|api, _| api.load_chip_attack(this.0, chip).map_err(api_error))
         });
         methods.add_method("reset_attack_links", |_, this, ()| with(|api, _| Ok(api.reset_attack_links(this.0))));
-        methods.add_method("held_direction", |_, this, ()| {
+        methods.add_method("held_direction", |lua, this, ()| {
             let dir = with(|api, _| Ok(api.held_direction(this.0)))?;
-            Ok(StepDirection::of_byte(dir).map(|d| d.name()))
+            StepDirection::of_byte(dir).map_or(Ok(LuaValue::Nil), |d| crate::choice::named(lua, ChoiceKind::StepDirection, d.name()))
         });
-        methods.add_method("step_target", |_, this, dir: Name| {
-            let dir = named(&dir, "step direction", StepDirection::from_name)?.byte();
+        methods.add_method("step_target", |_, this, dir: LuaValue| {
+            let dir = crate::choice::parsed(&dir, ChoiceKind::StepDirection, "step direction", StepDirection::from_name)?.byte();
             let p = with(|api, _| Ok(api.step_target(this.0, dir)))?;
             Ok(p.map_or((None, None), |p| (Some(p.x), Some(p.y))))
         });
-        methods.add_method("start_move", |_, this, dir: Name| {
-            let dir = named(&dir, "step direction", StepDirection::from_name)?.byte();
+        methods.add_method("start_move", |_, this, dir: LuaValue| {
+            let dir = crate::choice::parsed(&dir, ChoiceKind::StepDirection, "step direction", StepDirection::from_name)?.byte();
             with(|api, _| Ok(api.start_move(this.0, dir)))
         });
         methods.add_method("can_move", |_, this, ()| with(|api, _| Ok(api.can_move(this.0))));
@@ -1288,9 +1323,9 @@ impl UserData for Object {
             bound(|b| chip.map_or(Ok(LuaValue::Nil), |c| Ok(LuaValue::Table(b.def_value(Registry::Chip, c.0)?))))
         });
         methods.add_method("use_chip", |_, this, ()| with(|api, _| api.use_chip(this.0).map_err(api_error)));
-        methods.add_method("start_chip_attack", |_, this, (chip, kind): (LuaValue, Name)| {
+        methods.add_method("start_chip_attack", |_, this, (chip, kind): (LuaValue, LuaValue)| {
             let chip = bound(|b| def_arg(b, &chip, Registry::Chip, "start_chip_attack"))?;
-            let kind = named(&kind, "attack kind", AttackKind::from_name)?.byte();
+            let kind = crate::choice::parsed(&kind, ChoiceKind::AttackKind, "attack kind", AttackKind::from_name)?.byte();
             with(|api, _| api.start_chip_attack(this.0, nettai_content_api::ChipHandle(chip), kind).map_err(api_error))
         });
         methods.add_method("start_move_to", |_, this, (x, y, end_lag, face): (LuaValue, LuaValue, LuaValue, LuaValue)| {
@@ -1299,9 +1334,9 @@ impl UserData for Object {
             let face = object_arg(&face, "face")?;
             with(|api, _| api.start_move_to(this.0, p, end_lag, face).map_err(api_error))
         });
-        methods.add_method("start_weapon", |_, this, (weapon, kind): (LuaValue, Name)| {
+        methods.add_method("start_weapon", |_, this, (weapon, kind): (LuaValue, LuaValue)| {
             let weapon = bound(|b| def_arg(b, &weapon, Registry::Weapon, "start_weapon"))?;
-            let kind = named(&kind, "attack kind", AttackKind::from_name)?.byte();
+            let kind = crate::choice::parsed(&kind, ChoiceKind::AttackKind, "attack kind", AttackKind::from_name)?.byte();
             with(|api, _| api.start_weapon(this.0, nettai_content_api::WeaponHandle(weapon), kind).map_err(api_error))
         });
         // The wrapper's (the role `actions.wrapper`).
@@ -1455,7 +1490,7 @@ fn facing_arg(v: LuaValue, what: &str) -> mlua::Result<u8> {
 
 /// How a sprite field is shown.
 fn sprite_shown(f: SpriteField) -> Shown {
-    if f == SpriteField::HiddenParts { Shown::Parts } else { Shown::Plain }
+    if f == SpriteField::HiddenParts { Shown::Parts } else { Shown::of(f.field_type()) }
 }
 
 /// `sprite_setFlip` with the game's flip value (bit 0 horizontal, bit 1
@@ -1486,7 +1521,7 @@ impl UserData for Collision {
             if matches!(f, CollisionField::Element | CollisionField::SecondaryElement | CollisionField::GuardDirs) {
                 continue;
             }
-            let shown = if f == CollisionField::DamageElements { Shown::Secondary } else { Shown::Plain };
+            let shown = if f == CollisionField::DamageElements { Shown::Secondary } else { Shown::of(f.field_type()) };
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| api.collision_get(this.0, f).map_err(api_error))?;
                 show(lua, v, f.field_type(), shown)
@@ -2039,7 +2074,7 @@ impl UserData for Navi {
                 | NaviStat::Folder1TagB
                 | NaviStat::Folder2TagA
                 | NaviStat::Folder2TagB => Shown::NoneAt0xFF,
-                _ => Shown::Plain,
+                _ => Shown::of(f.field_type()),
             };
             fields.add_field_method_get(f.name(), move |lua, this| {
                 let v = with(|api, _| Ok(api.navi_stat(this.0, f)))?;
@@ -2212,11 +2247,11 @@ impl UserData for ObjectConsole {
         let f = ObjectField::Visible;
         fields.add_field_method_get(f.name(), move |lua, this| {
             let v = with(|api, _| api.get_for(this.0, f, this.1).map_err(api_error))?;
-            from_api(lua, v, f.field_type())
+            show(lua, v, f.field_type(), Shown::of(f.field_type()))
         });
         fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
             let ObjectConsole(o, side) = *this.borrow::<ObjectConsole>()?;
-            let v = to_api(v, f.field_type(), f.name())?;
+            let v = take(v, f.field_type(), Shown::of(f.field_type()), f.name())?;
             with(|api, _| api.set_for(o, f, side, v).map_err(api_error))
         });
     }
@@ -2318,11 +2353,11 @@ impl UserData for Hud {
                     }
                 };
                 let v = with(|api, _| Ok(api.hud(f, side)))?;
-                from_api(lua, v, f.field_type())
+                show(lua, v, f.field_type(), Shown::of(f.field_type()))
             });
             fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
                 let side = this.borrow::<Hud>()?.0;
-                let v = to_api(v, f.field_type(), f.name())?;
+                let v = take(v, f.field_type(), Shown::of(f.field_type()), f.name())?;
                 with(|api, _| api.set_hud(f, side, v).map_err(api_error))
             });
         }
@@ -2345,7 +2380,7 @@ impl UserData for HandEntry {
                     let HandEntry(side, i) = *this;
                     return Ok(LuaValue::UserData(lua.create_userdata(HandMarks(side, i))?));
                 }
-                from_api(lua, v, f.field_type())
+                show(lua, v, f.field_type(), Shown::of(f.field_type()))
             });
             fields.add_field_function_set(f.name(), move |_, this, v: LuaValue| {
                 let HandEntry(side, i) = *this.borrow::<HandEntry>()?;
@@ -2355,7 +2390,7 @@ impl UserData for HandEntry {
                         api.set_hand_entry(side, i, f, Value::Int(bits as i64)).map_err(api_error)
                     });
                 }
-                let v = to_api(v, f.field_type(), f.name())?;
+                let v = take(v, f.field_type(), Shown::of(f.field_type()), f.name())?;
                 with(|api, _| api.set_hand_entry(side, i, f, v).map_err(api_error))
             });
         }
@@ -2536,6 +2571,7 @@ pub fn install(lua: &Lua) -> mlua::Result<()> {
     g.set("hit_modifier", hit_modifier_lib(lua)?)?;
     g.set("schema", crate::schema::lib(lua)?)?;
     g.set("Element", crate::element::lib(lua)?)?;
+    crate::choice::install(lua, &g)?;
     g.set("rules", rules_lib(lua)?)?;
     g.set("custom", custom_lib(lua)?)?;
     Ok(())
@@ -2668,9 +2704,10 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_last_pick_is_chip(side).map_err(api_error))
     });
-    lib_fn!(lua, t, "cursor_state", |_, side: LuaValue| {
+    lib_fn!(lua, t, "cursor_state", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
-        with(|api, _| api.custom_cursor_state(side).map_err(api_error))
+        let state = with(|api, _| api.custom_cursor_state(side).map_err(api_error))?;
+        crate::choice::named(lua, ChoiceKind::ButtonState, state)
     });
     // (A button, a window or a form a call names is the rules': only their
     // calls make it.)
@@ -2685,9 +2722,10 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_pick(side).map_err(api_error))
     });
-    lib_fn!(lua, t, "play", |_, (side, sound): (LuaValue, String)| {
+    lib_fn!(lua, t, "play", |_, (side, sound): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
-        with(|api, _| api.custom_play(side, &sound).map_err(api_error))
+        let sound = crate::choice::name(&sound, ChoiceKind::ScreenSound, "custom.play's sound")?;
+        with(|api, _| api.custom_play(side, sound).map_err(api_error))
     });
     lib_fn!(lua, t, "play_sound", |_, (side, id): (LuaValue, LuaValue)| {
         let (side, id) = (u8_arg(side, "side")? & 1, sound_arg(id)?);
@@ -2726,10 +2764,11 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_spin(side).map_err(api_error))
     });
-    lib_fn!(lua, t, "fade", |_, (side, mode, speed): (LuaValue, String, LuaValue)| {
+    lib_fn!(lua, t, "fade", |_, (side, mode, speed): (LuaValue, LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
+        let mode = crate::choice::name(&mode, ChoiceKind::CustomFade, "custom.fade's mode")?;
         let speed = int(&speed, "speed")? as u8;
-        with(|api, _| api.custom_fade(side, &mode, speed).map_err(api_error))
+        with(|api, _| api.custom_fade(side, mode, speed).map_err(api_error))
     });
     lib_fn!(lua, t, "set_face", move |_, (side, form): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
@@ -2741,10 +2780,11 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let icon = chip_or_nil(&icon, "custom.pick_first")?;
         with(|api, _| api.custom_pick_first(side, icon).map_err(api_error))
     });
-    lib_fn!(lua, t, "set_button_state", move |_, (side, button, state): (LuaValue, String, String)| {
+    lib_fn!(lua, t, "set_button_state", move |_, (side, button, state): (LuaValue, String, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
+        let state = crate::choice::name(&state, ChoiceKind::ButtonState, "custom.set_button_state's state")?;
         own("custom.set_button_state")?;
-        with(|api, _| api.custom_set_button_state(side, &button, &state).map_err(api_error))
+        with(|api, _| api.custom_set_button_state(side, &button, state).map_err(api_error))
     });
     lib_fn!(lua, t, "update_availability", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -2971,8 +3011,8 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "paused", |_, ()| with(|api, _| Ok(api.is_paused())));
     lib_fn!(lua, t, "over", |_, ()| with(|api, _| Ok(api.is_battle_over())));
     lib_fn!(lua, t, "time_up", |_, ()| with(|api, _| Ok(api.is_time_up())));
-    lib_fn!(lua, t, "cycle", |_, which: Name| {
-        let which = named(&which, "fight cycle", FightCycle::from_name)? as u8 + 1;
+    lib_fn!(lua, t, "cycle", |_, which: LuaValue| {
+        let which = crate::choice::parsed(&which, ChoiceKind::FightCycle, "fight cycle", FightCycle::from_name)? as u8 + 1;
         with(|api, _| Ok(api.cycle(which)))
     });
     lib_fn!(lua, t, "weakness", |_, (receiver, hitter): (LuaValue, LuaValue)| {
@@ -3003,7 +3043,7 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             f.name(),
             lua.create_function(move |lua, ()| {
                 let v = with(|api, _| Ok(api.battle_info(f)))?;
-                from_api(lua, v, f.field_type())
+                show(lua, v, f.field_type(), Shown::of(f.field_type()))
             })?,
         )?;
     }
@@ -3062,8 +3102,8 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let o = with(|api, _| Ok(api.spawn_burst(navi.0)))?;
         object_value(lua, o)
     });
-    lib_fn!(lua, t, "screen_fade", |_, (fade, speed): (Name, LuaValue)| {
-        let fade = named(&fade, "screen fade", ScreenFade::from_name)?;
+    lib_fn!(lua, t, "screen_fade", |_, (fade, speed): (LuaValue, LuaValue)| {
+        let fade = crate::choice::parsed(&fade, ChoiceKind::ScreenFade, "screen fade", ScreenFade::from_name)?;
         let speed = u8_arg(speed, "fade speed")?;
         with(|api, _| Ok(api.screen_fade(fade, speed)))
     });
@@ -3145,9 +3185,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (registry, h) = bound(|b| Ok(b.def(&def)))?.ok_or_else(|| mlua::Error::runtime("battle.name takes a definition"))?;
         with(|api, _| Ok(api.def_name(registry, h)))
     });
-    lib_fn!(lua, t, "side_special", |_, side: LuaValue| {
+    lib_fn!(lua, t, "side_special", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.side_special(side).name()))
+        let special = with(|api, _| Ok(api.side_special(side)))?;
+        crate::choice::named(lua, ChoiceKind::SideSpecial, special.name())
     });
     lib_fn!(lua, t, "take_over", |_, (side, ticks): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
@@ -3292,8 +3333,8 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (side, n) = (u8_arg(side, "side")? & 1, u16_arg(n, "gauge")?);
         with(|api, _| Ok(api.drain_side_gauge(side, n)))
     });
-    lib_fn!(lua, t, "add_special_bonus", |_, (side, bonus, n): (LuaValue, Name, LuaValue)| {
-        let index = named(&bonus, "special bonus", SpecialBonus::from_name)? as u8;
+    lib_fn!(lua, t, "add_special_bonus", |_, (side, bonus, n): (LuaValue, LuaValue, LuaValue)| {
+        let index = crate::choice::parsed(&bonus, ChoiceKind::SpecialBonus, "special bonus", SpecialBonus::from_name)? as u8;
         let (side, n) = (u8_arg(side, "side")? & 1, u16_arg(n, "bonus")?);
         with(|api, _| api.add_special_bonus(side, index, n).map_err(api_error))
     });
@@ -3417,8 +3458,8 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         lua,
         t,
         "palette_flash",
-        |lua, (variant, ticks, while_dimmed, while_paused): (Name, LuaValue, Option<bool>, Option<bool>)| {
-            let variant = named(&variant, "palette flash variant", PaletteFlashVariant::from_name)? as u8;
+        |lua, (variant, ticks, while_dimmed, while_paused): (LuaValue, LuaValue, Option<bool>, Option<bool>)| {
+            let variant = crate::choice::parsed(&variant, ChoiceKind::PaletteFlashVariant, "palette flash variant", PaletteFlashVariant::from_name)? as u8;
             let ticks = u8_arg(ticks, "palette flash ticks")?;
             let (dimmed, paused) = (while_dimmed.unwrap_or(false), while_paused.unwrap_or(false));
             let o = with(|api, _| Ok(api.spawn_palette_flash(variant, ticks, dimmed, paused)))?;
@@ -3506,8 +3547,8 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     });
     lib_fn!(lua, t, "form_overlay", |lua, (owner, spec): (mlua::UserDataRef<Object>, mlua::Table)| {
         let sprite = sprite_id(spec.raw_get("sprite")?)?;
-        let stepping = match spec.raw_get::<Option<mlua::LuaString>>("stepping")? {
-            Some(s) => named(&s, "overlay stepping", |n| OVERLAY_STEPPINGS.iter().position(|x| *x == n))? as u8,
+        let stepping = match crate::choice::opt_arg(&spec.raw_get("stepping")?, ChoiceKind::FormOverlayStepping, "form overlay `stepping`")? {
+            Some(c) => c.index,
             None => 0,
         };
         let anim_offset = table_int(&spec, "anim_offset")? as u8;
@@ -3544,18 +3585,13 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
                 }
             }
             let sprite: LuaValue = spec.raw_get("sprite")?;
-            let shadow: Option<mlua::LuaString> = spec.raw_get("shadow")?;
-            let shadow = match shadow {
-                Some(s) => named(&s, "shadow", |n| nettai_content_api::Shadow::NAMES.iter().position(|&m| m == n).map(|i| nettai_content_api::Shadow::ALL[i]))?,
+            let shadow = match crate::choice::opt_arg(&spec.raw_get("shadow")?, ChoiceKind::Shadow, "afterimage `shadow`")? {
+                Some(c) => nettai_content_api::Shadow::ALL[c.index as usize],
                 None => nettai_content_api::Shadow::WithSprite,
             };
-            let tether: Option<mlua::LuaString> = spec.raw_get("tether")?;
-            let tether = match tether {
-                Some(s) => named(&s, "afterimage tether", |n| match n {
-                    "form" => Some(1),
-                    "attack" => Some(2),
-                    _ => None,
-                })?,
+            // (None 0, form 1, attack 2.)
+            let tether = match crate::choice::opt_arg(&spec.raw_get("tether")?, ChoiceKind::Tether, "afterimage `tether`")? {
+                Some(c) => c.index + 1,
                 None => 0,
             };
             let s = nettai_content_api::api::AfterimageSpec {
@@ -4006,27 +4042,27 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     let t = lua.create_table()?;
     // (The record type of the look `fly_to_absorber` takes: the engine's own.)
     t.set("absorbed_look", crate::schema::record_type(nettai_content_api::ABSORBED_LOOK).map_err(mlua::Error::runtime)?)?;
-    lib_fn!(lua, t, "register", |_, (me, side, class): (Me, LuaValue, Name)| {
+    lib_fn!(lua, t, "register", |_, (me, side, class): (Me, LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
-        let class = named(&class, "obstacle class", ObstacleClass::from_name)? as u8;
+        let class = crate::choice::parsed(&class, ChoiceKind::ObstacleClass, "obstacle class", ObstacleClass::from_name)? as u8;
         with(|api, _| Ok(api.obstacle_register(me.0, side, class)))
     });
     lib_fn!(lua, t, "unregister", |_, me: Me| with(|api, _| Ok(api.obstacle_unregister(me.0))));
-    lib_fn!(lua, t, "take_hits", |_, (me, push): (Me, Option<Name>)| {
+    lib_fn!(lua, t, "take_hits", |_, (me, push): (Me, Option<LuaValue>)| {
         let push = match push {
-            Some(p) => named(&p, "push", ObstaclePush::from_name)?,
+            Some(p) => crate::choice::parsed(&p, ChoiceKind::ObstaclePush, "push", ObstaclePush::from_name)?,
             None => ObstaclePush::ForgetsDamage,
         };
         with(|api, _| api.obstacle_take_hits(me.0, push).map_err(api_error))
     });
     lib_fn!(lua, t, "tick_lifetime", |_, me: Me| with(|api, _| api.obstacle_tick_lifetime(me.0).map_err(api_error)));
-    lib_fn!(lua, t, "react", |_, (me, crush, hold): (Me, Option<Name>, Option<Name>)| {
+    lib_fn!(lua, t, "react", |_, (me, crush, hold): (Me, Option<LuaValue>, Option<LuaValue>)| {
         let crush = match crush {
-            Some(c) => named(&c, "crush", ObstacleCrush::from_name)?,
+            Some(c) => crate::choice::parsed(&c, ChoiceKind::ObstacleCrush, "crush", ObstacleCrush::from_name)?,
             None => ObstacleCrush::Breaks,
         };
         let hold = match hold {
-            Some(h) => named(&h, "dimming hold", ObstacleHold::from_name)?,
+            Some(h) => crate::choice::parsed(&h, ChoiceKind::ObstacleHold, "dimming hold", ObstacleHold::from_name)?,
             None => ObstacleHold::AfterAppearing,
         };
         with(|api, _| api.obstacle_react(me.0, crush, hold).map_err(api_error))
@@ -4042,11 +4078,13 @@ fn obstacle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             lua.create_function(move |_, me: Me| with(|api, _| api.obstacle_action(me.0, a).map_err(api_error)))?,
         )?;
     }
-    lib_fn!(lua, t, "removal", |_, me: Me| {
-        with(|api, _| api.obstacle_removal(me.0).map(|r| r.name()).map_err(api_error))
+    lib_fn!(lua, t, "removal", |lua, me: Me| {
+        let r = with(|api, _| api.obstacle_removal(me.0).map_err(api_error))?;
+        crate::choice::named(lua, ChoiceKind::ObstacleRemoval, r.name())
     });
-    lib_fn!(lua, t, "blink_out", |_, me: Me| {
-        with(|api, _| api.obstacle_blink_out(me.0).map(|r| r.name()).map_err(api_error))
+    lib_fn!(lua, t, "blink_out", |lua, me: Me| {
+        let b = with(|api, _| api.obstacle_blink_out(me.0).map_err(api_error))?;
+        crate::choice::named(lua, ChoiceKind::BlinkOut, b.name())
     });
     lib_fn!(lua, t, "fly_to_absorber", |_, (me, look): (Me, LuaValue)| {
         with(|api, b| {
@@ -4253,7 +4291,7 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
         // panel.
         HookCall::Panel(PanelCall::Burn { body, player }) => vec![obj(body)?, LuaValue::Boolean(player)],
         HookCall::Panel(PanelCall::Stand { body } | PanelCall::Rest { body } | PanelCall::MoveEnd { body }) => vec![obj(body)?],
-        HookCall::Panel(PanelCall::Slide { body, how }) => vec![obj(body)?, LuaValue::String(lua.create_string(how.name())?)],
+        HookCall::Panel(PanelCall::Slide { body, how }) => vec![obj(body)?, crate::choice::value_of(lua, ChoiceKind::SlideHow, how as u8)?],
         HookCall::Panel(PanelCall::Hit { body, element }) => vec![
             obj(body)?,
             crate::element::PRIMARY.get(element as usize).map_or(Ok(LuaValue::Nil), |n| lua.create_string(n).map(LuaValue::String))?,
@@ -4273,8 +4311,10 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             let class = match class {
                 None => LuaValue::Nil,
                 Some(c) => {
-                    let name = ObstacleClass::NAMES.get(c as usize).ok_or_else(|| mlua::Error::runtime(format!("obstacle class {c}")))?;
-                    LuaValue::String(lua.create_string(name)?)
+                    if c as usize >= ObstacleClass::NAMES.len() {
+                        return Err(mlua::Error::runtime(format!("obstacle class {c}")));
+                    }
+                    crate::choice::value_of(lua, ChoiceKind::ObstacleClass, c)?
                 }
             };
             vec![obj(obstacle)?, LuaValue::Boolean(ice), class]
@@ -4376,14 +4416,7 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         // Its `slide`: an answer's number (1 up), nil none.
         HookCall::Panel(PanelCall::Slide { .. }) => match &v {
             LuaValue::Nil => Ok(Value::Nil),
-            LuaValue::String(s) => {
-                let s = s.to_str()?;
-                match SlideAnswer::ALL.iter().position(|a| a.name() == &*s) {
-                    Some(i) => Ok(Value::Int(i as i64 + 1)),
-                    None => Err(mlua::Error::runtime(format!("a panel type's `slide` answers \"on\", \"carry\", \"stop\" or nil, not {:?}", &*s))),
-                }
-            }
-            _ => Err(mlua::Error::runtime(format!("a panel type's `slide` answers a name or nil, not a {}", v.type_name()))),
+            v => Ok(Value::Int(i64::from(crate::choice::arg(v, ChoiceKind::SlideAnswer, "a panel type's `slide`'s answer")?.index) + 1)),
         },
         HookCall::InstantChip { .. }
         | HookCall::RoleEncased { .. }
@@ -4412,19 +4445,10 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         },
         // A controller's or a takeover's outcome, by the original's number
         // (4: an attack of the takeover's own).
+        // (`ControlOutcome`'s members are in the original's order.)
         HookCall::Rules { hook: RulesHook::Controller | RulesHook::Takeover, .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
-            LuaValue::String(s) => match &*s.to_str()? {
-                "nothing" => Ok(Value::Int(0)),
-                "chip" => Ok(Value::Int(1)),
-                "buster" => Ok(Value::Int(2)),
-                "moved" => Ok(Value::Int(3)),
-                "own_chip" => Ok(Value::Int(4)),
-                other => Err(mlua::Error::runtime(format!(
-                    "a controller returns \"nothing\", \"chip\", \"buster\", \"moved\" or \"own_chip\", not {other:?}"
-                ))),
-            },
-            _ => Err(mlua::Error::runtime(format!("a controller returns its outcome's name, not a {}", v.type_name()))),
+            v => Ok(Value::Int(i64::from(crate::choice::arg(v, ChoiceKind::ControlOutcome, "a controller's outcome")?.index))),
         },
         // A button's `shown` and `state`, a window's `update`, and whether
         // the rules took something back.
@@ -4445,14 +4469,10 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         } => Ok(Value::Bool(v == LuaValue::Boolean(true))),
         // What the rules did with a hit's NaviCust bug: nothing of the
         // stats, edited them, or spared the navi the bug and the reload.
+        // (Edited 1, spared 2.)
         HookCall::Rules { hook: RulesHook::NaviBug, .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
-            LuaValue::String(s) => match &*s.to_str()? {
-                "edited" => Ok(Value::Int(1)),
-                "spared" => Ok(Value::Int(2)),
-                other => Err(mlua::Error::runtime(format!("navi_bug returns nil, \"edited\" or \"spared\", not {other:?}"))),
-            },
-            _ => Err(mlua::Error::runtime(format!("navi_bug returns nil, \"edited\" or \"spared\", not a {}", v.type_name()))),
+            v => Ok(Value::Int(i64::from(crate::choice::arg(v, ChoiceKind::BugOutcome, "navi_bug's answer")?.index) + 1)),
         },
         // A button's chip, and the chip it puts in the hand.
         HookCall::Rules { hook: RulesHook::ButtonChip | RulesHook::ButtonHandChip, .. } => match bound.def(&v) {
@@ -4460,24 +4480,21 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             Some((Registry::Chip, h)) => Ok(Value::Def(Registry::Chip, h)),
             _ => Err(mlua::Error::runtime(format!("a button's chip is nil or a chip definition, not a {}", v.type_name()))),
         },
+        // (Selectable 0, unavailable 1; a button's `state` answers no other.)
         HookCall::Rules { hook: RulesHook::ButtonState, .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
-            LuaValue::String(s) => match &*s.to_str()? {
-                "selectable" => Ok(Value::Int(0)),
-                "unavailable" => Ok(Value::Int(1)),
-                other => Err(mlua::Error::runtime(format!(
-                    "a button's state is \"selectable\" or \"unavailable\", not {other:?}"
-                ))),
+            v => match crate::choice::arg(v, ChoiceKind::ButtonState, "a button's state")? {
+                c @ nettai_content_api::Choice { index: 0 | 1, .. } => Ok(Value::Int(i64::from(c.index))),
+                c => Err(mlua::Error::runtime(format!("a button's state is ButtonState.selectable or ButtonState.unavailable, not {c}"))),
             },
-            _ => Err(mlua::Error::runtime(format!("a button's state is its name, not a {}", v.type_name()))),
         },
-        // A mood (a byte, or "full_synchro": the byte 0xFF).
+        // A mood (a byte, or `Mood.full_synchro`: the byte 0xFF).
         HookCall::Rules { hook: RulesHook::StartingMood, .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
-            LuaValue::String(_) => take(v.clone(), &FieldType::U8, Shown::Mood, "starting_mood"),
+            LuaValue::UserData(_) => take(v.clone(), &FieldType::U8, Shown::Mood, "starting_mood"),
             LuaValue::Integer(n) if (0..0xFF).contains(n) => Ok(Value::Int(i64::from(*n))),
             LuaValue::Number(n) if n.fract() == 0.0 && (0.0..255.0).contains(n) => Ok(Value::Int(*n as i64)),
-            _ => Err(mlua::Error::runtime(format!("starting_mood returns a mood (a byte below 0xff, or \"full_synchro\") or nil, not {v:?}"))),
+            _ => Err(mlua::Error::runtime(format!("starting_mood returns a mood (a byte below 0xff, or Mood.full_synchro) or nil, not {v:?}"))),
         },
         // A palette.
         HookCall::Rules { hook: hook @ RulesHook::NaviPalette, .. } => match &v {
@@ -4533,6 +4550,7 @@ pub fn plain_data(v: &LuaValue, bound: &Bound, depth: u32) -> mlua::Result<netta
         LuaValue::Integer(i) => Data::Int(lua_int(*i)),
         LuaValue::Number(n) if n.fract() == 0.0 && n.abs() < 9.0e15 => Data::Int(*n as i64),
         LuaValue::String(s) => Data::Str(s.to_str()?.to_string()),
+        LuaValue::UserData(_) if let Some(c) = crate::choice::of(v) => Data::Choice(c),
         LuaValue::Table(t) => {
             if let Some((r, h)) = bound.def(v) {
                 let key = bound.key(r, h).ok_or_else(|| mlua::Error::runtime(format!("{r} {h} has no key")))?;

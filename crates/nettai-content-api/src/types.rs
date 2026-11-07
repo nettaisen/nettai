@@ -14,6 +14,8 @@ pub enum Pool {
 
 impl Pool {
     pub const ALL: [Pool; 3] = [Pool::Actor, Pool::Attack, Pool::Effect];
+    /// The pools' names, in their order.
+    pub const NAMES: [&'static str; 3] = ["actor", "attack", "effect"];
 
     /// The pool's name in content ("actor", "attack", "effect").
     pub fn name(self) -> &'static str {

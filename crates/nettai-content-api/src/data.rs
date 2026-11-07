@@ -27,6 +27,8 @@ pub enum Data {
     /// A field's type, as a state's declaration gives it (`schema.u16`, a
     /// record type, `schema.list(T, n)`; in definitions only).
     Type(crate::state::TypeData),
+    /// A choice of the engine's (`ChipClass.mega`: [`crate::choice`]).
+    Choice(crate::choice::Choice),
 }
 
 /// A table key.
@@ -154,6 +156,7 @@ impl Data {
             Data::Asset(..) => "an asset",
             Data::Function => "a function",
             Data::Type(_) => "a field's type",
+            Data::Choice(_) => "a choice",
         }
     }
 }

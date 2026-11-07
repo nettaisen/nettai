@@ -26,7 +26,7 @@ local function stage(actors: { StageActor }): StageDef
 end
 
 local function navi(side: number, x: number): StageActor
-    return { place = "navi", side = side, x = x, y = 2 }
+    return { place = Place.navi, side = side, x = x, y = 2 }
 end
 
 local function cube(x: number, y: number): StageActor

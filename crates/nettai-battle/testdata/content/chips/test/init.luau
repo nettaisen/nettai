@@ -56,7 +56,7 @@ local function chip(key: string, n: number, fields: { [string]: any }): Chip
         codes = { "A", "*" },
         element = "null",
         family = "null",
-        class = "standard",
+        class = ChipClass.standard,
         rarity = 0,
         mb = 10,
         damage = 0,
@@ -101,7 +101,7 @@ end
 local function navi_chip(key: string, n: number, damage: number, summon: NaviChipSummon, fields: { [string]: any }?): Chip
     local all: { [string]: any } = {
         flags = { has_damage = true, navi = true, library = true },
-        class = "mega",
+        class = ChipClass.mega,
         damage = damage,
         navi = navi_chips.make { id = "test/" .. key .. "/controller", summon = summon },
     }
@@ -144,7 +144,7 @@ end
 local function link_chip(key: string, n: number, of: Chip): Chip
     return chip(key, n, {
         flags = { has_damage = true, library = true },
-        class = "special",
+        class = ChipClass.special,
         counter = 48,
         damage = 60,
         action = of.action,
@@ -155,7 +155,7 @@ local chips: { [string]: Chip } = {
     -- What a zeroed chip field reads (the roles' `chips.zeroed`): a chip
     -- no test uses.
     ["test/blank"] = chip("blank", 0, {
-        class = "special",
+        class = ChipClass.special,
         codes = {},
         instant = function(_user: Object, _spec: InstantChipSpec)
             error("the test content's blank chip has no use")
@@ -212,9 +212,9 @@ local chips: { [string]: Chip } = {
     -- A blank chip that is the AntiNavi trap when a side's defensive-chip
     -- record holds it.
     ["test/anti-navi"] = chip("anti-navi", 0xBA, {
-        class = "special",
+        class = ChipClass.special,
         codes = {},
-        trap = "anti_navi",
+        trap = TrapKind.anti_navi,
         dimming = antinavi.dimming,
     }),
     ["test/bomb"] = thrown("bomb", 0x103, 50, minibomb.action),
@@ -235,8 +235,8 @@ local chips: { [string]: Chip } = {
     ["test/tomahawk"] = navi_chip("tomahawk", 0x116, 40, tmhkman.summon),
     ["test/tengu"] = navi_chip("tengu", 0x117, 40, tenguman.summon),
     ["test/blast"] = navi_chip("blast", 0x118, 40, blastman.summon),
-    ["test/shooter"] = navi_chip("shooter", 0x119, 30, bass.summon, { class = "giga" }),
-    ["test/sun-moon"] = navi_chip("sun-moon", 0x11A, 90, sunmoon.summon, { class = "giga" }),
+    ["test/shooter"] = navi_chip("shooter", 0x119, 30, bass.summon, { class = ChipClass.giga }),
+    ["test/sun-moon"] = navi_chip("sun-moon", 0x11A, 90, sunmoon.summon, { class = ChipClass.giga }),
 }
 
 return chips

@@ -326,9 +326,9 @@ fn state_types_are_schema_values() {
     use nettai_content_api::{FieldType, TypeData};
     let d = define_pack(&[(
         "k",
-        "return new.kind { id = 'k', pool = 'attack', update = function() end, state = {
+        "return new.kind { id = 'k', pool = Pool.attack, update = function() end, state = {
             a = schema.array(schema.u8, 3), c = schema.optional(schema.u8), e = schema.entry('patch_cards'),
-            l = schema.list({ chip = schema.chip, code = schema.code }, 2), r = schema.role('form_list', schema.form),
+            l = schema.list({ chip = schema.chip, code = schema.code }, 2), r = schema.role(SchemaRole.form_list, schema.form),
             v = { 'x', 'y' }, look = obstacle.absorbed_look } }",
     )])
     .unwrap();
@@ -385,11 +385,16 @@ fn the_define_phase_reads_the_same_whatever_the_order() {
 fn definition_mistakes_are_load_errors() {
     let cases: &[(&str, &str)] = &[
         ("return { chips = { X = {} } }", "\"X\" is not a valid id"),
-        ("return new.kind { id = 'Bomb', pool = 'attack' }", "not a valid id"),
+        ("return new.kind { id = 'Bomb', pool = Pool.attack }", "not a valid id"),
         ("return { chips = { x = { damage = 1.5 } } }", "1.5 is not an integer"),
         ("local t = {}\nt.me = t\nreturn { chips = { x = { loop = t } } }", "contains itself"),
         ("return new.kind(3)", "takes a table"),
-        ("local s = new.kind { pool = 'attack' }\nreturn new.kind(s)", "tagged already"),
+        ("local s = new.kind { pool = Pool.attack }\nreturn new.kind(s)", "tagged already"),
+        // A choice is its table's value: a member the table hasn't is an
+        // error, and the tables are read-only.
+        ("return new.kind { id = 'k', pool = Pool.water }", "Pool has no member \"water\""),
+        ("Pool.water = 1\nreturn {}", "readonly"),
+        ("error('shown as ' .. tostring(SchemaRole.form_list_offered))", "shown as SchemaRole.form_list_offered"),
         // A root's definition is named by its key there, and is no tagged
         // table.
         ("return { chips = { x = { id = 'x' } } }", "a chip's id is its key in `chips`"),

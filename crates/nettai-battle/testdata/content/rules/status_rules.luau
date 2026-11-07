@@ -55,7 +55,7 @@ return {
             { emotion = "worn_out", when = { { mood = 0 }, { exhausted = true } } },
             { emotion = "angry", when = { { angry = true } } },
             { emotion = "tired", when = { { tired = true } } },
-            { emotion = "full_synchro", when = { { mood = "full_synchro" } } },
+            { emotion = "full_synchro", when = { { mood = Mood.full_synchro } } },
             { emotion = "normal" },
         },
         roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out", tired = "tired" },

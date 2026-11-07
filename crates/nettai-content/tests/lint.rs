@@ -15,7 +15,7 @@ fn unfilled_roles_and_single_owner_kinds_are_reported() {
     // A kind under objects/ that only one chip folder uses.
     c.scripts.modules.insert(
         module("objects/held/held"),
-        "return { kind = new.kind { id = 'held', pool = 'effect', update = function(me) end } }".into(),
+        "return { kind = new.kind { id = 'held', pool = Pool.effect, update = function(me) end } }".into(),
     );
     c.scripts.modules.insert(
         module("chips/holder/chip"),

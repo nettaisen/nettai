@@ -950,6 +950,7 @@ impl Refs<'_> {
             }
             // (An element is the byte it is.)
             LuaValue::UserData(_) if let Some(b) = crate::element::of(v) => Data::Int(i64::from(b)),
+            LuaValue::UserData(_) if let Some(d) = crate::choice::data(v) => d,
             LuaValue::Table(t) => {
                 let p = t.to_pointer();
                 if let Some(&(kind, h)) = self.assets.by_ptr.get(&p) {

@@ -895,6 +895,7 @@ pub(crate) fn read_navi(
         "post_init", "reset", "interrupted", "fire_charge",
     ];
     let skip: Vec<&str> = own.iter().chain(extended).copied().collect();
+    charged_bonus_damage(d)?;
     let mut o = super::reader::fields(d, r, &skip)?;
     let banners = d.spec.field("banners");
     for (field, which) in [("win_banner", "win"), ("lose_banner", "lose")] {
@@ -910,6 +911,20 @@ pub(crate) fn read_navi(
 
 /// A form definition's record, likewise, past `extended`: the fields its
 /// game's rules extend forms with (theirs to check, `SystemDef::extends`).
+/// A charged bonus's damage, a number or `ChargedBonus.again` (not its
+/// name).
+fn charged_bonus_damage(d: &nettai_content_api::Definition) -> Result<(), nettai_content_api::ContentError> {
+    use nettai_content_api::Data;
+    match d.spec.field("charged_bonus").field("damage") {
+        damage @ (Data::Str(_) | Data::Choice(_)) => {
+            super::reader::choice_name(damage, nettai_content_api::ChoiceKind::ChargedBonus, "`charged_bonus.damage`")
+                .map(|_| ())
+                .map_err(|m| super::reader::err(d, m))
+        }
+        _ => Ok(()),
+    }
+}
+
 pub(crate) fn read_form(
     d: &nettai_content_api::Definition,
     r: &super::reader::SpecReader,
@@ -933,6 +948,7 @@ pub(crate) fn read_form(
         "chip_used",
     ];
     let skip: Vec<&str> = own.iter().chain(extended).copied().collect();
+    charged_bonus_damage(d)?;
     let o = super::reader::fields(d, r, &skip)?;
     let form: FormData = serde_json::from_value(Json::Object(o)).map_err(|m| super::reader::err(d, m))?;
     Ok(form)

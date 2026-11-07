@@ -311,6 +311,9 @@ pub enum SlideHow {
 }
 
 impl SlideHow {
+    /// Their names, in their order.
+    pub const NAMES: [&'static str; 3] = ["slide", "drag", "obstacle"];
+
     pub fn name(self) -> &'static str {
         match self {
             SlideHow::Slide => "slide",
@@ -333,6 +336,8 @@ pub enum SlideAnswer {
 impl SlideAnswer {
     /// Every answer, by the number a hook's result carries (1 up).
     pub const ALL: [SlideAnswer; 3] = [SlideAnswer::On, SlideAnswer::Carry, SlideAnswer::Stop];
+    /// Their names, in their order.
+    pub const NAMES: [&'static str; 3] = ["on", "carry", "stop"];
 
     pub fn name(self) -> &'static str {
         match self {

@@ -55,6 +55,9 @@ pub enum Lifecycle {
 }
 
 impl Lifecycle {
+    /// The states' names, in their order.
+    pub const NAMES: [&'static str; 4] = ["init", "update", "destroy", "finish"];
+
     pub fn name(self) -> &'static str {
         match self {
             Lifecycle::Init => "init",

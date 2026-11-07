@@ -6,6 +6,7 @@
 
 use nettai_content_api::{AssetNames, ContentError, Data, DataKey, Definition, Definitions, Registry};
 use serde::de::DeserializeOwned;
+use nettai_content_api::{Choice, ChoiceKind};
 use serde_json::{Map, Value as Json};
 
 
@@ -58,7 +59,22 @@ impl<'a> SpecReader<'a> {
             }
             Data::Function => return Err(format!("{at}: a function isn't data")),
             Data::Type(_) => return Err(format!("{at}: a field's type (`schema`) isn't data")),
+            // A choice by the engine's name of it, which the record's type
+            // reads (a field that is one is read with [`SpecReader::choice`],
+            // which refuses anything else).
+            Data::Choice(c) => Json::String(c.name().to_string()),
         })
+    }
+
+    /// `d`, a field that takes a choice of `kind`, as the data a record
+    /// reads: the engine's name of the member, or null for nil. Anything
+    /// else (a string with the name among them) is an error.
+    pub fn choice(&self, d: &Data, kind: ChoiceKind, at: &str) -> Result<Json, String> {
+        match d {
+            Data::Nil => Ok(Json::Null),
+            Data::Choice(c) if c.kind == kind => Ok(Json::String(c.name().to_string())),
+            other => Err(not_a_choice(other, kind, at)),
+        }
     }
 
     /// `d` read as `T`. A message names the place in `d` that is wrong
@@ -87,5 +103,26 @@ pub(crate) fn fields(d: &Definition, r: &SpecReader, skip: &[&str]) -> Result<Ma
         Json::Object(o) => Ok(o),
         Json::Array(a) if a.is_empty() => Ok(Map::new()),
         _ => Err(err(d, "is a table")),
+    }
+}
+
+/// The error of `d` given where a choice of `kind` is wanted.
+pub(crate) fn not_a_choice(d: &Data, kind: ChoiceKind, at: &str) -> String {
+    let k = kind.name();
+    let first = Choice { kind, index: 0 }.member();
+    match d {
+        Data::Choice(c) => format!("{at}: expected a {k} (`{k}.{first}`), got {c}"),
+        Data::Str(s) => format!("{at}: expected a {k} (`{k}.{first}`), got the string {s:?}"),
+        other => format!("{at}: expected a {k} (`{k}.{first}`), got {}", other.kind()),
+    }
+}
+
+/// The engine's name of `d`, a choice of `kind` (none for nil); anything
+/// else is an error.
+pub(crate) fn choice_name(d: &Data, kind: ChoiceKind, at: &str) -> Result<Option<&'static str>, String> {
+    match d {
+        Data::Nil => Ok(None),
+        Data::Choice(c) if c.kind == kind => Ok(Some(c.name())),
+        other => Err(not_a_choice(other, kind, at)),
     }
 }

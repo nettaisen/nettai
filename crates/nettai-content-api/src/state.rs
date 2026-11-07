@@ -339,9 +339,16 @@ impl FieldType {
                 FieldType::List(Box::new(of), *max)
             }
             Data::Type(TypeData::Role(role, _)) => return Err(format!("a role ({role:?}) is a field's, not an element's")),
-            Data::List(variants) => FieldType::Enum(
-                variants.iter().map(|v| v.str().map(str::to_string).ok_or_else(|| "variants are names".to_string())).collect::<Result<_, _>>()?,
-            ),
+            Data::List(variants) => {
+                let names: Vec<String> =
+                    variants.iter().map(|v| v.str().map(str::to_string).ok_or_else(|| "variants are names".to_string())).collect::<Result<_, _>>()?;
+                // (A field of a choice the engine knows is declared with its
+                // table, and holds its values.)
+                if let Some(k) = crate::ChoiceKind::ALL.iter().find(|k| k.members().iter().copied().eq(names.iter().map(String::as_str))) {
+                    return Err(format!("the variants {} are the members of `{}`: declare the field `schema.choice({})`", names.join(", "), k.name(), k.name()));
+                }
+                FieldType::Enum(names)
+            }
             Data::Map(_) => FieldType::Record(Box::new(Schema::from_data(d)?)),
             Data::Str(t) => return Err(format!("a type is a `schema` value (`schema.u8`, `schema.chip`), not the string {t:?}")),
             _ => return Err("needs a type (`schema.u8`, `schema.list`), a list of variants or a table of fields".into()),

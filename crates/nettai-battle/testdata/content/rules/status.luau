@@ -42,7 +42,7 @@ local function define_all(keys: { string }, cancels_flinch: boolean, survives_co
         status[name] = new.status {
             id = key,
             duration = 60,
-            timer = "paralyze",
+            timer = StatusKind.paralyze,
             cancels_flinch = cancels_flinch,
             survives_counter = survives_counter,
         }

@@ -113,8 +113,8 @@ fn rules_without_a_required_section_are_a_type_error() {
 fn misuse_of_the_v2_api_is_a_type_error() {
     let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "exe6").unwrap()).unwrap();
     for (bad, why) in [
-        ("local _ = new.kind { id = 'x', pool = 'water', update = function(me: Object) end }", "not a pool"),
-        ("local _ = new.kind { id = 'x', pool = 'attack' }", "a kind without its update"),
+        ("local _ = new.kind { id = 'x', pool = Pool.water, update = function(me: Object) end }", "not a pool"),
+        ("local _ = new.kind { id = 'x', pool = Pool.attack }", "a kind without its update"),
         ("local _ = asset.sprite(3)", "an asset by number"),
         ("local _ = new.effect { sprite = 'bomb' }", "a sprite by string"),
         ("local function f(me: Object) me:set_attack('shot', \"buster\") end", "an action by name"),
@@ -204,12 +204,12 @@ fn the_numeric_api_that_is_gone_is_a_type_error() {
 #[test]
 fn a_type_by_name_is_a_type_error() {
     let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "exe6").unwrap()).unwrap();
-    let kind = |state: &str| format!("local _ = new.kind {{ pool = \"attack\", update = function(me: Object) end, state = {state} }}");
+    let kind = |state: &str| format!("local _ = new.kind {{ pool = Pool.attack, update = function(me: Object) end, state = {state} }}");
     let good = [
         kind("{ n = schema.u8, a = schema.array(schema.u8, 18), c = schema.chip, o = schema.optional(schema.u8), v = { \"a\", \"b\" } }"),
-        kind("{ l = schema.list({ chip = schema.chip, code = schema.code }, 30), r = schema.role(\"form_list\", schema.array(schema.form, 5)) }"),
-        "local T = schema.record_type(\"t\")\nlocal _ = new.record(T, { n = 1 })\nlocal _ = new.kind { pool = \"attack\", update = function(me: Object) end, state = { t = T, e = schema.entry(\"patch_cards\") } }".to_string(),
-        "local _ = new.kind { pool = \"attack\", update = function(me: Object) end, state = { look = obstacle.absorbed_look } }".to_string(),
+        kind("{ l = schema.list({ chip = schema.chip, code = schema.code }, 30), r = schema.role(SchemaRole.form_list, schema.array(schema.form, 5)) }"),
+        "local T = schema.record_type(\"t\")\nlocal _ = new.record(T, { n = 1 })\nlocal _ = new.kind { pool = Pool.attack, update = function(me: Object) end, state = { t = T, e = schema.entry(\"patch_cards\") } }".to_string(),
+        "local _ = new.kind { pool = Pool.attack, update = function(me: Object) end, state = { look = obstacle.absorbed_look } }".to_string(),
     ];
     for source in good {
         let problems = checker.check("good", &format!("--!strict\n{source}\n")).unwrap();
@@ -221,7 +221,7 @@ fn a_type_by_name_is_a_type_error() {
         (kind("{ c = \"chip\" }"), "a reference by name"),
         (kind("{ r = \"record:bomb-variant\" }"), "a record type by name"),
         (kind("{ l = schema.list(\"u8\", 2) }"), "a list's elements by name"),
-        (kind("{ r = schema.role(\"form_list\", \"u8\") }"), "a role's type by name"),
+        (kind("{ r = schema.role(SchemaRole.form_list, \"u8\") }"), "a role's type by name"),
         ("local _ = schema.array(\"u8\", 3)".to_string(), "an array's element by name"),
         ("local _ = new.record(\"bomb-variant\", {})".to_string(), "a record of a type by name"),
         ("local _ = new.record(schema.u8, {})".to_string(), "a record of a type that is no record type"),
@@ -238,8 +238,14 @@ fn misuse_of_the_core_api_is_a_type_error() {
     let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "exe6").unwrap()).unwrap();
     for (bad, why) in [
         ("local function f(me: Object) me.anmi = 3 end", "misspelled field"),
-        ("local function f(me: Object) me:set_lifecycle(\"running\") end", "not a lifecycle state"),
-        ("local function f(me: Object) me.sprite.shadow = \"soft\" end", "not a shadow"),
+        ("local function f(me: Object) me.lifecycle = Lifecycle.running end", "not a lifecycle state"),
+        ("local function f(me: Object) me:set_lifecycle(Lifecycle.update) end", "a lifecycle state entered by value"),
+        ("local function f(me: Object) me.lifecycle = \"destroy\" end", "a lifecycle state by name"),
+        ("local function f(me: Object) me.sprite.shadow = Shadow.soft end", "not a shadow"),
+        ("local function f(me: Object) me.sprite.shadow = \"ground\" end", "a shadow by name"),
+        ("local _ = new.kind { id = 'x', pool = \"attack\", update = function(me: Object) end }", "a pool by name"),
+        ("local _: ChipSpec = { class = \"mega\" }", "a chip class by name"),
+        ("local function f(me: Object) me:set_attack(me.kind, \"chip\") end", "an attack kind by name"),
         ("local function f(me: Object) local _ = me.pos + 1 end", "Vec3 plus a number"),
         ("local _ = battle.spawn(\"projectile\", 3)", "not a pool"),
         ("local function f(me: Object) me.status.usingaction = true end", "not a status flag"),
@@ -262,10 +268,12 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("local _ = battle.palette_flash(0, 4)", "a palette flash variant by number"),
         ("local _ = battle.cycle(1)", "a fight cycle by number"),
         ("battle.add_special_bonus(0, 1, 10)", "a special bonus by number"),
-        ("custom.play(0, \"chips\")", "not a custom screen sound"),
-        ("custom.fade(0, \"out\", 1)", "not a custom screen fade"),
+        ("custom.play(0, ScreenSound.chips)", "not a custom screen sound"),
+        ("custom.play(0, \"pick\")", "a custom screen sound by name"),
+        ("custom.fade(0, CustomFade.out, 1)", "not a custom screen fade"),
         ("rules.listening(0).controler = false", "not a rules hook"),
-        ("local _ = schema.role(\"form_lists\", \"u8\")", "not a role"),
+        ("local _ = schema.role(SchemaRole.form_lists, schema.u8)", "not a role"),
+        ("local _ = schema.role(\"form_list\", schema.u8)", "a role by name"),
         ("local function f(me: Object) me.element = 1 end", "an element by number"),
         ("local function f(me: Object) local _ = me.element + 1 end", "an element as a number"),
         ("local function f(me: Object) me.collision.secondary_element = 0x80 end", "the secondary elements' byte"),
@@ -291,22 +299,23 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("field.set_type(1, 1, 3)", "a panel type by number"),
         ("local function f(me: Object) me.status_timers.stun = 3 end", "not a status timer"),
         ("local _ = data.chips[1]", "not a data field"),
-        ("local function f(me: Object) me.drag_step = \"sliding\" end", "not a drag step"),
+        ("local function f(me: Object) me.drag_step = DragStep.sliding end", "not a drag step"),
+        ("local function f(me: Object) me.drag_step = \"slide\" end", "a drag step by name"),
         (
-            "local function f(me: Object) battle.afterimage(me, me.pos, { anim = 0, facing = 0, color_shader = 0, lifetime = 1, shadow = \"soft\" }) end",
+            "local function f(me: Object) battle.afterimage(me, me.pos, { anim = 0, facing = 0, color_shader = 0, lifetime = 1, shadow = Shadow.soft }) end",
             "an afterimage's shadow that isn't one",
         ),
-        ("local function f(me: Object) local _ = obstacle.react(me, \"shatters\") end", "not an obstacle crush"),
-        ("local function f(me: Object) local _: \"gone\" = obstacle.removal(me) end", "not an obstacle removal"),
+        ("local function f(me: Object) local _ = obstacle.react(me, ObstacleCrush.shatters) end", "not an obstacle crush"),
+        ("local function f(me: Object) local _ = obstacle.removal(me) == ObstacleRemoval.gone end", "not an obstacle removal"),
         ("local _: ProjectileShot = { kind = 0, damage = 1 }", "a shot without its height"),
         ("local function f(): SideSpecial return \"beast\" end", "not a side special"),
         (
-            "local function f(me: Object) battle.form_overlay(me, { sprite = asset.sprite(\"x\"), stepping = \"dimmed\" }) end",
+            "local function f(me: Object) battle.form_overlay(me, { sprite = asset.sprite(\"x\"), stepping = FormOverlayStepping.dimmed }) end",
             "not a form overlay stepping",
         ),
         // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
-        ("local function f(me: Object) obstacle.take_hits(me, \"shoved\") end", "not an obstacle push"),
-        ("local function f(me: Object) local _ = obstacle.react(me, \"breaks\", \"never\") end", "not a dimming hold"),
+        ("local function f(me: Object) obstacle.take_hits(me, ObstaclePush.shoved) end", "not an obstacle push"),
+        ("local function f(me: Object) local _ = obstacle.react(me, ObstacleCrush.breaks, ObstacleHold.never) end", "not a dimming hold"),
         // Dimming chip subtypes 2, 3, 5, 15 and 27.
         ("field.blink(1, 1, 3, 0)", "a blink to a panel type by number"),
         // Collision types and hit results by their members' names.
@@ -321,7 +330,7 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("battle.hud().chips = false", "not a HUD field"),
         ("battle.hud(\"gauge\").gauge = false", "a HUD field for a side"),
         ("local _ = battle.hand_entry(0, 0).bonus", "not a hand entry's field"),
-        ("local _: StatusDef = { duration = 90, timer = \"stun\" }", "not a status"),
+        ("local _: StatusDef = { duration = 90, timer = StatusKind.stun }", "not a status"),
         ("local function f(c: ChipSpec) c.extra_flags = { \"rush\" } end", "a chip's extra flags as a list"),
         ("local _: boolean = battle.effects[0x20000]", "a battle effect by its bit"),
         ("local _ = damage_word.of { amount = 40, flags = { \"paralysis\" } }", "a damage word's flags as a list of names"),

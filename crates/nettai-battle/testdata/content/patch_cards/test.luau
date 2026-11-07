@@ -31,7 +31,7 @@ cards_["test-abilities"] = {
         cards.first_barrier(barriers.barrier_200),
         cards.charge_shot_kind(variants.charged_confusing),
         cards.rush(true),
-        cards.gauge("fast"),
+        cards.gauge(GaugeSpeed.fast),
         cards.chip_shuffle(true),
     },
 }

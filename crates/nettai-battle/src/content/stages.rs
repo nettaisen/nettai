@@ -141,9 +141,9 @@ pub(crate) fn read(
     for (i, e) in entries.iter().enumerate() {
         let at = |m: &str| what(format!("actors[{}]: {m}", i + 1));
         let place = match e.field("place") {
-            Data::Str(s) if s == "navi" => Place::Navi,
+            Data::Choice(c) if c.kind == nettai_content_api::ChoiceKind::Place => Place::Navi,
             Data::Ref(Registry::Kind, key) => Place::Kind(kind(key).ok_or_else(|| at(&format!("the kind {key:?} is not in the content")))?),
-            _ => return Err(at("`place` is \"navi\" or a kind with a `place`")),
+            _ => return Err(at("`place` is `Place.navi` or a kind with a `place`")),
         };
         let variant = match e.field("variant") {
             Data::Nil => None,

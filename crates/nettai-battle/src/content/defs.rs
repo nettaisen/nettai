@@ -17,7 +17,7 @@
 
 use std::collections::BTreeMap;
 
-use nettai_content_api::SpriteId;
+use nettai_content_api::{Choice, ChoiceKind, SpriteId};
 
 use nettai_content_api::{
     ActionHandle, ChipHandle, ContentError, Data, Definition, Definitions, EntryHandle, FnId, FnSource, FormHandle, KindHandle,
@@ -938,7 +938,25 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
     use serde_json::{Map, Value as Json};
     let what = |e: String| ContentError::new(format!("{}.luau: chip {}: {e}", d.module, d.key));
     let spec = &d.spec;
-    let json = |field: &str| -> Result<Json, ContentError> { r.json(spec.field(field), &format!("chip {}.{field}", d.key)).map_err(what) };
+    let json = |field: &str| -> Result<Json, ContentError> {
+        let at = format!("chip {}.{field}", d.key);
+        // (The fields that are choices: anything else there is an error.)
+        match field {
+            "class" => r.choice(spec.field(field), ChoiceKind::ChipClass, &at),
+            "trap" => r.choice(spec.field(field), ChoiceKind::TrapKind, &at),
+            _ => r.json(spec.field(field), &at),
+        }
+        .map_err(what)
+    };
+    // A formula's tag is its `Formula`.
+    // (A count of the turns before is `Counted.turns_before`.)
+    if let Data::Map(_) = spec.field("damage") {
+        let damage = spec.field("damage");
+        super::reader::choice_name(damage.field("formula"), ChoiceKind::Formula, &format!("chip {}.damage.formula", d.key)).map_err(what)?;
+        if let of @ (Data::Str(_) | Data::Choice(_)) = damage.field("of") {
+            super::reader::choice_name(of, ChoiceKind::Counted, &format!("chip {}.damage.of", d.key)).map_err(what)?;
+        }
+    }
     let mut o = Map::new();
     no_display_text(d)?;
     // (The custom screen draws the chip's picture with it.)
@@ -1266,12 +1284,9 @@ impl Defs {
             kinds.add(key.to_string(), def, "the engine's".into());
         }
         for d in definitions.of(Registry::Kind) {
-            let pool = d
-                .spec
-                .field("pool")
-                .str()
+            let pool = Choice::name_in(d.spec.field("pool"), ChoiceKind::Pool)
                 .and_then(Pool::from_name)
-                .ok_or_else(|| ContentError::new(format!("{}.luau: kind {} needs a `pool` (actor, attack or effect)", d.module, d.key)))?;
+                .ok_or_else(|| ContentError::new(format!("{}.luau: kind {} needs a `pool` (Pool.actor, Pool.attack or Pool.effect)", d.module, d.key)))?;
             let place = match d.spec.field("place") {
                 Data::Nil => None,
                 _ => Some(functions.id(slot(d, "place")?)),
@@ -1354,11 +1369,12 @@ impl Defs {
                 }
                 other => return Err(what(format!("`plain` is {other:?}, not a weapon"))),
             };
-            let charged_chip = match d.spec.field("charged_chip") {
-                Data::Nil => None,
-                Data::Str(s) if s == "bonus" => Some(ChargedChip::Bonus),
-                Data::Str(s) if s == "rock_barrage" => Some(ChargedChip::RockBarrage),
-                other => return Err(what(format!("`charged_chip` is {other:?}, not \"bonus\" or \"rock_barrage\""))),
+            let charged_chip = match super::reader::choice_name(d.spec.field("charged_chip"), ChoiceKind::ChargedChip, "`charged_chip`")
+                .map_err(what)?
+            {
+                None => None,
+                Some("bonus") => Some(ChargedChip::Bonus),
+                Some(_) => Some(ChargedChip::RockBarrage),
             };
             if charged_chip.is_some() && setup.is_some() {
                 return Err(what("a weapon with a `setup` is its own attack: it has no `charged_chip`".into()));
@@ -1749,6 +1765,8 @@ impl Defs {
             if let Data::Map(entries) = &mut spec {
                 entries.retain(|(k, _)| !matches!(k, nettai_content_api::DataKey::Str(s) if s == "id"));
             }
+            // (Its timer is a `StatusKind`.)
+            super::reader::choice_name(d.spec.field("timer"), ChoiceKind::StatusKind, "`timer`").map_err(what)?;
             let effect: super::StatusEffect = reader.read(&spec, &d.key).map_err(what)?;
             statuses.push(StatusDef { key: d.key.clone(), effect });
         }
@@ -1970,14 +1988,9 @@ impl Defs {
                                 )));
                             }
                         }
-                        let view = match spec.field("view") {
-                            Data::Nil => None,
-                            Data::Str(v) => Some(ButtonView::named(v).ok_or_else(|| {
-                                let known: Vec<&str> = ButtonView::ALL.iter().map(|v| v.name()).collect();
-                                at(&format!("`view` is {v:?}: a button's view is one of {}", known.join(", ")))
-                            })?),
-                            _ => return Err(at("`view` is a view's name")),
-                        };
+                        let view = super::reader::choice_name(spec.field("view"), ChoiceKind::ButtonView, "`view`")
+                            .map_err(|e| at(&e))?
+                            .map(|v| ButtonView::named(v).expect("every button view is one"));
                         let byte = |f: &str| -> Result<Option<u8>, ContentError> {
                             match spec.field(f) {
                                 Data::Nil => Ok(None),
@@ -2028,14 +2041,9 @@ impl Defs {
                         if let Some((f, _)) = fields.iter().find(|(f, _)| !["update", "view"].contains(&f.to_string().as_str())) {
                             return Err(what(&format!("window `{name}`: `{f}` is no field of a window (view, update)")));
                         }
-                        let view = match spec.field("view") {
-                            Data::Nil => None,
-                            Data::Str(v) => Some(WindowView::named(v).ok_or_else(|| {
-                                let known: Vec<&str> = WindowView::ALL.iter().map(|v| v.name()).collect();
-                                what(&format!("window `{name}`: `view` is {v:?}: a window's view is one of {}", known.join(", ")))
-                            })?),
-                            _ => return Err(what(&format!("window `{name}`: `view` is a view's name"))),
-                        };
+                        let view = super::reader::choice_name(spec.field("view"), ChoiceKind::WindowView, &format!("window `{name}`: `view`"))
+                            .map_err(|e| what(&e))?
+                            .map(|v| WindowView::named(v).expect("every window view is one"));
                         if !matches!(spec.field("update"), Data::Function) {
                             return Err(what(&format!("window `{name}`: `update` is a function")));
                         }
@@ -2088,6 +2096,10 @@ impl Defs {
                             (Data::Int(n), _) => Value::Int(*n),
                             (Data::Str(n), FieldType::Enum(names)) => {
                                 Value::Int(names.iter().position(|x| x == n).ok_or_else(|| format!("no variant {n:?}"))? as i64)
+                            }
+                            // (A field its kind's table declares: a value of the kind.)
+                            (Data::Choice(c), FieldType::Enum(names)) if c.kind.members().iter().copied().eq(names.iter().map(String::as_str)) => {
+                                Value::Int(i64::from(c.index))
                             }
                             (Data::Str(key) | Data::Ref(_, key), FieldType::Ref(registry, _))
                                 if !matches!(v, Data::Ref(r, _) if r != registry) =>
