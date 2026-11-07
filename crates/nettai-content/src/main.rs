@@ -98,6 +98,7 @@ fn main() {
                         ),
                     );
                     nettai_content::lint::definitions(&c, &mut r);
+                    nettai_content::lint::names(&a.content, &c, &mut r);
                     // The game's assets, extracted from its ROMs by its recipe, which loaded with it.
                     let assets = extract(&a, &c, &mut r);
                     // The strings tables, against the definitions (and the backgrounds against the assets').
