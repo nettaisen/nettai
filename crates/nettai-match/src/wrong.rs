@@ -262,14 +262,14 @@ mod tests {
         let mut seen: Vec<String> = Vec::new();
         for file in files {
             let text = std::fs::read_to_string(&file).unwrap();
-            for (at, _) in text.match_indices("kind = \"") {
+            for (at, _) in text.match_indices("kind = SetupProblemKind.") {
                 let (open, close) = (text[..at].rfind('{'), text[at..].find('}').map(|i| at + i));
                 let (Some(open), Some(close)) = (open, close) else { continue };
                 if !text[open..close].contains("text = ") {
                     continue;
                 }
-                let name = &text[at + 8..];
-                let name = &name[..name.find('"').unwrap()];
+                let name = &text[at + "kind = SetupProblemKind.".len()..];
+                let name = &name[..name.find(|c: char| !(c.is_ascii_alphanumeric() || c == '_')).unwrap()];
                 assert!(Wrong::RULES_KINDS.contains(&name), "{}: a problem of kind {name:?}, which nettai-match doesn't type", file.display());
                 if !seen.iter().any(|k| k == name) {
                     seen.push(name.to_string());
