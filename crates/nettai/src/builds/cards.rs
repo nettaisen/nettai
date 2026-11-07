@@ -142,6 +142,8 @@ pub fn key(r: &Data) -> Option<String> {
     let Data::Str(kind) = r.field("kind") else { return None };
     let choice = fields.iter().filter(|(k, _)| !matches!(k, DataKey::Str(s) if s == "kind" || s == "group" || s == VERSION)).find_map(|(_, v)| match v {
         Data::Str(s) => Some(s.clone()),
+        // (A choice of the engine's, a gauge's speed: its name.)
+        Data::Choice(c) => Some(c.name().to_string()),
         Data::Ref(_, k) => Some(nettai_match::ids::local(k).to_string()),
         _ => None,
     });

@@ -160,7 +160,11 @@ impl View {
         let mut refused = HashMap::new();
         if let Data::List(items) = data.field("refused") {
             for p in items {
-                let (Data::Str(kind), Data::Ref(_, key)) = (p.field("kind"), p.field("chip")) else { continue };
+                let (Some(kind), Data::Ref(_, key)) =
+                    (nettai_content_api::Choice::name_in(p.field("kind"), nettai_content_api::ChoiceKind::SetupProblemKind), p.field("chip"))
+                else {
+                    continue;
+                };
                 if let Some(chip) = content.defs.chip_by_key(key) {
                     refused.insert(chip, Wrong::of_rules(content, kind, p));
                 }
