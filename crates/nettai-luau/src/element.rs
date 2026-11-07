@@ -2,11 +2,13 @@
 //! §2.1): an attack's primary element and its secondary elements, the byte
 //! objects, navis' attacks and stats and collision data keep (the primary
 //! element in the low four bits, the secondary elements' bits above). A
-//! value of its own, opaque to content: made by names (`Element.new("fire",
-//! { sword = true })`, `Element.fire`) and read by names (`e.primary`,
-//! `e.secondary.sword`); compared with `==`. Each byte has one value per VM
-//! (and one view of its secondary elements), made when first asked for, so
-//! reading one allocates nothing after.
+//! value of its own, opaque to content: made from its primary element, a
+//! choice's value (`PrimaryElement.fire`), and its secondary elements by
+//! name (`Element.new(PrimaryElement.fire, { sword = true })`, `Element.fire`),
+//! and read the same way (`e.primary`, `e.secondary.sword`); compared with
+//! `==`. Each byte has one value per VM (and one view of its secondary
+//! elements), made when first asked for, so reading one allocates nothing
+//! after.
 //!
 //! The byte itself (`e.byte`, `Element.from_byte(n)`) is for the places the
 //! original holds an element as a number: where its registers carry the
@@ -20,11 +22,8 @@
 use std::cell::RefCell;
 
 use mlua::{AnyUserData, Lua, MetaMethod, UserData, UserDataFields, UserDataMethods, Value as LuaValue};
-
-/// The primary elements, by their number (the byte's low four bits): the
-/// five a chip or a navi has, and the sixth, the drain (the damage that
-/// passes barriers, holy panels and Undershirt: poison, the field's drain).
-pub const PRIMARY: [&str; 6] = ["null", "fire", "aqua", "elec", "wood", "drain"];
+use nettai_content_api::ChoiceKind;
+use nettai_content_api::api::PRIMARY_ELEMENTS;
 
 /// The secondary elements, by their bit.
 pub const SECONDARY: [(&str, u8); 4] = [("break", 0x10), ("wind", 0x20), ("cursor", 0x40), ("sword", 0x80)];
@@ -37,7 +36,7 @@ impl Element {
     /// The primary element's name (none: a number past the drain, which
     /// only a byte written from something else holds).
     pub fn primary(self) -> Option<&'static str> {
-        PRIMARY.get((self.0 & 0xF) as usize).copied()
+        PRIMARY_ELEMENTS.get((self.0 & 0xF) as usize).copied()
     }
 
     fn describe(self) -> String {
@@ -54,7 +53,7 @@ impl Element {
 
 impl UserData for Element {
     fn add_fields<F: UserDataFields<Self>>(fields: &mut F) {
-        fields.add_field_method_get("primary", |_, this| Ok(this.primary()));
+        fields.add_field_method_get("primary", |lua, this| primary_value(lua, this.0 & 0xF));
         fields.add_field_method_get("secondary", |lua, this| secondary_value(lua, this.0));
         fields.add_field_method_get("byte", |_, this| Ok(this.0));
     }
@@ -107,19 +106,18 @@ pub(crate) fn secondary_set(t: &mlua::Table, what: &str) -> mlua::Result<u8> {
     Ok(b)
 }
 
-/// A primary element's number, by its name.
-pub(crate) fn primary(name: &str) -> mlua::Result<u8> {
-    PRIMARY.iter().position(|n| *n == name).map(|i| i as u8).ok_or_else(|| {
-        mlua::Error::runtime(format!("{name:?} is not an element (null, fire, aqua, elec, wood, drain)"))
-    })
+/// The number of a primary element given as its value
+/// (`c:element_damage(PrimaryElement.fire)`): anything else, its name or an
+/// `Element` among them, is an error.
+pub(crate) fn primary_arg(v: &LuaValue, what: &str) -> mlua::Result<u8> {
+    crate::choice::arg(v, ChoiceKind::PrimaryElement, what).map(|c| c.index)
 }
 
-/// A primary element given by name (`c:element_damage("fire")`).
-pub(crate) fn primary_arg(v: &LuaValue, what: &str) -> mlua::Result<u8> {
-    match v {
-        LuaValue::String(s) => primary(&s.to_str()?).map_err(|e| mlua::Error::runtime(format!("{what}: {e}"))),
-        v => Err(mlua::Error::runtime(format!("{what}: an element is named (\"fire\"), not {}", v.type_name()))),
-    }
+/// The value of primary element `n` (a byte's low four bits, a damage
+/// slot): nil past the drain, which only a byte written from something else
+/// holds.
+pub(crate) fn primary_value(lua: &Lua, n: u8) -> mlua::Result<LuaValue> {
+    if (n as usize) < PRIMARY_ELEMENTS.len() { crate::choice::value_of(lua, ChoiceKind::PrimaryElement, n) } else { Ok(LuaValue::Nil) }
 }
 
 /// The values made so far, one per byte: the elements, then their
@@ -168,7 +166,7 @@ pub(crate) fn of(v: &LuaValue) -> Option<u8> {
 pub(crate) fn arg(v: &LuaValue, what: &str) -> mlua::Result<u8> {
     of(v).ok_or_else(|| {
         mlua::Error::runtime(format!(
-            "{what}: expected an Element (`Element.new(\"fire\")`, `Element.fire`), got {}",
+            "{what}: expected an Element (`Element.fire`, `Element.new(PrimaryElement.fire, {{ sword = true }})`), got {}",
             match v {
                 LuaValue::UserData(ud) => ud.type_name().map(|s| s.to_string_lossy()).unwrap_or_default(),
                 v => v.type_name().to_string(),
@@ -182,8 +180,8 @@ pub(crate) fn lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     let t = lua.create_table()?;
     t.set(
         "new",
-        lua.create_function(|lua, (p, s): (mlua::LuaString, Option<mlua::Table>)| {
-            let mut b = primary(&p.to_str()?)?;
+        lua.create_function(|lua, (p, s): (LuaValue, Option<mlua::Table>)| {
+            let mut b = primary_arg(&p, "Element.new's primary element")?;
             if let Some(s) = s {
                 b |= secondary_set(&s, "Element.new's secondary elements")?;
             }
@@ -202,7 +200,7 @@ pub(crate) fn lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             value(lua, b)
         })?,
     )?;
-    for (i, name) in PRIMARY.iter().enumerate() {
+    for (i, name) in PRIMARY_ELEMENTS.iter().enumerate() {
         t.set(*name, value(lua, i as u8)?)?;
     }
     // (A member it hasn't is an error, as the choices' tables' is; it is

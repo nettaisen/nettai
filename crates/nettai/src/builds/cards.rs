@@ -1,11 +1,11 @@
 //! An entry's effects as its game's card screen lists them (a patch card's
 //! `effects`): each effect record's line from the strings' text table
 //! `patch_card_effects`, keyed by the record's `kind` and the name of its
-//! one choice where it has one (a string field's value, or a definition's
-//! id: `body.fire`, `charged_shot.patch-cards/airman/charge`), its numbers
-//! put in by their field names (`HP+{amount}`, `{pair.slot}` a field of a
-//! table it holds); whether the card shows it as a bug is the record's
-//! `bug`, and the group the screen lists it in its `group` (the groups'
+//! one choice where it has one (a string field's value, a choice's name, or
+//! a definition's id: `body.fire`, `charged_shot.patch-cards/airman/charge`),
+//! its numbers put in by their field names (`HP+{amount}`, `{pair.slot}` a
+//! field of a table it holds); whether the card shows it as a bug is the
+//! record's `bug`, and the group the screen lists it in its `group` (the groups'
 //! names are the text table `patch_card_groups`). An effect that holds
 //! effects of its own (a table with an `effects` list: EXE4's two-part
 //! card's half) has its line and then theirs. An effect without a line is
@@ -216,7 +216,9 @@ mod tests {
         let none: Named = &|_, _| None;
         let hp = record(&[("kind", Data::Str("hp_add".into())), ("amount", Data::Int(150)), ("group", Data::Str("parameter".into()))]);
         assert_eq!(line(&hp, table, none), Some(Line { text: "HP+150".into(), bug: false, group: Some("parameter".into()) }));
-        let body = record(&[("kind", Data::Str("body".into())), ("element", Data::Str("fire".into()))]);
+        // (A body's element is a primary element, a choice: the key is its name.)
+        let fire = nettai_content_api::Choice::of(nettai_content_api::ChoiceKind::PrimaryElement, "fire").unwrap();
+        let body = record(&[("kind", Data::Str("body".into())), ("element", Data::Choice(fire))]);
         assert_eq!(key(&body).as_deref(), Some("body.fire"));
         let off = record(&[("kind", Data::Str("air_shoes".into())), ("on", Data::Bool(false)), ("bug", Data::Bool(true))]);
         assert_eq!(line(&off, table, none), Some(Line { text: "AirShoe".into(), bug: true, group: None }));

@@ -4325,10 +4325,7 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
         HookCall::Panel(PanelCall::Burn { body, player }) => vec![obj(body)?, LuaValue::Boolean(player)],
         HookCall::Panel(PanelCall::Stand { body } | PanelCall::Rest { body } | PanelCall::MoveEnd { body }) => vec![obj(body)?],
         HookCall::Panel(PanelCall::Slide { body, how }) => vec![obj(body)?, crate::choice::value_of(lua, ChoiceKind::SlideHow, how as u8)?],
-        HookCall::Panel(PanelCall::Hit { body, element }) => vec![
-            obj(body)?,
-            crate::element::PRIMARY.get(element as usize).map_or(Ok(LuaValue::Nil), |n| lua.create_string(n).map(LuaValue::String))?,
-        ],
+        HookCall::Panel(PanelCall::Hit { body, element }) => vec![obj(body)?, crate::element::primary_value(lua, element)?],
         HookCall::Panel(PanelCall::Tick { x, y } | PanelCall::Changed { x, y } | PanelCall::Start { x, y }) => {
             vec![LuaValue::Integer(mlua::Integer::from(x)), LuaValue::Integer(mlua::Integer::from(y))]
         }

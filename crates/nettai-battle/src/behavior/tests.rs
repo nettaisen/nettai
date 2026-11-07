@@ -1379,8 +1379,9 @@ fn content_errors_name_the_script() {
 fn the_binding_takes_names_for_the_words() {
     // What the names make.
     let good = [
-        "assert(Element.new(\"fire\", { sword = true }).byte == 0x81 and Element.from_byte(0x81) == Element.new(\"fire\", { sword = true }))",
-        "assert(Element.fire.primary == \"fire\" and Element.new(\"null\", { [\"break\"] = true }).secondary[\"break\"] and Element.from_byte(9).primary == nil)",
+        "assert(Element.new(PrimaryElement.fire, { sword = true }).byte == 0x81 and Element.from_byte(0x81) == Element.new(PrimaryElement.fire, { sword = true }))",
+        "assert(Element.fire.primary == PrimaryElement.fire and Element.new(PrimaryElement.null, { [\"break\"] = true }).secondary[\"break\"] and Element.from_byte(9).primary == nil)",
+        "assert(Element.from_byte(0x85).primary == PrimaryElement.drain and PrimaryElement.drain.name == \"drain\" and Element.new(PrimaryElement.drain) == Element.drain)",
         "assert(me.flip == false and me.facing_side == me.alliance)",
         "me.sprite.hidden_parts = { [6] = true }; assert(me.sprite.hidden_parts[6] and not me.sprite.hidden_parts[5])",
     ];
@@ -1389,9 +1390,11 @@ fn the_binding_takes_names_for_the_words() {
     }
     for (line, says) in [
         ("me.element = 1", "expected an Element"),
-        ("me.element = Element.new(\"fire\", { swrd = true })", "not a secondary element"),
-        ("me.element = Element.new(\"fire\", { sword = 1 })", "true or false"),
-        ("me.element = Element.new(\"heat\")", "not an element"),
+        ("me.element = Element.new(PrimaryElement.fire, { swrd = true })", "not a secondary element"),
+        ("me.element = Element.new(PrimaryElement.fire, { sword = 1 })", "true or false"),
+        ("me.element = Element.new(\"fire\")", "Element.new's primary element: expected a PrimaryElement (`PrimaryElement.null`), got the string \"fire\""),
+        ("me.element = Element.new(Element.fire)", "expected a PrimaryElement"),
+        ("local _ = PrimaryElement.heat", "PrimaryElement has no member \"heat\""),
         ("me.flip = 1", "expected a boolean"),
         ("me.sprite:face_side(2)", "a side is 0 or 1"),
         ("me.sprite.hidden_parts = { [2] = 1 }", "true or false"),
@@ -1404,7 +1407,9 @@ fn the_binding_takes_names_for_the_words() {
         ("me.lifecycle = DragStep.slide", "lifecycle: expected a Lifecycle (`Lifecycle.init`), got DragStep.slide"),
         ("custom.play(0, \"pick\")", "custom.play's sound: expected a ScreenSound"),
         ("local _ = DragStep.sliding", "DragStep has no member \"sliding\""),
-        ("me.collision:element_damage(1)", "an element is named"),
+        ("me.collision:element_damage(1)", "element_damage: expected a PrimaryElement"),
+        ("me.collision:add_damage(\"fire\", 1, false)", "add_damage: expected a PrimaryElement (`PrimaryElement.null`), got the string \"fire\""),
+        ("local _ = battle.weakness(PrimaryElement.fire, Element.aqua)", "battle.weakness's hitter: expected a PrimaryElement"),
         ("battle.effect(me.pos, nil :: any, 2)", "0 or 1"),
         ("battle.afterimage(me, me.pos, { flip = 1, lifetime = 1 })", "no field of an afterimage's spec"),
     ] {

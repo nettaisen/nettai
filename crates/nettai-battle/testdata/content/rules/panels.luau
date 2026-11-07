@@ -114,7 +114,7 @@ return {
             flags = { solid = true, on_field = true, sea = true },
             expires = 960,
             submerges = true,
-            stand = panel_types.drains("fire"),
+            stand = panel_types.drains(PrimaryElement.fire),
             move_end = panel_types.holds(20, new.effect { sprite = sprites["test-burst"], anim = 0, palette = 0, steps = 9 }),
             slide = panel_types.stops_a_slide,
         },

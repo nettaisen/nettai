@@ -67,9 +67,11 @@
 -- (`field.check`, `field.any`), each a side's own (`own_`) or the other side's
 -- (`enemy_`) where it is of a side. A set or condition a module keeps (a
 -- constant) is read once; one built at the call is read at each. An element
--- is a value made and read by names (`Element.new("fire", { sword = true })`,
--- `e.primary`), a turn a boolean (`me.flip`), a sprite's parts a view by
--- index, and a sentinel a value or nil (`Mood.full_synchro`, `Timer.holds`).
+-- is a value made and read by its primary element, a choice's value, and its
+-- secondary elements by name (`Element.new(PrimaryElement.fire, { sword =
+-- true })`, `e.primary`, `e.secondary.sword`), a turn a boolean (`me.flip`),
+-- a sprite's parts a view by index, and a sentinel a value or nil
+-- (`Mood.full_synchro`, `Timer.holds`).
 -- A choice the engine
 -- knows is a value of its table (`DragStep.slide`, `ChipClass.mega`: an
 -- extern type each, compared with `==`; a member a table hasn't is an
@@ -839,12 +841,22 @@ declare Vec3: {
     zero: Vec3,
 }
 
--- A primary element, by name: the five a chip or a navi has, and the drain (the sixth damage slot: what poison and a
--- field's drain deal, past barriers, holy panels and Undershirt).
-export type PrimaryElement = ElementName | "drain"
+-- A primary element: the five a chip or a navi has, and the drain (the sixth damage slot: what poison and a field's
+-- drain deal, past barriers, holy panels and Undershirt). A choice's value (`PrimaryElement.fire`): what an element's
+-- `primary` is, and what a damage slot, a weakness and a barrier's weak element take. A table keyed by elements is
+-- keyed by their names, and looked up by the value's (`palettes[e.primary.name]`).
+declare extern type PrimaryElement extends Choice with end
+declare PrimaryElement: {
+    null: PrimaryElement,
+    fire: PrimaryElement,
+    aqua: PrimaryElement,
+    elec: PrimaryElement,
+    wood: PrimaryElement,
+    drain: PrimaryElement,
+}
 -- An element: an attack's primary element and its secondary elements, as objects, attacks, navis and collisions
--- carry it (the original's element byte). A value: made by names, compared with `==`, passed whole (`o.element =
--- me.element`).
+-- carry it (the original's element byte). A value: made from its primary element and its secondary elements by name,
+-- compared with `==`, passed whole (`o.element = me.element`).
 declare extern type Element with
     -- Its primary element (nil: a number past the drain, which only an element written from another number holds).
     primary: PrimaryElement?
@@ -855,8 +867,8 @@ declare extern type Element with
     -- block). Nothing else reads it.
     byte: number
 end
--- The secondary elements, each true or false (`Element.new("null", { sword = true })`; written `["break"]`, a
--- keyword). Given whole, a name not one of them or a value not true or false is an error.
+-- The secondary elements, each true or false (`Element.new(PrimaryElement.null, { sword = true })`; written
+-- `["break"]`, a keyword). Given whole, a name not one of them or a value not true or false is an error.
 export type SecondaryElements = { ["break"]: boolean?, wind: boolean?, cursor: boolean?, sword: boolean? }
 
 declare Element: {
@@ -3294,9 +3306,6 @@ declare TrapKind: {
     anti_recovery: TrapKind,
 }
 
--- A chip family, by name: one of its game's (its rules' `elements.families`).
--- An element, by name.
-export type ElementName = "null" | "fire" | "aqua" | "elec" | "wood"
 -- A secondary element, by name: what a navi's or a form's `weakness` names (a hit of it is a weakness hit).
 export type SecondaryElement = "break" | "wind" | "cursor" | "sword"
 -- The chips a navi's or a form's rule is about: an element's, or a

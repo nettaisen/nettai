@@ -210,6 +210,8 @@ fn a_type_by_name_is_a_type_error() {
         kind("{ l = schema.list({ chip = schema.chip, code = schema.code }, 30), r = schema.role(SchemaRole.form_list, schema.array(schema.form, 5)) }"),
         "local T = schema.record_type(\"t\")\nlocal _ = new.record(T, { n = 1 })\nlocal _ = new.kind { pool = Pool.attack, update = function(me: Object) end, state = { t = T, e = schema.entry(Collection.patch_cards) } }".to_string(),
         "local _ = new.kind { pool = Pool.attack, update = function(me: Object) end, state = { look = obstacle.absorbed_look } }".to_string(),
+        kind("{ e = schema.choice(PrimaryElement) }"),
+        "local P: { [string]: number } = { fire = 1 }\nlocal function f(me: Object): number? local p = me.element.primary if p and p ~= PrimaryElement.drain and me.collision:element_damage(p) > 0 then return P[p.name] end return nil end\nlocal _ = f\nlocal _ = Element.new(PrimaryElement.null, { sword = true })".to_string(),
     ];
     for source in good {
         let problems = checker.check("good", &format!("--!strict\n{source}\n")).unwrap();
@@ -288,9 +290,14 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("local function f(me: Object) me.collision.secondary_element = 0x80 end", "the secondary elements' byte"),
         ("local function f(me: Object) local _ = me.collision.damage_elements == 0x20 end", "the secondary elements as bits"),
         ("local function f(me: Object) local _ = me.collision:element_damage(1) end", "a damage slot by number"),
-        ("local function f(me: Object) me.collision:add_damage(\"heat\", 1, false) end", "not a primary element"),
+        ("local function f(me: Object) me.collision:add_damage(\"fire\", 1, false) end", "a damage slot by name"),
+        ("local function f(me: Object) me.collision:add_damage(Element.fire, 1, false) end", "a damage slot by an element"),
         ("local _ = battle.weakness(1, 2)", "a weakness by element numbers"),
-        ("local _ = Element.new(\"fire\", { \"sword\" })", "secondary elements as a list"),
+        ("local _ = battle.weakness(\"fire\", \"aqua\")", "a weakness by element names"),
+        ("local _ = Element.new(\"fire\")", "a primary element by name"),
+        ("local _ = Element.new(PrimaryElement.fire, { \"sword\" })", "secondary elements as a list"),
+        ("local _ = PrimaryElement.heat", "not a primary element"),
+        ("local function f(me: Object) local _ = me.element.primary == \"fire\" end", "a primary element read as its name"),
         ("local function f(me: Object) me.sprite:set_flip(1) end", "the game's flip value"),
         ("local function f(me: Object) me.flip = 1 end", "a turn by number"),
         ("local function f(me: Object) battle.effect(me.pos, nil :: any, true) end", "an effect's facing as a boolean"),
@@ -299,6 +306,7 @@ fn misuse_of_the_core_api_is_a_type_error() {
         ("local function f(me: Object) local _ = me.collision.guard_dirs end", "the guard's directions as bits"),
         ("local _ = battle.navi(0).folder_1_regular + 1", "a folder entry that may be none"),
         ("local function f(me: Object) me:raise_barrier { behavior = \"plain\", hp = 1, threshold = 1, weak_element = 3 } end", "a barrier's weak element by number"),
+        ("local function f(me: Object) me:raise_barrier { behavior = BarrierBehavior.plain, hp = 1, threshold = 1, weak_element = \"fire\" } end", "a barrier's weak element by name"),
         ("local _: TrapKind = \"anti_dmg\"", "not a trap"),
         ("local _: ChipTrait = \"no_chains\"", "not a chip trait"),
         ("local _: ChipClass = \"dark\"", "not a chip class"),

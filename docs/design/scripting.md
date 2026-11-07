@@ -177,10 +177,12 @@ Conventions:
   Version.gregar, Version.falzar }`).
 - **Elements, turns, sprite parts and sentinels are values and names.** A definition's element is an `Element`
   value (`element = Element.fire`, the byte it is; the panel rules' `cleared_by` and `doubles` too). An element is a value (`Element`): made
-  by names (`Element.new("fire", { sword = true })`, `Element.fire`), read by names (`e.primary`,
-  `e.secondary.sword`), compared with `==` and passed whole (`o.element = me.element`); the binding keeps one per
-  byte, so reading one allocates nothing. A damage slot is a primary element by name (`c:element_damage("fire")`,
-  the sixth slot's `"drain"`). An object's turn is a boolean (`me.flip`) and the side whose way it faces a number
+  from its primary element, a choice's value, and its secondary elements by name (`Element.new(PrimaryElement.fire,
+  { sword = true })`, `Element.fire`), read the same way (`e.primary`, `e.secondary.sword`), compared with `==` and
+  passed whole (`o.element = me.element`); the binding keeps one per byte, so reading one allocates nothing. A damage
+  slot, a weakness's elements and a barrier's weak element are primary elements (`c:element_damage(PrimaryElement.fire)`,
+  the sixth slot's `PrimaryElement.drain`); a table keyed by elements is keyed by their names, and looked up by the
+  value's (`palettes[e.primary.name]`). A patch card's body is the navi's element (`cards.body(Element.wood)`). An object's turn is a boolean (`me.flip`) and the side whose way it faces a number
   (`me.facing_side`); a sprite faces an object's or a side's way (`sprite:face(me)`, `sprite:face_side(side)`)
   or is mirrored and turned upside down by booleans (`hflip`, `vflip`), an effect or an afterimage faces a side's
   way (`battle.effect(pos, fx, me.facing_side)`). A sprite's parts are a view by index (`sprite.hidden_parts[6] =

@@ -17,8 +17,8 @@
 use crate::api::{
     ACTOR_TYPES, AttackKind, BARRIER_BEHAVIORS, BARRIER_STATES, BUFFERED_MOVES, BlinkOut, CHARGE_LEVELS, CHARGE_SOURCES,
     DRAG_STEPS, DamageTaken, FightCycle, GAUGE_SPEEDS, Lifecycle, MOVE_DIRECTIONS, OVERLAY_STEPPINGS, ObstacleClass,
-    ObstacleCrush, ObstacleHold, ObstaclePush, ObstacleRemoval, PaletteFlashVariant, SLIDE_STEPS, SLIDE_TYPES, ScreenFade,
-    Shadow, SideSpecial, SpecialBonus, StepDirection, TakeDamageMode,
+    ObstacleCrush, ObstacleHold, ObstaclePush, ObstacleRemoval, PRIMARY_ELEMENTS, PaletteFlashVariant, SLIDE_STEPS,
+    SLIDE_TYPES, ScreenFade, Shadow, SideSpecial, SpecialBonus, StepDirection, TakeDamageMode,
 };
 use crate::host::{SlideAnswer, SlideHow};
 use crate::types::Pool;
@@ -180,6 +180,9 @@ choices! {
     Mood = &["full_synchro"];
     /// A count that is no number: it holds (0xFFFF).
     Timer = &["holds"];
+    /// A primary element (an element's low four bits, a damage slot): the
+    /// number is the member's place.
+    PrimaryElement = &PRIMARY_ELEMENTS;
 }
 
 /// A choice: its kind, and its member's place in the kind's list.

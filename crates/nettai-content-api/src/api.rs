@@ -95,6 +95,12 @@ pub const BARRIER_STATES: [&str; 3] = ["none", "up", "popped"];
 /// The custom gauge's speeds (NaviStats+0x08), by their byte.
 pub const GAUGE_SPEEDS: [&str; 3] = ["normal", "fast", "slow"];
 
+/// The primary elements, by their number (an element byte's low four bits,
+/// a collision's damage slots): the five a chip or a navi has, and the
+/// sixth, the drain (the damage that passes barriers, holy panels and
+/// Undershirt: poison, the field's drain).
+pub const PRIMARY_ELEMENTS: [&str; 6] = ["null", "fire", "aqua", "elec", "wood", "drain"];
+
 /// How a barrier behaves once raised (`sub_801A802` by the barrier byte):
 /// worn down and timed out (`plain`: Barrier, Barr100, Barr200, LifeAur,
 /// the auras), back with 1 HP 240 ticks after it is worn down and broken

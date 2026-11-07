@@ -16,7 +16,7 @@ cards_["test-stats"] = {
         cards.hp(30),
         cards.hp_percent(10),
         cards.attack(3),
-        cards.body("aqua"),
+        cards.body(Element.aqua),
         cards.bug(cards.hp_drain(2)),
     },
 }
