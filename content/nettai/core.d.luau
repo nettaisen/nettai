@@ -57,8 +57,8 @@
 -- list is a list only where its order counts (a stage's `layout` and
 -- `actors`, a chip's `codes`). A choice is one of its names, a literal union
 -- the checker holds content to (`me.lifecycle = "destroy"`,
--- `me:set_attack(action, "chip")`, `me:start_move("up")`); one a game names
--- (a panel type, an emotion) is checked against the game's own as it runs.
+-- `me:set_attack(action, "chip")`, `me:start_move("up")`); a name a game
+-- defines (a panel type, an emotion) is a value of its kind's table (below).
 -- Content holds no bit layout: the engine's bit values, offsets and the
 -- numbers it keeps a choice as stay in the engine, and a game's own layouts
 -- are declared once, in its rules. Collision types, hit results and panel
