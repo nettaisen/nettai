@@ -5,7 +5,7 @@ use super::{ai, ai_mut, battle_mode, form_of, navi_of, next_chip, own_gauges, st
 use crate::actor::{ActorStatus, Requests};
 use crate::battle::{Battle, BattleFlags};
 use nettai_content_api::ChipHandle;
-use crate::input::keys;
+use crate::input::Keys;
 use crate::object::ObjectRef;
 
 /// `sub_8012E74`: every tick before anything else. Nothing is decoded
@@ -115,12 +115,12 @@ fn decode(b: &mut Battle, r: ObjectRef) {
         if !chips_enabled(b, r) || f0.contains(Requests::CUT_IN) || next_chip(b, r).is_none() {
             return;
         }
-        if ai(b, r).dimmed_pad.pressed & keys::A != 0 {
+        if ai(b, r).dimmed_pad.pressed.contains(Keys::A) {
             ai_mut(b, r).requests.insert(Requests::CUT_IN);
         }
         return;
     }
-    if own_gauges(b) && ai(b, r).pad.pressed & keys::SELECT != 0 {
+    if own_gauges(b) && ai(b, r).pad.pressed.contains(Keys::SELECT) {
         let side = b.objects.get(r).alliance as usize;
         if b.sides[side].gauge >= 0x1500 {
             ai_mut(b, r).requests.insert(Requests::SELECT_SPECIAL);
@@ -135,7 +135,7 @@ fn decode(b: &mut Battle, r: ObjectRef) {
     decode_holds(b, r);
     decode_back_special(b, r);
     decode_buster(b, r, f0);
-    if battle_mode(b) == 9 && ai(b, r).pad.pressed & keys::A != 0 {
+    if battle_mode(b) == 9 && ai(b, r).pad.pressed.contains(Keys::A) {
         ai_mut(b, r).requests.insert(Requests::MODE9_A);
     }
     // A tick that asks no chip may ask a party's switch (the DS's
@@ -150,18 +150,18 @@ fn decode(b: &mut Battle, r: ObjectRef) {
 /// tick: returns true).
 fn decode_turn(b: &mut Battle, r: ObjectRef) -> bool {
     let pressed = ai(b, r).pad.pressed;
-    let lr = keys::L | keys::R;
+    let lr = Keys::L | Keys::R;
     if !ai(b, r).status.contains(ActorStatus::CAN_TURN) {
         // (A game whose fight reads the keys itself asks nothing here: the
         // flow's `custom_request`.)
         let asks = b.game_rules().flow.custom_request == crate::content::CustomRequest::NaviInput;
-        if asks && b.round.flags.contains(BattleFlags::GAUGE_FULL) && pressed & lr != 0 {
+        if asks && b.round.flags.contains(BattleFlags::GAUGE_FULL) && pressed.intersects(lr) {
             b.set_flags(BattleFlags::CUSTOM_REQUESTED);
             return true;
         }
         return false;
     }
-    if pressed & lr != 0 {
+    if pressed.intersects(lr) {
         let flipped = b.objects.get(r).flip != 0;
         let a = ai_mut(b, r);
         if flipped {
@@ -183,22 +183,22 @@ fn decode_holds(b: &mut Battle, r: ObjectRef) {
     let set = |b: &mut Battle, bits: Requests| ai_mut(b, r).requests.insert(bits);
     let clear = |b: &mut Battle, bits: Requests| ai_mut(b, r).requests.remove(bits);
     if !f.intersects(Requests::HOLDS) {
-        if a_chargeable(b, r) && held & keys::A != 0 {
+        if a_chargeable(b, r) && held.contains(Keys::A) {
             set(b, Requests::A_HELD);
-        } else if b_chargeable(b, r) && held & keys::B != 0 {
+        } else if b_chargeable(b, r) && held.contains(Keys::B) {
             set(b, Requests::B_HELD);
         }
     } else if f.contains(Requests::A_HELD) {
-        if pressed & keys::B != 0 {
+        if pressed.contains(Keys::B) {
             clear(b, Requests::A_HELD);
             set(b, Requests::B_HELD);
-        } else if !(a_chargeable(b, r) && held & keys::A != 0) {
+        } else if !(a_chargeable(b, r) && held.contains(Keys::A)) {
             clear(b, Requests::HOLDS);
         }
-    } else if a_chargeable(b, r) && pressed & keys::A != 0 {
+    } else if a_chargeable(b, r) && pressed.contains(Keys::A) {
         clear(b, Requests::B_HELD);
         set(b, Requests::A_HELD);
-    } else if !(b_chargeable(b, r) && held & keys::B != 0) {
+    } else if !(b_chargeable(b, r) && held.contains(Keys::B)) {
         clear(b, Requests::HOLDS);
     }
 }
@@ -212,14 +212,14 @@ fn decode_back_special(b: &mut Battle, r: ObjectRef) {
     let (pressed, held) = (a.pad.pressed, a.pad.held);
     let mut window = a.back_special_window;
     if window == 0 {
-        if pressed & keys::B == 0 {
+        if !pressed.contains(Keys::B) {
             return;
         }
         window = 8;
     }
-    let back = if b.objects.get(r).flip != 0 { keys::RIGHT } else { keys::LEFT };
+    let back = if b.objects.get(r).flip != 0 { Keys::RIGHT } else { Keys::LEFT };
     let a = ai_mut(b, r);
-    if pressed & back != 0 && held & keys::B != 0 {
+    if pressed.intersects(back) && held.contains(Keys::B) {
         a.requests.insert(Requests::BACK_SPECIAL);
         a.back_special_window = 0;
     } else {
@@ -251,7 +251,7 @@ fn decode_buster(b: &mut Battle, r: ObjectRef, f0: Requests) {
     } else {
         a.pad.pressed
     };
-    if edge & keys::B == 0 {
+    if !edge.contains(Keys::B) {
         return;
     }
     let bit = if a.charge_source != 2 || a.charge_level != 2 {
@@ -276,7 +276,7 @@ fn decode_chip(b: &mut Battle, r: ObjectRef, f0: Requests) -> bool {
         return false;
     }
     let edge = if a_chargeable(b, r) { ai(b, r).pad.released } else { ai(b, r).pad.pressed };
-    if edge & keys::A == 0 {
+    if !edge.contains(Keys::A) {
         return false;
     }
     let a = ai_mut(b, r);
@@ -337,7 +337,7 @@ fn decode_per_button(b: &mut Battle, r: ObjectRef) {
         if !chips_enabled(b, r) || f0.contains(Requests::CUT_IN) || next_chip(b, r).is_none() {
             return;
         }
-        if ai(b, r).dimmed_pad.pressed & keys::A != 0 {
+        if ai(b, r).dimmed_pad.pressed.contains(Keys::A) {
             ai_mut(b, r).requests.insert(Requests::CUT_IN);
         }
         return;
@@ -355,7 +355,7 @@ fn decode_per_button(b: &mut Battle, r: ObjectRef) {
         return;
     }
     let edge = if chip_charges_on_a(b, r) { ai(b, r).pad.released } else { pressed };
-    if edge & keys::A == 0 {
+    if !edge.contains(Keys::A) {
         return;
     }
     let full = source == 1 && level == 2;
@@ -370,7 +370,7 @@ fn decode_b(b: &mut Battle, r: ObjectRef, f0: Requests) {
         let a = ai(b, r);
         (a.pad.pressed, a.pad.released, a.charge_source, a.charge_level)
     };
-    if !f0.intersects(Requests::BUSTER | Requests::CHARGED_SHOT) && released & keys::B != 0 {
+    if !f0.intersects(Requests::BUSTER | Requests::CHARGED_SHOT) && released.contains(Keys::B) {
         let full = source == 2 && level == 2;
         let a = ai_mut(b, r);
         a.requests.insert(if full { Requests::CHARGED_SHOT } else { Requests::BUSTER });
@@ -383,7 +383,7 @@ fn decode_b(b: &mut Battle, r: ObjectRef, f0: Requests) {
         && !f0.contains(Requests::FORCED_CHARGED_SHOT)
     {
         let a = ai_mut(b, r);
-        if pressed & keys::B != 0 {
+        if pressed.contains(Keys::B) {
             a.rapid_presses = a.rapid_presses.wrapping_add(1);
             a.rapid_window = rapid.window;
         }
@@ -402,12 +402,12 @@ fn decode_b(b: &mut Battle, r: ObjectRef, f0: Requests) {
     let a = ai(b, r);
     if a.back_special.is_some() && a.back_special_cooldown == 0 {
         let mut window = a.back_special_window;
-        if window != 0 || pressed & keys::B != 0 {
+        if window != 0 || pressed.contains(Keys::B) {
             if window == 0 {
                 window = 8;
             }
             let a = ai_mut(b, r);
-            if pressed & keys::LEFT != 0 {
+            if pressed.contains(Keys::LEFT) {
                 a.requests.insert(Requests::BACK_SPECIAL);
                 a.back_special_window = 0;
             } else {
@@ -450,11 +450,11 @@ fn accumulate_per_button(b: &mut Battle, r: ObjectRef) {
     let chip = next_chip(b, r).is_some();
     // 0x0800BBDA: by the source charging last tick.
     let next = match source {
-        0 if held & keys::B != 0 => 2,
-        1 if pressed & keys::B != 0 => 2,
-        0 | 1 if chip && held & keys::A != 0 => 1,
-        2.. if chip && pressed & keys::A != 0 => 1,
-        2.. if held & keys::B != 0 => 2,
+        0 if held.contains(Keys::B) => 2,
+        1 if pressed.contains(Keys::B) => 2,
+        0 | 1 if chip && held.contains(Keys::A) => 1,
+        2.. if chip && pressed.contains(Keys::A) => 1,
+        2.. if held.contains(Keys::B) => 2,
         _ => return super::reset_charge_counters(b, r),
     };
     let counts = if next == 2 { ai(b, r).charge_shot.is_some() } else { chip_charges_on_a(b, r) };

@@ -390,7 +390,7 @@ mod tests {
             }
             let input = [0, 1].map(|side| {
                 last[side] = crate::scenario::custom_choice(&b, side, last[side]);
-                PlayerTick::buttons(0).with_choice(last[side])
+                PlayerTick::buttons(crate::input::Keys::empty()).with_choice(last[side])
             });
             b.tick(&input, TickEvents::default());
         }

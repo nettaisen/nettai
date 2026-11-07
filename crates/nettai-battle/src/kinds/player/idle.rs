@@ -13,7 +13,7 @@ use super::{
 use crate::actor::{ActorStatus, Requests};
 use crate::battle::Battle;
 use crate::collision::StatusFlags;
-use crate::input::keys;
+use crate::input::Keys;
 use crate::object::ObjectRef;
 use nettai_content_api::{ChipHandle, WeaponHandle};
 
@@ -608,20 +608,22 @@ pub(crate) fn held_direction(b: &Battle, r: ObjectRef) -> u8 {
     use crate::content::StepKey;
     let steps = &b.game_rules().effects.steps;
     let bit = |k: StepKey| match k {
-        StepKey::Up => keys::UP,
-        StepKey::Down => keys::DOWN,
-        StepKey::Left => keys::LEFT,
-        StepKey::Right => keys::RIGHT,
+        StepKey::Up => Keys::UP,
+        StepKey::Down => Keys::DOWN,
+        StepKey::Left => Keys::LEFT,
+        StepKey::Right => Keys::RIGHT,
     };
     let sliding = flag1(b, r).contains(StatusFlags::SLIDING);
-    let held = if sliding { 0 } else { ai(b, r).pad.held };
-    let Some(&key) = steps.keys.iter().find(|&&k| held & bit(k) != 0) else {
-        // No key held (or sliding): the move bug's keys, as they are.
+    let held = if sliding { Keys::empty() } else { ai(b, r).pad.held };
+    let Some(&key) = steps.keys.iter().find(|&&k| held.contains(bit(k))) else {
+        // No key held (or sliding): the move bug's keys, as they are (a
+        // byte of KEYINPUT bits; 0xFF confused).
         let bug = move_bug(b, r);
         if bug == 0 || bug == 0xFF {
             return 0;
         }
-        return steps.keys.iter().find(|&&k| bug as u16 & bit(k) != 0).map_or(0, |&k| direction_code(k));
+        let bug = Keys::from_bits_retain(bug as u16);
+        return steps.keys.iter().find(|&&k| bug.contains(bit(k))).map_or(0, |&k| direction_code(k));
     };
     let key = if flag1(b, r).contains(StatusFlags::CONFUSED) {
         let c = steps.confused;

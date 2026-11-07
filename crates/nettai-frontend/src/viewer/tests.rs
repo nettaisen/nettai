@@ -2,6 +2,7 @@ use super::*;
 use crate::Player;
 use crate::game::Enhancements;
 use crate::player::FRAME_RATE;
+use nettai_battle::input::Keys;
 use crate::testing::{audio, graphics, recorded};
 
 /// What playing a replay straight through shows and makes, tick by tick,
@@ -28,7 +29,7 @@ fn straight(content: &Arc<Content>, replay: &Replay, view: u8) -> Straight {
         s.pictures.push(p.frame().pixels);
         s.huds.push(format!("{:?}", p.renderer().hud_state));
         s.sounds.push(sound);
-        if !p.tick(0) {
+        if !p.tick(Keys::empty()) {
             break;
         }
     }
@@ -674,7 +675,7 @@ fn the_sound_follows_the_speed() {
 #[test]
 fn a_recorded_start_asks_a_viewer_for_nothing() {
     use nettai_battle::battle::{fight, mode};
-    use nettai_battle::input::keys;
+    use nettai_battle::input::Keys;
     let content = nettai_match::testing::exe6_content();
     // START held through the first three ticks of each round's fight.
     let (mut fought, mut pressed) = (0, Vec::new());
@@ -682,18 +683,18 @@ fn a_recorded_start_asks_a_viewer_for_nothing() {
         let fighting = b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING;
         fought = if fighting { fought + 1 } else { 0 };
         if !(1..=3).contains(&fought) {
-            return 0;
+            return Keys::empty();
         }
         pressed.push(tick);
-        keys::START
+        Keys::START
     });
     let length = ticks as u32;
-    assert!(pressed.len() >= 6 && pressed.iter().all(|&t| replay.ticks[t as usize].inputs[0] & u32::from(keys::START) != 0), "{pressed:?}");
+    assert!(pressed.len() >= 6 && pressed.iter().all(|&t| replay.ticks[t as usize].inputs[0] & Keys::START.bits() as u32 != 0), "{pressed:?}");
     // A player playing it straight is asked again, once a press.
     let driver = ReplayPlayer::new(&content, &replay, Some(0)).unwrap();
     let mut p = Player::with(graphics(&content, 0x001F).renderer(Enhancements::NONE, None), None, None, Box::new(driver));
     let mut asked = Vec::new();
-    while p.tick(0) {
+    while p.tick(Keys::empty()) {
         match p.take_pause_requests() {
             [true, false] => asked.push(p.ticks() as u32 - 1),
             other => assert_eq!(other, [false; 2]),

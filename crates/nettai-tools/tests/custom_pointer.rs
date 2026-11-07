@@ -8,6 +8,7 @@
 //! cursor to its slot), the tab opens the form list and closes it, so does its exit label and a click off its window,
 //! a click on OK sends; in EXE6 a click on the Cross chosen un-chooses it, the picks kept.
 
+use nettai_battle::input::Keys;
 use nettai_battle::custom::layer::{ListStage, Target};
 use nettai_battle::custom::{Phase, SlotKind};
 use nettai_battle::{PlayerTick, ScreenChoice};
@@ -61,7 +62,7 @@ fn to_choosing(p: &mut Player, size: (usize, usize), label: &str) {
         if choosing && !targets(p).is_empty() && p.layers()[0].is_some_and(|l| !l.is_up()) {
             return;
         }
-        assert!(p.tick(0), "{label}: the battle stopped");
+        assert!(p.tick(Keys::empty()), "{label}: the battle stopped");
     }
     panic!("{label}: no custom screen to choose on");
 }
@@ -162,7 +163,7 @@ fn pointer_plays(name: &str, file: &str) {
         // A click on the first chip picks it; its pick is then a target, whose click takes it back.
         let chip = middle(box_of(&mut p, Target::Slot(0)));
         point_click(&mut p, chip);
-        p.tick(0);
+        p.tick(Keys::empty());
         draw(&mut p, size);
         assert_eq!(p.battle().presented(0).unwrap().screen.selection(), [0], "{label}: a click picks");
         assert_eq!(p.layers()[0].unwrap().cursor, 0);
@@ -175,18 +176,18 @@ fn pointer_plays(name: &str, file: &str) {
         });
         if let Some(second) = second {
             click_on(&mut p, Target::Slot(second));
-            p.tick(0);
+            p.tick(Keys::empty());
             draw(&mut p, size);
             assert_eq!(p.battle().presented(0).unwrap().screen.selection(), [0, second], "{label}: a second click picks");
             click_on(&mut p, Target::Pick(0));
-            p.tick(0);
+            p.tick(Keys::empty());
             draw(&mut p, size);
             assert_eq!(p.battle().presented(0).unwrap().screen.selection(), [second], "{label}: a click on the first pick takes it alone back");
             assert_eq!(p.layers()[0].unwrap().cursor, 0, "{label}: the cursor on the slot the pick went back to");
         }
         while !p.battle().presented(0).unwrap().screen.selection().is_empty() {
             click_on(&mut p, Target::Pick(0));
-            p.tick(0);
+            p.tick(Keys::empty());
             draw(&mut p, size);
         }
         // The form list's tab, where the game has one: a click opens the list; its entries are the targets, each
@@ -195,7 +196,7 @@ fn pointer_plays(name: &str, file: &str) {
         if let Some(tab) = targets(&mut p).into_iter().find(|(t, _)| *t == Target::FormTab).map(|(_, r)| middle(r)) {
             point_click(&mut p, tab);
             let up = (0..60).any(|_| {
-                p.tick(0);
+                p.tick(Keys::empty());
                 draw(&mut p, size);
                 matches!(p.layers()[0].unwrap().list_stage(), Some(ListStage::Up(n)) if n > 1)
             });
@@ -206,7 +207,7 @@ fn pointer_plays(name: &str, file: &str) {
             let tab = middle(box_of(&mut p, Target::FormTab));
             point_click(&mut p, tab);
             let closed = (0..60).any(|_| {
-                p.tick(0);
+                p.tick(Keys::empty());
                 p.layers()[0].unwrap().list_stage().is_none()
             });
             assert!(closed, "{label}: the tab again closes the form list");
@@ -215,7 +216,7 @@ fn pointer_plays(name: &str, file: &str) {
             let tab = middle(box_of(&mut p, Target::FormTab));
             point_click(&mut p, tab);
             let up = (0..60).any(|_| {
-                p.tick(0);
+                p.tick(Keys::empty());
                 draw(&mut p, size);
                 matches!(p.layers()[0].unwrap().list_stage(), Some(ListStage::Up(n)) if n > 1)
             });
@@ -223,7 +224,7 @@ fn pointer_plays(name: &str, file: &str) {
             let exit = box_of(&mut p, Target::FormExit);
             point_click(&mut p, middle(exit));
             let closed = (0..60).any(|_| {
-                p.tick(0);
+                p.tick(Keys::empty());
                 p.layers()[0].unwrap().list_stage().is_none()
             });
             assert!(closed, "{label}: B:EXIT closes the form list");
@@ -233,7 +234,7 @@ fn pointer_plays(name: &str, file: &str) {
             let tab = middle(box_of(&mut p, Target::FormTab));
             point_click(&mut p, tab);
             let up = (0..60).any(|_| {
-                p.tick(0);
+                p.tick(Keys::empty());
                 draw(&mut p, size);
                 matches!(p.layers()[0].unwrap().list_stage(), Some(ListStage::Up(n)) if n > 1)
             });
@@ -242,7 +243,7 @@ fn pointer_plays(name: &str, file: &str) {
             assert_eq!((entry.x, entry.w), (exit.x, exit.w), "{label}: an entry's row spans the window");
             point_click(&mut p, chip);
             let closed = (0..60).any(|_| {
-                p.tick(0);
+                p.tick(Keys::empty());
                 p.layers()[0].unwrap().list_stage().is_none()
             });
             assert!(closed, "{label}: a click off the window closes the form list");
@@ -252,8 +253,8 @@ fn pointer_plays(name: &str, file: &str) {
         // A click on OK sends the hand.
         let ok = middle(box_of(&mut p, Target::Slot(10)));
         point_click(&mut p, ok);
-        p.tick(0);
-        p.tick(0);
+        p.tick(Keys::empty());
+        p.tick(Keys::empty());
         assert_ne!(p.battle().presented(0).map(|s| s.screen.phase), Some(Phase::Choosing), "{label}: a click on OK sends");
         println!("{label}: {checked} targets clicked; the first of two picks taken back: {}", second.is_some());
     }
@@ -281,7 +282,7 @@ fn exe4_by_pointer() {
 fn open_form_list(p: &mut Player, size: (usize, usize), label: &str) {
     click_on(p, Target::FormTab);
     let up = (0..60).any(|_| {
-        p.tick(0);
+        p.tick(Keys::empty());
         draw(p, size);
         matches!(p.layers()[0].unwrap().list_stage(), Some(ListStage::Up(n)) if n > 1)
     });
@@ -299,14 +300,14 @@ fn exe6_unchoosing_a_cross_keeps_the_picks() {
     let mut p = player(&game, "custom_pointer/m6.toml");
     to_choosing(&mut p, size, label);
     click_on(&mut p, Target::Slot(0));
-    p.tick(0);
+    p.tick(Keys::empty());
     draw(&mut p, size);
     assert_eq!(p.battle().presented(0).unwrap().screen.selection(), [0]);
     open_form_list(&mut p, size, label);
     click_on(&mut p, Target::Form(0));
     // The Cross's window plays; then the screen chooses again.
     let chosen = (0..120).any(|_| {
-        p.tick(0);
+        p.tick(Keys::empty());
         draw(&mut p, size);
         let s = p.battle().presented(0).unwrap().screen;
         s.phase == Phase::Choosing && s.form.is_some() && p.layers()[0].unwrap().list_stage().is_none()
@@ -318,8 +319,8 @@ fn exe6_unchoosing_a_cross_keeps_the_picks() {
     let (_, choice, _) = click(&mut p, entry);
     assert_eq!(choice, Some(ScreenChoice::Unchoose), "{label}: a click on the Cross chosen");
     click_on(&mut p, Target::Form(0));
-    p.tick(0);
-    p.tick(0);
+    p.tick(Keys::empty());
+    p.tick(Keys::empty());
     let s = p.battle().presented(0).unwrap().screen;
     assert_eq!((s.selection(), s.form), (&[0u8][..], None), "{label}: the Cross un-chosen, the pick kept");
     assert_eq!(p.battle().form_list(0).and_then(|l| l.chosen), None);
@@ -354,7 +355,7 @@ fn the_cursor_on_a_pick_is_drawn_there() {
             let mut p = player(&game, file);
             to_choosing(&mut p, size, &label);
             click_on(&mut p, Target::Slot(0));
-            p.tick(0);
+            p.tick(Keys::empty());
             draw(&mut p, size);
             let pick = box_of(&mut p, Target::Pick(0));
             let cursor = p.layers()[0].unwrap().cursor;
@@ -385,13 +386,13 @@ fn a_long_press_describes() {
     let e = |kind| PointerEvent { kind, button: PointerButton::Primary, x: chip.0, y: chip.1 };
     p.point(e(PointerKind::Down));
     let described = (0..nettai_frontend::pointer::LONG_PRESS + 5).any(|_| {
-        p.tick(0);
+        p.tick(Keys::empty());
         p.layers()[0].unwrap().chatbox().is_some()
     });
     assert!(described, "a long press describes");
     assert_eq!(p.layers()[0].unwrap().cursor, 2, "the press put the cursor there");
     p.point(e(PointerKind::Up));
-    p.tick(0);
+    p.tick(Keys::empty());
     assert!(p.battle().presented(0).unwrap().screen.selection().is_empty(), "its letting go picks nothing");
 }
 
@@ -412,7 +413,7 @@ fn the_pointer_away_shows_nothing_selected() {
             assert_eq!(p.renderer().target_at(0, off.0 as i32, off.1 as i32), None, "{label}: nothing at {off:?}");
             let moved = |p: &mut Player, (x, y): (f32, f32)| {
                 p.point(PointerEvent { kind: PointerKind::Moved, button: PointerButton::Primary, x, y });
-                p.tick(0);
+                p.tick(Keys::empty());
                 draw(p, size);
             };
             moved(&mut p, chip);

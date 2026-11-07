@@ -8,6 +8,7 @@
 //! The window's rendering is the app's clock: [`App::frame`] runs before each frame is drawn (docs/app.md §1).
 
 use crate::battle::{Battle, Loading};
+use crate::input::Buttons;
 use crate::errors::UserError;
 use crate::games::{Games, Notice, Ready, State};
 use crate::input::{Action, Bindings, KeyPress, Keys, Pad, Scroll, menu_action, scroll_key};
@@ -15,7 +16,6 @@ use crate::nav::{Did, Direction, Key, Nav, Rect};
 use crate::screens::{self, Screen, ScreenId};
 use crate::settings::Settings;
 use crate::sound::{Cue, Sound};
-use nettai_battle::input::keys;
 use nettai_frontend::game::Enhancements;
 use nettai_dialogs::Filter;
 use crate::page::text_entry::Entry;
@@ -240,7 +240,7 @@ pub struct Shell {
     /// The GBA buttons the on-screen pad holds.
     pub touch: crate::input::TouchPad,
     /// The on-screen pad's buttons as the UI was last told they are held.
-    pad_shown: u16,
+    pad_shown: Buttons,
     /// The language shown: its code and its rules (capitals, lists), made when it was chosen (`lang::select`).
     pub i18n: Rc<crate::lang::I18n>,
     pub scale: Scale,
@@ -595,7 +595,7 @@ impl Shell {
         let held = self.touch.held();
         if held != self.pad_shown {
             self.pad_shown = held;
-            let buttons: Vec<bool> = (0..16).map(|bit| held & 1 << bit != 0).collect();
+            let buttons: Vec<bool> = (0..16).map(|bit| held.contains(Buttons::from_bits_retain(1 << bit))).collect();
             self.ui().global::<nettai_ui::Shell>().set_pad_held(ModelRc::new(VecModel::from(buttons)));
         }
     }
@@ -612,8 +612,8 @@ impl Shell {
     fn show_bindings(&self) {
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
-        shell.set_key_l(crate::input::key_cap(self.bindings.key(keys::L)).into());
-        shell.set_key_r(crate::input::key_cap(self.bindings.key(keys::R)).into());
+        shell.set_key_l(crate::input::key_cap(self.bindings.key(Buttons::L)).into());
+        shell.set_key_r(crate::input::key_cap(self.bindings.key(Buttons::R)).into());
         // (The keys that confirm and go back are Enter and Esc; the pad's, the buttons bound to A and B.)
         shell.set_key_a("Enter".into());
         shell.set_key_b("Esc".into());
@@ -1128,7 +1128,7 @@ impl App {
             pad: Pad::start(),
             bindings,
             touch: Default::default(),
-            pad_shown: 0,
+            pad_shown: Buttons::empty(),
             i18n,
             scale: Scale { os: 1.0, unit: 1.0, ..Scale::default() },
             sharp: std::env::var_os("NETTAI_PHYSICAL_PIXELS").is_some(),
@@ -1749,7 +1749,7 @@ impl App {
             TouchPhase::Ended | TouchPhase::Cancelled => self.shell.touch.up(finger),
         };
         // (A button newly held is a press, timed as a key's is.)
-        if self.shell.touch.held() & !before != 0 {
+        if self.shell.touch.held().intersects(!before) {
             self.shell.keys.pressed.push(Instant::now());
             self.shell.nav.used_pointer();
         }
@@ -1798,7 +1798,7 @@ impl App {
         let (shift, bindings) = (self.shell.shift, &self.shell.bindings);
         scroll_key(code, shift).is_some()
             || menu_action(code, shift, bindings).is_some_and(Action::repeats)
-            || (self.shell.battle_has_keys() && self.shell.keys_kept() && matches!(bindings.of_key(code), Some(keys::UP | keys::DOWN)))
+            || (self.shell.battle_has_keys() && self.shell.keys_kept() && matches!(bindings.of_key(code), Some(Buttons::UP | Buttons::DOWN)))
     }
 
     /// The move key held, repeated on the app's clock (`Keys::moving`), while no text field is being edited.
@@ -1829,8 +1829,8 @@ impl App {
                     return true;
                 }
                 let action = match self.shell.bindings.of_key(code) {
-                    Some(keys::UP) => Some(Action::Up),
-                    Some(keys::DOWN) => Some(Action::Down),
+                    Some(Buttons::UP) => Some(Action::Up),
+                    Some(Buttons::DOWN) => Some(Action::Down),
                     _ => menu_action(code, self.shell.shift, &self.shell.bindings),
                 };
                 if let Some(action) = action {
@@ -2315,12 +2315,12 @@ impl App {
             return;
         }
         if down {
-            if self.shell.keys.held & keys::RIGHT == 0 {
+            if !self.shell.keys.held.contains(Buttons::RIGHT) {
                 self.shell.keys.pressed.push(Instant::now());
             }
-            self.shell.keys.held |= keys::RIGHT;
+            self.shell.keys.held.insert(Buttons::RIGHT);
         } else {
-            self.shell.keys.held &= !keys::RIGHT;
+            self.shell.keys.held.remove(Buttons::RIGHT);
         }
     }
 

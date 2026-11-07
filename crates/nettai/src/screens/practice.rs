@@ -325,7 +325,7 @@ struct Session {
     menu_open: bool,
     /// What the UI was last told: the round, and the buttons each side holds.
     round: Option<u8>,
-    held: [u16; 2],
+    held: [nettai_battle::input::Keys; 2],
 }
 
 /// The practice menu's rows, in order, under whatever rows another screen added: each group's title, then its
@@ -667,7 +667,7 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
         menu_at_start: start.menu,
         menu_open: false,
         round: None,
-        held: [0; 2],
+        held: [nettai_battle::input::Keys::empty(); 2],
     };
     let rows: Vec<PracticeRow> = start
         .rows
@@ -1329,7 +1329,7 @@ impl Practice {
                     shell.practice.visit.menu.inputs = next == 1;
                     // (What each side holds is told from the next frame.)
                     session.inputs = next == 1;
-                    session.held = [0; 2];
+                    session.held = [nettai_battle::input::Keys::empty(); 2];
                     let ui = shell.ui();
                     let view = ui.global::<PracticeView>();
                     view.set_inputs(next == 1);
@@ -1534,7 +1534,7 @@ impl Screen for Practice {
         if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice && (apart || b.stage.player.live().is_some_and(|l| l.opponent().in_fight == InFight::SecondPad))) {
             let playing = b.playing();
             if let Some(live) = b.stage.player.live_mut() {
-                live.set_second_pad(held.map(|h| if playing { h & !crate::input::SWITCHES } else { 0 }));
+                live.set_second_pad(held.map(|h| if playing { h.keys() } else { nettai_battle::input::Keys::empty() }));
             }
         }
         // Its menu opens on RESUME, every time (the user: "when opening the pause menu in training, focus should
@@ -1573,7 +1573,7 @@ impl Screen for Practice {
         // (The round's number is counted as the round opens: before its first tick it is the one before.)
         let round = battle.round.round.max(1);
         // (Under the menu the battle takes no button, and the dummy's go nowhere: nothing is shown held.)
-        let held = if session.inputs && !b.menu_open() { [0, 1].map(|side| battle.inputs[side].held & 0x3FF) } else { [0; 2] };
+        let held = if session.inputs && !b.menu_open() { [0, 1].map(|side| battle.inputs[side].held & nettai_battle::input::Keys::BUTTONS) } else { [nettai_battle::input::Keys::empty(); 2] };
         let (new_round, pressed) = (session.round != Some(round), session.held != held);
         if !new_round && !pressed {
             return;
@@ -1585,8 +1585,9 @@ impl Screen for Practice {
             ui.global::<nettai_ui::Shell>().set_battle_note(view.invoke_round_note(round as i32));
         }
         if pressed {
-            view.set_held_yours(held[0] as i32);
-            view.set_held_dummys(held[1] as i32);
+            // (The UI draws them by bit.)
+            view.set_held_yours(held[0].bits() as i32);
+            view.set_held_dummys(held[1].bits() as i32);
         }
     }
 }

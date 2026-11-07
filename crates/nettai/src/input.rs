@@ -14,40 +14,65 @@
 
 use crate::nav::Rect;
 use nettai_gamepad::{Axis, Button, EventKind, Id};
-use nettai_battle::input::{Joypad, keys};
+use nettai_battle::input::{Joypad, Keys as GbaKeys};
 use nettai_frontend::player::time_of;
 use i_slint_backend_winit::winit::event::{ElementState, KeyEvent};
 use i_slint_backend_winit::winit::keyboard::{KeyCode, PhysicalKey};
 use web_time::Instant;
 
-/// A party battle's switch to the member the left of the party panel's two buttons names (EXE5 DS's Y, docs/design/
-/// exe5ds-map.md §4.2): a button of the app's own, past the GBA's ten bits, which the battle never sees as a button
-/// (`crate::battle`'s frame asks the switch of the player: `Player::ask_switch`).
-pub const SWITCH_LEFT: u16 = 1 << 14;
-/// The switch to the member the right button names (EXE5 DS's X).
-pub const SWITCH_RIGHT: u16 = 1 << 15;
-/// Both switches.
-pub const SWITCHES: u16 = SWITCH_LEFT | SWITCH_RIGHT;
+bitflags::bitflags! {
+    /// The battle's buttons as the app binds and holds them: the GBA's ten (`nettai_battle::input::Keys`, the same
+    /// bits), and the party battle's two switches, buttons of the app's own past the GBA's ten bits, which the battle
+    /// never sees as buttons (`crate::battle`'s frame asks the switch of the player: `Player::ask_switch`).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct Buttons: u16 {
+        const A = GbaKeys::A.bits();
+        const B = GbaKeys::B.bits();
+        const SELECT = GbaKeys::SELECT.bits();
+        const START = GbaKeys::START.bits();
+        const RIGHT = GbaKeys::RIGHT.bits();
+        const LEFT = GbaKeys::LEFT.bits();
+        const UP = GbaKeys::UP.bits();
+        const DOWN = GbaKeys::DOWN.bits();
+        const R = GbaKeys::R.bits();
+        const L = GbaKeys::L.bits();
+        /// A party battle's switch to the member the left of the party panel's two buttons names (EXE5 DS's Y,
+        /// docs/design/exe5ds-map.md §4.2).
+        const SWITCH_LEFT = 1 << 14;
+        /// The switch to the member the right button names (EXE5 DS's X).
+        const SWITCH_RIGHT = 1 << 15;
+        /// Both switches.
+        const SWITCHES = Self::SWITCH_LEFT.bits() | Self::SWITCH_RIGHT.bits();
+        const _ = !0;
+    }
+}
+
+impl Buttons {
+    /// The GBA's buttons of them, as the battle takes them.
+    pub fn keys(self) -> GbaKeys {
+        GbaKeys::from_bits_retain(self.bits()) & GbaKeys::BUTTONS
+    }
+}
 
 /// The battle's buttons, in the order the settings list them, each with its name in the settings' file: the GBA's,
-/// then the party battle's two switches (the app's own bits: [`SWITCH_LEFT`], [`SWITCH_RIGHT`]).
-pub const BUTTONS: [(u16, &str); 12] = [
-    (keys::UP, "up"),
-    (keys::DOWN, "down"),
-    (keys::LEFT, "left"),
-    (keys::RIGHT, "right"),
-    (keys::A, "a"),
-    (keys::B, "b"),
-    (keys::L, "l"),
-    (keys::R, "r"),
-    (keys::START, "start"),
-    (keys::SELECT, "select"),
-    (SWITCH_LEFT, "switch-left"),
-    (SWITCH_RIGHT, "switch-right"),
+/// then the party battle's two switches (the app's own: [`Buttons::SWITCH_LEFT`], [`Buttons::SWITCH_RIGHT`]).
+pub const BUTTONS: [(Buttons, &str); 12] = [
+    (Buttons::UP, "up"),
+    (Buttons::DOWN, "down"),
+    (Buttons::LEFT, "left"),
+    (Buttons::RIGHT, "right"),
+    (Buttons::A, "a"),
+    (Buttons::B, "b"),
+    (Buttons::L, "l"),
+    (Buttons::R, "r"),
+    (Buttons::START, "start"),
+    (Buttons::SELECT, "select"),
+    (Buttons::SWITCH_LEFT, "switch-left"),
+    (Buttons::SWITCH_RIGHT, "switch-right"),
 ];
 
 /// A GBA button's place in [`BUTTONS`].
-pub fn button_index(bit: u16) -> usize {
+pub fn button_index(bit: Buttons) -> usize {
     BUTTONS.iter().position(|(b, _)| *b == bit).unwrap_or(0)
 }
 
@@ -323,33 +348,33 @@ impl Default for Bindings {
 
 impl Bindings {
     /// The GBA button a key is bound to.
-    pub fn of_key(&self, key: KeyCode) -> Option<u16> {
+    pub fn of_key(&self, key: KeyCode) -> Option<Buttons> {
         self.keys.iter().position(|k| *k == key).map(|i| BUTTONS[i].0)
     }
 
-    fn of_pad(&self, button: Button) -> u16 {
-        self.pad.iter().position(|b| *b == button).map_or(0, |i| BUTTONS[i].0)
+    fn of_pad(&self, button: Button) -> Buttons {
+        self.pad.iter().position(|b| *b == button).map_or(Buttons::empty(), |i| BUTTONS[i].0)
     }
 
     /// The key bound to a GBA button.
-    pub fn key(&self, bit: u16) -> KeyCode {
+    pub fn key(&self, bit: Buttons) -> KeyCode {
         self.keys[button_index(bit)]
     }
 
     /// The pad's button bound to a GBA button.
-    pub fn pad_button(&self, bit: u16) -> Button {
+    pub fn pad_button(&self, bit: Buttons) -> Button {
         self.pad[button_index(bit)]
     }
 
     /// The pad's button that confirms in the menus: the one bound to A, unless that is a direction of the
     /// D-pad (the menus' own) or bound twice: then the east button (A's at first).
     pub fn confirm_button(&self) -> Button {
-        self.menu_button(keys::A).unwrap_or(Button::East)
+        self.menu_button(Buttons::A).unwrap_or(Button::East)
     }
 
     /// The pad's button that goes back in the menus: the one bound to B, else the south button (B's at first).
     pub fn back_button(&self) -> Button {
-        self.menu_button(keys::B).unwrap_or(Button::South)
+        self.menu_button(Buttons::B).unwrap_or(Button::South)
     }
 
     /// The pad's button that deletes in the menus (a build, a chip from its slot): the west or the east face
@@ -359,7 +384,7 @@ impl Bindings {
         if taken.contains(&Button::East) { Button::West } else { Button::East }
     }
 
-    fn menu_button(&self, bit: u16) -> Option<Button> {
+    fn menu_button(&self, bit: Buttons) -> Option<Button> {
         let button = self.pad_button(bit);
         let direction = matches!(button, Button::DPadUp | Button::DPadDown | Button::DPadLeft | Button::DPadRight);
         (!direction && self.pad.iter().filter(|b| **b == button).count() == 1).then_some(button)
@@ -378,9 +403,9 @@ impl Bindings {
             _ if button == self.back_button() => Action::Back,
             _ if button == self.delete_button() => Action::Delete,
             _ => match self.of_pad(button) {
-                keys::L => Action::Previous,
-                keys::R => Action::Next,
-                keys::START => Action::Menu,
+                Buttons::L => Action::Previous,
+                Buttons::R => Action::Next,
+                Buttons::START => Action::Menu,
                 _ if button == Button::North => Action::Alternate,
                 _ => return None,
             },
@@ -460,8 +485,8 @@ pub fn menu_action(code: KeyCode, shift: bool, bindings: &Bindings) -> Option<Ac
         return Some(action);
     }
     match bindings.of_key(code) {
-        Some(keys::L) => Some(Action::Previous),
-        Some(keys::R) => Some(Action::Next),
+        Some(Buttons::L) => Some(Action::Previous),
+        Some(Buttons::R) => Some(Action::Next),
         _ => None,
     }
 }
@@ -469,7 +494,7 @@ pub fn menu_action(code: KeyCode, shift: bool, bindings: &Bindings) -> Option<Ac
 /// The keys held, as GBA buttons, and when each press came (for the latency figures).
 #[derive(Default)]
 pub struct Keys {
-    pub held: u16,
+    pub held: Buttons,
     /// The presses since the last tick, when each came.
     pub pressed: Vec<Instant>,
     /// Tab is held: in an online match, both builds show while it is (no button is bound to it).
@@ -482,13 +507,13 @@ impl Keys {
     /// A key event of the window: the GBA button it is bound to, held or let go. (The buttons are followed
     /// whatever has the keys, so none sticks.) The button, if it was newly pressed.
     #[allow(dead_code)]
-    pub fn event(&mut self, bindings: &Bindings, event: &KeyEvent, at: Instant) -> Option<u16> {
+    pub fn event(&mut self, bindings: &Bindings, event: &KeyEvent, at: Instant) -> Option<Buttons> {
         let PhysicalKey::Code(code) = event.physical_key else { return None };
         self.key(bindings, code, event.state == ElementState::Pressed, event.repeat, at)
     }
 
     /// [`Keys::event`], of a key's parts.
-    pub fn key(&mut self, bindings: &Bindings, code: KeyCode, pressed: bool, repeat: bool, at: Instant) -> Option<u16> {
+    pub fn key(&mut self, bindings: &Bindings, code: KeyCode, pressed: bool, repeat: bool, at: Instant) -> Option<Buttons> {
         if code == KeyCode::Tab {
             self.tab = pressed;
         }
@@ -497,7 +522,7 @@ impl Keys {
             self.held &= !bit;
             return None;
         }
-        let fresh = !repeat && self.held & bit == 0;
+        let fresh = !repeat && !self.held.intersects(bit);
         if fresh {
             self.pressed.push(at);
         }
@@ -507,7 +532,7 @@ impl Keys {
 
     /// Every key let go (the window lost the keyboard, the bindings changed).
     pub fn release(&mut self) {
-        self.held = 0;
+        self.held = Buttons::empty();
         self.tab = false;
         self.moving.stop();
     }
@@ -573,7 +598,7 @@ pub struct PadEvents {
     /// The buttons pressed (the settings' binding takes the first).
     pub buttons: Vec<Button>,
     /// The GBA buttons newly pressed, as bound.
-    pub pressed: u16,
+    pub pressed: Buttons,
     /// When the first press came.
     pub at: Option<Instant>,
 }
@@ -585,7 +610,7 @@ pub struct Pad {
     /// The buttons held, as pad buttons, by the pad holding them (the bindings may change under them).
     down: Vec<(Id, Button)>,
     /// Each pad's left stick: where it is, and the directions it holds as GBA buttons.
-    sticks: Vec<(Id, (f32, f32), u16)>,
+    sticks: Vec<(Id, (f32, f32), Buttons)>,
     /// Each pad's right stick, up and down (up negative): it scrolls ([`Pad::scroll_speed`]).
     tilts: Vec<(Id, f32)>,
     /// The pads, in the order they were first used (a pad is known by its first event).
@@ -610,13 +635,13 @@ impl Pad {
     }
 
     /// What the pads `of` hold, as `bindings` has them; the left stick moves whatever is bound.
-    fn held_by(&self, bindings: &Bindings, of: impl Fn(Id) -> bool) -> u16 {
-        let sticks = self.sticks.iter().filter(|(id, ..)| of(*id)).fold(0, |held, (.., at)| held | at);
+    fn held_by(&self, bindings: &Bindings, of: impl Fn(Id) -> bool) -> Buttons {
+        let sticks = self.sticks.iter().filter(|(id, ..)| of(*id)).fold(Buttons::empty(), |held, (.., at)| held | *at);
         self.down.iter().filter(|(id, _)| of(*id)).fold(sticks, |held, (_, b)| held | bindings.of_pad(*b))
     }
 
     /// The GBA buttons the player's pads hold, as `bindings` has them; the left stick moves whatever is bound.
-    pub fn held(&self, bindings: &Bindings) -> u16 {
+    pub fn held(&self, bindings: &Bindings) -> Buttons {
         self.held_by(bindings, |id| !self.dummys(id))
     }
 
@@ -629,7 +654,7 @@ impl Pad {
     }
 
     /// The GBA buttons practice's dummy's pad holds, while there is one (the second used, while it is apart).
-    pub fn second(&self, bindings: &Bindings) -> Option<u16> {
+    pub fn second(&self, bindings: &Bindings) -> Option<Buttons> {
         let id = *self.pads.get(1).filter(|_| self.apart)?;
         Some(self.held_by(bindings, |of| of == id))
     }
@@ -674,7 +699,7 @@ impl Pad {
                     let at = match self.sticks.iter().position(|(of, ..)| *of == id) {
                         Some(at) => at,
                         None => {
-                            self.sticks.push((id, (0.0, 0.0), 0));
+                            self.sticks.push((id, (0.0, 0.0), Buttons::empty()));
                             self.sticks.len() - 1
                         }
                     };
@@ -686,8 +711,8 @@ impl Pad {
                         _ => continue,
                     }
                     let was = *stick;
-                    *stick = 0;
-                    for (at, minus, plus) in [(stick_at.0, keys::LEFT, keys::RIGHT), (stick_at.1, keys::UP, keys::DOWN)] {
+                    *stick = Buttons::empty();
+                    for (at, minus, plus) in [(stick_at.0, Buttons::LEFT, Buttons::RIGHT), (stick_at.1, Buttons::UP, Buttons::DOWN)] {
                         if at < -0.5 {
                             *stick |= minus;
                         } else if at > 0.5 {
@@ -698,18 +723,18 @@ impl Pad {
                     if dummys {
                         continue;
                     }
-                    if fresh != 0 {
+                    if !fresh.is_empty() {
                         out.at.get_or_insert(now);
                         out.pressed |= fresh;
                         let action = match fresh {
-                            keys::UP => Action::Up,
-                            keys::DOWN => Action::Down,
-                            keys::LEFT => Action::Left,
+                            Buttons::UP => Action::Up,
+                            Buttons::DOWN => Action::Down,
+                            Buttons::LEFT => Action::Left,
                             _ => Action::Right,
                         };
                         out.actions.push(action);
                         self.repeat.start(action, now);
-                    } else if now_held == 0 && was != 0 {
+                    } else if now_held.is_empty() && !was.is_empty() {
                         self.repeat.stop();
                     }
                 }
@@ -748,7 +773,7 @@ pub struct TouchPad {
     /// Each finger on the pad, by the system's number for it, and the button under it (none: between two).
     fingers: Vec<(u64, Option<u8>)>,
     /// The buttons that give way, by bit (`TouchPad::give_way`): hidden, they take no finger.
-    away: u16,
+    away: Buttons,
 }
 
 impl TouchPad {
@@ -787,10 +812,10 @@ impl TouchPad {
     /// The buttons in `away` (by bit) give way to what is under them (a phone held sideways: its directions, L, R
     /// and SELECT over the custom screen's window while it is open): they take no finger, and a finger on one lets it
     /// go.
-    pub fn give_way(&mut self, away: u16) {
+    pub fn give_way(&mut self, away: Buttons) {
         self.away = away;
         for (_, held) in &mut self.fingers {
-            if held.is_some_and(|b| away >> b & 1 != 0) {
+            if held.is_some_and(|b| away.contains(Buttons::from_bits_retain(1 << b))) {
                 *held = None;
             }
         }
@@ -798,8 +823,8 @@ impl TouchPad {
 
     fn at(&self, x: f32, y: f32) -> Option<Option<u8>> {
         let within = |r: &Rect, reach: f32| x >= r.x - reach && x < r.right() + reach && y >= r.y - reach && y < r.bottom() + reach;
-        let directions = TouchPad::DIRECTIONS.iter().fold(0u16, |m, b| m | 1 << b);
-        if let Some(square) = self.directions().filter(|r| self.away & directions == 0 && within(r, TouchPad::REACH)) {
+        let directions = TouchPad::DIRECTIONS.iter().fold(Buttons::empty(), |m, b| m | Buttons::from_bits_retain(1 << b));
+        if let Some(square) = self.directions().filter(|r| !self.away.intersects(directions) && within(r, TouchPad::REACH)) {
             let (dx, dy) = (x - (square.x + square.w / 2.0), y - (square.y + square.h / 2.0));
             // (The middle sixth holds none: a thumb at rest there isn't pressing a direction.)
             if dx.abs().max(dy.abs()) < square.w.min(square.h) / 12.0 {
@@ -810,7 +835,7 @@ impl TouchPad {
         let near = |r: &Rect| (x - (r.x + r.w / 2.0)).abs() + (y - (r.y + r.h / 2.0)).abs();
         self.keys
             .iter()
-            .filter(|(b, r)| !TouchPad::DIRECTIONS.contains(b) && self.away >> b & 1 == 0 && within(r, TouchPad::REACH))
+            .filter(|(b, r)| !TouchPad::DIRECTIONS.contains(b) && !self.away.contains(Buttons::from_bits_retain(1 << b)) && within(r, TouchPad::REACH))
             .min_by(|a, b| near(&a.1).total_cmp(&near(&b.1)))
             .map(|(b, _)| Some(*b))
     }
@@ -867,9 +892,9 @@ impl TouchPad {
         self.fingers.clear();
     }
 
-    /// The buttons held, as the GBA's bits (the party battle's switches as theirs: [`SWITCHES`]).
-    pub fn held(&self) -> u16 {
-        self.fingers.iter().filter_map(|(_, b)| *b).filter(|b| *b < 16).fold(0, |held, b| held | 1 << b)
+    /// The buttons held, as the GBA's bits (the party battle's switches as theirs: [`Buttons::SWITCHES`]).
+    pub fn held(&self) -> Buttons {
+        self.fingers.iter().filter_map(|(_, b)| *b).filter(|b| *b < 16).fold(Buttons::empty(), |held, b| held | Buttons::from_bits_retain(1 << b))
     }
 }
 
@@ -904,18 +929,18 @@ mod tests {
     fn the_keys_over_the_window_give_way() {
         let mut pad = pad();
         assert!(pad.down(1, 196.0, 623.0));
-        assert_eq!(pad.held(), 1 << 4);
+        assert_eq!(pad.held(), Buttons::RIGHT);
         pad.give_way(crate::battle::PAD_OVER_WINDOW);
-        assert_eq!(pad.held(), 0, "the held direction is let go");
+        assert_eq!(pad.held(), Buttons::empty(), "the held direction is let go");
         assert!(!pad.down(2, 121.0, 553.0), "up's place is the picture's");
         assert!(!pad.down(3, 80.0, 470.0), "L's place is the picture's");
         assert!(!pad.down(4, 130.0, 760.0), "SELECT's place is the picture's");
         assert!(pad.down(5, 320.0, 570.0) && pad.down(6, 250.0, 760.0));
-        assert_eq!(pad.held(), 1 << 0 | 1 << 3);
+        assert_eq!(pad.held(), Buttons::A | Buttons::START);
         pad.clear();
-        pad.give_way(0);
+        pad.give_way(Buttons::empty());
         assert!(pad.down(2, 121.0, 553.0));
-        assert_eq!(pad.held(), 1 << 6);
+        assert_eq!(pad.held(), Buttons::UP);
     }
 
     /// A key held repeats as the game's menus do, 16 frames after the press, then every 5th, on a 60 Hz display's
@@ -945,16 +970,16 @@ mod tests {
     fn two_fingers_hold_two_buttons() {
         let mut pad = pad();
         assert!(pad.down(1, 40.0, 640.0));
-        assert_eq!(pad.held(), keys::LEFT);
+        assert_eq!(pad.held(), Buttons::LEFT);
         assert!(pad.down(2, 330.0, 590.0));
-        assert_eq!(pad.held(), keys::LEFT | keys::A);
+        assert_eq!(pad.held(), Buttons::LEFT | Buttons::A);
         assert!(pad.down(3, 250.0, 660.0));
-        assert_eq!(pad.held(), keys::LEFT | keys::A | keys::B);
+        assert_eq!(pad.held(), Buttons::LEFT | Buttons::A | Buttons::B);
         assert!(pad.up(2));
-        assert_eq!(pad.held(), keys::LEFT | keys::B);
+        assert_eq!(pad.held(), Buttons::LEFT | Buttons::B);
         assert!(pad.up(1));
         assert!(pad.up(3));
-        assert_eq!(pad.held(), 0);
+        assert_eq!(pad.held(), Buttons::empty());
         assert!(!pad.up(3));
     }
 
@@ -964,22 +989,22 @@ mod tests {
     fn a_thumb_slides_across_the_directions() {
         let mut pad = pad();
         assert!(pad.down(1, 40.0, 640.0));
-        assert_eq!(pad.held(), keys::LEFT);
+        assert_eq!(pad.held(), Buttons::LEFT);
         assert!(pad.moved(1, 120.0, 700.0));
-        assert_eq!(pad.held(), keys::DOWN);
+        assert_eq!(pad.held(), Buttons::DOWN);
         assert!(pad.moved(1, 120.0, 625.0));
-        assert_eq!(pad.held(), 0);
+        assert_eq!(pad.held(), Buttons::empty());
         assert!(pad.moved(1, 190.0, 625.0));
-        assert_eq!(pad.held(), keys::RIGHT);
+        assert_eq!(pad.held(), Buttons::RIGHT);
         // (The corner between Up and Right, on neither key: the direction it is farther toward.)
         assert!(pad.moved(1, 185.0, 570.0));
-        assert_eq!(pad.held(), keys::RIGHT);
+        assert_eq!(pad.held(), Buttons::RIGHT);
         assert!(pad.moved(1, 120.0, 514.0));
-        assert_eq!(pad.held(), keys::UP);
+        assert_eq!(pad.held(), Buttons::UP);
         assert!(pad.moved(1, 200.0, 400.0));
-        assert_eq!(pad.held(), 0);
+        assert_eq!(pad.held(), Buttons::empty());
         assert!(pad.moved(1, 330.0, 590.0));
-        assert_eq!(pad.held(), keys::A);
+        assert_eq!(pad.held(), Buttons::A);
     }
 
     /// What each finger holds, which the app taps the phone for as it changes to a button (`App::touched`): one
@@ -1007,16 +1032,16 @@ mod tests {
         let mut pad = pad();
         assert!(!pad.down(1, 200.0, 100.0));
         assert!(!pad.moved(1, 330.0, 590.0));
-        assert_eq!(pad.held(), 0);
+        assert_eq!(pad.held(), Buttons::empty());
         assert!(!pad.up(1));
         // (The mouse is one more finger: a pad clicked on a desktop, beside a finger's.)
         pad.press(Some(3));
         assert!(pad.down(1, 40.0, 640.0));
-        assert_eq!(pad.held(), keys::START | keys::LEFT);
+        assert_eq!(pad.held(), Buttons::START | Buttons::LEFT);
         pad.press(None);
-        assert_eq!(pad.held(), keys::LEFT);
+        assert_eq!(pad.held(), Buttons::LEFT);
         pad.clear();
-        assert_eq!(pad.held(), 0);
+        assert_eq!(pad.held(), Buttons::empty());
     }
 
     /// The menus' keys are fixed: Enter, Num Enter and Space confirm and Esc goes back whatever is bound; the
@@ -1036,11 +1061,11 @@ mod tests {
         assert_eq!(at(&b, KeyCode::Backspace), Some(Action::Delete));
         // A bound to Enter (START takes Z): Enter still confirms, and Z is nothing to the menus.
         let mut enter = Bindings::default();
-        enter.bind_key(button_index(keys::A), KeyCode::Enter);
+        enter.bind_key(button_index(Buttons::A), KeyCode::Enter);
         assert_eq!((at(&enter, KeyCode::Enter), at(&enter, KeyCode::KeyZ)), (Some(Action::Confirm), None));
         // L on an arrow: the arrow moves.
         let mut up = Bindings::default();
-        up.bind_key(button_index(keys::L), KeyCode::ArrowUp);
+        up.bind_key(button_index(Buttons::L), KeyCode::ArrowUp);
         assert_eq!(at(&up, KeyCode::ArrowUp), Some(Action::Up));
     }
 
@@ -1060,11 +1085,11 @@ mod tests {
         assert_eq!(at(&b, Button::DPadUp), Some(Action::Up));
         // A and B traded (A south, B east): south confirms, east goes back, west still deletes.
         let mut south = Bindings::default();
-        south.bind_pad(button_index(keys::A), Button::South);
+        south.bind_pad(button_index(Buttons::A), Button::South);
         assert_eq!((at(&south, Button::South), at(&south, Button::East), at(&south, Button::West)), (Some(Action::Confirm), Some(Action::Back), Some(Action::Delete)));
         // A on the D-pad: it moves, and east confirms.
         let mut pad = Bindings::default();
-        pad.bind_pad(button_index(keys::A), Button::DPadUp);
+        pad.bind_pad(button_index(Buttons::A), Button::DPadUp);
         assert_eq!((at(&pad, Button::DPadUp), pad.confirm_button()), (Some(Action::Up), Button::East));
     }
 
@@ -1072,12 +1097,12 @@ mod tests {
     #[test]
     fn binding_a_taken_key_swaps() {
         let mut b = Bindings::default();
-        b.bind_key(button_index(keys::A), KeyCode::KeyX);
-        assert_eq!(b.key(keys::A), KeyCode::KeyX);
-        assert_eq!(b.key(keys::B), KeyCode::KeyZ);
-        assert_eq!(b.of_key(KeyCode::KeyX), Some(keys::A));
-        b.bind_pad(button_index(keys::B), Button::East);
-        assert_eq!((b.pad[button_index(keys::B)], b.pad[button_index(keys::A)]), (Button::East, Button::South));
+        b.bind_key(button_index(Buttons::A), KeyCode::KeyX);
+        assert_eq!(b.key(Buttons::A), KeyCode::KeyX);
+        assert_eq!(b.key(Buttons::B), KeyCode::KeyZ);
+        assert_eq!(b.of_key(KeyCode::KeyX), Some(Buttons::A));
+        b.bind_pad(button_index(Buttons::B), Button::East);
+        assert_eq!((b.pad[button_index(Buttons::B)], b.pad[button_index(Buttons::A)]), (Button::East, Button::South));
     }
 
     /// Every bindable key and pad button reads back from its name in the settings' file.

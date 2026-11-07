@@ -134,7 +134,7 @@ fn straight(game: &Loaded, replay: &Replay, view: u8) -> Result<Vec<At>, String>
             hud: hash(format!("{:?}", p.renderer().hud_state).bytes().map(u64::from)),
             sound: sound_hash(&sound),
         });
-        if !p.tick(0) {
+        if !p.tick(nettai_battle::input::Keys::empty()) {
             break;
         }
     }

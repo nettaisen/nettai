@@ -44,7 +44,7 @@
 
 use std::io::{self, Read, Write};
 
-use nettai_battle::input::keys;
+use nettai_battle::input::Keys;
 use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 
 /// The protocol's version: peers whose versions differ can't play together
@@ -134,21 +134,21 @@ pub enum Element {
 /// The buttons' order on the wire, lowest bit first: A, B and the
 /// directions (what a player holds most) in the six bits a one-byte tick
 /// has room for, then SELECT, START, R and L.
-pub const WIRE_ORDER: [u16; 10] =
-    [keys::A, keys::B, keys::RIGHT, keys::LEFT, keys::UP, keys::DOWN, keys::SELECT, keys::START, keys::R, keys::L];
+pub const WIRE_ORDER: [Keys; 10] =
+    [Keys::A, Keys::B, Keys::RIGHT, Keys::LEFT, Keys::UP, Keys::DOWN, Keys::SELECT, Keys::START, Keys::R, Keys::L];
 
 /// The buttons as the wire orders them.
-pub fn buttons_to_wire(held: u16) -> u16 {
-    WIRE_ORDER.iter().enumerate().fold(0, |w, (bit, &key)| w | (((held & key != 0) as u16) << bit))
+pub fn buttons_to_wire(held: Keys) -> u16 {
+    WIRE_ORDER.iter().enumerate().fold(0, |w, (bit, &key)| w | ((held.contains(key) as u16) << bit))
 }
 
 /// The buttons from their wire order.
-pub fn buttons_from_wire(wire: u16) -> u16 {
-    WIRE_ORDER.iter().enumerate().fold(0, |held, (bit, &key)| if wire & (1 << bit) != 0 { held | key } else { held })
+pub fn buttons_from_wire(wire: u16) -> Keys {
+    WIRE_ORDER.iter().enumerate().fold(Keys::empty(), |held, (bit, &key)| if wire & (1 << bit) != 0 { held | key } else { held })
 }
 
-/// The buttons a tick carries (the GBA's ten).
-pub const BUTTONS: u16 = 0x3FF;
+/// The buttons a tick carries (the GBA's ten), in a tick's word.
+pub const BUTTONS: u16 = Keys::BUTTONS.bits();
 
 /// Where a tick's flags go in its head (past the word's 32 bits).
 const FLAGS_AT: u32 = 32;
@@ -162,7 +162,7 @@ impl rennet::Codec for Element {
     fn encode<W: Write>(&self, w: &mut W) -> io::Result<()> {
         match *self {
             Element::Tick { word, flags } => {
-                let value = buttons_to_wire(word as u16 & BUTTONS) as u64 | ((word & !(BUTTONS as u32)) as u64) | (flags as u64) << FLAGS_AT;
+                let value = buttons_to_wire(Keys::from_bits_retain(word as u16 & BUTTONS)) as u64 | ((word & !(BUTTONS as u32)) as u64) | (flags as u64) << FLAGS_AT;
                 write_uvarint(w, value << 1)
             }
             Element::RoundEnd => write_uvarint(w, ROUND_END << 1 | 1),
@@ -190,7 +190,7 @@ impl rennet::Codec for Element {
         let kind = head >> 1;
         let element = if head & 1 == 0 {
             let flags = u8::try_from(kind >> FLAGS_AT).map_err(|_| invalid("tick flags out of range"))?;
-            Element::Tick { word: buttons_from_wire(kind as u16 & BUTTONS) as u32 | (kind as u32 & !(BUTTONS as u32)), flags }
+            Element::Tick { word: buttons_from_wire(kind as u16 & BUTTONS).bits() as u32 | (kind as u32 & !(BUTTONS as u32)), flags }
         } else {
             match kind {
                 ROUND_END => Element::RoundEnd,
@@ -273,10 +273,10 @@ mod tests {
 
     #[test]
     fn the_wire_order_is_a_permutation() {
-        for held in 0..=BUTTONS {
+        for held in (0..=BUTTONS).map(Keys::from_bits_retain) {
             assert_eq!(buttons_from_wire(buttons_to_wire(held)), held);
         }
-        assert_eq!(buttons_to_wire(keys::A | keys::B | keys::RIGHT | keys::LEFT | keys::UP | keys::DOWN), 0x3F);
+        assert_eq!(buttons_to_wire(Keys::A | Keys::B | Keys::RIGHT | Keys::LEFT | Keys::UP | Keys::DOWN), 0x3F);
     }
 
     /// Ticks with A, B and the directions are a byte, other buttons or a
@@ -285,18 +285,18 @@ mod tests {
     #[test]
     fn element_sizes() {
         assert_eq!(bytes(Element::Tick { word: 0, flags: 0 }), [0x00]);
-        assert_eq!(bytes(Element::Tick { word: (keys::A) as u32, flags: 0 }), [0x02]);
-        assert_eq!(bytes(Element::Tick { word: (keys::DOWN | keys::LEFT | keys::B) as u32, flags: 0 }).len(), 1);
-        assert_eq!(bytes(Element::Tick { word: (keys::L) as u32, flags: 0 }).len(), 2);
+        assert_eq!(bytes(Element::Tick { word: (Keys::A).bits() as u32, flags: 0 }), [0x02]);
+        assert_eq!(bytes(Element::Tick { word: (Keys::DOWN | Keys::LEFT | Keys::B).bits() as u32, flags: 0 }).len(), 1);
+        assert_eq!(bytes(Element::Tick { word: (Keys::L).bits() as u32, flags: 0 }).len(), 2);
         assert_eq!(bytes(Element::Tick { word: BUTTONS as u32, flags: 1 }).len(), 5);
         assert_eq!(bytes(Element::Tick { word: BUTTONS as u32, flags: 0xFF }).len(), 6);
-        assert_eq!(bytes(Element::Tick { word: PlayerTick { mic_loud: true, ..PlayerTick::buttons(0) }.word(), flags: 0 }).len(), 2);
+        assert_eq!(bytes(Element::Tick { word: PlayerTick { mic_loud: true, ..PlayerTick::buttons(Keys::empty()) }.word(), flags: 0 }).len(), 2);
         assert_eq!(bytes(Element::Tick { word: 1 << 10, flags: 0 }).len(), 2);
-        let choice = |c: ScreenChoice| PlayerTick { choice: Some(c), ..PlayerTick::buttons(0) }.word();
+        let choice = |c: ScreenChoice| PlayerTick { choice: Some(c), ..PlayerTick::buttons(Keys::empty()) }.word();
         assert_eq!(bytes(Element::Tick { word: choice(ScreenChoice::Ok), flags: 0 }).len(), 3);
-        assert_eq!(bytes(Element::Tick { word: keys::A as u32 | choice(ScreenChoice::Release(11)), flags: 0 }).len(), 3);
+        assert_eq!(bytes(Element::Tick { word: Keys::A.bits() as u32 | choice(ScreenChoice::Release(11)), flags: 0 }).len(), 3);
         assert_eq!(bytes(Element::Tick { word: choice(ScreenChoice::Unpick(4)), flags: 0 }).len(), 3);
-        let most = PlayerTick { held: BUTTONS, switch_to: Some(2), mic_loud: true, choice: Some(ScreenChoice::Release(11)) };
+        let most = PlayerTick { held: Keys::BUTTONS, switch_to: Some(2), mic_loud: true, choice: Some(ScreenChoice::Release(11)) };
         assert_eq!(bytes(Element::Tick { word: most.word(), flags: 0 }).len(), 3);
         assert_eq!(bytes(Element::Tick { word: u32::MAX, flags: 0 }).len(), 5);
         assert_eq!(bytes(Element::Tick { word: u32::MAX, flags: 0xFF }).len(), 6);
@@ -310,10 +310,10 @@ mod tests {
 
     #[test]
     fn elements_roundtrip() {
-        let ok = PlayerTick { choice: Some(ScreenChoice::Ok), ..PlayerTick::buttons(0) }.word();
-        let release = PlayerTick { choice: Some(ScreenChoice::Release(11)), ..PlayerTick::buttons(0) }.word();
+        let ok = PlayerTick { choice: Some(ScreenChoice::Ok), ..PlayerTick::buttons(Keys::empty()) }.word();
+        let release = PlayerTick { choice: Some(ScreenChoice::Release(11)), ..PlayerTick::buttons(Keys::empty()) }.word();
         for word in
-            [0, keys::A as u32, (keys::START | keys::L) as u32, BUTTONS as u32, u32::MAX, keys::A as u32 | 1 << 10, 0xFF << 12, ok, ok | 0xFF << 12 | keys::B as u32, release]
+            [0, Keys::A.bits() as u32, (Keys::START | Keys::L).bits() as u32, BUTTONS as u32, u32::MAX, Keys::A.bits() as u32 | 1 << 10, 0xFF << 12, ok, ok | 0xFF << 12 | Keys::B.bits() as u32, release]
         {
             for flags in [0, 1, 0x7F, 0xFF] {
                 roundtrip(Element::Tick { word, flags });
@@ -326,7 +326,7 @@ mod tests {
         }
         // A tick's word through the wire is the player's tick: its choice
         // too.
-        let t = PlayerTick { held: keys::A | keys::UP, switch_to: Some(1), mic_loud: true, choice: Some(ScreenChoice::Release(11)) };
+        let t = PlayerTick { held: Keys::A | Keys::UP, switch_to: Some(1), mic_loud: true, choice: Some(ScreenChoice::Release(11)) };
         let b = bytes(Element::Tick { word: t.word(), flags: 0 });
         let Some(Element::Tick { word, .. }) = Element::decode(&mut &b[..]).unwrap() else { panic!() };
         assert_eq!(PlayerTick::from_word(word), t);
@@ -339,7 +339,7 @@ mod tests {
             300,
             298,
             Meta { tick_advantage: -2 },
-            vec![Element::Tick { word: (keys::A) as u32, flags: 0 }, Element::RoundEnd, Element::Tick { word: 0, flags: 0 }],
+            vec![Element::Tick { word: (Keys::A).bits() as u32, flags: 0 }, Element::RoundEnd, Element::Tick { word: 0, flags: 0 }],
         );
         let b = f.to_vec();
         // base 300 (two bytes), ack -2 from it, advantage -2, three one-byte elements.

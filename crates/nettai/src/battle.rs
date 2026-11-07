@@ -16,6 +16,7 @@
 //! ([`Shell::play_samples`]).
 
 use crate::errors::UserError;
+use crate::input::Buttons;
 use crate::nav::Key;
 use crate::screens::ScreenId;
 use crate::shell::Shell;
@@ -143,7 +144,8 @@ pub struct Battle {
 
 /// The keys of a phone's pad held sideways that are over the custom screen's window, by bit: SELECT, the four
 /// directions, R and L (A, B and START stay).
-pub(crate) const PAD_OVER_WINDOW: u16 = 1 << 2 | 0xF << 4 | 1 << 8 | 1 << 9;
+pub(crate) const PAD_OVER_WINDOW: Buttons =
+    Buttons::SELECT.union(Buttons::RIGHT).union(Buttons::LEFT).union(Buttons::UP).union(Buttons::DOWN).union(Buttons::R).union(Buttons::L);
 
 impl Battle {
     /// Whether the battle has the keys: it runs, and nothing is over it.
@@ -441,10 +443,10 @@ impl Shell {
     pub(crate) fn run_battle(&mut self, now: Instant, samples: &mut Vec<[f32; 2]>) -> (Option<u32>, Option<(ScreenId, BattleEvent)>) {
         let Some(mut b) = self.battle.take() else { return (None, None) };
         b.hold.before(b.menu, &mut b.stage.player);
-        let held = if b.playing() && !b.kept && self.dialog.is_none() { self.keys.held | self.pad.held(&self.bindings) | self.touch.held() } else { 0 };
+        let held = if b.playing() && !b.kept && self.dialog.is_none() { self.keys.held | self.pad.held(&self.bindings) | self.touch.held() } else { Buttons::empty() };
         // (A party battle's switches are asked of the player; the battle's buttons alone go on.)
         let buttons = b.party.take_switches(&mut b.stage.player, b.viewer, held);
-        let ran = b.stage.advance(now, buttons, &mut self.keys.pressed);
+        let ran = b.stage.advance(now, buttons.keys(), &mut self.keys.pressed);
         let ticks = Some(ran);
         // START in the fight: the game's pause is nettai's menu (asked of the host: the game's own never runs).
         let asked = b.stage.player.take_pause_requests()[b.viewer.min(1) as usize] && b.playing();
@@ -459,7 +461,7 @@ impl Shell {
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
         let kit = self.games.ready(&b.game).and_then(|ready| crate::builds::kit_of(&b.game, &ready));
-        let keys = [crate::input::SWITCH_LEFT, crate::input::SWITCH_RIGHT].map(|bit| nettai_ui::Hint {
+        let keys = [Buttons::SWITCH_LEFT, Buttons::SWITCH_RIGHT].map(|bit| nettai_ui::Hint {
             key: crate::input::key_cap(self.bindings.key(bit)).into(),
             pad: crate::input::pad_face(self.bindings.pad_button(bit)),
             ..Default::default()
@@ -476,8 +478,8 @@ impl Shell {
         shell.set_picture_hand(pointer && b.stage.player.pointer_on_target());
         let sideways = cfg!(any(target_os = "ios", target_os = "android")) && !self.scale.phone;
         let local = b.stage.player.battle().setup.local_side;
-        let away = if sideways && has_keys && b.stage.player.battle().presented(local).is_some() { PAD_OVER_WINDOW } else { 0 };
-        shell.set_pad_gives_way(away != 0);
+        let away = if sideways && has_keys && b.stage.player.battle().presented(local).is_some() { PAD_OVER_WINDOW } else { Buttons::empty() };
+        shell.set_pad_gives_way(!away.is_empty());
         self.touch.give_way(away);
         if let Some(net) = b.stage.player.net_status() {
             // (The bars are the library's quality, from the round trip and how steady it is; while the link
@@ -662,6 +664,7 @@ impl Shell {
 
 #[cfg(test)]
 mod tests {
+    use nettai_battle::input::Keys;
     use super::*;
     use nettai_frontend::driver::LivePlayer;
     use nettai_frontend::game::Enhancements;
@@ -704,9 +707,9 @@ mod tests {
 
     /// A frame of the shell's, as `Shell::run_battle` runs one, a tick in it: the player's `keys` (none under
     /// the menu). Whether the menu is to open (the player's START in the fight, asked of the host).
-    fn frame(b: &mut Battle, keys: u16) -> bool {
+    fn frame(b: &mut Battle, keys: Keys) -> bool {
         b.hold.before(b.menu, &mut b.stage.player);
-        let buttons = if b.playing() { keys } else { 0 };
+        let buttons = if b.playing() { keys } else { Keys::empty() };
         b.stage.player.tick(buttons);
         b.stage.player.take_pause_requests()[b.viewer as usize] && b.playing()
     }
@@ -735,7 +738,7 @@ mod tests {
     /// where it is (its ticks and its digest the same: no tick, no button and no cue reaches it, and the game's
     /// own pause never runs), its sound comes every frame, and its scenery moves on a frame each, the
     /// background drawn anew. The ticks it is held at.
-    fn hold_for(b: &mut Battle, frames: u32, keys: u16) -> u64 {
+    fn hold_for(b: &mut Battle, frames: u32, keys: Keys) -> u64 {
         b.menu = true;
         made(b);
         let (ticks, digest, clock) = (b.stage.player.ticks(), b.stage.player.battle().digest(), scenery(b));
@@ -763,7 +766,7 @@ mod tests {
     fn resume(b: &mut Battle) {
         b.menu = false;
         let (ticks, clock) = (b.stage.player.ticks(), scenery(b));
-        frame(b, 0);
+        frame(b, Keys::empty());
         assert_eq!(b.stage.player.ticks(), ticks + 1, "on from the tick it was held at");
         assert_eq!(scenery(b).background, clock.background + 1, "the background on from where the hold left it");
     }
@@ -787,14 +790,14 @@ mod tests {
             battle.round.mode == mode::CUSTOM && battle.custom.sides.iter().all(|s| s.screen.as_ref().is_some_and(|s| s.phase == nettai_battle::custom::Phase::Choosing))
         };
         while !choosing(&b) {
-            assert!(!frame(&mut b, 0) && b.stage.player.ticks() < 3000);
+            assert!(!frame(&mut b, Keys::empty()) && b.stage.player.ticks() < 3000);
         }
         // (A chip picked, as the player's screen takes it, and the menu opened on the frame it shows: the dummy
         // chooses its own chip and OK a choice every other tick, so it is still choosing then.)
         let picked = |b: &Battle| b.stage.player.battle().custom.sides[0].screen.as_ref().is_some_and(|s| s.selected > 0);
-        frame(&mut b, nettai_battle::input::keys::A);
+        frame(&mut b, Keys::A);
         while !picked(&b) {
-            assert!(!frame(&mut b, 0) && b.stage.player.ticks() < 3000);
+            assert!(!frame(&mut b, Keys::empty()) && b.stage.player.ticks() < 3000);
         }
         let chosen = |b: &Battle| {
             let (battle, layers) = (b.stage.player.battle(), b.stage.player.layers());
@@ -805,7 +808,7 @@ mod tests {
         };
         let before = chosen(&b);
         // (The player's buttons are the menu's.)
-        hold_for(&mut b, 240, nettai_battle::input::keys::A | nettai_battle::input::keys::START);
+        hold_for(&mut b, 240, Keys::A | Keys::START);
         assert!(choosing(&b), "held on the custom screen");
         assert_eq!(chosen(&b), before, "nothing chosen, neither side");
         resume(&mut b);
@@ -815,12 +818,12 @@ mod tests {
             assert!(!frame_input(&mut b, input) && b.stage.player.ticks() < 3000);
         }
         for _ in 0..90 {
-            let keys = nettai_battle::input::keys::B * (b.stage.player.ticks() % 2 == 0) as u16;
+            let keys = if b.stage.player.ticks() % 2 == 0 { Keys::B } else { Keys::empty() };
             frame(&mut b, keys);
         }
         // (A dimming chip the dummy used is let run out: START is asked for in the fight itself.)
         while !fighting(&b) {
-            assert!(!frame(&mut b, 0) && b.stage.player.ticks() < 3000);
+            assert!(!frame(&mut b, Keys::empty()) && b.stage.player.ticks() < 3000);
         }
         // The player's own START asks for the menu: the host's, nothing of the game's paused.
         let fight = |b: &Battle| {
@@ -834,25 +837,25 @@ mod tests {
             });
             (battle.sides.map(|s| s.gauge), battle.round.battle_time, navis)
         };
-        let asked = (0..3).map(|_| frame(&mut b, nettai_battle::input::keys::START)).any(|asked| asked);
+        let asked = (0..3).map(|_| frame(&mut b, Keys::START)).any(|asked| asked);
         assert!(asked && b.stage.player.battle().paused_by().is_none() && fighting(&b));
         let held = fight(&b);
-        hold_for(&mut b, 300, nettai_battle::input::keys::A);
+        hold_for(&mut b, 300, Keys::A);
         assert_eq!(fight(&b), held, "nothing of the fight moved");
         // RESUME: the fight goes on from where it was.
         resume(&mut b);
         for _ in 0..60 {
-            frame(&mut b, 0);
+            frame(&mut b, Keys::empty());
         }
         assert_ne!(fight(&b), held, "the fight runs again");
         // Starting over from the menu: from its start, nothing held.
         b.menu = true;
-        frame(&mut b, 0);
+        frame(&mut b, Keys::empty());
         assert!(b.stage.player.held());
         b.menu = false;
         assert!(b.restart());
         assert_eq!((b.stage.player.held(), b.stage.player.ticks()), (false, 0));
-        assert!(!frame(&mut b, 0) && b.stage.player.ticks() == 1);
+        assert!(!frame(&mut b, Keys::empty()) && b.stage.player.ticks() == 1);
     }
 
     /// A practice set put in place of the one playing (Practice's Arena or Background row changed:
@@ -866,10 +869,10 @@ mod tests {
         let mut m = short_set::of(&content, "exe6", 7);
         let mut b = practice(&content, &m, 7, Default::default());
         for _ in 0..400 {
-            frame(&mut b, 0);
+            frame(&mut b, Keys::empty());
         }
         b.menu = true;
-        frame(&mut b, 0);
+        frame(&mut b, Keys::empty());
         let stage = *nettai_match::link_battle_stages(&content, "exe6").last().unwrap();
         let background = nettai_match::ids::backgrounds(&content, "exe6").last().unwrap().to_string();
         let place = nettai_match::RoundSettings { stage: Some(stage), background: Some(background.clone()) };
@@ -886,7 +889,7 @@ mod tests {
         made(&mut b);
         let mut frames = 0;
         while b.stage.player.battle().round.mode != mode::CUSTOM {
-            frame(&mut b, nettai_battle::input::keys::A);
+            frame(&mut b, Keys::A);
             assert!((548..=549).contains(&made(&mut b)), "frame {frames}: the sound goes on");
             frames += 1;
             assert!(frames < 1000, "the custom screen never came");
@@ -903,22 +906,22 @@ mod tests {
         let up = |b: &Battle| b.stage.player.battle().round.mode == mode::CUSTOM;
         let mut frames = 0;
         while !up(b) {
-            frame(b, nettai_battle::input::keys::A);
+            frame(b, Keys::A);
             frames += 1;
             assert!(frames < 1000, "the custom screen never came");
         }
         // (The frame it began on, and the next, which finds it begun.)
-        frame(b, 0);
+        frame(b, Keys::empty());
         let screen = |b: &Battle| b.stage.player.battle().custom.sides[0].screen.as_ref().map(|s| s.phase.chooses());
         assert_ne!(screen(b), Some(true), "held before the screen is in");
         let was = b.stage.player.battle().clone();
         // (The player's buttons are the menu's.)
-        let ticks = hold_for(b, 600, nettai_battle::input::keys::A | nettai_battle::input::keys::START);
+        let ticks = hold_for(b, 600, Keys::A | Keys::START);
         assert!(up(b), "on the custom screen");
         // RESUME: on from there, the screen coming in.
         resume(b);
         for _ in 0..30 {
-            frame(b, 0);
+            frame(b, Keys::empty());
         }
         assert_eq!(screen(b), Some(true), "the screen in");
         (ticks, was)
@@ -968,7 +971,7 @@ mod tests {
         assert!(hp(&b) < full.map(|(hp, _)| hp), "the drain drains once the menu closes: {:?} of {full:?}", hp(&b));
         // Started over under the menu (a Dummy's build changed): the same again.
         b.menu = true;
-        frame(&mut b, 0);
+        frame(&mut b, Keys::empty());
         assert!(b.restart());
         assert_eq!(held_from_its_custom_screen(&mut b).0, ticks, "the same opening, held at the same tick");
     }
@@ -993,18 +996,18 @@ mod tests {
             }
             let fought = hp(&b);
             for _ in 0..60 {
-                frame(&mut b, 0);
+                frame(&mut b, Keys::empty());
             }
             assert!(hp(&b) < fought, "{game}: (it drains in the fight)");
             // The player's own START: the menu.
-            let asked = (0..3).map(|_| frame(&mut b, nettai_battle::input::keys::START)).any(|asked| asked);
+            let asked = (0..3).map(|_| frame(&mut b, Keys::START)).any(|asked| asked);
             assert!(asked, "{game}: START asks for the menu");
             let held = hp(&b);
-            hold_for(&mut b, 600, nettai_battle::input::keys::A);
+            hold_for(&mut b, 600, Keys::A);
             assert_eq!(hp(&b), held, "{game}: nothing drained under the menu");
             resume(&mut b);
             for _ in 0..120 {
-                frame(&mut b, 0);
+                frame(&mut b, Keys::empty());
             }
             assert!(hp(&b) < held, "{game}: and drains again after");
         }
@@ -1030,7 +1033,7 @@ mod tests {
         let m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
         let opponent = nettai_frontend::driver::Opponent { in_fight: nettai_frontend::driver::InFight::AttacksAtRandom, ..Default::default() };
         let (mut a, mut b) = (practice(&content, &m, 11, opponent), practice(&content, &m, 11, opponent));
-        let keys = |tick: u64| if tick % 37 < 3 { nettai_battle::input::keys::A } else if tick % 11 == 0 { nettai_battle::input::keys::B } else { 0 };
+        let keys = |tick: u64| if tick % 37 < 3 { Keys::A } else if tick % 11 == 0 { Keys::B } else { Keys::empty() };
         let step = |x: &mut Battle| {
             let t = x.stage.player.ticks();
             x.stage.player.tick(keys(t));
@@ -1138,9 +1141,9 @@ mod tests {
         let m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
         let mut b = practice(&content, &m, 11, opponent);
         let pressed = |tick: u32| match tick % 41 {
-            0 | 1 => nettai_battle::input::keys::A,
-            n if n % 9 < 2 => nettai_battle::input::keys::B,
-            _ => 0,
+            0 | 1 => Keys::A,
+            n if n % 9 < 2 => Keys::B,
+            _ => Keys::empty(),
         };
         let dimmed = |b: &Battle| {
             let battle = b.stage.player.battle();
@@ -1152,13 +1155,13 @@ mod tests {
             let input = if battle.round.mode == mode::CUSTOM { bot_tick(battle, 0, tick) } else { nettai_battle::PlayerTick::buttons(pressed(tick)) };
             assert!(!frame_input(&mut b, input) && tick < 30_000, "no dimming came");
         }
-        hold_for(&mut b, 300, nettai_battle::input::keys::A);
+        hold_for(&mut b, 300, Keys::A);
         assert!(dimmed(&b), "held in the dimming");
         resume(&mut b);
         let ticks = b.stage.player.ticks();
         let mut frames = 0;
         while dimmed(&b) {
-            frame(&mut b, 0);
+            frame(&mut b, Keys::empty());
             frames += 1;
             assert!(frames < 1500, "the dimming never ended");
         }
@@ -1175,11 +1178,11 @@ mod tests {
             let input = nettai_frontend::testing::short_set::shooter(b.stage.player.battle(), 0, b.stage.player.ticks() as u32);
             assert!(!frame_input(&mut b, input) && b.stage.player.ticks() < 5000, "the round wasn't decided");
         }
-        hold_for(&mut b, 300, nettai_battle::input::keys::START);
+        hold_for(&mut b, 300, Keys::START);
         resume(&mut b);
         let mut frames = 0;
         while b.stage.player.battle().round.mode != mode::CUSTOM {
-            frame(&mut b, 0);
+            frame(&mut b, Keys::empty());
             frames += 1;
             let battle = b.stage.player.battle();
             assert!(frames < 2000, "the next round's custom screen never came: mode {:#x} fight {:#x} round {} top {:#x} ticks {} stopped {:?}", battle.round.mode, battle.fight.state, battle.round.round, battle.round.top, b.stage.player.ticks(), b.stage.player.stopped());

@@ -27,6 +27,7 @@
 use crate::act;
 use crate::env::{fight_runs, step_battle};
 use crate::spec;
+use nettai_battle::input::Keys;
 use crate::stats::navi_hp;
 use nettai_battle::{Battle, Rng};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -131,14 +132,14 @@ impl Search {
     /// random numbers; the network's fight `logits` before it, its action
     /// held `k` ticks. The network's first where the fight doesn't run
     /// then. None: no action is allowed.
-    pub fn ahead(&self, b: &Battle, side: u8, k: u32, held: u16, logits: &[f32], luck: u64) -> Option<usize> {
+    pub fn ahead(&self, b: &Battle, side: u8, k: u32, held: Keys, logits: &[f32], luck: u64) -> Option<usize> {
         let mut c = b.clone();
         c.rng = Rng::new(luck as u32);
         for (i, console) in c.consoles.iter_mut().enumerate() {
             console.rng = Rng::new((luck >> 32) as u32 ^ i as u32);
         }
         for _ in 0..self.lead {
-            let mut press = [0u16; 2];
+            let mut press = [Keys::empty(); 2];
             press[side as usize] = held;
             if !step_battle(&mut c, press) || c.round_end().is_some() || !fight_runs(&c) {
                 return candidates(logits, 1).first().copied();
@@ -195,12 +196,12 @@ impl Search {
         let max = |c: &Battle, s: u8| c.player(s).filter(|&r| c.objects.is_allocated(r)).map_or(1, |r| c.objects.get(r).max_hp.max(1)) as f32;
         let (mine_max, theirs_max) = (max(&c, side), max(&c, side ^ 1));
         let held = act::fight_buttons(a as i32);
-        let after = held & nettai_battle::input::keys::B;
+        let after = held & nettai_battle::input::Keys::B;
         TRIES.fetch_add(1, Ordering::Relaxed);
         let (mut undimmed, mut t) = (0, 0);
         while undimmed < self.horizon && t < self.cap {
             let mine = if t < k { held } else { after };
-            let mut press = [0u16; 2];
+            let mut press = [Keys::empty(); 2];
             press[side as usize] = mine;
             if !step_battle(&mut c, press) || c.round_end().is_some() {
                 break;

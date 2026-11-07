@@ -1657,8 +1657,8 @@ mod tests {
     #[test]
     fn start_in_a_netplay_fight_is_said_once_to_its_own_player() {
         use nettai_battle::battle::{fight, mode};
-        use nettai_battle::input::keys;
-        const MOVES: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
+        use nettai_battle::input::Keys;
+        const MOVES: Keys = Keys::UP.union(Keys::DOWN).union(Keys::LEFT).union(Keys::RIGHT);
         let content = exe6_test_content();
         let mine = [0, 1].map(|s| side(&content, 11 + 11 * s as u32));
         let (mut shuttle, hands) = Shuttle::new();
@@ -1685,7 +1685,7 @@ mod tests {
                     (true, _) => crate::driver::bot_tick(shown, side, frame),
                     // Side 0 moves about; side 1 presses START now and then.
                     (false, 0) => PlayerTick::buttons(masher.buttons() & MOVES),
-                    (false, _) if fighting && frame % 40 == 0 => PlayerTick::buttons(keys::START),
+                    (false, _) if fighting && frame % 40 == 0 => PlayerTick::buttons(Keys::START),
                     (false, _) => PlayerTick::default(),
                 };
                 let keys = input.held;
@@ -1698,7 +1698,7 @@ mod tests {
                     owed -= 1;
                     said[side] += 1;
                 }
-                if ran.advanced && keys & keys::START != 0 && fighting {
+                if ran.advanced && keys.contains(Keys::START) && fighting {
                     pressed[side] += 1;
                     owed += 1;
                 }

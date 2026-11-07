@@ -455,7 +455,7 @@ mod tests {
     fn printing(mut c: Chatbox, units: &[usize]) -> Vec<Vec<usize>> {
         let mut out = Vec::new();
         for _ in 0..300 {
-            c.update(0, 0);
+            c.update(nettai_battle::input::Keys::empty(), nettai_battle::input::Keys::empty());
             if c.look().text.is_some() {
                 out.push(shown(&c, units, true));
             }
@@ -486,7 +486,7 @@ mod tests {
         // Not translated: the content's own lines, as the chatbox prints them.
         let mut c = Chatbox::new(Script::Description { breaks: 2 });
         for _ in 0..300 {
-            c.update(0, 0);
+            c.update(nettai_battle::input::Keys::empty(), nettai_battle::input::Keys::empty());
         }
         assert_eq!(shown(&c, &[5, 4, 6], false), vec![5, 4, 6]);
     }

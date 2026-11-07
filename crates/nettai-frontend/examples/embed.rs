@@ -20,7 +20,7 @@
 //! The game's assets are extracted from its ROMs as the tools find them (`$NETTAI_ROMS`).
 
 use nettai_audio::BattleAudio;
-use nettai_battle::input::keys;
+use nettai_battle::input::Keys;
 use nettai_frontend::Player;
 use nettai_frontend::driver::LivePlayer;
 use nettai_frontend::game::{self, Options};
@@ -29,17 +29,17 @@ use std::path::{Path, PathBuf};
 /// The buttons held, by tick: the first custom screen's pick and OK, then a
 /// chip, the buster and a step. (`--keys` prints it as the program's
 /// `--keys` takes it.)
-const SCRIPT: &[(u32, u32, &str, u16)] = &[
-    (300, 340, "a", keys::A),
-    (420, 420, "start", keys::START),
-    (430, 460, "a", keys::A),
-    (700, 700, "a", keys::A),
-    (760, 800, "b", keys::B),
-    (820, 823, "right", keys::RIGHT),
+const SCRIPT: &[(u32, u32, &str, Keys)] = &[
+    (300, 340, "a", Keys::A),
+    (420, 420, "start", Keys::START),
+    (430, 460, "a", Keys::A),
+    (700, 700, "a", Keys::A),
+    (760, 800, "b", Keys::B),
+    (820, 823, "right", Keys::RIGHT),
 ];
 
-fn held(tick: u32) -> u16 {
-    SCRIPT.iter().filter(|(from, to, ..)| (*from..=*to).contains(&tick)).fold(0, |all, (.., button)| all | button)
+fn held(tick: u32) -> Keys {
+    SCRIPT.iter().filter(|(from, to, ..)| (*from..=*to).contains(&tick)).fold(Keys::empty(), |all, (.., button)| all | *button)
 }
 
 /// The frames a directory of the program's headless output holds

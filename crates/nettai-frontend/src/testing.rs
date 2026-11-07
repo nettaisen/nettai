@@ -40,12 +40,12 @@ impl Write for Shared {
 /// shoots and wins both rounds): the replay as its file reads back, and
 /// the set's ticks.
 pub fn recorded(content: &Arc<Content>, game: &str, seed: u32) -> (Replay, u64) {
-    recorded_with(content, game, seed, |_, _| 0)
+    recorded_with(content, game, seed, |_, _| nettai_battle::input::Keys::empty())
 }
 
 /// [`recorded`], the left player holding `also(battle, tick)` besides the
 /// shooter's buttons (a START in the fight, which shoots no less).
-pub fn recorded_with(content: &Arc<Content>, game: &str, seed: u32, mut also: impl FnMut(&nettai_battle::Battle, u32) -> u16) -> (Replay, u64) {
+pub fn recorded_with(content: &Arc<Content>, game: &str, seed: u32, mut also: impl FnMut(&nettai_battle::Battle, u32) -> nettai_battle::input::Keys) -> (Replay, u64) {
     let m = short_set::of(content, game, seed);
     let sink = Shared::default();
     let mut s = Session::new(Box::new(LivePlayer::new(nettai_match::Set::of(content, &m, seed))));

@@ -621,7 +621,7 @@ mod tests {
             assert_eq!(preload.fraction_of(Part::Match), 0.0);
             let mut player = preload.player(Box::new(LivePlayer::new(set)));
             assert_eq!(player.late().runtimes, 1);
-            assert!(player.tick(0));
+            assert!(player.tick(nettai_battle::input::Keys::empty()));
         });
     }
 }

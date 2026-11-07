@@ -5,7 +5,7 @@
 //! middle, the background across), in a fight, on the custom screen (its window at the top left), with the
 //! chatbox up and on a screen of both.
 
-use nettai_battle::input::keys;
+use nettai_battle::input::Keys;
 use nettai_frontend::driver::{InFight, LivePlayer, Opponent};
 use nettai_frontend::game::{Game, RomSource};
 use nettai_frontend::player::Player;
@@ -23,10 +23,10 @@ const SIZES: [(usize, usize); 6] = [(284, 160), (347, 160), (1374, 160), (240, 2
 
 /// The keys each match is played with: a chip picked and sent on the first custom screen, then moves and
 /// attacks in the fight (the opponent attacks at random).
-const KEYS: &[(u32, u16)] = &[(120, keys::A), (200, keys::START), (215, keys::A), (470, keys::UP), (520, keys::A), (640, keys::DOWN), (700, keys::A), (800, keys::A)];
+const KEYS: &[(u32, Keys)] = &[(120, Keys::A), (200, Keys::START), (215, Keys::A), (470, Keys::UP), (520, Keys::A), (640, Keys::DOWN), (700, Keys::A), (800, Keys::A)];
 
 /// The keys that open a chip's description on the first custom screen (the chatbox).
-const CHAT_KEYS: &[(u32, u16)] = &[(100, keys::R), (180, keys::R), (190, keys::A), (260, keys::START)];
+const CHAT_KEYS: &[(u32, Keys)] = &[(100, Keys::R), (180, Keys::R), (190, Keys::A), (260, Keys::START)];
 
 fn here() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).to_path_buf()
@@ -60,10 +60,10 @@ fn play_to(player: &mut Player, tick: u32) {
 }
 
 /// Play on to tick `tick`, `keys` held a tick each.
-fn play_keys_to(player: &mut Player, keys: &[(u32, u16)], tick: u32) {
+fn play_keys_to(player: &mut Player, keys: &[(u32, Keys)], tick: u32) {
     while (player.ticks() as u32) < tick {
         let next = player.ticks() as u32 + 1;
-        let held = keys.iter().filter(|(at, _)| *at == next).fold(0, |k, (_, b)| k | b);
+        let held = keys.iter().filter(|(at, _)| *at == next).fold(Keys::empty(), |k, (_, b)| k | *b);
         assert!(player.tick(held), "the battle stopped before tick {tick}");
     }
 }

@@ -38,6 +38,7 @@ use crate::game::{Enhancements, Graphics, Loaded, VectorFont};
 use crate::preload::Late;
 use crate::session::Session;
 use nettai_audio::BattleAudio;
+use nettai_battle::input::Keys;
 use nettai_battle::{Battle, BattleResult};
 use nettai_render::vfont::TextRenderer;
 use nettai_render::{Frame, Renderer};
@@ -272,7 +273,7 @@ impl Player {
     /// display with frames to spare (faster than the ticks, on average), it
     /// keeps one of what it owes for the next frame, so each tick has its
     /// picture (one tick later, until the frames to spare make it up).
-    pub fn advance(&mut self, elapsed: Duration, buttons: u16) -> u32 {
+    pub fn advance(&mut self, elapsed: Duration, buttons: Keys) -> u32 {
         if self.paused || self.session.stopped.is_some() {
             self.clock.rest();
             return 0;
@@ -337,7 +338,7 @@ impl Player {
     /// driver that runs the battle itself, netplay's, runs one wall-clock
     /// frame, which may wait.) False, with [`Player::stopped`] saying why,
     /// when the battle can't go on.
-    pub fn tick(&mut self, buttons: u16) -> bool {
+    pub fn tick(&mut self, buttons: Keys) -> bool {
         if self.held && self.session.stopped.is_none() {
             // (Held: the sound of a tick and a frame of the stage's scenery, and nothing of the battle's.)
             self.renderer.scenery_frame(&self.session.battle);
@@ -352,7 +353,7 @@ impl Player {
         }
         // (The tick's input: the buttons, and the switch asked for and the choice made until a tick that ran
         // carried them. A driver that runs the battle itself may wait this frame: they wait with it.)
-        let input = nettai_battle::PlayerTick { held: buttons & 0x3FF, switch_to: self.switch, choice: self.choice, ..Default::default() };
+        let input = nettai_battle::PlayerTick { held: buttons & Keys::BUTTONS, switch_to: self.switch, choice: self.choice, ..Default::default() };
         if !self.session.step(input) {
             return false;
         }
@@ -819,26 +820,26 @@ mod tests {
     fn the_player_keeps_the_clock() {
         let graphics = Arc::new(nettai_assets::Bundle::default());
         let mut p = Player::with(Renderer::new(graphics.clone()), None, None, live());
-        assert_eq!(p.advance(time(10.5), 0), 10);
-        assert_eq!(p.advance(time(0.6), 0), 1, "the half tick left over counts");
+        assert_eq!(p.advance(time(10.5), Keys::empty()), 10);
+        assert_eq!(p.advance(time(0.6), Keys::empty()), 1, "the half tick left over counts");
         assert_eq!(p.ticks(), 11);
-        assert_eq!(p.advance(Duration::from_secs(5), 0), 15, "a quarter of a second at most (14.9 ticks, and the 0.1 left over)");
+        assert_eq!(p.advance(Duration::from_secs(5), Keys::empty()), 15, "a quarter of a second at most (14.9 ticks, and the 0.1 left over)");
         assert!(p.faster() && p.speed() == 2.0);
-        assert_eq!(p.advance(time(10.2), 0), 20);
+        assert_eq!(p.advance(time(10.2), Keys::empty()), 20);
         assert!(p.slower() && p.slower() && p.speed() == 0.5);
-        assert_eq!(p.advance(time(10.2), 0), 5);
+        assert_eq!(p.advance(time(10.2), Keys::empty()), 5);
         assert!(p.faster());
         let ticks = p.ticks();
         assert!(p.set_paused(true) && p.paused());
-        assert_eq!((p.advance(time(30.0), 0), p.ticks()), (0, ticks));
-        assert!(p.tick(0), "a frame's step while paused");
+        assert_eq!((p.advance(time(30.0), Keys::empty()), p.ticks()), (0, ticks));
+        assert!(p.tick(Keys::empty()), "a frame's step while paused");
         assert_eq!(p.ticks(), ticks + 1);
         assert!(p.set_paused(false));
-        assert_eq!(p.advance(time(3.1), 0), 3, "nothing owed from the pause");
+        assert_eq!(p.advance(time(3.1), Keys::empty()), 3, "nothing owed from the pause");
         // Starting over, and going on with another driver.
         assert!(p.restart());
         assert_eq!((p.ticks(), p.position().as_str()), (0, "live round 1 tick 0"));
-        p.advance(time(4.1), 0);
+        p.advance(time(4.1), Keys::empty());
         p.play(live());
         assert_eq!((p.ticks(), p.stopped(), p.finished(), p.result()), (0, None, false, None));
     }
@@ -851,7 +852,6 @@ mod tests {
     #[test]
     fn start_in_the_fight_is_the_hosts_to_answer() {
         use nettai_battle::battle::{fight, mode};
-        use nettai_battle::input::keys;
         let graphics = Arc::new(nettai_assets::Bundle::default());
         let mut p = Player::with(Renderer::new(graphics.clone()), None, None, live());
         let fighting = |p: &Player| p.battle().round.mode == mode::FIGHTING && p.battle().fight.state == fight::FIGHTING;
@@ -863,26 +863,26 @@ mod tests {
                 break;
             }
             let buttons = bot_keys(&p, tick);
-            starts += (buttons & keys::START != 0) as u32;
+            starts += (buttons.contains(Keys::START)) as u32;
             assert!(p.tick(buttons));
         }
         assert!(fighting(&p) && starts > 0, "the fight runs, after {starts} START presses on the custom screen");
         assert_eq!(p.take_pause_requests(), [false; 2]);
         // In the fight: held three ticks, one press.
         for _ in 0..3 {
-            assert!(p.tick(keys::START));
+            assert!(p.tick(Keys::START));
             assert!(fighting(&p) && !p.battle().paused);
         }
-        assert!(p.tick(0));
+        assert!(p.tick(Keys::empty()));
         assert_eq!(p.take_pause_requests(), [true, false]);
         assert_eq!(p.take_pause_requests(), [false; 2], "taken once");
         // The host's own pause: no tick runs while it holds them.
         assert!(p.set_paused(true));
         let ticks = p.ticks();
-        assert_eq!((p.advance(time(30.0), keys::START), p.ticks()), (0, ticks));
+        assert_eq!((p.advance(time(30.0), Keys::START), p.ticks()), (0, ticks));
         assert_eq!(p.take_pause_requests(), [false; 2]);
         assert!(p.set_paused(false));
-        assert_eq!(p.advance(time(1.1), keys::START), 1);
+        assert_eq!(p.advance(time(1.1), Keys::START), 1);
         assert_eq!(p.session().pause_requests, [true, false]);
         assert!(p.restart());
         assert_eq!(p.take_pause_requests(), [false; 2]);
@@ -896,7 +896,7 @@ mod tests {
         let graphics = Arc::new(nettai_assets::Bundle::default());
         let mut p = Player::with(Renderer::new(graphics.clone()), None, None, live());
         assert_eq!(p.opponent(), Some(Opponent::default()));
-        p.advance(time(20.2), 0);
+        p.advance(time(20.2), Keys::empty());
         let wanted = Opponent { in_fight: InFight::AttacksAtRandom, on_custom_screen: OnCustomScreen::PicksNothing };
         assert!(p.set_opponent(wanted));
         assert_eq!(p.opponent(), Some(wanted));
@@ -922,16 +922,16 @@ mod tests {
             // Every 40th frame comes two frames late (25 ms).
             let e = if i % 40 == 39 { frame * 3 } else { frame };
             elapsed += e;
-            assert!(p.advance(e, 0) <= 1, "frame {i}");
+            assert!(p.advance(e, Keys::empty()) <= 1, "frame {i}");
         }
         // One five frames late (42 ms, two and a half ticks) runs two at most.
         elapsed += frame * 5;
-        assert!(p.advance(frame * 5, 0) <= 2);
+        assert!(p.advance(frame * 5, Keys::empty()) <= 2);
         let clock = elapsed.as_secs_f64() * FRAME_RATE;
         assert!((clock - p.ticks() as f64).abs() < 2.0, "{} ticks for {clock:.2}", p.ticks());
         let mut p = Player::with(Renderer::new(graphics.clone()), None, None, live());
         let frame = Duration::from_secs_f64(1.0 / 50.0);
-        let ran: Vec<u32> = (0..100).map(|i| p.advance(if i % 20 == 19 { frame * 2 } else { frame }, 0)).collect();
+        let ran: Vec<u32> = (0..100).map(|i| p.advance(if i % 20 == 19 { frame * 2 } else { frame }, Keys::empty())).collect();
         assert!(ran.contains(&2), "{ran:?}");
     }
 
@@ -944,7 +944,7 @@ mod tests {
         let graphics = Arc::new(nettai_assets::Bundle::default());
         let mut p = Player::with(Renderer::new(graphics.clone()), None, None, live());
         for _ in 0..3 {
-            p.advance(time(10.2), 0);
+            p.advance(time(10.2), Keys::empty());
         }
         let frame = p.frame();
         assert_eq!(frame.pixels.len(), WIDTH * HEIGHT);
@@ -1002,7 +1002,7 @@ mod tests {
         assert!(p.real_time());
         assert!(!p.set_paused(true) && !p.faster() && !p.slower() && !p.restart());
         assert_eq!((p.paused(), p.speed()), (false, 1.0));
-        assert_eq!(p.advance(time(5.1), 0), 5);
+        assert_eq!(p.advance(time(5.1), Keys::empty()), 5);
         assert_eq!(p.net_status().and_then(|n| n.ping_ms), Some(3.0));
         assert_eq!((p.result(), p.stopped()), (Some(BattleResult::Won), None));
     }
@@ -1029,7 +1029,7 @@ mod tests {
                 swapped.set_language(&green);
             }
             for p in [&mut first, &mut second, &mut swapped] {
-                assert!(p.tick(0));
+                assert!(p.tick(Keys::empty()));
             }
             let (a, b, s) = (first.frame(), second.frame(), swapped.frame());
             differed += (a.pixels != b.pixels) as u32;
@@ -1061,7 +1061,7 @@ mod tests {
         };
         let audio = BattleAudio::with_banks(vec![Arc::new(bank)], nettai_audio::Songs::numbers(0x100));
         let mut p = Player::with(Renderer::new(graphics.clone()), None, Some(audio), live());
-        assert_eq!(p.advance(time(10.1), 0) + p.advance(time(10.1), 0), 20);
+        assert_eq!(p.advance(time(10.1), Keys::empty()) + p.advance(time(10.1), Keys::empty()), 20);
         let mut samples = Vec::new();
         p.take_samples(&mut samples);
         // (A frame is 548 or 549 samples at 32768 Hz.)
@@ -1071,13 +1071,13 @@ mod tests {
         assert_eq!(samples.len(), had, "taken once");
         // A host that never takes them keeps no more than a second.
         for _ in 0..200 {
-            p.tick(0);
+            p.tick(Keys::empty());
         }
         samples.clear();
         p.take_samples(&mut samples);
         assert_eq!(samples.len(), MOST_SAMPLES);
         let mut silent = Player::with(Renderer::new(graphics.clone()), None, None, live());
-        silent.advance(time(5.1), 0);
+        silent.advance(time(5.1), Keys::empty());
         samples.clear();
         silent.take_samples(&mut samples);
         assert!(samples.is_empty());
@@ -1197,7 +1197,7 @@ mod tests {
         let mut drawn_anew = 0;
         for n in 1..=60u32 {
             // (The player's buttons reach nothing.)
-            assert!(held.tick(nettai_battle::input::keys::A));
+            assert!(held.tick(nettai_battle::input::Keys::A));
             assert_eq!((held.ticks(), held.battle().digest()), (ticks, digest), "frame {n}: held");
             assert_eq!(held.stage_clock().background, clock.background + n, "frame {n}: the background a frame on");
             let now = held.frame().pixels;
@@ -1284,7 +1284,7 @@ mod tests {
         let mut last = stalled.frame().pixels;
         let mut drawn_anew = 0;
         for n in 1..=60u32 {
-            assert!(stalled.tick(0));
+            assert!(stalled.tick(Keys::empty()));
             assert_eq!((stalled.ticks(), stalled.battle().digest()), (ticks, digest), "frame {n}: stalled");
             assert_eq!(stalled.stage_clock().background, clock.background + n, "frame {n}: the background a frame on");
             let now = stalled.frame().pixels;
@@ -1306,21 +1306,20 @@ mod tests {
     /// walking the local player's layer's cursor (`p`'s driver's): A on a
     /// chip under it that can be picked while none is, else START to OK and
     /// A, a press every other tick.
-    fn bot_keys(p: &Player, tick: u32) -> u16 {
+    fn bot_keys(p: &Player, tick: u32) -> Keys {
         use nettai_battle::battle::mode;
         use nettai_battle::custom::{Phase, SlotKind, SlotState, screen::OK_SLOT};
-        use nettai_battle::input::keys;
         let b = p.battle();
         let s = &b.custom.sides[0];
-        let Some(screen) = s.screen.as_ref().filter(|x| s.in_custom && b.round.mode == mode::CUSTOM && x.phase == Phase::Choosing) else { return 0 };
-        let Some(layer) = p.session.driver.layers()[0].filter(|l| !l.is_up() && tick % 2 == 1) else { return 0 };
+        let Some(screen) = s.screen.as_ref().filter(|x| s.in_custom && b.round.mode == mode::CUSTOM && x.phase == Phase::Choosing) else { return Keys::empty() };
+        let Some(layer) = p.session.driver.layers()[0].filter(|l| !l.is_up() && tick % 2 == 1) else { return Keys::empty() };
         let here = &screen.slots[layer.cursor as usize];
         if screen.selected == 0 && matches!(here.kind, SlotKind::Chip { .. }) && here.state == SlotState::Selectable {
-            keys::A
+            Keys::A
         } else if layer.cursor != OK_SLOT {
-            keys::START
+            Keys::START
         } else {
-            keys::A
+            Keys::A
         }
     }
 }

@@ -1,6 +1,7 @@
 //! Without a window: chosen frames of a session written to PNG files
 //! (`nettai_render::present::write_png`), and the trace audits.
 
+use nettai_battle::input::Keys;
 use nettai_frontend::Session;
 use nettai_frontend::driver::Driver;
 use nettai_frontend::player::Player;
@@ -35,11 +36,10 @@ pub fn parse_frames(s: &str) -> Result<BTreeSet<u32>, String> {
 /// by its name (`nettai_battle::ScreenChoice::named`: pick0 to pick11,
 /// press0 to press11, ok, take_back, form0 to form4).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct KeyScript(Vec<(u32, u32, u16, Option<u8>, Option<nettai_battle::ScreenChoice>)>);
+pub struct KeyScript(Vec<(u32, u32, Keys, Option<u8>, Option<nettai_battle::ScreenChoice>)>);
 
 impl KeyScript {
     pub fn parse(s: &str) -> Result<KeyScript, String> {
-        use nettai_battle::input::keys;
         let mut out = Vec::new();
         for part in s.split(',').map(str::trim).filter(|p| !p.is_empty()) {
             let (ticks, buttons) = part.split_once(':').ok_or_else(|| format!("{part:?} is not TICKS:BUTTONS"))?;
@@ -48,7 +48,7 @@ impl KeyScript {
                 Some((a, b)) => (num(a)?, num(b)?),
                 None => (num(ticks)?, num(ticks)?),
             };
-            let (mut held, mut switch, mut choice) = (0, None, None);
+            let (mut held, mut switch, mut choice) = (Keys::empty(), None, None);
             for b in buttons.split('+') {
                 let name = b.trim().to_ascii_lowercase();
                 if let Some(member) = name.strip_prefix("switch") {
@@ -60,16 +60,16 @@ impl KeyScript {
                     continue;
                 }
                 held |= match name.as_str() {
-                    "a" => keys::A,
-                    "b" => keys::B,
-                    "l" => keys::L,
-                    "r" => keys::R,
-                    "up" => keys::UP,
-                    "down" => keys::DOWN,
-                    "left" => keys::LEFT,
-                    "right" => keys::RIGHT,
-                    "start" => keys::START,
-                    "select" => keys::SELECT,
+                    "a" => Keys::A,
+                    "b" => Keys::B,
+                    "l" => Keys::L,
+                    "r" => Keys::R,
+                    "up" => Keys::UP,
+                    "down" => Keys::DOWN,
+                    "left" => Keys::LEFT,
+                    "right" => Keys::RIGHT,
+                    "start" => Keys::START,
+                    "select" => Keys::SELECT,
                     other => return Err(format!("no button {other:?}")),
                 };
             }
@@ -79,8 +79,8 @@ impl KeyScript {
     }
 
     /// The buttons held on tick `tick`.
-    pub fn held(&self, tick: u32) -> u16 {
-        self.0.iter().filter(|(a, b, ..)| (*a..=*b).contains(&tick)).fold(0, |k, (_, _, h, ..)| k | h)
+    pub fn held(&self, tick: u32) -> Keys {
+        self.0.iter().filter(|(a, b, ..)| (*a..=*b).contains(&tick)).fold(Keys::empty(), |k, (_, _, h, ..)| k | *h)
     }
 
     /// The party member a switch is asked to on tick `tick`, if any.
@@ -415,12 +415,11 @@ mod tests {
 
     #[test]
     fn key_scripts() {
-        use nettai_battle::input::keys;
         let k = super::KeyScript::parse("232-233:up, 300:a+b").unwrap();
-        assert_eq!((k.held(231), k.held(232), k.held(233), k.held(300)), (0, keys::UP, keys::UP, keys::A | keys::B));
+        assert_eq!((k.held(231), k.held(232), k.held(233), k.held(300)), (super::Keys::empty(), super::Keys::UP, super::Keys::UP, super::Keys::A | super::Keys::B));
         assert!(super::KeyScript::parse("3:jump").is_err());
         let k = super::KeyScript::parse("10:switch1, 11:a+switch0").unwrap();
-        assert_eq!((k.switch(9), k.switch(10), k.switch(11), k.held(11)), (None, Some(1), Some(0), keys::A));
+        assert_eq!((k.switch(9), k.switch(10), k.switch(11), k.held(11)), (None, Some(1), Some(0), super::Keys::A));
         assert!(super::KeyScript::parse("3:switch3").is_err());
     }
 }

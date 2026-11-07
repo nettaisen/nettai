@@ -448,8 +448,7 @@ fn show_folder(path: &std::path::Path) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::input::{BUTTONS, SWITCH_LEFT, SWITCH_RIGHT, button_index};
-    use nettai_battle::input::keys;
+    use crate::input::{BUTTONS, Buttons, button_index};
 
     /// Each controls' row asks for its own button: the navi changes theirs, not SELECT's.
     #[test]
@@ -457,8 +456,8 @@ mod tests {
         for (i, (bit, _)) in BUTTONS.iter().enumerate() {
             assert_eq!(asked(i as i32), button_index(*bit));
         }
-        assert_eq!(BUTTONS[asked(10)].0, SWITCH_LEFT);
-        assert_eq!(BUTTONS[asked(11)].0, SWITCH_RIGHT);
-        assert_eq!(BUTTONS[asked(9)].0, keys::SELECT);
+        assert_eq!(BUTTONS[asked(10)].0, Buttons::SWITCH_LEFT);
+        assert_eq!(BUTTONS[asked(11)].0, Buttons::SWITCH_RIGHT);
+        assert_eq!(BUTTONS[asked(9)].0, Buttons::SELECT);
     }
 }

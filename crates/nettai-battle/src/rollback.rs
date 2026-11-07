@@ -101,7 +101,7 @@ impl Battle {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::input::keys;
+    use crate::input::Keys;
     use crate::content::testing;
 
     fn battle() -> Battle {
@@ -112,7 +112,7 @@ mod tests {
 
     fn input(frame: u32) -> TickInput {
         // Walk about: a direction every few frames.
-        let dirs = [keys::UP, keys::RIGHT, keys::DOWN, keys::LEFT, 0];
+        let dirs = [Keys::UP, Keys::RIGHT, Keys::DOWN, Keys::LEFT, Keys::empty()];
         let held = |p: u32| dirs[((frame / 7 + p * 3) % 5) as usize];
         TickInput { players: [PlayerTick::buttons(held(0)), PlayerTick::buttons(held(1))], events: TickEvents::default() }
     }
@@ -216,7 +216,7 @@ mod tests {
         // buster shots, each a hit region.)
         let shoot = |b: &Battle, frame: u32| {
             let custom = b.round.mode == crate::battle::mode::CUSTOM;
-            let held = if !custom && matches!(frame % 8, 0 | 1) { keys::B } else { 0 };
+            let held = if !custom && matches!(frame % 8, 0 | 1) { Keys::B } else { Keys::empty() };
             let choice = (custom && frame % 8 == 4).then_some(crate::input::ScreenChoice::Ok);
             TickInput { players: [PlayerTick::buttons(held).with_choice(choice); 2], events: TickEvents::default() }
         };

@@ -8,7 +8,7 @@
 //! order and presses OK ([`crate::act::scripted_pointer`]).
 
 use nettai_battle::Battle;
-use nettai_battle::input::keys;
+use nettai_battle::input::Keys;
 use nettai_netplay::rng::SplitMix64;
 use nettai_netplay::standin::Masher;
 
@@ -69,7 +69,7 @@ const CHIP_LOOK_TICKS: u32 = 48;
 /// The ticks the duelist holds B before it fires: a charged shot.
 const CHARGE_TICKS: u32 = 50;
 
-const MOVES: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
+const MOVES: Keys = Keys::UP.union(Keys::DOWN).union(Keys::LEFT).union(Keys::RIGHT);
 
 /// A scripted player's state in the fight.
 #[derive(Clone, Debug)]
@@ -78,26 +78,29 @@ pub struct Bot {
     t: u32,
     rng: SplitMix64,
     masher: Masher,
-    held: u16,
-    last: u16,
+    /// The dodger's buttons, held between its picks.
+    held: Keys,
+    /// The shooter's: ticks it has held its last press.
+    held_ticks: u16,
+    last: Keys,
     /// The duelist's: ticks B has been held, the panel it is stepping from
     /// and the direction, and ticks it has pressed it.
     charge: u32,
-    step: Option<(nettai_content_api::PanelPos, u16, u32)>,
+    step: Option<(nettai_content_api::PanelPos, Keys, u32)>,
 }
 
 impl Bot {
     pub fn new(kind: BotKind, seed: u64) -> Bot {
         let mut masher = Masher::new(seed);
         masher.buster = true;
-        Bot { kind, t: 0, rng: SplitMix64::new(seed ^ 0x5eed), masher, held: 0, last: 0, charge: 0, step: None }
+        Bot { kind, t: 0, rng: SplitMix64::new(seed ^ 0x5eed), masher, held: Keys::empty(), held_ticks: 0, last: Keys::empty(), charge: 0, step: None }
     }
 
     /// Its buttons this tick of the fight for side `side`'s navi in `b`.
-    pub fn fight(&mut self, b: &Battle, side: u8) -> u16 {
+    pub fn fight(&mut self, b: &Battle, side: u8) -> Keys {
         self.t += 1;
         let pressed = match self.kind {
-            BotKind::Still => 0,
+            BotKind::Still => Keys::empty(),
             BotKind::Mover => self.masher.buttons() & MOVES,
             BotKind::Masher => self.masher.buttons(),
             BotKind::Shooter => self.shooter(b, side),
@@ -105,7 +108,7 @@ impl Bot {
             BotKind::Duelist => self.duelist(b, side),
         };
         self.last = pressed;
-        pressed & !(keys::L | keys::R)
+        pressed & !(Keys::L | Keys::R)
     }
 
     /// The panel of side `side`'s navi.
@@ -113,34 +116,34 @@ impl Bot {
         b.player(side).filter(|&r| b.objects.is_allocated(r)).map(|r| b.objects.get(r).panel)
     }
 
-    fn shooter(&mut self, b: &Battle, side: u8) -> u16 {
-        let (Some(at), Some(them)) = (Bot::at(b, side), Bot::at(b, side ^ 1)) else { return 0 };
+    fn shooter(&mut self, b: &Battle, side: u8) -> Keys {
+        let (Some(at), Some(them)) = (Bot::at(b, side), Bot::at(b, side ^ 1)) else { return Keys::empty() };
         // (A press is let go the tick after; a step is held until the row is reached, ten ticks at most.)
-        if self.last != 0 {
-            self.held += 1;
-            if self.last & MOVES != 0 && self.held < 10 && at.y != them.y {
+        if !self.last.is_empty() {
+            self.held_ticks += 1;
+            if self.last.intersects(MOVES) && self.held_ticks < 10 && at.y != them.y {
                 return self.last;
             }
-            return 0;
+            return Keys::empty();
         }
-        self.held = 0;
+        self.held_ticks = 0;
         if at.y != them.y {
-            return if them.y < at.y { keys::UP } else { keys::DOWN };
+            return if them.y < at.y { Keys::UP } else { Keys::DOWN };
         }
         if b.hands[side as usize].remaining() > 0 {
-            return keys::A;
+            return Keys::A;
         }
-        if self.t % SHOOT_EVERY < 2 { keys::B } else { 0 }
+        if self.t % SHOOT_EVERY < 2 { Keys::B } else { Keys::empty() }
     }
 
     /// The panel a step `dir` from `at` reaches, if it is on the field and
     /// side `side`'s.
-    fn stepped(b: &Battle, side: u8, at: nettai_content_api::PanelPos, dir: u16) -> Option<(u8, u8)> {
+    fn stepped(b: &Battle, side: u8, at: nettai_content_api::PanelPos, dir: Keys) -> Option<(u8, u8)> {
         let (x, y) = match dir {
-            keys::UP => (at.x as i32, at.y as i32 - 1),
-            keys::DOWN => (at.x as i32, at.y as i32 + 1),
-            keys::LEFT => (at.x as i32 - 1, at.y as i32),
-            keys::RIGHT => (at.x as i32 + 1, at.y as i32),
+            Keys::UP => (at.x as i32, at.y as i32 - 1),
+            Keys::DOWN => (at.x as i32, at.y as i32 + 1),
+            Keys::LEFT => (at.x as i32 - 1, at.y as i32),
+            Keys::RIGHT => (at.x as i32 + 1, at.y as i32),
             _ => (at.x as i32, at.y as i32),
         };
         if !(1..=6).contains(&x) || !(1..=3).contains(&y) {
@@ -157,12 +160,12 @@ impl Bot {
 
     /// What pressing `first` for `press` ticks, then `then`, does over `ticks` ticks of a copy of `b`, the other
     /// side pressing nothing: the HP side `side` loses and the HP the other loses.
-    fn try_out(b: &Battle, side: u8, first: u16, press: u32, then: u16, ticks: u32) -> (i32, i32) {
+    fn try_out(b: &Battle, side: u8, first: Keys, press: u32, then: Keys, ticks: u32) -> (i32, i32) {
         let mut c = b.clone();
         let before = Bot::hps(&c);
         for t in 0..ticks {
             let mine = if t < press { first } else { then };
-            let mut held = [0u16; 2];
+            let mut held = [Keys::empty(); 2];
             held[side as usize] = mine;
             if !crate::env::step_battle(&mut c, held) || c.is_battle_over() || c.round.mode != b.round.mode {
                 break;
@@ -173,62 +176,62 @@ impl Bot {
         (before[me] - after[me], before[them] - after[them])
     }
 
-    fn duelist(&mut self, b: &Battle, side: u8) -> u16 {
-        let (Some(at), Some(them)) = (Bot::at(b, side), Bot::at(b, side ^ 1)) else { return 0 };
+    fn duelist(&mut self, b: &Battle, side: u8) -> Keys {
+        let (Some(at), Some(them)) = (Bot::at(b, side), Bot::at(b, side ^ 1)) else { return Keys::empty() };
         self.charge += 1;
         // (Between decisions, what it chose is held: a step till the panel changes, ten ticks at most.)
         if let Some((from, dir, held)) = self.step {
             if at == from && held < 10 {
                 self.step = Some((from, dir, held + 1));
-                return keys::B | dir;
+                return Keys::B | dir;
             }
             self.step = None;
         }
         if self.t % DECIDE_EVERY != 0 {
-            return keys::B;
+            return Keys::B;
         }
         // Its chip, where using it now lands (the other navi staying put), costing it no more than staying.
-        let (stay_loss, _) = Bot::try_out(b, side, keys::B, 0, keys::B, LOOK_TICKS);
+        let (stay_loss, _) = Bot::try_out(b, side, Keys::B, 0, Keys::B, LOOK_TICKS);
         if b.hands[side as usize].remaining() > 0 && (at.y as i32 - them.y as i32).abs() <= 1 {
-            let (loss, dealt) = Bot::try_out(b, side, keys::A | keys::B, 2, keys::B, CHIP_LOOK_TICKS);
+            let (loss, dealt) = Bot::try_out(b, side, Keys::A | Keys::B, 2, Keys::B, CHIP_LOOK_TICKS);
             if dealt > 0 && loss <= stay_loss {
-                return keys::A | keys::B;
+                return Keys::A | Keys::B;
             }
         }
         // Its charged shot, where it lands.
         if self.charge >= CHARGE_TICKS && at.y == them.y {
-            let (_, dealt) = Bot::try_out(b, side, 0, 1, keys::B, LOOK_TICKS);
+            let (_, dealt) = Bot::try_out(b, side, Keys::empty(), 1, Keys::B, LOOK_TICKS);
             if dealt > 0 {
                 self.charge = 0;
-                return 0;
+                return Keys::empty();
             }
         }
         // The step that costs it least over the next ticks; at no cost, toward the other navi's row.
-        let toward = if them.y < at.y { keys::UP } else if them.y > at.y { keys::DOWN } else { 0 };
-        let mut best = (stay_loss, 1, 0u16);
-        for dir in [keys::UP, keys::DOWN, keys::LEFT, keys::RIGHT] {
+        let toward = if them.y < at.y { Keys::UP } else if them.y > at.y { Keys::DOWN } else { Keys::empty() };
+        let mut best = (stay_loss, 1, Keys::empty());
+        for dir in [Keys::UP, Keys::DOWN, Keys::LEFT, Keys::RIGHT] {
             if Bot::stepped(b, side, at, dir).is_none() {
                 continue;
             }
-            let (loss, _) = Bot::try_out(b, side, dir | keys::B, 3, keys::B, LOOK_TICKS);
+            let (loss, _) = Bot::try_out(b, side, dir | Keys::B, 3, Keys::B, LOOK_TICKS);
             let rank = (loss, if dir == toward { 0 } else { 2 }, dir);
             if (rank.0, rank.1) < (best.0, best.1) {
                 best = rank;
             }
         }
         // (Toward the row only now and then: a step every decision would leave it no time to attack.)
-        if best.2 != 0 && (best.0 < stay_loss || self.rng.below(3) == 0) {
+        if !best.2.is_empty() && (best.0 < stay_loss || self.rng.below(3) == 0) {
             self.step = Some((at, best.2, 0));
-            return keys::B | best.2;
+            return Keys::B | best.2;
         }
-        keys::B
+        Keys::B
     }
 
-    fn dodger(&mut self) -> u16 {
+    fn dodger(&mut self) -> Keys {
         if self.t.is_multiple_of(DODGE_EVERY) {
-            self.held = [0, keys::UP, keys::DOWN][self.rng.below(3) as usize];
+            self.held = [Keys::empty(), Keys::UP, Keys::DOWN][self.rng.below(3) as usize];
         } else if self.t % DODGE_EVERY >= 3 {
-            self.held = 0;
+            self.held = Keys::empty();
         }
         self.held
     }

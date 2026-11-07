@@ -6,6 +6,7 @@
 use crate::battle::Battle;
 use crate::behavior::{Behaviors, Options, with_runtime};
 use crate::content::{Content, testing};
+use crate::input::Keys;
 use crate::scenario;
 
 /// The duel's battle at its start.
@@ -1897,7 +1898,7 @@ fn the_support_dimming_chips_roll_back() {
 /// duel's GunDelSols, the custom screens picking chips as the duel's do,
 /// and in the fight each side holding `fight(b, side, n)` (`n` the ticks
 /// fought so far); `each` sees the battle after every tick.
-fn drive(chip: &str, ticks: usize, fight: impl Fn(&Battle, usize, u32) -> u16, mut each: impl FnMut(&Battle)) -> Battle {
+fn drive(chip: &str, ticks: usize, fight: impl Fn(&Battle, usize, u32) -> Keys, mut each: impl FnMut(&Battle)) -> Battle {
     use crate::battle::{BattleFlags, TickEvents, mode};
     use crate::input::PlayerTick;
     let mut setup = scenario::setup_with_handles(&[testing::chip_handle(chip)]);
@@ -1910,7 +1911,7 @@ fn drive(chip: &str, ticks: usize, fight: impl Fn(&Battle, usize, u32) -> u16, m
         let mut input = [PlayerTick::default(); 2];
         for side in 0..2 {
             let choice = if b.round.mode == mode::CUSTOM { scenario::custom_choice(&b, side, last[side]) } else { None };
-            let held = if fighting { fight(&b, side, n) } else { 0 };
+            let held = if fighting { fight(&b, side, n) } else { Keys::empty() };
             input[side] = PlayerTick::buttons(held).with_choice(choice);
             last[side] = choice;
         }
@@ -1927,8 +1928,8 @@ fn all_of(b: &Battle, key: &str) -> Vec<crate::object::ObjectRef> {
 }
 
 /// Side 0 uses its first chip a while into the fight (A held for a tick).
-fn use_once(_b: &Battle, side: usize, n: u32) -> u16 {
-    if side == 0 && n == 20 { crate::input::keys::A } else { 0 }
+fn use_once(_b: &Battle, side: usize, n: u32) -> Keys {
+    if side == 0 && n == 20 { crate::input::Keys::A } else { Keys::empty() }
 }
 
 #[test]
@@ -2024,26 +2025,26 @@ fn django_drops_in_and_rides_across_his_row() {
 
 #[test]
 fn django_comes_back_to_slash_after_l_l_l_a() {
-    use crate::input::keys;
+    use crate::input::Keys;
     use crate::object::PanelPos;
     // Side 1 steps up to (5,1), out of the ride's row; side 0 puts in L, L,
     // L, A while Django rides: he comes back in front of side 1 and slashes
     // it for Django2's 80.
-    let fight = |b: &Battle, side: usize, n: u32| -> u16 {
+    let fight = |b: &Battle, side: usize, n: u32| -> Keys {
         if side == 1 {
-            return if n == 2 { keys::UP } else { 0 };
+            return if n == 2 { Keys::UP } else { Keys::empty() };
         }
         if n == 40 {
-            return keys::A;
+            return Keys::A;
         }
         match django_at(b) {
             // The ride's ticks: 48 down to 0.
             Some((4, timer, _)) if timer <= 46 => match 46 - timer {
-                0 | 2 | 4 => keys::L,
-                6 => keys::A,
-                _ => 0,
+                0 | 2 | 4 => Keys::L,
+                6 => Keys::A,
+                _ => Keys::empty(),
             },
-            _ => 0,
+            _ => Keys::empty(),
         }
     };
     let mut actions = Vec::new();

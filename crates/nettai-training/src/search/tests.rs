@@ -1,3 +1,4 @@
+use nettai_battle::input::Keys;
 use super::*;
 use crate::fingerprint::{Sandbox, Setup};
 use crate::testing::content;
@@ -27,7 +28,7 @@ fn it_steps_out_of_a_cannons_row() {
     let (mut b, _) = sandbox.prepared(4, Setup::Plain).expect("the target at its panel");
     crate::fingerprint::give(&mut b, 0, &[cannon]);
     // The user presses A: the cannon starts.
-    assert!(step_battle(&mut b, [nettai_battle::input::keys::A, 0]));
+    assert!(step_battle(&mut b, [nettai_battle::input::Keys::A, Keys::empty()]));
     let search = Search::default();
     let mut logits = vec![0.0f32; spec::FIGHT_ACTIONS];
     logits[0] = 5.0; // (the network: stand still)
@@ -48,12 +49,12 @@ fn ahead_it_still_steps_out_of_a_cannons_row() {
     let sandbox = Sandbox::new(&c).unwrap_or_else(|e| panic!("{e}"));
     let (mut b, _) = sandbox.prepared(4, Setup::Plain).expect("the target at its panel");
     crate::fingerprint::give(&mut b, 0, &[cannon]);
-    assert!(step_battle(&mut b, [nettai_battle::input::keys::A, 0]));
+    assert!(step_battle(&mut b, [nettai_battle::input::Keys::A, Keys::empty()]));
     let search = Search::default();
     assert!(search.lead >= 1);
     let mut logits = vec![0.0f32; spec::FIGHT_ACTIONS];
     logits[0] = 5.0;
-    let a = search.ahead(&b, 1, 8, 0, &logits, 7).expect("an action");
+    let a = search.ahead(&b, 1, 8, Keys::empty(), &logits, 7).expect("an action");
     assert!(matches!(a / 4, 1 | 2), "a step up or down, not {a}");
 }
 
@@ -77,7 +78,7 @@ fn lookahead_costs_by_game() {
         let mut navs = [act::Navigator::default(), act::Navigator::default()];
         let mut layers = [nettai_battle::custom::Layer::new(0, &b), nettai_battle::custom::Layer::new(1, &b)];
         for t in 0..6000 {
-            let mut press = [0u16; 2];
+            let mut press = [nettai_battle::input::Keys::empty(); 2];
             if b.round.mode == nettai_battle::battle::mode::CUSTOM {
                 for s in 0..2u8 {
                     let nav = &mut navs[s as usize];
@@ -107,7 +108,7 @@ fn lookahead_costs_by_game() {
             if t % 2000 == 0 {
                 c2 = b.clone();
             }
-            if !step_battle(&mut c2, [if t % 9 == 0 { nettai_battle::input::keys::A } else { 0 }, 0]) {
+            if !step_battle(&mut c2, [if t % 9 == 0 { nettai_battle::input::Keys::A } else { Keys::empty() }, Keys::empty()]) {
                 c2 = b.clone();
             }
             n += 1;

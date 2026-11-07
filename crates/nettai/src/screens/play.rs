@@ -59,6 +59,7 @@ mod tour {
 }
 
 use crate::battle::{BattleEvent, BattleStart, Play as Played};
+use crate::input::Buttons;
 use crate::builds::{self, overview, shelf, words};
 use crate::rulesets::page::{self as rules_page, Outcome, Page as RulesPage};
 use crate::rulesets::{self, Pickable};
@@ -74,7 +75,6 @@ use crate::shell::{Dialog, Shell};
 use crate::sound::Cue;
 use nettai_gamepad::Button;
 use nettai_battle::{BattleResult, ContentHash};
-use nettai_battle::input::keys;
 use nettai_frontend::driver::{Driver, StopReason};
 use nettai_frontend::lobby::{Agreement, Settings};
 use nettai_frontend::netplay::{NetOptions, NetPlayer};
@@ -2310,7 +2310,7 @@ impl Screen for Play {
         // In a match: both builds while Tab (Select on a pad) is held, over the match and over its menu; the menu
         // opens on its first page.
         if matches!(self.stage, Stage::Match { .. }) {
-            let held = shell.keys.tab || (shell.pad.held(&shell.bindings) | shell.touch.held()) & keys::SELECT != 0;
+            let held = shell.keys.tab || (shell.pad.held(&shell.bindings) | shell.touch.held()).contains(Buttons::SELECT);
             let shown = shell.battle_has_keys() || (self.menu_open(shell) && shell.dialog.is_none());
             self.set_peek(shell, held && shown);
             if self.page != MatchPage::Menu && !shell.battle.as_ref().is_some_and(|b| b.menu_open()) {
@@ -2370,8 +2370,8 @@ impl Play {
 fn match_keys(shell: &Shell, view: &PlayView) -> Vec<Hint> {
     let (keys, pad) = (&shell.bindings.keys, &shell.bindings.pad);
     let at = button_index;
-    let one = |button: u16, text: &str| Hint { key: key_cap(keys[at(button)]).into(), pad: pad_face(pad[at(button)]), text: text.into(), ..Default::default() };
-    let ways = [keys::UP, keys::DOWN, keys::LEFT, keys::RIGHT];
+    let one = |button: Buttons, text: &str| Hint { key: key_cap(keys[at(button)]).into(), pad: pad_face(pad[at(button)]), text: text.into(), ..Default::default() };
+    let ways = [Buttons::UP, Buttons::DOWN, Buttons::LEFT, Buttons::RIGHT];
     let caps: Vec<&str> = ways.iter().map(|&b| key_cap(keys[at(b)])).collect();
     let moving = Hint {
         // (Single glyphs together, "↑↓←→"; longer names apart.)
@@ -2383,14 +2383,14 @@ fn match_keys(shell: &Shell, view: &PlayView) -> Vec<Hint> {
         text: view.get_move_word(),
         ..Default::default()
     };
-    let mut out = vec![moving, one(keys::A, "A"), one(keys::B, "B")];
-    let shoulders = [keys::L, keys::R].iter().all(|&b| pad_face(pad[at(b)]) == PadButton::Shoulders);
+    let mut out = vec![moving, one(Buttons::A, "A"), one(Buttons::B, "B")];
+    let shoulders = [Buttons::L, Buttons::R].iter().all(|&b| pad_face(pad[at(b)]) == PadButton::Shoulders);
     match shoulders {
-        true => out.push(Hint { key2: key_cap(keys[at(keys::R)]).into(), text: "L R".into(), ..one(keys::L, "") }),
-        false => out.extend([one(keys::L, "L"), one(keys::R, "R")]),
+        true => out.push(Hint { key2: key_cap(keys[at(Buttons::R)]).into(), text: "L R".into(), ..one(Buttons::L, "") }),
+        false => out.extend([one(Buttons::L, "L"), one(Buttons::R, "R")]),
     }
-    out.push(Hint { key: "Tab".into(), pad: pad_face(pad[at(keys::SELECT)]), text: view.get_show_builds_word(), ..Default::default() });
-    out.push(Hint { key: "Esc".into(), key2: key_cap(keys[at(keys::START)]).into(), pad: pad_face(pad[at(keys::START)]), text: view.get_menu_word() });
+    out.push(Hint { key: "Tab".into(), pad: pad_face(pad[at(Buttons::SELECT)]), text: view.get_show_builds_word(), ..Default::default() });
+    out.push(Hint { key: "Esc".into(), key2: key_cap(keys[at(Buttons::START)]).into(), pad: pad_face(pad[at(Buttons::START)]), text: view.get_menu_word() });
     out
 }
 

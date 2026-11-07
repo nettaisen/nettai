@@ -41,7 +41,7 @@ use nettai_battle::custom::screen::Phase;
 use nettai_battle::custom::{FolderChip, Layer};
 use nettai_battle::{Battle, PlayerTick};
 use nettai_battle::hud::CustomGauge;
-use nettai_battle::input::keys;
+use nettai_battle::input::Keys;
 use nettai_match::{Picks, Set, Side};
 use std::sync::Arc;
 
@@ -253,7 +253,7 @@ struct Seat {
     /// was drawn for a teacher's label; and the seat's presses by tick
     /// (modulo [`PRESSES`]), to play it on with.
     views: Vec<Option<Box<Battle>>>,
-    presses: [u16; PRESSES],
+    presses: [Keys; PRESSES],
 }
 
 /// Ticks of a seat's presses kept: past the longest delay and a decision's
@@ -350,7 +350,7 @@ pub fn quiet_engine_panics() {
 /// went on. Buttons alone choose nothing on a custom screen: a tick that
 /// is to get through one goes through the sides' layers
 /// ([`step_layered`]).
-pub fn step_battle(b: &mut Battle, held: [u16; 2]) -> bool {
+pub fn step_battle(b: &mut Battle, held: [Keys; 2]) -> bool {
     step_ticks(b, held.map(PlayerTick::buttons))
 }
 
@@ -359,7 +359,7 @@ pub fn step_battle(b: &mut Battle, held: [u16; 2]) -> bool {
 /// buttons against the battle as it stands and makes their screen's
 /// choices of them, as a player's layer does, and follows the tick after.
 /// Whether it went on ([`step_battle`]).
-pub fn step_layered(b: &mut Battle, layers: &mut [Layer; 2], held: [u16; 2]) -> bool {
+pub fn step_layered(b: &mut Battle, layers: &mut [Layer; 2], held: [Keys; 2]) -> bool {
     step_through(b, layers, held.map(PlayerTick::buttons))
 }
 
@@ -405,8 +405,9 @@ pub fn probe_keys(b: &Battle, layer: &Layer, side: u8) -> [Option<act::Opened>; 
     act::KEYS.map(|key| {
         let mut copy = b.clone();
         let mut mine = *layer;
-        let direction = key & (keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT) != 0;
-        let presses: &[u16] = if direction { &[key, key, 0, 0] } else { &[key, 0, 0] };
+        let direction = key.intersects(Keys::UP | Keys::DOWN | Keys::LEFT | Keys::RIGHT);
+        let none = Keys::empty();
+        let presses: &[Keys] = if direction { &[key, key, none, none] } else { &[key, none, none] };
         for &held in presses {
             let mut both = [PlayerTick::default(); 2];
             both[side as usize] = mine.input(PlayerTick::buttons(held), &copy);
@@ -460,7 +461,7 @@ impl Env {
             bot: Bot::new(BotKind::Still, n),
             mem: None,
             views: (0..ring).map(|_| None).collect(),
-            presses: [0; PRESSES],
+            presses: [Keys::empty(); PRESSES],
         };
         let mut picks = Picks::new((seed ^ (seed >> 32)) as u32);
         // (The draws of one seed differ from another's from the first.)
@@ -852,7 +853,7 @@ impl Env {
             return None;
         }
         for t in from..self.t {
-            let mut press = [0u16; 2];
+            let mut press = [Keys::empty(); 2];
             press[s] = self.seats[s].presses[t as usize % PRESSES];
             if both {
                 press[s ^ 1] = self.seats[s ^ 1].presses[t as usize % PRESSES];
@@ -928,7 +929,7 @@ impl Env {
                 if let Some(view) = self.seats[s].views.get_mut(at).and_then(Option::take).filter(|_| delayed) {
                     let started = std::time::Instant::now();
                     let now = self.played_on(s, *view, want.expect("a delayed view"), false);
-                    let holding_b = act::fight_buttons(self.seats[s].action) & nettai_battle::input::keys::B != 0;
+                    let holding_b = act::fight_buttons(self.seats[s].action).contains(nettai_battle::input::Keys::B);
                     let label = now.and_then(|b| crate::search::Search::default().teach(&b, s as u8, k, holding_b, self.cfg.teacher_margin));
                     self.teacher[s] = label.map_or(-1, |a| a as i8);
                     self.profile.teach += started.elapsed().as_nanos() as u64;
@@ -970,7 +971,7 @@ impl Env {
         self.in_screen = custom;
         self.screen_ticks += custom as u32;
         let runs = fight_runs(&self.battle);
-        let mut held = [0u16; 2];
+        let mut held = [Keys::empty(); 2];
         for s in 0..2 {
             let b = &self.battle;
             let seat = &mut self.seats[s];
@@ -987,11 +988,11 @@ impl Env {
                     Controller::Bot(_) => seat.bot.fight(b, s as u8),
                 }
             } else {
-                0
+                Keys::empty()
             };
         }
         if let Some(s) = self.opens() {
-            held[s] |= keys::L;
+            held[s].insert(Keys::L);
         }
         if self.full_gauge && self.battle.gauge.enabled && self.battle.gauge.value < CustomGauge::FULL {
             self.battle.gauge.value = CustomGauge::FULL;

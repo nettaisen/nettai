@@ -14,6 +14,7 @@ use nettai_battle::content::ChipCode;
 use nettai_battle::custom::{BattleFolder, FolderChip, PlayerSetup};
 use nettai_battle::rules::Fact;
 use nettai_battle::setup::BattleEffects;
+use nettai_battle::input::Keys;
 use nettai_battle::{Battle, Content, NaviStats as EngineNaviStats, PlayerTick, RoundSetup, TickEvents};
 use nettai_content_api::{Pool, Registry, Value, WeaponHandle};
 use serde::Deserialize;
@@ -629,7 +630,7 @@ impl Round {
     /// Inputs and events for the `i`th of `frames`.
     pub fn tick_inputs(&self, i: usize, frames: &[&Frame]) -> ([PlayerTick; 2], TickEvents) {
         let f = frames[i];
-        let input = std::array::from_fn(|p| PlayerTick::buttons(self.fed(i, frames, p)));
+        let input = std::array::from_fn(|p| PlayerTick::buttons(Keys::from_bits_retain(self.fed(i, frames, p))));
         let mut events = TickEvents::default();
         // The link session closed on the tick the end state moved on.
         if i > 0 && f.state[0] == 8 && f.state[1] == 4 && frames[i - 1].state[1] == 0 {

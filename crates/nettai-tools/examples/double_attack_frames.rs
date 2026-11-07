@@ -21,7 +21,7 @@
 //! C-SCOPE's stop.
 
 use nettai_battle::battle::{fight, mode};
-use nettai_battle::input::{PlayerTick, keys};
+use nettai_battle::input::{Keys, PlayerTick};
 use nettai_battle::Battle;
 use nettai_frontend::game::{Options, load};
 use nettai_render::Enhancements;
@@ -76,7 +76,7 @@ fn main() {
     while !(b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING) {
         let input = [0, 1].map(|s| {
             last[s] = nettai_battle::scenario::custom_choice(&b, s, last[s]);
-            PlayerTick::buttons(0).with_choice(last[s])
+            PlayerTick::buttons(Keys::empty()).with_choice(last[s])
         });
         b.tick(&input, Default::default());
     }
@@ -102,8 +102,8 @@ fn main() {
     let mut seen = false;
     for t in 0..2000i64 {
         let held = match telop_at {
-            Some(at) if key_a.contains(&(t - at)) => keys::A,
-            _ => 0,
+            Some(at) if key_a.contains(&(t - at)) => Keys::A,
+            _ => Keys::empty(),
         };
         b.tick(&[PlayerTick::buttons(held), Default::default()], Default::default());
         let mut sounds = Vec::new();

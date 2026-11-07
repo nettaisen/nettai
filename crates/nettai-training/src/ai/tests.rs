@@ -1,7 +1,7 @@
 use super::*;
 use crate::testing::content;
 use nettai_battle::hud::CustomGauge;
-use nettai_battle::input::keys;
+use nettai_battle::input::Keys;
 use nettai_match::{Picks, Set};
 
 /// The parity fixture's network (small, its parameters random): it plays,
@@ -49,7 +49,7 @@ fn play_fight(game: &str, seed: u32, ai: &mut dyn Ai, ticks: u32, theirs: u16) -
         let mine = if custom {
             nettai_frontend::driver::bot_tick(&b, 0, t)
         } else if fight_runs(&b) && !b.is_dimmed() && b.gauge.value >= CustomGauge::FULL && t % 2 == 0 {
-            nettai_battle::PlayerTick::buttons(keys::L)
+            nettai_battle::PlayerTick::buttons(Keys::L)
         } else {
             nettai_battle::PlayerTick::default()
         };
@@ -82,14 +82,14 @@ fn it_plays_a_round_as_the_env_plays_a_seat() {
             assert_eq!(seen, t - d, "{game}: the decision at {t} saw the view of {seen}");
         }
         let fight: Vec<(usize, u16)> = pressed.iter().copied().enumerate().filter(|&(t, _)| ai.decided.iter().any(|&(d, _)| d as usize <= t)).collect();
-        assert!(fight.iter().any(|&(_, h)| h & (keys::A | keys::B) != 0) && fight.iter().any(|&(_, h)| h & (keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT) != 0), "{game}: it moves and attacks");
-        assert!(pressed.iter().all(|h| h & (keys::R | keys::SELECT | keys::START) == 0), "{game}");
+        assert!(fight.iter().any(|&(_, h)| h.intersects(Keys::A | Keys::B)) && fight.iter().any(|&(_, h)| h.intersects(Keys::UP | Keys::DOWN | Keys::LEFT | Keys::RIGHT)), "{game}: it moves and attacks");
+        assert!(pressed.iter().all(|h| !h.intersects(Keys::R | Keys::SELECT | Keys::START)), "{game}");
         // (Between decisions in the fight, the buttons held stay as they were.)
         let decisions: std::collections::HashSet<usize> = ai.decided.iter().map(|&(t, _)| t as usize).collect();
         for t in 1..pressed.len() {
             // (Its L, pressed and let go as it opens the custom screen, apart.)
             if runs[t] && runs[t - 1] && !decisions.contains(&t) {
-                assert_eq!(pressed[t] & !keys::L, pressed[t - 1] & !keys::L, "{game}: tick {t}, no decision");
+                assert_eq!(pressed[t] & !Keys::L, pressed[t - 1] & !Keys::L, "{game}: tick {t}, no decision");
             }
         }
     }
@@ -150,7 +150,7 @@ fn it_opens_the_custom_screen_as_the_env_did() {
             let held = if custom { ai.custom_screen(&b, 1, &layers[1]) } else { ai.fight(&b, 1, 0) };
             if env::may_open(&b) {
                 full_since.get_or_insert(t);
-                if held & keys::L != 0 {
+                if held.contains(Keys::L) {
                     first_l.get_or_insert(t);
                 }
             }

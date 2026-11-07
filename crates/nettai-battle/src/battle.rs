@@ -10,7 +10,7 @@ use crate::custom::CustomScreens;
 use crate::field::Field;
 use crate::hand::ChipHand;
 use crate::hud::{Banner, BannerStatus, CustomGauge};
-use crate::input::{InputRecord, PlayerTick, keys};
+use crate::input::{InputRecord, Keys, PlayerTick};
 use crate::object::{ObjectRef, Objects};
 use crate::console::Console;
 use crate::rng::Rng;
@@ -1011,7 +1011,7 @@ impl Battle {
     /// `input::keys`) while dimmed so far (wrapping): more after a tick
     /// than before it, a press of them on that tick was read. No part of
     /// the simulation ([`crate::dimming::KeyReads`]).
-    pub fn dimmed_key_reads(&self, side: u8, keys: u16) -> u32 {
+    pub fn dimmed_key_reads(&self, side: u8, keys: Keys) -> u32 {
         self.dimmed_key_reads.get(side, keys)
     }
 
@@ -1190,7 +1190,7 @@ impl Battle {
         // press on the fight's first tick.)
         self.read_choices(input);
         for p in 0..2 {
-            self.inputs[p].update(input[p].held & 0x3FF | keys::PRESENT);
+            self.inputs[p].update(input[p].held & Keys::BUTTONS | Keys::PRESENT);
             let side = &self.custom.sides[p];
             let mut status = RemoteStatus::empty();
             status.set(RemoteStatus::CUSTOM_SCREEN, side.in_custom);
@@ -1827,7 +1827,7 @@ impl Battle {
     /// unpauses at the top of the next fighting tick.
     fn fight_pause(&mut self) {
         let p = self.fight.pausing_player as usize & 1;
-        if self.inputs[p].pressed & keys::START != 0 {
+        if self.inputs[p].pressed.contains(Keys::START) {
             self.sound(SoundRole::Pause);
             self.set_fight_state(fight::FIGHTING);
             // (The HUD's pause display hides.)
@@ -2094,7 +2094,7 @@ impl Battle {
         }
         // sub_800A29A
         let asks = |side: usize| {
-            self.sides[side].gauge >= GAUGE_CUSTOM_COST && self.inputs[side].pressed & (keys::L | keys::R) != 0
+            self.sides[side].gauge >= GAUGE_CUSTOM_COST && self.inputs[side].pressed.intersects(Keys::L | Keys::R)
         };
         let link = self.setup.settings.effects.contains(BattleEffects::LINK);
         u8::from(asks(0)) | (u8::from(link && asks(1)) << 1)
@@ -2187,7 +2187,7 @@ impl Battle {
         if self.is_battle_over() || self.is_dimmed() {
             return [false; 2];
         }
-        [0, 1].map(|p| self.inputs[p].pressed & keys::START != 0)
+        [0, 1].map(|p| self.inputs[p].pressed.contains(Keys::START))
     }
 
     /// EXE4's 0x08007A2E (the flow's `custom_request` "joypads"): not
@@ -2198,7 +2198,7 @@ impl Battle {
             return false;
         }
         self.round.flags.contains(BattleFlags::GAUGE_FULL)
-            && (self.inputs[0].pressed | self.inputs[1].pressed) & (keys::L | keys::R) != 0
+            && (self.inputs[0].pressed | self.inputs[1].pressed).intersects(Keys::L | Keys::R)
     }
 
     /// `sub_800A1D0`.
@@ -2762,7 +2762,7 @@ mod tests {
             }
             let input = [0, 1].map(|side| {
                 last[side] = crate::scenario::custom_choice(&b, side, last[side]);
-                PlayerTick::buttons(0).with_choice(last[side])
+                PlayerTick::buttons(Keys::empty()).with_choice(last[side])
             });
             b.tick(&input, TickEvents::default());
         }
@@ -2770,7 +2770,7 @@ mod tests {
     }
 
     /// One tick with these buttons held, by side.
-    fn held(b: &mut Battle, buttons: [u16; 2]) {
+    fn held(b: &mut Battle, buttons: [Keys; 2]) {
         b.tick(&buttons.map(|held| PlayerTick::buttons(held)), TickEvents::default());
     }
 
@@ -2782,17 +2782,17 @@ mod tests {
     fn a_consoles_battle_pauses_itself() {
         let mut b = fighting(crate::setup::HostKeys::NONE);
         let pause = SoundCue::from(b.roles().sound(SoundRole::Pause));
-        held(&mut b, [0, keys::START]);
+        held(&mut b, [Keys::empty(), Keys::START]);
         assert_eq!((b.fight.state, b.fight.pausing_player, b.paused), (fight::PAUSE, 1, true));
         assert!(b.sound_cues().contains(&pause));
         assert_eq!(b.pause_requests(), [false; 2]);
-        held(&mut b, [0, 0]);
+        held(&mut b, [Keys::empty(), Keys::empty()]);
         // The other player's START doesn't resume it.
-        held(&mut b, [keys::START, 0]);
+        held(&mut b, [Keys::START, Keys::empty()]);
         assert_eq!(b.fight.state, fight::PAUSE);
-        held(&mut b, [0, keys::START]);
+        held(&mut b, [Keys::empty(), Keys::START]);
         assert_eq!(b.fight.state, fight::FIGHTING);
-        held(&mut b, [0, 0]);
+        held(&mut b, [Keys::empty(), Keys::empty()]);
         assert!(!b.paused);
     }
 
@@ -2804,14 +2804,14 @@ mod tests {
         let digest = b.digest();
         assert!(b.paused_by().is_none());
         assert_eq!(b.digest(), digest, "asked, nothing changes");
-        held(&mut b, [keys::START, 0]);
+        held(&mut b, [Keys::START, Keys::empty()]);
         assert_eq!(b.paused_by(), Some(0));
         // Held there, it goes on ticking in the game's pause, and comes out of it on the same player's START.
         for _ in 0..30 {
-            held(&mut b, [0, 0]);
+            held(&mut b, [Keys::empty(), Keys::empty()]);
             assert_eq!(b.paused_by(), Some(0));
         }
-        held(&mut b, [keys::START, 0]);
+        held(&mut b, [Keys::START, Keys::empty()]);
         assert_eq!(b.paused_by(), None);
         // Nobody on the custom screen.
         let custom = Battle::new(RoundSetup { host_keys: crate::setup::HostKeys::NONE, ..crate::scenario::setup() }, crate::scenario::content());
@@ -2832,8 +2832,8 @@ mod tests {
         let pause = SoundCue::from(b.roles().sound(SoundRole::Pause));
         // Side 1 presses START and holds it: asked once, on the press.
         for (tick, want) in [[false, true], [false, false], [false, false]].into_iter().enumerate() {
-            held(&mut b, [0, keys::START]);
-            held(&mut plain, [0, 0]);
+            held(&mut b, [Keys::empty(), Keys::START]);
+            held(&mut plain, [Keys::empty(), Keys::empty()]);
             assert_eq!(b.pause_requests(), want, "tick {tick}");
             assert_eq!((b.fight.state, b.paused), (fight::FIGHTING, false), "tick {tick}");
             assert!(!b.sound_cues().contains(&pause), "tick {tick}");
@@ -2841,31 +2841,31 @@ mod tests {
         }
         // Released, the battle is the one nobody pressed START in.
         for _ in 0..3 {
-            held(&mut b, [0, 0]);
-            held(&mut plain, [0, 0]);
+            held(&mut b, [Keys::empty(), Keys::empty()]);
+            held(&mut plain, [Keys::empty(), Keys::empty()]);
         }
         assert_eq!(b.digest(), plain.digest());
         // Both on one tick: both are said (the original's names player 0).
-        held(&mut b, [keys::START, keys::START]);
+        held(&mut b, [Keys::START, Keys::START]);
         assert_eq!(b.pause_requests(), [true, true]);
         assert_eq!(b.fight.state, fight::FIGHTING);
-        held(&mut b, [0, 0]);
+        held(&mut b, [Keys::empty(), Keys::empty()]);
         assert_eq!(b.pause_requests(), [false; 2]);
         // Dimmed, and over: no pause to ask for.
         let mut dimmed = b.clone();
         dimmed.set_flags(BattleFlags::DIMMED);
-        held(&mut dimmed, [keys::START, 0]);
+        held(&mut dimmed, [Keys::START, Keys::empty()]);
         assert_eq!(dimmed.pause_requests(), [false; 2]);
         let mut over = b.clone();
         over.round.time_up = 1;
-        held(&mut over, [keys::START, 0]);
+        held(&mut over, [Keys::START, Keys::empty()]);
         assert_eq!(over.pause_requests(), [false; 2]);
         // A snapshot restored and stepped again says it again: the request
         // is the tick's output, as its sound is.
         let snapshot = b.clone();
-        held(&mut b, [keys::START, 0]);
+        held(&mut b, [Keys::START, Keys::empty()]);
         let mut again = snapshot;
-        held(&mut again, [keys::START, 0]);
+        held(&mut again, [Keys::START, Keys::empty()]);
         assert_eq!((again.pause_requests(), again.digest()), ([true, false], b.digest()));
     }
 

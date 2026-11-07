@@ -2,6 +2,7 @@
 //! rules/double_attacks): a switch out of Full Synchro to the navi a Double
 //! Attack pairs with fires it, once a round, through the party's switch.
 
+use nettai_battle::input::Keys;
 use crate::testing::exe5_content;
 use crate::Match;
 use nettai_battle::battle::{fight, mode};
@@ -55,7 +56,7 @@ pub(crate) fn fighting(content: &Arc<Content>, partners: &[&str]) -> Battle {
         }
         let input = [0, 1].map(|side| {
             last[side] = nettai_battle::scenario::custom_choice(&b, side, last[side]);
-            PlayerTick::buttons(0).with_choice(last[side])
+            PlayerTick::buttons(Keys::empty()).with_choice(last[side])
         });
         b.tick(&input, Default::default());
     }
@@ -312,9 +313,9 @@ fn c_scope_stops_on_a() {
         let on = b.objects.in_order().any(|r| b.objects.get(r).kind == scope && b.objects.get(r).panel == target);
         let a = if on && !pressed {
             pressed = true;
-            nettai_battle::input::keys::A
+            nettai_battle::input::Keys::A
         } else {
-            0
+            Keys::empty()
         };
         b.tick(&[PlayerTick::buttons(a), Default::default()], Default::default());
         scopes = scopes.max(count(&b, "c-scope/scope"));

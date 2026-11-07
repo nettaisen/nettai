@@ -354,7 +354,7 @@ pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
 /// Mashing buttons takes an extra tick off a status timer; returns true
 /// once the status flag is gone.
 fn mash(b: &mut Battle, r: ObjectRef, t: usize, flag: StatusFlags) -> bool {
-    if ai(b, r).pad.pressed != 0 {
+    if !ai(b, r).pad.pressed.is_empty() {
         let c = coll_mut(b, r);
         let v = c.status_timers[t] as i16 as i32 - 1;
         c.status_timers[t] = if v > 0 { v as u16 } else { 0 };

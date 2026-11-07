@@ -7,7 +7,7 @@ use crate::testing::exe5_content;
 use nettai_battle::Battle;
 use nettai_battle::actor::ActorStatus;
 use nettai_battle::collision::StatusFlags;
-use nettai_battle::input::PlayerTick;
+use nettai_battle::input::{Keys, PlayerTick};
 
 /// Side 0 asks to switch to `member` (out of the normal mood: no Double
 /// Attack), then 80 ticks of nothing: the switch lands and settles.
@@ -89,7 +89,7 @@ fn fighting_sides(content: &std::sync::Arc<nettai_battle::Content>, left: &str, 
         }
         let input = [0, 1].map(|side| {
             last[side] = nettai_battle::scenario::custom_choice(&b, side, last[side]);
-            PlayerTick::buttons(0).with_choice(last[side])
+            PlayerTick::buttons(Keys::empty()).with_choice(last[side])
         });
         b.tick(&input, Default::default());
     }
@@ -124,20 +124,19 @@ fn state(b: &Battle) -> Vec<String> {
 /// The script both battles play from where they are compared: tap B (the
 /// buster), hold B to a full charge and let go (the charge shot), step up
 /// and back, tap A (the hand's first chip): each tick's buttons.
-fn script() -> Vec<u16> {
-    use nettai_battle::input::keys;
+fn script() -> Vec<Keys> {
     let mut s = Vec::new();
-    let hold = |key: u16, ticks: usize, s: &mut Vec<u16>| {
+    let hold = |key: Keys, ticks: usize, s: &mut Vec<Keys>| {
         s.extend(std::iter::repeat_n(key, ticks));
-        s.extend(std::iter::repeat_n(0, 40));
+        s.extend(std::iter::repeat_n(Keys::empty(), 40));
     };
-    hold(keys::B, 2, &mut s);
-    hold(keys::B, 240, &mut s);
-    s.extend(std::iter::repeat_n(0, 120));
-    hold(keys::UP, 2, &mut s);
-    hold(keys::DOWN, 2, &mut s);
-    hold(keys::A, 2, &mut s);
-    s.extend(std::iter::repeat_n(0, 200));
+    hold(Keys::B, 2, &mut s);
+    hold(Keys::B, 240, &mut s);
+    s.extend(std::iter::repeat_n(Keys::empty(), 120));
+    hold(Keys::UP, 2, &mut s);
+    hold(Keys::DOWN, 2, &mut s);
+    hold(Keys::A, 2, &mut s);
+    s.extend(std::iter::repeat_n(Keys::empty(), 200));
     s
 }
 
@@ -270,7 +269,7 @@ fn gyroman_switched_in_hovers_over_a_broken_panel() {
 /// evil, switches to ProtoMan, and ProtoMan back to him.
 #[test]
 fn a_dark_megaman_switches() {
-    use nettai_battle::input::keys;
+    use nettai_battle::input::Keys;
     use nettai_battle::kinds::player::emotion_name;
     let content = exe5_content();
     let left = crate::double_attacks::side(&["protoman"]) + "karma = 0\n";
@@ -278,7 +277,7 @@ fn a_dark_megaman_switches() {
     assert_eq!(emotion_name(&b, 0), "evil", "a dark value starts him evil");
     b.hands[0].ids[0] = crate::ids::chip(&content, "exe5", "darkplus");
     b.hands[0].cursor = 0;
-    b.tick(&[PlayerTick::buttons(keys::A), Default::default()], Default::default());
+    b.tick(&[PlayerTick::buttons(Keys::A), Default::default()], Default::default());
     for _ in 0..60 {
         b.tick(&Default::default(), Default::default());
     }

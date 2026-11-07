@@ -13,7 +13,7 @@ use nettai_battle::console::ConsoleSetup;
 use nettai_battle::custom::screen::MAX_SELECTIONS;
 use nettai_battle::custom::{BattleFolder, FolderChip, Phase, PlayerSetup, SlotKind, SlotState};
 use nettai_battle::content::{ChipCode, Content};
-use nettai_battle::input::keys;
+use nettai_battle::input::Keys;
 use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore};
 use nettai_battle::{Battle, PlayerTick, ScreenChoice, TickEvents, TickInput};
 
@@ -167,7 +167,7 @@ fn player_setup(f: BattleFolder, seed: u32, side: u32) -> PlayerSetup {
 #[derive(Clone, Debug)]
 pub struct Masher {
     rng: SplitMix64,
-    held: u16,
+    held: Keys,
     /// Also press B: the buster, and held, the charged shot (and on the
     /// custom screen, now and then, B: a pick taken back).
     pub buster: bool,
@@ -180,7 +180,7 @@ const CHOOSING_AT_LEAST: u32 = 30;
 
 impl Masher {
     pub fn new(seed: u64) -> Masher {
-        Masher { rng: SplitMix64::new(seed), held: 0, buster: false, choosing: 0 }
+        Masher { rng: SplitMix64::new(seed), held: Keys::empty(), buster: false, choosing: 0 }
     }
 
     /// The next frame's input for side `side` on `b` (the battle as it
@@ -225,19 +225,19 @@ impl Masher {
     }
 
     /// The next frame's held buttons.
-    pub fn buttons(&mut self) -> u16 {
+    pub fn buttons(&mut self) -> Keys {
         let r = &mut self.rng;
         if r.chance(1, 4) {
-            const DIRS: [u16; 5] = [0, keys::UP, keys::DOWN, keys::LEFT, keys::RIGHT];
+            const DIRS: [Keys; 5] = [Keys::empty(), Keys::UP, Keys::DOWN, Keys::LEFT, Keys::RIGHT];
             let mut held = DIRS[r.below(5) as usize];
             if r.chance(1, 3) {
-                held |= keys::A;
+                held.insert(Keys::A);
             }
             if self.buster && r.chance(2, 5) {
-                held |= keys::B;
+                held.insert(Keys::B);
             }
             if r.chance(1, 12) {
-                held |= if r.chance(1, 2) { keys::L } else { keys::R };
+                held.insert(if r.chance(1, 2) { Keys::L } else { Keys::R });
             }
             self.held = held;
         }
@@ -254,7 +254,7 @@ mod tests {
     /// its switch request or its choice.
     #[test]
     fn a_choice_and_a_switch_are_not_predicted() {
-        let t = PlayerTick { held: keys::A | keys::UP, switch_to: Some(1), mic_loud: true, choice: Some(ScreenChoice::Pick(3)) };
+        let t = PlayerTick { held: Keys::A | Keys::UP, switch_to: Some(1), mic_loud: true, choice: Some(ScreenChoice::Pick(3)) };
         let predicted = PlayerTick::from_word(<StandInBattle as Game>::predict(&t.word()));
         assert_eq!(predicted, PlayerTick { switch_to: None, choice: None, ..t });
     }

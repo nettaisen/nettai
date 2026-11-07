@@ -12,12 +12,12 @@
 //! (`Shared::tour_files`).
 
 use super::{Burst, SETTLE, Step, Tour, compare, flush_burst, write};
+use crate::input::Buttons;
 use crate::input::Action;
 use crate::nav::Rect;
 use crate::screens::ScreenId;
 use crate::screens::practice;
 use crate::shell::App;
-use nettai_battle::input::keys;
 use crate::builds::store;
 use nettai_ui::{AppWindow, BuildsView, PracticeOption, Theme};
 use slint::ComponentHandle;
@@ -360,7 +360,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         Box::new(|_, app, _| {
             let mut app = app.borrow_mut();
             app.shell.close_menu();
-            app.shell.keys.held = keys::LEFT | keys::B | keys::R;
+            app.shell.keys.held = Buttons::LEFT | Buttons::B | Buttons::R;
         }),
     );
     shot(add, "practice-inputs", lang, size, Differs::Unheld, false);
@@ -373,7 +373,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         SETTLE,
         Box::new(|_, app, _| {
             let mut app = app.borrow_mut();
-            app.shell.keys.held = 0;
+            app.shell.keys.held = Buttons::empty();
             app.shell.open_menu();
         }),
     );
@@ -392,9 +392,9 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     // Through the custom screen to the fight (START to OK, A on it), and the menu opened there: the battle held
     // behind it, no PAUSED banner, and a moment later still held, its background moved on.
     for n in 0..16 {
-        add(150, Box::new(move |_, app, _| app.borrow_mut().shell.keys.held = if n % 2 == 0 { keys::START } else { keys::A }));
+        add(150, Box::new(move |_, app, _| app.borrow_mut().shell.keys.held = if n % 2 == 0 { Buttons::START } else { Buttons::A }));
     }
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.keys.held = 0));
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.keys.held = Buttons::empty()));
     add(1500, Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
     shot(add, "practice-menu-paused", lang, size, Differs::Unheld, false);
     add(700, Box::new(|_, _, _| {}));
@@ -404,26 +404,26 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
 
     // What the Battle rows set, driven and drawn: the dummy shot (a charged shot and three more), its HP down;
     // a rest, its HP full again; the gauge full the while; L, and the custom screen deals the folder from its top.
-    let hold = |held: u16| -> Step { Box::new(move |_, app, _| app.borrow_mut().shell.keys.held = held) };
-    add(SETTLE, hold(keys::B));
-    add(1500, hold(0));
+    let hold = |held: Buttons| -> Step { Box::new(move |_, app, _| app.borrow_mut().shell.keys.held = held) };
+    add(SETTLE, hold(Buttons::B));
+    add(1500, hold(Buttons::empty()));
     for _ in 0..3 {
-        add(250, hold(keys::B));
-        add(120, hold(0));
+        add(250, hold(Buttons::B));
+        add(120, hold(Buttons::empty()));
     }
     add(150, tell(lang, size, "after the shots"));
     shot(add, "practice-refill-hit", lang, size, Differs::Unheld, false);
     add(2000, tell(lang, size, "after a rest"));
     shot(add, "practice-refill-full", lang, size, Differs::Unheld, false);
-    add(SETTLE, hold(keys::L));
-    add(150, hold(0));
+    add(SETTLE, hold(Buttons::L));
+    add(150, hold(Buttons::empty()));
     add(1200, tell(lang, size, "the custom screen"));
     shot(add, "practice-draw-deal", lang, size, Differs::Unheld, false);
     // (Its OK: START to it, and A.)
-    add(SETTLE, hold(keys::START));
-    add(200, hold(0));
-    add(150, hold(keys::A));
-    add(150, hold(0));
+    add(SETTLE, hold(Buttons::START));
+    add(200, hold(Buttons::empty()));
+    add(150, hold(Buttons::A));
+    add(150, hold(Buttons::empty()));
     add(2000, tell(lang, size, "the fight again"));
 
     // EXIT: where Practice was entered from (the editor on the build; the pass's own, with no file, Play).
@@ -431,7 +431,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         SETTLE,
         Box::new(|_, app, _| {
             let mut app = app.borrow_mut();
-            app.shell.keys.held = 0;
+            app.shell.keys.held = Buttons::empty();
             app.shell.open_menu();
         }),
     );

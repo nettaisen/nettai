@@ -327,7 +327,7 @@ mod tests {
             let renderer = nettai_frontend::testing::graphics(&content, 0x7FFF).renderer(Enhancements::NONE, None);
             let mut player = nettai_frontend::Player::with(renderer, None, Some(nettai_audio::BattleAudio::with_banks(banks, songs)), Box::new(driver));
             for _ in 0..30 {
-                player.tick(0);
+                player.tick(nettai_battle::input::Keys::empty());
             }
             let audio = player.audio().unwrap();
             let playing: Vec<Option<SongId>> = (0..packs)
@@ -381,20 +381,20 @@ mod tests {
         let theme = Music::Theme { game: "exe5".into(), song: "final-battle".into() };
         let (mut changed, mut straight) = (player(&Music::Background), player(&Music::Background));
         for _ in 0..30 {
-            changed.tick(0);
-            straight.tick(0);
+            changed.tick(nettai_battle::input::Keys::empty());
+            straight.tick(nettai_battle::input::Keys::empty());
         }
         assert_eq!(playing(&changed), [Some(own)]);
         changed.set_sound_parts(sound(&all, &six, &theme).unwrap());
         for _ in 0..2 {
-            changed.tick(0);
-            straight.tick(0);
+            changed.tick(nettai_battle::input::Keys::empty());
+            straight.tick(nettai_battle::input::Keys::empty());
         }
         assert_eq!(playing(&changed), [None, Some(number("exe5", "final-battle"))], "BN5's, at once");
         changed.set_sound_parts(sound(&all, &six, &Music::Background).unwrap());
         for _ in 0..2 {
-            changed.tick(0);
-            straight.tick(0);
+            changed.tick(nettai_battle::input::Keys::empty());
+            straight.tick(nettai_battle::input::Keys::empty());
         }
         assert_eq!(playing(&changed), [Some(own), None], "the game's own again, from its start");
         assert_eq!(changed.battle().digest(), straight.battle().digest(), "the battle the same");
@@ -425,7 +425,7 @@ mod tests {
                 player.set_round_music(rounds);
             }
             for _ in 0..30 {
-                player.tick(0);
+                player.tick(nettai_battle::input::Keys::empty());
             }
             let audio = player.audio().unwrap();
             let playing: Vec<Option<SongId>> = (0..3)
@@ -482,7 +482,7 @@ mod tests {
         let mut player = nettai_frontend::Player::with(renderer, None, Some(nettai_audio::BattleAudio::with_banks(banks, songs)), Box::new(driver));
         player.set_round_music(round_music(&all, &six, &Music::Background).unwrap());
         for _ in 0..30 {
-            player.tick(0);
+            player.tick(nettai_battle::input::Keys::empty());
         }
         let playing = |p: &nettai_frontend::Player| p.audio().unwrap().driver_of(BankId(0)).unwrap().player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| m.song());
         assert_eq!(playing(&player), Some(number("virus-battle")), "BN6's Comp: its Virus Battle");
@@ -490,7 +490,7 @@ mod tests {
         assert!(player.set_held(true));
         assert!(player.set_backgrounds(graveyard));
         for _ in 0..2 {
-            player.tick(0);
+            player.tick(nettai_battle::input::Keys::empty());
         }
         assert_eq!(playing(&player), Some(number("crossover-battle")), "the Graveyard's Crossover Battle, held");
         assert_eq!(player.ticks(), ticks, "held: the battle didn't step");

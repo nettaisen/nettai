@@ -42,7 +42,7 @@
 //! state digest leaves out (a frontend draws it: nettai-render
 //! `chatbox`).
 
-use crate::input::keys;
+use crate::input::Keys;
 
 /// What a script does that takes time.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -132,7 +132,7 @@ const HELD_TICKS: u16 = 10;
 /// The box's opening steps.
 const OPEN: u8 = 3;
 /// Every button.
-const ANY_KEY: u16 = 0x3FF;
+const ANY_KEY: Keys = Keys::BUTTONS;
 
 /// What the chatbox shows that its timing never reads (presentation; the
 /// state digest leaves it out).
@@ -366,7 +366,7 @@ impl Chatbox {
     }
 
     /// `chatbox_onUpdate`: one tick on the console's joypad.
-    pub fn update(&mut self, held: u16, pressed: u16) {
+    pub fn update(&mut self, held: Keys, pressed: Keys) {
         if !self.open {
             return;
         }
@@ -376,7 +376,7 @@ impl Chatbox {
                 self.rush_delay -= 1;
             } else {
                 // chatbox_8040154
-                rush = held & keys::B != 0 || pressed & keys::A != 0 || self.speed == 0;
+                rush = held.contains(Keys::B) || pressed.contains(Keys::A) || self.speed == 0;
             }
         }
         if rush {
@@ -425,7 +425,7 @@ impl Chatbox {
 
     /// `chatbox_interpreteAndDrawDialogChar`: commands and characters until
     /// one takes the rest of the tick.
-    fn print(&mut self, held: u16, pressed: u16) {
+    fn print(&mut self, held: Keys, pressed: Keys) {
         loop {
             let goes_on = match self.script.op(self.at) {
                 Op::Text(n) => {
@@ -467,7 +467,7 @@ impl Chatbox {
 
     /// `chatbox_interpreteAndDrawDialogChar_1`: everything at once, up to
     /// a command that holds the script.
-    fn print_all(&mut self, held: u16, pressed: u16) {
+    fn print_all(&mut self, held: Keys, pressed: Keys) {
         loop {
             match self.script.op(self.at) {
                 Op::Text(_) => self.next(),
@@ -490,7 +490,7 @@ impl Chatbox {
     }
 
     /// One command; whether the script goes on this tick.
-    fn command(&mut self, held: u16, pressed: u16) -> bool {
+    fn command(&mut self, held: Keys, pressed: Keys) -> bool {
         match self.script.op(self.at) {
             Op::Text(_) => unreachable!("text is printed, not run"),
             // chatbox_F5_mugshot
@@ -563,10 +563,10 @@ impl Chatbox {
                     }
                     _ => self.halt = 2,
                 }
-                let mask = if any { ANY_KEY } else { keys::A | keys::B };
-                let answered = if pressed & mask != 0 {
+                let mask = if any { ANY_KEY } else { Keys::A | Keys::B };
+                let answered = if pressed.intersects(mask) {
                     true
-                } else if held & keys::B != 0 {
+                } else if held.contains(Keys::B) {
                     if self.count >= HELD_TICKS {
                         true
                     } else {
@@ -670,13 +670,13 @@ mod tests {
     /// The tick (0 = the script's first) the box closes on, with the keys
     /// `keys(tick)` gives as (held, pressed), where a command waits out the
     /// character before it (EXE6's interpreter).
-    fn closes(script: Script, keys: impl Fn(u32) -> (u16, u16)) -> Option<u32> {
+    fn closes(script: Script, keys: impl Fn(u32) -> (Keys, Keys)) -> Option<u32> {
         closes_with(script, true, keys)
     }
 
     /// [`closes`], with a command waiting out the character before it or
     /// not (the rule `custom_screen.chatbox_commands_wait_for_text`).
-    fn closes_with(script: Script, commands_wait: bool, keys: impl Fn(u32) -> (u16, u16)) -> Option<u32> {
+    fn closes_with(script: Script, commands_wait: bool, keys: impl Fn(u32) -> (Keys, Keys)) -> Option<u32> {
         let mut c = Chatbox::new(script).commands_wait_for_text(commands_wait);
         (0..600).find(|&t| {
             let (held, pressed) = keys(t);
@@ -685,8 +685,8 @@ mod tests {
         })
     }
 
-    fn press(key: u16, at: u32) -> impl Fn(u32) -> (u16, u16) {
-        move |t| if t == at { (key, key) } else { (0, 0) }
+    fn press(key: Keys, at: u32) -> impl Fn(u32) -> (Keys, Keys) {
+        move |t| if t == at { (key, key) } else { (Keys::empty(), Keys::empty()) }
     }
 
     #[test]
@@ -696,9 +696,9 @@ mod tests {
             let script = Script::Description { breaks };
             // A key before that is lost; the first one taken closes the
             // box four ticks later.
-            assert_eq!(closes(script, press(keys::A, first - 1)), None, "{breaks} breaks");
-            assert_eq!(closes(script, press(keys::A, first)), Some(first + 4), "{breaks} breaks");
-            assert_eq!(closes(script, press(keys::SELECT, first + 9)), Some(first + 13));
+            assert_eq!(closes(script, press(Keys::A, first - 1)), None, "{breaks} breaks");
+            assert_eq!(closes(script, press(Keys::A, first)), Some(first + 4), "{breaks} breaks");
+            assert_eq!(closes(script, press(Keys::SELECT, first + 9)), Some(first + 13));
         }
     }
 
@@ -713,7 +713,7 @@ mod tests {
             let mut at = Vec::new();
             for t in 0..80 {
                 let before = c.printed_text();
-                c.update(0, 0);
+                c.update(Keys::empty(), Keys::empty());
                 if c.printed_text() != before && c.printed_text().1 != 0 {
                     at.push(t);
                 }
@@ -732,15 +732,15 @@ mod tests {
         for clears in [false, true] {
             let mut c = Chatbox::new(Script::Description { breaks: 0 }).end_clears_tiles(clears);
             for _ in 0..6 {
-                c.update(0, 0);
+                c.update(Keys::empty(), Keys::empty());
             }
             assert!(c.look().text.is_some() && c.shows_contents());
             // The key answers the wait; the box is still open.
-            c.update(keys::A, keys::A);
+            c.update(Keys::A, Keys::A);
             assert!(c.shows_contents());
             assert_eq!(c.look().text.is_none(), clears, "end clears the tiles: {clears}");
             // The end's first tick: the box's first closing step.
-            c.update(0, 0);
+            c.update(Keys::empty(), Keys::empty());
             assert!(!c.shows_contents());
         }
     }
@@ -750,11 +750,11 @@ mod tests {
         let script = Script::Description { breaks: 2 };
         // Held from before the box takes keys (its press isn't seen): the
         // hold is counted from tick 8, and answers on its 11th tick.
-        let held = |until: u32| move |t: u32| if (1..until).contains(&t) { (keys::B, if t == 1 { keys::B } else { 0 }) } else { (0, 0) };
+        let held = |until: u32| move |t: u32| if (1..until).contains(&t) { (Keys::B, if t == 1 { Keys::B } else { Keys::empty() }) } else { (Keys::empty(), Keys::empty()) };
         assert_eq!(closes(script, held(18)), None);
         assert_eq!(closes(script, held(19)), Some(22));
         // Held ticks count whether or not they are in a row.
-        let twice = |t: u32| if (1..14).contains(&t) || (20..25).contains(&t) { (keys::B, if t == 1 || t == 20 { keys::B } else { 0 }) } else { (0, 0) };
+        let twice = |t: u32| if (1..14).contains(&t) || (20..25).contains(&t) { (Keys::B, if t == 1 || t == 20 { Keys::B } else { Keys::empty() }) } else { (Keys::empty(), Keys::empty()) };
         // (The second press is itself a key: it answers at once.)
         assert_eq!(closes(script, twice), Some(20 + 4));
     }
@@ -766,15 +766,15 @@ mod tests {
         // the text starts on tick 10: 31 characters two ticks apart and a
         // line break, then the wait for A or B, which takes a key from
         // tick 79. The portrait fades out and the box closes in 7 ticks.
-        assert_eq!(closes(megaman, press(keys::A, 78)), None);
-        assert_eq!(closes(megaman, press(keys::A, 79)), Some(86));
-        assert_eq!(closes(megaman, press(keys::B, 150)), Some(157));
+        assert_eq!(closes(megaman, press(Keys::A, 78)), None);
+        assert_eq!(closes(megaman, press(Keys::A, 79)), Some(86));
+        assert_eq!(closes(megaman, press(Keys::B, 150)), Some(157));
         // Any other key doesn't answer it.
-        assert_eq!(closes(megaman, press(keys::START, 150)), None);
+        assert_eq!(closes(megaman, press(Keys::START, 150)), None);
         // One line of 20 characters.
         let one = Script::RunMessage { lines: [20, 0, 0] };
-        assert_eq!(closes(one, press(keys::A, 55)), None);
-        assert_eq!(closes(one, press(keys::A, 56)), Some(63));
+        assert_eq!(closes(one, press(Keys::A, 55)), None);
+        assert_eq!(closes(one, press(Keys::A, 56)), Some(63));
     }
 
     /// Where a command runs on the tick the script reaches it (EXE5's
@@ -785,17 +785,17 @@ mod tests {
     #[test]
     fn a_command_that_doesnt_wait_starts_the_key_wait_two_ticks_sooner() {
         let megaman = Script::RunMessage { lines: [19, 12, 0] };
-        assert_eq!(closes_with(megaman, false, press(keys::A, 76)), None);
-        assert_eq!(closes_with(megaman, false, press(keys::A, 77)), Some(84));
-        assert_eq!(closes_with(megaman, true, press(keys::A, 77)), None);
+        assert_eq!(closes_with(megaman, false, press(Keys::A, 76)), None);
+        assert_eq!(closes_with(megaman, false, press(Keys::A, 77)), Some(84));
+        assert_eq!(closes_with(megaman, true, press(Keys::A, 77)), None);
         let one = Script::RunMessage { lines: [20, 0, 0] };
-        assert_eq!(closes_with(one, false, press(keys::A, 53)), None);
-        assert_eq!(closes_with(one, false, press(keys::A, 54)), Some(61));
+        assert_eq!(closes_with(one, false, press(Keys::A, 53)), None);
+        assert_eq!(closes_with(one, false, press(Keys::A, 54)), Some(61));
         // A on every even tick rushes it on tick 14 either way; on every odd
         // tick, tick 15's rush is a tick after a character, whose delay
         // holds the wait up a tick only where commands wait.
-        let even = |t: u32| if t % 2 == 0 { (keys::A, keys::A) } else { (0, 0) };
-        let odd = |t: u32| if t % 2 == 1 { (keys::A, keys::A) } else { (0, 0) };
+        let even = |t: u32| if t % 2 == 0 { (Keys::A, Keys::A) } else { (Keys::empty(), Keys::empty()) };
+        let odd = |t: u32| if t % 2 == 1 { (Keys::A, Keys::A) } else { (Keys::empty(), Keys::empty()) };
         assert_eq!(closes_with(megaman, false, even), Some(27));
         assert_eq!(closes_with(megaman, false, odd), Some(28));
         assert_eq!(closes_with(megaman, true, odd), Some(30));
@@ -805,7 +805,7 @@ mod tests {
             let mut c = Chatbox::new(Script::RunMessage { lines: [2, 2, 0] }).commands_wait_for_text(commands_wait).talking([0b11, 0b11, 0]);
             let mut faces = Vec::new();
             for _ in 0..24 {
-                c.update(0, 0);
+                c.update(Keys::empty(), Keys::empty());
                 faces.push((c.look().text, c.look().portrait.map(|p| p.anim)));
             }
             let last = faces.iter().position(|f| f.0 == Some((1, 0))).expect("the first line done");
@@ -823,7 +823,7 @@ mod tests {
         let mut c = Chatbox::new(Script::RunMessage { lines: [6, 0, 0] }).commands_wait_for_text(true).talking([0b11_0111, 0, 0]);
         let mut shown = Vec::new();
         for _ in 0..40 {
-            c.update(0, 0);
+            c.update(Keys::empty(), Keys::empty());
             shown.push((c.box_step(), c.look().text, c.look().portrait.map(|p| (p.anim, p.updates, p.tint)), c.look().arrow));
         }
         // The box opens over ticks 0-3; the portrait shows from tick 3,
@@ -853,7 +853,7 @@ mod tests {
         let mut c = Chatbox::new(megaman).commands_wait_for_text(true);
         let texts: Vec<_> = (0..90u32)
             .map(|t| {
-                let k = if t == 79 { keys::A } else { 0 };
+                let k = if t == 79 { Keys::A } else { Keys::empty() };
                 c.update(k, k);
                 (c.look().text, c.box_step())
             })
@@ -865,7 +865,7 @@ mod tests {
         let mut c = Chatbox::new(megaman).commands_wait_for_text(true);
         let mut ended = None;
         for t in 0..90u32 {
-            c.update(keys::B, if t == 0 { keys::B } else { 0 });
+            c.update(Keys::B, if t == 0 { Keys::B } else { Keys::empty() });
             if c.look().text.is_none() && t > 10 && ended.is_none() {
                 ended = Some((t, c.box_step()));
             }
@@ -879,16 +879,16 @@ mod tests {
         // A on every even tick: the box first looks for it on tick 14 and
         // the text is all there at once; the wait takes the press on tick
         // 20, and the box closes on tick 27.
-        let even = |t: u32| if t % 2 == 0 { (keys::A, keys::A) } else { (0, 0) };
+        let even = |t: u32| if t % 2 == 0 { (Keys::A, Keys::A) } else { (Keys::empty(), Keys::empty()) };
         assert_eq!(closes(megaman, even), Some(27));
         // On every odd tick: tick 15 rushes it, a tick after a character
         // was printed, whose wait holds the key wait up one tick; it takes
         // keys from tick 22, the press on 23 answers it, closed on 30.
-        let odd = |t: u32| if t % 2 == 1 { (keys::A, keys::A) } else { (0, 0) };
+        let odd = |t: u32| if t % 2 == 1 { (Keys::A, Keys::A) } else { (Keys::empty(), Keys::empty()) };
         assert_eq!(closes(megaman, odd), Some(30));
         // B held from the start rushes the text on tick 14 and answers the
         // wait on its eleventh tick of taking keys.
-        let b = |t: u32| (keys::B, if t == 0 { keys::B } else { 0 });
+        let b = |t: u32| (Keys::B, if t == 0 { Keys::B } else { Keys::empty() });
         assert_eq!(closes(megaman, b), Some(37));
     }
 }

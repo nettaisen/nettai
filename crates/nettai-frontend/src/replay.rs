@@ -609,9 +609,9 @@ pub(crate) mod tests {
     #[test]
     fn a_keys_played_set_plays_back_its_screens() {
         use nettai_battle::battle::mode;
-        use nettai_battle::input::keys;
-        const PRESSED: [u16; 12] =
-            [keys::RIGHT, keys::DOWN, keys::LEFT, keys::UP, keys::A, keys::A, keys::B, keys::R, keys::SELECT, keys::L, keys::RIGHT, keys::A];
+        use nettai_battle::input::Keys;
+        const PRESSED: [Keys; 12] =
+            [Keys::RIGHT, Keys::DOWN, Keys::LEFT, Keys::UP, Keys::A, Keys::A, Keys::B, Keys::R, Keys::SELECT, Keys::L, Keys::RIGHT, Keys::A];
         for (content, game) in [
             (nettai_match::testing::exe6_content(), "exe6"),
             (nettai_match::testing::exe5_content(), "exe5"),
@@ -628,10 +628,10 @@ pub(crate) mod tests {
                 let input = if s.battle.round.mode == mode::CUSTOM {
                     let h = (tick / 4).wrapping_mul(0x9E37_79B9).rotate_left(15);
                     let held = match tick % 97 {
-                        0 => keys::START,
-                        2 => keys::A,
+                        0 => Keys::START,
+                        2 => Keys::A,
                         t if t % 4 == 0 => PRESSED[(h % PRESSED.len() as u32) as usize],
-                        _ => 0,
+                        _ => Keys::empty(),
                     };
                     nettai_battle::PlayerTick::buttons(held)
                 } else {
@@ -669,7 +669,7 @@ pub(crate) mod tests {
         use crate::driver::short_set::pointing;
         use nettai_battle::ScreenChoice;
         use nettai_battle::battle::mode;
-        use nettai_battle::input::keys;
+        use nettai_battle::input::Keys;
         for (content, game) in [
             (nettai_match::testing::exe6_content(), "exe6"),
             (nettai_match::testing::exe5_content(), "exe5"),
@@ -679,7 +679,7 @@ pub(crate) mod tests {
             let sink = Shared::default();
             let mut live = LivePlayer::new(Set::of(&content, &m, 7)).with_input_delay(3);
             live.set_opponent(crate::driver::Opponent { in_fight: crate::driver::InFight::SecondPad, ..Default::default() });
-            live.set_second_pad(Some(0));
+            live.set_second_pad(Some(Keys::empty()));
             let mut s = Session::new(Box::new(live));
             s.record(Recorder::new(Box::new(sink.clone()), &content, &m, &Info::of(MatchKind::Offline, 0)).unwrap()).unwrap();
             let mut seen = Vec::new();
@@ -691,7 +691,7 @@ pub(crate) mod tests {
                     }
                 }
                 let input = if s.battle.round.mode == mode::CUSTOM {
-                    nettai_battle::PlayerTick::buttons(if tick % 37 < 2 { keys::RIGHT } else { 0 })
+                    nettai_battle::PlayerTick::buttons(if tick % 37 < 2 { Keys::RIGHT } else { Keys::empty() })
                 } else {
                     short_set::shooter(&s.battle, 0, tick)
                 };

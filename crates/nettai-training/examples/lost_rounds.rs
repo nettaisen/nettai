@@ -43,7 +43,7 @@
 use nettai_battle::Battle;
 use nettai_battle::battle::{fight, mode};
 use nettai_battle::collision::{ATTACK_OF, CollisionId, StatusFlags};
-use nettai_battle::input::keys;
+use nettai_battle::input::Keys;
 use nettai_battle::kinds::player::NaviAction;
 use nettai_content_api::{KindHandle, ObjectRef, PanelPos, Pool};
 use nettai_frontend::driver::Ai;
@@ -385,7 +385,7 @@ fn mode_name(b: &Battle) -> String {
 fn buttons_text(held: &VecDeque<u16>) -> String {
     let one = |h: u16| {
         let mut s = String::new();
-        for (bit, c) in [(keys::UP, 'U'), (keys::DOWN, 'D'), (keys::LEFT, 'L'), (keys::RIGHT, 'R'), (keys::A, 'A'), (keys::B, 'B')] {
+        for (bit, c) in [(Keys::UP, 'U'), (Keys::DOWN, 'D'), (Keys::LEFT, 'L'), (Keys::RIGHT, 'R'), (Keys::A, 'A'), (Keys::B, 'B')] {
             if h & bit != 0 {
                 s.push(c);
             }
@@ -656,7 +656,7 @@ fn play_round(s: &Shared, n: usize) -> RoundOut {
                 hitters,
                 near,
                 buttons: buttons_text(&before),
-                pressed_direction: before.iter().any(|&h| h & (keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT) != 0),
+                pressed_direction: before.iter().any(|&h| h.intersects(Keys::UP | Keys::DOWN | Keys::LEFT | Keys::RIGHT)),
                 moved,
                 same_row,
                 warned,

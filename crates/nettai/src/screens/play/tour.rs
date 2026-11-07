@@ -11,6 +11,7 @@
 //! None of this is there outside the pass: [`net`] and [`builds`] say nothing, and [`frame`] does nothing.
 
 use super::session::Net;
+use crate::input::Buttons;
 use crate::input::Action;
 use crate::screens::ScreenId;
 use crate::shell::{App, Shell};
@@ -18,7 +19,6 @@ use crate::tour::{Pair, Step, Tour};
 use nettai_battle::Content;
 use nettai_battle::battle::{fight, mode};
 use nettai_battle::content::PlayerFact;
-use nettai_battle::input::keys;
 use nettai_battle::rules::Fact;
 use nettai_content_api::Value;
 use nettai_frontend::connection::Reconnecting;
@@ -60,7 +60,7 @@ struct Rig {
     /// comes to its end.
     shoots: bool,
     /// The buttons the rig holds for the app's player.
-    held: u16,
+    held: Buttons,
     /// The player has no build of the game.
     no_builds: bool,
     /// The other player is another app on this machine ([`apart`]): no server, a port both know.
@@ -70,7 +70,7 @@ struct Rig {
 
 impl Rig {
     fn new() -> Rig {
-        Rig { server: nettai_signaling::testing::Server::start(), peer: None, shoots: false, held: 0, no_builds: false, apart: false, watch: None }
+        Rig { server: nettai_signaling::testing::Server::start(), peer: None, shoots: false, held: Buttons::empty(), no_builds: false, apart: false, watch: None }
     }
 }
 
@@ -261,14 +261,14 @@ pub fn frame(shell: &mut Shell, now: Instant) {
                     if let Some(choice) = bot_tick(battle, b.viewer as usize, tick).choice {
                         b.stage.player.choose(choice);
                     }
-                    0
+                    Buttons::empty()
                 } else if tick % 8 < 2 {
-                    keys::B
+                    Buttons::B
                 } else {
-                    0
+                    Buttons::empty()
                 }
             }
-            _ => 0,
+            _ => Buttons::empty(),
         };
         (was, rig.held)
     });

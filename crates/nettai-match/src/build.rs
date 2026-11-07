@@ -1960,7 +1960,7 @@ mod tests {
             let press = |b: &mut nettai_battle::Battle, choice: nettai_battle::ScreenChoice| {
                 b.tick(&[PlayerTick::default().with_choice(Some(choice)), Default::default()], Default::default());
                 for _ in 0..200 {
-                    b.tick(&[PlayerTick::buttons(0), Default::default()], Default::default());
+                    b.tick(&[PlayerTick::buttons(nettai_battle::input::Keys::empty()), Default::default()], Default::default());
                     if choosing(b) {
                         return;
                     }
@@ -1971,7 +1971,7 @@ mod tests {
                 if choosing(&b) {
                     break;
                 }
-                b.tick(&[PlayerTick::buttons(0), Default::default()], Default::default());
+                b.tick(&[PlayerTick::buttons(nettai_battle::input::Keys::empty()), Default::default()], Default::default());
             }
             press(&mut b, nettai_battle::ScreenChoice::Pick(0));
             press(&mut b, nettai_battle::ScreenChoice::Press(SPECIAL_SLOT));

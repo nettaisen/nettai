@@ -204,7 +204,7 @@ pub struct Watching {
     /// input display was last told each side holds.
     overlays: Overlays,
     inset: Surface,
-    held: Option<[u16; 2]>,
+    held: Option<[nettai_battle::input::Keys; 2]>,
     /// When it played to its end, while it is still there (a seek or a step to the end isn't playing to it): the
     /// play queue's next starts a moment after (`Replays::frame`).
     ended: Option<Instant>,
@@ -862,11 +862,13 @@ impl Watching {
         }
         let shown = self.viewer.view() as usize;
         let inputs = &self.viewer.battle().inputs;
-        let held = [inputs[shown].held & 0x3FF, inputs[shown ^ 1].held & 0x3FF];
+        use nettai_battle::input::Keys;
+        let held = [inputs[shown].held & Keys::BUTTONS, inputs[shown ^ 1].held & Keys::BUTTONS];
         if self.held != Some(held) {
             self.held = Some(held);
-            view.set_held_shown(held[0] as i32);
-            view.set_held_other(held[1] as i32);
+            // (The UI draws them by bit.)
+            view.set_held_shown(held[0].bits() as i32);
+            view.set_held_other(held[1].bits() as i32);
         }
     }
 

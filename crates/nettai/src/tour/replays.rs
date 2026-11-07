@@ -18,6 +18,7 @@
 //! each went and what was left in the folder.
 
 use super::{SETTLE, Step, Tour, compare, write};
+use crate::input::Buttons;
 use crate::errors::UserError;
 use crate::input::{Action, KeyPress};
 use crate::nav::{Key, Rect};
@@ -67,15 +68,15 @@ fn record(content: &Arc<Content>, game: &str, seed: u32, most: u64) -> Result<Re
     let mut s = Session::new(Box::new(LivePlayer::against(nettai_match::Set::of(content, &m, seed), opponent, seed as u64)));
     s.record(Recorder::new(Box::new(sink.clone()), content, &m, &Info::of(MatchKind::Offline, 0))?)?;
     // (The left navi's own presses: a direction, the buster and a chip now and then, from the seed.)
-    let (mut random, mut held) = (seed as u64 | 1, 0u16);
+    let (mut random, mut held) = (seed as u64 | 1, nettai_battle::input::Keys::empty());
     while s.ticks < most {
-        use nettai_battle::input::keys;
         random ^= random << 13;
         random ^= random >> 7;
         random ^= random << 17;
         if random % 4 == 0 {
-            held = [0, keys::UP, keys::DOWN, keys::LEFT, keys::RIGHT][(random >> 8) as usize % 5];
-            held |= if (random >> 16) % 3 == 0 { keys::A } else { 0 } | if (random >> 24) % 2 == 0 { keys::B } else { 0 };
+            use nettai_battle::input::Keys;
+            held = [Keys::empty(), Keys::UP, Keys::DOWN, Keys::LEFT, Keys::RIGHT][(random >> 8) as usize % 5];
+            held.insert(if (random >> 16) % 3 == 0 { Keys::A } else { Keys::empty() } | if (random >> 24) % 2 == 0 { Keys::B } else { Keys::empty() });
         }
         let input = if s.battle.round.mode == mode::CUSTOM { bot_tick(&s.battle, 0, s.ticks as u32) } else { nettai_battle::PlayerTick::buttons(held) };
         if !s.step(input) {

@@ -12,7 +12,7 @@ use crate::content::{ChipCode, Content, testing};
 use nettai_content_api::ChipHandle;
 use crate::custom::screen::{Phase, SlotKind, SlotState};
 use crate::custom::{BattleFolder, FolderChip, PlayerSetup};
-use crate::input::{PlayerTick, ScreenChoice, keys};
+use crate::input::{Keys, PlayerTick, ScreenChoice};
 use crate::setup::{BattleSettings, NaviStats, NaviWeapons, RoundSetup, SetScore};
 use std::sync::Arc;
 
@@ -170,7 +170,7 @@ pub fn record_on_content(setup: RoundSetup, content: Arc<Content>, ticks: usize,
     let mut rng = Lcg(seed);
     let mut tape = Vec::with_capacity(ticks);
     // Per side: a held direction and how long to keep it.
-    let mut held = [0u16; 2];
+    let mut held = [Keys::empty(); 2];
     let mut hold_for = [0u32; 2];
     let mut last = [None; 2];
     for _ in 0..ticks {
@@ -184,17 +184,17 @@ pub fn record_on_content(setup: RoundSetup, content: Arc<Content>, ticks: usize,
                 // then both step up and down and fire.
                 let x = b.player(side as u8).map_or(0, |p| b.objects.get(p).panel.x);
                 held[side] = match r % 16 {
-                    _ if side == 0 && x == 2 => keys::RIGHT,
-                    0..=3 => keys::UP,
-                    4..=7 => keys::DOWN,
-                    8 | 9 => keys::A,
-                    _ => 0,
+                    _ if side == 0 && x == 2 => Keys::RIGHT,
+                    0..=3 => Keys::UP,
+                    4..=7 => Keys::DOWN,
+                    8 | 9 => Keys::A,
+                    _ => Keys::empty(),
                 };
                 hold_for[side] = 2 + (r >> 4) % 12;
             }
             hold_for[side] -= 1;
             let choice = if in_custom { custom_choice(&b, side, last[side]) } else { None };
-            input[side] = PlayerTick::buttons(if in_custom { 0 } else { held[side] }).with_choice(choice);
+            input[side] = PlayerTick::buttons(if in_custom { Keys::empty() } else { held[side] }).with_choice(choice);
             last[side] = choice;
         }
         b.tick(&input, events.clone());

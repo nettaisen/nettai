@@ -576,7 +576,7 @@ fn the_soul_takes_the_chips_place() {
     let press = |b: &mut nettai_battle::Battle, choice: nettai_battle::ScreenChoice| {
         b.tick(&[PlayerTick::default().with_choice(Some(choice)), Default::default()], Default::default());
         for _ in 0..200 {
-            b.tick(&[PlayerTick::buttons(0), Default::default()], Default::default());
+            b.tick(&[PlayerTick::buttons(nettai_battle::input::Keys::empty()), Default::default()], Default::default());
             if b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing) {
                 return;
             }
@@ -587,7 +587,7 @@ fn the_soul_takes_the_chips_place() {
         if b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing) {
             break;
         }
-        b.tick(&[PlayerTick::buttons(0), Default::default()], Default::default());
+        b.tick(&[PlayerTick::buttons(nettai_battle::input::Keys::empty()), Default::default()], Default::default());
     }
     // The first Sword picked: the soul is on offer.
     press(&mut b, nettai_battle::ScreenChoice::Pick(0));
@@ -627,7 +627,7 @@ fn the_soul_takes_the_chips_place() {
 fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
     use nettai_battle::Battle;
     use nettai_battle::custom::screen::{Phase, SlotKind};
-    use nettai_battle::input::{PlayerTick, keys};
+    use nettai_battle::input::{Keys, PlayerTick};
     use nettai_content_api::{FieldValue, Registry};
     let content = exe5_content();
     let sword = crate::ids::chip(&content, "exe5", "sword").unwrap();
@@ -650,13 +650,13 @@ fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
         let s = &b.custom.sides[side];
         s.in_custom && s.screen.is_some_and(|s| s.phase == Phase::Choosing)
     };
-    let tick = |b: &mut Battle, left: u16, right: u16| b.tick(&[PlayerTick::buttons(left), PlayerTick::buttons(right)], Default::default());
+    let tick = |b: &mut Battle, left: Keys, right: Keys| b.tick(&[PlayerTick::buttons(left), PlayerTick::buttons(right)], Default::default());
     // A tick with the left side's choice, then ticks without until its
     // screen is back to choosing.
     let press = |b: &mut Battle, choice: nettai_battle::ScreenChoice| {
         b.tick(&[PlayerTick::default().with_choice(Some(choice)), Default::default()], Default::default());
         for _ in 0..200 {
-            tick(b, 0, 0);
+            tick(b, Keys::empty(), Keys::empty());
             if choosing(b, 0) {
                 return;
             }
@@ -667,7 +667,7 @@ fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
         if choosing(&b, 0) && choosing(&b, 1) {
             break;
         }
-        tick(&mut b, 0, 0);
+        tick(&mut b, Keys::empty(), Keys::empty());
     }
     // The first screen, in MeddySoul: two capsules, in the hand's last two
     // slots.
@@ -693,7 +693,7 @@ fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
         if !b.custom.sides[0].in_custom && !b.custom.sides[1].in_custom {
             break;
         }
-        tick(&mut b, 0, 0);
+        tick(&mut b, Keys::empty(), Keys::empty());
     }
     assert!(!b.custom.sides[0].in_custom, "the fight goes on");
     // L each other tick until the gauge is full and the next screen opens.
@@ -701,7 +701,7 @@ fn what_a_soul_keeps_of_a_screen_is_fresh_at_the_next_deal() {
         if choosing(&b, 0) {
             break;
         }
-        tick(&mut b, if t % 2 == 0 { keys::L } else { 0 }, 0);
+        tick(&mut b, if t % 2 == 0 { Keys::L } else { Keys::empty() }, Keys::empty());
     }
     assert!(choosing(&b, 0), "the second screen");
     assert_eq!(b.stats[0].form, base, "out of MeddySoul");

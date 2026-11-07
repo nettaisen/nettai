@@ -9,7 +9,7 @@ use super::super::ai_mut;
 use crate::battle::{Battle, BattleFlags, FadeMode};
 use crate::content::testing;
 use crate::hand::ChipHand;
-use crate::input::keys;
+use crate::input::Keys;
 use crate::kinds::player::panel_coordinates;
 use crate::object::{ObjectFlags, ObjectRef, PanelPos, Vec3};
 use crate::setup::{NaviStats, NaviWeapons};
@@ -52,12 +52,12 @@ fn fight_on(stage: &str) -> (Battle, [ObjectRef; 2]) {
 
 /// One tick of what the chips need: the objects (side 0 holding `held`),
 /// then the banner and the screen fade, which the battle steps after them.
-fn tick(b: &mut Battle, p: [ObjectRef; 2], held: u16) {
+fn tick(b: &mut Battle, p: [ObjectRef; 2], held: Keys) {
     for heard in &mut b.sound {
         heard.clear();
     }
-    ai_mut(b, p[0]).pad.update(held | keys::PRESENT);
-    ai_mut(b, p[1]).pad.update(keys::PRESENT);
+    ai_mut(b, p[0]).pad.update(held | Keys::PRESENT);
+    ai_mut(b, p[1]).pad.update(Keys::PRESENT);
     b.run_objects();
     b.banner.tick();
     b.fade.step(crate::content::FadeClear::AtTarget);
@@ -71,12 +71,12 @@ fn use_chip(b: &mut Battle, p: [ObjectRef; 2], chip: &str, controller: &str) -> 
     hand.ids[0] = Some(chip);
     hand.damage[0] = b.content.chip(chip).damage;
     b.hands[0] = hand;
-    tick(b, p, keys::A);
+    tick(b, p, Keys::A);
     for _ in 0..10 {
         if let Some(c) = one(b, controller) {
             return c;
         }
-        tick(b, p, 0);
+        tick(b, p, Keys::empty());
     }
     panic!("no {controller}");
 }
@@ -86,7 +86,7 @@ fn run_to(b: &mut Battle, p: [ObjectRef; 2], now: &mut u32, last: u32) {
     assert!(*now <= last, "tick {last} has run");
     while *now < last {
         *now += 1;
-        tick(b, p, 0);
+        tick(b, p, Keys::empty());
     }
 }
 
@@ -388,8 +388,8 @@ fn a_copy_of_the_battle_plays_the_beast_chips_on_the_same() {
         for _ in 0..6 {
             let mut copy = b.clone();
             for _ in 0..97 {
-                tick(&mut b, p, 0);
-                tick(&mut copy, p, 0);
+                tick(&mut b, p, Keys::empty());
+                tick(&mut copy, p, Keys::empty());
                 assert_eq!(b.digest(), copy.digest(), "{chip}");
             }
         }

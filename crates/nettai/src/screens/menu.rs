@@ -214,20 +214,19 @@ pub fn clock_seed() -> u32 {
 /// fight, the buster, a chip now and then, a step up or down (through every row in turn).
 fn demo_input(b: &nettai_battle::Battle, tick: u32) -> nettai_battle::PlayerTick {
     use nettai_battle::battle::mode;
-    use nettai_battle::input::keys;
     if b.round.mode == mode::CUSTOM {
         return nettai_frontend::driver::bot_tick(b, 0, tick);
     }
-    let mut k = 0;
+    let mut k = nettai_battle::input::Keys::empty();
     if tick % 9 < 2 {
-        k |= keys::B;
+        k.insert(nettai_battle::input::Keys::B);
     }
     if tick % 83 == 40 {
-        k |= keys::A;
+        k.insert(nettai_battle::input::Keys::A);
     }
     // (Up, up, down, down: each row a while; a direction is held a few ticks, as it acts on a hold's second.)
     if (45..48).contains(&(tick % 90)) {
-        k |= if (tick / 90) % 4 < 2 { keys::UP } else { keys::DOWN };
+        k.insert(if (tick / 90) % 4 < 2 { nettai_battle::input::Keys::UP } else { nettai_battle::input::Keys::DOWN });
     }
     nettai_battle::PlayerTick::buttons(k)
 }

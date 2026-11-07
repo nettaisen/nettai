@@ -3,7 +3,7 @@
 
 use crate::testing::exe6_content;
 use nettai_battle::battle::{fight, mode};
-use nettai_battle::input::{PlayerTick, keys};
+use nettai_battle::input::{Keys, PlayerTick};
 use nettai_battle::{Battle, Content};
 use std::sync::Arc;
 
@@ -24,7 +24,7 @@ fn fighting(content: &Arc<Content>, stage: &str) -> Battle {
         }
         let input = [0, 1].map(|side| {
             last[side] = nettai_battle::scenario::custom_choice(&b, side, last[side]);
-            PlayerTick::buttons(0).with_choice(last[side])
+            PlayerTick::buttons(Keys::empty()).with_choice(last[side])
         });
         b.tick(&input, Default::default());
     }
@@ -49,7 +49,7 @@ fn a_shot_hits_a_navi_stepping_into_it_once() {
     for stage in ["netbattle-1", "netbattle-2"] {
         let mut start = fighting(&content, stage);
         // (A direction acts on a hold's second tick.)
-        for held in [keys::UP, keys::UP, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0] {
+        for held in [Keys::UP, Keys::UP].into_iter().chain([Keys::empty(); 28]) {
             start.tick(&[PlayerTick::buttons(held), PlayerTick::default()], Default::default());
         }
         assert_eq!(start.objects.get(start.player(0).unwrap()).panel.y, 1, "{stage}: he stepped up");
@@ -58,9 +58,9 @@ fn a_shot_hits_a_navi_stepping_into_it_once() {
             let mut b = start.clone();
             let before = hp(&b, 0);
             let (mut hits, mut last) = (0, before);
-            b.tick(&[PlayerTick::default(), PlayerTick::buttons(keys::B)], Default::default());
+            b.tick(&[PlayerTick::default(), PlayerTick::buttons(Keys::B)], Default::default());
             for t in 0..60 {
-                let left = if t == step || t == step + 1 { keys::DOWN } else { 0 };
+                let left = if t == step || t == step + 1 { Keys::DOWN } else { Keys::empty() };
                 b.tick(&[PlayerTick::buttons(left), PlayerTick::default()], Default::default());
                 let now = hp(&b, 0);
                 if now < last {

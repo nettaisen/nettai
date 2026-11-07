@@ -1,3 +1,4 @@
+use nettai_battle::input::Keys;
 use super::*;
 use crate::testing::content;
 
@@ -210,8 +211,8 @@ fn a_navi_chip_counts_as_landed_when_it_hits() {
         let hp0 = hp(&b, 1);
         let (mut first_hit, mut dimmed) = (None, 0);
         for t in 1..1200 {
-            let press = if t == 1 { nettai_battle::input::keys::A } else { 0 };
-            if !step_battle(&mut b, [press, 0]) {
+            let press = if t == 1 { nettai_battle::input::Keys::A } else { Keys::empty() };
+            if !step_battle(&mut b, [press, Keys::empty()]) {
                 break;
             }
             m.tick(&b, t);
@@ -282,8 +283,8 @@ fn a_dimming_lands_for_its_own_chip_alone() {
     let (mut pressed, mut seen_dimmed, mut undimmed_after) = (0, false, 0);
     for t in 1..2000 {
         // A for the cannon, then for HeatMan once the user stands idle again.
-        let press = (pressed == 0 || (pressed == 1 && t > 5 && idle(&b, 0))).then(|| pressed += 1).map_or(0, |_| nettai_battle::input::keys::A);
-        if !step_battle(&mut b, [press, 0]) {
+        let press = (pressed == 0 || (pressed == 1 && t > 5 && idle(&b, 0))).then(|| pressed += 1).map_or(nettai_battle::input::Keys::empty(), |_| nettai_battle::input::Keys::A);
+        if !step_battle(&mut b, [press, nettai_battle::input::Keys::empty()]) {
             break;
         }
         m.tick(&b, t);

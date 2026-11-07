@@ -18,7 +18,7 @@
 
 use nettai_battle::battle::mode;
 use nettai_battle::custom::layer::Sub;
-use nettai_battle::input::keys;
+use nettai_battle::input::Keys;
 use nettai_frontend::Player;
 use nettai_frontend::driver::LivePlayer;
 use nettai_frontend::game::{self, Game, Graphics, Enhancements, RomSource};
@@ -26,7 +26,7 @@ use nettai_render::vfont::TextRenderer;
 
 /// The buttons held, by tick: R on the first custom screen opens the chip's
 /// description, A closes it, then a pick and OK.
-const SCRIPT: &[(u32, u32, u16)] = &[(250, 251, keys::R), (290, 291, keys::A), (320, 340, keys::A), (420, 420, keys::START), (430, 460, keys::A)];
+const SCRIPT: &[(u32, u32, Keys)] = &[(250, 251, Keys::R), (290, 291, Keys::A), (320, 340, Keys::A), (420, 420, Keys::START), (430, 460, Keys::A)];
 
 /// The ticks the two changing players change at: in the description, and in
 /// the fight.
@@ -34,8 +34,8 @@ const IN_DESCRIPTION: u32 = 265;
 const IN_FIGHT: u32 = 640;
 const TICKS: u32 = 760;
 
-fn held(tick: u32) -> u16 {
-    SCRIPT.iter().filter(|(from, to, _)| (*from..=*to).contains(&tick)).fold(0, |all, (.., button)| all | button)
+fn held(tick: u32) -> Keys {
+    SCRIPT.iter().filter(|(from, to, _)| (*from..=*to).contains(&tick)).fold(Keys::empty(), |all, (.., button)| all | *button)
 }
 
 fn run() -> Result<String, String> {

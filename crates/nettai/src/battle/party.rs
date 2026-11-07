@@ -1,7 +1,7 @@
 //! A party battle's party beside the battle (EXE5 DS's bottom screen, its party panel: docs/design/exe5ds-map.md §4.2):
 //! the player's switches asked of the battle, and what the window shows of the party.
 //!
-//! **The switches** are two controls of the app's own ([`crate::input::SWITCH_LEFT`], [`crate::input::SWITCH_RIGHT`]:
+//! **The switches** are two controls of the app's own ([`Buttons::SWITCH_LEFT`], [`Buttons::SWITCH_RIGHT`]:
 //! the keys and pad buttons bound to them, and on a phone the pad's two switch buttons), never buttons of the battle:
 //! a press asks the player to switch to the member the panel's button names (`Player::ask_switch`, which the next
 //! tick carries once, as the DS's X and Y request a frame), the left Y's and the right X's (`nettai_frontend::party::
@@ -13,7 +13,7 @@
 //! which the build's rules say (`Overview::switches`, asked once of the side's setup as the battle first shows a
 //! party). Nothing of it is the simulation's: the battle's picture shows only what the original's top screen draws.
 
-use crate::input::{SWITCH_LEFT, SWITCH_RIGHT, SWITCHES};
+use crate::input::Buttons;
 use nettai_frontend::party::{self, Panel};
 use nettai_ui::{Hint, PartyHud, PartyMember};
 use slint::{ModelRc, VecModel};
@@ -23,7 +23,7 @@ use slint::{ModelRc, VecModel};
 pub struct PartyState {
     panel: Panel,
     /// The switches held last frame: a press is one held now and not then.
-    held: u16,
+    held: Buttons,
     /// The round's limit of switches, once asked of the side's setup (none inside: its rules have none).
     limit: Option<Option<u32>>,
     /// What the window was told last.
@@ -40,14 +40,14 @@ fn limit_of(b: &nettai_battle::Battle, game: &str, side: u8) -> Option<u32> {
 impl PartyState {
     /// The frame's buttons held, `held` (the app's, the switches among them): the switch a press asks for put to the
     /// player, and the battle's buttons alone given back.
-    pub fn take_switches(&mut self, player: &mut nettai_frontend::Player, side: u8, held: u16) -> u16 {
-        let switches = held & SWITCHES;
-        let pressed = switches & !self.held;
+    pub fn take_switches(&mut self, player: &mut nettai_frontend::Player, side: u8, held: Buttons) -> Buttons {
+        let switches = held & Buttons::SWITCHES;
+        let pressed = switches - self.held;
         self.held = switches;
         self.panel.follow(party::view(player.battle(), side).as_ref());
-        let button = if pressed & SWITCH_LEFT != 0 {
+        let button = if pressed.contains(Buttons::SWITCH_LEFT) {
             Some(0)
-        } else if pressed & SWITCH_RIGHT != 0 {
+        } else if pressed.contains(Buttons::SWITCH_RIGHT) {
             Some(1)
         } else {
             None
@@ -55,7 +55,7 @@ impl PartyState {
         if let Some(member) = button.and_then(|b| self.panel.member(b)) {
             player.ask_switch(member);
         }
-        held & !SWITCHES
+        held - Buttons::SWITCHES
     }
 
     /// What the window shows of side `side`'s party this frame (none: it has no partners), told to the UI where it

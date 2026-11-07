@@ -28,11 +28,11 @@
 //!   still sliding.
 
 use crate::errors::UserError;
+use crate::input::Buttons;
 use crate::input::Action;
 use crate::nav::{Key, Rect};
 use crate::screens::ScreenId;
 use crate::shell::App;
-use nettai_battle::input::keys;
 use nettai_ui::{AppWindow, Audit, BattleKind, Theme};
 use i_slint_backend_winit::winit::event::TouchPhase;
 use slint::{ComponentHandle, PhysicalSize, Rgba8Pixel, SharedPixelBuffer, Timer};
@@ -621,7 +621,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
                     app.touched(2, TouchPhase::Started, a.0, a.1),
                 ];
                 let held = app.shell.touch.held();
-                if taken != [true, true] || held != keys::LEFT | keys::A {
+                if taken != [true, true] || held != Buttons::LEFT | Buttons::A {
                     tour.pad.borrow_mut().push(format!(
                         "{lang}: a finger on Left and one on A: taken {taken:?}, held {held:#05x}"
                     ));
@@ -635,7 +635,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
                 let mut app = app.borrow_mut();
                 app.touched(1, TouchPhase::Ended, 0.0, 0.0);
                 let held = app.shell.touch.held();
-                if held != keys::A {
+                if held != Buttons::A {
                     tour.pad.borrow_mut().push(format!(
                         "{lang}: Left's finger lifted: held {held:#05x}, not A alone"
                     ));

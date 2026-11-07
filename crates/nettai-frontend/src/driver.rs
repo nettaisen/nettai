@@ -10,7 +10,7 @@ use nettai_battle::cues::CueAction;
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::{self, BattleFolder, FolderChip, Layer, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState};
 use nettai_battle::hud::CustomGauge;
-use nettai_battle::input::keys;
+use nettai_battle::input::Keys;
 use nettai_battle::setup::{BattleSettings, RoundSetup, SetScore};
 use nettai_battle::{Battle, BattleResult, PlayerTick, Rng, ScreenChoice, TickEvents, TickInput};
 use nettai_match::{After, Set};
@@ -418,10 +418,10 @@ pub struct Opponent {
 pub trait Ai: Send {
     /// Its buttons in the fight for the navi of `side` in `b`, this tick
     /// (`theirs`: what the local player holds).
-    fn fight(&mut self, b: &Battle, side: u8, theirs: u16) -> u16;
+    fn fight(&mut self, b: &Battle, side: u8, theirs: Keys) -> Keys;
     /// Its buttons on its custom screen, this tick, which go through its
     /// side's layer (`layer`: where its cursor is), as a player's do.
-    fn custom_screen(&mut self, b: &Battle, side: u8, layer: &Layer) -> u16;
+    fn custom_screen(&mut self, b: &Battle, side: u8, layer: &Layer) -> Keys;
     /// The set starts over: it is as it was given.
     fn reset(&mut self);
 }
@@ -555,7 +555,7 @@ pub struct LivePlayer {
     /// The order each side's battle folder is in this round.
     arranged: [ChipDraw; 2],
     /// What the host's second pad holds this tick, while it has one.
-    second_pad: Option<u16>,
+    second_pad: Option<Keys>,
     /// The host's AI, for an opponent whose choices are its.
     ai: Option<Box<dyn Ai>>,
     /// The player's input delay, in ticks (`Driver::set_input_delay`), and the player's ticks waiting it out,
@@ -640,7 +640,7 @@ impl LivePlayer {
     /// What a second pad of the host's holds from the next tick, while it
     /// has one (none: it has no second pad): the opponent's buttons, when
     /// that is its choice ([`InFight::SecondPad`]).
-    pub fn set_second_pad(&mut self, held: Option<u16>) {
+    pub fn set_second_pad(&mut self, held: Option<Keys>) {
         self.second_pad = held;
     }
 
@@ -735,13 +735,13 @@ impl LivePlayer {
     /// (`keys`: the local player's buttons, which its AI hears of; `layer`:
     /// its own layer, where its AI's cursor is). Its buttons, or on its
     /// custom screen a bot's choice.
-    fn opponent_input(&mut self, b: &Battle, side: usize, keys: u16, layer: &Layer) -> PlayerTick {
-        const MOVES: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
+    fn opponent_input(&mut self, b: &Battle, side: usize, keys: Keys, layer: &Layer) -> PlayerTick {
+        const MOVES: Keys = Keys::UP.union(Keys::DOWN).union(Keys::LEFT).union(Keys::RIGHT);
         let mashed = self.masher.buttons();
         // (START outside the custom screen is the pause's, the local player's alone: the game's own pause, in a
         // round that pauses itself.)
         if let Some(held) = self.second_pad.filter(|_| self.opponent.in_fight == InFight::SecondPad) {
-            return PlayerTick::buttons(if b.round.mode == mode::CUSTOM { held } else { held & !keys::START });
+            return PlayerTick::buttons(if b.round.mode == mode::CUSTOM { held } else { held & !Keys::START });
         }
         if b.round.mode == mode::CUSTOM {
             return match (self.opponent.on_custom_screen, &mut self.ai) {
@@ -753,16 +753,16 @@ impl LivePlayer {
     }
 
     /// The opponent's buttons in the fight.
-    fn fight_buttons(&mut self, b: &Battle, side: usize, keys: u16, mashed: u16, moves: u16) -> u16 {
+    fn fight_buttons(&mut self, b: &Battle, side: usize, keys: Keys, mashed: Keys, moves: Keys) -> Keys {
         // (The dummy opens the custom screen as its presses do: one attacking at random by its L and R, the AI as it
         // was trained, a while after the gauge is full. The user: "allow the dummy to go into custom screen. remove
         // that restriction it has", of the one before, when only the player opened it.)
         match self.opponent.in_fight {
-            InFight::StandsStill => 0,
+            InFight::StandsStill => Keys::empty(),
             InFight::MovesAround => mashed & moves,
             InFight::AttacksAtRandom => mashed,
-            InFight::SecondPad => 0,
-            InFight::Ai => self.ai.as_mut().map_or(0, |ai| ai.fight(b, side as u8, keys)),
+            InFight::SecondPad => Keys::empty(),
+            InFight::Ai => self.ai.as_mut().map_or(Keys::empty(), |ai| ai.fight(b, side as u8, keys)),
         }
     }
 }
@@ -970,7 +970,7 @@ pub mod short_set {
         if b.round.mode == mode::CUSTOM {
             bot_tick(b, side, tick)
         } else if tick % 8 < 2 {
-            PlayerTick::buttons(keys::B)
+            PlayerTick::buttons(Keys::B)
         } else {
             PlayerTick::default()
         }
@@ -1077,21 +1077,21 @@ mod tests {
         assert!(Driver::set_input_delay(&mut live, 3));
         let mut b = live.start();
         // (Each tick's word its own: the tick's number, on the buttons' bits.)
-        let word = |tick: u32| (tick as u16 * 7) & 0x3FF;
+        let word = |tick: u32| Keys::from_bits_retain(tick as u16 * 7) & Keys::BUTTONS;
         for tick in 0..40u32 {
             let step = live.next(&b, PlayerTick::buttons(word(tick))).unwrap();
-            let want = if tick < 3 { 0 } else { word(tick - 3) };
-            assert_eq!(step.input[0].held as u16 & 0x3FF, want, "tick {tick}");
+            let want = if tick < 3 { Keys::empty() } else { word(tick - 3) };
+            assert_eq!(step.input[0].held & Keys::BUTTONS, want, "tick {tick}");
             b.tick(&step.input, step.events);
         }
         // One tick of delay from now: the two oldest waiting are dropped.
         assert!(Driver::set_input_delay(&mut live, 1));
         let step = live.next(&b, PlayerTick::buttons(word(40))).unwrap();
-        assert_eq!(step.input[0].held as u16 & 0x3FF, word(39));
+        assert_eq!(step.input[0].held & Keys::BUTTONS, word(39));
         // Started over: nothing waiting.
         let b = live.start();
         let step = live.next(&b, PlayerTick::buttons(word(1))).unwrap();
-        assert_eq!(step.input[0].held, 0);
+        assert_eq!(step.input[0].held, Keys::empty());
     }
 
     /// Live play through the first custom screen: the local player's keys
@@ -1116,9 +1116,9 @@ mod tests {
             let on_ok = live.layers()[0].is_some_and(|l| l.cursor == custom::screen::OK_SLOT);
             // A press every other tick: A on the first chip, START, A on OK.
             let held = match (choosing && tick % 2 == 1, picked, on_ok) {
-                (false, _, _) => 0,
-                (true, false, _) | (true, true, true) => keys::A,
-                (true, true, false) => keys::START,
+                (false, _, _) => Keys::empty(),
+                (true, false, _) | (true, true, true) => Keys::A,
+                (true, true, false) => Keys::START,
             };
             step(&mut live, &mut b, PlayerTick::buttons(held));
             if b.round.turn == 1 && b.round.mode == mode::FIGHTING {
@@ -1171,8 +1171,8 @@ mod tests {
                     let custom = b.round.mode == mode::CUSTOM;
                     let step = step(&mut live, &mut b, input);
                     presses.push(step.input[1]);
-                    attacked |= !custom && step.input[1].held & (keys::A | keys::B | keys::L | keys::R) != 0;
-                    assert!(custom || step.input[1].held & keys::START == 0, "{opponent:?}: START outside the custom screen at tick {tick}");
+                    attacked |= !custom && step.input[1].held.intersects(Keys::A | Keys::B | Keys::L | Keys::R);
+                    assert!(custom || !step.input[1].held.contains(Keys::START), "{opponent:?}: START outside the custom screen at tick {tick}");
                     screens += (!custom && b.round.mode == mode::CUSTOM) as u32;
                     assert!(!b.is_stopped(), "{opponent:?}: tick {tick}");
                     if b.round.mode == mode::FIGHTING && hand.is_none() {
@@ -1209,7 +1209,7 @@ mod tests {
     /// choice changed before a screen opens is that screen's.
     #[test]
     fn the_opponents_choices_change_while_the_set_runs() {
-        const MOVES: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
+        const MOVES: Keys = Keys::UP.union(Keys::DOWN).union(Keys::LEFT).union(Keys::RIGHT);
         let content = nettai_match::testing::exe6_content();
         let m = long_match(&content);
         let mut live = LivePlayer::against(Set::of(&content, &m, 5), Opponent { in_fight: InFight::StandsStill, on_custom_screen: OnCustomScreen::PicksNothing }, 9);
@@ -1235,7 +1235,7 @@ mod tests {
             let input = if b.round.mode == mode::CUSTOM {
                 bot_tick(&b, 0, tick)
             } else if b.round.flags.contains(nettai_battle::battle::BattleFlags::GAUGE_FULL) && tick % 2 == 1 {
-                PlayerTick::buttons(keys::L)
+                PlayerTick::buttons(Keys::L)
             } else {
                 PlayerTick::default()
             };
@@ -1245,16 +1245,16 @@ mod tests {
             if !custom {
                 match live.opponent().in_fight {
                     InFight::StandsStill => {
-                        assert_eq!(pressed, 0, "tick {tick}");
+                        assert_eq!(pressed, Keys::empty(), "tick {tick}");
                         stood += 1;
                     }
                     InFight::MovesAround => {
                         assert_eq!(pressed, mashed & MOVES, "tick {tick}");
-                        moved += (pressed != 0) as u32;
+                        moved += (!pressed.is_empty()) as u32;
                     }
                     InFight::AttacksAtRandom => {
-                        assert_eq!(pressed, mashed & 0x3FF, "tick {tick}");
-                        attacked += (pressed & !MOVES != 0) as u32;
+                        assert_eq!(pressed, mashed & Keys::BUTTONS, "tick {tick}");
+                        attacked += pressed.intersects(!MOVES) as u32;
                     }
                     InFight::SecondPad | InFight::Ai => unreachable!("not chosen here"),
                 }
@@ -1293,16 +1293,16 @@ mod tests {
             PlayerTick::buttons(self.fight(mashed))
         }
 
-        fn fight(&self, mashed: u16) -> u16 {
-            const MOVES: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
+        fn fight(&self, mashed: Keys) -> Keys {
+            const MOVES: Keys = Keys::UP.union(Keys::DOWN).union(Keys::LEFT).union(Keys::RIGHT);
             match self.opponent.in_fight {
-                InFight::StandsStill => 0,
+                InFight::StandsStill => Keys::empty(),
                 InFight::MovesAround => mashed & MOVES,
                 InFight::AttacksAtRandom => mashed,
                 // (No second pad: it stands still.)
-                InFight::SecondPad => 0,
+                InFight::SecondPad => Keys::empty(),
                 // (No AI given: it stands still.)
-                InFight::Ai => 0,
+                InFight::Ai => Keys::empty(),
             }
         }
     }
@@ -1510,7 +1510,7 @@ mod tests {
                 let input = if b.round.mode == mode::CUSTOM {
                     bot_tick(b, 0, tick)
                 } else if b.round.flags.contains(BattleFlags::GAUGE_FULL) && tick % 2 == 1 {
-                    PlayerTick::buttons(keys::L)
+                    PlayerTick::buttons(Keys::L)
                 } else {
                     PlayerTick::default()
                 };
@@ -1564,9 +1564,9 @@ mod tests {
             let pad = if b.round.mode == mode::CUSTOM {
                 bot_keys(&b, live.layers()[1], 1, tick)
             } else if full && tick % 2 == 1 {
-                keys::L
+                Keys::L
             } else {
-                [keys::UP, keys::UP, 0, 0, keys::DOWN, keys::DOWN, 0, 0][tick as usize % 8]
+                [Keys::UP, Keys::UP, Keys::empty(), Keys::empty(), Keys::DOWN, Keys::DOWN, Keys::empty(), Keys::empty()][tick as usize % 8]
             };
             let mine = if b.round.mode == mode::CUSTOM { bot_tick(&b, 0, tick) } else { PlayerTick::default() };
             let with_pad = tick < 2000;
@@ -1576,9 +1576,9 @@ mod tests {
             let step = step(&mut live, &mut b, mine);
             if with_pad {
                 assert_eq!(step.input[1].held, pad, "tick {tick}");
-                assert!(custom || pad & keys::START == 0);
+                assert!(custom || !pad.contains(Keys::START));
             } else if !custom {
-                assert_eq!(step.input[1].held, 0, "tick {tick}: no pad");
+                assert_eq!(step.input[1].held, Keys::empty(), "tick {tick}: no pad");
             }
         }
         assert!(custom_ticks > 0 && b.round.turn >= 2, "the pad's custom screens went on: turn {}", b.round.turn);
@@ -1586,11 +1586,11 @@ mod tests {
             let input = bot_tick(&b, 0, b.round.ticks);
             step(&mut live, &mut b, input);
         }
-        live.set_second_pad(Some(keys::START | keys::B));
-        assert_eq!(live.next(&b, PlayerTick::default()).unwrap().input[1].held, keys::B, "the pause is the local player's");
+        live.set_second_pad(Some(Keys::START | Keys::B));
+        assert_eq!(live.next(&b, PlayerTick::default()).unwrap().input[1].held, Keys::B, "the pause is the local player's");
         live.set_opponent(Opponent::default());
-        live.set_second_pad(Some(keys::B));
-        assert_eq!(live.next(&b, PlayerTick::default()).unwrap().input[1].held, 0, "standing still: the pad is nobody's");
+        live.set_second_pad(Some(Keys::B));
+        assert_eq!(live.next(&b, PlayerTick::default()).unwrap().input[1].held, Keys::empty(), "standing still: the pad is nobody's");
     }
 
     /// The options on a battle stepping in the game's own pause, as a
@@ -1613,13 +1613,13 @@ mod tests {
         let r = b.player(1).unwrap();
         b.objects.get_mut(r).hp -= 100;
         // The game's pause: START, and no buttons.
-        keys_in_turn(&mut live, &mut b, &[keys::START, 0]);
+        keys_in_turn(&mut live, &mut b, &[Keys::START, Keys::empty()]);
         assert_eq!(b.paused_by(), Some(0));
         let options = Training { refills: [true, true], full_gauge: true, chip_draw: ChipDraw::FolderOrder, ..Training::default() };
         live.set_training(options, &mut b);
         for tick in 0..300u32 {
             let step = live.next(&b, PlayerTick::default()).unwrap();
-            assert_eq!(step.input[1].held, 0, "tick {tick}: the dummy presses nothing in the pause");
+            assert_eq!(step.input[1].held, Keys::empty(), "tick {tick}: the dummy presses nothing in the pause");
             Driver::prepare(&mut live, &mut b);
             b.tick(&step.input, step.events);
             live.follow(&b);
@@ -1631,8 +1631,8 @@ mod tests {
         let left: Vec<FolderChip> = b.custom.sides[0].folder.chips.iter().flatten().copied().collect();
         assert!(in_order(&left, &saved), "in the folder's order: {left:?}");
         // START: the fight goes on.
-        keys_in_turn(&mut live, &mut b, &[keys::START, 0]);
-        play_until(&mut live, &mut b, 100, |_, _, _| 0, |b, _| fight_runs(b));
+        keys_in_turn(&mut live, &mut b, &[Keys::START, Keys::empty()]);
+        play_until(&mut live, &mut b, 100, |_, _, _| Keys::empty(), |b, _| fight_runs(b));
         assert_eq!(b.paused_by(), None);
     }
 
@@ -1672,7 +1672,7 @@ mod tests {
             } else if out.len() >= shoot {
                 short_set::shooter(b, 0, tick)
             } else if b.round.flags.contains(nettai_battle::battle::BattleFlags::GAUGE_FULL) && tick % 2 == 1 {
-                PlayerTick::buttons(keys::L)
+                PlayerTick::buttons(Keys::L)
             } else {
                 PlayerTick::default()
             };
@@ -1782,25 +1782,25 @@ mod tests {
                 _ => nettai_match::testing::exe6_content(),
             };
             let hosts = nettai_match::HOST_KEYS;
-            for (key, host_keys) in [(keys::R, hosts), (keys::L, hosts), (keys::L, nettai_battle::HostKeys::NONE), (keys::SELECT, hosts)] {
+            for (key, host_keys) in [(Keys::R, hosts), (Keys::L, hosts), (Keys::L, nettai_battle::HostKeys::NONE), (Keys::SELECT, hosts)] {
                 let m = nettai_match::pick::live(&content, game, 5, None).unwrap();
                 let set = Set::of(&content, &m, 5);
                 let first = RoundSetup { host_keys, ..set.first().clone() };
                 let folders = [0, 1].map(|side| m.sides[side].folder(&content).saved().unwrap());
                 let mut live = LivePlayer::new(Set::new(content.clone(), first, folders));
                 let mut b = live.start();
-                play_until(&mut live, &mut b, 4000, |_, _, _| 0, |b, _| choosing(b).is_some());
-                keys_in_turn(&mut live, &mut b, &[0; 20]);
+                play_until(&mut live, &mut b, 4000, |_, _, _| Keys::empty(), |b, _| choosing(b).is_some());
+                keys_in_turn(&mut live, &mut b, &[Keys::empty(); 20]);
                 assert!(matches!(choosing(&b).unwrap().slots[0].kind, SlotKind::Chip { .. }), "{game}: a chip dealt");
                 keys_in_turn(&mut live, &mut b, &[key; 8]);
-                keys_in_turn(&mut live, &mut b, &[0; 8]);
+                keys_in_turn(&mut live, &mut b, &[Keys::empty(); 8]);
                 let phase = b.custom.sides[0].screen.unwrap().phase;
                 let up = live.layers()[0].unwrap().sub;
                 let right = phase == Phase::Choosing
                     && match key {
-                        keys::R => matches!(up, Sub::Description { from_list: false, .. }),
-                        keys::L if host_keys.run => up == Sub::None,
-                        keys::L => matches!(up, Sub::RunMessage { chatbox: Some(_) }),
+                        Keys::R => matches!(up, Sub::Description { from_list: false, .. }),
+                        Keys::L if host_keys.run => up == Sub::None,
+                        Keys::L => matches!(up, Sub::RunMessage { chatbox: Some(_) }),
                         _ => matches!(up, Sub::Hidden(_)),
                     };
                 assert!(right, "{game}: key {key:#x}, {host_keys:?}: {phase:?}, {up:?}");
@@ -1830,7 +1830,7 @@ mod tests {
         live: &mut LivePlayer,
         b: &mut Battle,
         limit: u32,
-        mut keys: impl FnMut(u32, &Battle, &Layer) -> u16,
+        mut keys: impl FnMut(u32, &Battle, &Layer) -> Keys,
         done: impl FnMut(&Battle, &Layer) -> bool,
     ) {
         play_until_input(live, b, limit, |tick, b, layer| PlayerTick::buttons(keys(tick, b, layer)), done);
@@ -1859,17 +1859,17 @@ mod tests {
     /// walking side `side`'s layer's cursor: A on a chip under it that can
     /// be picked while none is, else START to OK and A, a press every other
     /// tick.
-    fn bot_keys(b: &Battle, layer: Option<&Layer>, side: usize, tick: u32) -> u16 {
+    fn bot_keys(b: &Battle, layer: Option<&Layer>, side: usize, tick: u32) -> Keys {
         let s = &b.custom.sides[side];
-        let Some(screen) = s.screen.as_ref().filter(|x| s.in_custom && b.round.mode == mode::CUSTOM && x.phase == Phase::Choosing) else { return 0 };
-        let Some(layer) = layer.filter(|l| !l.is_up() && tick % 2 == 1) else { return 0 };
+        let Some(screen) = s.screen.as_ref().filter(|x| s.in_custom && b.round.mode == mode::CUSTOM && x.phase == Phase::Choosing) else { return Keys::empty() };
+        let Some(layer) = layer.filter(|l| !l.is_up() && tick % 2 == 1) else { return Keys::empty() };
         let here = &screen.slots[layer.cursor as usize];
         if screen.selected == 0 && matches!(here.kind, SlotKind::Chip { .. }) && here.state == SlotState::Selectable {
-            keys::A
+            Keys::A
         } else if layer.cursor != custom::screen::OK_SLOT {
-            keys::START
+            Keys::START
         } else {
-            keys::A
+            Keys::A
         }
     }
 
@@ -1907,21 +1907,21 @@ mod tests {
             3000,
             |tick, b, layer| {
                 let s = &b.custom.sides[0];
-                let Some(screen) = s.screen.as_ref().filter(|_| s.in_custom && b.round.mode == mode::CUSTOM) else { return 0 };
+                let Some(screen) = s.screen.as_ref().filter(|_| s.in_custom && b.round.mode == mode::CUSTOM) else { return Keys::empty() };
                 let w = b.form_list(0).unwrap_or_default();
                 match (screen.phase, layer.list_stage()) {
-                    (Phase::Choosing, None) if w.chosen.is_none() => [keys::UP, keys::UP, 0][tick as usize % 3],
+                    (Phase::Choosing, None) if w.chosen.is_none() => [Keys::UP, Keys::UP, Keys::empty()][tick as usize % 3],
                     // (The window up, past its first tick, which reads no
                     // keys.)
                     (Phase::Choosing, Some(ListStage::Up(1..))) if w.chosen.is_none() => {
                         let under_cursor = w.forms[layer.list_cursor as usize];
                         assert_eq!((w.count, under_cursor), (1, Some(heat)));
-                        if tick % 2 == 1 { keys::A } else { 0 }
+                        if tick % 2 == 1 { Keys::A } else { Keys::empty() }
                     }
                     (Phase::Choosing, None) if tick % 2 == 1 => {
-                        if layer.cursor == custom::screen::OK_SLOT { keys::A } else { keys::START }
+                        if layer.cursor == custom::screen::OK_SLOT { Keys::A } else { Keys::START }
                     }
-                    _ => 0,
+                    _ => Keys::empty(),
                 }
             },
             |b, _| b.custom.sides[0].sent.is_some(),
@@ -1929,7 +1929,7 @@ mod tests {
         assert_eq!(b.custom.sides[0].sent.as_ref().unwrap().result.transform.form, Some(heat));
         // The fight resumes and the navi changes into HeatCross.
         let p0 = b.player(0).unwrap();
-        play_until(&mut live, &mut b, 1000, |_, _, _| 0, |b, _| b.stats[0].form == heat && navi_action(b, p0) == NaviAction::Idle);
+        play_until(&mut live, &mut b, 1000, |_, _, _| Keys::empty(), |b, _| b.stats[0].form == heat && navi_action(b, p0) == NaviAction::Idle);
         let actor = b.objects.get(p0).actor.unwrap();
         let weapons = content.form(heat).weapons;
         assert_eq!((b.actors.get(actor).buster, b.actors.get(actor).charge_shot), (weapons.buster, weapons.charge_shot));
@@ -1941,7 +1941,7 @@ mod tests {
             &mut live,
             &mut b,
             600,
-            |tick, _, _| if tick < 200 { keys::B } else { 0 },
+            |tick, _, _| if tick < 200 { Keys::B } else { Keys::empty() },
             |b, _| {
                 charged |= navi_action(b, p0) == NaviAction::Content(flame);
                 charged
@@ -1958,28 +1958,28 @@ mod tests {
             6000,
             |tick, b, layer| {
                 if b.round.mode == mode::FIGHTING {
-                    return if b.round.flags.contains(BattleFlags::GAUGE_FULL) && tick % 2 == 1 { keys::L } else { 0 };
+                    return if b.round.flags.contains(BattleFlags::GAUGE_FULL) && tick % 2 == 1 { Keys::L } else { Keys::empty() };
                 }
-                let Some(screen) = choosing(b) else { return 0 };
+                let Some(screen) = choosing(b) else { return Keys::empty() };
                 if b.round.turn < 2 {
-                    return 0;
+                    return Keys::empty();
                 }
                 beast |= screen.form.is_some();
                 // Each key held two ticks (a direction acts on a hold's
                 // second), then let go.
                 let key = match (beast, layer.cursor) {
-                    (false, custom::screen::OK_SLOT) => keys::DOWN,
-                    (false, custom::screen::SPECIAL_SLOT) => keys::A,
-                    (false, _) => keys::START,
-                    (true, custom::screen::SPECIAL_SLOT) => keys::UP,
-                    (true, _) => keys::A,
+                    (false, custom::screen::OK_SLOT) => Keys::DOWN,
+                    (false, custom::screen::SPECIAL_SLOT) => Keys::A,
+                    (false, _) => Keys::START,
+                    (true, custom::screen::SPECIAL_SLOT) => Keys::UP,
+                    (true, _) => Keys::A,
                 };
-                [key, key, 0][tick as usize % 3]
+                [key, key, Keys::empty()][tick as usize % 3]
             },
             |b, _| b.round.turn >= 2 && b.custom.sides[0].sent.is_some(),
         );
         assert_eq!(b.custom.sides[0].sent.as_ref().unwrap().result.transform.form, Some(heat_beast));
-        play_until(&mut live, &mut b, 1000, |_, _, _| 0, |b, _| b.stats[0].form == heat_beast && navi_action(b, p0) == NaviAction::Idle);
+        play_until(&mut live, &mut b, 1000, |_, _, _| Keys::empty(), |b, _| b.stats[0].form == heat_beast && navi_action(b, p0) == NaviAction::Idle);
         let weapons = content.form(heat_beast).weapons;
         assert_eq!((b.actors.get(actor).buster, b.actors.get(actor).charge_shot), (weapons.buster, weapons.charge_shot));
         assert_eq!(content.form(heat_beast).version.as_deref(), Some("gregar"));
@@ -2023,7 +2023,7 @@ mod tests {
         setup.custom_screen_limit = limit;
         let mut live = LivePlayer::new(Set::new(content.clone(), setup, [folder, folder]));
         let mut b = live.start();
-        play_until(&mut live, &mut b, 3000, |_, _, _| 0, |b, _| choosing(b).is_some());
+        play_until(&mut live, &mut b, 3000, |_, _, _| Keys::empty(), |b, _| choosing(b).is_some());
         (content, live, b)
     }
 
@@ -2038,7 +2038,7 @@ mod tests {
     }
 
     /// Side 0's keys, one per tick, then on to the next tick.
-    fn keys_in_turn(live: &mut LivePlayer, b: &mut Battle, held: &[u16]) {
+    fn keys_in_turn(live: &mut LivePlayer, b: &mut Battle, held: &[Keys]) {
         for &h in held {
             step(live, b, PlayerTick::buttons(h));
         }
@@ -2048,24 +2048,24 @@ mod tests {
     /// form list; a direction acts on a hold's second tick); then the window
     /// is up and takes keys.
     fn open_cross_window(live: &mut LivePlayer, b: &mut Battle) {
-        keys_in_turn(live, b, &[keys::UP, keys::UP, 0]);
-        play_until(live, b, 100, |_, _, _| 0, |_, layer| matches!(layer.list_stage(), Some(ListStage::Up(1..))));
+        keys_in_turn(live, b, &[Keys::UP, Keys::UP, Keys::empty()]);
+        play_until(live, b, 100, |_, _, _| Keys::empty(), |_, layer| matches!(layer.list_stage(), Some(ListStage::Up(1..))));
     }
 
     /// In the open Cross window, DOWN `down` times and A: the Cross under
     /// the cursor is chosen, and the screen is back to choosing chips.
     fn choose_cross(live: &mut LivePlayer, b: &mut Battle, down: usize) {
         for _ in 0..down {
-            keys_in_turn(live, b, &[keys::DOWN, keys::DOWN, 0]);
+            keys_in_turn(live, b, &[Keys::DOWN, Keys::DOWN, Keys::empty()]);
         }
-        keys_in_turn(live, b, &[keys::A, 0]);
-        play_until(live, b, 100, |_, _, _| 0, |b, layer| choosing(b).is_some() && !layer.is_up());
+        keys_in_turn(live, b, &[Keys::A, Keys::empty()]);
+        play_until(live, b, 100, |_, _, _| Keys::empty(), |b, layer| choosing(b).is_some() && !layer.is_up());
     }
 
     /// OK, and what side 0 sends.
     fn confirm(live: &mut LivePlayer, b: &mut Battle) -> nettai_battle::CustomResult {
-        keys_in_turn(live, b, &[keys::START, 0, keys::A, 0]);
-        play_until(live, b, 200, |_, _, _| 0, |b, _| b.custom.sides[0].sent.is_some());
+        keys_in_turn(live, b, &[Keys::START, Keys::empty(), Keys::A, Keys::empty()]);
+        play_until(live, b, 200, |_, _, _| Keys::empty(), |b, _| b.custom.sides[0].sent.is_some());
         b.custom.sides[0].sent.as_ref().unwrap().result.clone()
     }
 
@@ -2100,7 +2100,7 @@ mod tests {
             &mut live,
             &mut b,
             6000,
-            |tick, b, _| if b.round.mode == mode::FIGHTING && b.round.flags.contains(BattleFlags::GAUGE_FULL) && tick % 2 == 1 { keys::L } else { 0 },
+            |tick, b, _| if b.round.mode == mode::FIGHTING && b.round.flags.contains(BattleFlags::GAUGE_FULL) && tick % 2 == 1 { Keys::L } else { Keys::empty() },
             |b, _| b.round.turn >= 2 && choosing(b).is_some(),
         );
         let w = b.form_list(0).unwrap();
@@ -2118,9 +2118,9 @@ mod tests {
             let (content, mut live, mut b) = cross_battle("falzar", list, |_, _| {});
             open_cross_window(&mut live, &mut b);
             for _ in 0..down {
-                keys_in_turn(&mut live, &mut b, &[keys::DOWN, keys::DOWN, 0]);
+                keys_in_turn(&mut live, &mut b, &[Keys::DOWN, Keys::DOWN, Keys::empty()]);
             }
-            keys_in_turn(&mut live, &mut b, &[keys::R]);
+            keys_in_turn(&mut live, &mut b, &[Keys::R]);
             let up = live.layers()[0].unwrap().sub;
             let Sub::Description { from_list: true, form, chatbox, .. } = up else { panic!("{key}: no description: {up:?}") };
             let want = form_of(&content, key);
@@ -2170,7 +2170,7 @@ mod tests {
         let screen = b.custom.sides[0].screen.unwrap();
         assert!(screen.form.is_some() && screen.look.face.is_some());
         assert_eq!(screen.slots[custom::screen::SPECIAL_SLOT as usize].state, SlotState::Unavailable);
-        keys_in_turn(&mut live, &mut b, &[keys::B, 0]);
+        keys_in_turn(&mut live, &mut b, &[Keys::B, Keys::empty()]);
         let screen = b.custom.sides[0].screen.unwrap();
         assert_eq!((screen.form, screen.look.face), (None, None));
         assert_eq!(screen.slots[custom::screen::SPECIAL_SLOT as usize].state, SlotState::Selectable);
@@ -2187,13 +2187,13 @@ mod tests {
     fn time_up_in_the_cross_window_cancels_it_and_confirms() {
         const LIMIT: u16 = 240;
         let (content, mut live, mut b) = cross_battle_timed("falzar", Some(&["heatcross", "groundcross"]), |_, _| {}, Some(LIMIT));
-        keys_in_turn(&mut live, &mut b, &[keys::A, 0]);
+        keys_in_turn(&mut live, &mut b, &[Keys::A, Keys::empty()]);
         open_cross_window(&mut live, &mut b);
         while b.custom.sides[0].sent.is_none() {
             let up = live.layers()[0].is_some_and(|l| l.list_stage().is_some());
             assert!(up || b.custom.sides[0].clock == LIMIT, "the window stays up until the time is up");
             // (A held: the window's keys are ignored once the time is up.)
-            let held = if b.custom.sides[0].clock + 1 >= LIMIT { keys::A } else { 0 };
+            let held = if b.custom.sides[0].clock + 1 >= LIMIT { Keys::A } else { Keys::empty() };
             step(&mut live, &mut b, PlayerTick::buttons(held));
         }
         assert_eq!(b.custom.sides[0].clock, LIMIT);
@@ -2205,7 +2205,7 @@ mod tests {
         let (content, mut live, mut b) = cross_battle_timed("falzar", Some(&["heatcross", "groundcross"]), |_, _| {}, Some(LIMIT));
         open_cross_window(&mut live, &mut b);
         choose_cross(&mut live, &mut b, 0);
-        play_until(&mut live, &mut b, LIMIT as u32 + 100, |_, _, _| 0, |b, _| b.custom.sides[0].sent.is_some());
+        play_until(&mut live, &mut b, LIMIT as u32 + 100, |_, _, _| Keys::empty(), |b, _| b.custom.sides[0].sent.is_some());
         let sent = b.custom.sides[0].sent.as_ref().unwrap().result.clone();
         assert_eq!((sent.transform.form, sent.hand), (Some(form_of(&content, "heatcross")), None));
         assert_eq!(crosses_used(&b), [true, false, false, false, false]);
@@ -2227,7 +2227,7 @@ mod tests {
             setup.players[0].set_fact(&content, "level", &[nettai_battle::rules::Fact::Value(stated)]).unwrap();
             let mut live = LivePlayer::new(Set::new(content.clone(), setup, [folder, folder]));
             let mut b = live.start();
-            play_until(&mut live, &mut b, 3000, |_, _, _| 0, |b, _| choosing(b).is_some());
+            play_until(&mut live, &mut b, 3000, |_, _, _| Keys::empty(), |b, _| choosing(b).is_some());
             let screen = b.custom.sides[0].screen.unwrap();
             let button = match screen.slots[custom::screen::SPECIAL_SLOT as usize].kind {
                 SlotKind::Button { button, .. } => Some(b.content.defs.button(button).name.as_str()),

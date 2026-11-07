@@ -26,7 +26,7 @@ use crate::actor::{ActorData, ActorStatus, ActorType, Requests};
 use crate::battle::{Battle, LinkedRecord};
 use crate::collision::{CollisionData, CollisionTypes, HitModifiers, StatusFlags, StatusRequests, timer};
 use crate::field::{PanelFlags, PanelType};
-use crate::input::keys;
+use crate::input::Keys;
 use crate::kinds::common::{self, Progress};
 use crate::kinds::player::actions::ActionVars;
 use crate::kinds;
@@ -169,18 +169,18 @@ fn navi_state_bit(f: NaviState) -> ActorStatus {
     }
 }
 
-fn key_bit(k: Key) -> u16 {
+fn key_bit(k: Key) -> Keys {
     match k {
-        Key::A => keys::A,
-        Key::B => keys::B,
-        Key::Select => keys::SELECT,
-        Key::Start => keys::START,
-        Key::Right => keys::RIGHT,
-        Key::Left => keys::LEFT,
-        Key::Up => keys::UP,
-        Key::Down => keys::DOWN,
-        Key::R => keys::R,
-        Key::L => keys::L,
+        Key::A => Keys::A,
+        Key::B => Keys::B,
+        Key::Select => Keys::SELECT,
+        Key::Start => Keys::START,
+        Key::Right => Keys::RIGHT,
+        Key::Left => Keys::LEFT,
+        Key::Up => Keys::UP,
+        Key::Down => Keys::DOWN,
+        Key::R => Keys::R,
+        Key::L => Keys::L,
     }
 }
 
@@ -2346,7 +2346,7 @@ impl CoreApi for Battle {
             Pad::DimmedHeld => a.dimmed_pad.held,
             Pad::DimmedPressed => a.dimmed_pad.pressed,
         };
-        Ok(word & key_bit(key) != 0)
+        Ok(word.intersects(key_bit(key)))
     }
 
     fn action_state_mut(&mut self, o: ObjectRef) -> ApiResult<nettai_content_api::StateMut<'_>> {

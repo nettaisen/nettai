@@ -45,6 +45,7 @@
 use crate::builds::Maker;
 use crate::env::step_battle;
 use nettai_battle::battle::mode;
+use nettai_battle::input::Keys;
 use nettai_battle::custom::FolderChip;
 use nettai_battle::field::PanelType;
 use nettai_battle::kinds::player::NaviAction;
@@ -318,7 +319,7 @@ fn panel_of(b: &Battle, side: u8) -> Option<(u8, u8)> {
 /// Walk side `side`'s navi to panel `to`, the other pressing nothing;
 /// whether it got there, idle.
 fn walk(b: &mut Battle, side: u8, to: (u8, u8)) -> bool {
-    use nettai_battle::input::keys;
+    use nettai_battle::input::Keys;
     let mut released = true;
     for _ in 0..120 {
         let Some(at) = panel_of(b, side) else { return false };
@@ -327,22 +328,22 @@ fn walk(b: &mut Battle, side: u8, to: (u8, u8)) -> bool {
         }
         // (RIGHT is a side's forward, toward the other side: +x for side 0,
         // −x for side 1.)
-        let (plus, minus) = if side == 0 { (keys::RIGHT, keys::LEFT) } else { (keys::LEFT, keys::RIGHT) };
+        let (plus, minus) = if side == 0 { (Keys::RIGHT, Keys::LEFT) } else { (Keys::LEFT, Keys::RIGHT) };
         let dir = if at.0 < to.0 {
             plus
         } else if at.0 > to.0 {
             minus
         } else if at.1 < to.1 {
-            keys::DOWN
+            Keys::DOWN
         } else if at.1 > to.1 {
-            keys::UP
+            Keys::UP
         } else {
-            0
+            Keys::empty()
         };
         // (A press when idle, let go between.)
-        let press = if idle(b, side) && released { dir } else { 0 };
-        released = press == 0;
-        let mut held = [0; 2];
+        let press = if idle(b, side) && released { dir } else { Keys::empty() };
+        released = press.is_empty();
+        let mut held = [Keys::empty(); 2];
         held[side as usize] = press;
         if !step_battle(b, held) {
             return false;
@@ -396,7 +397,7 @@ impl Sandbox {
                 }
                 return Ok(Sandbox { base: b, forms: chip_forms(content), controls: Default::default(), stops: Default::default() });
             }
-            let mut held = [0u16; 2];
+            let mut held = [Keys::empty(); 2];
             if b.round.mode == mode::CUSTOM {
                 for s in 0..2 {
                     if navs[s].idle() {
@@ -516,7 +517,7 @@ impl Sandbox {
         let hp0 = hp(&c, 1);
         let mut lost = vec![0u16; RUN_TICKS as usize + 1];
         for l in lost.iter_mut().skip(1) {
-            step_battle(&mut c, [0, 0]);
+            step_battle(&mut c, [Keys::empty(), Keys::empty()]);
             *l = hp0.saturating_sub(hp(&c, 1));
         }
         self.note(&c, || format!("the control run {setup:?} at panel {target}"));
@@ -576,7 +577,7 @@ impl Sandbox {
             nettai_battle::kinds::hitbox::spawn(&mut b, owner, &spec)?;
             let mut holds = false;
             for _ in 0..STATUS_TICKS {
-                let went_on = step_battle(&mut b, [0, 0]);
+                let went_on = step_battle(&mut b, [Keys::empty(), Keys::empty()]);
                 self.note(&b, || format!("the status hit {setup:?} at panel {target}"));
                 if !went_on {
                     return None;
@@ -620,8 +621,8 @@ fn watch(b: &mut Battle, to: (u8, u8), control: &[u16]) -> (Run, u32) {
     let mut t = 0;
     let mut barrier = barrier0;
     while t < RUN_TICKS {
-        let press = if t == 0 { nettai_battle::input::keys::A } else { 0 };
-        let went_on = step_battle(b, [press, 0]);
+        let press = if t == 0 { nettai_battle::input::Keys::A } else { Keys::empty() };
+        let went_on = step_battle(b, [press, Keys::empty()]);
         t += 1;
         let lost = hp0.saturating_sub(hp(b, 1));
         if lost > control[t as usize] && run.first_hit.is_none() {

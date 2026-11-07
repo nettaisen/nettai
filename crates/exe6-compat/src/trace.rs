@@ -283,7 +283,7 @@ use crate::unlocks::Unlocks;
 use crate::GameVersion;
 use nettai_battle::custom::{Context, Layer, PlayerSetup, Request, Side};
 use nettai_battle::hand::ChipHand;
-use nettai_battle::input::PlayerTick;
+use nettai_battle::input::{Keys, PlayerTick};
 use nettai_battle::kinds::player::Emotion;
 use nettai_battle::rng::Rng;
 use nettai_battle::setup::{NaviStats, RoundSetup, SetScore};
@@ -757,7 +757,7 @@ impl Round {
     /// screens run from them, on the folders the setup records).
     pub fn tick_inputs(&self, i: usize, frames: &[&Frame]) -> ([PlayerTick; 2], TickEvents) {
         let f = frames[i];
-        let input = std::array::from_fn(|p| PlayerTick::buttons(self.fed(i, frames, p)));
+        let input = std::array::from_fn(|p| PlayerTick::buttons(Keys::from_bits_retain(self.fed(i, frames, p))));
         let mut events = TickEvents::default();
         // The link session closed on the tick the end state moved on.
         if i > 0 && f.state[0] == 8 && f.state[1] == 4 && frames[i - 1].state[1] == 0 {
@@ -1315,7 +1315,7 @@ pub fn check_custom_screens(round: &Round, content: &Arc<Content>, compat: &Comp
         for p in 0..2 {
             let ctx = context(p);
             let shown = (custom && !opening).then(|| sides[p].presented(&ctx, battle.form_list(p as u8))).flatten();
-            choices[p] = layers[p].input_on(PlayerTick::buttons(round.fed(i, &frames, p)), shown.as_ref()).choice;
+            choices[p] = layers[p].input_on(PlayerTick::buttons(Keys::from_bits_retain(round.fed(i, &frames, p))), shown.as_ref()).choice;
         }
         let follow = |layers: &mut [Layer; 2], sides: &[Side; 2], battle: &Battle| {
             for p in 0..2 {

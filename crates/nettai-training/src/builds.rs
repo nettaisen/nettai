@@ -818,7 +818,8 @@ mod tests {
                     let mut layers = [nettai_battle::custom::Layer::new(0, &b), nettai_battle::custom::Layer::new(1, &b)];
                     let mut rng = nettai_netplay::rng::SplitMix64::new(i as u64);
                     for _ in 0..3000 {
-                        let keys = [0u16, 1].map(|_| (rng.next_u64() & 0x3FF) as u16 & !0x0C);
+                        use nettai_battle::input::Keys;
+                        let keys = [0u16, 1].map(|_| Keys::from_bits_retain(rng.next_u64() as u16) & Keys::BUTTONS - (Keys::SELECT | Keys::START));
                         if !crate::env::step_layered(&mut b, &mut layers, keys) || b.is_battle_over() {
                             break;
                         }

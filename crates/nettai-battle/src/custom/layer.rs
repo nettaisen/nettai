@@ -36,7 +36,7 @@ use super::screen::{OK_SLOT, Phase, PlayerView, Screen, SlotKind, checked};
 use crate::battle::{Battle, TickEvents, mode};
 use crate::rules::FormList;
 use crate::content::{CustomScreenLayout, FormListRules, HoverRuns, ScreenKey, SlotMoves};
-use crate::input::{Joypad, PlayerTick, ScreenChoice, keys};
+use crate::input::{Joypad, Keys, PlayerTick, ScreenChoice};
 use crate::sound::SoundCue;
 use nettai_content_api::{ChipHandle, FormHandle};
 
@@ -541,11 +541,11 @@ impl Layer {
     fn choose(&mut self, p: &Presented, layout: &CustomScreenLayout) -> Option<ScreenChoice> {
         let (screen, view) = (p.screen, &p.view);
         let joy = self.joypad;
-        const DIRECTIONS: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
+        const DIRECTIONS: Keys = Keys::UP.union(Keys::DOWN).union(Keys::LEFT).union(Keys::RIGHT);
         // The cursor on nothing (the pointer went away): a direction, A or
         // R brings it back to its slot and does no more. The other keys
         // are as on its slot (B the game's, START to OK).
-        if self.away && (joy.repeat & DIRECTIONS != 0 || joy.pressed & (keys::A | keys::R) != 0) {
+        if self.away && (joy.repeat.intersects(DIRECTIONS) || joy.pressed.intersects(Keys::A | Keys::R)) {
             self.come_back();
             return None;
         }
@@ -554,17 +554,17 @@ impl Layer {
         // as a click does; R describes it. The other keys are as on its
         // slot (B the game's, START to OK).
         if let Some(k) = self.pick_cursor {
-            if joy.repeat & DIRECTIONS != 0 {
+            if joy.repeat.intersects(DIRECTIONS) {
                 self.leave_picks();
                 return None;
             }
-            if joy.pressed & keys::A != 0 {
+            if joy.pressed.contains(Keys::A) {
                 if let Some(&slot) = screen.selection().get(k as usize) {
                     self.put_cursor(slot);
                 }
                 return Some(ScreenChoice::Unpick(k));
             }
-            if joy.pressed & keys::R != 0 {
+            if joy.pressed.contains(Keys::R) {
                 if let Some(&slot) = screen.selection().get(k as usize) {
                     self.describe_slot(slot, p, layout);
                 }
@@ -573,7 +573,7 @@ impl Layer {
         }
         // The rules' form list first (EXE6's UP opening the Cross window,
         // which the original asks before the cursor's UP: `custom.keys`).
-        if (joy.repeat | joy.pressed) != 0 && joy.repeat & keys::UP != 0 && self.list_opens(p, layout) {
+        if !(joy.repeat | joy.pressed).is_empty() && joy.repeat.contains(Keys::UP) && self.list_opens(p, layout) {
             self.sub = Sub::List(ListStage::Opening(0));
             return None;
         }
@@ -581,7 +581,7 @@ impl Layer {
             SlotMoves::Neighbors { .. } => &ScreenKey::NEIGHBORS_ORDER,
             SlotMoves::Candidates { keys, .. } => keys,
         };
-        let key = order.iter().copied().find(|&k| (if k.is_direction() { joy.repeat } else { joy.pressed }) & key_bits(k) != 0)?;
+        let key = order.iter().copied().find(|&k| (if k.is_direction() { joy.repeat } else { joy.pressed }).intersects(key_bits(k)))?;
         match key {
             ScreenKey::Up | ScreenKey::Down | ScreenKey::Left | ScreenKey::Right => {
                 if let Some(t) = screen.target_from(self.cursor, key, layout) {
@@ -911,8 +911,8 @@ impl Layer {
 
     /// A click of this tick's, where what is up takes any key (a
     /// description's or the run message's box, the hidden window): A's bit.
-    fn click_as_key(&self) -> u16 {
-        if matches!(self.gesture, Some(Gesture::Click(_))) { keys::A } else { 0 }
+    fn click_as_key(&self) -> Keys {
+        if matches!(self.gesture, Some(Gesture::Click(_))) { Keys::A } else { Keys::empty() }
     }
 
     /// R: a description's chatbox (`chatbox_runScript` in the key's
@@ -967,7 +967,7 @@ impl Layer {
                         self.play(ScreenSound::Hide);
                         Sub::Hidden(HiddenStage::Waiting)
                     }
-                    HiddenStage::Waiting if joy.pressed | self.click_as_key() != 0 => {
+                    HiddenStage::Waiting if !(joy.pressed | self.click_as_key()).is_empty() => {
                         if emblem {
                             self.look.draw_emblem(0);
                         }
@@ -1144,7 +1144,7 @@ impl Layer {
         let list = p.form_list.unwrap_or_default();
         if list.chosen.is_none() {
             let n = list.count;
-            let (up, down) = (joy.repeat & keys::UP != 0, joy.repeat & keys::DOWN != 0);
+            let (up, down) = (joy.repeat.contains(Keys::UP), joy.repeat.contains(Keys::DOWN));
             if up || down {
                 self.list_cursor = if up {
                     if self.list_cursor == 0 { n.saturating_sub(1) } else { self.list_cursor - 1 }
@@ -1158,18 +1158,18 @@ impl Layer {
                 }
                 return None;
             }
-            if joy.pressed & keys::A != 0 {
+            if joy.pressed.contains(Keys::A) {
                 return Some(ScreenChoice::ChooseForm(self.list_cursor));
             }
         }
-        if joy.pressed & keys::B != 0 {
+        if joy.pressed.contains(Keys::B) {
             self.sub = Sub::List(ListStage::Closing(0));
-        } else if joy.pressed & keys::START != 0 {
+        } else if joy.pressed.contains(Keys::START) {
             self.cursor = OK_SLOT;
             self.away = false;
             self.sub = Sub::List(ListStage::Closing(0));
             self.play(ScreenSound::Cursor);
-        } else if joy.pressed & keys::R != 0 {
+        } else if joy.pressed.contains(Keys::R) {
             let form = list.forms.get(self.list_cursor as usize).copied().flatten();
             // (Three lines for a form the content has no description of.)
             let lines = form.map_or(3, |f| view.library.form_description_lines(f));
@@ -1392,18 +1392,18 @@ fn switch_taken(view: &PlayerView, screen: &Screen, member: u8) -> bool {
 }
 
 /// A key's joypad bit.
-fn key_bits(k: ScreenKey) -> u16 {
+fn key_bits(k: ScreenKey) -> Keys {
     match k {
-        ScreenKey::A => keys::A,
-        ScreenKey::B => keys::B,
-        ScreenKey::Start => keys::START,
-        ScreenKey::Select => keys::SELECT,
-        ScreenKey::R => keys::R,
-        ScreenKey::L => keys::L,
-        ScreenKey::Up => keys::UP,
-        ScreenKey::Down => keys::DOWN,
-        ScreenKey::Left => keys::LEFT,
-        ScreenKey::Right => keys::RIGHT,
+        ScreenKey::A => Keys::A,
+        ScreenKey::B => Keys::B,
+        ScreenKey::Start => Keys::START,
+        ScreenKey::Select => Keys::SELECT,
+        ScreenKey::R => Keys::R,
+        ScreenKey::L => Keys::L,
+        ScreenKey::Up => Keys::UP,
+        ScreenKey::Down => Keys::DOWN,
+        ScreenKey::Left => Keys::LEFT,
+        ScreenKey::Right => Keys::RIGHT,
     }
 }
 

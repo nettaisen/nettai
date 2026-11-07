@@ -1,37 +1,50 @@
 //! Player input as the engine consumes it.
 
 
-/// GBA button bits (KEYINPUT order).
-pub mod keys {
-    pub const A: u16 = 1 << 0;
-    pub const B: u16 = 1 << 1;
-    pub const SELECT: u16 = 1 << 2;
-    pub const START: u16 = 1 << 3;
-    pub const RIGHT: u16 = 1 << 4;
-    pub const LEFT: u16 = 1 << 5;
-    pub const UP: u16 = 1 << 6;
-    pub const DOWN: u16 = 1 << 7;
-    pub const R: u16 = 1 << 8;
-    pub const L: u16 = 1 << 9;
-    /// Bits the game always sets in a live input word (it uses them to tell
-    /// a real packet from an empty one).
-    pub const PRESENT: u16 = 0xFC00;
+bitflags::bitflags! {
+    /// GBA buttons (KEYINPUT order).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct Keys: u16 {
+        const A = 1 << 0;
+        const B = 1 << 1;
+        const SELECT = 1 << 2;
+        const START = 1 << 3;
+        const RIGHT = 1 << 4;
+        const LEFT = 1 << 5;
+        const UP = 1 << 6;
+        const DOWN = 1 << 7;
+        const R = 1 << 8;
+        const L = 1 << 9;
+        /// The ten buttons.
+        const BUTTONS = 0x3FF;
+        /// Bits the game always sets in a live input word (it uses them to tell
+        /// a real packet from an empty one); no button has them.
+        const PRESENT = 0xFC00;
+        const _ = !0;
+    }
+}
+
+impl Keys {
+    /// The button of KEYINPUT bit `bit` (0..=9).
+    pub const fn of_bit(bit: usize) -> Keys {
+        Keys::from_bits_retain(1 << bit)
+    }
 }
 
 /// A key's bit by its name ("a", "b", "select", "start", "right", "left",
 /// "up", "down", "r", "l"): what a script names keys by.
-pub fn key_named(name: &str) -> Option<u16> {
+pub fn key_named(name: &str) -> Option<Keys> {
     Some(match name {
-        "a" => keys::A,
-        "b" => keys::B,
-        "select" => keys::SELECT,
-        "start" => keys::START,
-        "right" => keys::RIGHT,
-        "left" => keys::LEFT,
-        "up" => keys::UP,
-        "down" => keys::DOWN,
-        "r" => keys::R,
-        "l" => keys::L,
+        "a" => Keys::A,
+        "b" => Keys::B,
+        "select" => Keys::SELECT,
+        "start" => Keys::START,
+        "right" => Keys::RIGHT,
+        "left" => Keys::LEFT,
+        "up" => Keys::UP,
+        "down" => Keys::DOWN,
+        "r" => Keys::R,
+        "l" => Keys::L,
         _ => return None,
     })
 }
@@ -39,18 +52,18 @@ pub fn key_named(name: &str) -> Option<u16> {
 /// Held/pressed/released for one player, updated from each tick's input.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct InputRecord {
-    pub held: u16,
-    pub pressed: u16,
-    pub released: u16,
+    pub held: Keys,
+    pub pressed: Keys,
+    pub released: Keys,
 }
 
 impl InputRecord {
     /// Apply this tick's held buttons.
-    pub fn update(&mut self, held: u16) {
+    pub fn update(&mut self, held: Keys) {
         let old = self.held;
         self.held = held;
-        self.pressed = !old & held;
-        self.released = old & !held;
+        self.pressed = held - old;
+        self.released = old - held;
     }
 }
 
@@ -59,12 +72,12 @@ impl InputRecord {
 /// the held buttons that auto-repeat.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Joypad {
-    pub held: u16,
+    pub held: Keys,
     /// Buttons down this frame and not the last.
-    pub pressed: u16,
+    pub pressed: Keys,
     /// Held buttons that repeat this frame: on the second frame of a hold,
     /// then, from the 17th frame on, every fifth frame.
-    pub repeat: u16,
+    pub repeat: Keys,
     /// Frames each button has been held, capped at `REPEAT_DELAY`.
     hold_frames: [u8; 10],
     /// The repeat beat: counts 0..=4, one step per frame (a console-wide
@@ -89,29 +102,29 @@ impl Joypad {
         self.phase
     }
 
-    /// One frame with these buttons held (GBA bits, 0..=0x3FF).
-    pub fn update(&mut self, keys: u16) {
-        let keys = keys & 0x3FF;
+    /// One frame with these buttons held.
+    pub fn update(&mut self, keys: Keys) {
+        let keys = keys & Keys::BUTTONS;
         self.phase = (self.phase + 1) % Self::REPEAT_PERIOD;
         let old = self.held;
         let mut repeat = keys & old;
         for (bit, frames) in self.hold_frames.iter_mut().enumerate() {
-            let mask = 1 << bit;
-            if repeat & mask == 0 {
+            let button = Keys::of_bit(bit);
+            if !repeat.contains(button) {
                 *frames = 0;
             } else if *frames >= Self::REPEAT_DELAY {
                 if self.phase != 0 {
-                    repeat &= !mask;
+                    repeat.remove(button);
                 }
             } else {
                 *frames += 1;
                 if *frames != 1 {
-                    repeat &= !mask;
+                    repeat.remove(button);
                 }
             }
         }
         self.held = keys;
-        self.pressed = keys & !old;
+        self.pressed = keys - old;
         self.repeat = repeat;
     }
 }
@@ -211,12 +224,12 @@ const _: () = assert!(ScreenChoice::CODES <= 1 << 6);
 /// What one player contributes to a tick.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct PlayerTick {
-    /// The buttons the player holds on this tick (GBA bits, 0..=0x3FF),
-    /// which the fight reads. Their custom screen takes their choices
+    /// The buttons the player holds on this tick (`Keys::BUTTONS`), which
+    /// the fight reads. Their custom screen takes their choices
     /// instead (`choice`); the fight's record still takes the buttons
     /// through it, so a button held across the screen's close isn't a new
     /// press.
-    pub held: u16,
+    pub held: Keys,
     /// The member of their side's party the player asks to switch to on
     /// this tick, if any (0 is the side's own navi, 1 and 2 its partners:
     /// `Battle::party`). A request is input, as the buttons are: the DS's
@@ -241,7 +254,7 @@ pub struct PlayerTick {
 
 impl PlayerTick {
     /// A tick of these buttons alone.
-    pub const fn buttons(held: u16) -> PlayerTick {
+    pub const fn buttons(held: Keys) -> PlayerTick {
         PlayerTick { held, switch_to: None, mic_loud: false, choice: None }
     }
 
@@ -265,7 +278,7 @@ impl PlayerTick {
             Some(c) => c.code(),
             None => 0,
         };
-        (self.held as u32 & 0x3FF) | (switch & 3) << 10 | (self.mic_loud as u32) << 12 | (choice & 0x3F) << 13
+        (self.held.bits() as u32 & Keys::BUTTONS.bits() as u32) | (switch & 3) << 10 | (self.mic_loud as u32) << 12 | (choice & 0x3F) << 13
     }
 
     /// The bits a word ([`PlayerTick::word`]) uses, from its lowest.
@@ -277,7 +290,7 @@ impl PlayerTick {
     pub const fn from_word(word: u32) -> PlayerTick {
         let switch = (word >> 10) & 3;
         PlayerTick {
-            held: (word & 0x3FF) as u16,
+            held: Keys::from_bits_retain((word & Keys::BUTTONS.bits() as u32) as u16),
             switch_to: if switch == 0 { None } else { Some(switch as u8 - 1) },
             mic_loud: (word >> 12) & 1 != 0,
             choice: ScreenChoice::from_code((word >> 13) & 0x3F),
@@ -303,11 +316,11 @@ mod tests {
         let mut pressed = Vec::new();
         let mut repeats = Vec::new();
         for frame in 0..40 {
-            j.update(keys::A);
-            if j.pressed & keys::A != 0 {
+            j.update(Keys::A);
+            if j.pressed.contains(Keys::A) {
                 pressed.push(frame);
             }
-            if j.repeat & keys::A != 0 {
+            if j.repeat.contains(Keys::A) {
                 repeats.push(frame);
             }
         }
@@ -315,34 +328,34 @@ mod tests {
         // Frame 1, then from frame 16 on the frames at beat 0 (frame f is
         // at beat (3 + f) % 5).
         assert_eq!(repeats, [1, 17, 22, 27, 32, 37]);
-        j.update(0);
-        assert_eq!((j.held, j.pressed, j.repeat), (0, 0, 0));
+        j.update(Keys::empty());
+        assert!(j.held.is_empty() && j.pressed.is_empty() && j.repeat.is_empty());
     }
 
     #[test]
     fn a_tick_word_holds_the_buttons_the_switch_the_microphone_and_the_choice() {
         let t = |held, switch_to, mic_loud, choice| PlayerTick { held, switch_to, mic_loud, choice };
         for t in [
-            PlayerTick::buttons(0),
-            PlayerTick::buttons(0x3FF),
-            t(keys::A, Some(0), false, None),
-            t(keys::L, Some(2), true, Some(ScreenChoice::Ok)),
-            t(0, None, true, Some(ScreenChoice::ChooseForm(4))),
-            t(keys::A, None, false, Some(ScreenChoice::Pick(11))),
-            t(0, Some(1), false, Some(ScreenChoice::Press(8))),
-            t(0, None, false, Some(ScreenChoice::TakeBack)),
-            t(0, None, false, Some(ScreenChoice::Unpick(4))),
-            t(keys::B, None, false, Some(ScreenChoice::Unchoose)),
-            t(0x3FF, Some(2), true, Some(ScreenChoice::Release(11))),
-            t(0x3FF, Some(2), true, None),
+            PlayerTick::buttons(Keys::empty()),
+            PlayerTick::buttons(Keys::BUTTONS),
+            t(Keys::A, Some(0), false, None),
+            t(Keys::L, Some(2), true, Some(ScreenChoice::Ok)),
+            t(Keys::empty(), None, true, Some(ScreenChoice::ChooseForm(4))),
+            t(Keys::A, None, false, Some(ScreenChoice::Pick(11))),
+            t(Keys::empty(), Some(1), false, Some(ScreenChoice::Press(8))),
+            t(Keys::empty(), None, false, Some(ScreenChoice::TakeBack)),
+            t(Keys::empty(), None, false, Some(ScreenChoice::Unpick(4))),
+            t(Keys::B, None, false, Some(ScreenChoice::Unchoose)),
+            t(Keys::BUTTONS, Some(2), true, Some(ScreenChoice::Release(11))),
+            t(Keys::BUTTONS, Some(2), true, None),
         ] {
             assert_eq!(PlayerTick::from_word(t.word()), t);
         }
         // A tick of buttons alone is its buttons: what every match and
         // replay before the party battle held.
-        assert_eq!(PlayerTick::buttons(keys::A | keys::B).word(), (keys::A | keys::B) as u32);
+        assert_eq!(PlayerTick::buttons(Keys::A | Keys::B).word(), (Keys::A | Keys::B).bits() as u32);
         // Every field at its most fills the word's 19 bits.
-        let most = t(0x3FF, Some(2), true, ScreenChoice::from_code(ScreenChoice::CODES - 1));
+        let most = t(Keys::BUTTONS, Some(2), true, ScreenChoice::from_code(ScreenChoice::CODES - 1));
         assert_eq!(most.word() >> PlayerTick::WORD_BITS, 0);
         assert!(most.word() >= 1 << (PlayerTick::WORD_BITS - 1));
     }
@@ -350,7 +363,7 @@ mod tests {
     #[test]
     fn a_word_holds_every_choice() {
         for choice in (0..ScreenChoice::CODES).map(ScreenChoice::from_code) {
-            let t = PlayerTick { held: 0x3FF, switch_to: Some(2), mic_loud: true, choice };
+            let t = PlayerTick { held: Keys::BUTTONS, switch_to: Some(2), mic_loud: true, choice };
             assert_eq!(PlayerTick::from_word(t.word()), t);
         }
     }

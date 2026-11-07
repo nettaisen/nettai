@@ -40,7 +40,7 @@ fn play(game: &Loaded, parts: &[(u32, Option<&Theme>)]) -> Result<(Vec<Option<So
             player.set_sound_parts(sound.parts(&content, theme));
         }
         for _ in 0..ticks {
-            if !player.tick(0) {
+            if !player.tick(nettai_battle::input::Keys::empty()) {
                 return Err(format!("the match stopped: {}", player.stopped().unwrap_or("?")));
             }
             player.take_samples(&mut samples);

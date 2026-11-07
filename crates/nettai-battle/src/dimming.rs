@@ -50,7 +50,7 @@ pub struct DimmingRecord {
 
 /// How many times content has read each side's keys as they are while the
 /// battle is dimmed (`dimmed_held`, `dimmed_pressed`, `dimmed_released`),
-/// by key (its bit in `input::keys`): for what plays a side, to tell
+/// by key (its bit in `input::Keys`): for what plays a side, to tell
 /// whether a press now would be read (an AI aiming a chip that waits for
 /// A). No part of the simulation: nothing in the battle reads it, and the
 /// digest leaves it out. (Counted through a shared reference, as content
@@ -59,16 +59,15 @@ pub struct DimmingRecord {
 pub struct KeyReads([[std::sync::atomic::AtomicU32; 16]; 2]);
 
 impl KeyReads {
-    /// The reads of `side`'s keys `keys` (a mask of `input::keys`) so far
-    /// (wrapping).
-    pub fn get(&self, side: u8, keys: u16) -> u32 {
+    /// The reads of `side`'s keys `keys` so far (wrapping).
+    pub fn get(&self, side: u8, keys: crate::input::Keys) -> u32 {
         let reads = &self.0[side as usize & 1];
-        (0..16).filter(|bit| keys & (1 << bit) != 0).fold(0u32, |n, bit| n.wrapping_add(reads[bit].load(std::sync::atomic::Ordering::Relaxed)))
+        (0..16).filter(|bit| keys.contains(crate::input::Keys::of_bit(*bit))).fold(0u32, |n, bit| n.wrapping_add(reads[bit].load(std::sync::atomic::Ordering::Relaxed)))
     }
 
-    /// A read of `side`'s key `key` (one bit of `input::keys`).
-    pub(crate) fn note(&self, side: u8, key: u16) {
-        self.0[side as usize & 1][key.trailing_zeros() as usize & 15].fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    /// A read of `side`'s key `key` (one button).
+    pub(crate) fn note(&self, side: u8, key: crate::input::Keys) {
+        self.0[side as usize & 1][key.bits().trailing_zeros() as usize & 15].fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
 }
 

@@ -153,18 +153,18 @@ impl<G: Game> Observer<G> for CueFeed {
 mod tests {
     use super::*;
     use crate::link::{Delivery, InputLink};
-    use nettai_battle::input::keys;
+    use nettai_battle::input::Keys;
 
     /// A player's input goes through a link and comes out the same: the
     /// buttons, a custom screen's choice, and the link closing.
     #[test]
     fn a_player_input_crosses_the_link() {
         let inputs = [
-            PlayerInput { tick: PlayerTick::buttons(keys::A | keys::LEFT), events: TickEvents::default() },
-            PlayerInput { tick: PlayerTick::buttons(0), events: TickEvents { link_closed: true } },
-            PlayerInput { tick: PlayerTick::buttons(keys::L), events: TickEvents::default() },
-            PlayerInput { tick: PlayerTick::buttons(keys::A).with_choice(Some(nettai_battle::ScreenChoice::Pick(2))), events: TickEvents::default() },
-            PlayerInput { tick: PlayerTick::buttons(0).with_choice(Some(nettai_battle::ScreenChoice::Unpick(4))), events: TickEvents::default() },
+            PlayerInput { tick: PlayerTick::buttons(Keys::A | Keys::LEFT), events: TickEvents::default() },
+            PlayerInput { tick: PlayerTick::buttons(Keys::empty()), events: TickEvents { link_closed: true } },
+            PlayerInput { tick: PlayerTick::buttons(Keys::L), events: TickEvents::default() },
+            PlayerInput { tick: PlayerTick::buttons(Keys::A).with_choice(Some(nettai_battle::ScreenChoice::Pick(2))), events: TickEvents::default() },
+            PlayerInput { tick: PlayerTick::buttons(Keys::empty()).with_choice(Some(nettai_battle::ScreenChoice::Unpick(4))), events: TickEvents::default() },
         ];
         let (mut a, mut b) = (InputLink::<PlayerInput>::new(64), InputLink::<PlayerInput>::new(64));
         for (i, input) in inputs.iter().enumerate() {
@@ -192,13 +192,13 @@ mod tests {
     #[test]
     fn a_prediction_carries_the_buttons_alone() {
         let tick = PlayerTick {
-            held: keys::B,
+            held: Keys::B,
             switch_to: Some(2),
             mic_loud: true,
             choice: Some(nettai_battle::ScreenChoice::Ok),
         };
         let last = PlayerInput { tick, events: TickEvents { link_closed: true } };
         let p = <Battle as Game>::predict(&last);
-        assert_eq!(p, PlayerInput { tick: PlayerTick { mic_loud: true, ..PlayerTick::buttons(keys::B) }, events: TickEvents::default() });
+        assert_eq!(p, PlayerInput { tick: PlayerTick { mic_loud: true, ..PlayerTick::buttons(Keys::B) }, events: TickEvents::default() });
     }
 }

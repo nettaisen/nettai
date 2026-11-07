@@ -289,19 +289,19 @@ pub struct AttackVars {
 /// Joypad state as an actor sees it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Pad {
-    pub held: u16,
-    pub pressed: u16,
-    pub released: u16,
-    pub previous: u16,
+    pub held: crate::input::Keys,
+    pub pressed: crate::input::Keys,
+    pub released: crate::input::Keys,
+    pub previous: crate::input::Keys,
 }
 
 impl Pad {
-    pub fn update(&mut self, held: u16) {
+    pub fn update(&mut self, held: crate::input::Keys) {
         let old = self.held;
         self.previous = old;
         self.held = held;
-        self.pressed = !old & held;
-        self.released = old & !held;
+        self.pressed = held - old;
+        self.released = old - held;
     }
 }
 

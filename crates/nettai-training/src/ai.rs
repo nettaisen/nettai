@@ -46,7 +46,7 @@ use crate::search::{Search, Worker};
 use crate::spec;
 use nettai_battle::battle::mode;
 use nettai_battle::custom::Layer;
-use nettai_battle::input::keys;
+use nettai_battle::input::Keys;
 use nettai_battle::setup::SetScore;
 use nettai_battle::{Battle, Content};
 use nettai_frontend::driver::Ai;
@@ -773,7 +773,7 @@ impl NetAi {
             // (It opens the custom screen as the env did in training, a while after the gauge is full: the user,
             // "allow the dummy to go into custom screen". The player may open it first.)
             let at = if env::may_open(b) { *r.opener.get_or_insert_with(|| r.t + env::opener_wait(self.rng.next_u64())) } else { u32::MAX };
-            act::fight_buttons(r.action) | if env::presses_l(r.t, at) { keys::L } else { 0 }
+            act::fight_buttons(r.action) | if env::presses_l(r.t, at) { Keys::L } else { 0 }
         } else {
             0
         }

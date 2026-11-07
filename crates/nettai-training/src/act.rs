@@ -24,7 +24,7 @@ use nettai_battle::content::{CustomScreenLayout, ScreenKey, WindowHandle, Window
 use nettai_battle::custom::layer::{ListStage, Sub};
 use nettai_battle::custom::screen::{ButtonCell, MAX_SELECTIONS, OK_SLOT, Phase, SLOTS, Screen, SlotKind, SlotState};
 use nettai_battle::custom::Layer;
-use nettai_battle::input::keys;
+use nettai_battle::input::Keys;
 use std::collections::VecDeque;
 
 /// The directions of a fight action, by its index's quotient by 4: none,
@@ -35,38 +35,38 @@ pub const DIRECTIONS: usize = 5;
 /// side's RIGHT and away its LEFT, for either side: each console shows its
 /// own player on the left, and the engine reads LEFT as back and RIGHT as
 /// forward). Out of range: none.
-pub fn fight_buttons(action: i32) -> u16 {
+pub fn fight_buttons(action: i32) -> Keys {
     if !(0..spec::FIGHT_ACTIONS as i32).contains(&action) {
-        return 0;
+        return Keys::empty();
     }
     let a = action as u16;
-    let dir = [0, keys::UP, keys::DOWN, keys::RIGHT, keys::LEFT][(a / 4) as usize];
-    dir | if a & 2 != 0 { keys::A } else { 0 } | if a & 1 != 0 { keys::B } else { 0 }
+    let dir = [Keys::empty(), Keys::UP, Keys::DOWN, Keys::RIGHT, Keys::LEFT][(a / 4) as usize];
+    dir | if a & 2 != 0 { Keys::A } else { Keys::empty() } | if a & 1 != 0 { Keys::B } else { Keys::empty() }
 }
 
 /// The fight action holding `buttons` (directions other than one of the
 /// five, and other buttons, left out): what a scripted player's buttons are
 /// as an action, for its measures.
-pub fn fight_action(buttons: u16) -> i32 {
-    let dir = if buttons & keys::UP != 0 {
+pub fn fight_action(buttons: Keys) -> i32 {
+    let dir = if buttons.contains(Keys::UP) {
         1
-    } else if buttons & keys::DOWN != 0 {
+    } else if buttons.contains(Keys::DOWN) {
         2
-    } else if buttons & keys::RIGHT != 0 {
+    } else if buttons.contains(Keys::RIGHT) {
         3
-    } else if buttons & keys::LEFT != 0 {
+    } else if buttons.contains(Keys::LEFT) {
         4
     } else {
         0
     };
-    dir * 4 + if buttons & keys::A != 0 { 2 } else { 0 } + if buttons & keys::B != 0 { 1 } else { 0 }
+    dir * 4 + if buttons.contains(Keys::A) { 2 } else { 0 } + if buttons.contains(Keys::B) { 1 } else { 0 }
 }
 
 /// The keys the key probe presses (§4.2), as [`spec::PROBED_KEYS`] names
 /// them.
-pub const KEYS: [u16; 7] = [keys::UP, keys::DOWN, keys::LEFT, keys::RIGHT, keys::A, keys::B, keys::START];
+pub const KEYS: [Keys; 7] = [Keys::UP, Keys::DOWN, Keys::LEFT, Keys::RIGHT, Keys::A, Keys::B, Keys::START];
 
-const MOVES: [(u16, ScreenKey); 4] = [(keys::UP, ScreenKey::Up), (keys::DOWN, ScreenKey::Down), (keys::LEFT, ScreenKey::Left), (keys::RIGHT, ScreenKey::Right)];
+const MOVES: [(Keys, ScreenKey); 4] = [(Keys::UP, ScreenKey::Up), (Keys::DOWN, ScreenKey::Down), (Keys::LEFT, ScreenKey::Left), (Keys::RIGHT, ScreenKey::Right)];
 
 /// How many presses of a direction take the cursor from where it is
 /// (`cursor`, its layer's) to each slot, by the screen's own moves (none:
@@ -158,7 +158,7 @@ pub fn legal_slots(screen: &Screen, choosing: bool, steps: &[Option<u8>; SLOTS],
 /// the key probe found opening it, and where the cursor was then.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Opener {
-    pub key: u16,
+    pub key: Keys,
     pub cursor: u8,
 }
 
@@ -196,7 +196,7 @@ pub fn legal_forms(b: &Battle, side: u8, steps: &[Option<u8>; SLOTS], nav: &Navi
 
 /// The key that backs out of a form list: the navigator closes with it a
 /// list it gave up on, or opened on its way to a slot.
-pub const CLOSING_KEY: u16 = keys::B;
+pub const CLOSING_KEY: Keys = Keys::B;
 
 /// The screen actions allowed now on side `side`'s screen in `b`, its
 /// layer `layer` (§4.2): while it is choosing, the legal slots, then the
@@ -320,7 +320,7 @@ struct Listing {
 pub struct Navigator {
     doing: Doing,
     /// The button held and the ticks left to hold it, then the tick let go.
-    held: u16,
+    held: Keys,
     hold: u8,
     release: u8,
     /// The screen as it was when A was pressed on a slot, for the slot.
@@ -371,10 +371,10 @@ impl Navigator {
 
     /// This tick's buttons on side `side`'s screen in `b`, its layer
     /// `layer` (where the cursor and the form list are).
-    pub fn buttons(&mut self, b: &Battle, side: u8, layer: &Layer) -> u16 {
+    pub fn buttons(&mut self, b: &Battle, side: u8, layer: &Layer) -> Keys {
         let s = &b.custom.sides[side as usize];
         let Some(screen) = s.screen.as_ref().filter(|_| b.round.mode == mode::CUSTOM) else {
-            return 0;
+            return Keys::empty();
         };
         if self.hold > 0 {
             self.hold -= 1;
@@ -389,7 +389,7 @@ impl Navigator {
                 // (A pick that changed nothing: the screen refuses it.)
                 self.refused |= 1 << slot;
             }
-            return 0;
+            return Keys::empty();
         }
         let up = over(b, screen, layer);
         if let Some((at, dir)) = self.moved.take()
@@ -401,45 +401,45 @@ impl Navigator {
             Over::Nothing => {}
             // (A description, the window hidden, L's message: the original's
             // states other than the choosing's, which read no navigator's.)
-            Over::Busy => return 0,
+            Over::Busy => return Keys::empty(),
             up => {
                 return match self.doing {
                     Doing::Listing(entry) => self.in_list(b, side, layer, entry, up),
                     _ if up == Over::List => self.press(CLOSING_KEY),
-                    _ => 0,
+                    _ => Keys::empty(),
                 };
             }
         }
         if screen.phase != Phase::Choosing {
-            return 0;
+            return Keys::empty();
         }
         let cursor = layer.cursor;
         let layout = &b.game_rules().custom_screen;
         match self.doing {
-            Doing::Idle => 0,
+            Doing::Idle => Keys::empty(),
             Doing::Going(target) => {
                 if self.tries >= MOST_PRESSES {
                     self.refused |= 1 << target;
                     self.doing = Doing::Idle;
-                    return 0;
+                    return Keys::empty();
                 }
                 self.tries += 1;
                 if cursor == target {
                     self.doing = Doing::Idle;
                     self.pressed = Some((target, Picked::of(screen, cursor)));
-                    return self.press(keys::A);
+                    return self.press(Keys::A);
                 }
                 self.walk(screen, cursor, layout, target).unwrap_or_else(|| {
                     self.refused |= 1 << target;
                     self.doing = Doing::Idle;
-                    0
+                    Keys::empty()
                 })
             }
             Doing::Listing(entry) => {
                 let l = self.listing;
                 if l.chosen {
                     self.doing = Doing::Idle;
-                    return 0;
+                    return Keys::empty();
                 }
                 let opener = self.opener.filter(|_| !l.opened && !l.leaving && self.tries < MOST_PRESSES);
                 let walked = opener.and_then(|o| {
@@ -457,7 +457,7 @@ impl Navigator {
                     // get to the opener's place.)
                     self.refused_forms |= 1 << entry;
                     self.doing = Doing::Idle;
-                    0
+                    Keys::empty()
                 })
             }
         }
@@ -465,7 +465,7 @@ impl Navigator {
 
     /// A press toward slot `target` along the screen's moves, leaving out
     /// the moves that opened a window; none: there is no way there.
-    fn walk(&mut self, screen: &Screen, cursor: u8, layout: &CustomScreenLayout, target: u8) -> Option<u16> {
+    fn walk(&mut self, screen: &Screen, cursor: u8, layout: &CustomScreenLayout, target: u8) -> Option<Keys> {
         let dir = toward(screen, cursor, layout, target, self.blocked)?;
         self.moved = Some((cursor, dir));
         Some(self.press(MOVES[dir].0))
@@ -473,17 +473,17 @@ impl Navigator {
 
     /// A tick with something up over the chips (`up`: the form list, a
     /// window of the rules) while choosing entry `entry` of the form list.
-    fn in_list(&mut self, b: &Battle, side: u8, layer: &Layer, entry: u8, up: Over) -> u16 {
+    fn in_list(&mut self, b: &Battle, side: u8, layer: &Layer, entry: u8, up: Over) -> Keys {
         match up {
             Over::Chosen => {
                 self.listing.chosen = true;
-                0
+                Keys::empty()
             }
             Over::List => {
                 let Some(list) = b.form_list(side) else { return self.back_out() };
                 if list.chosen.is_some() {
                     self.listing.chosen = true;
-                    return 0;
+                    return Keys::empty();
                 }
                 let l = self.listing;
                 if l.leaving || l.pressed || self.tries >= MOST_PRESSES {
@@ -494,7 +494,7 @@ impl Navigator {
                 let at = layer.list_cursor;
                 if at == entry {
                     self.listing.pressed = true;
-                    return self.press(keys::A);
+                    return self.press(Keys::A);
                 }
                 if l.last == Some(at) {
                     self.listing.dir += 1;
@@ -505,19 +505,19 @@ impl Navigator {
             }
             // (The list opening or closing, the rules' other windows: they
             // play out.)
-            _ => 0,
+            _ => Keys::empty(),
         }
     }
 
     /// Back out of the form list: B, the entry given up on.
-    fn back_out(&mut self) -> u16 {
+    fn back_out(&mut self) -> Keys {
         self.listing.leaving = true;
         self.press(CLOSING_KEY)
     }
 
     /// Press `key` this tick: a direction held one tick more, then let go.
-    fn press(&mut self, key: u16) -> u16 {
-        let direction = key & (keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT) != 0;
+    fn press(&mut self, key: Keys) -> Keys {
+        let direction = key.intersects(Keys::UP | Keys::DOWN | Keys::LEFT | Keys::RIGHT);
         self.held = key;
         self.hold = direction as u8;
         self.release = 1;
@@ -552,12 +552,12 @@ mod tests {
 
     #[test]
     fn fight_actions_are_directions_by_a_by_b() {
-        assert_eq!(fight_buttons(0), 0);
-        assert_eq!(fight_buttons(1), keys::B);
-        assert_eq!(fight_buttons(2), keys::A);
-        assert_eq!(fight_buttons(3 * 4), keys::RIGHT);
-        assert_eq!(fight_buttons(4 * 4 + 3), keys::LEFT | keys::A | keys::B);
-        assert_eq!(fight_buttons(20), 0);
+        assert_eq!(fight_buttons(0), Keys::empty());
+        assert_eq!(fight_buttons(1), Keys::B);
+        assert_eq!(fight_buttons(2), Keys::A);
+        assert_eq!(fight_buttons(3 * 4), Keys::RIGHT);
+        assert_eq!(fight_buttons(4 * 4 + 3), Keys::LEFT | Keys::A | Keys::B);
+        assert_eq!(fight_buttons(20), Keys::empty());
         for a in 0..20 {
             assert_eq!(fight_action(fight_buttons(a)), a);
         }

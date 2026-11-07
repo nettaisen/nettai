@@ -22,6 +22,7 @@ use nettai_battle::custom::{BattleFolder, FolderChip, PlayerSetup};
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::rules::Fact;
 use nettai_battle::setup::{NaviCustBugs, NaviWeapons};
+use nettai_battle::input::Keys;
 use nettai_battle::{Battle, Content, NaviStats as EngineNaviStats, PlayerTick, RoundSetup, TickEvents};
 use nettai_content_api::{RecordHandle, Registry, Value, WeaponHandle};
 use nettai_content_api::Pool;
@@ -796,7 +797,7 @@ impl Round {
         // its fight and its custom screen read. nettai's microphone is one
         // bit: a level other than 0 is full, 255.)
         let input = std::array::from_fn(|p| {
-            let mut t = PlayerTick::buttons(self.fed(i, frames, p) | self.ds_early_direction(i, frames, p));
+            let mut t = PlayerTick::buttons(Keys::from_bits_retain(self.fed(i, frames, p) | self.ds_early_direction(i, frames, p)));
             if let Some(sw) = f.switch {
                 t.switch_to = sw[p][0].checked_sub(1);
                 t.mic_loud = sw[p][2] != 0;

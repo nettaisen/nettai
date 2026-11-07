@@ -8,12 +8,12 @@
 //! pass's `keys` is the GBA's.)
 
 use super::{Pair, SETTLE, Step, Tour};
+use crate::input::Buttons;
 use crate::errors::UserError;
 use crate::input::{Bindings, button_index};
 use nettai_gamepad::Button;
 use crate::screens::ScreenId;
 use crate::shell::App;
-use nettai_battle::input::keys;
 use slint::ComponentHandle;
 use slint::platform::{Key, WindowEvent};
 use i_slint_backend_winit::winit::keyboard::KeyCode;
@@ -138,7 +138,7 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
         SETTLE,
         step(|app| {
             let mut bindings = Bindings::default();
-            bindings.bind_pad(button_index(keys::A), Button::West);
+            bindings.bind_pad(button_index(Buttons::A), Button::West);
             app.shell.set_bindings(bindings);
         }),
     );

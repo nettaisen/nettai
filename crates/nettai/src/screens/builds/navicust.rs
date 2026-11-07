@@ -62,13 +62,13 @@
 //! PUT AWAY, sideways in the column beside the board where the effects and the bugs were. They do what L, R and C do.
 
 use crate::builds::grid::{self, Edit, GridData, Held, tone};
+use crate::input::Buttons;
 use crate::builds::overview;
 use crate::input::{Action, KeyPress};
 use crate::screens::builds::editor::{self, Draft, Tab};
 use crate::shell::Shell;
 use crate::sound::Cue;
 use nettai_battle::Content;
-use nettai_battle::input::keys;
 use nettai_content_api::{EntryHandle, Registry};
 use nettai_match::Side;
 use nettai_match::build::{Checked, Overview, Stat};
@@ -1143,8 +1143,8 @@ impl Tab for Navicust {
             return false;
         }
         match (key.code, shell.bindings.of_key(key.code)) {
-            (_, Some(keys::L)) => self.turn(shell, draft, false),
-            (_, Some(keys::R)) => self.turn(shell, draft, true),
+            (_, Some(Buttons::L)) => self.turn(shell, draft, false),
+            (_, Some(Buttons::R)) => self.turn(shell, draft, true),
             (KeyCode::KeyC, _) if !key.repeat => self.compress(shell, draft),
             (KeyCode::KeyC, _) => {}
             _ => return false,

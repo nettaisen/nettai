@@ -82,7 +82,7 @@ fn played(content: &Arc<Content>, replay: &Replay, view: u8, scale: usize) -> Ve
     let (w, h) = (WIDTH * scale, HEIGHT * scale);
     let mut buffer = vec![0u32; w * h];
     let mut out = Vec::new();
-    while p.tick(0) {
+    while p.tick(nettai_battle::input::Keys::empty()) {
         p.present(&mut buffer, w, h);
         let mut nv12 = Vec::new();
         crate::yuv::nv12(&[&buffer], w, h, &mut nv12);

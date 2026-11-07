@@ -1,3 +1,4 @@
+use nettai_battle::input::Keys;
 use super::*;
 use crate::testing::content;
 use nettai_battle::custom::Layer;
@@ -218,7 +219,7 @@ pub(crate) fn at_the_custom_screen(game: &str, seed: u32) -> (Battle, [Layer; 2]
         if b.round.mode == mode::CUSTOM && b.custom.sides[1].screen.is_some_and(|s| s.phase == Phase::Choosing) {
             return (b, layers);
         }
-        step_layered(&mut b, &mut layers, [0, 0]);
+        step_layered(&mut b, &mut layers, [Keys::empty(), Keys::empty()]);
     }
     panic!("{game}: no custom screen");
 }
@@ -229,7 +230,7 @@ fn navigate(b: &mut Battle, layers: &mut [Layer; 2], nav: &mut Navigator, action
     nav.point(action);
     for t in 0..200 {
         let held = nav.buttons(b, 1, &layers[1]);
-        step_layered(b, layers, [0, held]);
+        step_layered(b, layers, [Keys::empty(), held]);
         if nav.idle() {
             return t + 1;
         }
@@ -318,8 +319,8 @@ fn past_its_decisions_a_screen_allows_ok_alone() {
 /// was found, till the form list is up (its layer's).
 fn open_the_list(b: &mut Battle, layers: &mut [Layer; 2], o: act::Opener) {
     assert_eq!(layers[1].cursor, o.cursor);
-    for held in [o.key, o.key, 0] {
-        step_layered(b, layers, [0, held]);
+    for held in [o.key, o.key, Keys::empty()] {
+        step_layered(b, layers, [Keys::empty(), held]);
     }
     for _ in 0..30 {
         match layers[1].list_stage() {
@@ -327,7 +328,7 @@ fn open_the_list(b: &mut Battle, layers: &mut [Layer; 2], o: act::Opener) {
             Some(_) => {}
             None => panic!("the list didn't open"),
         }
-        step_layered(b, layers, [0, 0]);
+        step_layered(b, layers, [Keys::empty(), Keys::empty()]);
     }
     panic!("the list never came up");
 }
@@ -388,7 +389,7 @@ fn an_entry_the_list_does_not_take_is_refused() {
         if !act::legal_screen(&b, 1, &layers[1], &nav, false)[SLOTS] {
             continue;
         }
-        nav.opener = Some(act::Opener { key: keys::RIGHT, ..o });
+        nav.opener = Some(act::Opener { key: Keys::RIGHT, ..o });
         navigate(&mut b, &mut layers, &mut nav, SLOTS as i32);
         assert_eq!(nav.refused_forms, 1);
         assert!(act::chooses(&b.custom.sides[1].screen.unwrap(), &layers[1]));
@@ -650,7 +651,7 @@ fn lookahead_costs() {
     let started = std::time::Instant::now();
     let mut ticks = 0;
     for _ in 0..n {
-        if !crate::env::step_battle(&mut c, [keys::B, keys::B]) || c.is_battle_over() {
+        if !crate::env::step_battle(&mut c, [Keys::B, Keys::B]) || c.is_battle_over() {
             c = b.clone();
         }
         ticks += 1;

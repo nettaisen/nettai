@@ -311,7 +311,7 @@ impl Stage {
     /// Run the ticks due at `now` with `buttons` held (`pressed`: when the
     /// presses since the last frame came; the tick that runs saw them).
     /// The ticks run.
-    pub fn advance(&mut self, now: Instant, buttons: u16, pressed: &mut Vec<Instant>) -> u32 {
+    pub fn advance(&mut self, now: Instant, buttons: nettai_battle::input::Keys, pressed: &mut Vec<Instant>) -> u32 {
         let elapsed = self.last.map_or(Duration::ZERO, |last| now.saturating_duration_since(last));
         self.last = Some(now);
         let started = Instant::now();

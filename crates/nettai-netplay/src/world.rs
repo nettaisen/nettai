@@ -285,12 +285,12 @@ mod tests {
     /// equal.
     #[test]
     fn local_and_remote_go_to_their_sides() {
-        use nettai_battle::input::keys;
+        use nettai_battle::input::Keys;
         let mut a = BattleWorld::new(standin(), 0);
         let mut b = BattleWorld::new(standin(), 1);
         let mut side_by_side = standin();
         for f in 0..120u16 {
-            let (p0, p1) = (u32::from(if f % 9 < 4 { keys::A } else { keys::LEFT }), u32::from(if f % 7 < 2 { keys::UP } else { 0 }));
+            let (p0, p1) = ((if f % 9 < 4 { Keys::A } else { Keys::LEFT }).bits() as u32, (if f % 7 < 2 { Keys::UP } else { Keys::empty() }).bits() as u32);
             a.step(&p0, &[p1]).unwrap();
             b.step(&p1, &[p0]).unwrap();
             side_by_side.step([&p0, &p1]);
@@ -322,7 +322,7 @@ mod tests {
     #[test]
     fn the_observer_hears_everything_from_the_world() {
         let mut s = BattleWorld::with_observer(standin(), 0, Seen::default()).session(0);
-        let remote = |t: u32| u32::from(if t % 6 < 3 { 0 } else { nettai_battle::input::keys::UP });
+        let remote = |t: u32| (if t % 6 < 3 { nettai_battle::input::Keys::empty() } else { nettai_battle::input::Keys::UP }).bits() as u32;
         for t in 0..12u32 {
             if t >= 2 {
                 s.add_remote_input(0, remote(t - 2), 0);

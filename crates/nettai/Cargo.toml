@@ -6,6 +6,8 @@ license.workspace = true
 description = "The nettai app: the menus, the builds, netplay and the replays around a battle played through nettai-frontend, in a Slint window (the UI itself is nettai-ui); built as a cdylib, the module of Android's APK and of the browser's page"
 
 [dependencies]
+# The app's battle button word as a typed set (`input::Buttons`).
+bitflags = "2"
 # What the app asks of its system, the same on the desktop, in a browser and on a phone, a crate a concern: files
 # and the app's folders, threads, and dialogs (and the clipboard). (The browser's page and the app's life are the
 # app's own modules: `page.rs`, `lifecycle.rs`.)
