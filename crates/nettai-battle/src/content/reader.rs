@@ -63,6 +63,12 @@ impl<'a> SpecReader<'a> {
             // reads (a field that is one is read with [`SpecReader::choice`],
             // which refuses anything else).
             Data::Choice(c) => Json::String(c.name().to_string()),
+            // A name a game defines, by its kind's tag (`{ "$PanelType": "cracked" }`: super::names).
+            Data::Name(kind, name) => {
+                let mut tagged = Map::new();
+                tagged.insert(super::names::tag(*kind), Json::String(name.clone()));
+                Json::Object(tagged)
+            }
         })
     }
 

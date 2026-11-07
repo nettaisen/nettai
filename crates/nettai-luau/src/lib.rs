@@ -33,6 +33,7 @@ mod choice;
 pub mod coverage;
 mod define;
 mod element;
+mod names;
 mod schema;
 pub mod sandbox;
 pub mod tool;
@@ -76,6 +77,9 @@ pub struct Pack {
     /// (`packs::check_require`); none: any module (a test's modules alone).
     packs: BTreeMap<String, nettai_content_api::PackManifest>,
     compiled: Compiled,
+    /// The modules whose results the define phase reads back as data
+    /// ([`DefinePhase::module_data`]), by name.
+    data_of: Vec<String>,
 }
 
 impl std::fmt::Debug for Pack {
@@ -129,7 +133,7 @@ impl Pack {
             assert!(keys::root_of(name).is_some(), "module {name:?} names no pack (`<pack>:<path>`)");
         }
         let entries = modules.keys().cloned().collect();
-        Pack { modules: Arc::new(modules), entries, packs: BTreeMap::new(), compiled: Compiled::default() }
+        Pack { modules: Arc::new(modules), entries, packs: BTreeMap::new(), compiled: Compiled::default(), data_of: Vec::new() }
     }
 
     /// Modules read where `modules` has them, as a load requires them (a
@@ -137,7 +141,7 @@ impl Pack {
     /// them), the define phase starting from `entries` (each game's top
     /// module, by name).
     pub fn of(modules: impl Modules + 'static, entries: Vec<String>) -> Pack {
-        Pack { modules: Arc::new(modules), entries, packs: BTreeMap::new(), compiled: Compiled::default() }
+        Pack { modules: Arc::new(modules), entries, packs: BTreeMap::new(), compiled: Compiled::default(), data_of: Vec::new() }
     }
 
     /// The same pack, the define phase starting from these modules (each
@@ -162,6 +166,13 @@ impl Pack {
     /// The same pack, with bytecode compiled before (see [`Compiled`]).
     pub fn with_compiled(mut self, compiled: Compiled) -> Pack {
         self.compiled = compiled;
+        self
+    }
+
+    /// The same pack, the define phase reading back these modules' results
+    /// as data (by name: `exe6:rules/builds`), those it loads.
+    pub fn with_data_of(mut self, modules: Vec<String>) -> Pack {
+        self.data_of = modules;
         self
     }
 }
@@ -356,6 +367,7 @@ impl LuauContent {
             return Err(ContentError::new("loading Luau content: the plan's handles don't match its definitions"));
         }
         let err = |e: mlua::Error| ContentError::new(format!("loading Luau content: {e}"));
+        names::seal(&lua, &plan.names).map_err(err)?;
         let mut defs = HashMap::new();
         let mut tables = HashMap::new();
         let mut record_types = HashMap::new();
@@ -501,6 +513,13 @@ impl LuauContent {
 #[derive(Debug)]
 pub struct DefinePhase {
     pub definitions: Definitions,
+    /// The members of the value tables of the names a game defines that the
+    /// modules read (`PanelType.cracked`), each with where it was first
+    /// read: the engine holds them to the game's ([`check_names`]).
+    pub names: Vec<(nettai_content_api::NameKind, String, String)>,
+    /// The results of the modules [`Pack::with_data_of`] names that loaded,
+    /// as data.
+    pub module_data: BTreeMap<String, nettai_content_api::Data>,
     /// Every module the load read, its recipes' among them, with its bytecode.
     pub compiled: Compiled,
     /// The assets the modules name: their handles and the sprites' definitions.
@@ -517,12 +536,20 @@ pub struct DefinePhase {
 /// (`Pack::with_compiled`). A game's recipe loads with the rest, and runs
 /// elsewhere (nettai-extract).
 pub fn define(pack: &Pack, options: Options) -> Result<DefinePhase, ContentError> {
-    open(pack, options).map(|(_, defined, _, compiled, assets)| DefinePhase {
+    open(pack, options).map(|(lua, defined, _, compiled, assets)| DefinePhase {
+        names: names::read(&lua),
+        module_data: defined.module_data,
         definitions: defined.definitions,
         compiled,
         assets: assets.defined(),
         recipes: defined.recipes,
     })
+}
+
+/// The first member of the value tables `read` names that isn't among the
+/// game's names (`DefinePhase::names`), as a message.
+pub fn check_names(read: &[(nettai_content_api::NameKind, String, String)], game: &nettai_content_api::GameNames) -> Result<(), ContentError> {
+    names::check(read, game).map_err(|e| ContentError::new(format!("loading Luau content: {e}")))
 }
 
 /// The first place two readings of the definitions differ, for messages.
@@ -641,6 +668,7 @@ fn open(pack: &Pack, options: Options) -> Result<Opened, ContentError> {
         return Err(ContentError::new("native code needs nettai-luau's `jit` feature"));
     }
     bind::install(&lua).map_err(err)?;
+    names::install(&lua).map_err(err)?;
     let loader = Rc::new(RefCell::new(Loader {
         pack: pack.clone(),
         loaded: BTreeMap::new(),
@@ -721,7 +749,7 @@ fn open(pack: &Pack, options: Options) -> Result<Opened, ContentError> {
     assets.finish();
     let games: std::collections::HashSet<String> =
         pack.packs.values().filter(|p| p.kind == nettai_content_api::PackKind::Game).map(|p| p.id.clone()).collect();
-    let defined = define::finish(&lua, &tags, &assets, &games, &results, &modules)
+    let defined = define::finish(&lua, &tags, &assets, &games, &results, &modules, &pack.data_of)
         .map_err(|e| ContentError::new(format!("loading Luau content: {e}")))?;
     // Nothing a script can reach may change after loading.
     lua.globals().set_readonly(true);

@@ -32,7 +32,7 @@ use nettai_content_api::{
     ObstacleCrush, ObstacleRequest, Pad, PanelPos, Registry, RequestFlag, ScreenFade, SpriteField, SpriteId,
     StateId, StatusFlag, StatusTimer, Value, Vec3,
 };
-use nettai_content_api::{ObjectRef, PanelCall, RulesHook};
+use nettai_content_api::{NameKind, ObjectRef, PanelCall, RulesHook};
 use nettai_content_api::{AttackKind, DamageTaken, FightCycle, ObstacleClass, PaletteFlashVariant, SpecialBonus, StepDirection, TakeDamageMode};
 use nettai_content_api::{ChipHandle, CollisionHandle, EffectHandle, RegionHandle, SparkHandle};
 
@@ -2736,9 +2736,10 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let chip = chip_or_nil(&chip, "custom.set_column_icon")?;
         with(|api, _| api.custom_set_column_icon(side, chip).map_err(api_error))
     });
-    lib_fn!(lua, t, "open_window", move |_, (side, window, ticks): (LuaValue, String, LuaValue)| {
+    lib_fn!(lua, t, "open_window", move |_, (side, window, ticks): (LuaValue, LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
         own("custom.open_window")?;
+        let window = name_arg(&window, NameKind::Window, "custom.open_window")?;
         let ticks = if ticks.is_nil() { 0 } else { int(&ticks, "ticks")? as u16 };
         with(|api, _| api.custom_open_window(side, &window, ticks).map_err(api_error))
     });
@@ -2780,10 +2781,11 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let icon = chip_or_nil(&icon, "custom.pick_first")?;
         with(|api, _| api.custom_pick_first(side, icon).map_err(api_error))
     });
-    lib_fn!(lua, t, "set_button_state", move |_, (side, button, state): (LuaValue, String, LuaValue)| {
+    lib_fn!(lua, t, "set_button_state", move |_, (side, button, state): (LuaValue, LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
         let state = crate::choice::name(&state, ChoiceKind::ButtonState, "custom.set_button_state's state")?;
         own("custom.set_button_state")?;
+        let button = name_arg(&button, NameKind::Button, "custom.set_button_state")?;
         with(|api, _| api.custom_set_button_state(side, &button, state).map_err(api_error))
     });
     lib_fn!(lua, t, "update_availability", |_, side: LuaValue| {
@@ -2796,15 +2798,16 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| api.custom_draw_emblem(side, x).map_err(api_error))
     });
     // `by`: the rules' button or window whose pick holds the form.
-    lib_fn!(lua, t, "set_form", move |_, (side, by, form, turns, alternate): (LuaValue, String, LuaValue, Option<LuaValue>, Option<bool>)| {
+    lib_fn!(lua, t, "set_form", move |_, (side, by, form, turns, alternate): (LuaValue, LuaValue, LuaValue, Option<LuaValue>, Option<bool>)| {
         let side = u8_arg(side, "side")? & 1;
         own("custom.set_form")?;
+        let (by_kind, by) = screen_part_arg(&by, "custom.set_form")?;
         let form = form_or_nil(&form, "custom.set_form")?;
         let turns = match turns {
             Some(v) if !v.is_nil() => int(&v, "turns")? as u8,
             _ => 0,
         };
-        with(|api, _| api.custom_set_form(side, &by, form, turns, alternate.unwrap_or(false)).map_err(api_error))
+        with(|api, _| api.custom_set_form(side, screen_part(by_kind, &by), form, turns, alternate.unwrap_or(false)).map_err(api_error))
     });
     lib_fn!(lua, t, "last_pick", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
@@ -2817,51 +2820,58 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         t.raw_set("attached", p.attached)?;
         Ok(LuaValue::Table(t))
     });
-    lib_fn!(lua, t, "attach_to_last_pick", move |_, (side, button, marks): (LuaValue, String, LuaValue)| {
+    lib_fn!(lua, t, "attach_to_last_pick", move |_, (side, button, marks): (LuaValue, LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
         own("custom.attach_to_last_pick")?;
+        let button = name_arg(&button, NameKind::Button, "custom.attach_to_last_pick")?;
         with(|api, _| {
             let marks = named_bits(api, NamedBits::Mark, &marks, "custom.attach_to_last_pick: marks")? as u8;
             api.custom_attach_to_last_pick(side, &button, marks).map_err(api_error)
         })
     });
-    lib_fn!(lua, t, "hold_last_pick", move |_, (side, button): (LuaValue, String)| {
+    lib_fn!(lua, t, "hold_last_pick", move |_, (side, button): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
         own("custom.hold_last_pick")?;
+        let button = name_arg(&button, NameKind::Button, "custom.hold_last_pick")?;
         with(|api, _| api.custom_hold_last_pick(side, &button).map_err(api_error))
     });
-    lib_fn!(lua, t, "held_pick", move |_, (side, button): (LuaValue, String)| {
+    lib_fn!(lua, t, "held_pick", move |_, (side, button): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
         own("custom.held_pick")?;
+        let button = name_arg(&button, NameKind::Button, "custom.held_pick")?;
         let chip = with(|api, _| api.custom_held_pick(side, &button).map_err(api_error))?;
         bound(|b| chip_value(b, chip))
     });
-    lib_fn!(lua, t, "set_held_icon", move |_, (side, button, shown): (LuaValue, String, bool)| {
+    lib_fn!(lua, t, "set_held_icon", move |_, (side, button, shown): (LuaValue, LuaValue, bool)| {
         let side = u8_arg(side, "side")? & 1;
         own("custom.set_held_icon")?;
+        let button = name_arg(&button, NameKind::Button, "custom.set_held_icon")?;
         with(|api, _| api.custom_set_held_icon(side, &button, shown).map_err(api_error))
     });
-    lib_fn!(lua, t, "trade_last_pick", move |_, (side, button): (LuaValue, String)| {
+    lib_fn!(lua, t, "trade_last_pick", move |_, (side, button): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
         own("custom.trade_last_pick")?;
+        let button = name_arg(&button, NameKind::Button, "custom.trade_last_pick")?;
         with(|api, _| api.custom_trade_last_pick(side, &button).map_err(api_error))
     });
     lib_fn!(lua, t, "fading", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_fading(side).map_err(api_error))
     });
-    lib_fn!(lua, t, "form_taken", move |_, (side, by): (LuaValue, String)| {
+    lib_fn!(lua, t, "form_taken", move |_, (side, by): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
         own("custom.form_taken")?;
-        with(|api, _| api.custom_form_taken(side, &by).map_err(api_error))
+        let (by_kind, by) = screen_part_arg(&by, "custom.form_taken")?;
+        with(|api, _| api.custom_form_taken(side, screen_part(by_kind, &by)).map_err(api_error))
     });
     lib_fn!(lua, t, "full", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_full(side).map_err(api_error))
     });
-    lib_fn!(lua, t, "button_picked", move |_, (side, button): (LuaValue, String)| {
+    lib_fn!(lua, t, "button_picked", move |_, (side, button): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
         own("custom.button_picked")?;
+        let button = name_arg(&button, NameKind::Button, "custom.button_picked")?;
         with(|api, _| api.custom_button_picked(side, &button).map_err(api_error))
     });
     lib_fn!(lua, t, "draw_window", |_, side: LuaValue| {
@@ -2876,12 +2886,14 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_draw_cursor(side).map_err(api_error))
     });
-    lib_fn!(lua, t, "button_uses", |_, (side, button): (LuaValue, String)| {
+    lib_fn!(lua, t, "button_uses", |_, (side, button): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
+        let button = name_arg(&button, NameKind::Button, "custom.button_uses")?;
         with(|api, _| api.custom_button_uses(side, &button).map_err(api_error))
     });
-    lib_fn!(lua, t, "set_button_uses", |_, (side, button, uses): (LuaValue, String, LuaValue)| {
+    lib_fn!(lua, t, "set_button_uses", |_, (side, button, uses): (LuaValue, LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
+        let button = name_arg(&button, NameKind::Button, "custom.set_button_uses")?;
         let uses = u8_arg(uses, "uses")?;
         with(|api, _| api.custom_set_button_uses(side, &button, uses).map_err(api_error))
     });
@@ -2905,7 +2917,7 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         let p = with(|api, _| api.custom_player(side).map_err(api_error))?;
         let t = lua.create_table()?;
-        t.raw_set("emotion", p.emotion.as_str())?;
+        t.raw_set("emotion", crate::names::value(lua, NameKind::Emotion, &p.emotion)?)?;
         t.raw_set("random_battle", p.random_battle)?;
         t.raw_set("member", p.member)?;
         Ok(t)
@@ -3137,9 +3149,10 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         })?;
         navi_handle(lua, nettai_content_api::StatsOf { side, member: Some(m) })
     });
-    lib_fn!(lua, t, "emotion", |_, side: LuaValue| {
+    lib_fn!(lua, t, "emotion", |lua, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
-        with(|api, _| Ok(api.emotion(side)))
+        let emotion = with(|api, _| Ok(api.emotion(side)))?;
+        crate::names::value(lua, NameKind::Emotion, &emotion)
     });
     lib_fn!(lua, t, "set_mood", |_, (side, mood): (LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
@@ -3663,7 +3676,7 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         };
         let [kind, alliance, home] = &panel_keys;
         let t = lua.create_table_from([
-            (kind, mlua::Either::Left(name)),
+            (kind, mlua::Either::Left(crate::names::value(lua, NameKind::PanelType, &name)?)),
             (alliance, mlua::Either::Right(info.alliance)),
             (home, mlua::Either::Right(info.home)),
         ])?;
@@ -3713,9 +3726,9 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (p, side) = (panel(x, y)?, u8_arg(side, "side")?);
         with(|api, _| Ok(api.set_panel_alliance(p, side)))
     });
-    lib_fn!(lua, t, "set_type", |_, (x, y, kind): (LuaValue, LuaValue, Name)| {
+    lib_fn!(lua, t, "set_type", |_, (x, y, kind): (LuaValue, LuaValue, LuaValue)| {
         let p = panel(x, y)?;
-        let kind = panel_type_arg(&kind)?;
+        let kind = panel_type_arg(&kind, "field.set_type")?;
         with(|api, _| Ok(api.set_panel_type(p, kind)))
     });
     lib_fn!(lua, t, "crack", |_, (x, y): (LuaValue, LuaValue)| {
@@ -3760,18 +3773,18 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         with(|api, _| Ok(api.highlight_panel(p)))
     });
     // Panel changes (dimming chip subtypes 2, 3, 5, 15 and 27).
-    lib_fn!(lua, t, "overwrite", |_, (x, y, kind, sound): (LuaValue, LuaValue, Name, LuaValue)| {
+    lib_fn!(lua, t, "overwrite", |_, (x, y, kind, sound): (LuaValue, LuaValue, LuaValue, LuaValue)| {
         let p = panel(x, y)?;
-        let kind = panel_type_arg(&kind)?;
+        let kind = panel_type_arg(&kind, "field.overwrite")?;
         let sound = match sound {
             LuaValue::Nil => None,
             s => Some(sound_arg(s)?),
         };
         with(|api, _| Ok(api.overwrite_panel(p, kind, sound)))
     });
-    lib_fn!(lua, t, "blink", |_, (x, y, kind, side): (LuaValue, LuaValue, Name, LuaValue)| {
+    lib_fn!(lua, t, "blink", |_, (x, y, kind, side): (LuaValue, LuaValue, LuaValue, LuaValue)| {
         let (p, side) = (panel(x, y)?, u8_arg(side, "side")?);
-        let kind = panel_type_arg(&kind)?;
+        let kind = panel_type_arg(&kind, "field.blink")?;
         with(|api, _| Ok(api.blink_panel(p, kind, side)))
     });
     lib_fn!(lua, t, "set_visible", |_, (x, y, visible): (LuaValue, LuaValue, bool)| {
@@ -3955,12 +3968,32 @@ fn name_set(v: &LuaValue, what: &str) -> mlua::Result<Vec<String>> {
     names.into_iter().filter(|(_, on)| *on).map(|(n, _)| Ok(n.to_str()?.to_string())).collect()
 }
 
-/// A panel type's name: one of the game's (its panel rules' `numbers`), as
-/// its number.
-fn panel_type_arg(name: &Name) -> mlua::Result<u8> {
-    let s = name.to_str()?.to_string();
+/// A panel type (`PanelType.cracked`): one of the game's (its panel rules'
+/// `numbers`), as its number.
+fn panel_type_arg(v: &LuaValue, what: &str) -> mlua::Result<u8> {
+    let s = crate::names::arg(v, NameKind::PanelType, what)?;
     with(|api, _| Ok(api.panel_type_named(&s)))?
-        .ok_or_else(|| mlua::Error::runtime(format!("{s:?} is none of the game's panel types (its rules' panels.numbers)")))
+        .ok_or_else(|| mlua::Error::runtime(format!("{what}: PanelType.{s} is none of the game's panel types (its rules' panels.numbers)")))
+}
+
+/// A name of the rules' of `kind` (`Button.soul`, `Window.cross_chosen`).
+fn name_arg(v: &LuaValue, kind: NameKind, what: &str) -> mlua::Result<std::rc::Rc<str>> {
+    crate::names::arg(v, kind, what)
+}
+
+/// One of the rules' buttons or windows (`Button.soul`, `Window.cross_chosen`).
+fn screen_part_arg(v: &LuaValue, what: &str) -> mlua::Result<(NameKind, std::rc::Rc<str>)> {
+    match crate::names::of(v) {
+        Some((kind @ (NameKind::Button | NameKind::Window), name)) => Ok((kind, name)),
+        _ => Err(mlua::Error::runtime(format!("{what}: expected a Button or a Window (`Button.soul`, `Window.cross_chosen`)"))),
+    }
+}
+
+fn screen_part(kind: NameKind, name: &str) -> nettai_content_api::api::ScreenPart<'_> {
+    match kind {
+        NameKind::Button => nettai_content_api::api::ScreenPart::Button(name),
+        _ => nettai_content_api::api::ScreenPart::Window(name),
+    }
 }
 
 fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
@@ -4579,6 +4612,9 @@ pub fn plain_data(v: &LuaValue, bound: &Bound, depth: u32) -> mlua::Result<netta
                 Data::Map(entries)
             }
         }
+        // (A name a game defines is its kind's; an element the byte it is.)
+        _ if let Some((kind, name)) = crate::names::of(v) => Data::Name(kind, name.to_string()),
+        _ if let Some(b) = crate::element::of(v) => Data::Int(i64::from(b)),
         other => return Err(mlua::Error::runtime(format!("no data is a {}", other.type_name()))),
     })
 }

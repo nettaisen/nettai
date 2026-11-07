@@ -1,8 +1,9 @@
 //! The choices the engine knows as content holds them (docs/design/
 //! scripting.md §2.1, [`nettai_content_api::choice`]): a global table per
 //! kind (`DragStep`), its members the kind's values (`DragStep.slide`).
-//! A value is opaque to content: compared with `==`, passed whole, shown by
-//! `tostring` as its table and member. Each value is made once per VM, when
+//! A value is compared with `==` and passed whole; its `name` is its
+//! member's (as the game's names' values have theirs), and `tostring` shows
+//! its table and member. Each value is made once per VM, when
 //! the tables are, so two values are equal exactly when they are the same
 //! value (no `__eq`: Luau compares them as it does any two userdata, with
 //! no call). Reading a member a table hasn't is an error, and the tables are
@@ -18,6 +19,12 @@ use nettai_content_api::{Choice, ChoiceKind, Data};
 pub(crate) struct Value(pub Choice);
 
 impl UserData for Value {
+    // (Its name, as the game's names' values have theirs: a message's, a
+    // table keyed by names'.)
+    fn add_fields<F: mlua::UserDataFields<Self>>(fields: &mut F) {
+        fields.add_field_method_get("name", |_, this| Ok(this.0.member()));
+    }
+
     fn add_methods<M: UserDataMethods<Self>>(methods: &mut M) {
         methods.add_meta_method(MetaMethod::ToString, |_, this, ()| Ok(this.0.to_string()));
     }
@@ -118,6 +125,26 @@ pub(crate) fn data(v: &LuaValue) -> Option<Data> {
     of(v).map(Data::Choice)
 }
 
+/// Make `t`, the table `name` of values, read-only, and reading a member it
+/// hasn't an error.
+pub(crate) fn seal(lua: &Lua, t: &mlua::Table, name: &'static str) -> mlua::Result<()> {
+    let meta = lua.create_table()?;
+    meta.raw_set(
+        "__index",
+        lua.create_function(move |_, (_, k): (LuaValue, LuaValue)| -> mlua::Result<()> {
+            Err(mlua::Error::runtime(format!("{name} has no member {}", match &k {
+                LuaValue::String(s) => format!("{:?}", s.to_string_lossy()),
+                k => k.type_name().to_string(),
+            })))
+        })?,
+    )?;
+    meta.raw_set("__metatable", name)?;
+    meta.set_readonly(true);
+    t.set_metatable(Some(meta))?;
+    t.set_readonly(true);
+    Ok(())
+}
+
 /// Make every kind's table, each a global (`DragStep`), and the values.
 pub(crate) fn install(lua: &Lua, g: &mlua::Table) -> mlua::Result<()> {
     let mut values = Vec::with_capacity(ChoiceKind::ALL.len());
@@ -132,23 +159,9 @@ pub(crate) fn install(lua: &Lua, g: &mlua::Table) -> mlua::Result<()> {
             t.raw_set(c.member(), ud.clone())?;
             of_kind.push(ud);
         }
-        let meta = lua.create_table()?;
-        let name = kind.name();
-        meta.raw_set(
-            "__index",
-            lua.create_function(move |_, (_, k): (LuaValue, LuaValue)| -> mlua::Result<()> {
-                Err(mlua::Error::runtime(format!("{name} has no member {}", match &k {
-                    LuaValue::String(s) => format!("{:?}", s.to_string_lossy()),
-                    k => k.type_name().to_string(),
-                })))
-            })?,
-        )?;
-        meta.raw_set("__metatable", name)?;
-        meta.set_readonly(true);
-        t.set_metatable(Some(meta))?;
-        t.set_readonly(true);
+        seal(lua, &t, kind.name())?;
         values.push(of_kind);
-        tables.push((name, t));
+        tables.push((kind.name(), t));
     }
     let ptrs = tables.iter().zip(ChoiceKind::ALL).map(|((_, t), &k)| (t.to_pointer(), k)).collect();
     lua.set_app_data(Values(values, ptrs));

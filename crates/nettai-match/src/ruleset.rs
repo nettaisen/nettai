@@ -916,7 +916,11 @@ impl Rulesets {
 /// navis are each a team's, which a party holds to one team's.)
 fn groups(content: &Content, game: &str, builds: &Builds) -> Vec<Group> {
     let mut groups: Vec<Group> = builds.groups.iter().map(|g| Group { id: g.id.clone(), color: g.color, members: BTreeSet::new() }).collect();
-    let own = |registry: Registry, key: &str| content.defs.extension(registry, key, "version").and_then(Data::str).map(str::to_string);
+    // (A definition's own `version` is a `Version` value: its name.)
+    let own = |registry: Registry, key: &str| match content.defs.extension(registry, key, "version") {
+        Some(Data::Name(nettai_content_api::NameKind::Version, name)) => Some(name.clone()),
+        _ => None,
+    };
     for h in 0..content.defs.chips.len() as u16 {
         let key = &content.defs.chip(ChipHandle(h)).key;
         if let Some(v) = own(Registry::Chip, key).filter(|_| ids::in_game(content, game, key))

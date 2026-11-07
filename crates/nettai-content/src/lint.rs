@@ -176,3 +176,58 @@ pub fn single_owner_kinds(c: &Content) -> Vec<(String, String)> {
     }
     out
 }
+
+/// The members a definitions file declares of each value table of the names a
+/// game defines (`declare PanelType: { missing: PanelType, ... }`), by kind.
+pub fn declared_names(source: &str) -> Vec<(nettai_content_api::NameKind, Vec<String>)> {
+    let mut out = Vec::new();
+    for kind in nettai_content_api::NameKind::ALL {
+        let head = format!("declare {}: {{", kind.table());
+        let Some(at) = source.find(&head) else { continue };
+        let body = &source[at + head.len()..];
+        let body = &body[..body.find('}').unwrap_or(body.len())];
+        let members = body
+            .split(',')
+            .filter_map(|m| {
+                let name = m.split(':').next()?.trim();
+                let name = name.strip_prefix("[\"").and_then(|n| n.strip_suffix("\"]")).unwrap_or(name);
+                (!name.is_empty()).then(|| name.to_string())
+            })
+            .collect();
+        out.push((kind, members));
+    }
+    out
+}
+
+/// A game's types.d.luau declares its value tables' members as the game has
+/// them (`Content::names`), and its support packs' theirs among them (the
+/// names every game has): what the content check holds a module to is what a
+/// load holds it to.
+pub fn names(dir: &std::path::Path, c: &Content, r: &mut Report) {
+    let game = &c.defs.game;
+    let mut packs = vec![(game.clone(), true)];
+    packs.extend(c.scripts.packs.iter().filter(|p| p.kind == nettai_content_api::PackKind::Support).map(|p| (p.id.clone(), false)));
+    for (pack, own) in packs {
+        let file = format!("{pack}/types.d.luau");
+        let Ok(source) = std::fs::read_to_string(dir.join(&file)) else { continue };
+        let declared = declared_names(&source);
+        for kind in nettai_content_api::NameKind::ALL {
+            let has = c.names.of(kind);
+            let Some((_, members)) = declared.iter().find(|(k, _)| *k == kind) else {
+                if own {
+                    r.error(&file, format!("declares no `{}` table (the game's: {})", kind.table(), has.join(", ")));
+                }
+                continue;
+            };
+            let mut a: Vec<&str> = members.iter().map(String::as_str).collect();
+            let mut b: Vec<&str> = has.iter().map(String::as_str).collect();
+            a.sort();
+            b.sort();
+            if own && a != b {
+                r.error(&file, format!("declares {} {{ {} }}, but the game's are {{ {} }} (verify declare.py writes them)", kind.table(), a.join(", "), b.join(", ")));
+            } else if !own && let Some(n) = a.iter().find(|n| !b.contains(n)) {
+                r.error(&file, format!("declares {}.{n}, which {game} hasn't (a support pack's are the names every game has)", kind.table()));
+            }
+        }
+    }
+}

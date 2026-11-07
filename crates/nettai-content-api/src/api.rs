@@ -686,6 +686,14 @@ named_fields! {
     }
 }
 
+/// One of the rules' custom-screen buttons or windows, by its name: what
+/// made a pick that holds the turn's form (`CoreApi::custom_set_form`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ScreenPart<'a> {
+    Button(&'a str),
+    Window(&'a str),
+}
+
 /// A word whose bits content names, each set of names the engine's and
 /// its game's rules' own (`CoreApi::named_bit`): the bits whose meaning
 /// differs by game are declared once, in the game's rules.
@@ -1930,12 +1938,12 @@ pub trait CoreApi {
     fn custom_draw_emblem(&mut self, side: u8, x: u32) -> ApiResult<()>;
     /// The form a pick holds for the turn's start, with the transform
     /// record's turns and Chaos flag (EXE5's Soul Unison; 0 and false
-    /// elsewhere), and which of the rules' buttons or windows (`by`, its
-    /// name) made the pick.
-    fn custom_set_form(&mut self, side: u8, by: &str, form: Option<crate::FormHandle>, turns: u8, alternate: bool) -> ApiResult<()>;
+    /// elsewhere), and which of the rules' buttons or windows (`by`) made
+    /// the pick.
+    fn custom_set_form(&mut self, side: u8, by: ScreenPart<'_>, form: Option<crate::FormHandle>, turns: u8, alternate: bool) -> ApiResult<()>;
     /// Whether a pick another button or window than `by` made holds the
     /// turn's form.
-    fn custom_form_taken(&self, side: u8, by: &str) -> ApiResult<bool>;
+    fn custom_form_taken(&self, side: u8, by: ScreenPart<'_>) -> ApiResult<bool>;
     fn custom_full(&self, side: u8) -> ApiResult<bool>;
     fn custom_button_picked(&self, side: u8, button: &str) -> ApiResult<bool>;
     /// The last pick, if it is a chip (dealt, or a link navi's own), as the

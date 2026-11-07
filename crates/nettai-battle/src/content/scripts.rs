@@ -601,7 +601,7 @@ local step = { grounded = {}, floor_free = {} }
         start_visible = row(5, row(8, true)),
         front_edges = row(5, row(8, false)),
         numbers = { "missing", "broken", "normal" },
-        roles = { missing = "missing", broken = "broken", cracked = "broken", normal = "normal" },
+        roles = { missing = PanelType.missing, broken = PanelType.broken, cracked = PanelType.broken, normal = PanelType.normal },
         step = step,
         dash_step = step,
         any_side_step = step,

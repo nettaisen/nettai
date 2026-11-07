@@ -29,6 +29,85 @@ pub enum Data {
     Type(crate::state::TypeData),
     /// A choice of the engine's (`ChipClass.mega`: [`crate::choice`]).
     Choice(crate::choice::Choice),
+    /// A name its game defines, by kind (`PanelType.cracked`, `Family.sword`;
+    /// in definitions only): one of the game's, which the engine reads.
+    Name(NameKind, String),
+}
+
+/// The kinds of names a game defines (docs/design/scripting.md §2.1), each
+/// a value table content names them by (`PanelType.cracked`), built from
+/// the game loaded: what its rules, its builds and its root say it has.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum NameKind {
+    /// A panel type: one of its rules' `panels.numbers`.
+    PanelType,
+    /// A chip family: one of its rules' `elements.families`.
+    Family,
+    /// An emotion: one of its rules' status section's `emotion` order.
+    Emotion,
+    /// A version: one of its builds' `groups`.
+    Version,
+    /// A custom-screen window of the rules': one of their `windows`.
+    Window,
+    /// A custom-screen button of the rules': one of their `buttons`.
+    Button,
+    /// A collection: one of its root's (`patch_cards`).
+    Collection,
+}
+
+impl NameKind {
+    pub const ALL: [NameKind; 7] =
+        [NameKind::PanelType, NameKind::Family, NameKind::Emotion, NameKind::Version, NameKind::Window, NameKind::Button, NameKind::Collection];
+
+    /// The value table's name (`PanelType`).
+    pub fn table(self) -> &'static str {
+        match self {
+            NameKind::PanelType => "PanelType",
+            NameKind::Family => "Family",
+            NameKind::Emotion => "Emotion",
+            NameKind::Version => "Version",
+            NameKind::Window => "Window",
+            NameKind::Button => "Button",
+            NameKind::Collection => "Collection",
+        }
+    }
+
+    /// What a name of this kind is, for messages.
+    pub fn what(self) -> &'static str {
+        match self {
+            NameKind::PanelType => "panel type",
+            NameKind::Family => "chip family",
+            NameKind::Emotion => "emotion",
+            NameKind::Version => "version",
+            NameKind::Window => "window of the rules'",
+            NameKind::Button => "button of the rules'",
+            NameKind::Collection => "collection",
+        }
+    }
+}
+
+/// The names a game defines, of each kind, in its order (a panel type's
+/// place is its number): what the value tables hold.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
+pub struct GameNames(pub Vec<(NameKind, Vec<String>)>);
+
+impl GameNames {
+    /// The names of `kind` (none: the game has none).
+    pub fn of(&self, kind: NameKind) -> &[String] {
+        self.0.iter().find(|(k, _)| *k == kind).map_or(&[], |(_, n)| n.as_slice())
+    }
+
+    /// Whether `name` is one of the game's of `kind`.
+    pub fn has(&self, kind: NameKind, name: &str) -> bool {
+        self.of(kind).iter().any(|n| n == name)
+    }
+
+    /// Set the names of `kind`.
+    pub fn set(&mut self, kind: NameKind, names: Vec<String>) {
+        self.0.retain(|(k, _)| *k != kind);
+        self.0.push((kind, names));
+        self.0.sort_by_key(|(k, _)| *k);
+    }
 }
 
 /// A table key.
@@ -157,6 +236,7 @@ impl Data {
             Data::Function => "a function",
             Data::Type(_) => "a field's type",
             Data::Choice(_) => "a choice",
+            Data::Name(..) => "a game's name",
         }
     }
 }

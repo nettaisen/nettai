@@ -54,8 +54,8 @@ local dripshwr = require("../navis/spoutman/chip").dripshwr
 local function chip(key: string, n: number, fields: { [string]: any }): Chip
     local spec: { [string]: any } = {
         codes = { "A", "*" },
-        element = "null",
-        family = "null",
+        element = Element.null,
+        family = Family.null,
         class = ChipClass.standard,
         rarity = 0,
         mb = 10,
@@ -90,7 +90,7 @@ end
 local function blade(key: string, n: number, action: Action?): Chip
     return chip(key, n, {
         flags = { has_damage = true, standard_library = true },
-        family = "sword",
+        family = Family.sword,
         counter = 30,
         damage = 80,
         action = action,
@@ -172,10 +172,10 @@ local chips: { [string]: Chip } = {
         test_tag = { level = 2, kind = "b" },
         flags = { dimming = true, standard_library = true },
         extra_flags = { rush_cancels = true },
-        family = "plus",
+        family = Family.plus,
         dimming = invisible.hook(360),
     }),
-    ["test/eraser"] = navi_chip("eraser", 0x06, 60, eraseman.summon { aim_ticks = 16 }, { family = "cursor", counter = 100 }),
+    ["test/eraser"] = navi_chip("eraser", 0x06, 60, eraseman.summon { aim_ticks = 16 }, { family = Family.cursor, counter = 100 }),
     -- A trap chip that sets no object.
     ["test/trap"] = chip("trap", 0x09, { flags = { dimming = true, standard_library = true }, dimming = traps.hook() }),
     ["test/elem-trap"] = chip("elem-trap", 0x30, {
@@ -196,7 +196,7 @@ local chips: { [string]: Chip } = {
         dimming = timebom_chips.timebom.dimming,
     }),
     -- A plus chip used on its own.
-    ["test/plus"] = chip("plus", 0x41, { family = "plus", damage = 10, instant = plus.attack }),
+    ["test/plus"] = chip("plus", 0x41, { family = Family.plus, damage = 10, instant = plus.attack }),
     ["test/fist"] = spawning("fist", 0x46, fist.instant(3)),
     ["test/flame-hook"] = spawning("flame-hook", 0x48, hook.instant(FLAME_HOOK_FLAMES)),
     ["test/heatpres"] = link_chip("heatpres", 0x50, heatpres),
@@ -227,7 +227,7 @@ local chips: { [string]: Chip } = {
     ["test/step-blade"] = blade("step-blade", 0x10A, stepswrd.action),
     ["test/stun-blade"] = blade("stun-blade", 0x10B, assnswrd.action),
     ["test/elements"] = navi_chip("elements", 0x110, 50, elmntman.summon { cycle_ticks = 4 }, { counter = 100 }),
-    ["test/spout"] = navi_chip("spout", 0x111, 40, spoutman.summon, { element = "aqua" }),
+    ["test/spout"] = navi_chip("spout", 0x111, 40, spoutman.summon, { element = Element.aqua }),
     ["test/heat"] = navi_chip("heat", 0x112, 40, heatman.summon),
     ["test/elec"] = navi_chip("elec", 0x113, 40, elecman.summon),
     ["test/slash"] = navi_chip("slash", 0x114, 40, slashman.summon { wave_damage = 10 }),

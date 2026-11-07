@@ -143,10 +143,8 @@ pub(crate) fn lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     t.raw_set(
         "entry",
         lua.create_function(move |_, collection: LuaValue| {
-            let LuaValue::String(c) = collection else {
-                return Err(err(format!("schema.entry's collection is its name in the game's root, not a {}", collection.type_name())));
-            };
-            Ok(SchemaType::Is(FieldType::entry(&c.to_str()?).map_err(|e| err(format!("schema.entry: {e}")))?))
+            let c = crate::names::arg(&collection, nettai_content_api::NameKind::Collection, "schema.entry")?;
+            Ok(SchemaType::Is(FieldType::entry(&c).map_err(|e| err(format!("schema.entry: {e}")))?))
         })?,
     )?;
     t.raw_set(

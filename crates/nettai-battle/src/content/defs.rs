@@ -289,6 +289,9 @@ pub struct Extension {
 pub enum ExtensionType {
     Value(nettai_content_api::FieldType),
     Table(Vec<(String, ExtensionType)>),
+    /// One of these names its game defines, of a kind (a list of values:
+    /// `{ Version.gregar, Version.falzar }`).
+    Names(nettai_content_api::NameKind, Vec<String>),
 }
 
 impl ExtensionType {
@@ -307,6 +310,18 @@ impl ExtensionType {
                     unreachable!("a list of variants reads as a value's type")
                 };
                 Ok(ExtensionType::Value(FieldType::Array(Box::new(elem), nettai_content_api::MAX_ARRAY as u8)))
+            }
+            // A list of names a game defines, of one kind: one of them.
+            Data::List(names) if matches!(names.first(), Some(Data::Name(..))) => {
+                let Data::Name(kind, _) = &names[0] else { unreachable!("a name first") };
+                let names = names
+                    .iter()
+                    .map(|v| match v {
+                        Data::Name(k, n) if k == kind => Ok(n.clone()),
+                        _ => Err(format!("{at}: a list of names is of one kind's ({}.x)", kind.table())),
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+                Ok(ExtensionType::Names(*kind, names))
             }
             Data::List(variants) if !variants.is_empty() => {
                 let names = variants
@@ -351,6 +366,8 @@ impl ExtensionType {
             (ExtensionType::Value(T::I16), Data::Int(n)) => int(*n, -0x8000, 0x7FFF),
             (ExtensionType::Value(T::I32), Data::Int(n)) => int(*n, -0x8000_0000, 0x7FFF_FFFF),
             (ExtensionType::Value(T::Enum(names)), Data::Str(name)) => names.contains(name),
+            // (Which the game's are: what the modules read of the names is held to them.)
+            (ExtensionType::Names(kind, names), Data::Name(k, n)) => k == kind && names.contains(n),
             (ExtensionType::Value(T::Ref(r, _)), Data::Ref(r2, _)) => r == r2,
             (ExtensionType::Value(T::Asset(k)), Data::Asset(k2, _)) => k == k2,
             (ExtensionType::Value(T::Array(elem, n)), Data::List(items)) => {
@@ -371,6 +388,7 @@ impl ExtensionType {
                 let f: Vec<String> = fields.iter().map(|(k, t)| format!("{k}: {}", t.describe())).collect();
                 format!("{{ {} }}", f.join(", "))
             }
+            ExtensionType::Names(kind, names) => names.iter().map(|n| format!("{}.{n}", kind.table())).collect::<Vec<_>>().join(" | "),
         }
     }
 }
@@ -969,7 +987,8 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
     }
     let defaults: [(&str, Json); 12] = [
         ("codes", Json::Array(Vec::new())),
-        ("element", "null".into()),
+        // (A chip that names no element is of the null one: `Element.null`, its byte.)
+        ("element", 0.into()),
         // (A chip that names no family is of the game's non-elemental one.)
         ("family", super::chips::reading_non_elemental().map_or(Json::Null, |f| f.0.into())),
         ("class", "standard".into()),

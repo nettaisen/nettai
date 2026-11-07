@@ -95,13 +95,17 @@ pub(crate) fn read(
     }
     let mut layout = PanelLayout::default();
     for (y, row) in rows.iter().enumerate() {
-        let names: Vec<&str> = row.str().map(|r| r.split_whitespace().collect()).unwrap_or_default();
-        if names.len() != 6 {
-            return Err(what(format!("layout row {} has {} panels, not 6", y + 1, names.len())));
+        let Data::List(panels) = row else {
+            return Err(what(format!("layout row {} is a list of six panel types (`PanelType.normal`)", y + 1)));
+        };
+        if panels.len() != 6 {
+            return Err(what(format!("layout row {} has {} panels, not 6", y + 1, panels.len())));
         }
-        for (x, name) in names.iter().enumerate() {
-            layout.rows[y][x] =
-                panel_type(name).ok_or_else(|| what(format!("{name:?} is not a panel type")))?;
+        for (x, p) in panels.iter().enumerate() {
+            let Data::Name(nettai_content_api::NameKind::PanelType, name) = p else {
+                return Err(what(format!("layout row {} panel {}: {} where a panel type belongs (`PanelType.normal`)", y + 1, x + 1, p.kind())));
+            };
+            layout.rows[y][x] = panel_type(name).ok_or_else(|| what(format!("PanelType.{name} is none of the game's panel types")))?;
         }
     }
 

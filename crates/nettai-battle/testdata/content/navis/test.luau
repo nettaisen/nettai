@@ -123,7 +123,7 @@ local function navi(sprite: string, ai_index: number, megaman: boolean, hooks: H
         sprite = sprites[sprite],
         -- Made up, short: its warp out (animation 4) lasts 3 steps, its hold (animation 0xA) comes round every 36.
         animation_steps = { warp_out = 3, hold = 36, hold_loops = true },
-        element = "null",
+        element = Element.null,
         buster_bonus = 1,
         move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
         banners = { win = asset.banner("test-win"), lose = asset.banner("test-deleted") },

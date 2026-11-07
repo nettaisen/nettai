@@ -116,6 +116,9 @@ pub(crate) struct Defined {
     /// Each game's extraction recipe, by the game: the module whose result its root's [`RECIPE_SECTION`] is
     /// (`exe6:extract/init`).
     pub recipes: BTreeMap<String, String>,
+    /// The results of the modules the pack names to read back as data
+    /// (`Pack::with_data_of`), those that loaded.
+    pub module_data: BTreeMap<String, Data>,
 }
 
 type Ptr = *const c_void;
@@ -545,6 +548,7 @@ pub(crate) fn finish(
     games: &HashSet<String>,
     entries: &[(String, LuaValue)],
     modules: &BTreeMap<String, LuaValue>,
+    data_of: &[String],
 ) -> Result<Defined, String> {
     let mut t = tags.borrow_mut();
     t.open = false;
@@ -901,7 +905,13 @@ pub(crate) fn finish(
     for t in &tables {
         crate::sandbox::deep_freeze(lua, &LuaValue::Table(t.clone())).map_err(|e| e.to_string())?;
     }
-    Ok(Defined { definitions: Definitions { defs }, tables, recipes })
+    let mut module_data = BTreeMap::new();
+    for m in data_of {
+        if let Some(v) = modules.get(m) {
+            module_data.insert(m.clone(), refs.data(v, m, true, &mut Vec::new())?);
+        }
+    }
+    Ok(Defined { definitions: Definitions { defs }, tables, recipes, module_data })
 }
 
 /// The key path a loose module's result starts at: its name
@@ -951,6 +961,8 @@ impl Refs<'_> {
             // (An element is the byte it is.)
             LuaValue::UserData(_) if let Some(b) = crate::element::of(v) => Data::Int(i64::from(b)),
             LuaValue::UserData(_) if let Some(d) = crate::choice::data(v) => d,
+            // (A name a game defines is its kind's.)
+            LuaValue::UserData(_) if let Some((kind, name)) = crate::names::of(v) => Data::Name(kind, name.to_string()),
             LuaValue::Table(t) => {
                 let p = t.to_pointer();
                 if let Some(&(kind, h)) = self.assets.by_ptr.get(&p) {

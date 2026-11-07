@@ -208,7 +208,7 @@ fn a_type_by_name_is_a_type_error() {
     let good = [
         kind("{ n = schema.u8, a = schema.array(schema.u8, 18), c = schema.chip, o = schema.optional(schema.u8), v = { \"a\", \"b\" } }"),
         kind("{ l = schema.list({ chip = schema.chip, code = schema.code }, 30), r = schema.role(SchemaRole.form_list, schema.array(schema.form, 5)) }"),
-        "local T = schema.record_type(\"t\")\nlocal _ = new.record(T, { n = 1 })\nlocal _ = new.kind { pool = Pool.attack, update = function(me: Object) end, state = { t = T, e = schema.entry(\"patch_cards\") } }".to_string(),
+        "local T = schema.record_type(\"t\")\nlocal _ = new.record(T, { n = 1 })\nlocal _ = new.kind { pool = Pool.attack, update = function(me: Object) end, state = { t = T, e = schema.entry(Collection.patch_cards) } }".to_string(),
         "local _ = new.kind { pool = Pool.attack, update = function(me: Object) end, state = { look = obstacle.absorbed_look } }".to_string(),
     ];
     for source in good {
@@ -238,6 +238,15 @@ fn misuse_of_the_core_api_is_a_type_error() {
     let mut checker = nettai_content_check::PackChecker::new(&nettai_content_check::definitions(&pack(), "exe6").unwrap()).unwrap();
     for (bad, why) in [
         ("local function f(me: Object) me.anmi = 3 end", "misspelled field"),
+        ("local _ = PanelType.crackd", "not one of the game's panel types"),
+        ("local function f() field.set_type(1, 1, \"cracked\") end", "a panel type by a string"),
+        ("local _ = Family.swrod", "not one of the game's chip families"),
+        ("local _ = new.chip { id = 'x', family = \"sword\" }", "a family by a string"),
+        ("local _ = new.chip { id = 'x', element = \"fire\" }", "an element by a string"),
+        ("local function f(side: number) custom.open_window(side, Button.beast_out) end", "a button for a window"),
+        ("local function f(side: number) local _ = custom.player(side).emotion == \"tired\" end", "an emotion by a string"),
+        ("local _ = Version.gregor", "not one of the game's versions"),
+        ("local _ = schema.entry(\"patch_cards\")", "a collection by a string"),
         ("local function f(me: Object) me.lifecycle = Lifecycle.running end", "not a lifecycle state"),
         ("local function f(me: Object) me:set_lifecycle(Lifecycle.update) end", "a lifecycle state entered by value"),
         ("local function f(me: Object) me.lifecycle = \"destroy\" end", "a lifecycle state by name"),

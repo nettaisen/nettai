@@ -53,17 +53,13 @@ impl serde::Serialize for PanelType {
 }
 
 impl<'de> serde::Deserialize<'de> for PanelType {
-    /// A type's name (one of the game's being read), or its number.
+    /// A type (`PanelType.cracked`: one of the game's being read), or its
+    /// number.
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<PanelType, D::Error> {
-        #[derive(serde::Deserialize)]
-        #[serde(untagged)]
-        enum Named {
-            Number(u8),
-            Name(String),
-        }
-        match Named::deserialize(d)? {
-            Named::Number(n) => Ok(PanelType(n)),
-            Named::Name(name) => reading_panel_type(&name).map_err(serde::de::Error::custom),
+        use crate::content::names::{NameOrNumber, name_or_number};
+        match name_or_number(d, nettai_content_api::NameKind::PanelType, true)? {
+            NameOrNumber::Number(n) => u8::try_from(n).map(PanelType).map_err(serde::de::Error::custom),
+            NameOrNumber::Name(name) => reading_panel_type(&name).map_err(serde::de::Error::custom),
         }
     }
 }

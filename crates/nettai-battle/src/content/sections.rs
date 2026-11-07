@@ -32,7 +32,8 @@ struct ElementsSection {
     weakness: BTreeMap<String, [u8; 6]>,
     /// The chip families, each name with its number (`ChipFamilies`).
     families: BTreeMap<String, u8>,
-    /// The non-elemental family's name.
+    /// The non-elemental family (`Family.null`).
+    #[serde(deserialize_with = "super::names::family")]
     non_elemental: String,
     #[serde(default)]
     family_elements: BTreeMap<String, SecondaryElements>,
@@ -53,12 +54,12 @@ struct PanelTypeSection {
     expires: Option<u16>,
     #[serde(default)]
     submerges: bool,
-    /// An element by name.
+    /// An element (`Element.fire`: its byte).
     #[serde(default)]
-    cleared_by: Option<String>,
-    /// An element by name.
+    cleared_by: Option<u8>,
+    /// An element (`Element.fire`: its byte).
     #[serde(default)]
-    doubles: Option<String>,
+    doubles: Option<u8>,
     #[serde(default)]
     damage_shift: u8,
     #[serde(default)]
@@ -161,9 +162,13 @@ struct PanelsSection {
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
 struct PanelRolesSection {
+    #[serde(deserialize_with = "super::names::panel_type")]
     missing: String,
+    #[serde(deserialize_with = "super::names::panel_type")]
     broken: String,
+    #[serde(deserialize_with = "super::names::panel_type")]
     cracked: String,
+    #[serde(deserialize_with = "super::names::panel_type")]
     normal: String,
 }
 
@@ -785,15 +790,12 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                         return Err(e(format!("{at}: numbers names {name:?} twice")));
                     }
                     let rule = s.types.get(name).ok_or_else(|| e(format!("{at}: numbers names {name:?}, which types doesn't state")))?;
-                    let element = |field: &str, v: &Option<String>| -> Result<Option<u8>, ContentError> {
-                        match v {
-                            Some(element) => Ok(Some(
-                                ELEMENT_NAMES
-                                    .iter()
-                                    .position(|n| n == element)
-                                    .ok_or_else(|| e(format!("{at}.types.{name}.{field}: {element:?} is not an element")))?
-                                    as u8,
-                            )),
+                    let element = |field: &str, v: &Option<u8>| -> Result<Option<u8>, ContentError> {
+                        match *v {
+                            Some(b) if (b as usize) < ELEMENT_NAMES.len() => Ok(Some(b)),
+                            Some(b) => Err(e(format!(
+                                "{at}.types.{name}.{field}: element byte {b:#04x} is no primary element alone (`Element.fire`)"
+                            ))),
                             None => Ok(None),
                         }
                     };

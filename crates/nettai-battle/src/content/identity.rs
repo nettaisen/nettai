@@ -486,12 +486,10 @@ pub(crate) fn read(
             if hp > 0xFFF {
                 return Err(what(format!("body.hp {hp} is more than its 12 bits hold")));
             }
-            const ELEMENTS: [&str; 5] = ["null", "fire", "aqua", "elec", "wood"];
+            // (An `Element` value: the byte it is, one of the five alone.)
             let element = match b.field("element") {
-                Data::Str(s) => {
-                    ELEMENTS.iter().position(|n| n == s).ok_or_else(|| what(format!("body.element {s:?} is not an element")))? as u8
-                }
-                other => return Err(what(format!("body.element is {other:?}, not an element"))),
+                &Data::Int(n @ 0..=4) => n as u8,
+                other => return Err(what(format!("body.element is {other:?}, not an element (`Element.fire`, one of the five)"))),
             };
             let mut flags = crate::collision::StatusFlags::empty();
             let names = match b.field("flags") {

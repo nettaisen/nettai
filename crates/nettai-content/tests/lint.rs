@@ -294,3 +294,24 @@ fn exe5s_rules_are_its_games() {
     let found = nettai_content::lint::self_bit_targets(&c);
     assert_eq!(found, vec![("probe".to_string(), "exe5:chips/probing/chip".to_string(), "exelib".to_string())]);
 }
+
+/// Each game's types.d.luau declares its value tables' members as the game
+/// has them, and exelib's are among every game's.
+#[test]
+fn the_games_declare_the_names_they_define() {
+    let dir = nettai_content::index::content();
+    for game in ["exe4", "exe5", "exe6"] {
+        let (c, _) = nettai_content::load::load_battle(&dir, game).unwrap_or_else(|e| panic!("{game}: {e}"));
+        let mut r = Report::default();
+        nettai_content::lint::names(&dir, &c, &mut r);
+        let errors: Vec<_> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| format!("{}: {}", i.file, i.message)).collect();
+        assert!(errors.is_empty(), "{game}: {errors:#?}");
+    }
+}
+
+/// A declaration's members, read as the content check reads them.
+#[test]
+fn declared_names_are_read_from_a_definitions_file() {
+    let d = nettai_content::lint::declared_names("declare Family: {\n    fire: Family, [\"break\"]: Family,\n}\ndeclare Version: {}\n");
+    assert_eq!(d, vec![(nettai_content_api::NameKind::Family, vec!["fire".to_string(), "break".to_string()]), (nettai_content_api::NameKind::Version, vec![])]);
+}

@@ -86,6 +86,7 @@ fn plan(content: &Content) -> BindPlan {
         handles: d.handles.clone(),
         entries,
         assets: content.assets.clone(),
+        names: content.names.clone(),
     }
 }
 

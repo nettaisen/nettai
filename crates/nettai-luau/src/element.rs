@@ -205,5 +205,8 @@ pub(crate) fn lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     for (i, name) in PRIMARY.iter().enumerate() {
         t.set(*name, value(lua, i as u8)?)?;
     }
+    // (A member it hasn't is an error, as the choices' tables' is; it is
+    // read-only.)
+    crate::choice::seal(lua, &t, "Element")?;
     Ok(t)
 }
