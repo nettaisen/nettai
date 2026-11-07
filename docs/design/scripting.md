@@ -523,7 +523,7 @@ local navi = require("./navi")
 
 local eraseman: Chip = {
     codes = { "K", "*" },
-    class = "mega",
+    class = ChipClass.mega,
     damage = 120,
     counter = 10,
     cant_counter = true,
