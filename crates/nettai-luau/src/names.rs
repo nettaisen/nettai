@@ -184,7 +184,7 @@ pub(crate) fn seal(lua: &Lua, game: &GameNames) -> mlua::Result<()> {
     *names(lua).sealed.borrow_mut() = Some(game.clone());
     let g = lua.globals();
     for kind in NameKind::ALL {
-        let t: mlua::Table = g.raw_get(kind.table())?;
+        let t: mlua::Table = g.get(kind.table())?;
         let readonly = t.is_readonly();
         t.set_readonly(false);
         for name in game.of(kind) {

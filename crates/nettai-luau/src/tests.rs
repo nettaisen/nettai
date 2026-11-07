@@ -327,7 +327,7 @@ fn state_types_are_schema_values() {
     let d = define_pack(&[(
         "k",
         "return new.kind { id = 'k', pool = 'attack', update = function() end, state = {
-            a = schema.array(schema.u8, 3), c = schema.optional(schema.u8), e = schema.entry('patch_cards'),
+            a = schema.array(schema.u8, 3), c = schema.optional(schema.u8), e = schema.entry(Collection.patch_cards),
             l = schema.list({ chip = schema.chip, code = schema.code }, 2), r = schema.role('form_list', schema.form),
             v = { 'x', 'y' }, look = obstacle.absorbed_look } }",
     )])
@@ -348,7 +348,7 @@ fn state_types_are_schema_values() {
         ("return schema.array(schema.vec3, 2)".to_string(), "a type of one value, not vec3".to_string()),
         ("return schema.array(schema.list(schema.u8, 2), 2)".to_string(), "a type of one value, not a list".to_string()),
         ("return schema.optional(schema.u16)".to_string(), "a u8, not u16".to_string()),
-        ("return schema.entry('Cards')".to_string(), "names no collection".to_string()),
+        ("return schema.entry(Collection.Cards)".to_string(), "names no collection".to_string()),
         ("return new.record('bomb-variant', {})".to_string(), "the type is a record type".to_string()),
         ("return new.record(schema.u8, {})".to_string(), "not a type u8".to_string()),
         ("local a = schema.record_type('x')\nreturn schema.record_type('x')".to_string(), "\"x\" is declared already, by test/m.luau".to_string()),

@@ -1186,14 +1186,14 @@ mod tests {
         let read = |json: &str| super::super::reading_families(&families(), || serde_json::from_str::<NaviChargedChips>(json));
         // EXE6's link navis: their family's damaging chips (from a level:
         // their `when`, a function of the side).
-        let exe6 = read(r#"{ "family": "wood", "damaging": true }"#).unwrap();
+        let exe6 = read(r#"{ "family": { "$Family": "wood" }, "damaging": true }"#).unwrap();
         assert_eq!((exe6.damaging, exe6.plain), (true, false));
         // EXE5's team navis: any chip of the family that is neither a
         // dimming nor a dark chip, at any level.
-        let exe5 = read(r#"{ "family": "wood", "damaging": false, "plain": true }"#).unwrap();
+        let exe5 = read(r#"{ "family": { "$Family": "wood" }, "damaging": false, "plain": true }"#).unwrap();
         assert_eq!((exe5.damaging, exe5.plain), (false, true));
         // Left out, the rule doesn't load, and the error names the field.
-        let error = read(r#"{ "family": "wood" }"#).unwrap_err().to_string();
+        let error = read(r#"{ "family": { "$Family": "wood" } }"#).unwrap_err().to_string();
         assert!(error.contains("missing field `damaging`"), "{error}");
     }
 
@@ -1202,15 +1202,15 @@ mod tests {
         let read = |json: &str| super::super::reading_families(&families(), || serde_json::from_str::<ChargedChips>(json));
         // A Cross's: its family's damaging chips (SlashCross's the element
         // swords too); Beast Out's any Null chip.
-        let cross = read(r#"{ "family": "sword", "damaging": true, "element_swords": true }"#).unwrap();
+        let cross = read(r#"{ "family": { "$Family": "sword" }, "damaging": true, "element_swords": true }"#).unwrap();
         assert_eq!((cross.damaging, cross.element_swords, cross.plain), (true, true, false));
-        let beast = read(r#"{ "family": "null", "damaging": false }"#).unwrap();
+        let beast = read(r#"{ "family": { "$Family": "null" }, "damaging": false }"#).unwrap();
         assert_eq!((beast.damaging, beast.element_swords, beast.plain), (false, false, false));
         // Left out, the rule doesn't load, and the error names the field.
-        let error = read(r#"{ "family": "wood" }"#).unwrap_err().to_string();
+        let error = read(r#"{ "family": { "$Family": "wood" } }"#).unwrap_err().to_string();
         assert!(error.contains("missing field `damaging`"), "{error}");
         // A family is one of its game's.
-        let error = read(r#"{ "family": "metal", "damaging": true }"#).unwrap_err().to_string();
+        let error = read(r#"{ "family": { "$Family": "metal" }, "damaging": true }"#).unwrap_err().to_string();
         assert!(error.contains("\"metal\" is none of its game's chip families (wood, sword, null)"), "{error}");
     }
 }

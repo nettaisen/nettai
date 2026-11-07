@@ -75,7 +75,7 @@ local rules_: Rules = {
         folder = schema.list({ chip = schema.chip, code = schema.code }, 30),
         regular_chip = schema.optional(schema.u8),
         tag_chips = schema.list(schema.u8, 2),
-        patch_cards = schema.list({ card = schema.entry("patch_cards"), variant = { "gregar", "falzar" } }, 32),
+        patch_cards = schema.list({ card = schema.entry(Collection.patch_cards), variant = { "gregar", "falzar" } }, 32),
         navicust_expansions = schema.optional(schema.u8),
         -- EXE6's: the version, Beast Out, what the save brings, the bug frags.
         version = { "gregar", "falzar" },

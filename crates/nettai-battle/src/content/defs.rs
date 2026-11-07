@@ -969,7 +969,8 @@ pub(crate) fn chip_record(d: &Definition, r: &super::reader::SpecReader) -> Resu
     }
     let defaults: [(&str, Json); 12] = [
         ("codes", Json::Array(Vec::new())),
-        ("element", "null".into()),
+        // (A chip that names no element is of the null one: `Element.null`, its byte.)
+        ("element", 0.into()),
         // (A chip that names no family is of the game's non-elemental one.)
         ("family", super::chips::reading_non_elemental().map_or(Json::Null, |f| f.0.into())),
         ("class", "standard".into()),

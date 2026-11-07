@@ -10,7 +10,7 @@ local forms: { [string]: FormDef } = {
     base = {
         base = true,
         sprite = sprites["test-navi"],
-        element = "null",
+        element = Element.null,
         buster_bonus = 0,
         weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },
         buster_arm = { anim = 0 },

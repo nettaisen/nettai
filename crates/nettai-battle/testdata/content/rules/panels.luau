@@ -23,7 +23,7 @@ local function road(dx: number, dy: number)
     return {
         flags = { solid = true, road = true, on_field = true },
         expires = 0x708,
-        cleared_by = "wood",
+        cleared_by = Element.wood,
         carries = { dx = dx, dy = dy, panels = 1 },
         rest = panel_types.road,
         slide = panel_types.carries,
@@ -74,8 +74,8 @@ return {
         holy = { flags = { solid = true, holy = true, on_field = true }, damage_shift = 1 },
         grass = {
             flags = { solid = true, grass = true, on_field = true },
-            cleared_by = "fire",
-            doubles = "fire",
+            cleared_by = Element.fire,
+            doubles = Element.fire,
             stand = panel_types.grass(9),
         },
         ice = {
@@ -86,7 +86,7 @@ return {
         },
         volcano = {
             flags = { solid = true, volcano = true, on_field = true },
-            cleared_by = "aqua",
+            cleared_by = Element.aqua,
             tick = eruption.volcano,
         },
         road_up = road(0, -1),
@@ -95,7 +95,7 @@ return {
         road_right = road(1, 0),
         magnet = {
             flags = { solid = true, road = true, on_field = true },
-            cleared_by = "wood",
+            cleared_by = Element.wood,
             carries_by_move = { {}, { F, U, B, D }, { B, D, F, U }, { U, B, D, F }, { D, F, U, B }, { D, F, U, B } },
             move_end = panel_types.magnet,
             slide = panel_types.carries,
@@ -103,7 +103,7 @@ return {
         lava = {
             flags = { solid = true, volcano = true, on_field = true },
             expires = 960,
-            cleared_by = "aqua",
+            cleared_by = Element.aqua,
             burn = panel_types.burn {
                 damage = 50,
                 spared_by = { invisible = true, submerged = true, flashing = true, untouchable = true, bubbled = true },
@@ -139,7 +139,7 @@ return {
         "sea",
     },
     -- The types the engine's own code needs.
-    roles = { missing = "missing", broken = "broken", cracked = "cracked", normal = "normal" },
+    roles = { missing = PanelType.missing, broken = PanelType.broken, cracked = PanelType.cracked, normal = PanelType.normal },
     start_visible = rows(1, 3),
     front_edges = rows(3, 3),
     step = own,

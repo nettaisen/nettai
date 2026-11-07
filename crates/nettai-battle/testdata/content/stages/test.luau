@@ -5,11 +5,12 @@
 
 local boulder = require("../objects/boulder")
 local rock = require("../chips/rockcube/rock")
+local P = PanelType
 
 local PLAIN = {
-    "normal normal normal normal normal normal",
-    "normal normal normal normal normal normal",
-    "normal normal normal normal normal normal",
+    { P.normal, P.normal, P.normal, P.normal, P.normal, P.normal },
+    { P.normal, P.normal, P.normal, P.normal, P.normal, P.normal },
+    { P.normal, P.normal, P.normal, P.normal, P.normal, P.normal },
 }
 
 local function stage(actors: { StageActor }): StageDef

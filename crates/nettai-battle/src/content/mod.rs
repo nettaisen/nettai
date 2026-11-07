@@ -375,7 +375,11 @@ impl Content {
             )));
         }
         // (The game's builds, whose groups are its versions.)
-        let builds: Vec<String> = self.scripts.games().iter().map(|g| format!("{g}{}{BUILDS_MODULE}", nettai_content_api::keys::SEPARATOR)).collect();
+        let mut builds: Vec<String> = self.scripts.games().iter().map(|g| format!("{g}{}{BUILDS_MODULE}", nettai_content_api::keys::SEPARATOR)).collect();
+        if builds.is_empty() {
+            // (Content without packs: a game of no name, its modules' own.)
+            builds = self.scripts.modules.keys().filter(|m| nettai_content_api::keys::local(m) == BUILDS_MODULE).cloned().collect();
+        }
         let nettai_luau::DefinePhase { definitions, compiled, assets, mut recipes, names, module_data } =
             nettai_luau::define(&self.scripts.pack_to_define().with_data_of(builds.clone()), nettai_luau::Options::default())?;
         self.scripts.recipe = self.scripts.games().first().and_then(|g| recipes.remove(g));
