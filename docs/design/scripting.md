@@ -99,8 +99,7 @@ Conventions:
   variable indexes the view cast to `any` (`(me.requests :: any)[r] = false`), the checker refusing a dynamic
   key on a view. A choice is a checked literal union (`me.lifecycle = "destroy"`, `me:set_attack(action,
   "chip")`, `me:start_move("up")`, `me:take_damage("damage_sound") == "broken"`), never the number the engine
-  keeps it as; one a game names (a panel type, an emotion, a side statistic) is a string the engine checks
-  against the game's own as it runs. Content holds no bit layout: the engine's bit values and offsets stay in
+  keeps it as; a side statistic a game names is a string the engine checks against the game's own as it runs. Content holds no bit layout: the engine's bit values and offsets stay in
   the engine, and a game's own layouts are declared once, in its rules. The original's numbers that are a
   routine's own immediates (animation numbers, tick counts, bug codes) are the scripts' named constants.
 - **Sets are tables of booleans keyed by member.** What content states as a set of names is a table keyed by
@@ -145,7 +144,29 @@ Conventions:
   conditions too. A loader or the binding turns the names into the very words the engine keeps; a name it
   doesn't know is an error. A set or condition a module keeps (a constant, frozen with the module) is read once
   and kept by itself; a table built at the call is read at each call, so content states its sets as constants.
-- **Elements, turns, sprite parts and sentinels are values and names.** An element is a value (`Element`): made
+- **The names a game defines are values of their kind's table.** Its panel types, chip families, emotions,
+  versions, its rules' custom-screen buttons and windows and its collections are each a value table built from
+  the game loaded (`PanelType.cracked`, `Family.sword`, `Emotion.full_synchro`, `Version.gregar`,
+  `Window.cross_chosen`, `Button.soul`, `Collection.patch_cards`; a keyword's member `Family["break"]`): a value
+  of its own, compared with `==`, whose `name` is its name. A field or call that takes one refuses a string
+  (`field.set_type(x, y, PanelType.cracked)`, `family = Family.sword`, a stage's layout rows as lists of six panel
+  types, `custom.open_window(side, Window.beast_out)`; `custom.set_form`'s `by` a `Button` or a `Window`); one the
+  engine gives is one (`field.panel(x, y).kind`, `battle.emotion(side)`). What a table holds is what the game's
+  rules (`panels.numbers`, `elements.families`, the emotion order, `buttons`, `windows`), its builds' `groups`
+  and its root's collections say it has. The define phase runs before they say so: it hands out a value for any
+  member read and keeps what was read (Luau resolves `PanelType.cracked` as a module loads, so every member a
+  loaded module names is read then), which the engine holds to the game's names; a runtime's tables hold the
+  game's alone, and reading another member is an error. The define phase reads a name back as `Data::Name`, and a
+  record reads it as its kind's tag (`{ "$PanelType": "cracked" }`). Each game's `types.d.luau` declares its
+  tables' members (the content check refuses a misspelled one; `nettai-content check` holds the declarations to
+  the game's names), and exelib's those every game has: a support pack names only those, and takes any other
+  from its caller (EXE4's BlakWing takes its hole from its look). A table keyed by names (a set, `paralyzing_chips`,
+  a form's faces by emotion) keeps its names as keys, and a value's `name` looks one up; the lists that say a
+  game's names (`panels.numbers`, the families' keys, the emotion order, the builds' ids) and a state's variants
+  stay names. A rules' extension field of some of a kind's names is a list of their values (`version = {
+  Version.gregar, Version.falzar }`).
+- **Elements, turns, sprite parts and sentinels are values and names.** A definition's element is an `Element`
+  value (`element = Element.fire`, the byte it is; the panel rules' `cleared_by` and `doubles` too). An element is a value (`Element`): made
   by names (`Element.new("fire", { sword = true })`, `Element.fire`), read by names (`e.primary`,
   `e.secondary.sword`), compared with `==` and passed whole (`o.element = me.element`); the binding keeps one per
   byte, so reading one allocates nothing. A damage slot is a primary element by name (`c:element_damage("fire")`,
