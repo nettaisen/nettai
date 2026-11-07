@@ -40,26 +40,31 @@ pub fn tick_input(inputs: [&PlayerInput; 2]) -> TickInput {
 /// A player's input on the wire: the tick's word (the buttons, the switch
 /// request, the microphone heard or not and the custom screen's choice), and the
 /// events as flags
-/// ([`flags`]).
+/// ([`TickFlags`]).
 impl WireInput for PlayerInput {
     fn encode(&self) -> (u32, u8) {
         let TickEvents { link_closed } = &self.events;
-        (self.tick.word(), if *link_closed { flags::LINK_CLOSED } else { 0 })
+        let mut flags = TickFlags::empty();
+        flags.set(TickFlags::LINK_CLOSED, *link_closed);
+        (self.tick.word(), flags.bits())
     }
 
     fn decode(word: u32, f: u8) -> io::Result<PlayerInput> {
-        if f & !flags::ALL != 0 {
+        let Some(flags) = TickFlags::from_bits(f) else {
             return Err(crate::protocol::invalid("unknown event flags"));
-        }
-        Ok(PlayerInput { tick: PlayerTick::from_word(word), events: TickEvents { link_closed: f & flags::LINK_CLOSED != 0 } })
+        };
+        Ok(PlayerInput { tick: PlayerTick::from_word(word), events: TickEvents { link_closed: flags.contains(TickFlags::LINK_CLOSED) } })
     }
 }
 
-/// A [`PlayerInput`]'s events as a tick's flags.
-pub mod flags {
-    /// `TickEvents::link_closed`.
-    pub const LINK_CLOSED: u8 = 1 << 0;
-    pub const ALL: u8 = LINK_CLOSED;
+bitflags::bitflags! {
+    /// A [`PlayerInput`]'s events as a tick's flags on the wire. A bit none
+    /// of them names is refused (`decode`).
+    #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+    pub struct TickFlags: u8 {
+        /// `TickEvents::link_closed`.
+        const LINK_CLOSED = 1 << 0;
+    }
 }
 
 impl Game for Battle {

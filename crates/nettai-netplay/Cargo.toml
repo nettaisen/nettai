@@ -6,6 +6,8 @@ license.workspace = true
 description = "Rollback netplay for the battle engine on getgud, with a simulated network for testing"
 
 [dependencies]
+# A tick's event flags on the wire as a typed set (`battle::TickFlags`).
+bitflags = "2"
 nettai-battle.workspace = true
 # The handles a tick's payload and a player's setup name content by.
 nettai-content-api = { path = "../nettai-content-api" }

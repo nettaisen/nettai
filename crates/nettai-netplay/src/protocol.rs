@@ -53,7 +53,7 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 ///
 /// - the stream's elements and their wire form (this module): a tick is its
 ///   buttons, its switch request, its microphone heard or not, its custom screen's choice and its flags
-///   (`battle::flags`: the link closing), and the round's and the match's end and the sender's present delay are
+///   (`battle::TickFlags`: the link closing), and the round's and the match's end and the sender's present delay are
 ///   markers;
 /// - the lobby and the handshake (nettai-frontend's `lobby`): the lobby's
 ///   messages (the compatibility fields, the match's settings with their

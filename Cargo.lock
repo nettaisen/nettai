@@ -4050,6 +4050,7 @@ dependencies = [
 name = "nettai-netplay"
 version = "0.1.0"
 dependencies = [
+ "bitflags 2.13.2",
  "getgud",
  "nettai-battle",
  "nettai-content-api",
