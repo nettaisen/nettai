@@ -124,9 +124,50 @@ export type ObjectFieldOfObject =
 -- "hidden" on a sprite without a shadow part hides its first part.
 export type Shadow = "hidden" | "ground" | "with_sprite"
 export type ActorType = "virus" | "navi" | "player"
--- A side's emotion: a name of its game's (its rules' status section's `emotion.order`: EXE6's "normal", "tired",
--- "full_synchro", "angry", "worn_out"; EXE5's "worried" in place of "tired").
-export type Emotion = string
+-- The names a game defines (docs/design/scripting.md §2.1): its panel types, chip families, emotions, versions, its
+-- rules' custom-screen buttons and windows and its collections, each kind a value table built from the game loaded
+-- (`PanelType.cracked`, `Family.sword`, `Emotion.full_synchro`, `Version.gregar`, `Window.cross_chosen`,
+-- `Button.soul`, `Collection.patch_cards`), as `Element` is for the elements: a value of its own, compared with `==`,
+-- whose `name` is its name (a table keyed by names looks it up by it; a name that is a keyword is written
+-- `Family["break"]`). Reading a member the game hasn't is an error. Each game's types.d.luau declares its tables'
+-- members; here, and so in exelib (checked without a game), a table has any.
+-- A panel type: one of its game's (its rules' `panels.numbers`).
+declare extern type PanelType with
+    name: string
+end
+declare PanelType: { [string]: PanelType }
+-- A chip family: one of its game's (its rules' `elements.families`).
+declare extern type Family with
+    name: string
+end
+declare Family: { [string]: Family }
+-- A side's emotion: one of its game's (its rules' status section's `emotion.order`: EXE6's normal, tired,
+-- full_synchro, angry, worn_out; EXE5's worried in place of tired).
+declare extern type Emotion with
+    name: string
+end
+declare Emotion: { [string]: Emotion }
+-- A version of its game: one of its builds' `groups` (EXE6's gregar and falzar), by the name its pack keeps a
+-- version's pictures under.
+declare extern type Version with
+    name: string
+end
+declare Version: { [string]: Version }
+-- A custom-screen window of the rules': one of their `windows`.
+declare extern type Window with
+    name: string
+end
+declare Window: { [string]: Window }
+-- A custom-screen button of the rules': one of their `buttons`.
+declare extern type Button with
+    name: string
+end
+declare Button: { [string]: Button }
+-- A collection of its game's: one of its root's (`patch_cards`), whose entries a `schema.entry` names.
+declare extern type Collection with
+    name: string
+end
+declare Collection: { [string]: Collection }
 -- A side's SELECT or Cross special in progress (each side its own gauge:
 -- `battle.own_gauges`).
 -- A side's special in progress: the SELECT special, or the rules' takeover
@@ -192,8 +233,6 @@ export type HudField =
 -- A screen fade content starts (`SetScreenFade`'s modes): the
 -- transformation sequencer's fade out (0x44, to full) and back in (0x40).
 export type ScreenFade = "transform_out" | "transform_in" | "dim" | "undim"
--- A panel type, by name: one of its game's (its rules' `panels.numbers`).
-export type PanelType = string
 -- A member of a collision type (`new.collision`'s `flags`): what an object is,
 -- or what it reacts to. Of a side: its attacks, objects, bodies (a navi's, a
 -- body of the rules'), other bodies (what a chip sets down that stands in the
@@ -2467,7 +2506,7 @@ declare schema: {
     mugshot: SchemaType,
     array: (of: SchemaType, length: number) -> SchemaType,
     optional: (of: SchemaType) -> SchemaType,
-    entry: (collection: string) -> SchemaType,
+    entry: (collection: Collection) -> SchemaType,
     record_type: (name: string) -> RecordType,
     list: (of: SchemaField, max: number) -> SchemaType,
     role: (role: SchemaRoleName, of: SchemaField) -> SchemaType,
@@ -2999,8 +3038,8 @@ export type ChipSpec = {
     -- without it). Presentation only.
     art_palette: { number }?,
     codes: { string }?,
-    element: ElementName?,
-    family: string?,
+    element: Element?,
+    family: Family?,
     class: ChipClass?,
     rarity: number?,
     mb: number?,
@@ -3089,24 +3128,23 @@ export type NaviTrait = "status_immune"
 export type TrapKind = "anti_damage" | "anti_sword" | "body_guard" | "anti_navi" | "anti_recovery"
 
 -- A chip family, by name: one of its game's (its rules' `elements.families`).
-export type ChipFamily = string
 -- An element, by name.
 export type ElementName = "null" | "fire" | "aqua" | "elec" | "wood"
 -- A secondary element, by name: what a navi's or a form's `weakness` names (a hit of it is a weakness hit).
 export type SecondaryElement = "break" | "wind" | "cursor" | "sword"
 -- The chips a navi's or a form's rule is about: an element's, or a
 -- family's.
-export type ChipMatch = { element: ElementName?, family: ChipFamily? }
+export type ChipMatch = { element: Element?, family: Family? }
 
 -- A form's faces in the emotion window by its navi's emotion, keyed by its game's emotion names (its rules' `emotion`
 -- order's; the engine holds a set to them as the content loads): an emotion without one shows the game's default
 -- emotion's (the order's last case's: EXE6's and EXE5's `normal`), which a set has.
-export type FaceSet = { [Emotion]: Mugshot }
+export type FaceSet = { [string]: Mugshot }
 export type MugshotFaces = {
     -- A second set, shown where the side's rules ask (`battle.hud(side)`'s face variants): while the navi's rules' B
     -- charge is armed (EXE5's soul's Chaos Unison look), or in the base form (EXE5's Hub Style).
     variant: FaceSet?,
-    [Emotion]: Mugshot,
+    [string]: Mugshot,
 }
 
 -- A navi (§3.2): MegaMan or a link navi. (`NaviDef`, since `Navi` is a
@@ -3117,7 +3155,7 @@ export type NaviDef = {
     id: string?,
     -- The battle sprite (a navi that changes form draws its form's).
     sprite: SpriteAsset,
-    element: ElementName,
+    element: Element,
     weakness: { [SecondaryElement]: boolean }?,
     buster_bonus: number,
     -- Ticks of lag after a move, by navi variant.
@@ -3129,7 +3167,7 @@ export type NaviDef = {
     -- The version of its game a link navi belongs to (EXE6's "gregar" or
     -- "falzar"), by the name the game's pack keeps a version's pictures
     -- under; none: every version's.
-    version: string?,
+    version: Version?,
     -- Extra height of its image as it merges with MegaMan in a Cross.
     merge_height: number?,
     -- The no-running message (L on the custom screen in a netbattle).
@@ -3142,11 +3180,11 @@ export type NaviDef = {
     -- Its damage bonus on its family's damaging chips: how much, a function
     -- of its side, which the round's setup asks once (EXE6's by the navi's
     -- level: rules/by_level).
-    chip_bonus: { family: ChipFamily, dimming_chips: boolean?, damage: (side: number) -> number? }?,
+    chip_bonus: { family: Family, dimming_chips: boolean?, damage: (side: number) -> number? }?,
     -- MegaMan's bonus on a family's damaging chips used standing on a type
     -- of panel, in a form with no `chip_bonus` (EXE5's: Aqua chips on sea);
     -- the use turns the panel Normal.
-    panel_bonus: { panel: PanelType, family: ChipFamily, damage: number }?,
+    panel_bonus: { panel: PanelType, family: Family, damage: number }?,
     -- The chips it charges with A: a family's, never its own chip.
     -- `damaging` is always stated: only the damaging chips that aren't
     -- dimming chips (false: any). `when`: only where this function of its
@@ -3154,7 +3192,7 @@ export type NaviDef = {
     -- `plain`: only the chips that are neither dimming nor dark chips.
     -- (EXE6's link navis: their family's damaging chips from a level,
     -- `byte_8021369`; EXE5's team navis: their family's plain chips.)
-    charged_chips: { family: ChipFamily, damaging: boolean, when: ((side: number) -> boolean)?, plain: boolean? }?,
+    charged_chips: { family: Family, damaging: boolean, when: ((side: number) -> boolean)?, plain: boolean? }?,
     -- What a chip it charged gains (damage "again": its damage again), where
     -- its form states no `charged_bonus`: a form's comes first.
     charged_bonus: { damage: (number | "again")?, paralyzes: boolean?, doubles: boolean? }?,
@@ -3336,7 +3374,7 @@ export type FormDef = {
     -- read, never written in the table.
     id: string?,
     sprite: SpriteAsset,
-    element: ElementName,
+    element: Element,
     weakness: { [SecondaryElement]: boolean }?,
     buster_bonus: number,
     -- Its game's base form: what the game's navis are in before they change
@@ -3355,21 +3393,21 @@ export type FormDef = {
     -- The version of its game it belongs to (EXE6's "gregar" or "falzar":
     -- a version's Crosses and Beast), by the name the game's pack keeps a
     -- version's pictures under.
-    version: string?,
+    version: Version?,
     weapons: FormWeapons?,
     identity: Identity?,
     -- The damage it adds to a family's damaging chips (`uncharged`: only
     -- on a use that isn't charged, with the A charge not full), and to
     -- damaging Null chips when that doesn't apply (Beast Out's, outside
     -- battle mode 1).
-    chip_bonus: { family: ChipFamily, damage: number, dimming_chips: boolean?, uncharged: boolean? }?,
+    chip_bonus: { family: Family, damage: number, dimming_chips: boolean?, uncharged: boolean? }?,
     null_bonus: number?,
     -- The chips it charges with A, a family's by each rule. `damaging` is
     -- always stated: only the damaging chips that aren't dimming chips
     -- (false: any of the family). With `element_swords` the chips with the
     -- `element_sword` trait too; `plain`: only those that are neither
     -- dimming nor dark chips (EXE5's souls).
-    charged_chips: { { family: ChipFamily, damaging: boolean, element_swords: boolean?, plain: boolean? } }?,
+    charged_chips: { { family: Family, damaging: boolean, element_swords: boolean?, plain: boolean? } }?,
     -- What a charged chip gains in it (damage "again": its damage again;
     -- `doubles`: the damage word's doubling).
     charged_bonus: { damage: (number | "again")?, paralyzes: boolean?, doubles: boolean? }?,
@@ -3378,7 +3416,7 @@ export type FormDef = {
     charge_doubles: ChipMatch?,
     chip_heals: ChipMatch?,
     -- The families whose damaging chips, not dimming chips, paralyze when used uncharged.
-    paralyzing_chips: { [ChipFamily]: boolean }?,
+    paralyzing_chips: { [string]: boolean }?,
     -- Its A charge builds up the next Fire chip's damage, up to this much.
     fire_charge: number?,
     -- What its status reset gives the navi, and what a NaviCust change
@@ -3458,7 +3496,7 @@ export type StageDef = {
     -- Its id, its key in the game's root (`chips.cannon`): the loader's to
     -- read, never written in the table.
     id: string?,
-    layout: { string },
+    layout: { { PanelType } },
     panel_pattern: number,
     music: Sound?,
     mode: number,
@@ -3715,7 +3753,7 @@ export type NaviBody = {
     palette_scale: number,
     palette: number?,
     hp: number,
-    element: ElementName,
+    element: Element,
     body_damage: number,
     collision: { body: CollisionType, target: CollisionType, hit_modifier: { [string]: boolean }? },
     flags: { [NaviBodyFlag]: boolean }?,
@@ -4107,7 +4145,7 @@ declare custom: {
     play: (side: number, sound: CustomSound) -> (),
     play_sound: (side: number, sound: Sound) -> (),
     set_column_icon: (side: number, chip: Chip?) -> (),
-    open_window: (side: number, window: string, ticks: number?) -> (),
+    open_window: (side: number, window: Window, ticks: number?) -> (),
     window_tick: (side: number) -> number,
     shake: (side: number, magnitude: number, ticks: number) -> (),
     frame: (side: number) -> number,
@@ -4116,27 +4154,27 @@ declare custom: {
     fade: (side: number, mode: CustomFade, speed: number) -> (),
     set_face: (side: number, form: FormDef?) -> (),
     pick_first: (side: number, icon: Chip?) -> (),
-    set_button_state: (side: number, button: string, state: "selectable" | "unavailable" | "selected") -> (),
+    set_button_state: (side: number, button: Button, state: "selectable" | "unavailable" | "selected") -> (),
     -- The uses one of the rules' buttons has left on this screen (its `uses`
     -- as the screen opened), read and written: for a button whose rules
     -- count them.
-    button_uses: (side: number, button: string) -> number,
-    set_button_uses: (side: number, button: string, uses: number) -> (),
+    button_uses: (side: number, button: Button) -> number,
+    set_button_uses: (side: number, button: Button, uses: number) -> (),
     update_availability: (side: number) -> (),
     draw_emblem: (side: number, x: number) -> (),
     -- `by`: the rules' button or window whose pick holds the form.
-    set_form: (side: number, by: string, form: FormDef?, turns: number?, alternate: boolean?) -> (),
+    set_form: (side: number, by: Button | Window, form: FormDef?, turns: number?, alternate: boolean?) -> (),
     last_pick: (side: number) -> { slot: number, chip: Chip, regular: boolean, navi_chip: boolean, attached: boolean }?,
-    trade_last_pick: (side: number, button: string) -> boolean,
-    attach_to_last_pick: (side: number, button: string, marks: Marks) -> boolean,
-    hold_last_pick: (side: number, button: string) -> boolean,
-    held_pick: (side: number, button: string) -> Chip?,
-    set_held_icon: (side: number, button: string, shown: boolean) -> (),
+    trade_last_pick: (side: number, button: Button) -> boolean,
+    attach_to_last_pick: (side: number, button: Button, marks: Marks) -> boolean,
+    hold_last_pick: (side: number, button: Button) -> boolean,
+    held_pick: (side: number, button: Button) -> Chip?,
+    set_held_icon: (side: number, button: Button, shown: boolean) -> (),
     fading: (side: number) -> boolean,
     -- Whether a pick of another button or window than `by` holds the form.
-    form_taken: (side: number, by: string) -> boolean,
+    form_taken: (side: number, by: Button | Window) -> boolean,
     full: (side: number) -> boolean,
-    button_picked: (side: number, button: string) -> boolean,
+    button_picked: (side: number, button: Button) -> boolean,
     -- The screen's drawing, for a window: the window's sprites (the
     -- emblem, the Regular chip's frame, the last turns' block), the Regular
     -- chip's frame alone, the screen's cursor where it is (the player's
@@ -4252,5 +4290,5 @@ declare rules: {
     -- The panel types (a set of their names, `{ holy = true }`) on which the
     -- engine calls side `side`'s `navi_panel` for a navi standing on one, in
     -- place of the last; none at first. A game's rules' alone.
-    listen_panels: (side: number, kinds: { [PanelType]: boolean }) -> (),
+    listen_panels: (side: number, kinds: { [string]: boolean }) -> (),
 }

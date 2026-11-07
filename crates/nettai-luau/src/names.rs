@@ -81,11 +81,28 @@ fn member(lua: &Lua, kind: NameKind, name: &str) -> mlua::Result<AnyUserData> {
             }
         }
         None => {
-            n.read.borrow_mut().entry((kind, name.to_string())).or_insert_with(|| crate::define::caller(lua));
+            n.read.borrow_mut().entry((kind, name.to_string())).or_insert_with(|| reader(lua));
         }
     }
     drop(n);
     value(lua, kind, name)
+}
+
+/// Where content read a member: the first Luau function's line up the
+/// stack (the table's `__index` is the VM's call).
+fn reader(lua: &Lua) -> String {
+    for level in 1..8 {
+        let at = lua.inspect_stack(level, |d| {
+            let source = d.source().source.map(|s| s.trim_start_matches('@').to_string())?;
+            (!source.starts_with('=')).then(|| format!("{}:{}", source.trim_end_matches(".luau"), d.current_line().unwrap_or(0)))
+        });
+        match at {
+            Some(Some(at)) => return at,
+            Some(None) => continue,
+            None => break,
+        }
+    }
+    "content".to_string()
 }
 
 fn unknown(kind: NameKind, name: &str, game: &GameNames) -> mlua::Error {

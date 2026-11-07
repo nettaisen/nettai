@@ -322,9 +322,6 @@ pub enum TypeData {
     /// A field of a type that the engine knows by a role (`schema.role(role,
     /// T)`; a field's, not an element's).
     Role(String, Box<Data>),
-    /// A name its game defines, of a kind (`schema.name(Version)`): a
-    /// definition's field (the rules' `extends`), not a state's.
-    Name(crate::NameKind),
 }
 
 impl FieldType {
@@ -342,9 +339,6 @@ impl FieldType {
                 FieldType::List(Box::new(of), *max)
             }
             Data::Type(TypeData::Role(role, _)) => return Err(format!("a role ({role:?}) is a field's, not an element's")),
-            Data::Type(TypeData::Name(kind)) => {
-                return Err(format!("a {} (`schema.name({})`) is a definition's field, not a state's", kind.what(), kind.table()));
-            }
             Data::List(variants) => FieldType::Enum(
                 variants.iter().map(|v| v.str().map(str::to_string).ok_or_else(|| "variants are names".to_string())).collect::<Result<_, _>>()?,
             ),

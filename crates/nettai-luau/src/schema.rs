@@ -28,8 +28,6 @@ pub(crate) enum SchemaType {
     List { of: LuaValue, max: u16 },
     /// A field of type `of` that the engine knows by `role`.
     Role { role: String, of: LuaValue },
-    /// A name its game defines, of a kind (`schema.name(Version)`).
-    Name(nettai_content_api::NameKind),
 }
 
 impl UserData for SchemaType {
@@ -48,7 +46,6 @@ impl SchemaType {
             },
             SchemaType::List { max, .. } => format!("list of {max}"),
             SchemaType::Role { role, .. } => format!("role {role}"),
-            SchemaType::Name(kind) => format!("name of {}", kind.table()),
         }
     }
 
@@ -67,7 +64,6 @@ impl SchemaType {
             SchemaType::Is(ty) => TypeData::Is(ty.clone()),
             SchemaType::List { of, max } => TypeData::List(Box::new(data(of)?), *max),
             SchemaType::Role { role, of } => TypeData::Role(role.clone(), Box::new(data(of)?)),
-            SchemaType::Name(kind) => TypeData::Name(*kind),
         }))
     }
 }
@@ -133,19 +129,6 @@ pub(crate) fn lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         lua.create_function(move |_, of: LuaValue| {
             let ty = own_type(&of, "schema.optional's type")?;
             Ok(SchemaType::Is(FieldType::optional(ty).map_err(|e| err(format!("schema.optional: {e}")))?))
-        })?,
-    )?;
-    t.raw_set(
-        "name",
-        lua.create_function(move |_, names: LuaValue| {
-            let kind = match &names {
-                LuaValue::Table(t) => t.metatable().and_then(|m| m.raw_get::<String>("__metatable").ok()).and_then(|n| {
-                    nettai_content_api::NameKind::ALL.into_iter().find(|k| k.table() == n)
-                }),
-                _ => None,
-            };
-            let kind = kind.ok_or_else(|| err("schema.name takes a value table of the names a game defines (`schema.name(Version)`)".to_string()))?;
-            Ok(SchemaType::Name(kind))
         })?,
     )?;
     t.raw_set(
