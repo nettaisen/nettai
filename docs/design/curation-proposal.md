@@ -312,13 +312,13 @@ Named from several uses that agree, from the look (the effects named for sprite,
 | `region_1f` | `vee` *applied* | Region 0x1F: the anchor and the two panels diagonally behind, the same panels as `vee` (EXE5's Colonel's and ColonelSoul's screen divide), which it joins. |
 | `region_20` | `line_5` *applied* | Region 0x20: five in a row from the anchor. WaveArm's look ahead and DblHero's shots use it. |
 | `region_21` | `wide_long_4` *applied* | Region 0x21: the anchor's column and three ahead (`wide_long` is two columns). Unused by content; named for its shape. |
-| `region_22` | `hourglass` *applied* | Region 0x22: three above, the anchor, three below. Unused by content; named for its shape. |
+| `region_22` | `z` *applied* | Region 0x22: three above, the anchor, three below: a Z (as `x` is an X). Unused by content; named for its shape. |
 | `region_23` | `wide_long_6` *applied* | Region 0x23: the anchor's column and five ahead: three rows by six. TenguMan's dash uses it. |
 | `region_24` | `rising_band` *applied* | Region 0x24: three rows of three, each a panel further forward than the one below: `rising`, three thick. Unused by content; named for its shape. |
 | `region_25` | `falling_band` *applied* | Region 0x25: three rows of three, each a panel further forward than the one above: `falling`, three thick. TenguMan's dive uses it. |
 | `region_27` | `bracket` *applied* | Region 0x27: the rows above and below, six long, closed at the far end. Unused by content; named for its shape. |
 | `region_28` | `hammer` *applied* | Region 0x28: three ahead in line, with the far end's above and below. Unused by content; named for its shape. |
-| `region_29` | `hourglass_ahead` *applied* | Region 0x29: the hourglass around the panel ahead, the anchor not among them. Colonel's ScreenDivide uses it. |
+| `region_29` | `z_ahead` *applied* | Region 0x29: the Z around the panel ahead, the anchor not among them. Colonel's ScreenDivide uses it. |
 | `region_2a` | `long_tee` *applied* | Region 0x2A: above, below, the anchor and five ahead. Unused by content; named for its shape. |
 | `region_2b` | `line_behind` *applied* | Region 0x2B: the anchor and two behind. Unused by content; named for its shape. |
 | `region_2c` | `outside_square` *applied* | Region 0x2C: every panel up to five columns and two rows away but the 3x3 around the anchor (the proposal's rows_two_away missed the rows between). Unused by content; named for its shape. |
