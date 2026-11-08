@@ -745,34 +745,34 @@ effect	vulcan_hit_6a	vulcan_hit_p1	medium	number	Effect 0x6A: vulcan-hit, palett
 spark	hit	guard	high		Spark 0x08 is the role sparks.guard: a blocked hit.	applied: accepted-1
 spark	spark_0e	uninstall	high	number	Spark 0x0E is the role sparks.uninstall: a navi's programs uninstalled.	applied: accepted-1
 spark	shot	chip_destruction	high	wrong	Spark 0x09 is the chip destruction hit spark (the chip destruction shot's, and EXE5's SerchMan's shot's). The user's name.	applied: accepted-2
-region	region_03	ahead	medium	number	Region 0x03: the panel ahead, not the anchor. Unused by content; named for its shape.	
-region	region_05	above_below	medium	number	Region 0x05: the panels above and below the anchor. Unused by content; named for its shape.	
-region	region_07	line_4	medium	number	Region 0x07: the anchor and three ahead (`line` is three, `long` two). Unused by content; named for its shape.	
-region	region_08	line_6	medium	number	Region 0x08: the anchor and five ahead. Unused by content; named for its shape.	
-region	region_0e	diagonals_ahead	medium	number	Region 0x0E: the two panels diagonally ahead (the `fork` without its anchor). Unused by content; named for its shape.	
-region	region_14	tee	medium	number	Region 0x14: the anchor, above, below and ahead: `wide` and the panel ahead. Unused by content; named for its shape.	
-region	region_16	up_ahead	medium	number	Region 0x16: the anchor and the panel diagonally ahead and up. Unused by content; named for its shape.	
-region	region_17	down_ahead	medium	number	Region 0x17: the anchor and the panel diagonally ahead and down. Unused by content; named for its shape.	
-region	region_19	tall_down	medium	number	Region 0x19: the anchor and the panel below (`tall` is the one above). Unused by content; named for its shape.	
-region	region_1b	fan_3	medium	number	Region 0x1B: the anchor and the three columns ahead (`fan` is one, `deep_fan` two). Unused by content; named for its shape.	
-region	region_1c	fan_4	medium	number	Region 0x1C: the anchor and the four columns ahead. Unused by content; named for its shape.	
-region	region_1d	across	medium	number	Region 0x1D: the anchor, ahead and behind. Unused by content; named for its shape.	
-region	region_1e	across_ends	medium	number	Region 0x1E: ahead and behind, not the anchor. Unused by content; named for its shape.	
-region	region_1f	fork_back	medium	number	Region 0x1F: the anchor and the two panels diagonally behind (`fork` reversed). Unused by content; named for its shape.	
-region	region_20	line_5	medium	number	Region 0x20: the anchor and four ahead. Unused by content; named for its shape.	
-region	region_21	wide_long_4	medium	number	Region 0x21: the anchor's column and three ahead (`wide_long` is two). Unused by content; named for its shape.	
-region	region_22	hourglass	medium	number	Region 0x22: three above, the anchor, three below. Unused by content; named for its shape.	
-region	region_23	wide_long_6	medium	number	Region 0x23: the anchor's column and five ahead: three rows by six. Unused by content; named for its shape.	
-region	region_24	rising_band	medium	number	Region 0x24: a band of three by three leaning forward and up. Unused by content; named for its shape.	
-region	region_25	falling_band	medium	number	Region 0x25: a band of three by three leaning forward and down. Unused by content; named for its shape.	
-region	region_27	bracket	medium	number	Region 0x27: the rows above and below, six long, closed at the far end. Unused by content; named for its shape.	
-region	region_28	hammer	medium	number	Region 0x28: three ahead in line, with the far end's above and below. Unused by content; named for its shape.	
-region	region_29	hourglass_ahead	medium	number	Region 0x29: three above and below, starting at the anchor's column, and the panel ahead between. Unused by content; named for its shape.	
-region	region_2a	long_tee	medium	number	Region 0x2A: above, below, the anchor and five ahead. Unused by content; named for its shape.	
-region	region_2b	line_back	medium	number	Region 0x2B: the anchor and two behind. Unused by content; named for its shape.	
-region	region_2c	rows_two_away	medium	number	Region 0x2C: the rows two above and two below, eleven long. Unused by content; named for its shape.	
-region	region_2d	column	medium	number	Region 0x2D: the anchor's column, five tall. Unused by content; named for its shape.	
-region	region_2e	column_ends	medium	number	Region 0x2E: the anchor's column, five tall, without the anchor. Unused by content; named for its shape.	
+region	region_03	ahead	medium	number	Region 0x03: the panel ahead, not the anchor. Unused by content; named for its shape.	applied: accepted-4
+region	region_05	above_below	medium	number	Region 0x05: the panels above and below the anchor. Unused by content; named for its shape.	applied: accepted-4
+region	region_07	line_4	medium	number	Region 0x07: four in a row from the anchor (`line` is three, `row` six; the number is the columns it reaches). Unused by content; named for its shape.	applied: accepted-4
+region	region_08	row	medium	number	Region 0x08: six in a row from the anchor, the same panels as `row` (EXE5's MagnetSoul's pull), which it joins. EXE4's MagBolt and LaserMan's laser use it.	applied: accepted-4
+region	region_0e	diagonals_ahead	medium	number	Region 0x0E: the two panels diagonally ahead (the `fork` without its anchor). Unused by content; named for its shape.	applied: accepted-4
+region	region_14	tee	medium	number	Region 0x14: the anchor, above, below and ahead: `wide` and the panel ahead. Unused by content; named for its shape.	applied: accepted-4
+region	region_16	up_ahead	medium	number	Region 0x16: the anchor and the panel diagonally ahead and up. Unused by content; named for its shape (WaveArm's own UP_AHEAD has its panels).	applied: accepted-4
+region	region_17	down_ahead	medium	number	Region 0x17: the anchor and the panel diagonally ahead and down. Unused by content; named for its shape (WaveArm's own DOWN_AHEAD has its panels).	applied: accepted-4
+region	region_19	tall_down	medium	number	Region 0x19: the anchor and the panel below (`tall` is the one above). EXE4's BurnMan's pillar uses both.	applied: accepted-4
+region	region_1b	fan_4	medium	number	Region 0x1B: the anchor and the three columns ahead (`fan` reaches two columns, `deep_fan` three). Unused by content; named for its shape.	applied: accepted-4
+region	region_1c	fan_5	medium	number	Region 0x1C: the anchor and the four columns ahead. Unused by content; named for its shape.	applied: accepted-4
+region	region_1d	across	medium	number	Region 0x1D: the anchor, ahead and behind. EXE5's Meddy's capsule's row uses it.	applied: accepted-4
+region	region_1e	ahead_behind	medium	number	Region 0x1E: ahead and behind, not the anchor (as `above_below` is to `wide`). Unused by content; named for its shape.	applied: accepted-4
+region	region_1f	vee	medium	number	Region 0x1F: the anchor and the two panels diagonally behind, the same panels as `vee` (EXE5's Colonel's and ColonelSoul's screen divide), which it joins.	applied: accepted-4
+region	region_20	line_5	medium	number	Region 0x20: five in a row from the anchor. Unused by content; named for its shape.	applied: accepted-4
+region	region_21	wide_long_4	medium	number	Region 0x21: the anchor's column and three ahead (`wide_long` is two columns). Unused by content; named for its shape.	applied: accepted-4
+region	region_22	hourglass	medium	number	Region 0x22: three above, the anchor, three below. Unused by content; named for its shape.	applied: accepted-4
+region	region_23	wide_long_6	medium	number	Region 0x23: the anchor's column and five ahead: three rows by six. Unused by content; named for its shape.	applied: accepted-4
+region	region_24	rising_band	medium	number	Region 0x24: three rows of three, each a panel further forward than the one below: `rising`, three thick. Unused by content; named for its shape.	applied: accepted-4
+region	region_25	falling_band	medium	number	Region 0x25: three rows of three, each a panel further forward than the one above: `falling`, three thick. Unused by content; named for its shape.	applied: accepted-4
+region	region_27	bracket	medium	number	Region 0x27: the rows above and below, six long, closed at the far end. Unused by content; named for its shape.	applied: accepted-4
+region	region_28	hammer	medium	number	Region 0x28: three ahead in line, with the far end's above and below. Unused by content; named for its shape.	applied: accepted-4
+region	region_29	hourglass_ahead	medium	number	Region 0x29: the hourglass around the panel ahead, the anchor not among them. Unused by content; named for its shape.	applied: accepted-4
+region	region_2a	long_tee	medium	number	Region 0x2A: above, below, the anchor and five ahead. Unused by content; named for its shape.	applied: accepted-4
+region	region_2b	line_behind	medium	number	Region 0x2B: the anchor and two behind. Unused by content; named for its shape.	applied: accepted-4
+region	region_2c	outside_square	medium	number	Region 0x2C: every panel up to five columns and two rows away but the 3x3 around the anchor (the proposal's rows_two_away missed the rows between). Unused by content; named for its shape.	applied: accepted-4
+region	region_2d	column	medium	number	Region 0x2D: the anchor's column, five tall. Unused by content; named for its shape.	applied: accepted-4
+region	region_2e	rest_of_column	medium	number	Region 0x2E: the anchor's column, five tall, without the anchor. Unused by content; named for its shape.	applied: accepted-4
 collision	attack-480	attack-480	low	number	Row 0x25: an attack with the flag 0x400, whose test no routine was found for; nothing names a better reading.	
 collision	attack-90	chip-destruction	high	number	Row 0x08: chip destruction, an attack that destroys the chip a navi holds (flag 0x10). The chip destruction shot uses it (shot/attack-90). The user's name.	applied: accepted-2
 collision	attack-a0	attack-a0	low	number	Row 0x47: an attack with the flag 0x20 (untested by any routine found); a projectile variant uses it.	

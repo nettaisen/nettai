@@ -12,7 +12,7 @@ It covers 1110 names: 222 proposed renames (44 high, 158 medium and
 (`sprite-0c-26`, `sound-108`) to leave numbered. 30 names are flagged as wrong now: they say something
 their asset or definition isn't.
 
-**Applied so far: 67 renames**, marked *applied* below (accepted-1, accepted-2, accepted-3). accepted-1 is the user's
+**Applied so far: 95 renames**, marked *applied* below (accepted-1, accepted-2, accepted-3, accepted-4). accepted-1 is the user's
 "High + flagged": every high-confidence rename and every row flagged wrong then. accepted-2 is chip destruction,
 the user's name for collision row 0x08, its shot and its hit spark ("attack-90 is chip destruction and the
 sparks.shot is also the chip destruction hitspark"), in both games. The rest wait for review.
@@ -53,7 +53,7 @@ Weapons, actions, kinds, chips, chip series and stages are only settled by it, n
 name folders, Rust tests and the compat entries the traces read, and no rename is proposed for them.
 
 The gate after applying: `cargo build --workspace --all-targets`, `cargo test --workspace`, `nettai-content-check`,
-a fresh pack (asset renames rename the pack's files), `gen-content check` and its tests, both golden traces and
+`nettai-content check <game>` (the assets by their new names), `gen-content check` and its tests, both golden traces and
 the full chip lab.
 
 ## Flagged: wrong now
@@ -296,34 +296,34 @@ Named from several uses that agree, from the look (the effects named for sprite,
 
 | current | proposed | evidence |
 |---|---|---|
-| `region_03` | `ahead` | Region 0x03: the panel ahead, not the anchor. Unused by content; named for its shape. |
-| `region_05` | `above_below` | Region 0x05: the panels above and below the anchor. Unused by content; named for its shape. |
-| `region_07` | `line_4` | Region 0x07: the anchor and three ahead (`line` is three, `long` two). Unused by content; named for its shape. |
-| `region_08` | `line_6` | Region 0x08: the anchor and five ahead. Unused by content; named for its shape. |
-| `region_0e` | `diagonals_ahead` | Region 0x0E: the two panels diagonally ahead (the `fork` without its anchor). Unused by content; named for its shape. |
-| `region_14` | `tee` | Region 0x14: the anchor, above, below and ahead: `wide` and the panel ahead. Unused by content; named for its shape. |
-| `region_16` | `up_ahead` | Region 0x16: the anchor and the panel diagonally ahead and up. Unused by content; named for its shape. |
-| `region_17` | `down_ahead` | Region 0x17: the anchor and the panel diagonally ahead and down. Unused by content; named for its shape. |
-| `region_19` | `tall_down` | Region 0x19: the anchor and the panel below (`tall` is the one above). Unused by content; named for its shape. |
-| `region_1b` | `fan_3` | Region 0x1B: the anchor and the three columns ahead (`fan` is one, `deep_fan` two). Unused by content; named for its shape. |
-| `region_1c` | `fan_4` | Region 0x1C: the anchor and the four columns ahead. Unused by content; named for its shape. |
-| `region_1d` | `across` | Region 0x1D: the anchor, ahead and behind. Unused by content; named for its shape. |
-| `region_1e` | `across_ends` | Region 0x1E: ahead and behind, not the anchor. Unused by content; named for its shape. |
-| `region_1f` | `fork_back` | Region 0x1F: the anchor and the two panels diagonally behind (`fork` reversed). Unused by content; named for its shape. |
-| `region_20` | `line_5` | Region 0x20: the anchor and four ahead. Unused by content; named for its shape. |
-| `region_21` | `wide_long_4` | Region 0x21: the anchor's column and three ahead (`wide_long` is two). Unused by content; named for its shape. |
-| `region_22` | `hourglass` | Region 0x22: three above, the anchor, three below. Unused by content; named for its shape. |
-| `region_23` | `wide_long_6` | Region 0x23: the anchor's column and five ahead: three rows by six. Unused by content; named for its shape. |
-| `region_24` | `rising_band` | Region 0x24: a band of three by three leaning forward and up. Unused by content; named for its shape. |
-| `region_25` | `falling_band` | Region 0x25: a band of three by three leaning forward and down. Unused by content; named for its shape. |
-| `region_27` | `bracket` | Region 0x27: the rows above and below, six long, closed at the far end. Unused by content; named for its shape. |
-| `region_28` | `hammer` | Region 0x28: three ahead in line, with the far end's above and below. Unused by content; named for its shape. |
-| `region_29` | `hourglass_ahead` | Region 0x29: three above and below, starting at the anchor's column, and the panel ahead between. Unused by content; named for its shape. |
-| `region_2a` | `long_tee` | Region 0x2A: above, below, the anchor and five ahead. Unused by content; named for its shape. |
-| `region_2b` | `line_back` | Region 0x2B: the anchor and two behind. Unused by content; named for its shape. |
-| `region_2c` | `rows_two_away` | Region 0x2C: the rows two above and two below, eleven long. Unused by content; named for its shape. |
-| `region_2d` | `column` | Region 0x2D: the anchor's column, five tall. Unused by content; named for its shape. |
-| `region_2e` | `column_ends` | Region 0x2E: the anchor's column, five tall, without the anchor. Unused by content; named for its shape. |
+| `region_03` | `ahead` *applied* | Region 0x03: the panel ahead, not the anchor. Unused by content; named for its shape. |
+| `region_05` | `above_below` *applied* | Region 0x05: the panels above and below the anchor. Unused by content; named for its shape. |
+| `region_07` | `line_4` *applied* | Region 0x07: four in a row from the anchor (`line` is three, `row` six; the number is the columns it reaches). Unused by content; named for its shape. |
+| `region_08` | `row` *applied* | Region 0x08: six in a row from the anchor, the same panels as `row` (EXE5's MagnetSoul's pull), which it joins. EXE4's MagBolt and LaserMan's laser use it. |
+| `region_0e` | `diagonals_ahead` *applied* | Region 0x0E: the two panels diagonally ahead (the `fork` without its anchor). Unused by content; named for its shape. |
+| `region_14` | `tee` *applied* | Region 0x14: the anchor, above, below and ahead: `wide` and the panel ahead. Unused by content; named for its shape. |
+| `region_16` | `up_ahead` *applied* | Region 0x16: the anchor and the panel diagonally ahead and up. Unused by content; named for its shape (WaveArm's own UP_AHEAD has its panels). |
+| `region_17` | `down_ahead` *applied* | Region 0x17: the anchor and the panel diagonally ahead and down. Unused by content; named for its shape (WaveArm's own DOWN_AHEAD has its panels). |
+| `region_19` | `tall_down` *applied* | Region 0x19: the anchor and the panel below (`tall` is the one above). EXE4's BurnMan's pillar uses both. |
+| `region_1b` | `fan_4` *applied* | Region 0x1B: the anchor and the three columns ahead (`fan` reaches two columns, `deep_fan` three). Unused by content; named for its shape. |
+| `region_1c` | `fan_5` *applied* | Region 0x1C: the anchor and the four columns ahead. Unused by content; named for its shape. |
+| `region_1d` | `across` *applied* | Region 0x1D: the anchor, ahead and behind. EXE5's Meddy's capsule's row uses it. |
+| `region_1e` | `ahead_behind` *applied* | Region 0x1E: ahead and behind, not the anchor (as `above_below` is to `wide`). Unused by content; named for its shape. |
+| `region_1f` | `vee` *applied* | Region 0x1F: the anchor and the two panels diagonally behind, the same panels as `vee` (EXE5's Colonel's and ColonelSoul's screen divide), which it joins. |
+| `region_20` | `line_5` *applied* | Region 0x20: five in a row from the anchor. Unused by content; named for its shape. |
+| `region_21` | `wide_long_4` *applied* | Region 0x21: the anchor's column and three ahead (`wide_long` is two columns). Unused by content; named for its shape. |
+| `region_22` | `hourglass` *applied* | Region 0x22: three above, the anchor, three below. Unused by content; named for its shape. |
+| `region_23` | `wide_long_6` *applied* | Region 0x23: the anchor's column and five ahead: three rows by six. Unused by content; named for its shape. |
+| `region_24` | `rising_band` *applied* | Region 0x24: three rows of three, each a panel further forward than the one below: `rising`, three thick. Unused by content; named for its shape. |
+| `region_25` | `falling_band` *applied* | Region 0x25: three rows of three, each a panel further forward than the one above: `falling`, three thick. Unused by content; named for its shape. |
+| `region_27` | `bracket` *applied* | Region 0x27: the rows above and below, six long, closed at the far end. Unused by content; named for its shape. |
+| `region_28` | `hammer` *applied* | Region 0x28: three ahead in line, with the far end's above and below. Unused by content; named for its shape. |
+| `region_29` | `hourglass_ahead` *applied* | Region 0x29: the hourglass around the panel ahead, the anchor not among them. Unused by content; named for its shape. |
+| `region_2a` | `long_tee` *applied* | Region 0x2A: above, below, the anchor and five ahead. Unused by content; named for its shape. |
+| `region_2b` | `line_behind` *applied* | Region 0x2B: the anchor and two behind. Unused by content; named for its shape. |
+| `region_2c` | `outside_square` *applied* | Region 0x2C: every panel up to five columns and two rows away but the 3x3 around the anchor (the proposal's rows_two_away missed the rows between). Unused by content; named for its shape. |
+| `region_2d` | `column` *applied* | Region 0x2D: the anchor's column, five tall. Unused by content; named for its shape. |
+| `region_2e` | `rest_of_column` *applied* | Region 0x2E: the anchor's column, five tall, without the anchor. Unused by content; named for its shape. |
 
 ### Collision types (rules/collision.luau) (32)
 
