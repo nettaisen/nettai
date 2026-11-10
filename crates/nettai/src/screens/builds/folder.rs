@@ -195,18 +195,20 @@ impl Folder {
         view.set_slot(self.slot as i32);
         if let Some(held) = &self.held {
             let tags = stood.tags.map_or(0, |(a, b)| megabytes(a) + megabytes(b));
+            // (A limit the build's ruleset lifts is none: -1.)
+            let limit = |l: Option<u32>| l.map_or(-1, |n| n as i32);
             view.set_counts(FolderCounts {
                 chips: held.chips as i32,
                 size: held.size as i32,
                 mega: held.mega.used as i32,
-                mega_limit: held.mega.limit as i32,
+                mega_limit: limit(held.mega.limit),
                 giga: held.giga.used as i32,
-                giga_limit: held.giga.limit as i32,
+                giga_limit: limit(held.giga.limit),
                 regular: stood.regular.map_or(0, megabytes),
-                regular_limit: held.regular_memory as i32,
+                regular_limit: limit(held.regular_memory),
                 tag: tags,
-                tag_limit: held.tag_memory.unwrap_or(0) as i32,
-                tags: held.tag_memory.is_some(),
+                tag_limit: limit(held.tag_memory),
+                tags: content.defs.fact_name(PlayerFact::TagChips).is_some(),
             });
         }
     }

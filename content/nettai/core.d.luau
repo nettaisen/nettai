@@ -1953,6 +1953,11 @@ declare battle: {
     -- chips so far: the rules about a whole folder wait), and for
     -- `folder_view` the chips the tool offers; nil when none is.
     checked_folder: () -> CheckedFolder?,
+    -- The limit `name` a tool checks the side's build under (the rules' `validate`, `build_check`, `folder_check`,
+    -- `folder_view`, `overview`): its ruleset's (nettai-match's `ruleset`; the game's rules/rulesets `limits` names
+    -- those it may change): `own`, the rules' own, where the ruleset leaves it, and always in a round; a number of the
+    -- ruleset's in its place; nil where the ruleset holds the build to none.
+    limit: (name: string, own: number) -> number?,
     -- `sub_802E4B8`: the side's SELECT or Cross special in progress.
     side_special: (side: number) -> SideSpecial,
     -- The rules' takeover of the side's navi starts for `ticks` (counted
@@ -3783,18 +3788,19 @@ export type CheckedFolder = {
 }
 
 -- What a side's folder rules allow of a folder (the rules' `folder_view`): a folder's size and the chips the folder
--- holds; the Mega, Giga and dark chips it holds against the navi's limits (`dark` nil where the game's folders hold
--- none); the Regular memory, and the tag memory (nil where the game's folders have no tag chips); and each chip
--- offered that can't go into it now, with why: a problem (`chip_not_allowed`, `copies`, `mega`, `giga`, `dark`,
--- `folder_size`), its `used` what the folder holds now.
-export type FolderCount = { used: number, limit: number }
+-- holds; the Mega, Giga and dark chips it holds against their limits (`dark` nil where the game's folders hold none);
+-- the Regular memory, and the tag memory (nil where the game's folders have no tag chips: the setup's `tag_chips`
+-- role); and each chip offered that can't go into it now, with why: a problem (`chip_not_allowed`, `copies`, `mega`,
+-- `giga`, `dark`, `folder_size`), its `used` what the folder holds now. A limit the tool's ruleset lifts
+-- (`battle.limit`) is nil: a count's `limit`, the Regular memory, the tag memory.
+export type FolderCount = { used: number, limit: number? }
 export type FolderView = {
     size: number,
     chips: number,
     mega: FolderCount,
     giga: FolderCount,
     dark: FolderCount?,
-    regular_memory: number,
+    regular_memory: number?,
     tag_memory: number?,
     refused: { SetupProblem },
 }
@@ -3809,7 +3815,8 @@ export type FolderView = {
 -- drawback). `card` is the rules' own note of the kind of card effect that writes the stat a named bug writes, which
 -- a tool reads nothing of;
 -- and each list of the setup whose entries cost against a budget (the patch cards' MB): its setup field, the field of
--- its entries' data that is an entry's cost, what the list's entries cost together and the most they may, and
+-- its entries' data that is an entry's cost, what the list's entries cost together and the most they may (nil: the
+-- tool's ruleset lifts the limit, `battle.limit`), and
 -- whether an entry goes into it once (`entry`: the list is the one entry of the field holds, from 1, a list of
 -- records each with a list of its own: a party battle's partner's PartyCust programs against its gauge); the
 -- switches a round allows the side's party (the engine's party counts those made), where the rules limit them; and
@@ -3827,7 +3834,7 @@ export type SetupBug = {
     effect: number?,
     card: string?,
 }
-export type SetupList = { field: string, cost: string, used: number, limit: number, once: boolean, entry: number? }
+export type SetupList = { field: string, cost: string, used: number, limit: number?, once: boolean, entry: number? }
 export type SetupStat = { name: string, value: number, added: number }
 -- `members`: for a member of the side's party (its `entry`: 0 the build's navi, then its partners in the setup's order),
 -- the stats the game's rules give it beyond the engine's (EXE5's own chip's damage), as `stats` are given.

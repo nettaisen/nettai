@@ -162,7 +162,7 @@ impl NaviFacts {
             hp: s.max_hp.into(),
             attack: i32::from(s.attack) + 1,
             named: o.as_ref().and_then(|o| o.members.iter().find(|(m, _)| *m == i + 1)).map(|(_, s)| s.clone()).unwrap_or_default(),
-            gauge: o.as_ref().and_then(|o| o.budget_of(FIELD, i)).map(|b| b.count.limit),
+            gauge: o.as_ref().and_then(|o| o.budget_of(FIELD, i)).and_then(|b| b.count.limit),
         })
     }
 
@@ -346,7 +346,8 @@ impl Party {
             Slot::Program(i, k) => {
                 let b = budgets.get(i).cloned().flatten()?;
                 let old = partners.get(i).and_then(|p| p.programs.get(k).copied())?;
-                let (cost, free) = (b.cost_of(content, h), b.count.free() + b.cost_of(content, old));
+                // (A gauge no limit holds takes any program.)
+                let (cost, free) = (b.cost_of(content, h), b.count.free()? + b.cost_of(content, old));
                 if cost > free { needs(cost) } else { None }
             }
             _ => None,
@@ -486,7 +487,7 @@ impl Party {
         }
         let navis = self.navis_shown();
         let listing = self.listing().clone();
-        let free = self.marked().partner().and_then(|i| budgets.get(i).cloned().flatten()).map_or(0, |b| b.count.free());
+        let free = self.marked().partner().and_then(|i| budgets.get(i).cloned().flatten()).and_then(|b| b.count.free()).unwrap_or(0);
         view.set_slot(self.slot as i32);
         view.set_navis_shown(navis);
         view.set_search(listing.search.as_str().into());
@@ -526,7 +527,7 @@ impl Party {
                         let b = budget(i);
                         // (Each slot's program, in order; the empty slots one run after them.)
                         let mut runs: Vec<i32> = p.programs.iter().enumerate().flat_map(|(k, &h)| std::iter::repeat_n(k as i32, b.as_ref().map_or(0, |b| b.cost_of(&content, h)) as usize)).collect();
-                        let gauge = b.as_ref().map_or(0, |b| b.count.limit as usize);
+                        let gauge = b.as_ref().and_then(|b| b.count.limit).map_or(0, |n| n as usize);
                         let last = p.programs.len() as i32;
                         while runs.len() < gauge {
                             runs.push(last);
@@ -685,7 +686,7 @@ impl Party {
         let kind = content.defs.definitions.get(Registry::Entry, &content.defs.entry(h).key).and_then(|d| d.spec.field("kind").str().map(str::to_string));
         let kind = kind.and_then(|k| words.names.text(table, &format!("kind.{k}")));
         let why = if fitting { self.program_refusal(shell, draft, budgets, slot, h) } else { None };
-        let fits = (fitting && why.is_none() && b.is_some()).then(|| view.invoke_fits_word(b.as_ref().map_or(0, |b| b.count.free()) as i32));
+        let fits = (fitting && why.is_none() && b.is_some()).then(|| view.invoke_fits_word(b.as_ref().and_then(|b| b.count.free()).unwrap_or(0) as i32));
         let facts: Vec<slint::SharedString> = [Some(view.invoke_blocks_word(cost)), kind.map(Into::into), fits].into_iter().flatten().collect();
         nettai_ui::PartyDetail {
             there: true,

@@ -3611,3 +3611,33 @@ same before and after:
 - **`reactions.hit_test.guard_breaks_to`** is a list of collision type members (EXE6's `break`, EXE5's and EXE4's
   `breaks_guard` and `break`), and **`status.intake.anti_traps.sword_spares`** a list of hit names (EXE6's
   `guard_spark`).
+
+### Ruleset limits (2026-11-10, branch ruleset-limits)
+
+The user: "add more options for rulesets like disregard mb limit for regchip/folder limit/ and mega/giga limit etc
+anything you can think of". A ruleset now says what it makes of the game's limits besides what it holds back.
+
+- **A game's limits are its rulesets data's** (`rules/rulesets.luau`'s `limits`, in the order a ruleset's page lists
+  them): each by the name the rules ask it by, with the most a ruleset may set it to. EXE6's: `copies` (of one chip,
+  by its MB), `mega`, `giga` (the navi's), `regular_memory` (the navi's), `tag_memory` (60), `patch_card_memory`
+  (80); EXE5's the same with `dark` (3) for `tag_memory`; EXE4's `copies` (by class), `mega`, `giga`,
+  `regular_memory`. Names are the locales' `rulesets` table, `limit.<name>` ("Copies of a chip", "Regular memory").
+- **A ruleset leaves a limit the rules' own, sets a number of its own, or lifts it** (`ruleset::Limit`: `AtMost(n)`
+  in place of the rules' own whatever it is, `Lifted`; one it doesn't name is the rules' own). The presets name none.
+  As a file, `[limits]` by name, `"none"` or the number (`mega = 8`); on the lobby's wire after the bans, each name
+  with 0 for lifted and `n + 1` for at most `n`.
+- **The rules ask them by name**: `battle.limit(name, own)` is `own` where the tool's ruleset leaves the limit (always
+  in a round: the simulation never asks), its number, or nil where it lifts it. A tool hands the battle it checks on
+  a ruleset's limits (`Battle::set_limits`, no part of the digest); `build::Checked::under` does, and keeps them for
+  the folder's view, its marks and the overview. @exelib/folder_rules asks `copies` (each chip's, in place of
+  `game.copies`), `mega`, `giga`, `dark`, `regular_memory`, `tag_memory`; @exelib/patch_cards/apply's `memory` asks
+  `patch_card_memory`. A lifted limit is nil in the folder's view (`FolderCount.limit`, `regular_memory`,
+  `tag_memory`) and in the overview's list (`SetupList.limit`), which nettai-match types as `Tally` and the build
+  editor shows as ∞.
+- **The limits moved from `validate` to `build_check`.** A folder past its copies, its Mega or Giga chips, its dark
+  chips or its Regular or tag memory, or patch cards past their MB, is one a round plays (the simulation reads none
+  of them: the Regular chip is dealt whatever its MB); only a player's build is held to them, under its ruleset. So a
+  match's checks (`check::problems`: a match file, a replay, a netplay side) no longer say them, and a replay of a
+  match played under a ruleset that lifts one plays. `folder_check` and `folder_view` (the editor's, a random
+  folder's draw) still hold to them, as the tool's ruleset leaves them. EXE5's PartyCust gauges stay `validate`'s:
+  no ruleset changes them.

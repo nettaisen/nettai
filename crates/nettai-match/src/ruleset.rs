@@ -37,6 +37,14 @@
 //!   their names in the game, a variant after its definition's
 //!   (`bass-cross-megaman/gregar`: [`Ruleset::banned_names`],
 //!   [`Ruleset::of_names`]).
+//! - **Its limits** ([`LimitDef`], [`Ruleset::limit`]): the game's
+//!   rulesets data names the limits a ruleset may change (the folder's
+//!   copies, Mega and Giga chips, the Regular memory, the patch cards' MB:
+//!   whatever the rules ask `battle.limit` by name), each with the most it
+//!   may be set to. A ruleset leaves each the rules' own, sets a number of its
+//!   own, or lifts it ([`Limit`]); the rules hold a build to them as it leaves
+//!   them (their `build_check`, `folder_view`: `build::Checked::under` hands
+//!   them to the battle it checks on), and a match's checks to none.
 //! - **A build under it** ([`Ruleset::problems`]; `build::Checked::under`):
 //!   one problem for each item a category's fact of the build names that
 //!   the ruleset doesn't allow, about every entry that names it
@@ -59,6 +67,7 @@ use nettai_battle::content::{ChipClass, Content, PlayerFact};
 use serde::Deserialize;
 use serde::de::IntoDeserializer;
 use nettai_content_api::{ChipHandle, Data, DataKey, FieldType, FormHandle, NaviHandle, Registry};
+pub use nettai_content_api::api::Limit;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -141,6 +150,32 @@ impl Category {
     }
 }
 
+/// A limit a ruleset may change (its game's rulesets data's `limits`): the
+/// name the rules ask it by (`battle.limit`), which is its name in the
+/// game's strings' [`TEXT_TABLE`] too (`limit.<name>`, and the rules' own
+/// in words `limit.<name>.rule`), the most a ruleset may set it to, and the
+/// number a ruleset's page first offers for it (the rules' own, where that
+/// is one number).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct LimitDef {
+    pub name: String,
+    pub most: u32,
+    pub start: u32,
+}
+
+impl LimitDef {
+    /// Its key in the game's strings' [`TEXT_TABLE`].
+    pub fn text_key(&self) -> String {
+        format!("limit.{}", self.name)
+    }
+
+    /// The key of the rules' own limit, in words, in the game's strings'
+    /// [`TEXT_TABLE`] ("By its MB, 5 to 1").
+    pub fn rule_key(&self) -> String {
+        format!("limit.{}.rule", self.name)
+    }
+}
+
 /// A version of the game as what only its saves can own (docs/design/versions.md
 /// §2.2): its id and color (the builds data's group's), and its members.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -191,9 +226,9 @@ impl Name {
     }
 }
 
-/// A ruleset: its name, whether each build must be one group's, and for each category (by its fact's name) the
-/// items it doesn't allow. A category that holds nothing back isn't in
-/// `banned`, so two rulesets that allow the same are equal.
+/// A ruleset: its name, whether each build must be one group's, for each category (by its fact's name) the
+/// items it doesn't allow, and what it makes of the game's limits. A category that holds nothing back isn't in
+/// `banned`, nor a limit it leaves the rules' own in `limits`, so two rulesets that allow the same are equal.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Ruleset {
     pub name: Name,
@@ -206,6 +241,8 @@ pub struct Ruleset {
     /// holds back for the records of each key besides what it holds back for
     /// all. None empty.
     banned_by: BTreeMap<String, KeyedBans>,
+    /// What it makes of each limit it changes, by name ([`LimitDef`]).
+    limits: BTreeMap<String, Limit>,
 }
 
 /// What a ruleset holds back of a category per record's key
@@ -227,6 +264,9 @@ pub struct Rulesets {
     pub categories: Vec<Category>,
     /// The groups, in the versions' order.
     pub groups: Vec<Group>,
+    /// The limits a ruleset may change, in the order a ruleset's page
+    /// lists them.
+    pub limits: Vec<LimitDef>,
     /// The rulesets ready-made, in order: the first is a player's until
     /// they pick another.
     pub presets: Vec<Ruleset>,
@@ -417,13 +457,37 @@ fn named_by(content: &Content, side: &Side, fact: &str, field: Option<&str>, reg
 impl Ruleset {
     /// A ruleset that allows everything, named `name`, versions mixed.
     pub fn open(name: Name) -> Ruleset {
-        Ruleset { name, one_per_build: false, banned: BTreeMap::new(), banned_by: BTreeMap::new() }
+        Ruleset { name, one_per_build: false, banned: BTreeMap::new(), banned_by: BTreeMap::new(), limits: BTreeMap::new() }
     }
 
-    /// Whether it allows what `other` does: the same Versions and the same
-    /// items held back, whatever either is named.
+    /// Whether it allows what `other` does: the same Versions, the same
+    /// items held back and the same limits, whatever either is named.
     pub fn same_rules(&self, other: &Ruleset) -> bool {
-        self.one_per_build == other.one_per_build && self.banned == other.banned && self.banned_by == other.banned_by
+        self.one_per_build == other.one_per_build && self.banned == other.banned && self.banned_by == other.banned_by && self.limits == other.limits
+    }
+
+    /// What it makes of limit `name`; none: it leaves it the rules' own.
+    pub fn limit(&self, name: &str) -> Option<Limit> {
+        self.limits.get(name).copied()
+    }
+
+    /// Make limit `name` `limit` (none: the rules' own again).
+    pub fn set_limit(&mut self, name: &str, limit: Option<Limit>) {
+        match limit {
+            Some(l) => {
+                self.limits.insert(name.to_string(), l);
+            }
+            None => {
+                self.limits.remove(name);
+            }
+        }
+    }
+
+    /// The limits it changes, by name, each with what it makes of it: what
+    /// a build is checked under (`Battle::set_limits`), and what a file and
+    /// the lobby's wire state.
+    pub fn limits(&self) -> &BTreeMap<String, Limit> {
+        &self.limits
     }
 
     /// Whether it allows item `item` of category `fact`.
@@ -709,6 +773,8 @@ impl Ruleset {
     /// A ruleset of the game of `rulesets` from its names
     /// ([`Ruleset::banned_names`]'s): an error names a fact that is no
     /// category of the game's or a name its registry hasn't.
+    /// Its limits ([`Ruleset::limits`]) come by name too: an error names a
+    /// limit the game's rulesets don't, or a number past its most.
     pub fn of_names(
         rulesets: &Rulesets,
         content: &Content,
@@ -716,9 +782,19 @@ impl Ruleset {
         one_per_build: bool,
         banned: &[(String, Vec<String>)],
         banned_by: &[(String, Vec<(String, Vec<String>)>)],
+        limits: &[(String, Limit)],
     ) -> Result<Ruleset, String> {
         let mut out = Ruleset::open(name);
         out.one_per_build = one_per_build;
+        for (name, limit) in limits {
+            let def = rulesets.limit(name).ok_or_else(|| format!("{} has no ruleset limit {name:?}", rulesets.game))?;
+            if let Limit::AtMost(n) = limit
+                && *n > def.most
+            {
+                return Err(format!("limit {name}: {n} is past its most, {}", def.most));
+            }
+            out.set_limit(name, Some(*limit));
+        }
         for (fact, names) in banned {
             let category = rulesets.category(fact).ok_or_else(|| format!("{} has no ruleset category {fact:?}", rulesets.game))?;
             for name in names {
@@ -811,7 +887,20 @@ impl Rulesets {
             categories.push(Category { fact: fact.clone(), registry, of, items, by, within });
         }
         let groups = groups(content, game, &builds);
-        let mut out = Rulesets { game: game.to_string(), categories, groups, presets: Vec::new() };
+        let mut limits: Vec<LimitDef> = Vec::new();
+        for l in items(data.field("limits")) {
+            let Data::Str(name) = l.field("name") else { return Err(format!("{module}: a limit names itself (`name`)")) };
+            let count = |field: &str| l.field(field).int().and_then(|n| u32::try_from(n).ok()).ok_or_else(|| format!("{module}: limit {name}: its `{field}` is a count"));
+            let (most, start) = (count("most")?, count("start")?);
+            if start > most {
+                return Err(format!("{module}: limit {name}: its `start` is past its `most`"));
+            }
+            if limits.iter().any(|d| d.name == *name) {
+                return Err(format!("{module}: limit {name} is there twice"));
+            }
+            limits.push(LimitDef { name: name.clone(), most, start });
+        }
+        let mut out = Rulesets { game: game.to_string(), categories, groups, limits, presets: Vec::new() };
         for p in items(data.field("presets")) {
             let Data::Str(id) = p.field("id") else { return Err(format!("{module}: a preset has its `id`")) };
             let mut ruleset = Ruleset::open(Name::Preset(id.clone()));
@@ -848,6 +937,11 @@ impl Rulesets {
     /// The category of fact `fact`.
     pub fn category(&self, fact: &str) -> Option<&Category> {
         self.categories.iter().find(|c| c.fact == fact)
+    }
+
+    /// The limit named `name`.
+    pub fn limit(&self, name: &str) -> Option<&LimitDef> {
+        self.limits.iter().find(|l| l.name == name)
     }
 
     /// The group named `id`.
@@ -1003,6 +1097,28 @@ mod tests {
     use nettai_battle::rules::Fact;
     use nettai_content_api::Value;
 
+    /// A ruleset's limits by name: each game's rulesets name theirs, with their most; a ruleset reads them back as
+    /// it states them, and refuses a limit its game hasn't or a number past its most.
+    #[test]
+    fn limits_by_name() {
+        for (content, game, names) in [
+            (crate::testing::exe4_content(), "exe4", &["copies", "mega", "giga", "regular_memory"][..]),
+            (crate::testing::exe5_content(), "exe5", &["copies", "mega", "giga", "dark", "regular_memory", "patch_card_memory"][..]),
+            (crate::testing::exe6_content(), "exe6", &["copies", "mega", "giga", "regular_memory", "tag_memory", "patch_card_memory"][..]),
+        ] {
+            let r = Rulesets::of(&content, game).unwrap();
+            assert_eq!(r.limits.iter().map(|l| l.name.as_str()).collect::<Vec<_>>(), names, "{game}");
+            assert!(r.presets.iter().all(|p| p.limits().is_empty()), "{game}: the presets keep the game's limits");
+            let set = [("copies".to_string(), Limit::Lifted), ("mega".to_string(), Limit::AtMost(8))];
+            let read = Ruleset::of_names(&r, &content, Name::Own("x".into()), false, &[], &[], &set).unwrap();
+            assert_eq!((read.limit("copies"), read.limit("mega"), read.limit("giga")), (Some(Limit::Lifted), Some(Limit::AtMost(8)), None), "{game}");
+            assert!(!read.same_rules(&Ruleset::open(Name::Own("x".into()))), "{game}");
+            let past = [("mega".to_string(), Limit::AtMost(r.limit("mega").unwrap().most + 1))];
+            assert!(Ruleset::of_names(&r, &content, Name::Own("x".into()), false, &[], &[], &past).is_err(), "{game}");
+            assert!(Ruleset::of_names(&r, &content, Name::Own("x".into()), false, &[], &[], &[("hp".into(), Limit::Lifted)]).is_err(), "{game}");
+        }
+    }
+
     /// Each game's categories, its groups and what they hold, and its
     /// presets, as its data says them.
     #[test]
@@ -1132,9 +1248,9 @@ mod tests {
         // As names, and back.
         let names = no_cannon.banned_names(&content);
         assert_eq!(names, vec![("folder".to_string(), vec!["cannon".to_string()])]);
-        assert_eq!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, &names, &[]).unwrap(), no_cannon);
-        assert!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, &[("hp".into(), vec![])], &[]).is_err());
-        assert!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, &[("folder".into(), vec!["nothing".into()])], &[]).is_err());
+        assert_eq!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, &names, &[], &[]).unwrap(), no_cannon);
+        assert!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, &[("hp".into(), vec![])], &[], &[]).is_err());
+        assert!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, &[("folder".into(), vec!["nothing".into()])], &[], &[]).is_err());
         // Allowed again, it holds nothing back, and equals an open one.
         no_cannon.set_allowed("folder", &Item::of(cannon.0), true);
         assert_eq!(no_cannon, Ruleset::open(Name::Own("No Cannon".into())));
@@ -1162,7 +1278,7 @@ mod tests {
         assert!(r.allows_def(&ruleset, "patch_cards", card) && r.allowed_variants(&ruleset, "patch_cards", card) == ["falzar"]);
         let names = ruleset.banned_names(&content);
         assert_eq!(names, vec![("patch_cards".to_string(), vec!["bass-cross-megaman/gregar".to_string()])]);
-        assert_eq!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &names, &[]).unwrap(), ruleset);
+        assert_eq!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &names, &[], &[]).unwrap(), ruleset);
         let mut side = builds.new_build(&content, "gregar").unwrap();
         side.set_fact(&content, crate::facts::PATCH_CARDS, &patch_cards(&content, "exe6", "bass-cross-megaman/gregar")).unwrap();
         let problems = ruleset.problems(&r, &content, &side);
@@ -1258,7 +1374,7 @@ mod tests {
         assert!(!checked.ready() && checked.problems.iter().any(|p| p.field.as_deref() == Some("party") && p.at(1)), "{:?}", checked.problems);
         let names = ruleset.banned_names(&content);
         assert_eq!(names, [("party.programs".to_string(), vec!["p-spport".to_string()])]);
-        let back = Ruleset::of_names(&r, &content, ruleset.name.clone(), ruleset.one_per_build, &names, &[]).unwrap();
+        let back = Ruleset::of_names(&r, &content, ruleset.name.clone(), ruleset.one_per_build, &names, &[], &[]).unwrap();
         assert!(back.same_rules(&ruleset));
     }
 
@@ -1316,12 +1432,12 @@ mod tests {
         // By name, and back.
         let (names, by) = (ruleset.banned_names(&content), ruleset.banned_by_names(&content));
         assert_eq!(by, [("party.programs".to_string(), vec![("meddy".to_string(), vec!["p-spport".to_string()]), ("protoman".to_string(), vec!["p-btlpk2".to_string()])])]);
-        assert_eq!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &names, &by).unwrap(), ruleset);
+        assert_eq!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &names, &by, &[]).unwrap(), ruleset);
         // What the categories can't hold: MegaMan in the party, as a key, a program's ban by a field it isn't kept by.
-        assert!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &[("party".into(), vec!["megaman".into()])], &[]).is_err());
+        assert!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &[("party".into(), vec!["megaman".into()])], &[], &[]).is_err());
         let megaman = [("party.programs".to_string(), vec![("megaman".to_string(), vec!["p-spport".to_string()])])];
-        assert!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &[], &megaman).is_err());
-        assert!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &[], &[("party".into(), vec![("protoman".into(), vec![])])]).is_err());
+        assert!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &[], &megaman, &[]).is_err());
+        assert!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &[], &[("party".into(), vec![("protoman".into(), vec![])])], &[]).is_err());
         // Allowed again for its navi, it holds nothing back of it.
         let mut back = ruleset.clone();
         back.set_allowed_for(&category, navi("protoman"), &btlpk_2, true);
@@ -1401,7 +1517,7 @@ mod tests {
             assert_eq!((problems[0].field.as_deref(), problems[0].entry), (Some("auto_battle_places"), Some(0)), "{game}");
             assert!(problems[0].at(0) && problems[0].at(3) && !problems[0].at(1), "{game}");
             let names = ruleset.banned_names(&content);
-            assert_eq!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &names, &[]).unwrap(), ruleset, "{game}");
+            assert_eq!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &names, &[], &[]).unwrap(), ruleset, "{game}");
             // Held back in the folder alone: the places' Cannon is let be.
             let mut in_folder = Ruleset::open(Name::Own("No Cannon".into()));
             in_folder.set_allowed("folder", &Item::of(cannon.0), false);

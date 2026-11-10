@@ -135,7 +135,7 @@ use web_time::Instant;
 use nettai_battle::content::{Content, ContentHash};
 use nettai_match::build::Checked;
 use nettai_match::check::Problem;
-use nettai_match::ruleset::{Name as RulesetName, Ruleset, Rulesets};
+use nettai_match::ruleset::{Limit, Name as RulesetName, Ruleset, Rulesets};
 use nettai_match::{BackgroundPick, Match, RoundSettings, Set, Side};
 use nettai_netplay::protocol;
 use nettai_netplay::rng::SplitMix64;
@@ -517,8 +517,8 @@ impl Settings {
     /// open; the custom screen's time limit (seconds, 0 for none); the ruleset (not its name, which stays with the player: one
     /// version per build; then each category it holds anything back of, by its fact's name, with the names of what it
     /// doesn't allow; then each category it holds anything back of per record, by its fact's name, with each key's
-    /// name and the names of what it doesn't allow for that key's records); whether a background left to the seed is
-    /// the pool's;
+    /// name and the names of what it doesn't allow for that key's records; then each limit it changes, by name, with
+    /// what it makes of it: 0 lifted, `n + 1` at most `n`); whether a background left to the seed is the pool's;
     /// the round wins the set is first to (`n`, a byte), then each of its
     /// `2n − 1` rounds' stage and background by name (empty: from the seed;
     /// another game's background with its game, `exe4:acdc-area`).
@@ -550,6 +550,15 @@ impl Settings {
                     w.put(n);
                 }
             }
+        }
+        let limits = self.ruleset.limits();
+        w.uvarint(limits.len() as u64);
+        for (name, limit) in limits {
+            w.put(name);
+            w.uvarint(match limit {
+                Limit::Lifted => 0,
+                Limit::AtMost(n) => u64::from(*n) + 1,
+            });
         }
         w.put(&(self.backgrounds as u8));
         w.put(&self.first_to());
@@ -598,6 +607,16 @@ impl Settings {
             }
             banned_by.push((fact, of));
         }
+        let count = r.uvarint().map_err(bad)?;
+        let mut limits = Vec::new();
+        for _ in 0..count.min(256) {
+            let name: String = r.get().map_err(bad)?;
+            let limit = match r.uvarint().map_err(bad)? {
+                0 => Limit::Lifted,
+                n => Limit::AtMost(u32::try_from(n - 1).map_err(|_| format!("limit {name}: {} is no limit", n - 1))?),
+            };
+            limits.push((name, limit));
+        }
         let backgrounds = match r.get::<u8>().map_err(bad)? {
             0 => BackgroundPick::Game,
             1 => BackgroundPick::Pool,
@@ -632,7 +651,7 @@ impl Settings {
             return Err(format!("a match of {game}, and this side has {}'s content", content.game()));
         }
         // (Named as this side names its rules: a preset's, else the other player's.)
-        let ruleset = rulesets.named_here(Ruleset::of_names(rulesets, content, RulesetName::Theirs, one_per_build, &banned, &banned_by)?);
+        let ruleset = rulesets.named_here(Ruleset::of_names(rulesets, content, RulesetName::Theirs, one_per_build, &banned, &banned_by, &limits)?);
         // (The rounds as a match's checks hold them: a stage stated is a
         // link battle's, and one left is the rules' to pick.)
         if let Some(problem) = nettai_match::check::check_rounds(content, &game, &rounds).into_iter().next() {
@@ -2193,6 +2212,14 @@ mod tests {
         let text = String::from_utf8_lossy(&bytes);
         assert!(!text.contains("Tournament"), "the name doesn't travel: {text}");
         assert!(text.contains("bass") && text.contains("starman"), "by name: {text}");
+        // Its limits travel by name, lifted or a number, and both commit to them.
+        let mut limited = own.clone();
+        limited.set_limit("copies", Some(Limit::Lifted));
+        limited.set_limit("mega", Some(Limit::AtMost(8)));
+        let with_limits = Settings { ruleset: limited.clone(), ..s.clone() };
+        let theirs = read(&with_limits).unwrap();
+        assert!(theirs.ruleset.same_rules(&limited) && !theirs.ruleset.same_rules(&own));
+        assert_ne!(with_limits.hash(&content), owned.hash(&content));
         // (A player's own whose rules are a preset's is that preset there.)
         let mut like_standard = standard();
         like_standard.name = RulesetName::Own("Mine".into());
@@ -2210,11 +2237,13 @@ mod tests {
         other.game = "exe5".into();
         assert!(read(&other).unwrap_err().contains("no stage"));
         // (Open builds, no custom screen time limit, and the ruleset as
-        // written: one per build, nothing held back, for all or by key.)
+        // written: one per build, nothing held back, for all or by key, no
+        // limit changed.)
         let ruleset = |w: &mut Writer| {
             w.put(&false);
             w.put(&0u16);
             w.put(&true);
+            w.uvarint(0);
             w.uvarint(0);
             w.uvarint(0);
         };
@@ -2239,6 +2268,7 @@ mod tests {
         w.uvarint(1);
         w.put(&"no-such-chip".to_string());
         w.uvarint(0);
+        w.uvarint(0);
         w.put(&false);
         w.put(&1u8);
         w.put(&String::new());
@@ -2247,7 +2277,7 @@ mod tests {
         // (What the set is first to is the byte after the game, open
         // setups, the custom screen time limit, the ruleset and the pool's
         // switch.)
-        let first_to = 1 + "exe6".len() + 1 + 1 + 1 + 1 + 1 + 1;
+        let first_to = 1 + "exe6".len() + 1 + 1 + 1 + 1 + 1 + 1 + 1;
         assert_eq!(blank.to_bytes(&content)[first_to], 3);
         for wins in [0, nettai_match::MAX_FIRST_TO + 1] {
             let mut none = blank.to_bytes(&content);

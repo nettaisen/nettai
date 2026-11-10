@@ -866,11 +866,15 @@ mod tests {
         assert!(none.sides[0].facts.form_list(&content).is_empty());
         has(bad(list, "crosses = [\"\", \"heatcross\"]"), "left: crosses: an empty entry before HeatCross (a list is filled from the front)");
         has(bad(&format!("{version}\n"), ""), "left: no cybeast: a side of exe6 states its own (a form); none is assumed");
-        // Thirty copies of a chip.
+        // Thirty copies of a chip: a build's problem (its limits are its
+        // `build_check`'s, as its ruleset leaves them), which a match's checks
+        // leave be.
+        let built = |s: &crate::Side| -> Vec<String> { crate::build::Checked::of(&content, "exe6", s).problems.into_iter().map(|p| p.text).collect() };
         let mut m = picked.clone();
         { let mut f = m.sides[0].folder(&content); f.chips = [m.sides[0].folder(&content).chips[0]; 30]; m.sides[0].set_folder(&content, &f).unwrap(); }
         { let mut f = m.sides[0].folder(&content); f.regular = None; m.sides[0].set_folder(&content, &f).unwrap(); }
-        has(crate::check_match(&content, &m), "left: folder: 30 copies of");
+        has(built(&m.sides[0]), "folder: 30 copies of");
+        assert!(crate::check_match(&content, &m).is_empty(), "{:?}", crate::check_match(&content, &m));
         // Mega chips past the navi's Mega level (MegaMan's fresh 5, with no
         // NaviCust program that raises it): ten of the game's.
         let mut m = picked.clone();
@@ -884,12 +888,12 @@ mod tests {
             { let mut f = m.sides[1].folder(&content); f.chips[i] = Some(nettai_battle::custom::FolderChip::new(c, content.chip(c).codes[0])); m.sides[1].set_folder(&content, &f).unwrap(); }
         }
         { let mut f = m.sides[1].folder(&content); f.regular = None; m.sides[1].set_folder(&content, &f).unwrap(); }
-        has(crate::check_match(&content, &m), "Mega chips, past the navi's 5");
+        has(built(&m.sides[1]), "Mega chips, past 5");
         // Patch cards past 80 MB; Crosses for a navi without any.
         let mut m = picked.clone();
         let cards = crate::testing::patch_cards(&content, "exe6", "canodumb,amonicul,coldbear,megalian,mettfire,kilplant");
         m.sides[0].set_fact(&content, "patch_cards", &cards).unwrap();
-        has(crate::check_match(&content, &m), "left: the patch cards are");
+        has(built(&m.sides[0]), "the patch cards are");
         let mut m = picked.clone();
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[1].set_navi(&content, protoman).unwrap();

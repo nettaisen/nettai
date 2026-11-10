@@ -50,7 +50,8 @@ export struct LibraryRow {
     version: VersionTag,
 }
 
-// What the folder holds against its limits. `tags`: the game's folders have tag chips.
+// What the folder holds against its limits (a limit -1: none, the build's ruleset lifts it). `tags`: the game's folders
+// have tag chips.
 export struct FolderCounts {
     chips: int,
     size: int,
@@ -843,9 +844,9 @@ export component FolderTab inherits Rectangle {
         y: chips.y;
         label: @tr("Mega");
         value: FolderView.counts.mega;
-        suffix: "/\{FolderView.counts.mega-limit}";
+        suffix: "/" + (FolderView.counts.mega-limit < 0 ? "∞" : "\{FolderView.counts.mega-limit}");
         value-width: 32px;
-        over: FolderView.counts.mega > FolderView.counts.mega-limit;
+        over: FolderView.counts.mega-limit >= 0 && FolderView.counts.mega > FolderView.counts.mega-limit;
     }
 
     giga := CountBox {
@@ -853,9 +854,9 @@ export component FolderTab inherits Rectangle {
         y: Theme.phone ? 34px : chips.y;
         label: @tr("Giga");
         value: FolderView.counts.giga;
-        suffix: "/\{FolderView.counts.giga-limit}";
+        suffix: "/" + (FolderView.counts.giga-limit < 0 ? "∞" : "\{FolderView.counts.giga-limit}");
         value-width: 32px;
-        over: FolderView.counts.giga > FolderView.counts.giga-limit;
+        over: FolderView.counts.giga-limit >= 0 && FolderView.counts.giga > FolderView.counts.giga-limit;
     }
 
     regular := CountBox {
@@ -863,9 +864,9 @@ export component FolderTab inherits Rectangle {
         y: Theme.sideways ? root.pane-y + 48px : giga.y;
         label: Theme.handheld ? @tr("Regular") : @tr("Reg");
         value: FolderView.counts.regular;
-        suffix: "/\{FolderView.counts.regular-limit} MB";
+        suffix: "/" + (FolderView.counts.regular-limit < 0 ? "∞" : "\{FolderView.counts.regular-limit} MB");
         value-width: 52px;
-        over: FolderView.counts.regular > FolderView.counts.regular-limit;
+        over: FolderView.counts.regular-limit >= 0 && FolderView.counts.regular > FolderView.counts.regular-limit;
     }
 
     tag := CountBox {
@@ -874,9 +875,9 @@ export component FolderTab inherits Rectangle {
         visible: FolderView.counts.tags;
         label: @tr("Tag");
         value: FolderView.counts.tag;
-        suffix: "/\{FolderView.counts.tag-limit} MB";
+        suffix: "/" + (FolderView.counts.tag-limit < 0 ? "∞" : "\{FolderView.counts.tag-limit} MB");
         value-width: 52px;
-        over: FolderView.counts.tag > FolderView.counts.tag-limit;
+        over: FolderView.counts.tag-limit >= 0 && FolderView.counts.tag > FolderView.counts.tag-limit;
     }
 
     // CLEAR (docs/design/app-ui.md §2.71; the user: "you should add clear for navicust/folder/patch cards/abd"): every

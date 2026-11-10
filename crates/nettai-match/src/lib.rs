@@ -56,7 +56,7 @@ pub use pick::Picks;
 pub use file::{parse, write};
 pub use folders::Folder;
 pub use set::{After, Set};
-pub use wrong::{Count, Wrong};
+pub use wrong::{Count, Tally, Wrong};
 
 /// A round of a match as the match states it: where it is fought, its
 /// stage (one of the game's link battle stages) and the background shown

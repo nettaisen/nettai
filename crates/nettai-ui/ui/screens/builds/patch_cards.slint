@@ -63,8 +63,8 @@ export struct CardDetail {
     second: [CardLine],
 }
 
-// What the build's cards hold: how many cards, their MB against the most (`budget`: the game's cards cost MB); in a
-// game with slots (`slotted`), how many of its slots hold a card.
+// What the build's cards hold: how many cards, their MB against the most (`budget`: the game's cards cost MB; `limit`
+// -1: none, the build's ruleset lifts it); in a game with slots (`slotted`), how many of its slots hold a card.
 export struct CardCounts {
     cards: int,
     megabytes: int,
@@ -615,9 +615,9 @@ export component PatchCardsTab inherits Rectangle {
             visible: PatchCardsView.counts.budget;
             label: @tr("MB");
             value: PatchCardsView.counts.megabytes;
-            suffix: "/\{PatchCardsView.counts.limit}";
+            suffix: "/" + (PatchCardsView.counts.limit < 0 ? "∞" : "\{PatchCardsView.counts.limit}");
             value-width: 46px;
-            over: PatchCardsView.counts.megabytes > PatchCardsView.counts.limit;
+            over: PatchCardsView.counts.limit >= 0 && PatchCardsView.counts.megabytes > PatchCardsView.counts.limit;
         }
 
         CountBox {

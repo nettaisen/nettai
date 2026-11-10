@@ -100,3 +100,33 @@ msgstr "{}的程式"
 
 msgid "Banned for all navis"
 msgstr "對所有領航員禁用"
+
+# The Limits page: its name, its note, a limit's game's own rule, what a ruleset makes of a limit, RESET, its count.
+msgid "Limits"
+msgstr "限制"
+
+msgid "The game's own"
+msgstr "全部依照遊戲"
+
+msgid "Game's: {}"
+msgstr "依照遊戲：{}"
+
+msgid "Game's"
+msgstr "依照遊戲"
+
+msgid "At most"
+msgstr "上限"
+
+msgid "No limit"
+msgstr "無限制"
+
+msgid "Reset"
+msgstr "重設"
+
+msgid "{n} changed"
+msgid_plural "{n} changed"
+msgstr[0] "已變更 {n} 項"
+
+msgid "{n} limit"
+msgid_plural "{n} limits"
+msgstr[0] "{n} 項"

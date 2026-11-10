@@ -25,10 +25,20 @@
 //! protoman = ["p-btlpk2"]
 //! ```
 //!
-//! What it doesn't name is allowed. The presets are the game's (its rules/rulesets) and have no file.
+//! The limits it changes (`nettai_match::ruleset::Ruleset::limits`) are in `[limits]`, by name: `"none"` where it lifts
+//! one, else the number it holds a build to:
+//!
+//! ```toml
+//! [limits]
+//! copies = "none"
+//! mega = 8
+//! ```
+//!
+//! What it doesn't name is allowed, and a limit it doesn't name is the game's own. The presets are the game's (its
+//! rules/rulesets) and have no file.
 
 use nettai_battle::Content;
-use nettai_match::ruleset::{Name, Ruleset, Rulesets};
+use nettai_match::ruleset::{Limit, Name, Ruleset, Rulesets};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -41,6 +51,17 @@ const ONE_PER_BUILD: &str = "one_per_build";
 /// The versions mixed, as a file says it.
 const MIXED: &str = "mixed";
 
+/// A limit lifted, as a file says it.
+const NO_LIMIT: &str = "none";
+
+/// A limit as a file says it: lifted ([`NO_LIMIT`]), or a number.
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+enum LimitText {
+    Word(String),
+    AtMost(u32),
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct RulesetFile {
@@ -51,6 +72,8 @@ struct RulesetFile {
     banned: BTreeMap<String, Vec<String>>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     banned_by: BTreeMap<String, BTreeMap<String, Vec<String>>>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    limits: BTreeMap<String, LimitText>,
 }
 
 /// A ruleset's file, as it is listed: its path, its name, and its text (read against its game's rulesets once
@@ -99,7 +122,16 @@ pub fn read(rulesets: &Rulesets, content: &Content, text: &str) -> Result<Rulese
     };
     let banned: Vec<(String, Vec<String>)> = f.banned.into_iter().collect();
     let banned_by: Vec<(String, Vec<(String, Vec<String>)>)> = f.banned_by.into_iter().map(|(fact, keys)| (fact, keys.into_iter().collect())).collect();
-    Ruleset::of_names(rulesets, content, Name::Own(f.name), one_per_build, &banned, &banned_by)
+    let limits: Vec<(String, Limit)> = f
+        .limits
+        .into_iter()
+        .map(|(name, l)| match l {
+            LimitText::Word(w) if w == NO_LIMIT => Ok((name, Limit::Lifted)),
+            LimitText::Word(w) => Err(format!("limit {name} {w:?}: a number, or \"{NO_LIMIT}\"")),
+            LimitText::AtMost(n) => Ok((name, Limit::AtMost(n))),
+        })
+        .collect::<Result<_, _>>()?;
+    Ruleset::of_names(rulesets, content, Name::Own(f.name), one_per_build, &banned, &banned_by, &limits)
 }
 
 /// A ruleset as its file's text: the player's own, named as it is (a preset's id where it is one).
@@ -115,6 +147,17 @@ pub fn text(content: &Content, game: &str, ruleset: &Ruleset) -> String {
         versions: if ruleset.one_per_build { ONE_PER_BUILD } else { MIXED }.to_string(),
         banned: ruleset.banned_names(content).into_iter().collect(),
         banned_by: ruleset.banned_by_names(content).into_iter().map(|(fact, keys)| (fact, keys.into_iter().collect())).collect(),
+        limits: ruleset
+            .limits()
+            .iter()
+            .map(|(name, l)| {
+                let text = match l {
+                    Limit::Lifted => LimitText::Word(NO_LIMIT.to_string()),
+                    Limit::AtMost(n) => LimitText::AtMost(*n),
+                };
+                (name.clone(), text)
+            })
+            .collect(),
     };
     toml::to_string(&f).expect("a ruleset serializes")
 }
@@ -172,13 +215,20 @@ mod tests {
             own.allow_groups(&r, &c, &["gregar"]);
         }
         own.set_allowed("folder", &nettai_match::ruleset::Item::of(nettai_match::ids::chip(&content, "exe6", "bass").unwrap().0), false);
+        own.set_limit("copies", Some(Limit::Lifted));
+        own.set_limit("mega", Some(Limit::AtMost(8)));
         let text = text(&content, "exe6", &own);
         assert!(text.contains("versions = \"one_per_build\"") && text.contains("bass"), "{text}");
+        assert!(text.contains("[limits]\ncopies = \"none\"\nmega = 8"), "{text}");
         assert!(text.contains("tengucross"), "Falzar's Crosses are held back by name: {text}");
         assert_eq!(read(&r, &content, &text), Ok(own.clone()));
         assert!(read(&rulesets("exe5"), &nettai_match::testing::exe5_content(), &text).unwrap_err().contains("not of exe5"));
         assert!(read(&r, &content, &text.replacen("bass", "nobody", 1)).is_err());
         assert!(read(&r, &content, &text.replacen("one_per_build", "sometimes", 1)).is_err());
+        // (A limit the game hasn't, a number past its most, or a word but "none", isn't one.)
+        assert!(read(&r, &content, &text.replacen("mega = 8", "dark = 8", 1)).is_err());
+        assert!(read(&r, &content, &text.replacen("mega = 8", "mega = 31", 1)).is_err());
+        assert!(read(&r, &content, &text.replacen("copies = \"none\"", "copies = \"some\"", 1)).is_err());
         let mut mixed = r.preset("unrestricted").unwrap().clone();
         mixed.name = Name::Own("Open".into());
         assert_eq!(read(&r, &content, &super::text(&content, "exe6", &mixed)), Ok(mixed));

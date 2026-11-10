@@ -490,6 +490,16 @@ impl Battle {
         self.tool_answer.take().filter(|d| *d != nettai_content_api::Data::Nil)
     }
 
+    /// Check the sides' builds under a ruleset's limits from now on, by
+    /// name (what it makes of each limit its game's rules/rulesets names;
+    /// one it leaves out is the rules' own): what the rules' tool hooks read
+    /// (`battle.limit`: `validate`, `build_check`, `folder_check`,
+    /// `folder_view`, `overview`). For tools: no part of the simulation, which
+    /// never asks.
+    pub fn set_limits(&mut self, limits: std::collections::BTreeMap<String, nettai_content_api::api::Limit>) {
+        self.limits = limits;
+    }
+
     /// What side `side`'s rules say of a folder (their `folder_check`:
     /// EXE6's folder rules), each rule it breaks a problem; nothing
     /// when it keeps them, or when the rules have none. The folder's chips

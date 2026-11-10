@@ -102,3 +102,35 @@ msgstr "{}のプログラム"
 
 msgid "Banned for all navis"
 msgstr "すべてのナビで使用不可"
+
+# The Limits page: its name, its note, a limit's game's own rule, what a ruleset makes of a limit, RESET, its count.
+msgid "Limits"
+msgstr "制限"
+
+msgid "The game's own"
+msgstr "すべてゲームどおり"
+
+msgid "Game's: {}"
+msgstr "ゲームどおり: {}"
+
+msgid "Game's"
+msgstr "ゲームどおり"
+
+msgid "At most"
+msgstr "上限"
+
+msgid "No limit"
+msgstr "無制限"
+
+msgid "Reset"
+msgstr "リセット"
+
+msgid "{n} changed"
+msgid_plural "{n} changed"
+msgstr[0] "{n} 件変更"
+msgstr[1] "{n} 件変更"
+
+msgid "{n} limit"
+msgid_plural "{n} limits"
+msgstr[0] "{n} 項目"
+msgstr[1] "{n} 項目"

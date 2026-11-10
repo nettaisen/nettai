@@ -291,7 +291,8 @@ impl PatchCards {
         view.set_counts(CardCounts {
             cards,
             megabytes: budget.map_or(0, |b| b.count.used as i32),
-            limit: budget.map_or(0, |b| b.count.limit as i32),
+            // (No limit, the build's ruleset lifting it: -1.)
+            limit: budget.map_or(0, |b| b.count.limit.map_or(-1, |n| n as i32)),
             budget: budget.is_some(),
             slotted,
             filled: cards,

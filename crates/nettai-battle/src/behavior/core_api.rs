@@ -867,6 +867,10 @@ impl CoreApi for Battle {
         self.folder_check.clone()
     }
 
+    fn limit(&self, name: &str) -> Option<nettai_content_api::api::Limit> {
+        self.limits.get(name).copied()
+    }
+
     fn custom_folder(&self, side: u8) -> ApiResult<Vec<Option<(ChipHandle, Option<u8>)>>> {
         let folder = self.custom.sides[side as usize & 1].folder;
         Ok(folder.chips.iter().map(|c| c.map(|c| (c.id, code_number(c.code)))).collect())

@@ -3192,6 +3192,18 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         }
         Ok(LuaValue::Table(out))
     });
+    // The limit `name` a tool checks a build under (its ruleset's: the
+    // game's rules/rulesets names the limits): `own`, the rules' own, where
+    // the ruleset leaves it (and in a round); its number in place of it; nil
+    // where it holds the build to none.
+    lib_fn!(lua, t, "limit", |_, (name, own): (String, LuaValue)| {
+        use nettai_content_api::api::Limit;
+        Ok(match with(|api, _| Ok(api.limit(&name)))? {
+            None => own,
+            Some(Limit::Lifted) => LuaValue::Nil,
+            Some(Limit::AtMost(n)) => LuaValue::Integer(n.into()),
+        })
+    });
     // A definition's name in the content's own strings, else its key: for
     // what the rules say to a tool (`validate`).
     lib_fn!(lua, t, "name", |_, def: LuaValue| {

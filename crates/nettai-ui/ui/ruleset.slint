@@ -7,7 +7,10 @@
 // In the body's units: a row of Version exclusives and, at the right, DUPLICATE and DELETE; under it two panels, as the
 // build editor's are: the categories (a list, 300 wide), and the chosen one's (its toolbar, the search with ALLOW
 // ALL and ALLOW NONE, a version's quick choices under them, over its items in as many columns as the panel holds);
-// the reserved line at the foot. The user: "why are the buttons on the ruleset editor transparent? i also feel like
+// the reserved line at the foot. After the categories, Limits (the game's limits: verify's
+// docs/nettai-ui/ruleset-limits, layout L2, the user's pick): its panel has RESET in the header line's small words and
+// a row a limit, its name over the game's own rule, then GAME'S | AT MOST | NO LIMIT and AT MOST's number (on a phone,
+// a line of their own under the name). The user: "why are the buttons on the ruleset editor transparent? i also feel like
 // the layout is so weird" (a control's raised fill is drawn for a panel, and there was none). On a phone one column,
 // no panels: Version exclusives (its word over its control), the buttons, the category as a select, the head, the
 // items. Held sideways (docs/design/app-ui.md §2.103) the categories are tabs in the header's row after the name, as
@@ -18,7 +21,7 @@ import { Theme, I18n } from "theme.slint";
 import { Nav, Focusable, NavKind } from "nav.slint";
 import { Shell, Page, PadButton, Hint } from "shell.slint";
 import { Arrive } from "motion.slint";
-import { Button, ButtonKind, Field, Seg, Select, Label, Value, Message, ListView, ScrollPage, PanelBack, RowTouch, RowBack, Pill, AllNone, TabBar, Tab } from "widgets.slint";
+import { Button, ButtonKind, Field, Seg, Stepper, Select, Label, Value, Message, ListView, ScrollPage, PanelBack, RowTouch, RowBack, Pill, AllNone, TabBar, Tab, WordButton } from "widgets.slint";
 import { VersionTag, VersionMark } from "build.slint";
 
 // A category in the list: its name, and how much it allows.
@@ -76,6 +79,15 @@ export struct RulesetProgram {
     note: string,
 }
 
+// A limit of the game's (the Limits page): its name, the game's own rule in words, what the ruleset makes of it
+// (`kind`: 0 the game's, 1 at most `number`, 2 none), and AT MOST's number (the page keeps it while another is chosen).
+export struct RulesetLimit {
+    name: string,
+    rule: string,
+    kind: int,
+    number: int,
+}
+
 // A quick choice of the category's version-own items: a version's (its name and color: `version`), or All.
 export struct RulesetChoice {
     text: string,
@@ -121,6 +133,10 @@ export global RulesetView {
     in property <string> programs-note;
     // (The head's note of a paired category: its own count, and its inner category's bans.)
     in property <string> head-note;
+    // The Limits page is shown (in place of a category's), its rows, and whether RESET would change anything.
+    in property <bool> limits-page;
+    in property <[RulesetLimit]> limits;
+    in property <bool> limits-reset;
     // The reserved line: why something can't be changed here, in the error red; or quietly, a note.
     in property <string> message;
     in property <bool> message-quiet;
@@ -171,6 +187,15 @@ export global RulesetView {
     out property <string> inherited-note: @tr("Banned for all navis");
     public pure function paired-status(keys: int, items: int) -> string {
         return I18n.join([@tr("{n} navi" | "{n} navis" % keys), @tr("{n} program" | "{n} programs" % items)]);
+    }
+    // The Limits page's words: its name in the categories, its note (how many limits the ruleset changes), a limit's
+    // game's own rule.
+    out property <string> limits-word: @tr("Limits");
+    public pure function limits-note(n: int) -> string {
+        return n == 0 ? @tr("The game's own") : @tr("{n} changed" | "{n} changed" % n);
+    }
+    public pure function rule(text: string) -> string {
+        return text == "" ? "" : @tr("Game's: {}", text);
     }
     // What the system's file dialogs say they ask for.
     out property <string> ruleset-files: @tr("Ruleset files");
@@ -405,6 +430,58 @@ component ProgramRow inherits Rectangle {
     }
 }
 
+// A limit's row (the Limits page): its name over the game's own rule (muted), and at the right what the ruleset makes
+// of it, GAME'S | AT MOST | NO LIMIT (a Seg), then AT MOST's number (a Stepper, locked under the others: a dash, ∞).
+// On a phone the controls are a line of their own under the name.
+component LimitRow inherits Rectangle {
+    in property <RulesetLimit> line;
+    in property <int> nav-index;
+    property <bool> stacked: Theme.phone;
+    Value {
+        x: 0px;
+        y: 4px;
+        width: root.stacked ? root.width : max(0px, kind.x - 16px);
+        height: 20px;
+        text: root.line.name;
+    }
+
+    Text {
+        x: 0px;
+        y: 24px;
+        width: root.stacked ? root.width : max(0px, kind.x - 16px);
+        height: 18px;
+        text: RulesetView.rule(root.line.rule);
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    number := Stepper {
+        x: root.width - self.width;
+        y: root.stacked ? 48px : (root.height - self.height) / 2;
+        nav: "rules.limits.number";
+        nav-index: root.nav-index;
+        value: root.line.kind == 1 ? "\{root.line.number}" : root.line.kind == 2 ? "∞" : "–";
+        value-width: 40px;
+        numeric: true;
+        locked: root.line.kind != 1 || !RulesetView.editable;
+    }
+
+    kind := Seg {
+        x: root.stacked ? 0px : number.x - 12px - self.width;
+        y: number.y;
+        nav: "rules.limits.kind";
+        nav-index: root.nav-index;
+        first: I18n.upper(@tr("Game's"));
+        second: I18n.upper(@tr("At most"));
+        third: I18n.upper(@tr("No limit"));
+        chosen: root.line.kind;
+        enabled: RulesetView.editable;
+    }
+}
+
 // A category's quick choices of its versions' own items (each version's alone, or all of them), as small words in its
 // panel's header line, as ALL and NONE are: a version's in its color where it is what is allowed, else muted; All
 // in the cursor's color where it is; hairlines between. Each takes a little more than its line, and nothing moves.
@@ -453,6 +530,11 @@ export component RulesetPage inherits Page {
     property <[Hint]> page-hints: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Allow or not") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
+    ];
+    property <[Hint]> limit-hints: [
+        { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Change") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
     // The row of Version exclusives and the buttons; under it the two panels (on a phone, the category's select and
@@ -513,8 +595,12 @@ export component RulesetPage inherits Page {
     back: RulesetView.back;
     game: !Theme.phone;
     tag: { text: RulesetView.preset ? RulesetView.preset-word : "", tone: Theme.muted };
-    hints: root.page-hints;
-    status: RulesetView.paired ? RulesetView.paired-status(RulesetView.keys.length - 1, RulesetView.programs.length) : @tr("{n} item" | "{n} items" % RulesetView.items.length);
+    hints: RulesetView.limits-page ? root.limit-hints : root.page-hints;
+    // (The Limits page's rows: a line on a desktop, two on a phone; under the header line, where the search is
+    // elsewhere.)
+    property <length> limit-row: Theme.phone ? 92px : 52px;
+    property <length> limits-y: Theme.sideways ? root.line-y + 28px : root.search-y;
+    status: RulesetView.limits-page ? @tr("{n} limit" | "{n} limits" % RulesetView.limits.length) : RulesetView.paired ? RulesetView.paired-status(RulesetView.keys.length - 1, RulesetView.programs.length) : @tr("{n} item" | "{n} items" % RulesetView.items.length);
 
     // (The page's parts arrive as a screen's do, one after another: the row, the categories, the category's head,
     // its items.)
@@ -694,7 +780,7 @@ export component RulesetPage inherits Page {
             y: root.picks-y;
             all-nav: "rules.all";
             none-nav: "rules.none";
-            set: RulesetView.editable ? 0 : -1;
+            set: RulesetView.editable && !RulesetView.limits-page ? 0 : -1;
             all: RulesetView.category-all;
             none: RulesetView.category-none;
         }
@@ -705,7 +791,18 @@ export component RulesetPage inherits Page {
             visible: RulesetView.choices.length > 0;
         }
 
+        // (Limits: RESET in the small words' place, every limit the game's own again.)
+        if RulesetView.limits-page: WordButton {
+            x: root.inner-x + root.inner-width + self.pad - self.width;
+            y: root.picks-y;
+            nav: "rules.limits.reset";
+            text: I18n.upper(@tr("Reset"));
+            enabled: RulesetView.editable && RulesetView.limits-reset;
+        }
+
         Field {
+            visible: !RulesetView.limits-page;
+            enabled: !RulesetView.limits-page;
             x: root.search-x;
             y: root.search-y;
             width: Theme.sideways ? max(0px, root.words-x - 12px - self.x) : root.inner-width;
@@ -723,7 +820,7 @@ export component RulesetPage inherits Page {
             y: root.items-y;
             width: root.inner-width;
             height: root.items-bottom - root.items-y;
-            visible: !RulesetView.paired;
+            visible: !RulesetView.paired && !RulesetView.limits-page;
             nav: "rules.items";
             content-height: !root.sectioned ? max(0px, ceil(RulesetView.items.length / root.columns) * root.pitch - Theme.list-gap)
                 : Theme.phone ? RulesetView.sections.length * root.section-head + RulesetView.items.length * root.pitch
@@ -769,6 +866,24 @@ export component RulesetPage inherits Page {
                 nav-index: i;
 
                 Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+        }
+
+        // ---- Limits: a row a limit.
+        limit-list := ScrollPage {
+            x: root.inner-x;
+            y: root.limits-y;
+            width: root.inner-width;
+            height: root.items-bottom - root.limits-y;
+            visible: RulesetView.limits-page;
+            nav: "rules.limits";
+            content-height: RulesetView.limits.length * root.limit-row;
+            for line[i] in RulesetView.limits: LimitRow {
+                y: i * root.limit-row;
+                width: limit-list.view-width;
+                height: root.limit-row;
+                line: line;
+                nav-index: i;
             }
         }
 

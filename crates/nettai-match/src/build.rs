@@ -42,7 +42,7 @@
 use crate::check::{self, Problem};
 use crate::facts::{self, Stated};
 use crate::folders::{self, View};
-use crate::{Count, Folder, Match, Side, Wrong, ids};
+use crate::{Folder, Match, Side, Tally, Wrong, ids};
 use nettai_battle::Battle;
 use nettai_battle::content::{ChipClass, ChipCode, ChipFamily, ChipFlags, Content, Element, PlayerFact};
 use nettai_battle::custom::FolderChip;
@@ -50,7 +50,7 @@ use nettai_battle::custom::folder::FOLDER_SIZE;
 use nettai_battle::rules::Fact;
 use nettai_battle::setup::NaviStats;
 use nettai_content_api::{ChipHandle, Data, DataKey, EntryHandle, FieldType, FormHandle, NaviHandle, Registry, Value};
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 /// A version of a game as a group the content declares (docs/design/versions.md
@@ -726,6 +726,14 @@ impl Checked {
     /// checks and the game's rules find with it, of any side's and of a
     /// build's.
     pub fn of(content: &Arc<Content>, game: &str, side: &Side) -> Checked {
+        Checked::with_limits(content, game, side, &Default::default())
+    }
+
+    /// [`Checked::of`], the build held to the game's limits as `limits`
+    /// leaves them (a ruleset's: [`crate::ruleset::Ruleset::limits`]), which
+    /// the battle it is checked on keeps for the questions after (the
+    /// folder's view, its marks, the overview).
+    fn with_limits(content: &Arc<Content>, game: &str, side: &Side, limits: &BTreeMap<String, crate::ruleset::Limit>) -> Checked {
         let none = |problems: Vec<Problem>| Checked { game: game.to_string(), problems, battle: None };
         let m = match Match::empty(content, game) {
             Ok(m) => Match { sides: [side.clone(), side.clone()], ..m },
@@ -737,6 +745,7 @@ impl Checked {
         }
         match check::set_up(content, &m) {
             Ok(mut b) => {
+                b.set_limits(limits.clone());
                 let mut problems = check::validated(&mut b, 0);
                 problems.extend(check::built(&mut b, 0));
                 Checked { game: game.to_string(), problems, battle: Some(b) }
@@ -746,12 +755,12 @@ impl Checked {
     }
 
     /// `side` checked as a build of `game` under `ruleset`: [`Checked::of`]'s
-    /// problems, then one for each definition the build holds that the
-    /// ruleset doesn't allow ([`crate::ruleset::Ruleset::problems`]). What a
-    /// lobby asks of a player's build, and a build screen with a ruleset
-    /// picked.
+    /// problems, the game's limits as the ruleset leaves them, then one for
+    /// each definition the build holds that the ruleset doesn't allow
+    /// ([`crate::ruleset::Ruleset::problems`]). What a lobby asks of a
+    /// player's build, and a build screen with a ruleset picked.
     pub fn under(content: &Arc<Content>, game: &str, side: &Side, rulesets: &crate::ruleset::Rulesets, ruleset: &crate::ruleset::Ruleset) -> Checked {
-        let mut checked = Checked::of(content, game, side);
+        let mut checked = Checked::with_limits(content, game, side, ruleset.limits());
         checked.problems.extend(ruleset.problems(rulesets, content, side));
         checked
     }
@@ -851,7 +860,12 @@ impl Checked {
             .iter()
             .filter_map(|d| {
                 let (Data::Str(field), Data::Str(cost)) = (d.field("field"), d.field("cost")) else { return None };
-                let count = Count { used: d.field("used").int()?.try_into().ok()?, limit: d.field("limit").int()?.try_into().ok()? };
+                // (No limit: the build's ruleset lifts it.)
+                let limit = match d.field("limit") {
+                    Data::Nil => None,
+                    n => Some(n.int()?.try_into().ok()?),
+                };
+                let count = Tally { used: d.field("used").int()?.try_into().ok()?, limit };
                 // (A list's entry is the rules' place, from 1.)
                 let entry = match d.field("entry").int() {
                     Some(n) => Some(usize::try_from(n).ok()?.checked_sub(1)?),
@@ -1006,7 +1020,7 @@ pub struct Budget {
     pub field: String,
     pub entry: Option<usize>,
     pub cost: String,
-    pub count: Count,
+    pub count: Tally,
     pub once: bool,
 }
 
@@ -1039,7 +1053,7 @@ impl Budget {
         if self.once && held.contains(&entry.0) {
             return Some(EntryRefusal::Installed);
         }
-        let (needs, free) = (self.cost_of(content, entry), self.count.free());
+        let (needs, free) = (self.cost_of(content, entry), self.count.free()?);
         (needs > free).then_some(EntryRefusal::Needs { needs, free })
     }
 }
@@ -1073,7 +1087,8 @@ pub struct Overview {
     pub regular_memory: Stat,
     /// The stats the game's rules give beyond those eight, in their order.
     pub stats: Vec<NamedStat>,
-    /// The tag memory, in MB, in a game whose folders have tag chips.
+    /// The tag memory, in MB, in a game whose folders have tag chips (and
+    /// whose build's ruleset doesn't lift it).
     pub tag_memory: Option<u32>,
     /// What gives the navi its abilities.
     pub abilities: Vec<Source>,
@@ -1225,6 +1240,7 @@ pub fn sorted(content: &Content, chips: &[ChipInfo], sort: Sort, descending: boo
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Count;
     use crate::testing::{PlacedProgram, exe4_content, exe5_content, exe6_content, patch_cards, program_colors, set_navicust};
 
     /// A named bug at a level, and one with an amount.
@@ -1328,6 +1344,63 @@ mod tests {
             assert_eq!(looked(&plain.without_patch_cards(&content)), of_plain, "{game}");
             assert_eq!(bare.without_patch_cards(&content), bare, "{game}");
         }
+    }
+
+    /// A ruleset's limits (rules/rulesets' `limits`) are what a build is
+    /// held to: the game's own where it leaves them, its number where it
+    /// sets one, none where it lifts one; the folder's view and the
+    /// overview's budgets follow them, and a match's checks hold a side to
+    /// none of them.
+    #[test]
+    fn a_rulesets_limits_hold_a_build() {
+        use crate::ruleset::{Limit, Name, Ruleset, Rulesets};
+        let content = exe6_content();
+        let game = "exe6";
+        let rulesets = Rulesets::of(&content, game).unwrap();
+        let names: Vec<&str> = rulesets.limits.iter().map(|l| l.name.as_str()).collect();
+        assert_eq!(names, ["copies", "mega", "giga", "regular_memory", "tag_memory", "patch_card_memory"]);
+        let mut side = Builds::of(&content, game).unwrap().new_build(&content, "gregar").unwrap();
+        // (Six Recov10s or more, a 4 MB chip's five copies past.)
+        let recov = ids::chip(&content, game, "recov10").unwrap();
+        let mut folder = side.folder(&content);
+        for e in &mut folder.chips[..6] {
+            *e = Some(FolderChip::new(recov, content.chip(recov).codes[0]));
+        }
+        side.set_folder(&content, &folder).unwrap();
+        let held = folder.chips().filter(|c| c.id == recov).count() as u32;
+        let copies = |problems: &[Problem]| -> Vec<Count> {
+            problems.iter().filter_map(|p| match p.what { Wrong::Copies { chip, count } if chip == recov => Some(count), _ => None }).collect()
+        };
+        let under = |set: &[(&str, Limit)]| {
+            let mut r = Ruleset::open(Name::Own("Limits".into()));
+            for (name, l) in set {
+                r.set_limit(name, Some(*l));
+            }
+            Checked::under(&content, game, &side, &rulesets, &r)
+        };
+        // The game's own: five.
+        assert_eq!(copies(&Checked::of(&content, game, &side).problems), [Count { used: held, limit: 5 }]);
+        assert_eq!(copies(&under(&[]).problems), [Count { used: held, limit: 5 }]);
+        // Lifted, or a number it keeps to: nothing; a number it doesn't: that number.
+        assert_eq!(copies(&under(&[("copies", Limit::Lifted)]).problems), []);
+        assert_eq!(copies(&under(&[("copies", Limit::AtMost(held))]).problems), []);
+        assert_eq!(copies(&under(&[("copies", Limit::AtMost(4))]).problems), [Count { used: held, limit: 4 }]);
+        // The folder's view, one entry empty: another may go in where the copies are lifted, and the limits are the
+        // ruleset's.
+        let mut gap = folder;
+        gap.chips[29] = None;
+        let view = |set: &[(&str, Limit)]| under(set).folder_view(&content, &gap).unwrap();
+        assert!(matches!(view(&[]).refusal(recov), Some(Wrong::Copies { .. })));
+        let free = view(&[("copies", Limit::Lifted), ("mega", Limit::AtMost(9)), ("giga", Limit::Lifted), ("regular_memory", Limit::Lifted), ("tag_memory", Limit::AtMost(99))]);
+        assert_eq!(free.refusal(recov), None);
+        assert_eq!((free.mega.limit, free.giga.limit, free.regular_memory, free.tag_memory), (Some(9), None, None, Some(99)));
+        // The patch cards' MB: the overview's budget as the ruleset leaves it.
+        let budget = |set: &[(&str, Limit)]| under(set).overview(&content, &side).unwrap().budget("patch_cards").map(|b| b.count.limit);
+        assert_eq!((budget(&[]), budget(&[("patch_card_memory", Limit::AtMost(100))]), budget(&[("patch_card_memory", Limit::Lifted)])), (Some(Some(80)), Some(Some(100)), Some(None)));
+        // A match's checks: no copies past any limit.
+        let mut m = crate::pick::live(&content, game, 3, None).unwrap();
+        m.sides = [side.clone(), side.clone()];
+        assert_eq!(copies(&crate::check::problems(&content, &m)), []);
     }
 
     /// A build may hold either version's Giga chips (docs/design/versions.md
@@ -1575,13 +1648,13 @@ mod tests {
         let canodumb = ids::entry(&content, "exe6", "patch_cards", "canodumb").unwrap();
         let o = overview(&side);
         let budget = o.budget("patch_cards").unwrap().clone();
-        assert_eq!((budget.count, budget.once, budget.cost_of(&content, canodumb)), (Count { used: 10, limit: 80 }, true, 10));
+        assert_eq!((budget.count, budget.once, budget.cost_of(&content, canodumb)), (Tally { used: 10, limit: Some(80) }, true, 10));
         assert_eq!((o.hp, o.attack), (Stat { base: 1000, value: 960 }, Stat { base: 1, value: 2 }));
         assert!(matches!(o.abilities[..], [Source::Effect(card, _)] if card == canodumb), "{:?}", o.abilities);
         assert_eq!(budget.refusal(&content, &side, canodumb), Some(EntryRefusal::Installed));
         let other = ids::entry(&content, "exe6", "patch_cards", "amonicul").unwrap();
         assert_eq!(budget.refusal(&content, &side, other), None);
-        let tight = Budget { count: Count { used: 70, limit: 80 }, ..budget };
+        let tight = Budget { count: Tally { used: 70, limit: Some(80) }, ..budget };
         assert_eq!(tight.refusal(&content, &side, other), Some(EntryRefusal::Needs { needs: 16, free: 10 }));
     }
 
@@ -1848,7 +1921,7 @@ mod tests {
         assert_eq!(checked.problems, Vec::new());
         let o = checked.overview(&content, &side).unwrap();
         assert_eq!((&o.abilities, &o.bugs), (&vec![Source::Entry(undersht)], &Vec::new()));
-        assert_eq!(o.budget("patch_cards").map(|b| b.count), Some(Count { used: 0, limit: 80 }));
+        assert_eq!(o.budget("patch_cards").map(|b| b.count), Some(Tally { used: 0, limit: Some(80) }));
         // A program off the board: said of its entry, typed.
         set_navicust(&content, &mut side, &[PlacedProgram { program: undersht, color: 0, x: 6, y: 3, rotation: 0, compressed: false }], 2);
         let checked = Checked::of(&content, "exe5", &side);
@@ -1880,8 +1953,8 @@ mod tests {
         let base = Checked::of(&content, "exe5", &bare).members()[1].max_hp;
         assert_eq!((checked.members()[1].max_hp, checked.members()[1].hp), (base + 100, base + 100));
         let o = checked.overview(&content, &side).unwrap();
-        assert_eq!(o.budget_of("party", 0).map(|b| b.count), Some(Count { used: 3, limit: 6 }));
-        assert_eq!(o.budget_of("party", 1).map(|b| b.count), Some(Count { used: 0, limit: 8 }));
+        assert_eq!(o.budget_of("party", 0).map(|b| b.count), Some(Tally { used: 3, limit: Some(6) }));
+        assert_eq!(o.budget_of("party", 1).map(|b| b.count), Some(Tally { used: 0, limit: Some(8) }));
         assert_eq!(o.budget("party"), None);
         assert_eq!(o.switches, Some(3));
         // (ProtoMan's own chip's damage at the highest level, no P.Chp: nothing added.)

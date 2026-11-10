@@ -28,7 +28,7 @@ use nettai_content_api::{ChipHandle, Data};
 use std::collections::HashMap;
 
 use crate::check::Problem;
-use crate::{Count, Wrong};
+use crate::{Tally, Wrong};
 
 /// A side's folder as a match keeps it: its 30 entries, each a chip in one
 /// of its codes or empty (a folder being made), and its Regular and tag
@@ -129,15 +129,16 @@ fn never(what: &Wrong) -> bool {
 /// this one holds, its Mega, Giga and dark chips against their limits (dark:
 /// none in a game whose folders hold no dark chip), the Regular memory and
 /// the tag memory (none in a game without tag chips), the rules it breaks
-/// as it stands, and why each chip of the game can't go into it now.
+/// as it stands, and why each chip of the game can't go into it now. A
+/// limit the build's ruleset lifts is none (`build::Checked::under`).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct View {
     pub size: u32,
     pub chips: u32,
-    pub mega: Count,
-    pub giga: Count,
-    pub dark: Option<Count>,
-    pub regular_memory: u32,
+    pub mega: Tally,
+    pub giga: Tally,
+    pub dark: Option<Tally>,
+    pub regular_memory: Option<u32>,
     pub tag_memory: Option<u32>,
     /// The rules the folder breaks as it stands (of a folder being made:
     /// its size isn't held against it), each with its entry where it is of
@@ -156,7 +157,8 @@ impl View {
         let asked = Asked::of(folder);
         let data = b.folder_view(side, &asked.chips, asked.regular, asked.tags, &offered)?;
         let number = |d: &Data| d.int().and_then(|n| u32::try_from(n).ok());
-        let count = |d: &Data| Some(Count { used: number(d.field("used"))?, limit: number(d.field("limit"))? });
+        // (A count's limit none: the build's ruleset lifts it.)
+        let count = |d: &Data| Some(Tally { used: number(d.field("used"))?, limit: number(d.field("limit")) });
         let mut refused = HashMap::new();
         if let Data::List(items) = data.field("refused") {
             for p in items {
@@ -177,7 +179,7 @@ impl View {
             mega: count(data.field("mega"))?,
             giga: count(data.field("giga"))?,
             dark: count(data.field("dark")),
-            regular_memory: number(data.field("regular_memory"))?,
+            regular_memory: number(data.field("regular_memory")),
             tag_memory: number(data.field("tag_memory")),
             problems,
             refused,
@@ -339,6 +341,7 @@ pub fn describe(content: &Content, folder: &Folder) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Count;
     use crate::testing::exe6_content;
     use nettai_battle::content::ChipClass;
 
@@ -473,8 +476,8 @@ mod tests {
         // (A Giga chip: a build may hold either version's.)
         f.chips[10] = chip("bass");
         let v = View::of(&content, "exe6", &mut b, 0, &f).unwrap();
-        assert_eq!((v.size, v.chips, v.mega, v.giga, v.dark), (30, 11, Count { used: 5, limit: 5 }, Count { used: 1, limit: 1 }, None));
-        assert_eq!((v.regular_memory, v.tag_memory), (b.stats[0].reg_up as u32, Some(60)));
+        assert_eq!((v.size, v.chips, v.mega, v.giga, v.dark), (30, 11, Tally { used: 5, limit: Some(5) }, Tally { used: 1, limit: Some(1) }, None));
+        assert_eq!((v.regular_memory, v.tag_memory), (Some(b.stats[0].reg_up as u32), Some(60)));
         assert_eq!(v.problems, Vec::new());
         assert_eq!(v.refusal(id("cannon")), None);
         assert_eq!(v.refusal(id("recov10")), Some(&Wrong::Copies { chip: id("recov10"), count: Count { used: 5, limit: 5 } }));

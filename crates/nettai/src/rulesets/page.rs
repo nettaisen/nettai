@@ -9,6 +9,11 @@
 //! the inner category holds back for it alone; the one chosen's inner items beside them (the programs, every navi's ban
 //! dashed). The inner category has no row of its own in the list.
 //!
+//! The game's limits (`nettai_match::ruleset::LimitDef`: the folder's copies, Mega and Giga chips, memories) are a page
+//! of their own after the categories, Limits: a row a limit, its name over the game's own rule in words, then what the
+//! ruleset makes of it (GAME'S, AT MOST, NO LIMIT) and AT MOST's number, which the page keeps while another is chosen
+//! (the user picked layout L2 of verify's docs/nettai-ui/ruleset-limits).
+//!
 //! The UI is ui/ruleset.slint (`RulesetPage`, `RulesetView`).
 
 use crate::builds::Kit;
@@ -18,8 +23,9 @@ use crate::rulesets::{NAME_LENGTH, Pickable, shown_name, store};
 use crate::shell::{Dialog, Shell};
 use crate::sound::Cue;
 use nettai_content_api::{ChipHandle, EntryHandle, FormHandle, NaviHandle, Registry};
-use nettai_match::ruleset::{Category, Item, Name, Rulesets};
-use nettai_ui::{ButtonKind, DialogButton, RulesetCategory, RulesetChoice, RulesetItem, RulesetKey, RulesetProgram, RulesetSection, RulesetView};
+use nettai_match::ruleset::{Category, Item, Limit, Name, Rulesets};
+use nettai_ui::{ButtonKind, DialogButton, RulesetCategory, RulesetChoice, RulesetItem, RulesetKey, RulesetLimit, RulesetProgram, RulesetSection, RulesetView};
+use std::collections::BTreeMap;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::rc::Rc;
 use std::sync::Arc;
@@ -74,6 +80,8 @@ pub struct Page {
     keys: Vec<Option<u16>>,
     key: Option<u16>,
     programs: Vec<Item>,
+    /// AT MOST's number of each limit, by name, as the page last had it: kept while GAME'S or NO LIMIT is chosen.
+    numbers: BTreeMap<String, u32>,
 }
 
 /// A name as it is typed: one line, no room at its start, [`NAME_LENGTH`] letters at most.
@@ -102,6 +110,7 @@ impl Page {
             keys: Vec::new(),
             key: None,
             programs: Vec::new(),
+            numbers: BTreeMap::new(),
         };
         let ui = shell.ui();
         let view = ui.global::<RulesetView>();
@@ -151,6 +160,21 @@ impl Page {
         (0..self.rulesets.categories.len()).filter(|&i| self.rulesets.categories[i].within.is_none()).collect()
     }
 
+    /// The Limits page's place in the list (after the categories), where the game has limits.
+    fn limits_place(&self) -> Option<usize> {
+        (!self.rulesets.limits.is_empty()).then(|| self.listed().len())
+    }
+
+    /// Whether the Limits page is shown.
+    fn on_limits(&self) -> bool {
+        self.limits_place() == Some(self.category)
+    }
+
+    /// How many pages the list has: the categories, and Limits.
+    fn pages(&self) -> usize {
+        self.listed().len() + usize::from(self.limits_place().is_some())
+    }
+
     fn category(&self) -> &Category {
         let listed = self.listed();
         &self.rulesets.categories[listed[self.category.min(listed.len().saturating_sub(1))]]
@@ -187,6 +211,10 @@ impl Page {
                 };
                 RulesetCategory { name: name.into(), note }
             })
+            .chain(self.limits_place().map(|_| {
+                let changed = self.rulesets.limits.iter().filter(|l| ruleset.limit(&l.name).is_some()).count();
+                RulesetCategory { name: view.get_limits_word(), note: view.invoke_limits_note(changed as i32) }
+            }))
             .collect();
         // (On a phone held sideways they are the header's tabs.)
         let tabs: Vec<nettai_ui::Tab> = categories.iter().map(|c| nettai_ui::Tab { text: c.name.clone(), enabled: true, flagged: false }).collect();
@@ -203,10 +231,16 @@ impl Page {
         self.show_items(shell, &names);
     }
 
-    /// The category shown's quick choices and its items, filtered by the search.
+    /// The category shown's quick choices and its items, filtered by the search; or the Limits page.
     fn show_items(&mut self, shell: &Shell, names: &Names) {
         let ui = shell.ui();
         let view = ui.global::<RulesetView>();
+        view.set_limits_page(self.on_limits());
+        if self.on_limits() {
+            self.show_limits(shell, names);
+            return;
+        }
+        view.set_limits(Default::default());
         let kit = self.kit.clone();
         let rulesets = self.rulesets.clone();
         let category = self.category().clone();
@@ -352,6 +386,76 @@ impl Page {
         view.set_category_all(allowed < category.items.len());
         view.set_category_none(allowed > 0);
         view.set_section_rows(section_rows);
+    }
+
+    /// The Limits page: a row a limit of the game's, what the ruleset makes of it and AT MOST's number (the ruleset's,
+    /// else the page's last, else the limit's `start`).
+    fn show_limits(&mut self, shell: &Shell, names: &Names) {
+        let ui = shell.ui();
+        let view = ui.global::<RulesetView>();
+        let ruleset = &self.shown.ruleset;
+        let rows: Vec<RulesetLimit> = self
+            .rulesets
+            .limits
+            .iter()
+            .map(|l| {
+                let (kind, number) = match ruleset.limit(&l.name) {
+                    None => (0, self.number(&l.name)),
+                    Some(Limit::AtMost(n)) => (1, n),
+                    Some(Limit::Lifted) => (2, self.number(&l.name)),
+                };
+                RulesetLimit {
+                    name: names.text(nettai_match::ruleset::TEXT_TABLE, &l.text_key()).unwrap_or_else(|| l.name.clone()).into(),
+                    rule: names.text(nettai_match::ruleset::TEXT_TABLE, &l.rule_key()).unwrap_or_default().into(),
+                    kind,
+                    number: number as i32,
+                }
+            })
+            .collect();
+        view.set_limits(ModelRc::new(VecModel::from(rows)));
+        view.set_limits_reset(self.rulesets.limits.iter().any(|l| ruleset.limit(&l.name).is_some()));
+        // (Nothing of a category's: no quick choices, items or keys.)
+        self.choices.set_vec(Vec::new());
+        self.rows.clear();
+        self.row_sections.clear();
+        self.keys.clear();
+        self.programs.clear();
+        view.set_items(Default::default());
+        view.set_sections(Default::default());
+        view.set_paired(false);
+        view.set_keys(Default::default());
+        view.set_programs(Default::default());
+    }
+
+    /// AT MOST's number for limit `name` while the ruleset holds it to none of its own: the page's last, else its
+    /// `start`.
+    fn number(&self, name: &str) -> u32 {
+        self.numbers.get(name).copied().or_else(|| self.rulesets.limit(name).map(|l| l.start)).unwrap_or(0)
+    }
+
+    /// Make limit `index` (of the game's) kind `kind`: 0 the rules' own, 1 at most its number, 2 none; its number
+    /// kept for AT MOST.
+    fn set_limit_kind(&mut self, shell: &mut Shell, index: i32, kind: i32) -> Outcome {
+        let Some(def) = self.rulesets.limits.get(index.max(0) as usize).cloned() else { return Outcome::Nothing };
+        if let Some(Limit::AtMost(n)) = self.shown.ruleset.limit(&def.name) {
+            self.numbers.insert(def.name.clone(), n);
+        }
+        let limit = match kind {
+            0 => None,
+            1 => Some(Limit::AtMost(self.number(&def.name))),
+            _ => Some(Limit::Lifted),
+        };
+        self.change(shell, |r, _| r.set_limit(&def.name, limit))
+    }
+
+    /// Limit `index`'s kind, as [`Page::set_limit_kind`] takes it.
+    fn limit_kind(&self, index: i32) -> i32 {
+        let Some(def) = self.rulesets.limits.get(index.max(0) as usize) else { return 0 };
+        match self.shown.ruleset.limit(&def.name) {
+            None => 0,
+            Some(Limit::AtMost(_)) => 1,
+            Some(Limit::Lifted) => 2,
+        }
     }
 
     /// A paired category's page: its items (the navis) at the left, the row of every key first, each a version's
@@ -625,7 +729,9 @@ impl Page {
         match id {
             "rules.categories" => {
                 self.choose_category(shell, index);
-                if !self.keys.is_empty() {
+                if self.on_limits() {
+                    shell.nav.focus("rules.limits.kind", 0);
+                } else if !self.keys.is_empty() {
                     shell.nav.focus("rules.pair.keys", 0);
                 } else if !self.rows.is_empty() {
                     shell.nav.focus("rules.items", 0);
@@ -710,6 +816,24 @@ impl Page {
                 let one = !self.shown.ruleset.one_per_build;
                 self.change(shell, |r, _| r.one_per_build = one)
             }
+            // A limit's GAME'S, AT MOST and NO LIMIT, one after another; RESET, every limit the rules' own again.
+            "rules.limits.kind" => {
+                let kind = (self.limit_kind(index) + 1) % 3;
+                self.set_limit_kind(shell, index, kind)
+            }
+            "rules.limits.reset" => {
+                let names: Vec<String> = self.rulesets.limits.iter().map(|l| l.name.clone()).collect();
+                for name in &names {
+                    if let Some(Limit::AtMost(n)) = self.shown.ruleset.limit(name) {
+                        self.numbers.insert(name.clone(), n);
+                    }
+                }
+                self.change(shell, |r, _| {
+                    for name in &names {
+                        r.set_limit(name, None);
+                    }
+                })
+            }
             "rules.duplicate" => self.duplicate(shell),
             "rules.export" => self.export(shell),
             "rules.import" => self.import(shell),
@@ -733,11 +857,23 @@ impl Page {
     }
 
     /// Left or Right on one of the page's steppers.
-    pub fn step(&mut self, shell: &mut Shell, id: &str, _index: i32, by: i32) -> Outcome {
+    pub fn step(&mut self, shell: &mut Shell, id: &str, index: i32, by: i32) -> Outcome {
         match id {
             "rules.versions" => self.change(shell, |r, _| r.one_per_build = by < 0),
+            "rules.limits.kind" => {
+                let kind = (self.limit_kind(index) + by.signum()).clamp(0, 2);
+                self.set_limit_kind(shell, index, kind)
+            }
+            // AT MOST's number, 0 to the limit's most.
+            "rules.limits.number" => {
+                let Some(def) = self.rulesets.limits.get(index.max(0) as usize).cloned() else { return Outcome::Nothing };
+                let Some(Limit::AtMost(n)) = self.shown.ruleset.limit(&def.name) else { return Outcome::Nothing };
+                let to = (i64::from(n) + i64::from(by)).clamp(0, i64::from(def.most)) as u32;
+                self.numbers.insert(def.name.clone(), to);
+                self.change(shell, |r, _| r.set_limit(&def.name, Some(Limit::AtMost(to))))
+            }
             "rules.category" => {
-                let count = self.listed().len() as i32;
+                let count = self.pages() as i32;
                 if count > 0 {
                     self.choose_category(shell, (self.category as i32 + by).rem_euclid(count));
                 }
@@ -747,10 +883,11 @@ impl Page {
         }
     }
 
-    /// A choice made outright: a side of Versions, a category from its select's list.
-    pub fn choose(&mut self, shell: &mut Shell, id: &str, _index: i32, choice: i32) -> Outcome {
+    /// A choice made outright: a side of Versions, a limit's kind, a category from its select's list.
+    pub fn choose(&mut self, shell: &mut Shell, id: &str, index: i32, choice: i32) -> Outcome {
         match id {
             "rules.versions" => self.change(shell, |r, _| r.one_per_build = choice == 0),
+            "rules.limits.kind" => self.set_limit_kind(shell, index, choice),
             "rules.category" => {
                 self.choose_category(shell, choice);
                 Outcome::Nothing
@@ -814,9 +951,9 @@ impl Page {
         }
     }
 
-    /// Show category `index`.
+    /// Show category `index` (past the categories: Limits).
     fn choose_category(&mut self, shell: &mut Shell, index: i32) {
-        let index = (index.max(0) as usize).min(self.listed().len().saturating_sub(1));
+        let index = (index.max(0) as usize).min(self.pages().saturating_sub(1));
         if index == self.category {
             return;
         }

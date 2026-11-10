@@ -30,6 +30,22 @@ impl Count {
     }
 }
 
+/// How much of something there is against the most there may be, where a
+/// most holds (a folder's Mega chips against their limit, a list's MB
+/// against its budget): `limit` none where the build's ruleset lifts it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Tally {
+    pub used: u32,
+    pub limit: Option<u32>,
+}
+
+impl Tally {
+    /// What is left of the limit (none past it); none: no limit.
+    pub fn free(self) -> Option<u32> {
+        self.limit.map(|l| l.saturating_sub(self.used))
+    }
+}
+
 /// What is wrong, typed.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Wrong {

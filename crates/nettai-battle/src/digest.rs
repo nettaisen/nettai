@@ -237,6 +237,7 @@ impl Hash for Battle {
             pause_asked: _,
             outcome,
             folder_check: _,
+            limits: _,
             tool_answer: _,
             dimmed_key_reads: _,
             attacked: _,

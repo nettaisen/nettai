@@ -1023,6 +1023,19 @@ named_fields! {
     }
 }
 
+/// What a tool's ruleset makes of one of its game's limits (nettai-match's
+/// `ruleset`; the game's rules/rulesets names the limits it may change, and
+/// the rules ask them by those names: `battle.limit`): none at all, or a
+/// number of its own in place of the rules'. A limit it says nothing of is
+/// the rules' own.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Limit {
+    /// It holds a build to none.
+    Lifted,
+    /// At most this, whatever the rules' own is.
+    AtMost(u32),
+}
+
 /// A folder a tool asks a side's rules of (`folder_check`, `folder_view`):
 /// whose side it is, its chips in order (handles and codes), its Regular and
 /// tag chips (entries of `chips`), whether it is all of a folder (else the
@@ -1859,6 +1872,10 @@ pub trait CoreApi {
     /// The folder a tool asks the side's rules to check (`folder_check`),
     /// while it is checked.
     fn checked_folder(&self) -> Option<CheckedFolder>;
+    /// What the ruleset a tool checks a build under makes of limit `name`
+    /// (`Battle::set_limits`); none: it leaves the rules' own (in a round,
+    /// and for a tool with no ruleset, every limit).
+    fn limit(&self, name: &str) -> Option<Limit>;
     /// What a hook a tool asked answered (`validate`, `folder_check`,
     /// `folder_view`, `overview`): its value as plain data, which the
     /// battle keeps for the tool that asked.

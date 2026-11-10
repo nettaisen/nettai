@@ -591,6 +591,11 @@ pub struct Battle {
     /// A folder a tool is asking the rules about (`Battle::check_folder`,
     /// `Battle::folder_view`), while they answer: no part of the simulation.
     pub(crate) folder_check: Option<nettai_content_api::api::CheckedFolder>,
+    /// What the ruleset a tool checks the sides' builds under makes of the
+    /// game's limits, by name (`Battle::set_limits`; the rules ask them,
+    /// `battle.limit`): no part of the simulation, which leaves each the
+    /// rules' own.
+    pub(crate) limits: std::collections::BTreeMap<String, nettai_content_api::api::Limit>,
     /// What the rules answered a tool's hook (`validate`, `folder_check`,
     /// `folder_view`, `overview`), until the tool takes it: no part of the
     /// simulation.
@@ -887,6 +892,7 @@ impl Battle {
             pause_asked: [false; 2],
             outcome: None,
             folder_check: None,
+            limits: Default::default(),
             tool_answer: None,
             dimmed_key_reads: Default::default(),
             attacked: Default::default(),

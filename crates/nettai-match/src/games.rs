@@ -144,8 +144,13 @@ fn a_exe5_folder_keeps_exe5s_rules() {
 fn exe5s_rules_refuse() {
     let content = exe5_content();
     let right = exe5(&TANGO_EXE5, "");
+    // (What a match's checks refuse, or else what a build's do: the limits are a build's alone, its `build_check`.)
     let refused = |chips: &[String], more: &str| -> Vec<String> {
-        let e = parse(&content, &exe5(&refs(chips), more), &right).expect_err("refused");
+        let e = match parse(&content, &exe5(&refs(chips), more), &right) {
+            Err(e) => e,
+            Ok(m) => crate::build::Checked::of(&content, "exe5", &m.sides[0]).problems.iter().map(|p| p.said()).collect(),
+        };
+        assert!(!e.is_empty(), "refused");
         assert!(e.iter().all(|p| p.starts_with("left: folder: ")), "{e:?}");
         e
     };
@@ -159,10 +164,11 @@ fn exe5s_rules_refuse() {
     says(&e, "2 copies of colonel, past 1");
     says(&e, "2 copies of bass, past 1");
     says(&e, "2 copies of drksword, past 1");
-    says(&e, "2 Giga chips, past the navi's 1");
+    says(&e, "2 Giga chips, past 1");
     // Six Mega chips; four dark chips.
     let six = with(&TANGO_EXE5, 0, &["colonel C", "meddy M", "gyroman G", "knightmn K", "larkman S", "gridman F"]);
-    says(&refused(&six, ""), "6 Mega chips, past the navi's 5");
+    says(&refused(&six, ""), "6 Mega chips, past 5");
+    assert!(parse(&content, &exe5(&refs(&six), ""), &right).is_ok(), "a match's checks leave the limits be");
     let four = with(&TANGO_EXE5, 0, &["drksword Z", "darkthnd M", "darkwide T", "drklance W"]);
     says(&refused(&four, ""), "4 dark chips, past 3");
     // A chip past the pack (BatCan1), a Program Advance; a code the chip
@@ -175,7 +181,7 @@ fn exe5s_rules_refuse() {
     says(&refused(&code, ""), "entry 0: cannon doesn't come in code Z");
     // A Regular chip past the Regular memory (Astroid3 is 56 MB; every
     // side's memory is 50); tag chips, which EXE5's folders haven't.
-    says(&refused(&with(&TANGO_EXE5, 0, &["astroid3 C"]), "regular_chip = 0"), "the Regular chip astroid3 is 56 MB, past the navi's 50");
+    says(&refused(&with(&TANGO_EXE5, 0, &["astroid3 C"]), "regular_chip = 0"), "the Regular chip astroid3 is 56 MB, past 50");
     let e = parse(&content, &exe5(&TANGO_EXE5, "tag_chips = [4, 5]"), &right).expect_err("refused");
     says(&e, "left: no field \"tag_chips\" (a side of exe5 takes");
 }
