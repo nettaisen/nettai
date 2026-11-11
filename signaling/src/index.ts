@@ -56,7 +56,8 @@
 //   match and the client's place in it by an opaque tag (`chinaServers`).
 //   Without TURN credentials, CHINA_STUN alone. Only while the
 //   switch CHINA_TURN (a var in wrangler.toml) is "on": "off", or without
-//   those secrets, Cloudflare's, as any other client is given. The two
+//   those secrets, Cloudflare's TURN servers, as any other client is
+//   given, with CHINA_STUN still in place of Cloudflare's STUN. The two
 //   players of a room may be given different servers: each relays through
 //   its own, and the two relays reach each other.
 // - TURN credentials cost the key's owner what is relayed on them, so they
@@ -99,15 +100,16 @@ export interface Env {
 	/** The `turn:` URLs of the owner's coturn for mainland China, separated
 	 * by spaces or commas, a secret (`npx wrangler secret put
 	 * CHINA_TURN_URLS`). Their STUN server is CHINA_STUN, not the coturn's.
-	 * None, and clients in China are given Cloudflare's. */
+	 * None, and clients in China are given Cloudflare's TURN (with
+	 * CHINA_STUN still). */
 	CHINA_TURN_URLS?: string;
 	/** The coturn's shared secret, its `static-auth-secret`, a secret (`npx
 	 * wrangler secret put CHINA_TURN_SECRET`). */
 	CHINA_TURN_SECRET?: string;
-	/** Whether clients in China are given the China servers, a var
-	 * (wrangler.toml's `CHINA_TURN`): "on"; "off" (or anything else), and
-	 * they are given Cloudflare's, the China secrets kept for when it is on
-	 * again. */
+	/** Whether clients in China are given the coturn, a var (wrangler.toml's
+	 * `CHINA_TURN`): "on"; "off" (or anything else), and they are given
+	 * Cloudflare's TURN (with CHINA_STUN still), the China secrets kept for
+	 * when it is on again. */
 	CHINA_TURN?: string;
 	/** How often a client may be given TURN credentials (a rate limit
 	 * binding, wrangler.toml's TURN_PER_MINUTE a minute): none, no limit. */
@@ -163,9 +165,10 @@ const CODE_TRIES = 8;
 /** Cloudflare's public STUN server: what a client is given when there are no
  * TURN credentials. */
 const STUN: IceServer[] = [{ urls: ["stun:stun.cloudflare.com:3478"] }];
-/** The STUN server for clients in mainland China (Xiaomi's), with or
- * without the China TURN server: one in the mainland answers them better
- * than the coturn's own, which is abroad. */
+/** The STUN server for clients in mainland China (Xiaomi's), whichever TURN
+ * servers they are given (the coturn's or Cloudflare's), and in place of
+ * those servers' own STUN: one in the mainland answers them better than
+ * one abroad. */
 const CHINA_STUN: IceServer[] = [{ urls: ["stun:stun.miwifi.com:3478"] }];
 /** How long a welcome's TURN credentials last: a long sitting of matches
  * with one opponent and its reconnections (nettai-signaling's
@@ -181,19 +184,20 @@ const CHINA = "CN";
 /** The STUN and TURN servers for a client of a room both players are in
  * (the comment at the top): for a client in `country` China, the China
  * servers when the owner has set them and CHINA_TURN is "on"; else
- * Cloudflare's TURN service's,
- * with credentials made for it; or STUN alone (the China client's
- * CHINA_STUN). `client` is who the limit
+ * Cloudflare's TURN service's, with credentials made for it (a China
+ * client's STUN server CHINA_STUN in place of Cloudflare's); or STUN alone
+ * (the China client's CHINA_STUN). `client` is who the limit
  * counts it against (`clientOf`), `place` its room and role (the China
  * servers' usernames say them). Never fails, and never says a secret: a
  * failure's log is its kind or its HTTP status. */
 async function iceServers(env: Env, client: string, country: string, place: Place): Promise<IceServer[]> {
+	const inChina = country === CHINA;
 	const chinaOn = env.CHINA_TURN === "on" && env.CHINA_TURN_URLS && env.CHINA_TURN_SECRET;
-	const china = country === CHINA && chinaOn ? { urls: env.CHINA_TURN_URLS!, secret: env.CHINA_TURN_SECRET! } : undefined;
+	const china = inChina && chinaOn ? { urls: env.CHINA_TURN_URLS!, secret: env.CHINA_TURN_SECRET! } : undefined;
+	const stun = inChina ? CHINA_STUN : STUN;
 	if (!china && (!env.CLOUDFLARE_TURN_KEY_ID || !env.CLOUDFLARE_TURN_KEY_API_TOKEN)) {
-		return STUN;
+		return stun;
 	}
-	const stun = china ? CHINA_STUN : STUN;
 	try {
 		if (env.TURN_LIMIT && !(await env.TURN_LIMIT.limit({ key: client })).success) {
 			console.error("no TURN credentials: a client asked for more than its limit");
@@ -203,7 +207,21 @@ async function iceServers(env: Env, client: string, country: string, place: Plac
 		console.error(`no TURN credentials: ${e instanceof Error ? e.name : "an error"} asking the TURN limit`);
 		return stun;
 	}
-	return china ? chinaServers(china.urls, china.secret, place) : cloudflareServers(env.CLOUDFLARE_TURN_KEY_ID!, env.CLOUDFLARE_TURN_KEY_API_TOKEN!);
+	if (china) {
+		return chinaServers(china.urls, china.secret, place);
+	}
+	const servers = await cloudflareServers(env.CLOUDFLARE_TURN_KEY_ID!, env.CLOUDFLARE_TURN_KEY_API_TOKEN!);
+	return inChina ? [...CHINA_STUN, ...withoutStun(servers)] : servers;
+}
+
+/** `servers` without their STUN URLs (`stun:` and `stuns:`), and without a
+ * server that has no other: Cloudflare's TURN servers for a client in China,
+ * whose STUN server is CHINA_STUN. */
+function withoutStun(servers: IceServer[]): IceServer[] {
+	return servers.flatMap((server) => {
+		const urls = server.urls.filter((url) => !/^stuns?:/i.test(url));
+		return urls.length === 0 ? [] : [{ ...server, urls }];
+	});
 }
 
 /** The China servers: CHINA_STUN (no credentials), and the TURN servers of

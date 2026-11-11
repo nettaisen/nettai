@@ -44,8 +44,9 @@
 //!   client, which last [`TURN_CREDENTIALS_LAST`]; without them (no TURN key
 //!   set, or the service didn't answer), Cloudflare's public STUN server
 //!   alone. A client in mainland China is given a STUN server in the
-//!   mainland and the owner's own coturn for TURN instead, with credentials
-//!   the Worker makes, which last as long. A
+//!   mainland in place of Cloudflare's, and for TURN Cloudflare's or, while
+//!   the Worker's switch is on, the owner's own coturn, with credentials the
+//!   Worker makes, which last as long. A
 //!   server gives servers only once both players are in the room (the
 //!   Worker's cost its owner what is relayed on them), so a welcome before
 //!   then gives none; then

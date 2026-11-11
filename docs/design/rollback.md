@@ -864,7 +864,7 @@ by default, "you don't even need a google default right? direct connect doesn't 
   Worker, by its kind or HTTP status; the secrets are sent to Cloudflare's API and nowhere else, and never
   logged.
 - **Mainland China has its own servers.** Cloudflare's TURN service is slow or blocked from mainland China, so a
-  client there is given only a STUN server in the mainland (the Worker's `CHINA_STUN`, Xiaomi's
+  client there, while the switch below is on, is given only a STUN server in the mainland (the Worker's `CHINA_STUN`, Xiaomi's
   `stun.miwifi.com`; the user, "for china in the nettai signaling server, you should use china stun servers instead
   of the turn server's stun server") and the owner's own TURN server for China, a coturn (in Hong Kong since
   2026-11-03: the user, "replace the china turn proxy with the hong kong turn proxy"), and none of Cloudflare's.
@@ -883,10 +883,13 @@ by default, "you don't even need a google default right? direct connect doesn't 
   refuses them once that time has passed. They go
   with each of the URLs in `CHINA_TURN_URLS`, the coturn's `turn:` URLs. The
   same rules hold as for Cloudflare's: only for a room both players are in, counted against the same limit.
-  Without those two secrets, a client in China is given Cloudflare's. So it is with the Worker's switch
-  `CHINA_TURN` (a var in `wrangler.toml`) at `"off"`, the secrets kept for `"on"` again: the user, "disable the
-  chinese turn server support for now, route it all through cloudflare. the signaling worker should have a flag
-  to turn it off and on". It was off from 2026-11-02, and on again with the Hong Kong server from 2026-11-03.
+  Without those two secrets, a client in China is given Cloudflare's TURN servers. So it is with the Worker's
+  switch `CHINA_TURN` (a var in `wrangler.toml`) at `"off"`, the secrets kept for `"on"` again: the user, "disable
+  the chinese turn server support for now, route it all through cloudflare. the signaling worker should have a
+  flag to turn it off and on". It was off from 2026-11-02, on again with the Hong Kong server from 2026-11-03,
+  and off from 2026-11-10. Off, a client in China still has `CHINA_STUN`, in place of Cloudflare's STUN URLs,
+  which the Worker takes out of the TURN service's answer: the user, "you should keep the xiaomi stun server but
+  use the cloudflare turn server". Without TURN credentials, `CHINA_STUN` alone, as with the coturn.
 - **TURN only for a room both players are in, and only so often.** The credentials cost the key's owner what is
   relayed on them, and anyone could open a socket to `/rooms` (the security audit's finding; the user: "fix the
   open turn credentials as well"). So servers are given only once the room's two places are taken: a welcome
