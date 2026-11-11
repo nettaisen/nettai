@@ -62,7 +62,7 @@ compatibility_date = "2025-10-01"
 # Players in mainland China on the owner's coturn ("on") or on Cloudflare's
 # TURN as everyone else ("off"): see "TURN in mainland China" above.
 [vars]
-CHINA_TURN = "on"
+CHINA_TURN = "off"
 
 [[durable_objects.bindings]]
 name = "ROOMS"
