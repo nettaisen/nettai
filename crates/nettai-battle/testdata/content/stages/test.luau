@@ -4,7 +4,7 @@
 -- on the field (the EXE6 overlay's kinds).
 
 local boulder = require("../objects/boulder")
-local rock = require("../chips/rockcube/rock")
+local rock = require("../chips/rock_cube/rock")
 local P = PanelType
 
 local PLAIN = {
@@ -17,7 +17,7 @@ local function stage(actors: { StageActor }): StageDef
     return {
         layout = PLAIN,
         panel_pattern = 0x38,
-        music = asset.sound("test-stage-music"),
+        music = asset.sound("test_stage_music"),
         mode = 0,
         battle_number = 0,
         -- A link battle.
@@ -39,10 +39,10 @@ local function stone(x: number, y: number): StageActor
 end
 
 local stages: { [string]: StageDef } = {
-    ["test/link-battle"] = stage({ navi(1, 5), navi(0, 2) }),
-    ["test/link-battle-side0-first"] = stage({ navi(0, 2), navi(1, 5) }),
-    ["test/rock-battle"] = stage({ navi(0, 1), navi(1, 6), cube(3, 3), cube(4, 1) }),
-    ["test/boulder-battle"] = stage({ navi(0, 1), navi(1, 6), stone(2, 2), stone(5, 2), stone(3, 1) }),
+    ["test/link_battle"] = stage({ navi(1, 5), navi(0, 2) }),
+    ["test/link_battle_side0_first"] = stage({ navi(0, 2), navi(1, 5) }),
+    ["test/rock_battle"] = stage({ navi(0, 1), navi(1, 6), cube(3, 3), cube(4, 1) }),
+    ["test/boulder_battle"] = stage({ navi(0, 1), navi(1, 6), stone(2, 2), stone(5, 2), stone(3, 1) }),
 }
 
 return stages

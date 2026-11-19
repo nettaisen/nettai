@@ -386,7 +386,7 @@ mod tests {
         let six = crate::testing::exe6_content();
         let pick = &six.rules().link_pick;
         let names: Vec<String> = pick.stages.iter().map(|&s| name(&six, s)).collect();
-        assert_eq!(names, (1..=96).map(|n| format!("netbattle-{n}")).collect::<Vec<_>>());
+        assert_eq!(names, (1..=96).map(|n| format!("netbattle_{n}")).collect::<Vec<_>>());
         let mut pool = crate::link_battle_stages(&six, "exe6");
         let mut listed = pick.stages.clone();
         (pool.sort(), listed.sort());
@@ -397,19 +397,19 @@ mod tests {
         let names: Vec<String> = pick.stages.iter().map(|&s| name(&five, s)).collect();
         assert_eq!(names.len(), 96);
         assert_eq!(names[76..88], names[..12], "an index from 76 to 87 is the record 76 before it");
-        assert_eq!((names[0].as_str(), names[75].as_str(), names[88].as_str(), names[95].as_str()), ("netbattle-1", "netbattle-74", "netbattle-87", "netbattle-94"));
+        assert_eq!((names[0].as_str(), names[75].as_str(), names[88].as_str(), names[95].as_str()), ("netbattle_1", "netbattle_74", "netbattle_87", "netbattle_94"));
         let reached: std::collections::BTreeSet<&String> = names.iter().collect();
         assert_eq!(reached.len(), 82);
         let never: Vec<String> = crate::link_battle_stages(&five, "exe5").into_iter().map(|s| name(&five, s)).filter(|n| !reached.contains(n)).collect();
-        assert_eq!(never, (75..=86).map(|n| format!("netbattle-{n}")).collect::<Vec<_>>(), "records 76 to 87");
-        assert!(crate::link_stage(&five, "exe5", "netbattle-80").is_ok(), "a match may name one all the same");
+        assert_eq!(never, (75..=86).map(|n| format!("netbattle_{n}")).collect::<Vec<_>>(), "records 76 to 87");
+        assert!(crate::link_stage(&five, "exe5", "netbattle_80").is_ok(), "a match may name one all the same");
         // The places a match leaves to its seed are of the pick's stages and
         // backgrounds, the first round's of the first round's count: EXE6's
         // all 96, EXE5's the first 68 (a practice's 0x44: netbattle-1 to
         // netbattle-66, the fold past them). (Five rounds: a set of any
         // number picks its rounds after the first alike.)
         assert_eq!((six.rules().link_pick.first_round_stages, five.rules().link_pick.first_round_stages), (96, 68));
-        assert_eq!(names[67], "netbattle-66");
+        assert_eq!(names[67], "netbattle_66");
         let mut past = 0;
         for (content, game) in [(&six, "exe6"), (&five, "exe5")] {
             let pick = &content.rules().link_pick;
@@ -439,7 +439,7 @@ mod tests {
         let content = crate::testing::exe6_content();
         let none = vec![RoundSettings::default(); 5];
         let picked = places(&content, "exe6", &none, &mut Picks::new(9)).unwrap();
-        let stage = crate::link_stage(&content, "exe6", "netbattle-12").unwrap();
+        let stage = crate::link_stage(&content, "exe6", "netbattle_12").unwrap();
         let mut stated = none.clone();
         stated[1].stage = Some(stage);
         stated[3].background = Some("undernet".into());
@@ -533,12 +533,12 @@ mod tests {
             gregar > 0 && gregar < 5
         });
         assert!(mixed);
-        let forced = live(&content, "exe6", 3, Some(crate::link_stage(&content, "exe6", "netbattle-43").unwrap())).unwrap();
-        assert_eq!(ids::local(&content.defs.stage(forced.rounds[0].stage.unwrap()).key), "netbattle-43");
+        let forced = live(&content, "exe6", 3, Some(crate::link_stage(&content, "exe6", "netbattle_43").unwrap())).unwrap();
+        assert_eq!(ids::local(&content.defs.stage(forced.rounds[0].stage.unwrap()).key), "netbattle_43");
         assert_eq!(forced.sides, live(&content, "exe6", 3, None).unwrap().sides);
-        assert!(crate::link_stage(&content, "exe6", "netbattle-100").is_err());
+        assert!(crate::link_stage(&content, "exe6", "netbattle_100").is_err());
         // Another game's name is none of this game's.
-        assert!(crate::link_stage(&content, "exe6", "exe6:netbattle-43").is_err()); // (written in full)
+        assert!(crate::link_stage(&content, "exe6", "exe6:netbattle_43").is_err()); // (written in full)
     }
 
     /// A plain match is one the checks accept (its folder the rules' pick),

@@ -131,9 +131,9 @@ pub struct StageEntry {
 pub struct Games {
     #[serde(default)]
     pub gregar: GameAddresses,
-    #[serde(default, rename = "jp-falzar")]
+    #[serde(default, rename = "jp_falzar")]
     pub jp_falzar: GameAddresses,
-    #[serde(default, rename = "jp-gregar")]
+    #[serde(default, rename = "jp_gregar")]
     pub jp_gregar: GameAddresses,
 }
 
@@ -339,7 +339,7 @@ pub struct RuleNumbers {
     pub music: BTreeMap<String, u16>,
     #[serde(default)]
     pub banners: BTreeMap<String, u8>,
-    /// And the sprite each role of `sprites` names, as "cc-ii" (the
+    /// And the sprite each role of `sprites` names, as "cc_ii" (the
     /// category's byte offset and the index, as assets.toml writes one).
     #[serde(default)]
     pub sprites: BTreeMap<String, String>,
@@ -349,7 +349,7 @@ pub struct RuleNumbers {
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Assets {
-    /// "cc-ii": the sprite category's byte offset and the index, in hex.
+    /// "cc_ii": the sprite category's byte offset and the index, in hex.
     #[serde(default)]
     pub sprites: BTreeMap<String, String>,
     /// Song-table entries (music and sound effects share it).
@@ -419,7 +419,7 @@ pub struct Compat {
     pub text: Text,
     pub games: Games,
     /// The patch cards by the number a Japanese save's card list holds
-    /// (patch-cards.toml).
+    /// (patch_cards.toml).
     pub patch_cards: BTreeMap<String, u8>,
     /// The NaviCust programs by their number (navicust.toml): a part id
     /// is 4 x the number + its color variant.
@@ -447,7 +447,7 @@ pub const FILES: [&str; 13] = [
     "assets.toml",
     "text.toml",
     "games.toml",
-    "patch-cards.toml",
+    "patch_cards.toml",
 ];
 
 /// The game EXE6's compat numbers.
@@ -469,7 +469,7 @@ const EXE6: [(&str, &str); 14] = [
     ("assets.toml", include_str!("../../../content/exe6/compat/assets.toml")),
     ("text.toml", include_str!("../../../content/exe6/compat/text.toml")),
     ("games.toml", include_str!("../../../content/exe6/compat/games.toml")),
-    ("patch-cards.toml", include_str!("../../../content/exe6/compat/patch-cards.toml")),
+    ("patch_cards.toml", include_str!("../../../content/exe6/compat/patch_cards.toml")),
     ("navicust.toml", include_str!("../../../content/exe6/compat/navicust.toml")),
 ];
 
@@ -511,7 +511,7 @@ impl Compat {
 }
 
 impl Compat {
-    /// The number patch card `key` is printed with and a Japanese save holds (patch-cards.toml).
+    /// The number patch card `key` is printed with and a Japanese save holds (patch_cards.toml).
     pub fn patch_card_number(&self, key: &str) -> Option<u8> {
         self.patch_cards.get(key).copied()
     }
@@ -566,7 +566,7 @@ impl Compat {
             assets: get(&text, "assets.toml")?,
             text: get(&text, "text.toml")?,
             games: get(&text, "games.toml")?,
-            patch_cards: get(&text, "patch-cards.toml")?,
+            patch_cards: get(&text, "patch_cards.toml")?,
             navicust: get(&text, "navicust.toml")?,
             slots: BTreeMap::new(),
             root: ROOT.to_string(),
@@ -621,7 +621,7 @@ impl Compat {
         unique("records.toml: rock_variants", self.records.rock_variants.iter().map(|(k, &n)| (k, n)))?;
         unique("records.toml: projectile_variants", self.records.projectile_variants.iter().map(|(k, &n)| (k, n)))?;
         unique("records.toml: barriers", self.records.barriers.iter().map(|(k, &n)| (k, n)))?;
-        unique("patch-cards.toml", self.patch_cards.iter().map(|(k, &n)| (k, n)))?;
+        unique("patch_cards.toml", self.patch_cards.iter().map(|(k, &n)| (k, n)))?;
         unique("navicust.toml", self.navicust.programs.iter().map(|(k, &n)| (k, n)))?;
         unique("rules.toml: lockon", self.rules.lockon.iter().map(|(k, &n)| (k, n)))?;
         unique("rules.toml: statuses", self.rules.statuses.iter().map(|(k, &n)| (k, n)))?;

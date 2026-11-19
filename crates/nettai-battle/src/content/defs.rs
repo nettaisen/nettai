@@ -2410,8 +2410,8 @@ mod tests {
         // A stage's battle effects by name, the engine's and the game's own
         // (its rules' `flow.effect_bits`); a status's requests its timer's.
         let effects = |key: &str| c.stage(c.defs.stage_by_key(key).unwrap_or_else(|| panic!("stage {key}"))).effects.bits();
-        assert_eq!((effects("netbattle-1"), effects("netbattle-96"), effects("netbattle-97")), (0x88C, 0x8C, 0x20_088C));
-        let paralysis = c.status(c.defs.status_by_key("paralyze-90").expect("paralyze-90"));
+        assert_eq!((effects("netbattle_1"), effects("netbattle_96"), effects("netbattle_97")), (0x88C, 0x8C, 0x20_088C));
+        let paralysis = c.status(c.defs.status_by_key("paralyze_90").expect("paralyze_90"));
         assert_eq!((paralysis.requests, paralysis.duration), (crate::collision::StatusRequests::PARALYZE, 90));
         // A name neither has is a load error.
         let mut wrong = Content::default();
@@ -2419,6 +2419,6 @@ mod tests {
         let stages = wrong.scripts.module_mut("exe6", "stages").expect("exe6's stages");
         *stages = stages.replacen("karma_changes = true }", "karma_change = true }", 1);
         let e = wrong.define().unwrap_err().message;
-        assert!(e.contains("stage netbattle-1: `effects` names \"karma_change\", no battle effect of its game (boss_rank,"), "{e}");
+        assert!(e.contains("stage netbattle_1: `effects` names \"karma_change\", no battle effect of its game (boss_rank,"), "{e}");
     }
 }

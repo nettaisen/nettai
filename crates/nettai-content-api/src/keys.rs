@@ -1,17 +1,17 @@
 //! Keys and module names (docs/design/content-model-v2.md §4.0).
 //!
-//! An id is local to its game (`minibomb`): a match plays one game, and
+//! An id is local to its game (`mini_bomb`): a match plays one game, and
 //! nothing needs a prefix to tell games apart (the user: "no i don't want
 //! qualified ids since you can't cross between games anymore"); an asset's
 //! name is its pack's (`bomb`). The engine's own entries keep their
 //! `engine/...` keys.
 //!
 //! A module is named by its pack and its path in it:
-//! `exe6:chips/minibomb/init` is content/exe6/chips/minibomb/init.luau,
+//! `exe6:chips/mini_bomb/init` is content/exe6/chips/mini_bomb/init.luau,
 //! `exelib:swords/slash` content/exelib/swords/slash.luau ([`module_name`],
 //! [`module_path`]; the packs, `crate::packs`). A folder's main module is
-//! its `init.luau`, and the folder's name stands for it (`exe6:chips/minibomb`,
-//! `require("../minibomb")`, a game's `require("@self/chips/minibomb")`:
+//! its `init.luau`, and the folder's name stands for it (`exe6:chips/mini_bomb`,
+//! `require("../mini_bomb")`, a game's `require("@self/chips/mini_bomb")`:
 //! [`init_of`], [`listed_as`]), as Luau's own requires read a folder. A
 //! game pack's own init.luau is the game: `exe6:init` (`packs::INIT`).
 
@@ -130,12 +130,12 @@ pub fn resolve(from: &str, path: &str) -> Result<String, String> {
 }
 
 /// Whether `name` is a valid game name: lowercase ASCII letters
-/// and digits in `-`-separated words (`exe6`, `exe6-souls`), and not
+/// and digits in `_`-separated words (`exe6`, `exe6_souls`), and not
 /// `engine`.
 pub fn valid_root_name(name: &str) -> bool {
     name != "engine"
         && !name.is_empty()
-        && name.split('-').all(|w| !w.is_empty() && w.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit()))
+        && name.split('_').all(|w| !w.is_empty() && w.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit()))
 }
 
 #[cfg(test)]
@@ -145,10 +145,11 @@ mod tests {
     #[test]
     fn keys_and_module_names() {
         assert_eq!(root_of("exelib:regions#57"), Some("exelib"));
-        assert_eq!(root_of("minibomb/action"), None);
+        assert_eq!(root_of("mini_bomb/action"), None);
         assert_eq!(local("exe6:chips/cannon/init"), "chips/cannon/init");
         assert_eq!(local("cannon"), "cannon");
-        assert!(valid_root_name("exe6-souls"));
+        assert!(valid_root_name("exe6_souls"));
+        assert!(!valid_root_name("exe6-souls"));
         assert!(!valid_root_name("engine"));
         assert!(!valid_root_name("EXE6"));
         assert_eq!(module_name("exe6/chips/cannon/init"), "exe6:chips/cannon/init");
@@ -160,7 +161,7 @@ mod tests {
         assert!(resolve("exe6:chips/cannon/init", "../../exelib/cannon").unwrap_err().contains("leaves pack exe6"));
         // A folder's init is the folder as a module (Luau's rule): `./` is
         // beside the folder, `@self/` inside it.
-        assert_eq!(resolve("exe6:chips/cannon/init", "./hicannon"), Ok("exe6:chips/hicannon".into()));
+        assert_eq!(resolve("exe6:chips/cannon/init", "./high_cannon"), Ok("exe6:chips/high_cannon".into()));
         assert_eq!(resolve("exe6:chips/cannon/init", "../lib/slot"), Ok("exe6:lib/slot".into()));
         assert_eq!(resolve("exe6:chips/cannon/init", "@self/action"), Ok("exe6:chips/cannon/action".into()));
         assert_eq!(resolve("exe6:rules/init", "@self/beast"), Ok("exe6:rules/beast".into()));

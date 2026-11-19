@@ -46,7 +46,7 @@ fn hp(b: &Battle, side: u8) -> u16 {
 #[test]
 fn a_shot_hits_a_navi_stepping_into_it_once() {
     let content = exe6_content();
-    for stage in ["netbattle-1", "netbattle-2"] {
+    for stage in ["netbattle_1", "netbattle_2"] {
         let mut start = fighting(&content, stage);
         // (A direction acts on a hold's second tick.)
         for held in [Keys::UP, Keys::UP].into_iter().chain([Keys::empty(); 28]) {

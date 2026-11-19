@@ -155,7 +155,7 @@ fn exe5_a_soul_taken_back_before_later_picks() {
 #[test]
 fn exe5_unpicking_the_last_pick_is_b() {
     let content = exe5_content();
-    let meddy = crate::ids::form(&content, "exe5", "meddysoul").unwrap();
+    let meddy = crate::ids::form(&content, "exe5", "meddy_soul").unwrap();
     let new = |form: Option<FormHandle>| {
         let m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
         battle_in(&content, m, "exe5", "sword", S, form)
@@ -182,7 +182,7 @@ fn exe5_unpicking_the_last_pick_is_b() {
 #[test]
 fn exe5_a_capsule_leaves_with_its_pick() {
     let content = exe5_content();
-    let meddy = crate::ids::form(&content, "exe5", "meddysoul").unwrap();
+    let meddy = crate::ids::form(&content, "exe5", "meddy_soul").unwrap();
     let sword = crate::ids::chip(&content, "exe5", "sword").unwrap();
     let m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
     let mut b = battle_in(&content, m, "exe5", "sword", S, Some(meddy));
@@ -212,7 +212,7 @@ fn exe5_a_capsule_leaves_with_its_pick() {
 #[test]
 fn exe5_arm_change_holds_through_unpicks() {
     let content = exe5_content();
-    let colonel = crate::ids::form(&content, "exe5", "colonelsoul").unwrap();
+    let colonel = crate::ids::form(&content, "exe5", "colonel_soul").unwrap();
     let cannon = crate::ids::chip(&content, "exe5", "cannon").unwrap();
     let m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
     let mut b = battle_in(&content, m, "exe5", "cannon", A, Some(colonel));
@@ -241,7 +241,7 @@ fn exe5_arm_change_holds_through_unpicks() {
 
 /// An EXE6 match whose side 0 has Beast Out (Falzar's) and these Crosses.
 fn exe6_match(content: &Arc<Content>, crosses: &[&str]) -> Match {
-    let falzar = "cybeast = \"falzar-beast\"";
+    let falzar = "cybeast = \"falzar_beast\"";
     let mut m = parse_in(content, "exe6", &side("megaman", &EXE6, falzar), &side("megaman", &EXE6, falzar)).unwrap();
     m.sides[0].set_fact(content, "beast_out", &flag(true)).unwrap();
     m.sides[0].set_fact(content, "crosses", &forms(content, "exe6", crosses)).unwrap();
@@ -269,7 +269,7 @@ fn exe6_beast_out_taken_back_before_later_picks() {
     assert_eq!(ok(&mut b), (vec![cannon; 2], None));
     // The BeastOut chip: its window moves it first and puts on its face.
     let mut b = battle(&content, exe6_match(&content, &[]), "exe6", "cannon", A);
-    deal(&mut b, &content, "exe6", 1, "beastout", STAR);
+    deal(&mut b, &content, "exe6", 1, "beast_out", STAR);
     choose(&mut b, ScreenChoice::Pick(0));
     choose(&mut b, ScreenChoice::Pick(1));
     assert_eq!(screen(&b).selection(), [1, 0]);
@@ -293,7 +293,7 @@ fn exe6_beast_out_taken_back_before_later_picks() {
 fn exe6_unchoosing_a_cross_keeps_the_picks() {
     let content = exe6_content();
     let cannon = crate::ids::chip(&content, "exe6", "cannon").unwrap();
-    let crosses = ["heatcross", "eleccross"];
+    let crosses = ["heat_cross", "elec_cross"];
     let mut b = battle(&content, exe6_match(&content, &crosses), "exe6", "cannon", A);
     assert_eq!(b.form_list(0).map(|l| l.count), Some(2));
     choose(&mut b, ScreenChoice::Pick(0));
@@ -323,7 +323,7 @@ fn exe6_unchoosing_a_cross_keeps_the_picks() {
     assert_eq!(ok(&mut b), (vec![cannon; 2], None));
     // A BeastOut chip picked before the Cross: its face again.
     let mut b = battle(&content, exe6_match(&content, &crosses), "exe6", "cannon", A);
-    deal(&mut b, &content, "exe6", 1, "beastout", STAR);
+    deal(&mut b, &content, "exe6", 1, "beast_out", STAR);
     choose(&mut b, ScreenChoice::Pick(1));
     let beast = screen(&b).look.face;
     assert!(beast.is_some());
@@ -363,7 +363,7 @@ fn exe4_a_double_soul_taken_back_before_later_picks() {
     let mut m = crate::pick::live(&content, "exe4", 3, None).unwrap();
     m.sides[0].set_fact(&content, "karma", &number(500)).unwrap();
     m.sides[0].set_fact(&content, "double_soul", &flag(true)).unwrap();
-    m.sides[0].set_fact(&content, "souls", &forms(&content, "exe4", &["protosoul"])).unwrap();
+    m.sides[0].set_fact(&content, "souls", &forms(&content, "exe4", &["proto_soul"])).unwrap();
     let mut b = battle(&content, m, "exe4", "sword", S);
     deal(&mut b, &content, "exe4", 3, "cannon", A);
     // (Slot 1: the match's folder may have its Regular chip in slot 0, which

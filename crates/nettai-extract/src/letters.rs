@@ -1015,7 +1015,7 @@ pub fn picture_letters(c: &CustomScreen, say: &mut dyn FnMut(String)) -> Picture
         found
     };
     let ok = need("ok", &c.pictures.ok);
-    let ok_picked = need("ok-picked", &c.pictures.ok_picked);
+    let ok_picked = need("ok_picked", &c.pictures.ok_picked);
     let other = help_letters(&c.pictures.other);
     let buttons_of = |buttons: &[(String, nettai_assets::ButtonPictures)], say: &mut dyn FnMut(String)| -> Vec<(String, Option<HelpLetters>)> {
         buttons.iter().map(|(name, b)| (name.clone(), button_letters(name, b, say))).collect()
@@ -1647,7 +1647,7 @@ pub fn custom_layered(c: &CustomScreen) -> (BTreeMap<String, LayeredPicture>, Ve
         single("slot-codes.png", &c.slot_codes, &l.slot_codes.blank),
     ];
     if let Some(t) = &l.turn_limit {
-        singles.push(single("turn-limit.png", &c.turn_limit, &t.blank));
+        singles.push(single("turn_limit.png", &c.turn_limit, &t.blank));
     }
     for v in singles {
         add(v, &mut out);
@@ -1659,7 +1659,7 @@ pub fn custom_layered(c: &CustomScreen) -> (BTreeMap<String, LayeredPicture>, Ve
     let mut pictures: Vec<(String, String, &Tiles, Tiles, Palette, bool)> = Vec::new();
     type Pick = fn(&nettai_assets::SlotPictures) -> &nettai_assets::Picture;
     type Lines = fn(&PictureLetters) -> &Option<HelpLetters>;
-    let slots: [(&str, Pick, Lines); 3] = [("ok", |p| &p.ok, |l| &l.ok), ("ok-picked", |p| &p.ok_picked, |l| &l.ok_picked), ("other", |p| &p.other, |l| &l.other)];
+    let slots: [(&str, Pick, Lines); 3] = [("ok", |p| &p.ok, |l| &l.ok), ("ok_picked", |p| &p.ok_picked, |l| &l.ok_picked), ("other", |p| &p.other, |l| &l.other)];
     for (name, pick, lines) in slots {
         let (p, h) = (pick(&c.pictures), lines(&l.pictures));
         pictures.push((name.into(), format!("pictures/{name}.png"), &p.tiles, blank(h, &p.tiles), p.palette, h.is_some()));
@@ -1839,7 +1839,7 @@ pub fn settle(bundle: &mut Bundle) -> (Vec<String>, Vec<String>) {
         }
     };
     set(&mut c.letters.pictures.ok, &c.pictures.ok.tiles, "pictures/ok.png");
-    set(&mut c.letters.pictures.ok_picked, &c.pictures.ok_picked.tiles, "pictures/ok-picked.png");
+    set(&mut c.letters.pictures.ok_picked, &c.pictures.ok_picked.tiles, "pictures/ok_picked.png");
     set(&mut c.letters.pictures.other, &c.pictures.other.tiles, "pictures/other.png");
     for (name, h) in &mut c.letters.pictures.buttons {
         if let Some((_, b)) = c.buttons.iter().find(|(n, _)| n == name) {
@@ -1945,7 +1945,7 @@ fn fold_planes(c: &mut CustomScreen) -> (usize, Vec<String>) {
     type Pick = fn(&mut nettai_assets::SlotPictures) -> &mut nettai_assets::Picture;
     type Lines = fn(&mut PictureLetters) -> &mut Option<HelpLetters>;
     let slots: [(&str, Pick, Lines); 3] =
-        [("ok", |p| &mut p.ok, |l| &mut l.ok), ("ok-picked", |p| &mut p.ok_picked, |l| &mut l.ok_picked), ("other", |p| &mut p.other, |l| &mut l.other)];
+        [("ok", |p| &mut p.ok, |l| &mut l.ok), ("ok_picked", |p| &mut p.ok_picked, |l| &mut l.ok_picked), ("other", |p| &mut p.other, |l| &mut l.other)];
     for (name, pick, lines) in slots {
         let p = pick(&mut c.pictures);
         let palette = p.palette;

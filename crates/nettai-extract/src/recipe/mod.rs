@@ -58,7 +58,7 @@ pub struct Recipe {
     /// Its modules by name, each with the text the content's load read (`exe6:extract/hud`,
     /// `exelib:extract/place`).
     modules: Arc<BTreeMap<String, String>>,
-    /// Its other inputs by their path in the bundle: the drawings (`exelib/extract/shapes/banners/bar-104.svg`) and
+    /// Its other inputs by their path in the bundle: the drawings (`exelib/extract/shapes/banners/bar_104.svg`) and
     /// the game's compat tables (`exe6/compat/assets.toml`).
     files: Arc<BTreeMap<String, Vec<u8>>>,
 }

@@ -1254,9 +1254,9 @@ mod tests {
         assert_eq!(partners(&content, &side, &shape), Vec::new());
         let navi = |n: &str| Some(nettai_match::ids::navi(&content, "exe5", n).unwrap());
         let program = |n: &str| nettai_match::ids::entry(&content, "exe5", "partycust_programs", n).unwrap();
-        let party = vec![Partner { navi: navi("toadman"), programs: vec![program("p-spport"), program("p-spport")] }, Partner { navi: navi("protoman"), programs: Vec::new() }];
+        let party = vec![Partner { navi: navi("toadman"), programs: vec![program("party_support"), program("party_support")] }, Partner { navi: navi("protoman"), programs: Vec::new() }];
         assert!(write(&content, &mut side, &shape, &party));
         assert_eq!(partners(&content, &side, &shape), party);
-        assert_eq!(tone(&content, program("p-spport")), slint::Color::from_rgb_u8(0xEA, 0xF3, 0xFF));
+        assert_eq!(tone(&content, program("party_support")), slint::Color::from_rgb_u8(0xEA, 0xF3, 0xFF));
     }
 }

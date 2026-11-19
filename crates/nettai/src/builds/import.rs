@@ -116,7 +116,7 @@ pub fn auto_battle_of_save(compat: &Compat, content: &Content, builds: &Builds, 
 }
 
 /// The number patch card `id` (its key in the game's cards) is printed with and a save holds, as the game's compat
-/// tables state it (`compat`, its content's patch-cards.toml): what a screen shows as the card's number. None: a
+/// tables state it (`compat`, its content's patch_cards.toml): what a screen shows as the card's number. None: a
 /// game whose compat states no such card.
 pub fn card_number(compat: &Compat, id: &str) -> Option<u8> {
     match compat {

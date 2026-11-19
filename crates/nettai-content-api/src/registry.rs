@@ -1,8 +1,8 @@
 //! Registries, keys and handles (docs/design/content-model-v2.md §2).
 //!
 //! Every definition content makes belongs to a registry and has a key, a
-//! string unique within it: an explicit `id` (`"minibomb"`), or one derived
-//! from where the definition sits (`"minibomb/action"`). When content loads,
+//! string unique within it: an explicit `id` (`"mini_bomb"`), or one derived
+//! from where the definition sits (`"mini_bomb/action"`). When content loads,
 //! each registry's keys are sorted byte-wise and numbered from 0; that number
 //! is the definition's handle, which battle state holds. The order depends
 //! only on the keys, so two machines loading the same content get the same
@@ -112,13 +112,13 @@ impl fmt::Display for Registry {
 }
 
 /// Whether `key` is a valid explicit key: lowercase ASCII letters and digits
-/// in `-`-separated words, optionally qualified by owners with `/`
-/// (`minibomb`, `atk-10`, `eraseman/mark`).
+/// in `_`-separated words, optionally qualified by owners with `/`
+/// (`mini_bomb`, `attack_10`, `eraseman/mark`).
 pub fn valid_key(key: &str) -> bool {
     !key.is_empty()
         && key.split('/').all(|segment| {
             !segment.is_empty()
-                && segment.split('-').all(|w| !w.is_empty() && w.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit()))
+                && segment.split('_').all(|w| !w.is_empty() && w.bytes().all(|b| b.is_ascii_lowercase() || b.is_ascii_digit()))
         })
 }
 
@@ -190,11 +190,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn keys_are_kebab_words_qualified_by_owners() {
-        for ok in ["minibomb", "atk-10", "m-cannon", "eraseman/mark", "megaman/buster", "grndman-ex", "a1/b2-c3"] {
+    fn keys_are_snake_words_qualified_by_owners() {
+        for ok in ["mini_bomb", "attack_10", "mega_cannon", "eraseman/mark", "megaman/buster", "groundman_ex", "a1/b2_c3"] {
             assert!(valid_key(ok), "{ok}");
         }
-        for bad in ["", "MiniBomb", "mini_bomb", "-a", "a-", "a--b", "a//b", "/a", "a/", "a b", "a:b", "a#1"] {
+        for bad in ["", "MiniBomb", "mini-bomb", "_a", "a_", "a__b", "a//b", "/a", "a/", "a b", "a:b", "a#1"] {
             assert!(!valid_key(bad), "{bad}");
         }
     }

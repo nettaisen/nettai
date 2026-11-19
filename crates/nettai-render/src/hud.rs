@@ -837,7 +837,7 @@ pub fn draw<'a>(
         let l_or_r = (g >= FULL)
             .then(|| {
                 let found = hud.letters.words.l_or_r[full_frame].as_ref();
-                lettered_word(b, text, "gauge.l-or-r", found.map(|f| &f.letters), pal, Lettering::wide, problems).zip(found)
+                lettered_word(b, text, "gauge.l_or_r", found.map(|f| &f.letters), pal, Lettering::wide, problems).zip(found)
             })
             .flatten();
         // The cells drawn as shapes (the game's, where each cell filling by

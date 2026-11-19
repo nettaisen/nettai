@@ -635,7 +635,7 @@ fn pack_look_colors(hud: &Hud, a: &CustomScreen, p: &mut Problems) {
         }
     };
     help("ok", &pictures.ok, p);
-    help("ok-picked", &pictures.ok_picked, p);
+    help("ok_picked", &pictures.ok_picked, p);
     help("other", &pictures.other, p);
     for (name, h) in &pictures.buttons {
         help(name, h, p);
@@ -689,8 +689,8 @@ pub fn pack_letters(c: &Content, hud: &Hud, a: &CustomScreen, text: &crate::stri
         ("pause", l.pause.is_some()),
         ("waiting", w.waiting.is_some()),
         ("gauge.custom", w.gauge.is_some()),
-        ("gauge.l-or-r", w.l_or_r.iter().all(Option::is_some)),
-        ("turn-limit", a.is_empty() || a.letters.turn_limit.is_some()),
+        ("gauge.l_or_r", w.l_or_r.iter().all(Option::is_some)),
+        ("turn_limit", a.is_empty() || a.letters.turn_limit.is_some()),
     ] {
         if let Some(said) = text.lettering(c, key) {
             need(found, &format!("the picture of {key:?}"), p);
@@ -734,7 +734,7 @@ pub fn pack_letters(c: &Content, hud: &Hud, a: &CustomScreen, text: &crate::stri
     };
     let pl = &cl.pictures;
     help("pictures.ok", pl.ok.as_ref(), p);
-    help("pictures.ok-picked", pl.ok_picked.as_ref(), p);
+    help("pictures.ok_picked", pl.ok_picked.as_ref(), p);
     // (Battle mode 1's: no frame draws it yet, its words are kept whole.)
     help("pictures.other", pl.other.as_ref(), p);
     for (name, _) in &a.buttons {

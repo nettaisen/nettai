@@ -78,12 +78,12 @@ impl EngineAction {
     pub fn key(self) -> &'static str {
         match self {
             EngineAction::Move => "engine/move",
-            EngineAction::DimmingChip => "engine/dimming-chip",
-            EngineAction::HandOffChip => "engine/hand-off-chip",
-            EngineAction::InstantChip => "engine/instant-chip",
-            EngineAction::FormChange => "engine/form-change",
-            EngineAction::NaviSwitch => "engine/navi-switch",
-            EngineAction::SwitchKnockout => "engine/switch-knockout",
+            EngineAction::DimmingChip => "engine/dimming_chip",
+            EngineAction::HandOffChip => "engine/hand_off_chip",
+            EngineAction::InstantChip => "engine/instant_chip",
+            EngineAction::FormChange => "engine/form_change",
+            EngineAction::NaviSwitch => "engine/navi_switch",
+            EngineAction::SwitchKnockout => "engine/switch_knockout",
         }
     }
 }

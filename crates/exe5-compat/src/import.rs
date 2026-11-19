@@ -331,7 +331,7 @@ mod tests {
         let notes = import_file(&content, &mut m, 0, &image).unwrap();
         let s = &m.sides[0];
         let times = nettai_match::testing::sp_times(&content, &s.facts);
-        assert_eq!((times.len(), &times[0], &times[1], &times[17]), (18, &("protomn-sp".to_string(), 721), &("gyroman-sp".to_string(), 0), &("gridman-sp".to_string(), 0xFFFF)));
+        assert_eq!((times.len(), &times[0], &times[1], &times[17]), (18, &("protoman_sp".to_string(), 721), &("gyroman_sp".to_string(), 0), &("gridman_sp".to_string(), 0xFFFF)));
         assert_eq!(nettai_match::ids::local(&content.defs.navi(s.navi(&content)).key), "megaman");
         assert!(nettai_match::ids::in_game(&content, "exe5", &content.defs.navi(s.navi(&content)).key));
         use nettai_match::facts::Stated;
@@ -340,7 +340,7 @@ mod tests {
         assert_eq!(s.facts.get(&content, "karma"), Some(Stated::Number(100)));
         let listed = s.facts.get(&content, "souls").unwrap().defs();
         let souls: Vec<&str> = listed.iter().map(|&f| nettai_match::ids::local(&content.defs.form(nettai_content_api::FormHandle(f)).key)).collect();
-        assert!(souls.contains(&"protosoul") && !souls.contains(&"colonelsoul"), "{souls:?}");
+        assert!(souls.contains(&"proto_soul") && !souls.contains(&"colonel_soul"), "{souls:?}");
         // (Its six souls: those the game hasn't yet are said.)
         assert_eq!(notes.len() + souls.len(), 6, "{notes:?}");
         // Without Soul Unison (event flag 0), its soul flags all the same:
@@ -428,7 +428,7 @@ mod tests {
         let souls = content.navi(megaman).forms.as_ref().unwrap().listed("souls");
         let numbers: Vec<Option<u8>> = souls.iter().map(|&f| compat.form_number(&content.defs.form(f).key)).collect();
         assert_eq!(numbers, (1..=12).map(Some).collect::<Vec<_>>());
-        assert_eq!((compat.form(0), compat.form(7), compat.form(13)), (Some("base"), Some("colonelsoul"), None));
+        assert_eq!((compat.form(0), compat.form(7), compat.form(13)), (Some("base"), Some("colonel_soul"), None));
     }
 
     /// The block side `side`'s auto battle facts state (the import's way
@@ -491,23 +491,23 @@ mod tests {
         // As a battle's end writes it: place 2 (of the first three), the
         // most used standard chips from place 4, a pattern in place 34, its
         // record the first; the second record zeros.
-        put(&mut image, 2, &[number("areagrab")]);
-        put(&mut image, 6, &[number("lance"), number("lance"), number("lance"), number("lance"), number("sidebub3")]);
+        put(&mut image, 2, &[number("area_grab")]);
+        put(&mut image, 6, &[number("lance"), number("lance"), number("lance"), number("lance"), number("side_bubble_3")]);
         put(&mut image, 66, &[0x8000]);
         image[0x554C + 0x58..0x554C + 0x5A].copy_from_slice(&[0xFD, 0x01]);
-        put(&mut image, 0x5A, &[number("sword"), number("wideswrd")]);
+        put(&mut image, 0x5A, &[number("sword"), number("wide_sword")]);
         put(&mut image, 0x64, &[7, 0]);
         image[0x554C + 0x68..0x554C + 0x78].fill(0);
         let mut m = nettai_match::Match::empty(&content, "exe5").unwrap();
         let notes = import_file(&content, &mut m, 1, &image).unwrap();
         let mut want = AutoBattleBlock { places: [AUTO_BATTLE_EMPTY; 42], patterns: [BLANK; RECORDS] };
-        want.places[1] = number("areagrab");
+        want.places[1] = number("area_grab");
         for i in 3..7 {
             want.places[i] = number("lance");
         }
-        want.places[7] = number("sidebub3");
+        want.places[7] = number("side_bubble_3");
         want.places[33] = AUTO_BATTLE_PATTERN;
-        want.patterns[0] = AutoBattlePattern { dx: -3, dy: 1, chips: [number("sword"), number("wideswrd"), AUTO_BATTLE_EMPTY, AUTO_BATTLE_EMPTY, AUTO_BATTLE_EMPTY], score: 7 };
+        want.patterns[0] = AutoBattlePattern { dx: -3, dy: 1, chips: [number("sword"), number("wide_sword"), AUTO_BATTLE_EMPTY, AUTO_BATTLE_EMPTY, AUTO_BATTLE_EMPTY], score: 7 };
         want.patterns[1] = AutoBattlePattern { dx: 0, dy: 0, chips: [0; 5], score: 0 };
         assert_eq!(block_of(&content, &m.sides[1]), want);
         assert!(!notes.iter().any(|n| n.contains("auto battle")), "{notes:?}");
@@ -525,7 +525,7 @@ mod tests {
         assert!(said[0].contains("place 7 of the save's auto battle data names pattern 10, past its eight"), "{notes:?}");
         assert!(said[1].contains("holds chip numbers exe5 has no chip for (0x1ff, 0x1fe): their places are left empty"), "{notes:?}");
         let data = block_of(&content, &m.sides[1]);
-        assert_eq!(data.places[3..8], [number("lance"), AUTO_BATTLE_EMPTY, 0, AUTO_BATTLE_EMPTY, number("sidebub3")]);
+        assert_eq!(data.places[3..8], [number("lance"), AUTO_BATTLE_EMPTY, 0, AUTO_BATTLE_EMPTY, number("side_bubble_3")]);
         assert_eq!(data.patterns[0].chips[2], AUTO_BATTLE_EMPTY);
         // A block nothing has written: no data stated.
         image[0x554C..0x554C + 0xE0].fill(0xFF);
@@ -562,15 +562,15 @@ mod tests {
             }
             out
         };
-        let (lance, sword, cannon, wide) = (n("lance"), n("sword"), n("cannon"), n("wideswrd"));
+        let (lance, sword, cannon, wide) = (n("lance"), n("sword"), n("cannon"), n("wide_sword"));
         let two = AutoBattlePattern { dx: -3, dy: 1, chips: [lance, lance, none, none, none], score: 7 };
         let full = AutoBattlePattern { dx: -1, dy: 0, chips: [sword, wide, sword, wide, cannon], score: 12 };
         let long_score = AutoBattlePattern { dx: 2, dy: -2, chips: [cannon, 0, sword, none, cannon], score: 0x0123_4567 };
         // As a battle's end writes one: the standard chips (the most used
         // four times), megas, a giga, two patterns, a program advance.
-        let mut written: Vec<(usize, u16)> = (3..7).map(|i| (i, lance)).chain((7..11).map(|i| (i, n("sidebub3")))).collect();
-        written.extend([(11, n("magnum")), (12, n("magnum")), (13, cannon), (27, n("protoman")), (28, n("colonel")), (32, n("crossdiv"))]);
-        written.extend([(33, 0x8000), (34, 0x8001), (41, n("csmopris"))]);
+        let mut written: Vec<(usize, u16)> = (3..7).map(|i| (i, lance)).chain((7..11).map(|i| (i, n("side_bubble_3")))).collect();
+        written.extend([(11, n("magnum")), (12, n("magnum")), (13, cannon), (27, n("protoman")), (28, n("colonel")), (32, n("cross_divide"))]);
+        written.extend([(33, 0x8000), (34, 0x8001), (41, n("cosmo_prison"))]);
         let every: Vec<(usize, u16)> = (0..42).map(|i| (i, if i % 7 == 0 { 0x8000 | (i as u16 / 7) } else { [lance, sword, cannon, wide][i % 4] })).collect();
         let blocks = [
             ("written", block(&written, [two, full, zero, zero, zero, zero, zero, zero])),

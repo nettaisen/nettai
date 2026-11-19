@@ -124,7 +124,7 @@ impl<'a> DisplayText<'a> {
 
     /// A picture's words, which the sharp HUD draws in the lettering font
     /// in its place (`lettering`), by the picture's key in the game's text
-    /// table [`LETTERING`] (`banner.battle-start`, `pause`): the language's,
+    /// table [`LETTERING`] (`banner.battle_start`, `pause`): the language's,
     /// else the content's own; none where neither has them (the picture
     /// is drawn: the US Program Advance's logo has no words).
     pub fn lettering<'b>(&self, content: &'b Content, key: &str) -> Option<&'b str>

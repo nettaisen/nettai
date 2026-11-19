@@ -347,7 +347,7 @@ pub fn is_version_form(content: &Content, field: &Field) -> bool {
 
 /// Version `version` (by its name) as the engine's version fact states it:
 /// the variant of that name, or the form the fact offers whose own version
-/// it is (EXE6's "falzar": `falzar-beast`). None: the rules take no version,
+/// it is (EXE6's "falzar": `falzar_beast`). None: the rules take no version,
 /// or none of that name.
 pub fn version_fact<'v>(content: &Content, version: &'v str) -> Option<Fact<'v>> {
     let f = field(content, content.defs.fact_name(PlayerFact::Version)?)?;

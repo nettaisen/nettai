@@ -126,7 +126,7 @@ local function navi(sprite: string, ai_index: number, megaman: boolean, hooks: H
         element = Element.null,
         buster_bonus = 1,
         move_lag = { 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4 },
-        banners = { win = asset.banner("test-win"), lose = asset.banner("test-deleted") },
+        banners = { win = asset.banner("test_win"), lose = asset.banner("test_deleted") },
         merge_height = 0,
         run_message = {},
         weapons = WEAPONS,
@@ -150,9 +150,9 @@ local function navi(sprite: string, ai_index: number, megaman: boolean, hooks: H
 end
 
 local navis: { [string]: NaviDef } = {
-    megaman = navi("test-megaman", 0, true),
-    ["test/link-navi"] = navi("test-navi", 4, false),
-    ["test/hooked-navi"] = navi("test-navi", 5, false, HOOKS),
+    megaman = navi("test_megaman", 0, true),
+    ["test/link_navi"] = navi("test_navi", 4, false),
+    ["test/hooked_navi"] = navi("test_navi", 5, false, HOOKS),
 }
 
 return navis

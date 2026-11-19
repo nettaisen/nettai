@@ -61,7 +61,7 @@ fn attach(b: &mut Battle, n: usize) {
             (o.panel, o.alliance, o.flip)
         };
         let r = if beam {
-            behavior::spawn_kind(b, "gundels/beam", offset).unwrap()
+            behavior::spawn_kind(b, "gun_del_sol/beam", offset).unwrap()
         } else {
             behavior::spawn_kind(b, "attachment", Vec3::default()).unwrap()
         };
@@ -69,7 +69,7 @@ fn attach(b: &mut Battle, n: usize) {
         o.related[0] = Some(owner);
         (o.alliance, o.flip) = (alliance, flip);
         if beam {
-            let look = b.content.assets.handle(AssetKind::Sprite, "sun-beam").expect("the sun beam's sprite");
+            let look = b.content.assets.handle(AssetKind::Sprite, "sun_beam").expect("the sun beam's sprite");
             behavior::set_state_field(b, r, "sprite", Value::Asset(AssetKind::Sprite, look));
             behavior::set_state_field(b, r, "palette", Value::Int(1));
             behavior::set_state_variant(b, r, "slot", "related");
@@ -82,7 +82,7 @@ fn attach(b: &mut Battle, n: usize) {
             let records = &b.content.defs.records;
             let look = records
                 .iter()
-                .position(|d| d.record_type == "attachment-look" && nettai_content_api::keys::local(&d.key).starts_with("gundels3/"))
+                .position(|d| d.record_type == "attachment_look" && nettai_content_api::keys::local(&d.key).starts_with("gun_del_sol_3/"))
                 .expect("GunDelS3's gun");
             behavior::set_state_field(b, r, "look", Value::Def(Registry::Record, look as u16));
             behavior::set_state_variant(b, r, "slot", "overlay");

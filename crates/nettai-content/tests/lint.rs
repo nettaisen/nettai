@@ -127,10 +127,10 @@ fn the_strings_name_the_contents_definitions_and_are_not_hashed() {
     let errors: Vec<String> = r.issues.iter().filter(|i| i.level == Level::Error).map(|i| format!("{}: {}", i.file, i.message)).collect();
     assert!(errors.is_empty(), "{}", errors.join("\n"));
     // The own strings' shape is in the records: MagPanel's one line.
-    let magpanl = c.defs.chip_by_key("magpanl").expect("magpanl");
+    let magpanl = c.defs.chip_by_key("magnet_panel").expect("magnet_panel");
     assert_eq!(*c.chip(magpanl).description_lines, 1);
     // Every chip has its whole name in the own language.
-    assert_eq!(c.strings.chip("hicannon").and_then(|s| s.long_name.as_deref()), Some("High Cannon"));
+    assert_eq!(c.strings.chip("high_cannon").and_then(|s| s.long_name.as_deref()), Some("High Cannon"));
     let mut short = c.strings.clone();
     short.chips.get_mut("cannon").unwrap().long_name = None;
     assert_eq!(
@@ -146,7 +146,7 @@ fn the_strings_name_the_contents_definitions_and_are_not_hashed() {
     assert_eq!(define(renamed).hash(), c.hash());
     // Another shape: other records, the same content.
     let mut reshaped = base.strings.clone();
-    reshaped.chips.get_mut("magpanl").unwrap().description = Some("one\ntwo".into());
+    reshaped.chips.get_mut("magnet_panel").unwrap().description = Some("one\ntwo".into());
     let reshaped = define(reshaped);
     assert_eq!(*reshaped.chip(magpanl).description_lines, 2);
     assert_eq!(reshaped.hash(), c.hash());
@@ -210,7 +210,7 @@ fn the_order_of_a_games_requires_moves_no_key_and_no_handle() {
         assert_eq!(c.defs.definitions, turned.defs.definitions, "{game}");
         assert_eq!(c.scripts.modules.keys().collect::<Vec<_>>(), turned.scripts.modules.keys().collect::<Vec<_>>(), "{game}: the same modules read");
         assert_eq!(c.defs.chips.len(), turned.defs.chips.len());
-        for key in ["cannon", "minibomb"] {
+        for key in ["cannon", "mini_bomb"] {
             assert_eq!(c.defs.chip_by_key(key), turned.defs.chip_by_key(key), "{game}: {key}'s handle");
         }
         assert_ne!(c.hash(), turned.hash(), "the hash covers the modules' code, an init.luau's too");
@@ -225,13 +225,13 @@ fn an_id_two_modules_give_is_an_error() {
     let mut first = read(&["exe6"]);
     first.define().unwrap_or_else(|e| panic!("content/exe6: {e}"));
     let init = "exe6:chips/init".to_string();
-    let once = "    require(\"@self/airshot\"),\n";
+    let once = "    require(\"@self/air_shot\"),\n";
     let doubled = first.scripts.modules[&init].replacen(once, &once.repeat(2), 1);
     assert_ne!(doubled, first.scripts.modules[&init]);
     let mut c = read(&["exe6"]);
     c.scripts.modules.insert(init, doubled);
     let e = c.define().expect_err("an id given twice");
-    assert!(e.message.contains("chips/init.luau") && e.message.contains("two modules give airshot"), "{}", e.message);
+    assert!(e.message.contains("chips/init.luau") && e.message.contains("two modules give air_shot"), "{}", e.message);
 }
 
 /// docs/design/content-model-v2.md §4.0: what loads is what the games'
@@ -275,7 +275,7 @@ fn exe5s_rules_are_its_games() {
     assert_eq!(five.holding_banners.len(), 3);
     assert_eq!((five.hp_drain, five.custom_drain), (six.hp_drain, six.custom_drain));
     // The ported chips: EXE5's own, apart from EXE6's of the same key.
-    for key in ["cannon", "minibomb", "energbom", "panlgrab", "antiswrd", "holypanl", "fullcust"] {
+    for key in ["cannon", "mini_bomb", "energy_bomb", "panel_grab", "anti_sword", "holy_panel", "full_custom"] {
         assert!(d.chip_by_key(&format!("{key}")).is_some(), "{key}");
     }
     // docs/design/exe5-map.md §15.3 items 10 and 11: EXE5's chips leave

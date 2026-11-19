@@ -12,7 +12,7 @@
 //! table only code reaches (a kind a chip's action spawns, an effect a
 //! kind shows), which says what it is by a tag constructor (`new.kind {
 //! ... }`, `new.record(VARIANT, { ... })` of a record type declared once,
-//! `schema.record_type("bomb-variant")`: a metatable, no registry, no id).
+//! `schema.record_type("bomb_variant")`: a metatable, no registry, no id).
 //! When the walk is done, the `state` tables of kinds, actions and the rules
 //! become schemas, and everything is read back as plain data (the canonical
 //! tree, [`Definitions`]).
@@ -625,7 +625,7 @@ pub(crate) fn finish(
                         let at = format!("{}.luau: {section}.{id}", keys::module_path(module));
                         let DataKey::Str(id) = id else { return Err(format!("{at}: a section's keys are ids")) };
                         if !valid_key(&id) {
-                            return Err(format!("{at}: {id:?} is not a valid id (lowercase words in -, joined with /)"));
+                            return Err(format!("{at}: {id:?} is not a valid id (lowercase words in _, joined with /)"));
                         }
                         let LuaValue::Table(table) = v else {
                             return Err(format!("{at}: a {} is a table, not {}", registry.name(), v.type_name()));
@@ -748,7 +748,7 @@ pub(crate) fn finish(
                         LuaValue::String(id) => {
                             let id = id.to_str().map_err(|e| format!("{what}: {e}"))?.to_string();
                             if !valid_key(&id) {
-                                unwritten.push(format!("{what}: {id:?} is not a valid id (lowercase words in -, joined with /: \"eraseman/mark\")"));
+                                unwritten.push(format!("{what}: {id:?} is not a valid id (lowercase words in _, joined with /: \"eraseman/mark\")"));
                             }
                             id
                         }

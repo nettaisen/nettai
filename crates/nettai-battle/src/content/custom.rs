@@ -238,12 +238,12 @@ pub struct FormListRules {
     /// Its sounds as it opens (EXE6's 0x7A) and closes (0x7D).
     pub open_sound: crate::sound::SoundId,
     pub close_sound: crate::sound::SoundId,
-    /// The window label that is its tab (EXE6's `cross-select`, the tab's
+    /// The window label that is its tab (EXE6's `cross_select`, the tab's
     /// and the window's header's): a pointer's click there opens it as UP
     /// does, from anywhere, and closes it (docs/design/custom-screen-actions.md §5).
     #[serde(default)]
     pub tab: Option<String>,
-    /// The window label at its foot that says B closes it (EXE6's `b-exit`,
+    /// The window label at its foot that says B closes it (EXE6's `b_exit`,
     /// B:EXIT): a pointer's click there, while it is up, closes it as B does
     /// (docs/design/custom-screen-actions.md §5).
     #[serde(default)]

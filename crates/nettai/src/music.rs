@@ -200,9 +200,9 @@ mod tests {
     /// A pick no longer offered shows as the backgrounds'.
     #[test]
     fn a_pick_not_offered_is_the_games_own() {
-        let offered = [Music::Background, Music::Theme { game: "exe6".into(), song: "boss-battle".into() }];
+        let offered = [Music::Background, Music::Theme { game: "exe6".into(), song: "boss_battle".into() }];
         assert_eq!(place(&offered, &offered[1]), 1);
-        assert_eq!(place(&offered, &Music::Theme { game: "exe4".into(), song: "virus-battle".into() }), 0);
+        assert_eq!(place(&offered, &Music::Theme { game: "exe4".into(), song: "virus_battle".into() }), 0);
     }
 
     use nettai_battle::Content;
@@ -301,9 +301,9 @@ mod tests {
             let sounds = content.assets.names(nettai_content_api::AssetKind::Sound).into_iter().map(String::from).collect::<Vec<_>>();
             content.battle_music().iter().map(|m| sounds[m.0 as usize].clone()).collect::<Vec<_>>()
         };
-        assert_eq!(names(nettai_match::testing::exe4_content()), ["boss-battle", "virus-battle"]);
-        assert_eq!(names(nettai_match::testing::exe5_content()), ["virus-battle"]);
-        assert_eq!(names(nettai_match::testing::exe6_content()), ["virus-battle"]);
+        assert_eq!(names(nettai_match::testing::exe4_content()), ["boss_battle", "virus_battle"]);
+        assert_eq!(names(nettai_match::testing::exe5_content()), ["virus_battle"]);
+        assert_eq!(names(nettai_match::testing::exe6_content()), ["virus_battle"]);
     }
 
     /// A battle plays the picked theme in place of its game's own music: a BN4 theme in a BN6 battle on a
@@ -341,16 +341,16 @@ mod tests {
         let (playing, digest) = play(&Music::Background);
         assert_eq!(playing, [Some(own)], "BN6's own");
         let theme = |game: &str, song: &str| Music::Theme { game: game.into(), song: song.into() };
-        let (playing, with_theme) = play(&theme("exe4", "tournament-battle"));
-        assert_eq!(playing, [None, Some(number("exe4", "tournament-battle"))], "BN4's, on its own bank's driver");
+        let (playing, with_theme) = play(&theme("exe4", "tournament_battle"));
+        assert_eq!(playing, [None, Some(number("exe4", "tournament_battle"))], "BN4's, on its own bank's driver");
         assert_eq!(with_theme, digest, "the battle is the same");
-        let (playing, _) = play(&theme("exe6", "final-battle"));
-        assert_eq!(playing, [Some(number("exe6", "final-battle"))], "BN6's own theme, on BN6's driver");
-        let (playing, _) = play(&theme("exe6", "winner-1"));
+        let (playing, _) = play(&theme("exe6", "final_battle"));
+        assert_eq!(playing, [Some(number("exe6", "final_battle"))], "BN6's own theme, on BN6's driver");
+        let (playing, _) = play(&theme("exe6", "winner_1"));
         assert_eq!(playing, [Some(own)], "no theme of that song: the game's own");
         let some = games(&["exe6"]);
         let six = some.read("exe6").unwrap();
-        let (banks, songs) = sound(&some, &six, &theme("exe4", "tournament-battle")).unwrap();
+        let (banks, songs) = sound(&some, &six, &theme("exe4", "tournament_battle")).unwrap();
         assert_eq!((banks.len(), songs), (1, six.loaded.sound.as_ref().unwrap().songs.clone()), "BN4 not read: the game's own");
     }
 
@@ -377,8 +377,8 @@ mod tests {
             (0..3).map_while(|n| audio.driver_of(BankId(n))).map(|d| d.player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| m.song())).collect()
         };
         let number = |game: &str, song: &str| SongId(all.read(game).unwrap().loaded.game.index.number(nettai_content_api::AssetKind::Sound, song).unwrap());
-        let own = number("exe6", "virus-battle");
-        let theme = Music::Theme { game: "exe5".into(), song: "final-battle".into() };
+        let own = number("exe6", "virus_battle");
+        let theme = Music::Theme { game: "exe5".into(), song: "final_battle".into() };
         let (mut changed, mut straight) = (player(&Music::Background), player(&Music::Background));
         for _ in 0..30 {
             changed.tick(nettai_battle::input::Keys::empty());
@@ -390,7 +390,7 @@ mod tests {
             changed.tick(nettai_battle::input::Keys::empty());
             straight.tick(nettai_battle::input::Keys::empty());
         }
-        assert_eq!(playing(&changed), [None, Some(number("exe5", "final-battle"))], "BN5's, at once");
+        assert_eq!(playing(&changed), [None, Some(number("exe5", "final_battle"))], "BN5's, at once");
         changed.set_sound_parts(sound(&all, &six, &Music::Background).unwrap());
         for _ in 0..2 {
             changed.tick(nettai_battle::input::Keys::empty());
@@ -435,15 +435,15 @@ mod tests {
             (playing, player.battle().digest())
         };
         let (playing, digest) = play("graveyard", &Music::Background);
-        assert_eq!(playing, [Some(number("exe6", "crossover-battle"))], "BN6's Graveyard: its Crossover Battle");
+        assert_eq!(playing, [Some(number("exe6", "crossover_battle"))], "BN6's Graveyard: its Crossover Battle");
         let (playing, _) = play("exe4:duo", &Music::Background);
-        assert_eq!(playing, [None, Some(number("exe4", "final-battle"))], "BN4's Duo: its vs Duo, on BN4's driver");
+        assert_eq!(playing, [None, Some(number("exe4", "final_battle"))], "BN4's Duo: its vs Duo, on BN4's driver");
         let (playing, _) = play("comp", &Music::Background);
-        assert_eq!(playing, [Some(number("exe6", "virus-battle"))], "BN6's Comp: its Virus Battle");
-        let (playing, picked) = play("graveyard", &Music::Theme { game: "exe5".into(), song: "boss-battle".into() });
-        assert_eq!(playing, [None, Some(number("exe5", "boss-battle"))], "a theme picked plays whatever the background");
+        assert_eq!(playing, [Some(number("exe6", "virus_battle"))], "BN6's Comp: its Virus Battle");
+        let (playing, picked) = play("graveyard", &Music::Theme { game: "exe5".into(), song: "boss_battle".into() });
+        assert_eq!(playing, [None, Some(number("exe5", "boss_battle"))], "a theme picked plays whatever the background");
         assert_eq!(picked, digest, "the battle is the same");
-        assert_eq!(round_music(&all, &six, &Music::Theme { game: "exe5".into(), song: "boss-battle".into() }).map(|_| ()), None);
+        assert_eq!(round_music(&all, &six, &Music::Theme { game: "exe5".into(), song: "boss_battle".into() }).map(|_| ()), None);
     }
 
     /// Every background of every game names its music, one of its game's battle themes.
@@ -485,14 +485,14 @@ mod tests {
             player.tick(nettai_battle::input::Keys::empty());
         }
         let playing = |p: &nettai_frontend::Player| p.audio().unwrap().driver_of(BankId(0)).unwrap().player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| m.song());
-        assert_eq!(playing(&player), Some(number("virus-battle")), "BN6's Comp: its Virus Battle");
+        assert_eq!(playing(&player), Some(number("virus_battle")), "BN6's Comp: its Virus Battle");
         let ticks = player.ticks();
         assert!(player.set_held(true));
         assert!(player.set_backgrounds(graveyard));
         for _ in 0..2 {
             player.tick(nettai_battle::input::Keys::empty());
         }
-        assert_eq!(playing(&player), Some(number("crossover-battle")), "the Graveyard's Crossover Battle, held");
+        assert_eq!(playing(&player), Some(number("crossover_battle")), "the Graveyard's Crossover Battle, held");
         assert_eq!(player.ticks(), ticks, "held: the battle didn't step");
     }
 }

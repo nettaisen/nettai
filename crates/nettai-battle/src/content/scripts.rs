@@ -31,7 +31,7 @@ use nettai_content_api::{PackKind, PackManifest, keys, packs};
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Scripts {
     /// Source text by module name: its pack, then its path in the pack
-    /// without `.luau` (`exe6:objects/sun-beam/sun_beam`, `keys::module_name`).
+    /// without `.luau` (`exe6:objects/sun_beam/sun_beam`, `keys::module_name`).
     /// Before the define phase, the modules held in memory (a test's, a
     /// tool's stand-ins); after it, those and every module the load read.
     pub modules: BTreeMap<String, String>,
@@ -195,7 +195,7 @@ impl Scripts {
         for p in &self.packs {
             let at = format!("{}/{}", p.id, packs::MANIFEST);
             if !keys::valid_root_name(&p.id) {
-                return Err(format!("{at}: pack name {:?} is not lowercase words in - (and not \"engine\")", p.id));
+                return Err(format!("{at}: pack name {:?} is not lowercase words in _ (and not \"engine\")", p.id));
             }
             if all.insert(p.id.clone(), p.clone()).is_some() {
                 return Err(format!("{at}: pack {} is loaded twice", p.id));

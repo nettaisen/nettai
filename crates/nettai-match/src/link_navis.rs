@@ -54,7 +54,7 @@ mod tests {
             ("slashman", 2, 4, 1, 7, 6, 1800, 800),
             ("eraseman", 3, 2, 3, 6, 7, 1500, 700),
             ("chargeman", 3, 2, 4, 8, 6, 1800, 800),
-            ("spoutman", 3, 2, 2, 6, 6, 1900, 800),
+            ("aquaman", 3, 2, 2, 6, 6, 1900, 800),
             ("tomahawkman", 4, 2, 2, 6, 7, 1800, 800),
             ("tenguman", 3, 4, 1, 7, 6, 1800, 800),
             ("groundman", 4, 2, 2, 6, 7, 2000, 800),
@@ -72,8 +72,8 @@ mod tests {
         let tengu = started(&content, &with_link_navi(&content, "tenguman", 14));
         assert!(tengu.float_shoes && tengu.air_shoes);
         let back = |level| started(&content, &with_link_navi(&content, "protoman", level)).weapons.back_special.map(|w| content.defs.weapon(w).key.clone());
-        assert_eq!(back(14).as_deref(), Some("protoman/back-special-2"), "the reflecting guard from level 10");
-        assert_eq!(back(9).as_deref(), Some("protoman/back-special"), "the guard that only guards below");
+        assert_eq!(back(14).as_deref(), Some("protoman/back_special_2"), "the reflecting guard from level 10");
+        assert_eq!(back(9).as_deref(), Some("protoman/back_special"), "the guard that only guards below");
     }
 
     /// The chip lab's ProtoMan at level 5 (`navis/navi-11-stepswrd/level-5`):

@@ -130,7 +130,7 @@ fn the_codec_reads_the_model_and_names_what_it_refuses() {
         r#"
         local t = gba.tiles(set.BR6E, 0x08000000, 64)
         return {
-            names = { sprites = { [0x20] = { [5] = "roll" } }, songs = { [0x63] = "stop-music" }, glyphs = { "A" },
+            names = { sprites = { [0x20] = { [5] = "roll" } }, songs = { [0x63] = "stop_music" }, glyphs = { "A" },
                       language_glyphs = { ja = { glyphs = { "あ" } } } },
             graphics = {
                 sprites = {},
@@ -191,9 +191,9 @@ const RECIPE: &str = "return { roms = { \"BR6E\", \"BR5E\" }, extract = function
 fn synthetic(recipe: &str) -> Vec<(String, String)> {
     [
         ("g/extract/init.luau", recipe),
-        ("g/extract/shapes/hud/hp-box.same", "lib/extract/shapes/hud/hp-box.svg\n"),
+        ("g/extract/shapes/hud/hp_box.same", "lib/extract/shapes/hud/hp_box.svg\n"),
         ("lib/extract/place.luau", "return {}\n"),
-        ("lib/extract/shapes/hud/hp-box.svg", "<svg/>\n"),
+        ("lib/extract/shapes/hud/hp_box.svg", "<svg/>\n"),
         ("g/compat/assets.toml", "[sprites]\n"),
         ("g/rules/init.luau", "return {}\n"),
     ]
@@ -223,7 +223,7 @@ fn a_recipe_is_its_inputs() {
     let modules: Vec<&String> = recipe.modules.keys().collect();
     assert_eq!(modules, ["g:extract/init", "lib:extract/place"], "its modules, as the load read them");
     let inputs: Vec<&String> = recipe.files.keys().collect();
-    assert_eq!(inputs, ["g/compat/assets.toml", "g/extract/shapes/hud/hp-box.same", "lib/extract/shapes/hud/hp-box.svg"]);
+    assert_eq!(inputs, ["g/compat/assets.toml", "g/extract/shapes/hud/hp_box.same", "lib/extract/shapes/hud/hp_box.svg"]);
     assert_eq!(recipe.drawings().game(), "g");
     // The ROMs the recipe states are its table's, as the load read it (not as the folder has it now).
     let other = synthetic(&RECIPE.replace("\"BR5E\"", "\"BR5J\""));

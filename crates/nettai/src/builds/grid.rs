@@ -523,10 +523,10 @@ mod tests {
         let piece = |name: &str| nettai_match::ids::entry(&content, "exe6", &data.collection, name).unwrap().0;
         let side = &mut m.sides[0];
         let go = |side: &mut Side, held: &mut Option<Held>, e: Edit| edit(&data, &content, side, held, e);
-        assert!(!go(side, &mut held, Edit::Hold(piece("suprarmr"), 0, false)));
+        assert!(!go(side, &mut held, Edit::Hold(piece("super_armor"), 0, false)));
         assert!(go(side, &mut held, Edit::Place(2, 3)));
         assert!(held.is_none());
-        go(side, &mut held, Edit::Hold(piece("hp-50"), 1, false));
+        go(side, &mut held, Edit::Hold(piece("hp_50"), 1, false));
         assert!(!go(side, &mut held, Edit::Place(2, 3)), "not over SuprArmr");
         assert!(go(side, &mut held, Edit::Place(4, 2)));
         assert_eq!(placed(&content, side).len(), 2);
@@ -542,11 +542,11 @@ mod tests {
         assert_eq!(placed(&content, side).len(), 1);
         // A piece picked off the board and put down again keeps its place
         // in the list.
-        go(side, &mut held, Edit::Hold(piece("hp-50"), 0, false));
+        go(side, &mut held, Edit::Hold(piece("hp_50"), 0, false));
         assert!(go(side, &mut held, Edit::Place(4, 2)));
         assert!(go(side, &mut held, Edit::PickUp(0, 2, 3)));
         assert!(go(side, &mut held, Edit::Place(2, 2)));
-        assert_eq!(placed(&content, side)[0].piece, piece("suprarmr"));
+        assert_eq!(placed(&content, side)[0].piece, piece("super_armor"));
         assert!(go(side, &mut held, Edit::Board(1)) && !go(side, &mut held, Edit::Board(1)));
         assert_eq!(board_index(&content, side), Some(1));
         assert!(go(side, &mut held, Edit::Board(2)));
@@ -572,7 +572,7 @@ mod tests {
             let builds = nettai_match::build::Builds::of(&content, game).unwrap();
             let mut side = builds.new_build(&content, version).unwrap();
             let data = read_game(&content, game).unwrap();
-            let piece = nettai_match::ids::entry(&content, game, &data.collection, "hp-50").unwrap_or_else(|| panic!("{game}: no HP+50")).0;
+            let piece = nettai_match::ids::entry(&content, game, &data.collection, "hp_50").unwrap_or_else(|| panic!("{game}: no HP+50")).0;
             let board = data.board_of(&content, &side).map(|b| data.boards[b].clone()).unwrap();
             let shape = data.shape(piece, false, 0);
             let mut held = None;
@@ -606,7 +606,7 @@ mod tests {
         let mut m = nettai_match::pick::live(&content, "exe6", 7, None).unwrap();
         nettai_match::testing::set_navicust(&content, &mut m.sides[0], &[], 2);
         let data = read_game(&content, "exe6").unwrap();
-        let armor = nettai_match::ids::entry(&content, "exe6", &data.collection, "suprarmr").unwrap().0;
+        let armor = nettai_match::ids::entry(&content, "exe6", &data.collection, "super_armor").unwrap().0;
         let side = &mut m.sides[0];
         let mut held = Some(Held { piece: armor, color: 0, rotation: 1, compressed: false, grab: (0, 0), origin: None });
         edit(&data, &content, side, &mut held, Edit::Compress);

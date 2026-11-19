@@ -3,7 +3,7 @@
 //! namespace (`cannon`, `megaman`: `crate::ids`), and a name the game
 //! hasn't is said as such ("no chip "x" in exe6"). There is no way to name
 //! another game's, but a background of the background pool's
-//! (`exe4:acdc-area`: `crate::ids::background`).
+//! (`exe4:acdc_area`: `crate::ids::background`).
 //!
 //! ```toml
 //! game = "exe6"                       # the match's game: everything below is its
@@ -14,20 +14,20 @@
 //!                                    # or 120; nettai's own); else none, as in the original
 //!
 //! [[round]]                          # the set's rounds, one table each, in order: 2n - 1 for a set first to n
-//! stage = "netbattle-43"             # round wins (n 1 to 10; one: a single battle; three: the original's triple battle).
-//! background = "lans-hp"             # A part a round leaves out, or a round left empty, is picked
+//! stage = "netbattle_43"             # round wins (n 1 to 10; one: a single battle; three: the original's triple battle).
+//! background = "lans_hp"             # A part a round leaves out, or a round left empty, is picked
 //!                                    # from the seed (as `backgrounds` says)
 //! [[round]]
-//! stage = "netbattle-12"
-//! background = "exe4:acdc-area"      # another game's background: the pool's, by its game
+//! stage = "netbattle_12"
+//! background = "exe4:acdc_area"      # another game's background: the pool's, by its game
 //!
 //! [[round]]
 //!
 //! [left]                             # you, side 0; then [right]: the side's facts, what its game's rules take,
 //! navi = "megaman"                   # each under its setup field's name (crate::facts); one left out is the
 //! level = 7                          # rules' default. The navi (which a side states), the navi code's level (0-14;
-//! cybeast = "falzar-beast"           # else the navi's last: a link navi's 14, MegaMan's none), EXE6's cybeast
-//! crosses = ["heatcross", "spoutcross"]   # (gregar-beast or falzar-beast, which a side states) and crosses (up to five,
+//! cybeast = "falzar_beast"           # else the navi's last: a link navi's 14, MegaMan's none), EXE6's cybeast
+//! crosses = ["heat_cross", "aqua_cross"]   # (gregar-beast or falzar-beast, which a side states) and crosses (up to five,
 //! beast_out = false                  # of either version; [] none), beast_out (else unlocked), bug_frags (else 0),
 //! bug_frags = 9                      # what the save brings to the stats: the base HP (else 1000), the Regular
 //! hp = 1000                          # memory (else 50), the sun (else true); the rules derive the rest
@@ -40,23 +40,23 @@
 //! tag_chips = [5, 6]                 # the tag chips' entries (else none)
 //! patch_cards = [                   # in the order they apply (else none); a card each version's ROM gives
 //!     { card = "canodumb" },         # effects of its own (Bass-Cross MegaMan) with its variant, a version
-//!     { card = "bass-cross-megaman", variant = "gregar" },
+//!     { card = "bass_cross_megaman", variant = "gregar" },
 //! ]
 //! sp_times = [                       # SP navi deletion times, by SP chip, in frames (else every SP navi in no time)
-//!     { chip = "heatman-sp", frames = 741 },
+//!     { chip = "heatman_sp", frames = 741 },
 //! ]
 //! navicust_expansions = 2            # the NaviCust's board (else the largest)
 //! navicust_programs = [              # its programs in the list's order; x, y the center on the 7x7 grid
-//!     { program = "suprarmr", color = "red", x = 3, y = 3, rotation = 1, compressed = true },
+//!     { program = "super_armor", color = "red", x = 3, y = 3, rotation = 1, compressed = true },
 //! ]
 //!
 //! # An EXE5 side's facts ([left] of game = "exe5"; a fact left out is its rules' default):
 //! level = 3                          # a team navi's level, 0 to 6 (else 6): its damage rows' (its HP the story's)
 //! karma = 100                        # the light/dark value (default 500, a fresh save's; dark under 470)
-//! souls = ["protosoul"]              # the souls it has, either version's (default: every soul; none, no soul button)
+//! souls = ["proto_soul"]              # the souls it has, either version's (default: every soul; none, no soul button)
 //! chaos_unison = false               # no Chaos Unison (the save's event flag 0x236; default true)
 //! party = [                         # a party battle's team navis (EXE5 DS's: up to two, MegaMan's alone; else
-//!     { navi = "protoman", programs = ["p-hp-100", "p-atk-1"] },   # none), each with its PartyCust programs
+//!     { navi = "protoman", programs = ["party_hp_100", "party_attack_1"] },   # none), each with its PartyCust programs
 //! ]                                  # (no more than its gauge holds); `level` is then the party's, 0 to 9 (else 9)
 //!
 //! auto_battle_places = [           # EXE5's: what a navi in auto battle plays from the side's save, its block's 42
@@ -65,7 +65,7 @@
 //!     { pattern = 1 },               # standard chips from place 4, mega 28, giga 33, patterns 34, a program
 //! ]                                  # advance 42 (else none)
 //! auto_battle_records = [            # the eight pattern records: a place from its target, five chip places, a score
-//!     { dx = -2, dy = 0, chips = [{ chip = "sword" }, { chip = "wideswrd" }], score = 10 },
+//!     { dx = -2, dy = 0, chips = [{ chip = "sword" }, { chip = "wide_sword" }], score = 10 },
 //! ]                                  # (else every record zeros: nothing learned)
 //! ```
 
@@ -489,7 +489,7 @@ fn inline(v: &toml::Value) -> toml_edit::Value {
 
 /// `body`, the pretty printer's text of a file of `sides` (each its table's
 /// name and the side), as a person would lay it out: a fact's short list on
-/// its line (`crosses = ["heatcross", "eleccross"]`; a longer one an entry
+/// its line (`crosses = ["heat_cross", "elec_cross"]`; a longer one an entry
 /// a line, as the printer has it), and a list of records an inline table a
 /// line, after the side's other values (the printer makes a table of each,
 /// under its own header).
@@ -545,7 +545,7 @@ mod tests {
             assert_eq!(format!("{:?}", back.round(&content, seed)), format!("{:?}", m.round(&content, seed)));
         }
         let text = write(&content, &crate::pick::live(&content, "exe6", 3, None).unwrap());
-        for line in ["game = \"exe6\"", "[[round]]\nstage = \"netbattle-", "[left]", "navi = \"megaman\"", "folder = [\n    { chip = \"", "\", code = \""] {
+        for line in ["game = \"exe6\"", "[[round]]\nstage = \"netbattle_", "[left]", "navi = \"megaman\"", "folder = [\n    { chip = \"", "\", code = \""] {
             assert!(text.contains(line), "{line}:\n{text}");
         }
         // (No stats: a side states none.)
@@ -570,11 +570,11 @@ mod tests {
         assert_eq!(text.matches("[[round]]").count(), 3, "{text}");
         let start = text.find("[[round]]").unwrap();
         let end = text.find("[left]").unwrap();
-        let rounds = "[[round]]\n\n[[round]]\nstage = \"netbattle-12\"\n\n[[round]]\nbackground = \"undernet\"\n\n[[round]]\n\n[[round]]\n\n";
+        let rounds = "[[round]]\n\n[[round]]\nstage = \"netbattle_12\"\n\n[[round]]\nbackground = \"undernet\"\n\n[[round]]\n\n[[round]]\n\n";
         let five = format!("{}{rounds}{}", &text[..start], &text[end..]);
         let m = parse(&content, &five).unwrap_or_else(|e| panic!("{e:?}\n{five}"));
         assert_eq!((m.rounds.len(), m.first_to()), (5, 3));
-        assert_eq!(m.rounds[1].stage, Some(crate::link_stage(&content, "exe6", "netbattle-12").unwrap()));
+        assert_eq!(m.rounds[1].stage, Some(crate::link_stage(&content, "exe6", "netbattle_12").unwrap()));
         assert_eq!((m.rounds[2].stage, m.rounds[2].background.as_deref()), (None, Some("undernet")));
         assert_eq!(m.rounds[0], RoundSettings::default());
         assert_eq!(parse(&content, &write(&content, &m)).unwrap(), m);
@@ -620,17 +620,17 @@ mod tests {
         let live = crate::pick::live(&content, "exe6", 4, None).unwrap();
         let text = write(&content, &live);
         let (start, end) = (text.find("[[round]]").unwrap(), text.find("[left]").unwrap());
-        let rounds = "[[round]]\nbackground = \"exe4:acdc-area\"\n\n[[round]]\nbackground = \"exe6:undernet\"\n\n[[round]]\n\n";
+        let rounds = "[[round]]\nbackground = \"exe4:acdc_area\"\n\n[[round]]\nbackground = \"exe6:undernet\"\n\n[[round]]\n\n";
         let file = format!("backgrounds = \"pool\"\n{}{rounds}{}", &text[..start], &text[end..]);
         let m = parse(&content, &file).unwrap_or_else(|e| panic!("{e:?}\n{file}"));
         assert_eq!(m.backgrounds, crate::BackgroundPick::Pool);
         assert_eq!(parse(&content, &write(&content, &m)).unwrap(), m);
         assert!(write(&content, &m).contains("backgrounds = \"pool\""));
         let places = m.places(&content, 4).unwrap();
-        assert_eq!(content.background_of(places[0].background), Some(("exe4", "acdc-area")));
+        assert_eq!(content.background_of(places[0].background), Some(("exe4", "acdc_area")));
         assert_eq!(places[1].background, crate::background(&content, "exe6", "undernet").unwrap(), "its own, written with its game");
         assert!(content.pool_backgrounds().contains(&places[2].background));
-        let bad = file.replace("exe4:acdc-area", "exe4:nowhere").replace("backgrounds = \"pool\"", "backgrounds = \"every\"");
+        let bad = file.replace("exe4:acdc_area", "exe4:nowhere").replace("backgrounds = \"pool\"", "backgrounds = \"every\"");
         assert_eq!(
             parse(&content, &bad).unwrap_err(),
             ["backgrounds: no \"every\" (game or pool)", "round 1: no background \"exe4:nowhere\" in the background pool"]
@@ -655,16 +655,16 @@ mod tests {
         // after them), an empty place before the second mega chip, a giga, two
         // patterns and a program advance.
         let mut places: Vec<Fact> = (0..42).map(|_| Fact::Record(Vec::new())).collect();
-        places[0] = Fact::Record(vec![("chip", def("areagrab"))]);
+        places[0] = Fact::Record(vec![("chip", def("area_grab"))]);
         for (i, name) in ["sword", "sword", "sword", "sword", "cannon"].into_iter().enumerate() {
             places[3 + i] = Fact::Record(vec![("chip", def(name))]);
         }
         places[8] = Fact::Record(vec![("zero", Fact::Value(Value::Bool(true)))]);
         places[28] = Fact::Record(vec![("chip", def("protoman"))]);
-        places[32] = Fact::Record(vec![("chip", def("crossdiv"))]);
+        places[32] = Fact::Record(vec![("chip", def("cross_divide"))]);
         places[33] = Fact::Record(vec![("pattern", int(1))]);
         places[34] = Fact::Record(vec![("pattern", int(3))]);
-        places[41] = Fact::Record(vec![("chip", def("csmopris"))]);
+        places[41] = Fact::Record(vec![("chip", def("cosmo_prison"))]);
         let chips = |names: &[&str], zero: bool| -> Fact<'static> {
             Fact::List(
                 (0..5)
@@ -677,7 +677,7 @@ mod tests {
             )
         };
         let record = |dx: i64, dy: i64, c: Fact<'static>, score: i64| -> Fact<'static> { Fact::Record(vec![("dx", int(dx)), ("dy", int(dy)), ("chips", c), ("score", int(score))]) };
-        let records = vec![record(-2, 1, chips(&["sword", "wideswrd"], false), 7), record(0, 0, chips(&[], true), 0), record(-1, 0, chips(&["cannon"; 5], false), 10)];
+        let records = vec![record(-2, 1, chips(&["sword", "wide_sword"], false), 7), record(0, 0, chips(&[], true), 0), record(-1, 0, chips(&["cannon"; 5], false), 10)];
         m.sides[0].set_fact(&content, "auto_battle_places", &places).unwrap();
         m.sides[0].set_fact(&content, "auto_battle_records", &records).unwrap();
         // (The other side: a block nothing has written.)
@@ -685,11 +685,11 @@ mod tests {
         m.sides[1].set_fact(&content, "auto_battle_records", &[]).unwrap();
         let text = write(&content, &m);
         for line in [
-            "auto_battle_places = [\n    { chip = \"areagrab\" },\n    {},\n    {},\n    { chip = \"sword\" },",
+            "auto_battle_places = [\n    { chip = \"area_grab\" },\n    {},\n    {},\n    { chip = \"sword\" },",
             "    { zero = true },\n",
             "    { pattern = 1 },\n    { pattern = 3 },\n",
-            "    { chip = \"csmopris\" },\n]",
-            "    { chips = [{ chip = \"sword\" }, { chip = \"wideswrd\" }, {}, {}, {}], dx = -2, dy = 1, score = 7 },\n",
+            "    { chip = \"cosmo_prison\" },\n]",
+            "    { chips = [{ chip = \"sword\" }, { chip = \"wide_sword\" }, {}, {}, {}], dx = -2, dy = 1, score = 7 },\n",
             "    { chips = [{ zero = true }, { zero = true }, { zero = true }, { zero = true }, { zero = true }] },\n",
         ] {
             assert!(text.contains(line), "{line}:\n{text}");
@@ -707,7 +707,7 @@ mod tests {
             let first = place.elem(0).map_or(nettai_content_api::FieldValue::Ref(None), |e| state.get_at(e.field("chip").unwrap()));
             (n, first)
         };
-        let areagrab = nettai_content_api::FieldValue::Ref(Some((nettai_content_api::Registry::Chip, chip("areagrab").0)));
+        let areagrab = nettai_content_api::FieldValue::Ref(Some((nettai_content_api::Registry::Chip, chip("area_grab").0)));
         assert_eq!(sent(0), (12, areagrab));
         assert_eq!(sent(1).0, 0);
         // What a file gets wrong.
@@ -716,21 +716,21 @@ mod tests {
             parse(&content, &text.replacen(from, to, 1)).unwrap_err()
         };
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
-        let first = "{ chip = \"areagrab\" }";
+        let first = "{ chip = \"area_grab\" }";
         has(bad(first, "{ chip = \"nothing-at-all\" }"), "left: auto_battle_places: [1]: chip: no chip \"nothing-at-all\" in exe5");
         has(bad(first, "{ pattern = 9 }"), "left: place 1 of the auto battle data names pattern 9; it has 8 pattern records");
-        has(bad(first, "{ chip = \"areagrab\", pattern = 1 }"), "left: place 1 of the auto battle data (`first`, entry 1) is a chip, a pattern or a 0, not more");
-        has(bad(first, "{ chip = \"stepswrd\" }"), "left: place 1 of the auto battle data (`first`, entry 1) holds");
+        has(bad(first, "{ chip = \"area_grab\", pattern = 1 }"), "left: place 1 of the auto battle data (`first`, entry 1) is a chip, a pattern or a 0, not more");
+        has(bad(first, "{ chip = \"step_sword\" }"), "left: place 1 of the auto battle data (`first`, entry 1) holds");
         // The mega, giga and program advance lists hold chips of their class alone; the first and standard lists
         // take any (a giga chip first, a program advance among the standard chips).
         for (from, to, said) in [
             ("{ chip = \"protoman\" }", "{ chip = \"cannon\" }", "left: place 29 of the auto battle data (`mega`, entry 2) holds Cannon, a chip of class `standard`: the list holds `mega` chips alone"),
-            ("{ chip = \"crossdiv\" }", "{ chip = \"protoman\" }", "left: place 33 of the auto battle data (`giga`, entry 1) holds ProtoMan, a chip of class `mega`: the list holds `giga` chips alone"),
-            ("{ chip = \"csmopris\" }", "{ chip = \"crossdiv\" }", "left: place 42 of the auto battle data (`program_advance`, entry 1) holds CrossDiv, a chip of class `giga`: the list holds `program_advance` chips alone"),
+            ("{ chip = \"cross_divide\" }", "{ chip = \"protoman\" }", "left: place 33 of the auto battle data (`giga`, entry 1) holds ProtoMan, a chip of class `mega`: the list holds `giga` chips alone"),
+            ("{ chip = \"cosmo_prison\" }", "{ chip = \"cross_divide\" }", "left: place 42 of the auto battle data (`program_advance`, entry 1) holds CrossDiv, a chip of class `giga`: the list holds `program_advance` chips alone"),
         ] {
             has(bad(from, to), said);
         }
-        let anywhere = text.replacen(first, "{ chip = \"crossdiv\" }", 1).replacen("{ chip = \"cannon\" }", "{ chip = \"csmopris\" }", 1);
+        let anywhere = text.replacen(first, "{ chip = \"cross_divide\" }", 1).replacen("{ chip = \"cannon\" }", "{ chip = \"cosmo_prison\" }", 1);
         assert_eq!(parse(&content, &anywhere).map(|_| ()), Ok(()), "{anywhere}");
         has(bad("dx = -2, dy = 1", "dx = -2, dy = 1, dz = 0"), "no field `dz` (chips, dx, dy, score)");
         has(bad("dx = -2, dy = 1", "dx = -200, dy = 1"), "-200 is past");
@@ -767,14 +767,14 @@ mod tests {
         let refused = crate::check::set_up(&six, &new).err().expect("no round without the Cybeasts");
         assert_eq!(refused, "the round doesn't start: a player's setup doesn't state the rules' `cybeast` (a form): none is assumed");
         let picked = write(&six, &crate::pick::live(&six, "exe6", 1, None).unwrap());
-        assert_eq!(picked.matches("\ncybeast = \"falzar-beast\"\n").count() + picked.matches("\ncybeast = \"gregar-beast\"\n").count(), 2, "{picked}");
+        assert_eq!(picked.matches("\ncybeast = \"falzar_beast\"\n").count() + picked.matches("\ncybeast = \"gregar_beast\"\n").count(), 2, "{picked}");
         // (EXE6's rules require one fact: the Cybeast.)
         assert_eq!(crate::facts::required(&six).iter().map(|f| f.name).collect::<Vec<_>>(), ["cybeast"]);
         let live = crate::pick::live(&six, "exe6", 1, None).unwrap();
         assert!(live.sides.iter().all(|s| ["gregar", "falzar"].iter().any(|v| Some(*v) == s.version(&six))));
         // A Cybeast is one of the forms the fact offers: a Cross is none.
         let mut odd = live.clone();
-        let heat = ids::form(&six, "exe6", "heatcross").unwrap();
+        let heat = ids::form(&six, "exe6", "heat_cross").unwrap();
         odd.sides[0].set_fact(&six, "cybeast", &[Fact::Value(Value::Def(nettai_content_api::Registry::Form, heat.0))]).unwrap();
         has(crate::check_match(&six, &odd), "left: cybeast: HeatCross is none of the forms it names");
         // The Crosses: left out, the round starts with none, and a file
@@ -793,7 +793,7 @@ mod tests {
         // version's five.)
         assert!(none.sides[0].state_own_forms(&six));
         let own: Vec<&str> = none.sides[0].facts.form_list(&six).iter().map(|&f| ids::local(&six.defs.form(f).key)).collect();
-        assert_eq!(own, ["spoutcross", "tomahawkcross", "tengucross", "groundcross", "dustcross"]);
+        assert_eq!(own, ["aqua_cross", "tomahawk_cross", "tengu_cross", "ground_cross", "dust_cross"]);
         assert!(!new.sides[0].clone().state_own_forms(&six), "no version yet: nothing to go by");
         // EXE5: no version (its versions play alike but for a card's
         // variant, which the card states).
@@ -837,12 +837,12 @@ mod tests {
         );
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
         has(bad(stage, "stage = \"moon\""), "round 1: no stage \"moon\" in exe6");
-        has(bad(stage, "stage = \"netbattle-43\"\nmoon = 1"), "unknown field `moon`");
+        has(bad(stage, "stage = \"netbattle_43\"\nmoon = 1"), "unknown field `moon`");
         has(bad("game = \"exe6\"", "game = \"bn7\""), "no game \"bn7\"");
         // The Cybeast: one of the game's two, stated (none is assumed).
         let version = good.lines().find(|l| l.starts_with("cybeast = ")).unwrap();
         has(bad(version, "cybeast = \"azure\""), "left: cybeast: no form \"azure\" in exe6");
-        has(bad(version, "cybeast = \"heatcross\""), "left: cybeast: HeatCross is none of the forms it names");
+        has(bad(version, "cybeast = \"heat_cross\""), "left: cybeast: HeatCross is none of the forms it names");
         // A fact's value is its field's type's: a flag, a whole number in
         // its range, a name of the game's, a list no longer than it holds.
         let stated = |line: &str| bad("navi = \"megaman\"", &format!("navi = \"megaman\"\n{line}"));
@@ -851,20 +851,20 @@ mod tests {
         has(stated("bug_frags = \"many\""), "left: bug_frags: \"many\" is no whole number");
         let list = good.lines().find(|l| l.starts_with("crosses = ")).unwrap();
         has(
-            bad(list, "crosses = [\"heatcross\", \"eleccross\", \"slashcross\", \"erasecross\", \"chargecross\", \"spoutcross\"]"),
+            bad(list, "crosses = [\"heat_cross\", \"elec_cross\", \"slash_cross\", \"erase_cross\", \"charge_cross\", \"aqua_cross\"]"),
             "left: crosses: 6 entries, it holds 5",
         );
         has(bad(list, "crosses = true"), "left: crosses: true is no list");
         has(bad(list, "crosses = [\"heatcros\"]"), "left: crosses: [1]: no form \"heatcros\" in exe6");
-        has(bad(list, "crosses = [\"heatcross\", \"heatcross\"]"), "left: crosses: HeatCross is there twice");
+        has(bad(list, "crosses = [\"heat_cross\", \"heat_cross\"]"), "left: crosses: HeatCross is there twice");
         // (The Crosses are forms of the navi's own lists: a Cross's Beast
         // form is a form of EXE6's, and none of them.)
-        has(bad(list, "crosses = [\"heatcross-beast\"]"), "left: crosses: heatcross-beast is no form of MegaMan's lists");
+        has(bad(list, "crosses = [\"heat_cross_beast\"]"), "left: crosses: heat_cross_beast is no form of MegaMan's lists");
         // (Left out, they are none. A list with a gap states what no save
         // has.)
         let none = parse(&content, &good.replacen(&format!("{list}\n"), "", 1)).unwrap();
         assert!(none.sides[0].facts.form_list(&content).is_empty());
-        has(bad(list, "crosses = [\"\", \"heatcross\"]"), "left: crosses: an empty entry before HeatCross (a list is filled from the front)");
+        has(bad(list, "crosses = [\"\", \"heat_cross\"]"), "left: crosses: an empty entry before HeatCross (a list is filled from the front)");
         has(bad(&format!("{version}\n"), ""), "left: no cybeast: a side of exe6 states its own (a form); none is assumed");
         // Thirty copies of a chip: a build's problem (its limits are its
         // `build_check`'s, as its ruleset leaves them), which a match's checks
@@ -891,7 +891,7 @@ mod tests {
         has(built(&m.sides[1]), "Mega chips, past 5");
         // Patch cards past 80 MB; Crosses for a navi without any.
         let mut m = picked.clone();
-        let cards = crate::testing::patch_cards(&content, "exe6", "canodumb,amonicul,coldbear,megalian,mettfire,kilplant");
+        let cards = crate::testing::patch_cards(&content, "exe6", "canodumb,ammonicule,coldbear,heady,metfire,killplant");
         m.sides[0].set_fact(&content, "patch_cards", &cards).unwrap();
         has(built(&m.sides[0]), "the patch cards are");
         let mut m = picked.clone();
@@ -923,7 +923,7 @@ mod tests {
         m.sides[0].set_level(&content, Some(3)).unwrap();
         let chip = |k: &str| ids::chip(&content, "exe6", k).unwrap();
         let time = |c: &str, frames: i64| Fact::Record(vec![("chip", Fact::Value(Value::Def(nettai_content_api::Registry::Chip, chip(c).0))), ("frames", Fact::Value(Value::Int(frames)))]);
-        m.sides[0].facts.set(&content, "sp_times", &[time("heatman-sp", 721), time("blastmn-sp", 1500)]).unwrap();
+        m.sides[0].facts.set(&content, "sp_times", &[time("heatman_sp", 721), time("blastman_sp", 1500)]).unwrap();
         let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
         m.sides[1].set_navi(&content, protoman).unwrap();
         m.sides[1].set_fact(&content, "crosses", &[]).unwrap();
@@ -931,7 +931,7 @@ mod tests {
         assert_eq!(m.sides[1].level(&content), Some(14), "ProtoMan's highest");
         m.sides[1].set_level(&content, Some(5)).unwrap();
         let text = write(&content, &m);
-        for line in ["beast_out = false", "level = 3", "chip = \"heatman-sp\"", "frames = 721", "chip = \"blastmn-sp\"", "frames = 1500"] {
+        for line in ["beast_out = false", "level = 3", "chip = \"heatman_sp\"", "frames = 721", "chip = \"blastman_sp\"", "frames = 1500"] {
             assert!(text.contains(line), "{line}:\n{text}");
         }
         let right = &text[text.find("[right]").unwrap()..];
@@ -945,7 +945,7 @@ mod tests {
         // Frames past a u16, a chip the game lacks, a field the record lacks.
         let bad = parse(&content, &text.replacen("frames = 721", "frames = 70000", 1)).unwrap_err();
         assert!(bad.iter().any(|p| p.contains("sp_times: 70000 is past a u16")), "{bad:?}");
-        let bad = parse(&content, &text.replacen("\"heatman-sp\"", "\"nobody\"", 1)).unwrap_err();
+        let bad = parse(&content, &text.replacen("\"heatman_sp\"", "\"nobody\"", 1)).unwrap_err();
         assert!(bad.iter().any(|p| p.contains("sp_times: [1]: chip: no chip \"nobody\"")), "{bad:?}");
         let bad = parse(&content, &text.replacen("frames = 721", "time = 721", 1)).unwrap_err();
         assert!(bad.iter().any(|p| p.contains("no field `time` (chip, frames)")), "{bad:?}");

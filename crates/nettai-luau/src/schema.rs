@@ -6,7 +6,7 @@
 //! (`schema.sprite`), an array (`schema.array(schema.u8, 18)`), a byte or
 //! none (`schema.optional(schema.u8)`), an entry of a collection
 //! (`schema.entry("patch_cards")`), a record type (declared once,
-//! `schema.record_type("bomb-variant")`, which `new.record` takes too), a
+//! `schema.record_type("bomb_variant")`, which `new.record` takes too), a
 //! list (`schema.list(T, n)`) and a field the engine knows by a role
 //! (`schema.role(role, T)`). A list of variant names (an enum) and a table
 //! of fields (a record) are plain tables; a string is no type.

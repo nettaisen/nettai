@@ -65,7 +65,7 @@ mod tests {
         let mut three = m.clone();
         three.sides[0].set_level(&content, Some(3)).unwrap();
         let b = crate::check::start(&content, &three).unwrap();
-        let stepswrd = crate::ids::chip(&content, "exe5", "stepswrd").unwrap();
+        let stepswrd = crate::ids::chip(&content, "exe5", "step_sword").unwrap();
         assert_eq!((b.given.damage(stepswrd, 0), b.given.damage(stepswrd, 1)), (Some(100), Some(0)));
         assert_eq!(b.stats[0].weapons.back_special_damage, 50);
         assert_eq!(Some(b.stats[0].max_hp), super::hp_at(&content, protoman, 3));

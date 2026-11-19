@@ -17,7 +17,7 @@
 //! [chips]
 //! standard = [
 //!     "cannon",
-//!     "hicannon",
+//!     "high_cannon",
 //! ]
 //! mega = [
 //!     "roll",
@@ -254,13 +254,13 @@ mod tests {
     use super::*;
 
     const TEXT: &str = "navicust_programs = [\"superarmor\"]\npatch_cards = [\"canodumb\"]\n\n\
-                        [chips]\nstandard = [\"cannon\", \"hicannon\"]\nmega = [\"roll\"]\n";
+                        [chips]\nstandard = [\"cannon\", \"high_cannon\"]\nmega = [\"roll\"]\n";
 
     #[test]
     fn an_order_parses_in_its_sections_order_and_ranks() {
         let lib = parse(TEXT, "library.toml").unwrap();
         assert_eq!(lib.chips.iter().map(|(s, _)| *s).collect::<Vec<_>>(), [Section::Standard, Section::Mega]);
-        assert_eq!(lib.chip_rank("hicannon"), Some((0, 1)));
+        assert_eq!(lib.chip_rank("high_cannon"), Some((0, 1)));
         assert_eq!(lib.chip_rank("roll"), Some((1, 0)));
         assert_eq!(lib.chip_rank("lance"), None);
         assert_eq!(lib.chip_section("roll"), Some(Section::Mega));
@@ -274,9 +274,9 @@ mod tests {
     #[test]
     fn a_sort_puts_what_has_no_place_after_by_key() {
         let lib = parse(TEXT, "library.toml").unwrap();
-        let mut keys = vec!["zzz", "roll", "aaa", "hicannon", "cannon"];
+        let mut keys = vec!["zzz", "roll", "aaa", "high_cannon", "cannon"];
         sort_by_rank(&mut keys, |k| *k, |k| lib.chip_rank(k));
-        assert_eq!(keys, ["cannon", "hicannon", "roll", "aaa", "zzz"]);
+        assert_eq!(keys, ["cannon", "high_cannon", "roll", "aaa", "zzz"]);
     }
 
     #[test]

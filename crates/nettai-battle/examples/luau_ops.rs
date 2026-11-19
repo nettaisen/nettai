@@ -43,7 +43,7 @@ fn main() {
     println!("|---|---|{}", if natives.len() > 1 { "---|" } else { "" });
     for (name, op) in OPS {
         let mut content = testing::build();
-        let beam = content.scripts.modules.get_mut("chips/gundels/beam").expect("the sun beam script");
+        let beam = content.scripts.modules.get_mut("chips/gun_del_sol/beam").expect("the sun beam script");
         let hook = "    if s.ticks % HUM_TICKS == 0 then";
         assert!(beam.contains(hook), "the sun beam script has no {hook:?}");
         *beam = beam.replacen(hook, &format!("    if me.timer2 == 7 then for i = 1, {N} do {op} end end\n{hook}"), 1);
@@ -58,9 +58,9 @@ fn main() {
                 }
                 // A sun beam on player 0 that runs `op` N times when its timer2 is 7.
                 let owner = b.player(0).unwrap();
-                let r = behavior::spawn_kind(&mut b, "gundels/beam", Vec3::default()).unwrap();
+                let r = behavior::spawn_kind(&mut b, "gun_del_sol/beam", Vec3::default()).unwrap();
                 b.objects.get_mut(r).related[0] = Some(owner);
-                let look = b.content.assets.handle(AssetKind::Sprite, "sun-beam").expect("the sun beam's sprite");
+                let look = b.content.assets.handle(AssetKind::Sprite, "sun_beam").expect("the sun beam's sprite");
                 behavior::set_state_field(&mut b, r, "sprite", Value::Asset(AssetKind::Sprite, look));
                 behavior::set_state_field(&mut b, r, "palette", Value::Int(2));
                 behavior::set_state_variant(&mut b, r, "slot", "related");

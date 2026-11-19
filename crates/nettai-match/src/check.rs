@@ -375,27 +375,27 @@ mod tests {
     #[test]
     fn a_navicust_compiles_into_the_stats() {
         // UnderSht on the command line, Attack+1 and HP+100 off it: no bug.
-        let (s, glitch, problems) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 5, 2), ("hp-100", "white", 3, 2)]);
+        let (s, glitch, problems) = compiled(&[("undershirt", "white", 1, 3), ("attack_1", "pink", 5, 2), ("hp_100", "white", 3, 2)]);
         assert_eq!(problems, Vec::<String>::new());
         assert!(s.undershirt && !glitch);
         assert_eq!((s.attack, s.max_hp, s.hp), (1, 700, 700));
         assert_eq!((s.bugs.buster_blanks, s.bugs.hp_drain), (0, 0));
         // Attack+1 on the command line: the buster bug (and it still works).
-        let (s, glitch, _) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 5, 4), ("hp-100", "white", 3, 2)]);
+        let (s, glitch, _) = compiled(&[("undershirt", "white", 1, 3), ("attack_1", "pink", 5, 4), ("hp_100", "white", 3, 2)]);
         assert!(glitch);
         assert_eq!((s.attack, s.bugs.buster_blanks, s.bugs.buster_charged), (1, 6, 1));
         // Attack+1 beside HP+100 of its color: each brings the other's bug.
-        let (s, glitch, _) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 5, 2), ("hp-100", "pink", 3, 2)]);
+        let (s, glitch, _) = compiled(&[("undershirt", "white", 1, 3), ("attack_1", "pink", 5, 2), ("hp_100", "pink", 3, 2)]);
         assert!(glitch);
         assert_eq!((s.bugs.buster_blanks, s.bugs.hp_drain, s.bugs.hit_status), (6, 1, 3));
         // UnderSht off the command line: the step bug, and no UnderSht.
-        let (s, glitch, _) = compiled(&[("undersht", "white", 1, 2)]);
+        let (s, glitch, _) = compiled(&[("undershirt", "white", 1, 2)]);
         assert!(glitch && !s.undershirt);
         assert_eq!(s.bugs.processing, 1);
         // Over another, and off the board: said.
-        let (_, _, problems) = compiled(&[("undersht", "white", 1, 3), ("attack-1", "pink", 1, 3)]);
+        let (_, _, problems) = compiled(&[("undershirt", "white", 1, 3), ("attack_1", "pink", 1, 3)]);
         assert!(problems.iter().any(|p| p.contains("is over program 1")), "{problems:?}");
-        let (_, _, problems) = compiled(&[("undersht", "white", 0, 1)]);
+        let (_, _, problems) = compiled(&[("undershirt", "white", 0, 1)]);
         assert!(problems.iter().any(|p| p.contains("off the board")), "{problems:?}");
     }
 
@@ -409,7 +409,7 @@ mod tests {
         let content = crate::testing::exe5_content();
         let m = crate::pick::live(&content, "exe5", 3, None).unwrap();
         assert_eq!(crate::testing::navicust_expansions(&content, &crate::Match::empty(&content, "exe5").unwrap().sides[0]), Some(2));
-        let undersht = ids::entry(&content, "exe5", "navicust_programs", "undersht").unwrap();
+        let undersht = ids::entry(&content, "exe5", "navicust_programs", "undershirt").unwrap();
         // (UnderSht covers its center and the cell above it.)
         let with = |x: u8, y: u8, expansions: u8| {
             let mut m = m.clone();
@@ -464,7 +464,7 @@ mod tests {
         };
         let at = |program, x: u8, y: u8, rotation: u8, compressed: bool| PlacedProgram { program, color: 0, x, y, rotation, compressed };
         let everywhere = || (0..SIZE as u8).flat_map(|x| (0..SIZE as u8).map(move |y| (x, y)));
-        let hub = program("hubbatc");
+        let hub = program("hub_batch");
         // HubBatc: the middle of the largest board alone.
         for expansions in 0..3 {
             for (x, y) in everywhere() {
@@ -474,7 +474,7 @@ mod tests {
         }
         let beside_hub = |part: PlacedProgram| problems(&[at(hub, 3, 3, 0, false), part], 2);
         // No HP program beside it.
-        for name in ["hp-50", "hp-100", "hp-200", "hp-300", "hp-400", "hp-500"] {
+        for name in ["hp_50", "hp_100", "hp_200", "hp_300", "hp_400", "hp_500"] {
             let hp = program(name);
             for (x, y) in everywhere() {
                 for rotation in 0..4 {
@@ -489,9 +489,9 @@ mod tests {
             }
         }
         // (The lab's board: HP+500 over HubBatc's top.)
-        assert!(beside_hub(at(program("hp-500"), 3, 2, 0, false)).iter().any(|p| p.contains("is over program 1")));
+        assert!(beside_hub(at(program("hp_500"), 3, 2, 0, false)).iter().any(|p| p.contains("is over program 1")));
         // BugStop beside it: compressed alone, and never on the command line.
-        let bugstop = program("bugstop");
+        let bugstop = program("bug_stop");
         // (The command line: the board module's.)
         let board = start(&content, &m).unwrap().module_data("exe5:rules/navicust/board").unwrap().unwrap();
         let line = board.field("COMMAND_LINE").int().unwrap() as i32;
@@ -537,7 +537,7 @@ mod tests {
     fn megaman_from_a_navi_code_gets_his_levels_gains() {
         let content = crate::testing::exe6_content();
         let megaman = content.form_changing_navi().unwrap();
-        let parts = [("undersht", "white", 1, 3), ("attack-1", "pink", 5, 2), ("hp-100", "white", 3, 2)];
+        let parts = [("undershirt", "white", 1, 3), ("attack_1", "pink", 5, 2), ("hp_100", "white", 3, 2)];
         let (base, _, problems) = compiled(&parts);
         assert_eq!(problems, Vec::<String>::new());
         for level in [0u8, 7, 14] {

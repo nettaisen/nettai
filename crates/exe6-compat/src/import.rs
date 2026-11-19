@@ -157,7 +157,7 @@ mod tests {
         // The NaviCust: SuprArmr (white) with its center at (2, 3), HP+50
         // (its second color) at (4, 2), compressed.
         let program = |name: &str| nettai_match::ids::entry(&content, "exe6", "navicust_programs", name).unwrap();
-        let (suprarmr, hp50) = (ids.navicust_part_id(program("suprarmr"), 0), ids.navicust_part_id(program("hp-50"), 1));
+        let (suprarmr, hp50) = (ids.navicust_part_id(program("super_armor"), 0), ids.navicust_part_id(program("hp_50"), 1));
         let mut list = [0u8; 16];
         (list[0], list[3], list[4]) = (suprarmr, 2, 3);
         (list[8], list[11], list[12]) = (hp50, 4, 2);
@@ -195,7 +195,7 @@ mod tests {
         // (Falzar's second and fourth, by Cross number: the list holds them
         // from its front.)
         let list: Vec<&str> = s.facts.form_list(&content).iter().map(|&f| nettai_match::ids::local(&content.defs.form(f).key)).collect();
-        assert_eq!(list, ["tomahawkcross", "groundcross"]);
+        assert_eq!(list, ["tomahawk_cross", "ground_cross"]);
         assert_eq!(s.folder(&content), folder);
         assert_eq!(nettai_match::testing::navicust_expansions(&content, s), Some(2));
         let programs: Vec<(String, i64, i64, bool)> = match s.facts.get(&content, "navicust_programs") {
@@ -212,7 +212,7 @@ mod tests {
                 .collect(),
             other => panic!("{other:?}"),
         };
-        assert_eq!(programs, [("suprarmr".to_string(), 2, 3, false), ("hp-50".to_string(), 4, 2, true)]);
+        assert_eq!(programs, [("super_armor".to_string(), 2, 3, false), ("hp_50".to_string(), 4, 2, true)]);
         let cards = s.facts.get(&content, "patch_cards").unwrap().defs();
         assert_eq!(cards, [nettai_match::ids::entry(&content, "exe6", "patch_cards", "canodumb").unwrap().0]);
         for (field, want) in [("hp", Stated::Number(1000)), ("reg_up", Stated::Number(50)), ("sun", Stated::Flag(true)), ("bug_frags", Stated::Number(1234))] {
@@ -221,7 +221,7 @@ mod tests {
         // (The SP times by the chips of the slots the game reads, in the
         // slots' order.)
         let times = nettai_match::testing::sp_times(&content, &s.facts);
-        assert_eq!((times.len(), &times[0], &times[17]), (18, &("heatman-sp".to_string(), 600), &("colonel-sp".to_string(), 617)));
+        assert_eq!((times.len(), &times[0], &times[17]), (18, &("heatman_sp".to_string(), 600), &("colonel_sp".to_string(), 617)));
         assert_eq!(nettai_match::check_match(&content, &m), Vec::<String>::new());
         assert!(nettai_match::check::start(&content, &m).is_ok());
         // Every Cross owned: the game's own five, stated; and none owned,

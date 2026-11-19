@@ -363,10 +363,10 @@ mod tests {
         // the US games').
         let keys: Vec<&str> = pool.iter().map(|&c| nettai_content_api::keys::local(&content.defs.chip(c).key)).collect();
         assert!(keys.len() > 250, "{} chips", keys.len());
-        for key in ["cannon", "roll", "gundels1", "gundelex", "areagrab", "otenko", "count", "django", "dblbeast"] {
+        for key in ["cannon", "roll", "gun_del_sol_1", "gun_del_sol_ex", "area_grab", "otenko", "count", "django", "double_beast"] {
             assert!(keys.contains(&key), "{key}");
         }
-        for key in ["drksword", "beastout", "gigacan1", "batcan1", "puncharm", "synctrgr"] {
+        for key in ["dark_sword", "beast_out", "giga_cannon_1", "bat_cannon_1", "punch_arm", "synchro_trigger"] {
             assert!(!keys.contains(&key), "{key}");
         }
         // (The Regular chip: one within the fresh navi's Regular memory,
@@ -400,49 +400,49 @@ mod tests {
         let mut said = |f: &SavedFolder| -> Vec<(Wrong, Option<usize>)> { problems(&mut b, 0, &(*f).into()).into_iter().map(|p| (p.what, p.entry)).collect() };
         // Five Recov10s (4 MB) and the rest plain chips is legal; a sixth
         // isn't.
-        let mut chips = [chip("recov10"); FOLDER_SIZE];
-        let mut plain = ["cannon", "airshot", "vulcan1", "spreadr1", "minibomb", "sword"].iter().cycle();
+        let mut chips = [chip("recovery_10"); FOLDER_SIZE];
+        let mut plain = ["cannon", "air_shot", "vulcan_1", "spreader_1", "mini_bomb", "sword"].iter().cycle();
         for c in chips.iter_mut().skip(5) {
             *c = chip(plain.next().unwrap());
         }
         assert_eq!(said(&base(chips)), Vec::new());
         let mut six = chips;
-        six[5] = chip("recov10");
-        assert!(said(&base(six)).contains(&(Wrong::Copies { chip: id("recov10"), count: Count { used: 6, limit: 5 } }, None)));
+        six[5] = chip("recovery_10");
+        assert!(said(&base(six)).contains(&(Wrong::Copies { chip: id("recovery_10"), count: Count { used: 6, limit: 5 } }, None)));
         // A code the chip doesn't come in.
         let mut code = chips;
         code[0].code = ChipCode(25);
-        assert_eq!(said(&base(code)), [(Wrong::ChipCode { chip: id("recov10"), code: ChipCode(25) }, Some(0))]);
+        assert_eq!(said(&base(code)), [(Wrong::ChipCode { chip: id("recovery_10"), code: ChipCode(25) }, Some(0))]);
         // Six Mega chips; two Giga chips.
         let mut megas = chips;
-        for (i, key) in ["roll", "roll2", "heatman", "elecman", "slashman", "eraseman"].iter().enumerate() {
+        for (i, key) in ["roll", "roll_v2", "heatman", "elecman", "slashman", "eraseman"].iter().enumerate() {
             megas[10 + i] = chip(key);
         }
         assert_eq!(said(&base(megas)), [(Wrong::Class { class: ChipClass::Mega, count: Count { used: 6, limit: 5 } }, None)]);
         let mut gigas = chips;
         gigas[10] = chip("bass");
-        gigas[11] = chip("deltaray");
+        gigas[11] = chip("delta_ray_edge");
         assert!(said(&base(gigas)).contains(&(Wrong::Class { class: ChipClass::Giga, count: Count { used: 2, limit: 1 } }, None)));
         // A Regular chip past the Regular memory (Roll3 is 60 MB).
         let mut regular = base(chips);
-        regular.chips[10] = chip("roll3");
+        regular.chips[10] = chip("roll_v3");
         regular.regular = Some(10);
-        assert_eq!(said(&regular), [(Wrong::RegularMemory { chip: id("roll3"), count: Count { used: 60, limit: 50 } }, Some(10))]);
+        assert_eq!(said(&regular), [(Wrong::RegularMemory { chip: id("roll_v3"), count: Count { used: 60, limit: 50 } }, Some(10))]);
         // Tag chips: two entries of 60 MB together at most, not the Regular.
         let mut tags = base(chips);
         tags.tags = Some((5, 6));
         assert_eq!(said(&tags), Vec::new());
-        tags.chips[6] = chip("roll3");
+        tags.chips[6] = chip("roll_v3");
         assert_eq!(said(&tags), [(Wrong::TagMemory(Count { used: 60 + content.chip(id("cannon")).mb as u32, limit: 60 }), None)]);
-        tags.chips[6] = chip("airshot");
+        tags.chips[6] = chip("air_shot");
         tags.regular = Some(5);
         assert_eq!(said(&tags), [(Wrong::TagRegular, None)]);
         // A chip no folder holds, and the sentence a log gets.
         let mut dark = chips;
-        dark[0] = chip("drksword");
-        assert_eq!(said(&base(dark)), [(Wrong::ChipNotAllowed { chip: id("drksword") }, Some(0))]);
+        dark[0] = chip("dark_sword");
+        assert_eq!(said(&base(dark)), [(Wrong::ChipNotAllowed { chip: id("dark_sword") }, Some(0))]);
         let logged = problems(&mut b, 0, &base(dark).into());
-        assert_eq!(logged[0].text, "entry 0: drksword is no chip a folder can hold");
+        assert_eq!(logged[0].text, "entry 0: dark_sword is no chip a folder can hold");
     }
 
     /// A folder being made: an empty entry is none of the rules', and a
@@ -470,7 +470,7 @@ mod tests {
         let id = |key: &str| content.defs.chip_by_key(key).unwrap();
         let chip = |key: &str| Some(FolderChip::new(id(key), content.chip(id(key)).codes[0]));
         let mut f = Folder::EMPTY;
-        for (i, key) in ["recov10", "recov10", "recov10", "recov10", "recov10", "roll", "roll2", "heatman", "elecman", "slashman"].iter().enumerate() {
+        for (i, key) in ["recovery_10", "recovery_10", "recovery_10", "recovery_10", "recovery_10", "roll", "roll_v2", "heatman", "elecman", "slashman"].iter().enumerate() {
             f.chips[i] = chip(key);
         }
         // (A Giga chip: a build may hold either version's.)
@@ -480,14 +480,14 @@ mod tests {
         assert_eq!((v.regular_memory, v.tag_memory), (Some(b.stats[0].reg_up as u32), Some(60)));
         assert_eq!(v.problems, Vec::new());
         assert_eq!(v.refusal(id("cannon")), None);
-        assert_eq!(v.refusal(id("recov10")), Some(&Wrong::Copies { chip: id("recov10"), count: Count { used: 5, limit: 5 } }));
+        assert_eq!(v.refusal(id("recovery_10")), Some(&Wrong::Copies { chip: id("recovery_10"), count: Count { used: 5, limit: 5 } }));
         assert_eq!(v.refusal(id("eraseman")), Some(&Wrong::Class { class: ChipClass::Mega, count: Count { used: 5, limit: 5 } }));
-        assert_eq!(v.refusal(id("drksword")), Some(&Wrong::ChipNotAllowed { chip: id("drksword") }));
-        assert!(!v.lists(id("drksword")) && !v.lists(id("puncharm")) && v.lists(id("cannon")));
+        assert_eq!(v.refusal(id("dark_sword")), Some(&Wrong::ChipNotAllowed { chip: id("dark_sword") }));
+        assert!(!v.lists(id("dark_sword")) && !v.lists(id("punch_arm")) && v.lists(id("cannon")));
         // A Giga chip: the folder has its one copy of it, and any other,
         // of either version, is past the Giga limit.
         assert!(v.lists(id("bass")) && matches!(v.refusal(id("bass")), Some(Wrong::Copies { .. })));
-        for key in ["bassanly", "bighook", "metrknuk"] {
+        for key in ["bass_anomaly", "big_hook", "meteor_knuckle"] {
             assert!(v.lists(id(key)));
             assert!(matches!(v.refusal(id(key)), Some(Wrong::Class { class: ChipClass::Giga, .. })), "{key}");
         }
@@ -497,7 +497,7 @@ mod tests {
             *c = chip("cannon");
         }
         let v = View::of(&content, "exe6", &mut b, 0, &whole).unwrap();
-        assert_eq!(v.refusal(id("airshot")), Some(&Wrong::FolderSize(Count { used: 30, limit: 30 })));
+        assert_eq!(v.refusal(id("air_shot")), Some(&Wrong::FolderSize(Count { used: 30, limit: 30 })));
         // (Twenty Cannons: its copies' problem is each Cannon entry's.)
         assert!(v.problems.iter().any(|p| matches!(p.what, Wrong::Copies { .. })));
         assert_eq!(v.entry_problems(&content, &whole, 29).len(), 1);
@@ -513,7 +513,7 @@ mod tests {
         let id = |key: &str| content.defs.chip_by_key(key).unwrap();
         let chip = |key: &str| Some(FolderChip::new(id(key), content.chip(id(key)).codes[0]));
         let mut f = Folder::EMPTY;
-        (f.chips[0], f.chips[1], f.chips[2]) = (chip("cannon"), chip("roll3"), chip("airshot"));
+        (f.chips[0], f.chips[1], f.chips[2]) = (chip("cannon"), chip("roll_v3"), chip("air_shot"));
         let with = |regular: Option<u8>, tags: Option<(u8, u8)>| Folder { regular, tags, ..f };
         assert_eq!(mark_problems(&mut b, 0, &with(Some(0), None)), Vec::new());
         assert!(matches!(mark_problems(&mut b, 0, &with(Some(1), None))[0].what, Wrong::RegularMemory { .. }));

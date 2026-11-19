@@ -7,11 +7,11 @@ use nettai_content_api::Data;
 #[cfg_attr(not(all(target_arch = "wasm32", target_os = "unknown")), test)]
 fn relative_paths_resolve_within_the_pack() {
     let r = keys::resolve;
-    assert_eq!(r("exe6:chips/gundels/beam", "../../objects/sun-beam/sun_beam").unwrap(), "exe6:objects/sun-beam/sun_beam");
+    assert_eq!(r("exe6:chips/gun_del_sol/beam", "../../objects/sun_beam/sun_beam").unwrap(), "exe6:objects/sun_beam/sun_beam");
     // A folder's init.luau is the folder as a module: beside it is `./`,
     // inside it `@self/`.
-    assert_eq!(r("exe6:chips/gundels/init", "../objects/sun-beam/sun_beam").unwrap(), "exe6:objects/sun-beam/sun_beam");
-    assert_eq!(r("exe6:chips/gundels/init", "@self/beam").unwrap(), "exe6:chips/gundels/beam");
+    assert_eq!(r("exe6:chips/gun_del_sol/init", "../objects/sun_beam/sun_beam").unwrap(), "exe6:objects/sun_beam/sun_beam");
+    assert_eq!(r("exe6:chips/gun_del_sol/init", "@self/beam").unwrap(), "exe6:chips/gun_del_sol/beam");
     assert_eq!(r("exe6:(pack)", "./lib/slot").unwrap(), "exe6:lib/slot");
     assert!(r("exe6:lib/slot", "../../x").is_err());
     assert!(r("exe6:lib/slot", "objects/x").is_err());
@@ -235,7 +235,7 @@ return throw
         r#"--!strict
 local bomb = {}
 local EXPLOSION = new.effect { anim = 0 }
-local VARIANT = schema.record_type("bomb-variant")
+local VARIANT = schema.record_type("bomb_variant")
 bomb.kind = new.kind {
     id = "bomb",
     pool = "attack",
@@ -249,7 +249,7 @@ return bomb
 "#,
     ),
     (
-        "chips/minibomb/init",
+        "chips/mini_bomb/init",
         r#"--!strict
 local throw = require("../lib/bombs/throw")
 local bomb = require("../lib/bombs/bomb")
@@ -258,18 +258,18 @@ local chip = {
     codes = { "B", "L", "R", "*" },
     action = throw.action { held = 4, thrower = bomb.variant { palette = 0 } },
 }
-return { minibomb = chip }
+return { mini_bomb = chip }
 "#,
     ),
     (
-        "chips/flshbom/init",
+        "chips/flash_bomb/init",
         r#"--!strict
 local throw = require("../lib/bombs/throw")
 local bomb = require("../lib/bombs/bomb")
 local THROW = throw.action { held = 0x2E, thrower = bomb.variant { palette = 1 } }
 return {
-    flshbom1 = { name = "FlshBom1", action = THROW },
-    flshbom2 = { name = "FlshBom2", action = THROW },
+    flash_bomb_1 = { name = "FlshBom1", action = THROW },
+    flash_bomb_2 = { name = "FlshBom2", action = THROW },
 }
 "#,
     ),
@@ -277,9 +277,9 @@ return {
     (
         "init",
         r#"--!strict
-local minibomb = require("@self/chips/minibomb")
-local flshbom = require("@self/chips/flshbom")
-return { chips = { minibomb = minibomb.minibomb, flshbom1 = flshbom.flshbom1, flshbom2 = flshbom.flshbom2 } }
+local mini_bomb = require("@self/chips/mini_bomb")
+local flash_bomb = require("@self/chips/flash_bomb")
+return { chips = { mini_bomb = mini_bomb.mini_bomb, flash_bomb_1 = flash_bomb.flash_bomb_1, flash_bomb_2 = flash_bomb.flash_bomb_2 } }
 "#,
     ),
 ];
@@ -290,30 +290,30 @@ fn definitions_get_keys_from_the_root_ids_modules_and_paths() {
     let d = define_pack(BOMBS).unwrap();
     let keys = |r: Registry| d.of(r).iter().map(|d| d.key.as_str()).collect::<Vec<_>>();
     // The root's: their ids there.
-    assert_eq!(keys(Registry::Chip), ["flshbom1", "flshbom2", "minibomb"]);
+    assert_eq!(keys(Registry::Chip), ["flash_bomb_1", "flash_bomb_2", "mini_bomb"]);
     // A tagged table's id.
     assert_eq!(keys(Registry::Kind), ["bomb"]);
     // An action a chip holds: its path from the chip; the series' shared
     // action, from its first chip.
-    assert_eq!(keys(Registry::Action), ["flshbom1/action", "minibomb/action"]);
+    assert_eq!(keys(Registry::Action), ["flash_bomb_1/action", "mini_bomb/action"]);
     // Nested deeper: the variant inside the action's arguments.
-    assert_eq!(keys(Registry::Record), ["flshbom1/action/args/thrower", "minibomb/action/args/thrower"]);
+    assert_eq!(keys(Registry::Record), ["flash_bomb_1/action/args/thrower", "mini_bomb/action/args/thrower"]);
     // Captured by a function: the name it captures it by.
     assert_eq!(keys(Registry::Effect), ["bomb/update/EXPLOSION"]);
     // The throw's state table is one schema for both actions; the kind's
     // its own.
-    assert_eq!(keys(Registry::Schema), ["action:flshbom1/action/state", "kind:bomb/state"]);
-    let action = d.get(Registry::Action, "minibomb/action").unwrap();
-    assert_eq!(action.spec.field("state"), &Data::Ref(Registry::Schema, "action:flshbom1/action/state".into()));
+    assert_eq!(keys(Registry::Schema), ["action:flash_bomb_1/action/state", "kind:bomb/state"]);
+    let action = d.get(Registry::Action, "mini_bomb/action").unwrap();
+    assert_eq!(action.spec.field("state"), &Data::Ref(Registry::Schema, "action:flash_bomb_1/action/state".into()));
     assert_eq!(action.spec.field("update"), &Data::Function);
-    let chip = d.get(Registry::Chip, "minibomb").unwrap();
-    assert_eq!(chip.spec.field("action"), &Data::Ref(Registry::Action, "minibomb/action".into()));
-    assert_eq!(chip.module, "test:chips/minibomb/init");
-    let record = d.get(Registry::Record, "minibomb/action/args/thrower").unwrap();
-    assert_eq!(record.record_type.as_deref(), Some("bomb-variant"));
+    let chip = d.get(Registry::Chip, "mini_bomb").unwrap();
+    assert_eq!(chip.spec.field("action"), &Data::Ref(Registry::Action, "mini_bomb/action".into()));
+    assert_eq!(chip.module, "test:chips/mini_bomb/init");
+    let record = d.get(Registry::Record, "mini_bomb/action/args/thrower").unwrap();
+    assert_eq!(record.record_type.as_deref(), Some("bomb_variant"));
     // A state's types as data: a record type's records.
     let state = d.get(Registry::Schema, "kind:bomb/state").unwrap();
-    let records = nettai_content_api::FieldType::Ref(Registry::Record, Some("bomb-variant".into()));
+    let records = nettai_content_api::FieldType::Ref(Registry::Record, Some("bomb_variant".into()));
     assert_eq!(state.spec.field("variant"), &Data::Type(nettai_content_api::TypeData::Is(records)));
 }
 
@@ -349,10 +349,10 @@ fn state_types_are_schema_values() {
         ("return schema.array(schema.list(schema.u8, 2), 2)".to_string(), "a type of one value, not a list".to_string()),
         ("return schema.optional(schema.u16)".to_string(), "a u8, not u16".to_string()),
         ("return schema.entry(Collection.Cards)".to_string(), "names no collection".to_string()),
-        ("return new.record('bomb-variant', {})".to_string(), "the type is a record type".to_string()),
+        ("return new.record('bomb_variant', {})".to_string(), "the type is a record type".to_string()),
         ("return new.record(schema.u8, {})".to_string(), "not a type u8".to_string()),
         ("local a = schema.record_type('x')\nreturn schema.record_type('x')".to_string(), "\"x\" is declared already, by test/m.luau".to_string()),
-        ("return schema.record_type('absorbed-look')".to_string(), "declared already, by the engine".to_string()),
+        ("return schema.record_type('absorbed_look')".to_string(), "declared already, by the engine".to_string()),
     ] {
         let e = define_pack(&[("m", &source)]).unwrap_err();
         assert!(e.contains(&want), "`{source}`: {e}");
@@ -467,10 +467,10 @@ fn modules_make_no_backgrounds_or_songs() {
     let err = |m: &str| define_assets(&[("stages", m)]).unwrap_err();
     let named = err("return { a = asset.background('comp') }");
     assert!(named.contains("asset.background: no module names a background (a game's are its backgrounds.toml's)"), "{named}");
-    let made = err("return { a = asset.sound('my-theme', { file = './theme.mid', voices = asset.sound('virus-battle') }) }");
+    let made = err("return { a = asset.sound('my-theme', { file = './theme.mid', voices = asset.sound('virus_battle') }) }");
     assert!(made.contains("asset.sound takes a name alone (a song of the content's own is its music.toml's)"), "{made}");
-    let (_, assets) = define_assets(&[("stages", "return { a = asset.sound('virus-battle') }")]).unwrap();
-    assert_eq!((&assets.names.sounds[..], assets.names.backgrounds.is_empty()), (&["virus-battle".to_string()][..], true));
+    let (_, assets) = define_assets(&[("stages", "return { a = asset.sound('virus_battle') }")]).unwrap();
+    assert_eq!((&assets.names.sounds[..], assets.names.backgrounds.is_empty()), (&["virus_battle".to_string()][..], true));
 }
 
 /// A game's rules are one definition, its rules (rules/init.luau), which
@@ -558,7 +558,7 @@ fn a_plan_binds_definition_slots() {
     let plan = BindPlan {
         functions: vec![
             FnSource::slot(Registry::Kind, "bomb", "update"),
-            FnSource::slot(Registry::Action, "minibomb/action", "update"),
+            FnSource::slot(Registry::Action, "mini_bomb/action", "update"),
         ],
         schemas: Vec::new(),
         definitions,
@@ -581,7 +581,7 @@ fn a_plan_binds_definition_slots() {
     assert!(e.contains("define something other"), "{e}");
     // A slot that isn't a function is refused.
     let mut wrong = plan.clone();
-    wrong.functions.push(FnSource::slot(Registry::Chip, "minibomb", "name"));
+    wrong.functions.push(FnSource::slot(Registry::Chip, "mini_bomb", "name"));
     let e = LuauContent::load(&p, &wrong, Options::default()).err().expect("refused").message;
-    assert!(e.contains("chip minibomb: `name` is string, not a function"), "{e}");
+    assert!(e.contains("chip mini_bomb: `name` is string, not a function"), "{e}");
 }

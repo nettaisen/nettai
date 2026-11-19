@@ -20,33 +20,33 @@ fn exe5_compat_reads() {
     let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/exe5/compat"));
     assert_eq!(&Compat::read(dir).unwrap(), built_in);
     assert_eq!(built_in.chips["cannon"].id, 0x001);
-    assert_eq!(built_in.chip_key(0x133), Some("holydrem"));
-    assert_eq!(built_in.chip(0x133).as_deref(), Some("holydrem"));
-    assert_eq!(built_in.chip_entry("holydrem").map(|c| c.id), Some(0x133));
-    assert_eq!(built_in.chip_entry("exe6:holydrem"), None); // (written in full)
+    assert_eq!(built_in.chip_key(0x133), Some("holy_dream"));
+    assert_eq!(built_in.chip(0x133).as_deref(), Some("holy_dream"));
+    assert_eq!(built_in.chip_entry("holy_dream").map(|c| c.id), Some(0x133));
+    assert_eq!(built_in.chip_entry("exe6:holy_dream"), None); // (written in full)
     let phoenix = &built_in.chips["phoenix"];
     assert_eq!(phoenix.colonel.as_ref().and_then(|c| c.flags.as_deref()).map(|f| f.contains(&"library".to_string())), Some(true));
-    assert_eq!(built_in.chips["custswrd"].damage_formula, Some(45));
+    assert_eq!(built_in.chips["custom_sword"].damage_formula, Some(45));
     // The e-Reader cards' chips: their strings and palettes are the save's.
-    assert_eq!((built_in.chips["leadraid"].id, built_in.chips["leadraid"].save_slot), (0x137, Some(0)));
-    assert_eq!((built_in.chips["chaoslrd"].id, built_in.chips["chaoslrd"].save_slot), (0x138, Some(1)));
+    assert_eq!((built_in.chips["leader_raid"].id, built_in.chips["leader_raid"].save_slot), (0x137, Some(0)));
+    assert_eq!((built_in.chips["chaos_lord"].id, built_in.chips["chaos_lord"].save_slot), (0x138, Some(1)));
     // EXE5's holy panel is its type 9; magnet, lava and sea are EXE5's own
     // types (docs/design/exe5-map.md §15.3 item 1).
     assert_eq!((built_in.panel_type(9), built_in.panel_name(9)), (Ok(PanelType(9)), Ok("holy")));
     assert_eq!((built_in.panel_name(8), built_in.panel_name(5), built_in.panel_name(10)), (Ok("lava"), Ok("magnet"), Ok("sea")));
     assert!(built_in.panel_type(11).is_err());
     // The assets' names: EXE6's where the asset or its place is EXE6's.
-    assert_eq!(built_in.assets.sounds.get("own-hit"), Some(&0x6B));
-    assert_eq!(built_in.assets.sounds.get("winner-1"), Some(&0x1F));
-    assert_eq!(built_in.assets.banners.get("program-advance"), Some(&0x24));
+    assert_eq!(built_in.assets.sounds.get("own_hit"), Some(&0x6B));
+    assert_eq!(built_in.assets.sounds.get("winner_1"), Some(&0x1F));
+    assert_eq!(built_in.assets.banners.get("program_advance"), Some(&0x24));
     assert_eq!(built_in.assets.sprites.get("bomb").map(String::as_str), Some("0c-02"));
     // The statuses' bytes.
-    assert_eq!(built_in.status(0x10).as_deref(), Some("paralyze-90"));
-    assert_eq!(built_in.status(0x32).as_deref(), Some("blind-1200"));
+    assert_eq!(built_in.status(0x10).as_deref(), Some("paralyze_90"));
+    assert_eq!(built_in.status(0x32).as_deref(), Some("blind_1200"));
     // MegaMan's forms' numbers (NaviStats +0x2C): his souls', which the
     // content names by their forms' ids.
-    assert_eq!((built_in.form_number("base"), built_in.form_number("protosoul"), built_in.form_number("toadsoul")), (Some(0), Some(1), Some(12)));
-    assert_eq!((built_in.form(7), built_in.form(13), built_in.form_number("heatcross")), (Some("colonelsoul"), None, None));
+    assert_eq!((built_in.form_number("base"), built_in.form_number("proto_soul"), built_in.form_number("toad_soul")), (Some(0), Some(1), Some(12)));
+    assert_eq!((built_in.form(7), built_in.form(13), built_in.form_number("heat_cross")), (Some("colonel_soul"), None, None));
 }
 
 /// Team ProtoMan's NaviStats block as the chip lab's team-plain recording
@@ -92,10 +92,10 @@ fn chip_hands_decode() {
         b[0x32 + 2 * i..0x34 + 2 * i].copy_from_slice(&v.to_le_bytes());
     }
     let h = codec::chip_hand(Compat::exe5(), &b).unwrap();
-    assert_eq!(h.ids[0].as_ref().and_then(|c| c.key.as_deref()), Some("boxer1"));
+    assert_eq!(h.ids[0].as_ref().and_then(|c| c.key.as_deref()), Some("boxer_1"));
     assert!(h.ids[1].is_none());
     let (chip, code) = h.selection[1].clone().unwrap();
-    assert_eq!((chip.key.as_deref(), code), (Some("firehit1"), 15));
+    assert_eq!((chip.key.as_deref(), code), (Some("fire_hit_1"), 15));
 }
 
 #[cfg(feature = "trace")]
@@ -161,19 +161,19 @@ fn objects_keep_their_consoles_code_addresses() {
     assert_eq!(games.z(tc, 0), 0, "any other Z is the content's");
     // ChaosLrd's Z keeps his spawner's address's low half as its fraction.
     assert_eq!(games.z(tc, 0x0012_327F), 0x0012_3367);
-    assert_eq!(games.z_offset(tc, "chaoslrd/navi"), 0xE8);
+    assert_eq!(games.z_offset(tc, "chaos_lord/navi"), 0xE8);
     // TomahawkSoul's grass: the soul routine's and its dispatch's table's low bytes.
-    assert_eq!(games.panel(tc, "tomahawksoul/grass", [0x99, 0xAC]), [0x91, 0xA4]);
-    assert_eq!(games.panel(tc, "moonbld/blade", [0, 0x7F]), [0, 0x67]);
-    assert_eq!(games.panel(tc, "moonbld/blade", [0, 2]), [0, 2]);
+    assert_eq!(games.panel(tc, "tomahawk_soul/grass", [0x99, 0xAC]), [0x91, 0xA4]);
+    assert_eq!(games.panel(tc, "moon_blade/blade", [0, 0x7F]), [0, 0x67]);
+    assert_eq!(games.panel(tc, "moon_blade/blade", [0, 2]), [0, 2]);
     // The strike: from the same height, 15 ticks of its own velocity, and once more as it bursts.
     let fall = |z0: i32, t: i32| z0 + t * (-z0 / 15);
     let (ours, theirs) = (0x0089_327F, 0x0089_3367);
     for t in 1..=16 {
         let z = fall(ours, t);
         let timer = (15 - t) as u16;
-        assert_eq!(z + games.fall_offset(tc, "chaoslrd/strike", z, timer, 15), fall(theirs, t), "tick {t}");
-        assert_eq!(games.fall_offset(us, "chaoslrd/strike", z, timer, 15), 0);
+        assert_eq!(z + games.fall_offset(tc, "chaos_lord/strike", z, timer, 15), fall(theirs, t), "tick {t}");
+        assert_eq!(games.fall_offset(us, "chaos_lord/strike", z, timer, 15), 0);
     }
-    assert_eq!(games.fall_offset(tc, "chaoslrd/strike", ours, 15, 15), 0, "not falling yet");
+    assert_eq!(games.fall_offset(tc, "chaos_lord/strike", ours, 15, 15), 0, "not falling yet");
 }

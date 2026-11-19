@@ -10,7 +10,7 @@
 //!
 //! [side]
 //! navi = "tenguman"
-//! cybeast = "falzar-beast"
+//! cybeast = "falzar_beast"
 //! folder = [...]
 //!
 //! [aside]
@@ -385,7 +385,7 @@ mod tests {
         let content = exe6_content();
         let builds = Builds::of(&content, "exe6").unwrap();
         let text = text(&content, "exe6", &Build::new(&content, "Old", builds.new_build(&content, "falzar").unwrap()));
-        let old = text.replacen("cybeast = \"falzar-beast\"", "version = \"falzar\"", 1);
+        let old = text.replacen("cybeast = \"falzar_beast\"", "version = \"falzar\"", 1);
         assert_ne!(old, text);
         assert!(read(&content, "exe6", &old).unwrap_err().contains("version"));
         let cards = text.replacen("[side]\n", "[side]\npatch_cards = [\"canodumb\"]\n", 1);
@@ -400,7 +400,7 @@ mod tests {
         let content = exe6_content();
         let builds = Builds::of(&content, "exe6").unwrap();
         let mut side = builds.new_build(&content, "falzar").unwrap();
-        let program = nettai_match::ids::entry(&content, "exe6", "navicust_programs", "suprarmr").unwrap();
+        let program = nettai_match::ids::entry(&content, "exe6", "navicust_programs", "super_armor").unwrap();
         set_navicust(&content, &mut side, &[PlacedProgram { program, color: 0, x: 3, y: 3, rotation: 0, compressed: true }], 2);
         side.set_fact(&content, "patch_cards", &patch_cards(&content, "exe6", "skarab")).unwrap();
         let megaman = side.navi(&content);
@@ -456,19 +456,19 @@ mod tests {
         let content = exe6_content();
         let builds = Builds::of(&content, "exe6").unwrap();
         let mut side = builds.new_build(&content, "gregar").unwrap();
-        let program = nettai_match::ids::entry(&content, "exe6", "navicust_programs", "suprarmr").unwrap();
+        let program = nettai_match::ids::entry(&content, "exe6", "navicust_programs", "super_armor").unwrap();
         set_navicust(&content, &mut side, &[PlacedProgram { program, color: 0, x: 3, y: 3, rotation: 0, compressed: true }], 2);
-        side.set_fact(&content, "patch_cards", &patch_cards(&content, "exe6", "skarab,bass-cross-megaman/gregar")).unwrap();
+        side.set_fact(&content, "patch_cards", &patch_cards(&content, "exe6", "skarab,bass_cross_megaman/gregar")).unwrap();
         let gregar = Build::new(&content, "Gregar", side);
         let mut build = gregar.clone();
-        let falzar_beast = nettai_match::ids::form(&content, "exe6", "falzar-beast").unwrap();
+        let falzar_beast = nettai_match::ids::form(&content, "exe6", "falzar_beast").unwrap();
         assert!(builds.choose_form(&content, &mut build.side, "cybeast", falzar_beast));
         assert_eq!(build.side.version(&content), Some("falzar"));
         for kept in ["navi", "folder", "crosses", "navicust_programs", "navicust_expansions", "patch_cards", "bug_frags", "beast_out"] {
             assert_eq!(build.side.facts.get(&content, kept), gregar.side.facts.get(&content, kept), "{kept} is kept");
         }
         assert_eq!(read(&content, "exe6", &text(&content, "exe6", &build)), Ok(build.clone()));
-        let gregar_beast = nettai_match::ids::form(&content, "exe6", "gregar-beast").unwrap();
+        let gregar_beast = nettai_match::ids::form(&content, "exe6", "gregar_beast").unwrap();
         assert!(builds.choose_form(&content, &mut build.side, "cybeast", gregar_beast));
         assert_eq!(build, gregar, "back as it was");
     }

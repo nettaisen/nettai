@@ -28,19 +28,19 @@ fn compat_numbers_what_the_engine_runs_by_handle() {
     b.spawn_actors();
     let player = b.player(0).unwrap();
     let ticker = nettai_battle::behavior::spawn_kind(&mut b, "test/ticker", Default::default()).unwrap();
-    let shot = b.content.defs.actions.iter().position(|a| a.key == "test/tick-shot/shot").unwrap() as u16;
+    let shot = b.content.defs.actions.iter().position(|a| a.key == "test/tick_shot/shot").unwrap() as u16;
     b.set_content_attack(player, shot, 1).unwrap();
     assert_eq!(navi_action(&b, player), NaviAction::Content(nettai_content_api::ActionHandle(shot)));
 
     let mut compat = Compat::default();
     // Without entries, compat says what it lacks.
     assert_eq!(compat.object_slot(&b, ticker), Err("kinds.toml has no \"test/ticker\"".into()));
-    assert_eq!(compat.navi_action(&b, player), Err("actions.toml has no \"test/tick-shot/shot\"".into()));
+    assert_eq!(compat.navi_action(&b, player), Err("actions.toml has no \"test/tick_shot/shot\"".into()));
     compat.kinds.insert(
         "test/ticker".into(),
         exe6_compat::KindEntry { pool: "effect".into(), index: 0xF0, ..Default::default() },
     );
-    compat.actions.insert("test/tick-shot/shot".into(), 0x11);
+    compat.actions.insert("test/tick_shot/shot".into(), 0x11);
     assert_eq!(compat.object_slot(&b, ticker), Ok((Pool::Effect, 0xF0)));
     assert_eq!(compat.navi_action(&b, player), Ok(0x11));
     // The engine's own kinds have their slots in compat too.
@@ -57,8 +57,8 @@ fn exe6_compat_reads() {
     let built_in = Compat::exe6();
     let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content/exe6/compat"));
     assert_eq!(&Compat::read(dir).unwrap(), built_in);
-    assert_eq!(built_in.chips["minibomb"].id, 0x36);
-    assert_eq!(built_in.chip_key(0x36), Some("minibomb"));
+    assert_eq!(built_in.chips["mini_bomb"].id, 0x36);
+    assert_eq!(built_in.chip_key(0x36), Some("mini_bomb"));
     assert_eq!(built_in.kind_at(Pool::Attack, 0x08).map(|(k, _)| k), Some("bomb"));
     assert!(built_in.kind_at(Pool::Effect, 0x0A).is_some_and(|(_, e)| e.scratch_position));
     assert_eq!(built_in.weapon_key(0x00), Some("megaman/buster"));
@@ -94,5 +94,5 @@ fn a_number_belongs_to_one_definition() {
     // (Several actions on one number are the original's own: the chips of
     // one action handler.)
     let c = Compat::exe6();
-    assert!(c.actions.values().filter(|&&n| n == c.actions["widesht/action"]).count() > 1);
+    assert!(c.actions.values().filter(|&&n| n == c.actions["wide_shot/action"]).count() > 1);
 }

@@ -17,7 +17,7 @@ fn fingerprints(game: &str) -> Fingerprinter {
     let mut made = MADE.get_or_init(Default::default).lock().unwrap();
     let f = made.entry(game.to_string()).or_insert_with(|| {
         let c = content(game);
-        let chips: Vec<_> = ["cannon", "sword", "areagrab", "minibomb", "recov10", "recover10"].iter().filter_map(|k| nettai_match::ids::chip(&c, game, k)).collect();
+        let chips: Vec<_> = ["cannon", "sword", "area_grab", "mini_bomb", "recovery_10", "recover10"].iter().filter_map(|k| nettai_match::ids::chip(&c, game, k)).collect();
         Arc::new(Fingerprints::compute(&c, &chips, 2).unwrap())
     });
     Fingerprinter::made(f.clone())
@@ -324,7 +324,7 @@ fn a_network_that_arrives_as_an_error_stops_it() {
 fn fingerprints_are_made_as_asked_on_threads_and_kept() {
     let game = "exe6";
     let c = content(game);
-    let chips: Vec<_> = ["cannon", "sword", "minibomb"].iter().filter_map(|k| nettai_match::ids::chip(&c, game, k)).collect();
+    let chips: Vec<_> = ["cannon", "sword", "mini_bomb"].iter().filter_map(|k| nettai_match::ids::chip(&c, game, k)).collect();
     let dir = std::env::temp_dir().join(format!("nettai-fingerprints-{}", std::process::id()));
     let wait = |f: &Fingerprinter| {
         for _ in 0..6000 {

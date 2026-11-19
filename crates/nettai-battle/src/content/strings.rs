@@ -167,7 +167,7 @@ pub struct Strings {
     pub navis: BTreeMap<String, NaviStrings>,
     #[serde(default)]
     pub forms: BTreeMap<String, FormStrings>,
-    /// The backgrounds', by their asset names (`lans-hp`).
+    /// The backgrounds', by their asset names (`lans_hp`).
     #[serde(default)]
     pub backgrounds: BTreeMap<String, BackgroundStrings>,
     /// The game's own tables, by name: its collections' entries'
@@ -298,7 +298,7 @@ mod tests {
             [navis]
             megaman = { name = "MegaMan", long_name = "MegaMan", variant_name = "BCMegaMn", variant_long_name = "Bass Cross MegaMan" }
             [forms]
-            metalsoul = { name = "MetlSoul", long_name = "Metal Soul" }
+            metal_soul = { name = "MetlSoul", long_name = "Metal Soul" }
             [patch_cards]
             mettaur = { name = "Mettaur", long_name = "Mettaur" }
             [patch_card_effects]
@@ -308,7 +308,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(s.navi("megaman").and_then(|n| n.variant_long_name.as_deref()), Some("Bass Cross MegaMan"));
-        assert_eq!(s.form("metalsoul").and_then(|f| f.long_name.as_deref()), Some("Metal Soul"));
+        assert_eq!(s.form("metal_soul").and_then(|f| f.long_name.as_deref()), Some("Metal Soul"));
         assert_eq!(s.entry("patch_cards", "mettaur").and_then(|e| e.long_name.as_deref()), Some("Mettaur"));
         assert_eq!(s.text("patch_card_effects", "back_special"), Some("Ⓑ+←CurS"));
         assert_eq!(s.long_text("patch_card_effects", "back_special"), Some("Ⓑ+←: Cursed Shield"));

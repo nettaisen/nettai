@@ -138,7 +138,7 @@ impl AssetNames {
     }
 
     /// Whether `name` is a numbered placeholder (`sprite-0c-01`,
-    /// `sound-101`): an asset nobody has named yet, which content may not
+    /// `sound_101`): an asset nobody has named yet, which content may not
     /// use (§6.3).
     pub fn is_placeholder(kind: AssetKind, name: &str) -> bool {
         keys::local(name)
@@ -167,7 +167,7 @@ pub struct DefinedAssets {
 }
 
 /// Each background's music (a game's `backgrounds.toml`: `acdc-area = {
-/// music = "virus-battle" }`; docs/app.md §1, "The battle's music"): the
+/// music = "virus_battle" }`; docs/app.md §1, "The battle's music"): the
 /// song a round drawn on it plays where no other is picked, by the
 /// background's name and the sound's.
 ///
@@ -298,7 +298,7 @@ pub struct CustomSprite {
 
 /// A song made from a MIDI file of the content's own (a game's
 /// `music.toml`: `[songs.my-theme]`, `file = "music/my_theme.mid"`, `voices =
-/// "virus-battle"`), played on the instruments of a song the ROMs have.
+/// "virus_battle"`), played on the instruments of a song the ROMs have.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct CustomSound {
     /// The file that defines it, for what is said of it (`exe6/music.toml`).

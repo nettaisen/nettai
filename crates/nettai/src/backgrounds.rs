@@ -48,12 +48,12 @@ mod tests {
     #[test]
     fn a_background_is_named_by_its_game() {
         Shell::read_game_names(&["exe4", "exe5", "exe6"], "en");
-        assert_eq!(name("exe4", "acdc-area"), "BN4 ACDC Area");
-        assert_eq!(name("exe6", "mr-weather-comp-storm"), "BN6 MrWeathrCmp (Typhoon)");
+        assert_eq!(name("exe4", "acdc_area"), "BN4 ACDC Area");
+        assert_eq!(name("exe6", "mr_weather_comp_typhoon"), "BN6 MrWeathrCmp (Typhoon)");
         assert_eq!(name("exe5", "no-such-area"), "BN5 no-such-area");
         Shell::read_game_names(&["exe4", "exe5", "exe6"], "ja");
-        assert_eq!(name("exe4", "acdc-area"), "EXE4 秋原エリア");
-        assert_eq!(name("exe5", "nebulagray"), "EXE5 ネビュラグレイ");
+        assert_eq!(name("exe4", "acdc_area"), "EXE4 秋原エリア");
+        assert_eq!(name("exe5", "nebula_gray"), "EXE5 ネビュラグレイ");
         Shell::read_game_names(&["exe4", "exe5", "exe6"], "en");
         let pools = [nettai_match::testing::exe4_content(), nettai_match::testing::exe5_content(), nettai_match::testing::exe6_content()]
             .map(|c| c.background_pool.keys().map(str::to_string).collect::<Vec<_>>());

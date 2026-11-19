@@ -29,10 +29,10 @@ use std::sync::Arc;
 // The test chips (testdata/content/chips/test/init.luau), by key: made-up
 // records whose uses are EXE6's builders and actions.
 /// Three GunDelSol levels and an EX (two columns).
-pub const SUN_GUN_1: &str = "test/sun-gun-1";
-pub const SUN_GUN_2: &str = "test/sun-gun-2";
-pub const SUN_GUN_3: &str = "test/sun-gun-3";
-pub const SUN_GUN_EX: &str = "test/sun-gun-ex";
+pub const SUN_GUN_1: &str = "test/sun_gun_1";
+pub const SUN_GUN_2: &str = "test/sun_gun_2";
+pub const SUN_GUN_3: &str = "test/sun_gun_3";
+pub const SUN_GUN_EX: &str = "test/sun_gun_ex";
 /// A dimming chip (the invisibility freeze).
 pub const VEIL: &str = "test/veil";
 /// A navi chip (the eraser navi).
@@ -41,7 +41,7 @@ pub const ERASER: &str = "test/eraser";
 /// hooks (FlmHook's).
 pub const PLUS: &str = "test/plus";
 pub const FIST: &str = "test/fist";
-pub const FLAME_HOOK: &str = "test/flame-hook";
+pub const FLAME_HOOK: &str = "test/flame_hook";
 /// The thrown chips: a bomb, a seed that poisons panels, a flash bomb and
 /// a bug bomb.
 pub const BOMB: &str = "test/bomb";
@@ -51,19 +51,19 @@ pub const BUG: &str = "test/bug";
 /// A sword (a column of three panels ahead).
 pub const BLADE: &str = "test/blade";
 /// A step sword (the same, after a step two panels ahead).
-pub const STEP_BLADE: &str = "test/step-blade";
+pub const STEP_BLADE: &str = "test/step_blade";
 /// A strike at stunned or grounded opponents.
-pub const STUN_BLADE: &str = "test/stun-blade";
+pub const STUN_BLADE: &str = "test/stun_blade";
 /// A blank chip that is the AntiNavi trap when a side's defensive-chip
 /// record holds it.
-pub const ANTI_NAVI: &str = "test/anti-navi";
+pub const ANTI_NAVI: &str = "test/anti_navi";
 /// A trap chip that sets no object.
 pub const TRAP: &str = "test/trap";
 /// An element trap (the trap object).
-pub const ELEM_TRAP: &str = "test/elem-trap";
+pub const ELEM_TRAP: &str = "test/elem_trap";
 /// Time bombs: the plain one and the big one.
-pub const TIME_BOMB: &str = "test/time-bomb";
-pub const TIME_BOMB_PLUS: &str = "test/time-bomb-plus";
+pub const TIME_BOMB: &str = "test/time_bomb";
+pub const TIME_BOMB_PLUS: &str = "test/time_bomb_plus";
 // Navi chips: the elements navi, the water navi, the heat, elec, slash,
 // charge, tomahawk, tengu and blast navis, the shooting navi (Bass's) and
 // the sun-and-moon navi.
@@ -77,29 +77,29 @@ pub const TOMAHAWK: &str = "test/tomahawk";
 pub const TENGU: &str = "test/tengu";
 pub const BLAST: &str = "test/blast";
 pub const BASS: &str = "test/shooter";
-pub const SUN_MOON: &str = "test/sun-moon";
+pub const SUN_MOON: &str = "test/sun_moon";
 /// The link navis' own chips: EXE6's HeatPres, DElecSwd, RSlash, EDeletBm,
 /// VolcChrg, DripShwr, ETomahwk, FTornado, RC Brakr and DustBrk's actions
 /// (navis/<navi>/chip.luau), as chips of made-up damage. Any navi can use
 /// them here.
 pub const LINK_CHIPS: [&str; 10] = [
-    "test/heatpres",
-    "test/delecswd",
-    "test/rslash",
-    "test/edeletbm",
-    "test/volcchrg",
-    "test/dripshwr",
-    "test/etomahwk",
-    "test/ftornado",
-    "test/rc-brakr",
-    "test/dustbrk",
+    "test/heat_press",
+    "test/dash_elec_sword",
+    "test/rolling_slash",
+    "test/eraser_delete_beam",
+    "test/volcano_charge",
+    "test/drip_shower",
+    "test/eagle_tomahawk",
+    "test/fuujin_tornado",
+    "test/rock_crush_breaker",
+    "test/dust_break",
 ];
 /// A link navi (the content's navi 1; AI index 4, whose actor record has
 /// no hooks).
-pub const LINK_NAVI: &str = "test/link-navi";
+pub const LINK_NAVI: &str = "test/link_navi";
 /// A link navi with hooks of its own (AI index 5): a tick, an idle and a
 /// post-init hook (testdata/content/navis/test.luau).
-pub const HOOKED_NAVI: &str = "test/hooked-navi";
+pub const HOOKED_NAVI: &str = "test/hooked_navi";
 /// MegaMan, the navi that changes form.
 pub const MEGAMAN: &str = "megaman";
 
@@ -107,12 +107,12 @@ pub const MEGAMAN: &str = "megaman";
 /// the plain field: two navis, side 1's placed first (the usual netbattle
 /// order); side 0's first; two navis with two rocks, one on each side; and
 /// two navis with three boulders (the field has two stage slots).
-pub const LINK_BATTLE: &str = "test/link-battle";
-pub const LINK_BATTLE_SIDE0_FIRST: &str = "test/link-battle-side0-first";
-pub const ROCK_BATTLE: &str = "test/rock-battle";
-pub const BOULDER_BATTLE: &str = "test/boulder-battle";
+pub const LINK_BATTLE: &str = "test/link_battle";
+pub const LINK_BATTLE_SIDE0_FIRST: &str = "test/link_battle_side0_first";
+pub const ROCK_BATTLE: &str = "test/rock_battle";
+pub const BOULDER_BATTLE: &str = "test/boulder_battle";
 
-/// The test stages' music's song (the asset `test-stage-music`).
+/// The test stages' music's song (the asset `test_stage_music`).
 pub const STAGE_SONG: u16 = 0x16;
 
 /// The navi's sprite (base form), by its made-up number.
@@ -136,7 +136,7 @@ pub fn sound(n: u16) -> crate::sound::SoundId {
     crate::sound::SoundId(numbers.sounds.iter().position(|&s| s == n).unwrap_or_else(|| panic!("the test content names no song {n:#x}")) as u16)
 }
 
-/// The test content's asset `name` of `kind` (`test-navi`): its handle.
+/// The test content's asset `name` of `kind` (`test_navi`): its handle.
 pub fn asset_named(c: &Content, kind: nettai_content_api::AssetKind, name: &str) -> u16 {
     c.assets.handle(kind, name).unwrap_or_else(|| panic!("the test content has no {kind} {name:?}"))
 }
@@ -294,41 +294,41 @@ pub const TICKER_2: &str = "test/ticker2";
 pub const TICKER_3: &str = "test/ticker3";
 /// EXE6's AreaGrab and PanelGrab (chips/areagrab, chips/panlgrab): dimming
 /// chips content defines, which grab a column and a panel.
-pub const AREA_GRAB: &str = "areagrab";
-pub const PANEL_GRAB: &str = "panlgrab";
+pub const AREA_GRAB: &str = "area_grab";
+pub const PANEL_GRAB: &str = "panel_grab";
 /// EXE6's BusterUp, Atk+10 and Navi+20 (chips/busterup, chips/atk-10,
 /// chips/navi-20): instant chips content defines.
-pub const BUSTER_UP: &str = "busterup";
-pub const ATTACK_10: &str = "atk-10";
-pub const NAVI_20: &str = "navi-20";
+pub const BUSTER_UP: &str = "buster_up";
+pub const ATTACK_10: &str = "attack_10";
+pub const NAVI_20: &str = "navi_20";
 /// EXE6's instant chips content defines whose effects fill the gauge, sync
 /// the navi, and spawn objects: FullCust, SyncTrgr, Boomer, Lance,
 /// SandWrm1, JustcOne, GolmHit1 (chips/fullcust ... chips/golmhit).
-pub const FULL_CUST: &str = "fullcust";
-pub const SYNC_TRIGGER: &str = "synctrgr";
-pub const BOOMER: &str = "boomer";
+pub const FULL_CUST: &str = "full_custom";
+pub const SYNC_TRIGGER: &str = "synchro_trigger";
+pub const BOOMER: &str = "boomerang";
 pub const LANCE: &str = "lance";
-pub const SAND_WORM: &str = "sandwrm1";
-pub const JUSTICE_ONE: &str = "justcone";
-pub const GOLEM_HIT: &str = "golmhit1";
+pub const SAND_WORM: &str = "sand_worm_1";
+pub const JUSTICE_ONE: &str = "justice_one";
+pub const GOLEM_HIT: &str = "golem_hit_1";
 /// EXE6's RockCube (chips/rockcube): a dimming chip content defines, which
 /// places a rock in front of its user.
-pub const ROCK_CUBE: &str = "rockcube";
-pub const TICK_SHOT: &str = "test/tick-shot";
+pub const ROCK_CUBE: &str = "rock_cube";
+pub const TICK_SHOT: &str = "test/tick_shot";
 /// EXE6's CrakShot, Rflectr1 and Recov50 (chips/crakshot, chips/rflectr,
 /// chips/recov): standard chips content defines, which dig up the panel
 /// ahead, guard and reflect, and heal.
-pub const CRAK_SHOT: &str = "crakshot";
-pub const REFLECTOR_1: &str = "rflectr1";
-pub const RECOV_50: &str = "recov50";
+pub const CRAK_SHOT: &str = "crack_shot";
+pub const REFLECTOR_1: &str = "reflector_1";
+pub const RECOV_50: &str = "recovery_50";
 /// EXE6's SloGauge and Mine (chips/slogauge, chips/mine): dimming chips
 /// content defines, which slow the custom gauge and lay a mine.
-pub const SLOW_GAUGE: &str = "slogauge";
+pub const SLOW_GAUGE: &str = "slow_gauge";
 pub const MINE: &str = "mine";
 /// EXE6's RskyHny2 and ElecDrgn (chips/rskyhny, chips/elecdrgn): chips
 /// content defines, which send bees and an elec dragon.
-pub const BEES: &str = "rskyhny2";
-pub const DRAGON: &str = "elecdrgn";
+pub const BEES: &str = "risky_honey_2";
+pub const DRAGON: &str = "elec_dragon";
 /// EXE6's Gregar and Falzar (chips/gregar, chips/falzar: the Japanese ROMs'
 /// giga cut-in chips), which summon the cyber beasts.
 pub const GREGAR: &str = "gregar";
@@ -427,8 +427,8 @@ pub fn build() -> Content {
 fn make() -> Content {
     // (Its stages are drawn on its one background.)
     let presentation = nettai_content_api::Presentation {
-        stage_background: Some("test-background".into()),
-        backgrounds: vec!["test-background".into()],
+        stage_background: Some("test_background".into()),
+        backgrounds: vec!["test_background".into()],
         ..Default::default()
     };
     Content { scripts: scripts(), strings: strings(), presentation, ..Default::default() }
@@ -519,336 +519,336 @@ fn asset_index_with(modules: &std::collections::BTreeMap<String, String>) -> net
 /// rules' roles (testdata/content/rules/role_definitions.luau's assets, by role
 /// name): what the tests look for in the cues and the HUD.
 const ROLE_SOUNDS: &[(&str, u16)] = &[
-    ("panel-crack", 0x97),
-    ("panel-poison", 0x90),
-    ("own-hit", 0x6b),
+    ("panel_crack", 0x97),
+    ("panel_poison", 0x90),
+    ("own_hit", 0x6b),
     ("hit", 0x6d),
     ("damage", 0x85),
     ("guard", 0x6e),
-    ("counter-hit", 0x86),
+    ("counter_hit", 0x86),
     ("deleted", 0x6c),
     ("recovery", 0x8a),
-    ("damage-bonus", 0x87),
+    ("damage_bonus", 0x87),
     ("pause", 0x9f),
-    ("gauge-full", 0x8f),
-    ("low-hp", 0x84),
-    ("cut-in", 0xa5),
-    ("trap-mark", 0xa5),
+    ("gauge_full", 0x8f),
+    ("low_hp", 0x84),
+    ("cut_in", 0xa5),
+    ("trap_mark", 0xa5),
     ("telop", 0x173),
-    ("buster-charge", 0x71),
-    ("buster-charged", 0x72),
+    ("buster_charge", 0x71),
+    ("buster_charged", 0x72),
     ("freeze", 0x118),
     ("bubble", 0x12d),
-    ("bubble-pop", 0x124),
+    ("bubble_pop", 0x124),
     ("confusion", 0x88),
     ("invisible", 0x93),
     ("appear", 0x94),
     ("arrive", 0x129),
     ("fade", 0x8e),
-    ("obstacle-lift", 0x12a),
-    ("obstacle-throw", 0x10c),
-    ("cross-merge", 0x8c),
-    ("form-change", 0xf7),
-    ("cross-change", 0x8d),
-    ("cross-change-chime", 0x77),
-    ("beast-out", 0x100),
-    ("gregar-roar", 0x1cc),
-    ("falzar-roar", 0x1cd),
-    ("beast-over-rumble", 0x19a),
-    ("beast-over-burst", 0x12e),
-    ("cross-special", 0x182),
+    ("obstacle_lift", 0x12a),
+    ("obstacle_throw", 0x10c),
+    ("cross_merge", 0x8c),
+    ("form_change", 0xf7),
+    ("cross_change", 0x8d),
+    ("cross_change_chime", 0x77),
+    ("beast_out", 0x100),
+    ("gregar_roar", 0x1cc),
+    ("falzar_roar", 0x1cd),
+    ("beast_over_rumble", 0x19a),
+    ("beast_over_burst", 0x12e),
+    ("cross_special", 0x182),
     ("refused", 0x69),
-    ("custom-open", 0x79),
-    ("custom-cursor", 0x7f),
-    ("custom-hide", 0x80),
-    ("custom-pick", 0x81),
-    ("custom-ok", 0x82),
-    ("custom-back", 0x83),
-    ("custom-cross-open", 0x7a),
-    ("custom-cross-close", 0x7d),
-    ("custom-cross-chosen", 0x92),
-    ("custom-run-message", 0x7b),
-    ("custom-description", 0x9c),
-    ("custom-description-close", 0x9e),
-    ("custom-beast-out-falzar", 0x193),
-    ("custom-beast-out-gregar", 0x191),
-    ("custom-beast-out-flash", 0xbc),
-    ("custom-cancel", 0x1d2),
-    ("custom-redeal", 0x182),
-    ("custom-redeal-shuffle", 0x113),
-    ("custom-scrap", 0x196),
-    ("custom-scrap-done", 0x182),
-    ("program-advance-part", 0x91),
-    ("program-advance", 0x92),
+    ("custom_open", 0x79),
+    ("custom_cursor", 0x7f),
+    ("custom_hide", 0x80),
+    ("custom_pick", 0x81),
+    ("custom_ok", 0x82),
+    ("custom_back", 0x83),
+    ("custom_cross_open", 0x7a),
+    ("custom_cross_close", 0x7d),
+    ("custom_cross_chosen", 0x92),
+    ("custom_run_message", 0x7b),
+    ("custom_description", 0x9c),
+    ("custom_description_close", 0x9e),
+    ("custom_beast_out_falzar", 0x193),
+    ("custom_beast_out_gregar", 0x191),
+    ("custom_beast_out_flash", 0xbc),
+    ("custom_cancel", 0x1d2),
+    ("custom_redeal", 0x182),
+    ("custom_redeal_shuffle", 0x113),
+    ("custom_scrap", 0x196),
+    ("custom_scrap_done", 0x182),
+    ("program_advance_part", 0x91),
+    ("program_advance", 0x92),
     ("encounter", 0x78),
 ];
 const ROLE_MUSIC: &[(&str, u16)] = &[
-    ("link-battle", 0x15),
-    ("winner-special", 0x19),
+    ("link_battle", 0x15),
+    ("winner_special", 0x19),
     ("winner", 0x1f),
     ("loser", 0x1a),
 ];
 const ROLE_SPRITES: &[(&str, (u8, u8))] = &[
-    ("charge-glow", (0x14, 0x08)),
-    ("charge-glow-a", (0x14, 0x15)),
-    ("full-synchro-aura", (0x14, 0x16)),
+    ("charge_glow", (0x14, 0x08)),
+    ("charge_glow_a", (0x14, 0x15)),
+    ("full_synchro_aura", (0x14, 0x16)),
     ("confusion", (0x14, 0x0b)),
     ("blindness", (0x14, 0x09)),
     ("immobilized", (0x10, 0x00)),
     ("ice", (0x14, 0x1c)),
     ("bubble", (0x0c, 0x20)),
-    ("hit-marker", (0x14, 0x07)),
+    ("hit_marker", (0x14, 0x07)),
     ("eruption", (0x10, 0x24)),
-    ("lockon-marker", (0x0c, 0x09)),
-    ("idle-overlay", (0x10, 0x21)),
-    ("beast-head", (0x0c, 0x0a)),
+    ("lockon_marker", (0x0c, 0x09)),
+    ("idle_overlay", (0x10, 0x21)),
+    ("beast_head", (0x0c, 0x0a)),
 ];
 const ROLE_BANNERS: &[(&str, u8)] = &[
-    ("round-start", 0x30),
-    ("turn-start", 0xc),
-    ("final-turn", 0x10),
+    ("round_start", 0x30),
+    ("turn_start", 0xc),
+    ("final_turn", 0x10),
     ("draw", 0x1c),
     ("win", 0x04),
-    ("win-judged", 0x14),
-    ("lose-judged", 0x18),
+    ("win_judged", 0x14),
+    ("lose_judged", 0x18),
     ("judge", 0x28),
     ("telop", 0x4c),
-    ("telop-remote", 0x50),
-    ("program-advance", 0x24),
-    ("program-advance-empty", 0x34),
+    ("telop_remote", 0x50),
+    ("program_advance", 0x24),
+    ("program_advance_empty", 0x34),
 ];
 
 /// The test content's assets with EXE6's numbers.
 fn numbered_assets() -> nettai_content_api::AssetIndex {
     let mut a = nettai_content_api::AssetIndex::default();
     for (role, id) in ROLE_SOUNDS {
-        a.sounds.insert(format!("test-sound-{role}"), *id);
+        a.sounds.insert(format!("test_sound_{role}"), *id);
     }
     for (role, id) in ROLE_MUSIC {
-        a.sounds.insert(format!("test-music-{role}"), *id);
+        a.sounds.insert(format!("test_music_{role}"), *id);
     }
     for (role, (category, index)) in ROLE_SPRITES {
-        a.sprites.insert(format!("test-sprite-{role}"), SpriteNumber { category: *category, index: *index });
+        a.sprites.insert(format!("test_sprite_{role}"), SpriteNumber { category: *category, index: *index });
     }
     for (role, id) in ROLE_BANNERS {
-        a.banners.insert(format!("test-banner-{role}"), *id);
+        a.banners.insert(format!("test_banner_{role}"), *id);
     }
     // The test stages' (testdata/content/stages/test.luau).
-    a.sounds.insert("test-stage-music".into(), STAGE_SONG);
-    a.backgrounds.insert("test-background".into(), 0);
+    a.sounds.insert("test_stage_music".into(), STAGE_SONG);
+    a.backgrounds.insert("test_background".into(), 0);
     // The test navis' (testdata/content/navis/test.luau).
-    a.sprites.insert("test-megaman".into(), SpriteNumber { category: 8, index: 0 });
-    a.sprites.insert("test-navi".into(), NAVI_SPRITE);
-    a.banners.insert("test-win".into(), 0x40);
-    a.banners.insert("test-deleted".into(), 0x44);
+    a.sprites.insert("test_megaman".into(), SpriteNumber { category: 8, index: 0 });
+    a.sprites.insert("test_navi".into(), NAVI_SPRITE);
+    a.banners.insert("test_win".into(), 0x40);
+    a.banners.insert("test_deleted".into(), 0x44);
     let sprite = |c, i| SpriteNumber { category: c, index: i };
     for (name, id) in [
-        ("test-burst", sprite(0x14, 0)),
-        ("test-spark", sprite(0x14, 1)),
+        ("test_burst", sprite(0x14, 0)),
+        ("test_spark", sprite(0x14, 1)),
         ("sprite-14-02", sprite(0x14, 2)),
         ("bomb", sprite(0x0C, 0x02)),
-        ("flash-bomb", sprite(0x10, 0x52)),
-        ("black-bomb", sprite(0x0C, 0x24)),
-        ("energy-burst", sprite(0x14, 0x12)),
+        ("flash_bomb", sprite(0x10, 0x52)),
+        ("black_bomb", sprite(0x0C, 0x24)),
+        ("energy_burst", sprite(0x14, 0x12)),
         ("sword", sprite(0x0C, 0x00)),
         ("explosion", sprite(0x14, 0x00)),
-        ("small-puff", sprite(0x14, 0x02)),
+        ("small_puff", sprite(0x14, 0x02)),
         ("puff", sprite(0x14, 0x0D)),
         ("burst", sprite(0x14, 0x0A)),
-        ("rock-cubes", sprite(0x10, 0x00)),
-        ("grab-shot", sprite(0x0C, 0x13)),
-        ("hit-sparks", sprite(0x14, 0x05)),
-        ("fire-sword", sprite(0x0C, 0x36)),
-        ("aqua-sword", sprite(0x0C, 0x37)),
-        ("elec-sword", sprite(0x0C, 0x38)),
-        ("sword-slash", sprite(0x0C, 0x14)),
-        ("big-slash", sprite(0x0C, 0x15)),
-        ("cross-slash", sprite(0x10, 0x41)),
-        ("pink-flash", sprite(0x14, 0x04)),
-        ("muzzle-flash", sprite(0x0C, 0x06)),
-        ("buster-arm", sprite(0x0C, 0x03)),
+        ("rock_cubes", sprite(0x10, 0x00)),
+        ("grab_shot", sprite(0x0C, 0x13)),
+        ("hit_sparks", sprite(0x14, 0x05)),
+        ("fire_sword", sprite(0x0C, 0x36)),
+        ("aqua_sword", sprite(0x0C, 0x37)),
+        ("elec_sword", sprite(0x0C, 0x38)),
+        ("sword_slash", sprite(0x0C, 0x14)),
+        ("big_slash", sprite(0x0C, 0x15)),
+        ("cross_slash", sprite(0x10, 0x41)),
+        ("pink_flash", sprite(0x14, 0x04)),
+        ("muzzle_flash", sprite(0x0C, 0x06)),
+        ("buster_arm", sprite(0x0C, 0x03)),
         ("eraseman", sprite(0x08, 0x04)),
-        ("buster-up", sprite(0x14, 0x1B)),
-        ("erase-mark", sprite(0x10, 0x50)),
-        ("erase-beam", sprite(0x10, 0x51)),
-        ("air-raid-plane", sprite(0x04, 0x18)),
+        ("buster_up", sprite(0x14, 0x1B)),
+        ("erase_mark", sprite(0x10, 0x50)),
+        ("erase_beam", sprite(0x10, 0x51)),
+        ("air_raid_plane", sprite(0x04, 0x18)),
         ("aura", sprite(0x0C, 0x07)),
         ("barrier", sprite(0x0C, 0x3D)),
         ("bubble", sprite(0x0C, 0x20)),
         ("instrument", sprite(0x04, 0x0A)),
-        ("jet-flame", sprite(0x10, 0x28)),
+        ("jet_flame", sprite(0x10, 0x28)),
         ("propeller", sprite(0x10, 0x3D)),
         ("sensor", sprite(0x04, 0x05)),
-        ("gregar-cybeast", sprite(0x08, 0x14)),
-        ("summon-black", sprite(0x04, 0x1D)),
-        ("flame-hook-fire", sprite(0x0C, 0x45)),
+        ("gregar_cybeast", sprite(0x08, 0x14)),
+        ("summon_black", sprite(0x04, 0x1D)),
+        ("flame_hook_fire", sprite(0x0C, 0x45)),
         ("impact", sprite(0x14, 0x01)),
-        ("hit-marker", sprite(0x14, 0x07)),
-        ("chip-destruction-spark", sprite(0x14, 0x0C)),
-        ("shell-burst", sprite(0x14, 0x11)),
-        ("beast-shot", sprite(0x0C, 0x21)),
+        ("hit_marker", sprite(0x14, 0x07)),
+        ("chip_destruction_spark", sprite(0x14, 0x0C)),
+        ("shell_burst", sprite(0x14, 0x11)),
+        ("beast_shot", sprite(0x0C, 0x21)),
         ("bow", sprite(0x0C, 0x2A)),
-        ("lil-boiler", sprite(0x04, 0x0D)),
-        ("voodoo-doll", sprite(0x0C, 0x34)),
-        ("crack-shot", sprite(0x0C, 0x33)),
+        ("lil_boiler", sprite(0x04, 0x0D)),
+        ("voodoo_doll", sprite(0x0C, 0x34)),
+        ("crack_shot", sprite(0x0C, 0x33)),
         ("dust", sprite(0x14, 0x0E)),
-        ("reflector-shield", sprite(0x0C, 0x1B)),
-        ("dummy-shield", sprite(0x04, 0x00)),
-        ("megaman-navi", sprite(0x08, 0x00)),
-        ("drill-arm", sprite(0x0C, 0x58)),
+        ("reflector_shield", sprite(0x0C, 0x1B)),
+        ("dummy_shield", sprite(0x04, 0x00)),
+        ("megaman_navi", sprite(0x08, 0x00)),
+        ("drill_arm", sprite(0x0C, 0x58)),
         ("burner", sprite(0x0C, 0x29)),
-        ("heatcross-burner", sprite(0x0C, 0x1F)),
+        ("heat_cross_burner", sprite(0x0C, 0x1F)),
         ("flame", sprite(0x0C, 0x0E)),
         ("boomerang", sprite(0x10, 0x07)),
-        ("boomerang-tomahawk", sprite(0x10, 0x57)),
+        ("boomerang_tomahawk", sprite(0x10, 0x57)),
         ("lance", sprite(0x0C, 0x44)),
-        ("fire-hit", sprite(0x14, 0x1A)),
-        ("sand-worm", sprite(0x04, 0x1A)),
-        ("sand-hole", sprite(0x10, 0x48)),
-        ("justice-one", sprite(0x0C, 0x62)),
+        ("fire_hit", sprite(0x14, 0x1A)),
+        ("sand_worm", sprite(0x04, 0x1A)),
+        ("sand_hole", sprite(0x10, 0x48)),
+        ("justice_one", sprite(0x0C, 0x62)),
         ("golem", sprite(0x10, 0x30)),
-        ("dust-2", sprite(0x10, 0x2C)),
-        ("rock-cubes", sprite(0x10, 0x00)),
-        ("rock-debris", sprite(0x10, 0x01)),
+        ("dust_2", sprite(0x10, 0x2C)),
+        ("rock_cubes", sprite(0x10, 0x00)),
+        ("rock_debris", sprite(0x10, 0x01)),
         ("boulder", sprite(0x10, 0x08)),
-        ("falling-rock", sprite(0x10, 0x05)),
-        ("countdown-bomb", sprite(0x0C, 0x23)),
-        ("heat-flame", sprite(0x10, 0x02)),
-        ("follow-effect", sprite(0x10, 0x0E)),
-        ("drip-shower", sprite(0x10, 0x22)),
-        ("eagle-tomahawk", sprite(0x10, 0x2A)),
-        ("tengu-tornado", sprite(0x10, 0x42)),
-        ("volcano-rock", sprite(0x10, 0x55)),
-        ("ground-drill", sprite(0x10, 0x4F)),
-        ("dust-cloud", sprite(0x10, 0x59)),
+        ("falling_rock", sprite(0x10, 0x05)),
+        ("countdown_bomb", sprite(0x0C, 0x23)),
+        ("heat_flame", sprite(0x10, 0x02)),
+        ("follow_effect", sprite(0x10, 0x0E)),
+        ("drip_shower", sprite(0x10, 0x22)),
+        ("eagle_tomahawk", sprite(0x10, 0x2A)),
+        ("tengu_tornado", sprite(0x10, 0x42)),
+        ("volcano_rock", sprite(0x10, 0x55)),
+        ("ground_drill", sprite(0x10, 0x4F)),
+        ("dust_cloud", sprite(0x10, 0x59)),
         ("dustman", sprite(0x08, 0x0A)),
         ("swirl", sprite(0x0C, 0x28)),
         // The traps, mines, time bombs and navi-changing chips.
-        ("spout-splash", sprite(0x0C, 0x1A)),
+        ("spout_splash", sprite(0x0C, 0x1A)),
         ("lightning", sprite(0x14, 0x14)),
-        ("land-mine", sprite(0x0C, 0x22)),
+        ("land_mine", sprite(0x0C, 0x22)),
         ("blast", sprite(0x14, 0x13)),
         ("hub", sprite(0x14, 0x1E)),
         ("bug", sprite(0x14, 0x1F)),
-        ("charge-glow-a", sprite(0x14, 0x15)),
+        ("charge_glow_a", sprite(0x14, 0x15)),
         // The waves and pillars.
-        ("slash-wave", sprite(0x10, 0x39)),
-        ("charged-slash", sprite(0x10, 0x3B)),
-        ("moon-blade", sprite(0x10, 0x3C)),
-        ("element-pillar-flames", sprite(0x0C, 0x1C)),
-        ("element-pillar-lightning", sprite(0x10, 0x32)),
+        ("slash_wave", sprite(0x10, 0x39)),
+        ("charged_slash", sprite(0x10, 0x3B)),
+        ("moon_blade", sprite(0x10, 0x3C)),
+        ("element_pillar_flames", sprite(0x0C, 0x1C)),
+        ("element_pillar_lightning", sprite(0x10, 0x32)),
         // The supports, and the barrier Tango's heal raises.
         ("rush", sprite(0x0C, 0x48)),
         ("beat", sprite(0x0C, 0x4B)),
         ("tango", sprite(0x0C, 0x4C)),
-        ("tango-heal", sprite(0x0C, 0x4D)),
+        ("tango_heal", sprite(0x0C, 0x4D)),
         ("heal", sprite(0x0C, 0x12)),
         // SunMoon and its meteors.
-        ("moon-beam", sprite(0x0C, 0x64)),
+        ("moon_beam", sprite(0x0C, 0x64)),
         ("meteor", sprite(0x0C, 0x31)),
     ] {
         a.sprites.insert(name.into(), id);
     }
     for (name, id) in [
-        ("test-tick", 0x1A6),
-        ("minibomb-throw", 0xB2),
-        ("hit-bomb-1", 0x70),
-        ("panel-poison", 0x90),
+        ("test_tick", 0x1A6),
+        ("mini_bomb_throw", 0xB2),
+        ("hit_bomb_1", 0x70),
+        ("panel_poison", 0x90),
         ("freeze", 0x118),
         ("grass", 0x11B),
         ("flash", 0x1BD),
-        ("bug-bomb-land", 0x115),
+        ("bug_bomb_land", 0x115),
         ("land", 0xC0),
         ("burst", 0xC3),
-        ("energy-burst", 0xBB),
-        ("sword-swing", 0xB0),
-        ("big-sword-swing", 0xCE),
-        ("grab-shot", 0xA2),
-        ("grab-shot-2", 0xA1),
+        ("energy_burst", 0xBB),
+        ("sword_swing", 0xB0),
+        ("big_sword_swing", 0xCE),
+        ("grab_shot", 0xA2),
+        ("grab_shot_2", 0xA1),
         ("appear", 0x94),
         ("place", 0x112),
-        ("falling-rock", 0xD9),
-        ("erase-man", 0x10E),
-        ("erase-man-2", 0xBA),
+        ("falling_rock", 0xD9),
+        ("erase_man", 0x10E),
+        ("erase_man_2", 0xBA),
         ("hub", 0x119),
-        ("buster-shot", 0x6A),
-        ("junk-shot", 0xFF),
-        ("gundels1", 0xF8),
+        ("buster_shot", 0x6A),
+        ("junk_shot", 0xFF),
+        ("gun_del_sol_1", 0xF8),
         ("bonus", 0x157),
         ("barrier", 0x89),
-        ("beast-over", 0x19A),
+        ("beast_over", 0x19A),
         ("bubble", 0x12D),
-        ("bubble-pop", 0x124),
+        ("bubble_pop", 0x124),
         ("bug", 0x143),
-        ("bugfix-flash", 0xD1),
-        ("cross-merge", 0x8C),
+        ("bug_fix_flash", 0xD1),
+        ("cross_merge", 0x8C),
         ("discord", 0xA9),
         ("fanfare", 0xA8),
         ("invisible", 0x93),
-        ("log-in", 0x77),
-        ("panel-change", 0xA4),
-        ("panel-change-tick", 0xA3),
-        ("point-appear", 0x129),
-        ("point-rise", 0x12A),
+        ("log_in", 0x77),
+        ("panel_change", 0xA4),
+        ("panel_change_tick", 0xA3),
+        ("point_appear", 0x129),
+        ("point_rise", 0x12A),
         ("silence", 0xAB),
-        ("take-off", 0x1A9),
+        ("take_off", 0x1A9),
         ("timpani", 0xAA),
-        ("tomahawk-man", 0x10A),
-        ("flame-hook-fire", 0x158),
+        ("tomahawk_man", 0x10A),
+        ("flame_hook_fire", 0x158),
         ("twang", 0x18A),
-        ("boiler-erupt", 0x184),
-        ("boiler-steam", 0x185),
-        ("err-select-91", 0x91),
-        ("hit-bomb-0", 0x6F),
-        ("crack-shot", 0xDA),
-        ("bblstar1", 0xD8),
-        ("follow-effect", 0xA0),
+        ("boiler_erupt", 0x184),
+        ("boiler_steam", 0x185),
+        ("err_select_91", 0x91),
+        ("hit_bomb_0", 0x6F),
+        ("crack_shot", 0xDA),
+        ("bubble_star_1", 0xD8),
+        ("follow_effect", 0xA0),
         ("wave", 0xC5),
         ("roar", 0x12B),
-        ("cross-change", 0x8D),
+        ("cross_change", 0x8D),
         ("boomerang", 0xB7),
-        ("fire-hit", 0xED),
-        ("sand-worm", 0xE1),
-        ("sand-worm-2", 0x1BE),
-        ("justice-one", 0xC4),
+        ("fire_hit", 0xED),
+        ("sand_worm", 0xE1),
+        ("sand_worm_2", 0x1BE),
+        ("justice_one", 0xC4),
         ("golem", 0x10D),
-        ("golem-2", 0x188),
+        ("golem_2", 0x188),
         ("place", 0x112),
-        ("panel-crack", 0x97),
-        ("falling-rock", 0xD9),
-        ("form-change", 0xF7),
-        ("follow-effect", 0xA0),
-        ("drip-shower", 0x128),
-        ("etomahwk", 0x10C),
-        ("aqua-surge", 0xB8),
+        ("panel_crack", 0x97),
+        ("falling_rock", 0xD9),
+        ("form_change", 0xF7),
+        ("follow_effect", 0xA0),
+        ("drip_shower", 0x128),
+        ("eagle_tomahawk", 0x10C),
+        ("aqua_surge", 0xB8),
         ("volcano", 0x146),
-        ("rslash", 0x164),
-        ("dustbrk", 0xAD),
-        ("dustbrk-2", 0x17B),
+        ("rolling_slash", 0x164),
+        ("dust_break", 0xAD),
+        ("dust_break_2", 0x17B),
         ("rockfall", 0xE5),
-        ("drill-spin", 0x1C0),
+        ("drill_spin", 0x1C0),
         // The traps, mines, time bombs, gauge and navi-changing chips.
-        ("dimming-sparkle", 0xA5),
-        ("target-move", 0x10F),
-        ("spout-ball", 0x11D),
-        ("beast-over-burst", 0x12E),
+        ("dimming_sparkle", 0xA5),
+        ("target_move", 0x10F),
+        ("spout_ball", 0x11D),
+        ("beast_over_burst", 0x12E),
         ("hop", 0x113),
         ("tick", 0xC1),
         ("last", 0xC2),
         // The waves.
-        ("ok-8b", 0x8B),
-        ("aqua-needle-2", 0xB3),
+        ("ok_8b", 0x8B),
+        ("aqua_needle_2", 0xB3),
         // The supports, and the barrier Tango's heal raises.
         ("bite", 0x122),
-        ("set-down", 0x120),
+        ("set_down", 0x120),
         ("snatch", 0x126),
         ("arrive", 0x116),
-        ("tango-land", 0xD4),
+        ("tango_land", 0xD4),
         ("heal", 0x8A),
         // SunMoon.
-        ("sun-moon", 0x110),
-        ("moon-beam", 0x111),
-        ("blast-man", 0x17F),
+        ("sun_moon", 0x110),
+        ("moon_beam", 0x111),
+        ("blast_man", 0x17F),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -862,34 +862,34 @@ fn numbered_assets() -> nettai_content_api::AssetIndex {
 fn form_weapon_assets(a: &mut nettai_content_api::AssetIndex) {
     let sprite = |c, i| SpriteNumber { category: c, index: i };
     for (name, id) in [
-        ("aqua-surge", sprite(0x10, 0x2E)),
+        ("aqua_surge", sprite(0x10, 0x2E)),
         ("whirlwind", sprite(0x10, 0x44)),
-        ("erase-ray", sprite(0x10, 0x4C)),
-        ("erase-drop", sprite(0x10, 0x4D)),
-        ("charge-wave", sprite(0x10, 0x09)),
-        ("junk-shot", sprite(0x10, 0x56)),
-        ("ground-drill-effect", sprite(0x0C, 0x2D)),
-        ("slash-man-effect", sprite(0x10, 0x38)),
+        ("erase_ray", sprite(0x10, 0x4C)),
+        ("erase_drop", sprite(0x10, 0x4D)),
+        ("charge_wave", sprite(0x10, 0x09)),
+        ("junk_shot", sprite(0x10, 0x56)),
+        ("ground_drill_effect", sprite(0x0C, 0x2D)),
+        ("slash_man_effect", sprite(0x10, 0x38)),
         ("groundman", sprite(0x08, 0x09)),
     ] {
         a.sprites.insert(name.into(), id);
     }
     for (name, id) in [
-        ("aqua-needle-2", 0xB3),
-        ("col-army-2", 0xB9),
-        ("spout-beast-charge", 0xF4),
-        ("moon-beam", 0x111),
-        ("tomahawk-man", 0x10A),
-        ("ground-beast-dash", 0x1BF),
-        ("ground-beast-dash-2", 0x1C7),
-        ("iron-shell", 0x187),
-        ("beast-claw", 0x1C5),
-        ("beast-claw-2", 0x1C6),
-        ("charge-train", 0xE4),
-        ("tenguman-nose", 0xFB),
-        ("drill-launch", 0x14C),
+        ("aqua_needle_2", 0xB3),
+        ("col_army_2", 0xB9),
+        ("spout_beast_charge", 0xF4),
+        ("moon_beam", 0x111),
+        ("tomahawk_man", 0x10A),
+        ("ground_beast_dash", 0x1BF),
+        ("ground_beast_dash_2", 0x1C7),
+        ("iron_shell", 0x187),
+        ("beast_claw", 0x1C5),
+        ("beast_claw_2", 0x1C6),
+        ("charge_train", 0xE4),
+        ("tenguman_nose", 0xFB),
+        ("drill_launch", 0x14C),
         ("spin", 0xC7),
-        ("drilarm", 0xF0),
+        ("drill_arm", 0xF0),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -901,23 +901,23 @@ fn standard_chip_assets(a: &mut nettai_content_api::AssetIndex) {
     let sprite = |c, i| SpriteNumber { category: c, index: i };
     for (name, id) in [
         ("gust", sprite(0x0C, 0x2E)),
-        ("wind-rack", sprite(0x0C, 0x27)),
-        ("tengu-fan", sprite(0x0C, 0x5C)),
+        ("wind_rack", sprite(0x0C, 0x27)),
+        ("tengu_fan", sprite(0x0C, 0x5C)),
         ("swirl", sprite(0x0C, 0x28)),
-        ("thunder-doll", sprite(0x10, 0x12)),
-        ("thunder-doll-hand", sprite(0x0C, 0x60)),
-        ("gun-del-sol", sprite(0x0C, 0x3B)),
-        ("sun-beam", sprite(0x0C, 0x3C)),
-        ("sun-beam-ex", sprite(0x0C, 0x47)),
+        ("thunder_doll", sprite(0x10, 0x12)),
+        ("thunder_doll_hand", sprite(0x0C, 0x60)),
+        ("gun_del_sol", sprite(0x0C, 0x3B)),
+        ("sun_beam", sprite(0x0C, 0x3C)),
+        ("sun_beam_ex", sprite(0x0C, 0x47)),
         ("hive", sprite(0x0C, 0x5E)),
-        ("honey-bee", sprite(0x10, 0x31)),
+        ("honey_bee", sprite(0x10, 0x31)),
         ("dragon", sprite(0x04, 0x10)),
     ] {
         a.sprites.insert(name.into(), id);
     }
     navi_chip_assets(a);
     for (name, id) in
-        [("windrack", 0x11F), ("beast-over", 0x19A), ("sun-beam", 0xF9), ("buzz", 0x1A8), ("form-change", 0xF7)]
+        [("wind_racket", 0x11F), ("beast_over", 0x19A), ("sun_beam", 0xF9), ("buzz", 0x1A8), ("form_change", 0xF7)]
     {
         a.sounds.insert(name.into(), id);
     }
@@ -928,54 +928,54 @@ fn standard_chip_assets(a: &mut nettai_content_api::AssetIndex) {
 fn navi_chip_assets(a: &mut nettai_content_api::AssetIndex) {
     let sprite = |c, i| SpriteNumber { category: c, index: i };
     for (name, id) in [
-        ("bass-anly", sprite(0x08, 0x13)),
+        ("bass_anly", sprite(0x08, 0x13)),
         ("lightning", sprite(0x14, 0x14)),
-        ("blast-fire", sprite(0x08, 0x0C)),
-        ("charge-car", sprite(0x10, 0x54)),
+        ("blast_fire", sprite(0x08, 0x0C)),
+        ("charge_car", sprite(0x10, 0x54)),
         ("chargeman", sprite(0x08, 0x05)),
         ("elecman", sprite(0x08, 0x02)),
-        ("elmnt-ice", sprite(0x10, 0x0F)),
-        ("elmnt-man", sprite(0x08, 0x10)),
+        ("elmnt_ice", sprite(0x10, 0x0F)),
+        ("elmnt_man", sprite(0x08, 0x10)),
         ("heatman", sprite(0x08, 0x01)),
         ("meteor", sprite(0x0C, 0x31)),
-        ("moon-beam", sprite(0x0C, 0x64)),
-        ("panel-strike", sprite(0x10, 0x26)),
-        ("slash-man-effect", sprite(0x10, 0x38)),
-        ("slash-wave", sprite(0x10, 0x39)),
+        ("moon_beam", sprite(0x0C, 0x64)),
+        ("panel_strike", sprite(0x10, 0x26)),
+        ("slash_man_effect", sprite(0x10, 0x38)),
+        ("slash_wave", sprite(0x10, 0x39)),
         ("slashman", sprite(0x08, 0x03)),
-        ("spout-geyser", sprite(0x10, 0x20)),
-        ("spout-man-effect", sprite(0x10, 0x23)),
-        ("spout-pillar", sprite(0x10, 0x1F)),
-        ("spout-splash", sprite(0x0C, 0x1A)),
-        ("spoutman", sprite(0x08, 0x06)),
+        ("spout_geyser", sprite(0x10, 0x20)),
+        ("spout_man_effect", sprite(0x10, 0x23)),
+        ("spout_pillar", sprite(0x10, 0x1F)),
+        ("spout_splash", sprite(0x0C, 0x1A)),
+        ("aquaman", sprite(0x08, 0x06)),
         ("tenguman", sprite(0x08, 0x08)),
         ("tomahawkman", sprite(0x08, 0x07)),
         ("count", sprite(0x08, 0x16)),
         ("django", sprite(0x0C, 0x0F)),
         ("otenko", sprite(0x0C, 0x49)),
-        ("dust-storm-mote", sprite(0x10, 0x10)),
+        ("dust_storm_mote", sprite(0x10, 0x10)),
     ] {
         a.sprites.insert(name.into(), id);
     }
     for (name, id) in [
-        ("aqua-needle-2", 0xB3),
-        ("beast-over-burst", 0x12E),
-        ("blast-man", 0x17F),
+        ("aqua_needle_2", 0xB3),
+        ("beast_over_burst", 0x12E),
+        ("blast_man", 0x17F),
         ("bubble", 0x12D),
-        ("charge-man", 0xE3),
-        ("col-army-2", 0xB9),
-        ("elec-man", 0xC6),
-        ("elmnt-man", 0x134),
-        ("elmnt-man-2", 0x182),
-        ("elmnt-man-4", 0x99),
-        ("elmnt-vine", 0x181),
-        ("moon-beam", 0x111),
-        ("ok-8b", 0x8B),
-        ("spout-ball", 0x11D),
-        ("spout-man", 0x189),
-        ("sun-moon", 0x110),
-        ("tengu-man", 0x13C),
-        ("tomahawk-man", 0x10A),
+        ("charge_man", 0xE3),
+        ("col_army_2", 0xB9),
+        ("elec_man", 0xC6),
+        ("elmnt_man", 0x134),
+        ("elmnt_man_2", 0x182),
+        ("elmnt_man_4", 0x99),
+        ("elmnt_vine", 0x181),
+        ("moon_beam", 0x111),
+        ("ok_8b", 0x8B),
+        ("spout_ball", 0x11D),
+        ("spout_man", 0x189),
+        ("sun_moon", 0x110),
+        ("tengu_man", 0x13C),
+        ("tomahawk_man", 0x10A),
     ] {
         a.sounds.insert(name.into(), id);
     }
@@ -1006,16 +1006,16 @@ pub fn scripts() -> Scripts {
             let modules = [
                 ("objects/attachment/init", "objects/attachment/init"),
                 // GunDelSol: the chips, whose actions the SunGuns run.
-                ("chips/gundels/beam", "chips/gundels/beam"),
-                ("chips/gundels/action", "chips/gundels/action"),
-                ("chips/gundels/init", "chips/gundels/init"),
+                ("chips/gun_del_sol/beam", "chips/gun_del_sol/beam"),
+                ("chips/gun_del_sol/action", "chips/gun_del_sol/action"),
+                ("chips/gun_del_sol/init", "chips/gun_del_sol/init"),
                 ("chips/eraseman/mark", "chips/eraseman/mark"),
                 ("chips/eraseman/beam", "chips/eraseman/beam"),
                 ("chips/eraseman/navi", "chips/eraseman/navi"),
                 ("lib/grab/shot", "lib/grab/shot"),
                 ("lib/grab/controller", "lib/grab/controller"),
-                ("chips/areagrab/init", "chips/areagrab/init"),
-                ("chips/panlgrab/init", "chips/panlgrab/init"),
+                ("chips/area_grab/init", "chips/area_grab/init"),
+                ("chips/panel_grab/init", "chips/panel_grab/init"),
                 ("objects/falling_rock/init", "objects/falling_rock/init"),
                 ("objects/falling_rock/chip", "objects/falling_rock/chip"),
                 ("objects/projectile/init", "objects/projectile/init"),
@@ -1028,7 +1028,7 @@ pub fn scripts() -> Scripts {
                 ("navis/megaman/weapons/blank_shot/init", "navis/megaman/weapons/blank_shot/init"),
                 ("navis/megaman/weapons/charged_shot/init", "navis/megaman/weapons/charged_shot/init"),
                 ("navis/megaman/weapons/buster/init", "navis/megaman/weapons/buster/init"),
-                ("navis/megaman/forms/heatcross/charge", "navis/megaman/forms/heatcross/charge"),
+                ("navis/megaman/forms/heat_cross/charge", "navis/megaman/forms/heat_cross/charge"),
                 ("lib/weapon", "lib/weapon"),
                 ("objects/element_pillar/init", "objects/element_pillar/init"),
                 // The form weapons content defines, with the kinds only they
@@ -1042,56 +1042,56 @@ pub fn scripts() -> Scripts {
                     "navis/megaman/weapons/gregar_beast_buster/init",
                 ),
                 ("navis/megaman/weapons/tengu_wind/init", "navis/megaman/weapons/tengu_wind/init"),
-                ("navis/megaman/forms/spoutcross_beast/surge", "navis/megaman/forms/spoutcross_beast/surge"),
-                ("navis/megaman/forms/spoutcross_beast/charge", "navis/megaman/forms/spoutcross_beast/charge"),
-                ("navis/megaman/forms/tengucross_beast/whirlwind", "navis/megaman/forms/tengucross_beast/whirlwind"),
-                ("navis/megaman/forms/tengucross_beast/charge", "navis/megaman/forms/tengucross_beast/charge"),
-                ("navis/megaman/forms/eleccross/charge", "navis/megaman/forms/eleccross/charge"),
-                ("navis/megaman/forms/eleccross/a_charge", "navis/megaman/forms/eleccross/a_charge"),
-                ("navis/megaman/forms/tengucross/charge", "navis/megaman/forms/tengucross/charge"),
-                ("navis/megaman/forms/dustcross/throw_absorbed", "navis/megaman/forms/dustcross/throw_absorbed"),
+                ("navis/megaman/forms/aqua_cross_beast/surge", "navis/megaman/forms/aqua_cross_beast/surge"),
+                ("navis/megaman/forms/aqua_cross_beast/charge", "navis/megaman/forms/aqua_cross_beast/charge"),
+                ("navis/megaman/forms/tengu_cross_beast/whirlwind", "navis/megaman/forms/tengu_cross_beast/whirlwind"),
+                ("navis/megaman/forms/tengu_cross_beast/charge", "navis/megaman/forms/tengu_cross_beast/charge"),
+                ("navis/megaman/forms/elec_cross/charge", "navis/megaman/forms/elec_cross/charge"),
+                ("navis/megaman/forms/elec_cross/a_charge", "navis/megaman/forms/elec_cross/a_charge"),
+                ("navis/megaman/forms/tengu_cross/charge", "navis/megaman/forms/tengu_cross/charge"),
+                ("navis/megaman/forms/dust_cross/throw_absorbed", "navis/megaman/forms/dust_cross/throw_absorbed"),
                 (
-                    "navis/megaman/forms/dustcross_beast/throw_absorbed",
-                    "navis/megaman/forms/dustcross_beast/throw_absorbed",
+                    "navis/megaman/forms/dust_cross_beast/throw_absorbed",
+                    "navis/megaman/forms/dust_cross_beast/throw_absorbed",
                 ),
-                ("navis/megaman/forms/erasecross/ray", "navis/megaman/forms/erasecross/ray"),
-                ("navis/megaman/forms/erasecross/charge", "navis/megaman/forms/erasecross/charge"),
+                ("navis/megaman/forms/erase_cross/ray", "navis/megaman/forms/erase_cross/ray"),
+                ("navis/megaman/forms/erase_cross/charge", "navis/megaman/forms/erase_cross/charge"),
                 (
-                    "navis/megaman/forms/erasecross_beast/erase_drop",
-                    "navis/megaman/forms/erasecross_beast/erase_drop",
+                    "navis/megaman/forms/erase_cross_beast/erase_drop",
+                    "navis/megaman/forms/erase_cross_beast/erase_drop",
                 ),
-                ("navis/megaman/forms/erasecross_beast/drop", "navis/megaman/forms/erasecross_beast/drop"),
-                ("navis/megaman/forms/tomahawkcross/charge", "navis/megaman/forms/tomahawkcross/charge"),
+                ("navis/megaman/forms/erase_cross_beast/drop", "navis/megaman/forms/erase_cross_beast/drop"),
+                ("navis/megaman/forms/tomahawk_cross/charge", "navis/megaman/forms/tomahawk_cross/charge"),
                 (
-                    "navis/megaman/forms/tomahawkcross_beast/throw",
-                    "navis/megaman/forms/tomahawkcross_beast/throw",
+                    "navis/megaman/forms/tomahawk_cross_beast/throw",
+                    "navis/megaman/forms/tomahawk_cross_beast/throw",
                 ),
                 (
-                    "navis/megaman/forms/slashcross_beast/lunge_slash",
-                    "navis/megaman/forms/slashcross_beast/lunge_slash",
+                    "navis/megaman/forms/slash_cross_beast/lunge_slash",
+                    "navis/megaman/forms/slash_cross_beast/lunge_slash",
                 ),
-                ("navis/megaman/forms/slashcross_beast/lunge", "navis/megaman/forms/slashcross_beast/lunge"),
+                ("navis/megaman/forms/slash_cross_beast/lunge", "navis/megaman/forms/slash_cross_beast/lunge"),
                 ("navis/megaman/dash_hit", "navis/megaman/dash_hit"),
-                ("navis/megaman/forms/groundcross_beast/dash", "navis/megaman/forms/groundcross_beast/dash"),
-                ("navis/megaman/forms/groundcross/drill", "navis/megaman/forms/groundcross/drill"),
-                ("navis/megaman/forms/chargecross/tackle", "navis/megaman/forms/chargecross/tackle"),
+                ("navis/megaman/forms/ground_cross_beast/dash", "navis/megaman/forms/ground_cross_beast/dash"),
+                ("navis/megaman/forms/ground_cross/drill", "navis/megaman/forms/ground_cross/drill"),
+                ("navis/megaman/forms/charge_cross/tackle", "navis/megaman/forms/charge_cross/tackle"),
                 (
-                    "navis/megaman/forms/chargecross_beast/charge_wave",
-                    "navis/megaman/forms/chargecross_beast/charge_wave",
+                    "navis/megaman/forms/charge_cross_beast/charge_wave",
+                    "navis/megaman/forms/charge_cross_beast/charge_wave",
                 ),
-                ("navis/megaman/forms/chargecross_beast/wave", "navis/megaman/forms/chargecross_beast/wave"),
+                ("navis/megaman/forms/charge_cross_beast/wave", "navis/megaman/forms/charge_cross_beast/wave"),
                 (
-                    "navis/megaman/forms/dustcross_beast/junk_shot",
-                    "navis/megaman/forms/dustcross_beast/junk_shot",
+                    "navis/megaman/forms/dust_cross_beast/junk_shot",
+                    "navis/megaman/forms/dust_cross_beast/junk_shot",
                 ),
-                ("navis/megaman/forms/dustcross_beast/scatter", "navis/megaman/forms/dustcross_beast/scatter"),
-                ("navis/megaman/forms/dustcross/junk_ball", "navis/megaman/forms/dustcross/junk_ball"),
-                ("navis/megaman/forms/dustcross/charge", "navis/megaman/forms/dustcross/charge"),
+                ("navis/megaman/forms/dust_cross_beast/scatter", "navis/megaman/forms/dust_cross_beast/scatter"),
+                ("navis/megaman/forms/dust_cross/junk_ball", "navis/megaman/forms/dust_cross/junk_ball"),
+                ("navis/megaman/forms/dust_cross/charge", "navis/megaman/forms/dust_cross/charge"),
                 ("navis/megaman/weapons/beast_claw/init", "navis/megaman/weapons/beast_claw/init"),
                 ("navis/megaman/weapons/absorb/init", "navis/megaman/weapons/absorb/init"),
                 (
-                    "navis/megaman/forms/slashcross_beast/hit_flash",
-                    "navis/megaman/forms/slashcross_beast/hit_flash",
+                    "navis/megaman/forms/slash_cross_beast/hit_flash",
+                    "navis/megaman/forms/slash_cross_beast/hit_flash",
                 ),
                 ("objects/absorbed_obstacle/init", "objects/absorbed_obstacle/init"),
                 // The instant chips: EXE6's definitions, and the effects
@@ -1100,58 +1100,58 @@ pub fn scripts() -> Scripts {
                 ("lib/instant/plus", "lib/instant/plus"),
                 // The chips the rules name: the custom screen's Beast Out
                 // button, and what a selection it can't allow becomes.
-                ("chips/beastout/init", "chips/beastout/init"),
+                ("chips/beast_out/init", "chips/beast_out/init"),
                 ("chips/invalid/init", "chips/invalid/init"),
-                ("chips/atk-10/init", "chips/atk-10/init"),
-                ("chips/navi-20/init", "chips/navi-20/init"),
-                ("chips/busterup/init", "chips/busterup/init"),
-                ("chips/fullcust/init", "chips/fullcust/init"),
-                ("chips/synctrgr/init", "chips/synctrgr/init"),
-                ("chips/boomer/boomerang", "chips/boomer/boomerang"),
-                ("chips/boomer/init", "chips/boomer/init"),
+                ("chips/attack_10/init", "chips/attack_10/init"),
+                ("chips/navi_20/init", "chips/navi_20/init"),
+                ("chips/buster_up/init", "chips/buster_up/init"),
+                ("chips/full_custom/init", "chips/full_custom/init"),
+                ("chips/synchro_trigger/init", "chips/synchro_trigger/init"),
+                ("chips/boomerang/boomerang", "chips/boomerang/boomerang"),
+                ("chips/boomerang/init", "chips/boomerang/init"),
                 ("chips/lance/lance", "chips/lance/lance"),
                 ("chips/lance/init", "chips/lance/init"),
-                ("chips/firehit/fist", "chips/firehit/fist"),
-                ("chips/sandwrm/worm", "chips/sandwrm/worm"),
-                ("chips/sandwrm/hole", "chips/sandwrm/hole"),
-                ("chips/sandwrm/spray", "chips/sandwrm/spray"),
-                ("chips/sandwrm/init", "chips/sandwrm/init"),
-                ("chips/flmhook/fire", "chips/flmhook/fire"),
-                ("chips/flmhook/hook", "chips/flmhook/hook"),
-                ("chips/justcone/strike", "chips/justcone/strike"),
-                ("chips/justcone/init", "chips/justcone/init"),
-                ("chips/golmhit/golem", "chips/golmhit/golem"),
-                ("chips/golmhit/init", "chips/golmhit/init"),
+                ("chips/fire_hit/fist", "chips/fire_hit/fist"),
+                ("chips/sand_worm/worm", "chips/sand_worm/worm"),
+                ("chips/sand_worm/hole", "chips/sand_worm/hole"),
+                ("chips/sand_worm/spray", "chips/sand_worm/spray"),
+                ("chips/sand_worm/init", "chips/sand_worm/init"),
+                ("chips/flame_hook/fire", "chips/flame_hook/fire"),
+                ("chips/flame_hook/hook", "chips/flame_hook/hook"),
+                ("chips/justice_one/strike", "chips/justice_one/strike"),
+                ("chips/justice_one/init", "chips/justice_one/init"),
+                ("chips/golem_hit/golem", "chips/golem_hit/golem"),
+                ("chips/golem_hit/init", "chips/golem_hit/init"),
                 ("lib/projectile", "lib/projectile"),
                 ("objects/gust/init", "objects/gust/init"),
                 // WindRack's action, which TenguCross's charged shot swings
                 // with its fan, and DolThdr's, which ElecCross's strikes
                 // with (content model v2).
                 ("lib/arm", "lib/arm"),
-                ("chips/windrack/action", "chips/windrack/action"),
-                ("chips/dolthdr/action", "chips/dolthdr/action"),
-                ("chips/dolthdr/doll", "chips/dolthdr/doll"),
+                ("chips/wind_racket/action", "chips/wind_racket/action"),
+                ("chips/doll_thunder/action", "chips/doll_thunder/action"),
+                ("chips/doll_thunder/doll", "chips/doll_thunder/doll"),
                 // SlashCross's charged slash: its waves, the slashes the
                 // swords name, its charged shot and A-charge; and the
                 // Beast charged chips' pillars' weapons.
                 (
-                    "navis/megaman/forms/slashcross/sword_wave",
-                    "navis/megaman/forms/slashcross/sword_wave",
+                    "navis/megaman/forms/slash_cross/sword_wave",
+                    "navis/megaman/forms/slash_cross/sword_wave",
                 ),
-                ("navis/megaman/forms/slashcross/slashes", "navis/megaman/forms/slashcross/slashes"),
-                ("navis/megaman/forms/slashcross/charge", "navis/megaman/forms/slashcross/charge"),
+                ("navis/megaman/forms/slash_cross/slashes", "navis/megaman/forms/slash_cross/slashes"),
+                ("navis/megaman/forms/slash_cross/charge", "navis/megaman/forms/slash_cross/charge"),
                 (
                     "navis/megaman/weapons/slash_a_charge/init",
                     "navis/megaman/weapons/slash_a_charge/init",
                 ),
-                ("navis/megaman/forms/heatcross_beast/charge", "navis/megaman/forms/heatcross_beast/charge"),
-                ("navis/megaman/forms/eleccross_beast/charge", "navis/megaman/forms/eleccross_beast/charge"),
+                ("navis/megaman/forms/heat_cross_beast/charge", "navis/megaman/forms/heat_cross_beast/charge"),
+                ("navis/megaman/forms/elec_cross_beast/charge", "navis/megaman/forms/elec_cross_beast/charge"),
                 // The Reflectors, the recovery chips and HeatCross's charged
                 // shot's burner (content model v2).
-                ("chips/rflectr/shield", "chips/rflectr/shield"),
-                ("chips/rflectr/shot", "chips/rflectr/shot"),
-                ("chips/rflectr/guard", "chips/rflectr/guard"),
-                ("chips/rflectr/init", "chips/rflectr/init"),
+                ("chips/reflector/shield", "chips/reflector/shield"),
+                ("chips/reflector/shot", "chips/reflector/shot"),
+                ("chips/reflector/guard", "chips/reflector/guard"),
+                ("chips/reflector/init", "chips/reflector/init"),
                 ("chips/recov/init", "chips/recov/init"),
                 ("lib/burner/burn", "lib/burner/burn"),
                 ("lib/burner/flame", "lib/burner/flame"),
@@ -1179,69 +1179,69 @@ pub fn scripts() -> Scripts {
                 ("lib/bombs/throw", "lib/bombs/throw"),
                 ("lib/bombs/bomb", "lib/bombs/bomb"),
                 ("lib/bombs/seed", "lib/bombs/seed"),
-                ("chips/minibomb/init", "chips/minibomb/init"),
-                ("chips/bigbomb/init", "chips/bigbomb/init"),
-                ("chips/energbom/init", "chips/energbom/init"),
-                ("chips/energbom/burst", "chips/energbom/burst"),
-                ("chips/flshbom/init", "chips/flshbom/init"),
-                ("chips/flshbom/bomb", "chips/flshbom/bomb"),
-                ("chips/blkbomb/init", "chips/blkbomb/init"),
-                ("chips/blkbomb/bomb", "chips/blkbomb/bomb"),
-                ("chips/bugbomb/init", "chips/bugbomb/init"),
-                ("chips/bugbomb/bomb", "chips/bugbomb/bomb"),
-                ("chips/grasseed/init", "chips/grasseed/init"),
-                ("chips/iceseed/init", "chips/iceseed/init"),
-                ("chips/poisseed/init", "chips/poisseed/init"),
-                ("chips/lilbolr/init", "chips/lilbolr/init"),
-                ("chips/lilbolr/boiler", "chips/lilbolr/boiler"),
-                ("chips/lilbolr/layer", "chips/lilbolr/layer"),
-                ("chips/vdoll/init", "chips/vdoll/init"),
-                ("chips/vdoll/doll", "chips/vdoll/doll"),
-                ("chips/vdoll/curse", "chips/vdoll/curse"),
-                ("chips/vdoll/sparkles", "chips/vdoll/sparkles"),
+                ("chips/mini_bomb/init", "chips/mini_bomb/init"),
+                ("chips/big_bomb/init", "chips/big_bomb/init"),
+                ("chips/energy_bomb/init", "chips/energy_bomb/init"),
+                ("chips/energy_bomb/burst", "chips/energy_bomb/burst"),
+                ("chips/flash_bomb/init", "chips/flash_bomb/init"),
+                ("chips/flash_bomb/bomb", "chips/flash_bomb/bomb"),
+                ("chips/black_bomb/init", "chips/black_bomb/init"),
+                ("chips/black_bomb/bomb", "chips/black_bomb/bomb"),
+                ("chips/bug_bomb/init", "chips/bug_bomb/init"),
+                ("chips/bug_bomb/bomb", "chips/bug_bomb/bomb"),
+                ("chips/grass_seed/init", "chips/grass_seed/init"),
+                ("chips/ice_seed/init", "chips/ice_seed/init"),
+                ("chips/poison_seed/init", "chips/poison_seed/init"),
+                ("chips/little_boiler/init", "chips/little_boiler/init"),
+                ("chips/little_boiler/boiler", "chips/little_boiler/boiler"),
+                ("chips/little_boiler/layer", "chips/little_boiler/layer"),
+                ("chips/voodoo_doll/init", "chips/voodoo_doll/init"),
+                ("chips/voodoo_doll/doll", "chips/voodoo_doll/doll"),
+                ("chips/voodoo_doll/curse", "chips/voodoo_doll/curse"),
+                ("chips/voodoo_doll/sparkles", "chips/voodoo_doll/sparkles"),
                 // RskyHny and the dragons (content model v2): definitions.
-                ("chips/rskyhny/bee", "chips/rskyhny/bee"),
-                ("chips/rskyhny/action", "chips/rskyhny/action"),
-                ("chips/rskyhny/init", "chips/rskyhny/init"),
+                ("chips/risky_honey/bee", "chips/risky_honey/bee"),
+                ("chips/risky_honey/action", "chips/risky_honey/action"),
+                ("chips/risky_honey/init", "chips/risky_honey/init"),
                 ("lib/dragons/dragon", "lib/dragons/dragon"),
                 ("lib/dragons/body", "lib/dragons/body"),
                 ("lib/dragons/head", "lib/dragons/head"),
                 ("lib/dragons/action", "lib/dragons/action"),
-                ("chips/elecdrgn/init", "chips/elecdrgn/init"),
+                ("chips/elec_dragon/init", "chips/elec_dragon/init"),
                 // The swords: the chips, whose slashes and strikes the
                 // test chips run.
                 ("lib/swords/parts", "lib/swords/parts"),
                 ("lib/swords/slash", "lib/swords/slash"),
                 ("lib/swords/strike", "lib/swords/strike"),
                 ("chips/sword/init", "chips/sword/init"),
-                ("chips/wideswrd/init", "chips/wideswrd/init"),
-                ("chips/longswrd/init", "chips/longswrd/init"),
-                ("chips/wideblde/init", "chips/wideblde/init"),
-                ("chips/longblde/init", "chips/longblde/init"),
-                ("chips/lifesrd/init", "chips/lifesrd/init"),
-                ("chips/drksword/init", "chips/drksword/init"),
-                ("chips/muramasa/init", "chips/muramasa/init"),
-                ("chips/ftrsword/init", "chips/ftrsword/init"),
-                ("chips/crosswrd/init", "chips/crosswrd/init"),
-                ("chips/dbldream/init", "chips/dbldream/init"),
-                ("chips/fireswrd/init", "chips/fireswrd/init"),
-                ("chips/aquaswrd/init", "chips/aquaswrd/init"),
-                ("chips/elecswrd/init", "chips/elecswrd/init"),
-                ("chips/bambswrd/init", "chips/bambswrd/init"),
-                ("chips/stepswrd/init", "chips/stepswrd/init"),
-                ("chips/mchnswrd/init", "chips/mchnswrd/init"),
-                ("chips/elemswrd/init", "chips/elemswrd/init"),
-                ("chips/assnswrd/init", "chips/assnswrd/init"),
+                ("chips/wide_sword/init", "chips/wide_sword/init"),
+                ("chips/long_sword/init", "chips/long_sword/init"),
+                ("chips/wide_blade/init", "chips/wide_blade/init"),
+                ("chips/long_blade/init", "chips/long_blade/init"),
+                ("chips/life_sword/init", "chips/life_sword/init"),
+                ("chips/dark_sword/init", "chips/dark_sword/init"),
+                ("chips/muramasa_blade/init", "chips/muramasa_blade/init"),
+                ("chips/fighter_sword/init", "chips/fighter_sword/init"),
+                ("chips/cross_sword/init", "chips/cross_sword/init"),
+                ("chips/double_dream/init", "chips/double_dream/init"),
+                ("chips/fire_sword/init", "chips/fire_sword/init"),
+                ("chips/aqua_sword/init", "chips/aqua_sword/init"),
+                ("chips/elec_sword/init", "chips/elec_sword/init"),
+                ("chips/bamboo_sword/init", "chips/bamboo_sword/init"),
+                ("chips/step_sword/init", "chips/step_sword/init"),
+                ("chips/machine_sword/init", "chips/machine_sword/init"),
+                ("chips/element_sword/init", "chips/element_sword/init"),
+                ("chips/assassin_sword/init", "chips/assassin_sword/init"),
                 // Invisibl's hook, which the veil composes.
-                ("chips/invisibl/controller", "chips/invisibl/controller"),
-                ("chips/invisibl/init", "chips/invisibl/init"),
-                ("chips/whicapsl-invisible/init", "chips/whicapsl-invisible/init"),
+                ("chips/invisible/controller", "chips/invisible/controller"),
+                ("chips/invisible/init", "chips/invisible/init"),
+                ("chips/white_capsule_invisible/init", "chips/white_capsule_invisible/init"),
                 // The field objects (content model v2): the rock with its
                 // debris, RockCube and IceCube, and the stages' boulder.
-                ("chips/rockcube/rock", "chips/rockcube/rock"),
-                ("chips/rockcube/debris", "chips/rockcube/debris"),
-                ("chips/rockcube/cube", "chips/rockcube/cube"),
-                ("chips/rockcube/init", "chips/rockcube/init"),
+                ("chips/rock_cube/rock", "chips/rock_cube/rock"),
+                ("chips/rock_cube/debris", "chips/rock_cube/debris"),
+                ("chips/rock_cube/cube", "chips/rock_cube/cube"),
+                ("chips/rock_cube/init", "chips/rock_cube/init"),
                 ("objects/boulder/init", "objects/boulder/init"),
                 ("objects/encased_bubble/bubble", "objects/encased_bubble/bubble"),
                 // The NaviCust supports (content model v2): the controller the
@@ -1258,92 +1258,92 @@ pub fn scripts() -> Scripts {
                 // chips: the test trap and boosts compose their hooks;
                 // SloGauge is EXE6's.
                 ("lib/traps/controller", "lib/traps/controller"),
-                ("chips/antinavi/init", "chips/antinavi/init"),
-                ("chips/antidmg/init", "chips/antidmg/init"),
-                ("chips/antiswrd/init", "chips/antiswrd/init"),
-                ("chips/antirecv/init", "chips/antirecv/init"),
-                ("chips/bodygrd/init", "chips/bodygrd/init"),
+                ("chips/anti_navi/init", "chips/anti_navi/init"),
+                ("chips/anti_damage/init", "chips/anti_damage/init"),
+                ("chips/anti_sword/init", "chips/anti_sword/init"),
+                ("chips/anti_recovery/init", "chips/anti_recovery/init"),
+                ("chips/body_guard/init", "chips/body_guard/init"),
                 // (HubBatc gives the NaviCust Shield as a B+Back special.)
                 ("navis/megaman/weapons/shield/init", "navis/megaman/weapons/shield/init"),
                 ("lib/navi_boost/controller", "lib/navi_boost/controller"),
-                ("chips/darkinvs/init", "chips/darkinvs/init"),
+                ("chips/dark_invisible/init", "chips/dark_invisible/init"),
                 // HubBatc, and an arm chip with the weapon it makes the
                 // charged shot.
-                ("chips/hubbatc/init", "chips/hubbatc/init"),
+                ("chips/hub_batch/init", "chips/hub_batch/init"),
                 // (The chips that make their own weapon the charged shot,
                 // with the chips' parts those weapons fire.)
                 ("lib/navi_boost/charge", "lib/navi_boost/charge"),
-                ("chips/puncharm/charge", "chips/puncharm/charge"),
-                ("chips/puncharm/init", "chips/puncharm/init"),
-                ("chips/bugrswrd/charge", "chips/bugrswrd/charge"),
-                ("chips/bugrswrd/init", "chips/bugrswrd/init"),
+                ("chips/punch_arm/charge", "chips/punch_arm/charge"),
+                ("chips/punch_arm/init", "chips/punch_arm/init"),
+                ("chips/bug_rise_sword/charge", "chips/bug_rise_sword/charge"),
+                ("chips/bug_rise_sword/init", "chips/bug_rise_sword/init"),
                 ("chips/thunder/ball", "chips/thunder/ball"),
                 ("chips/thunder/shoot", "chips/thunder/shoot"),
                 ("chips/thunder/init", "chips/thunder/init"),
-                ("chips/bgdththd/charge", "chips/bgdththd/charge"),
-                ("chips/bgdththd/init", "chips/bgdththd/init"),
-                ("chips/aquandl/needle", "chips/aquandl/needle"),
-                ("chips/aquandl/volley", "chips/aquandl/volley"),
-                ("chips/aquandl/action", "chips/aquandl/action"),
-                ("chips/aquandl/init", "chips/aquandl/init"),
-                ("chips/needlarm/charge", "chips/needlarm/charge"),
-                ("chips/needlarm/init", "chips/needlarm/init"),
-                ("chips/elcpuls/pulse", "chips/elcpuls/pulse"),
-                ("chips/elcpuls/action", "chips/elcpuls/action"),
-                ("chips/puzzlarm/charge", "chips/puzzlarm/charge"),
-                ("chips/puzzlarm/init", "chips/puzzlarm/init"),
-                ("chips/boomrarm/charge", "chips/boomrarm/charge"),
-                ("chips/boomrarm/init", "chips/boomrarm/init"),
+                ("chips/bug_death_thunder/charge", "chips/bug_death_thunder/charge"),
+                ("chips/bug_death_thunder/init", "chips/bug_death_thunder/init"),
+                ("chips/aqua_needle/needle", "chips/aqua_needle/needle"),
+                ("chips/aqua_needle/volley", "chips/aqua_needle/volley"),
+                ("chips/aqua_needle/action", "chips/aqua_needle/action"),
+                ("chips/aqua_needle/init", "chips/aqua_needle/init"),
+                ("chips/needle_arm/charge", "chips/needle_arm/charge"),
+                ("chips/needle_arm/init", "chips/needle_arm/init"),
+                ("chips/elec_pulse/pulse", "chips/elec_pulse/pulse"),
+                ("chips/elec_pulse/action", "chips/elec_pulse/action"),
+                ("chips/pulse_arm/charge", "chips/pulse_arm/charge"),
+                ("chips/pulse_arm/init", "chips/pulse_arm/init"),
+                ("chips/boomerang_arm/charge", "chips/boomerang_arm/charge"),
+                ("chips/boomerang_arm/init", "chips/boomerang_arm/init"),
                 ("lib/gauge_speed/controller", "lib/gauge_speed/controller"),
-                ("chips/slogauge/init", "chips/slogauge/init"),
+                ("chips/slow_gauge/init", "chips/slow_gauge/init"),
                 // Subtypes 8, 17, 18 (Wind, Anubis, Otenko) and the obstacle framework.
                 ("objects/rising_bubble/init", "objects/rising_bubble/init"),
                 // ElemTrap, the time bombs and Mine: EXE6's definitions,
                 // whose hooks the test traps and time bombs run.
-                ("chips/elemtrap/trap", "chips/elemtrap/trap"),
-                ("chips/elemtrap/strike", "chips/elemtrap/strike"),
-                ("chips/elemtrap/init", "chips/elemtrap/init"),
+                ("chips/element_trap/trap", "chips/element_trap/trap"),
+                ("chips/element_trap/strike", "chips/element_trap/strike"),
+                ("chips/element_trap/init", "chips/element_trap/init"),
                 ("objects/panel_bursts/init", "objects/panel_bursts/init"),
-                ("chips/timebom/controller", "chips/timebom/controller"),
-                ("chips/timebom/countdown", "chips/timebom/countdown"),
-                ("chips/timebom/init", "chips/timebom/init"),
+                ("chips/time_bomb_plus/controller", "chips/time_bomb_plus/controller"),
+                ("chips/time_bomb_plus/countdown", "chips/time_bomb_plus/countdown"),
+                ("chips/time_bomb_plus/init", "chips/time_bomb_plus/init"),
                 ("chips/mine/controller", "chips/mine/controller"),
                 ("chips/mine/land_mine", "chips/mine/land_mine"),
                 ("chips/mine/init", "chips/mine/init"),
-                ("chips/crakshot/shot", "chips/crakshot/shot"),
-                ("chips/crakshot/init", "chips/crakshot/init"),
+                ("chips/crack_shot/shot", "chips/crack_shot/shot"),
+                ("chips/crack_shot/init", "chips/crack_shot/init"),
                 // The navi chips' navis: each navi and his kinds, which
                 // the test navi chips summon.
                 ("lib/navi_chips/navi", "lib/navi_chips/navi"),
                 // (Each test navi chip's own controller.)
                 ("lib/navi_chips/chip", "lib/navi_chips/chip"),
-                ("chips/elmntman/navi", "chips/elmntman/navi"),
-                ("chips/elmntman/meteor", "chips/elmntman/meteor"),
-                ("chips/elmntman/ice", "chips/elmntman/ice"),
-                ("chips/elmntman/bolt", "chips/elmntman/bolt"),
-                ("chips/elmntman/vine", "chips/elmntman/vine"),
-                ("chips/spoutman/navi", "chips/spoutman/navi"),
-                ("chips/spoutman/ball", "chips/spoutman/ball"),
-                ("chips/spoutman/splash", "chips/spoutman/splash"),
-                ("chips/spoutman/pillar", "chips/spoutman/pillar"),
-                ("chips/spoutman/geyser", "chips/spoutman/geyser"),
-                ("chips/spoutman/mark", "chips/spoutman/mark"),
+                ("chips/elementman/navi", "chips/elementman/navi"),
+                ("chips/elementman/meteor", "chips/elementman/meteor"),
+                ("chips/elementman/ice", "chips/elementman/ice"),
+                ("chips/elementman/bolt", "chips/elementman/bolt"),
+                ("chips/elementman/vine", "chips/elementman/vine"),
+                ("chips/aquaman/navi", "chips/aquaman/navi"),
+                ("chips/aquaman/ball", "chips/aquaman/ball"),
+                ("chips/aquaman/splash", "chips/aquaman/splash"),
+                ("chips/aquaman/pillar", "chips/aquaman/pillar"),
+                ("chips/aquaman/geyser", "chips/aquaman/geyser"),
+                ("chips/aquaman/mark", "chips/aquaman/mark"),
                 ("chips/heatman/navi", "chips/heatman/navi"),
                 ("chips/heatman/flame", "chips/heatman/flame"),
                 ("chips/elecman/navi", "chips/elecman/navi"),
                 ("chips/elecman/thunder", "chips/elecman/thunder"),
                 ("chips/slashman/navi", "chips/slashman/navi"),
                 ("chips/slashman/wave", "chips/slashman/wave"),
-                ("chips/chrgeman/navi", "chips/chrgeman/navi"),
-                ("chips/chrgeman/car", "chips/chrgeman/car"),
-                ("chips/tmhkman/navi", "chips/tmhkman/navi"),
+                ("chips/chargeman/navi", "chips/chargeman/navi"),
+                ("chips/chargeman/car", "chips/chargeman/car"),
+                ("chips/tomahawkman/navi", "chips/tomahawkman/navi"),
                 ("chips/tenguman/navi", "chips/tenguman/navi"),
                 ("chips/blastman/navi", "chips/blastman/navi"),
                 ("chips/blastman/fire", "chips/blastman/fire"),
                 ("chips/bass/navi", "chips/bass/navi"),
-                ("chips/sunmoon/sun", "chips/sunmoon/sun"),
-                ("chips/sunmoon/meteor", "chips/sunmoon/meteor"),
-                ("chips/sunmoon/moon_beam", "chips/sunmoon/moon_beam"),
+                ("chips/sun_and_moon/sun", "chips/sun_and_moon/sun"),
+                ("chips/sun_and_moon/meteor", "chips/sun_and_moon/meteor"),
+                ("chips/sun_and_moon/moon_beam", "chips/sun_and_moon/moon_beam"),
                 // The Japanese games' Count and Django chips, with their
                 // navis, Count's lance and his rain (a dust storm).
                 ("chips/count/init", "chips/count/init"),
@@ -1358,8 +1358,8 @@ pub fn scripts() -> Scripts {
                 ("navis/eraseman/chip", "navis/eraseman/chip"),
                 ("navis/chargeman/chip", "navis/chargeman/chip"),
                 ("navis/chargeman/volcano_rock", "navis/chargeman/volcano_rock"),
-                ("navis/spoutman/chip", "navis/spoutman/chip"),
-                ("navis/spoutman/drip_shower", "navis/spoutman/drip_shower"),
+                ("navis/aquaman/chip", "navis/aquaman/chip"),
+                ("navis/aquaman/drip_shower", "navis/aquaman/drip_shower"),
                 ("navis/tomahawkman/chip", "navis/tomahawkman/chip"),
                 ("navis/tomahawkman/axe", "navis/tomahawkman/axe"),
                 ("navis/tomahawkman/strike", "navis/tomahawkman/strike"),
@@ -1373,7 +1373,7 @@ pub fn scripts() -> Scripts {
                 ("navis/slashman/charge", "navis/slashman/charge"),
                 ("navis/eraseman/charge", "navis/eraseman/charge"),
                 ("navis/chargeman/charge", "navis/chargeman/charge"),
-                ("navis/spoutman/charge", "navis/spoutman/charge"),
+                ("navis/aquaman/charge", "navis/aquaman/charge"),
                 ("navis/tomahawkman/charge", "navis/tomahawkman/charge"),
                 ("navis/tenguman/charge", "navis/tenguman/charge"),
                 ("navis/groundman/charge", "navis/groundman/charge"),
@@ -1381,28 +1381,28 @@ pub fn scripts() -> Scripts {
                 ("navis/groundman/drill", "navis/groundman/drill"),
                 ("navis/dustman/clouds", "navis/dustman/clouds"),
                 ("navis/groundman/chip", "navis/groundman/chip"),
-                ("chips/grndman/drill", "chips/grndman/drill"),
-                ("chips/grndman/rock", "chips/grndman/rock"),
+                ("chips/groundman/drill", "chips/groundman/drill"),
+                ("chips/groundman/rock", "chips/groundman/rock"),
                 ("objects/panel_strike/init", "objects/panel_strike/init"),
-                ("chips/drilarm/drill", "chips/drilarm/drill"),
-                ("chips/dolthdr/column", "chips/dolthdr/column"),
+                ("chips/drill_arm/drill", "chips/drill_arm/drill"),
+                ("chips/doll_thunder/column", "chips/doll_thunder/column"),
                 // The dimming chips of subtypes 4, 5, 9, 13, 26, 27, 28 and 36
                 // (content model v2): the barriers, the panel chips, the
                 // instruments, AirRaid, BugFix, ColorPt, Sensor and SumnBlk.
                 ("lib/barriers/controller", "lib/barriers/controller"),
                 ("chips/barrier/init", "chips/barrier/init"),
-                ("chips/bblwrap/init", "chips/bblwrap/init"),
-                ("chips/lifeaur/init", "chips/lifeaur/init"),
-                ("chips/bugfix/init", "chips/bugfix/init"),
-                ("chips/bugfix/controller", "chips/bugfix/controller"),
-                ("chips/bugfix/glow", "chips/bugfix/glow"),
+                ("chips/bubble_wrap/init", "chips/bubble_wrap/init"),
+                ("chips/life_aura/init", "chips/life_aura/init"),
+                ("chips/bug_fix/init", "chips/bug_fix/init"),
+                ("chips/bug_fix/controller", "chips/bug_fix/controller"),
+                ("chips/bug_fix/glow", "chips/bug_fix/glow"),
                 ("objects/panel_changer/init", "objects/panel_changer/init"),
                 ("lib/panel_chips/controller", "lib/panel_chips/controller"),
-                ("chips/pnlretrn/init", "chips/pnlretrn/init"),
-                ("chips/holypanl/init", "chips/holypanl/init"),
-                ("chips/snctuary/init", "chips/snctuary/init"),
-                ("chips/comingrd/init", "chips/comingrd/init"),
-                ("chips/goingrd/init", "chips/goingrd/init"),
+                ("chips/panel_return/init", "chips/panel_return/init"),
+                ("chips/holy_panel/init", "chips/holy_panel/init"),
+                ("chips/sanctuary/init", "chips/sanctuary/init"),
+                ("chips/coming_road/init", "chips/coming_road/init"),
+                ("chips/going_road/init", "chips/going_road/init"),
                 ("lib/instruments/instrument", "lib/instruments/instrument"),
                 ("lib/instruments/controller", "lib/instruments/controller"),
                 ("chips/fanfare/init", "chips/fanfare/init"),
@@ -1414,16 +1414,16 @@ pub fn scripts() -> Scripts {
                 ("chips/sensor/turret", "chips/sensor/turret"),
                 ("chips/sensor/scanner", "chips/sensor/scanner"),
                 ("chips/sensor/laser", "chips/sensor/laser"),
-                ("chips/airraid/init", "chips/airraid/init"),
-                ("chips/airraid/controller", "chips/airraid/controller"),
-                ("chips/airraid/plane", "chips/airraid/plane"),
-                ("chips/airraid/propeller", "chips/airraid/propeller"),
-                ("chips/sumnblk/init", "chips/sumnblk/init"),
-                ("chips/sumnblk/controller", "chips/sumnblk/controller"),
-                ("chips/sumnblk/navi", "chips/sumnblk/navi"),
-                ("chips/colorpt/init", "chips/colorpt/init"),
-                ("chips/colorpt/controller", "chips/colorpt/controller"),
-                ("chips/colorpt/point", "chips/colorpt/point"),
+                ("chips/air_raid/init", "chips/air_raid/init"),
+                ("chips/air_raid/controller", "chips/air_raid/controller"),
+                ("chips/air_raid/plane", "chips/air_raid/plane"),
+                ("chips/air_raid/propeller", "chips/air_raid/propeller"),
+                ("chips/summon_black/init", "chips/summon_black/init"),
+                ("chips/summon_black/controller", "chips/summon_black/controller"),
+                ("chips/summon_black/navi", "chips/summon_black/navi"),
+                ("chips/color_point/init", "chips/color_point/init"),
+                ("chips/color_point/controller", "chips/color_point/controller"),
+                ("chips/color_point/point", "chips/color_point/point"),
                 // The Gregar and Falzar chips (the Japanese ROMs' routines).
                 ("chips/gregar/init", "chips/gregar/init"),
                 ("chips/falzar/init", "chips/falzar/init"),

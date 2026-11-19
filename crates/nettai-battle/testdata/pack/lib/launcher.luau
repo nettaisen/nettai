@@ -8,17 +8,17 @@ local ticker = require("./ticker")
 local sprites = require("../../sprites")
 
 local SHORT = ticker.variant { lifetime = 5 }
-local BURST = new.effect { sprite = sprites["test-burst"], anim = 2, steps = 1 }
+local BURST = new.effect { sprite = sprites.test_burst, anim = 2, steps = 1 }
 local WIDE = new.region { panels = { { 1, -1 }, { 1, 0 }, { 1, 1 } } }
 local THROWN = new.collision {
     id = "test/thrown",
     flags = { own_attack = true, reaches_float_shoe = true, reaches_submerged = true },
 }
 local HITS = new.collision {
-    id = "test/hits-navis",
+    id = "test/hits_navis",
     flags = { enemy_object = true, enemy_body = true, enemy_other_body = true, neutral = true },
 }
-local TICK = asset.sound("test-tick")
+local TICK = asset.sound("test_tick")
 
 local launcher = {}
 
@@ -46,7 +46,7 @@ launcher.kind = new.kind {
     end,
 }
 
-local OTHER_VARIANT = schema.record_type("other-variant")
+local OTHER_VARIANT = schema.record_type("other_variant")
 
 -- A kind that stores a record of the wrong type in a ticker's variant.
 local OTHER = new.record(OTHER_VARIANT, { lifetime = 1 })

@@ -6,7 +6,7 @@
 //! game hasn't is the ordinary "no chip `x` in exe6". The one exception is
 //! a background, which may be any of the background pool's, every game's
 //! (docs/app.md §1, "The battle's background"): another game's is written
-//! with its game, `exe4:acdc-area` ([`background`]).
+//! with its game, `exe4:acdc_area` ([`background`]).
 //!
 //! Every lookup goes through [`key`] (a game and a local name to the
 //! content's key: the name itself, when the content is that game's), and
@@ -137,8 +137,8 @@ pub fn shown(content: &Content, registry: Registry, h: u16) -> String {
 }
 
 /// A background a match of `game` names `name`: one of `game`'s pack by its
-/// name there (`acdc-area`), or one of the background pool's by its game and
-/// its name in that game's pack (`exe4:acdc-area`: the one name a match
+/// name there (`acdc_area`), or one of the background pool's by its game and
+/// its name in that game's pack (`exe4:acdc_area`: the one name a match
 /// writes of another game's, docs/app.md §1, "The battle's background").
 /// None: neither has it, or `content` isn't `game`'s.
 pub fn background(content: &Content, game: &str, name: &str) -> Option<nettai_battle::content::BackgroundId> {
@@ -153,7 +153,7 @@ pub fn background(content: &Content, game: &str, name: &str) -> Option<nettai_ba
 
 /// The name a match writes for background `id` ([`background`]): one of the
 /// game's own by its name in the game's pack, one of the pool's others by its
-/// game and its name in that game's pack (`exe4:acdc-area`); none: no such
+/// game and its name in that game's pack (`exe4:acdc_area`); none: no such
 /// background.
 pub fn background_name(content: &Content, id: nettai_battle::content::BackgroundId) -> Option<&str> {
     match content.background_of(id)? {
@@ -201,7 +201,7 @@ mod tests {
         let content = crate::testing::exe6_content();
         let six = chip(&content, "exe6", "cannon").unwrap();
         assert_eq!(local(&content.defs.chip(six).key), "cannon");
-        assert!(form(&content, "exe6", "heatcross").is_some());
+        assert!(form(&content, "exe6", "heat_cross").is_some());
         assert_eq!(chip(&content, "exe5", "cannon"), None);
         assert_eq!(chip(&content, "exe6", "exe6:cannon"), None); // (written in full)
         assert_eq!(games(&content), ["exe6"]);

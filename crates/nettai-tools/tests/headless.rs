@@ -80,10 +80,10 @@ fn renders_a_live_battle_to_png() {
     let graphics = nettai_render::graphics::GameGraphics::new(std::sync::Arc::new(assets())).with_numbers(std::sync::Arc::new(testing::asset_numbers(&content)));
     let mut renderer = Renderer::with_graphics(graphics);
     // (Where the navis' sprite is drawn, marked: `--mark`.)
-    renderer.problems.marking = ["sprite:test-navi".to_string()].into_iter().collect();
+    renderer.problems.marking = ["sprite:test_navi".to_string()].into_iter().collect();
     let settings = nettai_battle::BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE));
     // (Folders of GunDelS3 N: the test content has it.)
-    let folder = folder_of(&content, &[("gundels3", 13)]);
+    let folder = folder_of(&content, &[("gun_del_sol_3", 13)]);
     let setup = live_setup(&content, settings, [folder, folder], "falzar", 1);
     let live = LivePlayer::new(nettai_match::Set::new(content.clone(), setup, [folder, folder]));
     let mut player = Player::with(renderer, None, None, Box::new(live));
@@ -116,7 +116,7 @@ fn renders_a_live_battle_to_png() {
     let at_100: Vec<[i32; 4]> = marks
         .lines()
         .map(|l| l.split('\t').collect::<Vec<_>>())
-        .filter(|f| f[0] == "100" && f[5] == "sprite:test-navi")
+        .filter(|f| f[0] == "100" && f[5] == "sprite:test_navi")
         .map(|f| [1, 2, 3, 4].map(|i| f[i].parse().unwrap()))
         .collect();
     assert_eq!(at_100.len(), 2, "{marks}");

@@ -345,7 +345,7 @@ impl<'a> Graphics<'a> {
 
 /// The name content gives `kind` asset `h` (`bomb`), for a problem's
 /// text; a background of the pool's others, its game and its name
-/// (`exe4:acdc-area`).
+/// (`exe4:acdc_area`).
 pub fn name(c: &Content, kind: AssetKind, h: u16) -> Option<&str> {
     match kind {
         AssetKind::Background if !c.is_own_background(BackgroundId(h)) => c.other_background(BackgroundId(h)),
@@ -387,12 +387,12 @@ mod tests {
     #[test]
     fn each_asset_draws_from_the_games_graphics() {
         let c = content();
-        let chip = c.defs.chip(c.defs.chip_by_key("gundels3").expect("a test chip")).key.clone();
+        let chip = c.defs.chip(c.defs.chip_by_key("gun_del_sol_3").expect("a test chip")).key.clone();
         let a = bundle(1, keys::local(&chip));
         let assets = testing::asset_numbers(&c);
         let graphics = Graphics::of(&a).with_numbers(&assets);
         let tiles = |s: Option<&SpriteSheet>| s.expect("a sheet").tilesets[0].pixels.len() / Tiles::TILE;
-        assert_eq!(tiles(graphics.sprite(testing::sprite_named(&c, "test-navi"))), 1);
+        assert_eq!(tiles(graphics.sprite(testing::sprite_named(&c, "test_navi"))), 1);
         assert!(std::ptr::eq(graphics.bundle(), &a));
         // A chip's icon by its key there (its local key).
         assert_eq!(graphics.chip_icon(&chip).map(|t| t.pixels[0]), Some(1));

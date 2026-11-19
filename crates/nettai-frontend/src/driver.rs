@@ -1071,7 +1071,7 @@ mod tests {
         let content = nettai_battle::content::testing::content();
         let stage = content.stage_by_key(nettai_battle::content::testing::LINK_BATTLE);
         let settings = BattleSettings::on(&content, stage);
-        let folder = folder_of(&content, &[("gundels3", 13)]);
+        let folder = folder_of(&content, &[("gun_del_sol_3", 13)]);
         let set = || Set::new(content.clone(), live_setup(&content, settings, [folder, folder], "falzar", 7), [folder, folder]);
         let mut live = LivePlayer::new(set());
         assert!(Driver::set_input_delay(&mut live, 3));
@@ -1104,7 +1104,7 @@ mod tests {
         let stage = content.stage_by_key(nettai_battle::content::testing::LINK_BATTLE);
         let settings = BattleSettings::on(&content, stage);
         // GunDelS3 N, which the test content has.
-        let folder = folder_of(&content, &[("gundels3", 13)]);
+        let folder = folder_of(&content, &[("gun_del_sol_3", 13)]);
         let mut live = LivePlayer::new(Set::new(content.clone(), live_setup(&content, settings, [folder, folder], "falzar", 7), [folder, folder]));
         let mut b = live.start();
         let mut shown = false;
@@ -1890,8 +1890,8 @@ mod tests {
         use nettai_battle::content::Element;
         use nettai_battle::kinds::player::{NaviAction, navi_action};
         let content = nettai_match::testing::exe6_content();
-        let heat = content.defs.form_by_key("heatcross").unwrap();
-        let heat_beast = content.defs.form_by_key("heatcross-beast").unwrap();
+        let heat = content.defs.form_by_key("heat_cross").unwrap();
+        let heat_beast = content.defs.form_by_key("heat_cross_beast").unwrap();
         let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
@@ -1935,7 +1935,7 @@ mod tests {
         assert_eq!((b.actors.get(actor).buster, b.actors.get(actor).charge_shot), (weapons.buster, weapons.charge_shot));
         assert_eq!(b.objects.get(p0).element & 0xF, Element::Fire as u8);
         // B held charges the buster; let go, HeatCross's flame.
-        let flame = content.defs.action_by_key("heatcross/charge/action").unwrap();
+        let flame = content.defs.action_by_key("heat_cross/charge/action").unwrap();
         let mut charged = false;
         play_until(
             &mut live,
@@ -2085,8 +2085,8 @@ mod tests {
     #[test]
     fn a_cross_list_offers_crosses_of_either_game_once_a_round() {
         use nettai_battle::battle::BattleFlags;
-        let (content, mut live, mut b) = cross_battle("falzar", Some(&["heatcross", "groundcross"]), |_, _| {});
-        let heat = form_of(&content, "heatcross");
+        let (content, mut live, mut b) = cross_battle("falzar", Some(&["heat_cross", "ground_cross"]), |_, _| {});
+        let heat = form_of(&content, "heat_cross");
         let w = b.form_list(0).unwrap();
         assert_eq!((w.count, &w.offered[..2]), (2, &[0, 1][..]));
         open_cross_window(&mut live, &mut b);
@@ -2113,8 +2113,8 @@ mod tests {
     /// place (SpoutCross); without a list, the version's Crosses in order.
     #[test]
     fn r_in_the_cross_window_describes_the_cross_under_the_cursor() {
-        for (list, down, key) in [(true, 0, "heatcross"), (true, 1, "groundcross"), (false, 0, "spoutcross"), (false, 1, "tomahawkcross")] {
-            let list = list.then_some(&["heatcross", "groundcross"][..]);
+        for (list, down, key) in [(true, 0, "heat_cross"), (true, 1, "ground_cross"), (false, 0, "aqua_cross"), (false, 1, "tomahawk_cross")] {
+            let list = list.then_some(&["heat_cross", "ground_cross"][..]);
             let (content, mut live, mut b) = cross_battle("falzar", list, |_, _| {});
             open_cross_window(&mut live, &mut b);
             for _ in 0..down {
@@ -2136,8 +2136,8 @@ mod tests {
     /// battle in the Beast form: a spawned navi takes its starting form.)
     #[test]
     fn in_a_beast_form_a_cross_list_offers_that_beasts_crosses() {
-        for (beast, place, result) in [("falzar-beast", 1, "groundcross-beast"), ("heatcross-beast", 0, "heatcross-beast")] {
-            let (content, mut live, mut b) = cross_battle("falzar", Some(&["heatcross", "groundcross"]), |c, stats| {
+        for (beast, place, result) in [("falzar_beast", 1, "ground_cross_beast"), ("heat_cross_beast", 0, "heat_cross_beast")] {
+            let (content, mut live, mut b) = cross_battle("falzar", Some(&["heat_cross", "ground_cross"]), |c, stats| {
                 stats.form = form_of(c, beast);
                 stats.starting_form = stats.form;
             });
@@ -2154,8 +2154,8 @@ mod tests {
     /// form, as the original's window does.
     #[test]
     fn a_cross_list_offers_crosses_only() {
-        let list = ["spoutcross", "gregar-beast", "eleccross", "tomahawkcross"];
-        let (_, _, b) = cross_battle("gregar", Some(&list), |c, stats| stats.starting_form = form_of(c, "eleccross"));
+        let list = ["aqua_cross", "gregar_beast", "elec_cross", "tomahawk_cross"];
+        let (_, _, b) = cross_battle("gregar", Some(&list), |c, stats| stats.starting_form = form_of(c, "elec_cross"));
         let w = b.form_list(0).unwrap();
         assert_eq!((w.count, &w.offered[..2]), (2, &[0, 3][..]));
     }
@@ -2186,7 +2186,7 @@ mod tests {
     #[test]
     fn time_up_in_the_cross_window_cancels_it_and_confirms() {
         const LIMIT: u16 = 240;
-        let (content, mut live, mut b) = cross_battle_timed("falzar", Some(&["heatcross", "groundcross"]), |_, _| {}, Some(LIMIT));
+        let (content, mut live, mut b) = cross_battle_timed("falzar", Some(&["heat_cross", "ground_cross"]), |_, _| {}, Some(LIMIT));
         keys_in_turn(&mut live, &mut b, &[Keys::A, Keys::empty()]);
         open_cross_window(&mut live, &mut b);
         while b.custom.sides[0].sent.is_none() {
@@ -2202,12 +2202,12 @@ mod tests {
         assert_eq!(sent.hand.expect("the chip picked").ids[0], Some(content.defs.chip_by_key("cannon").unwrap()));
         assert_eq!(crosses_used(&b), [false; 5]);
         // A Cross chosen, then the time runs out: the Cross goes out.
-        let (content, mut live, mut b) = cross_battle_timed("falzar", Some(&["heatcross", "groundcross"]), |_, _| {}, Some(LIMIT));
+        let (content, mut live, mut b) = cross_battle_timed("falzar", Some(&["heat_cross", "ground_cross"]), |_, _| {}, Some(LIMIT));
         open_cross_window(&mut live, &mut b);
         choose_cross(&mut live, &mut b, 0);
         play_until(&mut live, &mut b, LIMIT as u32 + 100, |_, _, _| Keys::empty(), |b, _| b.custom.sides[0].sent.is_some());
         let sent = b.custom.sides[0].sent.as_ref().unwrap().result.clone();
-        assert_eq!((sent.transform.form, sent.hand), (Some(form_of(&content, "heatcross")), None));
+        assert_eq!((sent.transform.form, sent.hand), (Some(form_of(&content, "heat_cross")), None));
         assert_eq!(crosses_used(&b), [true, false, false, false, false]);
     }
 

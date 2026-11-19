@@ -136,15 +136,15 @@ mod tests {
     fn the_assets_draw_the_content_they_have_the_assets_of() {
         let c = nettai_battle::content::testing::content();
         let index = nettai_battle::content::testing::asset_index();
-        let navi = c.assets.handle(nettai_content_api::AssetKind::Sprite, "test-navi").unwrap();
+        let navi = c.assets.handle(nettai_content_api::AssetKind::Sprite, "test_navi").unwrap();
         let (numbers, report) = asset_numbers(&c, &index).unwrap_or_else(|r| panic!("{r}"));
         assert!(!report.has_errors(), "{report}");
         assert_eq!(numbers.sprite(navi), Some(nettai_battle::content::testing::NAVI_SPRITE));
         assert_eq!(numbers, nettai_battle::content::testing::asset_numbers(&c));
         // An asset the index hasn't.
         let mut fewer = index.clone();
-        fewer.sounds.remove("test-stage-music");
+        fewer.sounds.remove("test_stage_music");
         let r = asset_numbers(&c, &fewer).unwrap_err();
-        assert!(r.to_string().contains("no sound test-stage-music, which the content names"), "{r}");
+        assert!(r.to_string().contains("no sound test_stage_music, which the content names"), "{r}");
     }
 }

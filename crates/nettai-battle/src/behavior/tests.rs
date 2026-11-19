@@ -39,157 +39,157 @@ fn battles_run_the_content_scripts() {
     assert_eq!(
         kinds,
         [
-            "absorbed-obstacle",
-            "airraid/controller",
-            "airraid/plane",
-            "airraid/propeller",
-            "aquandl/needle",
-            "aquandl/volley",
+            "absorbed_obstacle",
+            "air_raid/controller",
+            "air_raid/plane",
+            "air_raid/propeller",
+            "aqua_cross_beast/surge",
+            "aqua_needle/needle",
+            "aqua_needle/volley",
+            "aquaman/ball",
+            "aquaman/drip_shower",
+            "aquaman/geyser",
+            "aquaman/mark",
+            "aquaman/navi",
+            "aquaman/pillar",
+            "aquaman/splash",
             "attachment",
-            "barrier-visual",
+            "barrier_visual",
             "barriers/controller",
             "bass/navi",
-            "beast-chips/arrival",
+            "beast_chips/arrival",
             "beat",
+            "black_bomb/bomb",
             "blastman/fire",
             "blastman/navi",
-            "blkbomb/bomb",
             "bomb",
-            "boomer/boomerang",
+            "boomerang/boomerang",
             "boulder",
-            "bugbomb/bomb",
-            "bugfix/controller",
-            "bugfix/glow",
-            "chargecross-beast/wave",
-            "chargeman/volcano-rock",
-            "chrgeman/car",
-            "chrgeman/navi",
-            "colorpt/controller",
-            "colorpt/point",
-            "count-ex/controller",
-            "count-sp/controller",
+            "bug_bomb/bomb",
+            "bug_fix/controller",
+            "bug_fix/glow",
+            "charge_cross_beast/wave",
+            "chargeman/car",
+            "chargeman/navi",
+            "chargeman/volcano_rock",
+            "color_point/controller",
+            "color_point/point",
             "count/controller",
             "count/lance",
             "count/navi",
-            "crakshot/shot",
-            "delecswd/glow",
+            "count_ex/controller",
+            "count_sp/controller",
+            "crack_shot/shot",
+            "dash_elec_sword/glow",
             "django/controller",
             "django/navi",
-            "django2/controller",
-            "django3/controller",
-            "dolthdr/doll",
-            "dolthdr/thunder-column",
-            "dragon-body",
-            "dragon-head",
-            "drilarm/drill",
-            "dust-storm",
-            "dust-storm-mote",
-            "dustcross-beast/junk-shot",
-            "dustcross/junk-ball",
+            "django_v2/controller",
+            "django_v3/controller",
+            "doll_thunder/doll",
+            "doll_thunder/thunder_column",
+            "dragon_body",
+            "dragon_head",
+            "drill_arm/drill",
+            "dust_cross/junk_ball",
+            "dust_cross_beast/junk_shot",
+            "dust_storm",
+            "dust_storm_mote",
             "dustman/cloud",
             "dustman/overlay",
-            "elcpuls/pulse",
+            "elec_pulse/pulse",
             "elecman/navi",
             "elecman/thunder",
-            "element-pillar",
-            "elemtrap/strike",
-            "elemtrap/trap",
-            "elmntman/bolt",
-            "elmntman/ice",
-            "elmntman/meteor",
-            "elmntman/navi",
-            "elmntman/vine",
-            "encased-bubble",
-            "energbom/burst",
-            "erasecross-beast/drop",
-            "erasecross/ray",
+            "element_pillar",
+            "element_trap/strike",
+            "element_trap/trap",
+            "elementman/bolt",
+            "elementman/ice",
+            "elementman/meteor",
+            "elementman/navi",
+            "elementman/vine",
+            "encased_bubble",
+            "energy_bomb/burst",
+            "erase_cross/ray",
+            "erase_cross_beast/drop",
             "eraseman/beam",
             "eraseman/mark",
             "eraseman/navi",
             "eruption",
-            "falling-rock",
-            "falling-rock/chip",
+            "falling_rock",
+            "falling_rock/chip",
             "falzar/controller",
             "falzar/feather",
             "falzar/summon",
             "falzar/tornado",
-            "firehit/fist",
+            "fire_hit/fist",
             "flame",
-            "flmhook/fire",
-            "flmhook/hook",
-            "flshbom/bomb",
-            "flying-shot",
-            "forms/cross-merge",
-            "gauge-speed",
-            "golmhit/golem",
+            "flame_hook/fire",
+            "flame_hook/hook",
+            "flash_bomb/bomb",
+            "flying_shot",
+            "forms/cross_merge",
+            "gauge_speed",
+            "golem_hit/golem",
             "grab/controller",
             "grab/shot",
             "gregar/controller",
             "gregar/flame",
             "gregar/summon",
-            "grndman/drill",
-            "grndman/rock",
             "groundman/drill",
-            "gundels/beam",
+            "groundman/held_drill",
+            "groundman/rock",
+            "gun_del_sol/beam",
             "gust",
             "heatman/flame",
             "heatman/navi",
             "instrument",
             "instruments/controller",
-            "invisibl/controller",
-            "justcone/strike",
+            "invisible/controller",
+            "justice_one/strike",
             "lance/lance",
-            "lilbolr/boiler",
-            "lilbolr/layer",
-            "megaman/dash-hit",
+            "little_boiler/boiler",
+            "little_boiler/layer",
+            "megaman/dash_hit",
             "mine/controller",
-            "mine/land-mine",
-            "navi-boost",
-            "panel-bursts",
-            "panel-changer",
-            "panel-chips/controller",
-            "panel-strike",
+            "mine/land_mine",
+            "navi_boost",
+            "panel_bursts",
+            "panel_changer",
+            "panel_chips/controller",
+            "panel_strike",
             "projectile",
-            "rflectr/shield",
-            "rflectr/shot",
-            "rising-bubble",
-            "rockcube/cube",
-            "rockcube/debris",
-            "rockcube/rock",
-            "rskyhny/bee",
+            "reflector/shield",
+            "reflector/shot",
+            "rising_bubble",
+            "risky_honey/bee",
+            "rock_cube/cube",
+            "rock_cube/debris",
+            "rock_cube/rock",
             "rush",
-            "sandwrm/hole",
-            "sandwrm/spray",
-            "sandwrm/worm",
+            "sand_worm/hole",
+            "sand_worm/spray",
+            "sand_worm/worm",
             "seed",
             "sensor/controller",
             "sensor/laser",
             "sensor/scanner",
             "sensor/turret",
-            "slashcross-beast/hit-flash",
-            "slashcross-beast/lunge-slash",
-            "slashcross/sword-wave",
+            "slash_cross/sword_wave",
+            "slash_cross_beast/hit_flash",
+            "slash_cross_beast/lunge_slash",
             "slashman/navi",
-            "slashman/riding-hit",
+            "slashman/riding_hit",
             "slashman/wave",
-            "sonic-boom",
-            "spoutcross-beast/surge",
-            "spoutman/ball",
-            "spoutman/drip-shower",
-            "spoutman/geyser",
-            "spoutman/mark",
-            "spoutman/navi",
-            "spoutman/pillar",
-            "spoutman/splash",
-            "sumnblk/controller",
-            "sumnblk/navi",
-            "sunmoon/meteor",
-            "sunmoon/moon-beam",
-            "sunmoon/sun",
+            "sonic_boom",
+            "summon_black/controller",
+            "summon_black/navi",
+            "sun_and_moon/meteor",
+            "sun_and_moon/moon_beam",
+            "sun_and_moon/sun",
             "support/controller",
             "tango",
             "tango/heal",
-            "tengucross-beast/whirlwind",
+            "tengu_cross_beast/whirlwind",
             "tenguman/navi",
             "tenguman/tornado",
             "test/blast/controller",
@@ -201,20 +201,20 @@ fn battles_run_the_content_scripts() {
             "test/shooter/controller",
             "test/slash/controller",
             "test/spout/controller",
-            "test/sun-moon/controller",
+            "test/sun_moon/controller",
             "test/tengu/controller",
             "test/tomahawk/controller",
             "test/worn",
             "thunder/ball",
-            "timebom/controller",
-            "timebom/countdown",
-            "tmhkman/navi",
+            "time_bomb_plus/controller",
+            "time_bomb_plus/countdown",
             "tomahawkman/axe",
+            "tomahawkman/navi",
             "tomahawkman/strike",
-            "trap-chip",
-            "vdoll/curse",
-            "vdoll/doll",
-            "vdoll/sparkles",
+            "trap_chip",
+            "voodoo_doll/curse",
+            "voodoo_doll/doll",
+            "voodoo_doll/sparkles",
         ]
     );
     let sun_gun = b.content.defs.chip(testing::chip_handle(testing::SUN_GUN_3));
@@ -232,7 +232,7 @@ fn the_duel_fires_scripted_gun_del_sols() {
         b.tick(&t.input, t.events.clone());
         for r in b.objects.in_order() {
             match b.local_kind_key(r) {
-                "gundels/beam" => beams += 1,
+                "gun_del_sol/beam" => beams += 1,
                 "attachment" => guns += 1,
                 _ => {}
             }
@@ -336,9 +336,9 @@ fn the_bees_and_dragons_play() {
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The hive in hand, the bees it sends, the dragon's head and body.
     assert!(ticks("attachment") > 0, "the hive: {seen:?}");
-    assert!(ticks("rskyhny/bee") > 0, "bees: {seen:?}");
-    assert!(ticks("dragon-head") > 0, "dragon heads: {seen:?}");
-    assert!(ticks("dragon-body") >= 4 * ticks("dragon-head"), "four body segments a head: {seen:?}");
+    assert!(ticks("risky_honey/bee") > 0, "bees: {seen:?}");
+    assert!(ticks("dragon_head") > 0, "dragon heads: {seen:?}");
+    assert!(ticks("dragon_body") >= 4 * ticks("dragon_head"), "four body segments a head: {seen:?}");
     assert!(hp.iter().any(|&h| h < 1000), "someone got hit: {hp:?}");
 }
 
@@ -381,8 +381,8 @@ fn the_thrown_chips_play_and_roll_back() {
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     assert!(ticks("bomb") > 0, "the bomb: {seen:?}");
     assert!(ticks("seed") > 0, "the seed: {seen:?}");
-    assert!(ticks("flshbom/bomb") > 0, "the flash bomb: {seen:?}");
-    assert!(ticks("bugbomb/bomb") > 0, "the bug bomb: {seen:?}");
+    assert!(ticks("flash_bomb/bomb") > 0, "the flash bomb: {seen:?}");
+    assert!(ticks("bug_bomb/bomb") > 0, "the bug bomb: {seen:?}");
 }
 
 #[test]
@@ -392,9 +392,9 @@ fn the_elements_navi_attacks() {
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The elements navi comes with his overlay and attacks with an
     // element: meteors, ice, bolts or vines.
-    assert!(ticks("elmntman/navi") > 0, "ElmntMan: {seen:?}");
-    assert!(ticks("engine/body-overlay") > 0, "ElmntMan's overlay: {seen:?}");
-    let attacks = ["elmntman/meteor", "elmntman/ice", "elmntman/bolt", "elmntman/vine"].map(ticks);
+    assert!(ticks("elementman/navi") > 0, "ElmntMan: {seen:?}");
+    assert!(ticks("engine/body_overlay") > 0, "ElmntMan's overlay: {seen:?}");
+    let attacks = ["elementman/meteor", "elementman/ice", "elementman/bolt", "elementman/vine"].map(ticks);
     assert!(attacks.iter().any(|&t| t > 0), "ElmntMan's attacks: {seen:?}");
 }
 
@@ -405,10 +405,10 @@ fn the_water_navi_attacks() {
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The water navi comes in his water (his layer) and throws his ball
     // or raises his geyser, which marks its column.
-    assert!(ticks("spoutman/navi") > 0, "SpoutMan: {seen:?}");
-    assert!(ticks("engine/idle-overlay") > 0, "SpoutMan's layer: {seen:?}");
-    let ball = ticks("spoutman/ball") > 0 && ticks("spoutman/splash") > 0;
-    let geyser = ticks("spoutman/pillar") > 0 && ticks("spoutman/geyser") > 0 && ticks("spoutman/mark") > 0;
+    assert!(ticks("aquaman/navi") > 0, "SpoutMan: {seen:?}");
+    assert!(ticks("engine/idle_overlay") > 0, "SpoutMan's layer: {seen:?}");
+    let ball = ticks("aquaman/ball") > 0 && ticks("aquaman/splash") > 0;
+    let geyser = ticks("aquaman/pillar") > 0 && ticks("aquaman/geyser") > 0 && ticks("aquaman/mark") > 0;
     assert!(ball || geyser, "SpoutMan's attacks: {seen:?}");
 }
 
@@ -421,8 +421,8 @@ fn the_navi_chip_navis_come_and_go() {
         (testing::HEAT, "heatman/navi"),
         (testing::ELEC, "elecman/navi"),
         (testing::SLASH, "slashman/navi"),
-        (testing::CHARGE, "chrgeman/navi"),
-        (testing::TOMAHAWK, "tmhkman/navi"),
+        (testing::CHARGE, "chargeman/navi"),
+        (testing::TOMAHAWK, "tomahawkman/navi"),
         (testing::TENGU, "tenguman/navi"),
         (testing::BLAST, "blastman/navi"),
     ] {
@@ -439,14 +439,14 @@ fn the_shooting_and_sun_moon_navis_attack() {
     // The shooting navi comes with his cape (a form overlay) and fires
     // panel strikes.
     assert!(ticks("bass/navi") > 0, "Bass: {seen:?}");
-    assert!(ticks("engine/form-overlay") > 0, "Bass's cape: {seen:?}");
-    assert!(ticks("panel-strike") > 0, "Bass's shots: {seen:?}");
+    assert!(ticks("engine/form_overlay") > 0, "Bass's cape: {seen:?}");
+    assert!(ticks("panel_strike") > 0, "Bass's shots: {seen:?}");
     // The sun-and-moon navi throws meteors, shines and dives.
     let seen = duel_with(&[testing::chip_handle(testing::SUN_MOON)], 2400, 11);
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
-    assert!(ticks("sunmoon/sun") > 0, "SunMoon: {seen:?}");
-    assert!(ticks("sunmoon/meteor") > 0, "SunMoon's meteors: {seen:?}");
-    assert!(ticks("sunmoon/moon-beam") > 0, "SunMoon's moonlight: {seen:?}");
+    assert!(ticks("sun_and_moon/sun") > 0, "SunMoon: {seen:?}");
+    assert!(ticks("sun_and_moon/meteor") > 0, "SunMoon's meteors: {seen:?}");
+    assert!(ticks("sun_and_moon/moon_beam") > 0, "SunMoon's moonlight: {seen:?}");
 }
 
 #[test]
@@ -509,7 +509,7 @@ fn the_standard_chips_play() {
     let (seen, broken) = standard_duel();
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // CrakShot digs up the panel ahead and flings it.
-    assert!(ticks("crakshot/shot") > 0, "crack shots: {seen:?}");
+    assert!(ticks("crack_shot/shot") > 0, "crack shots: {seen:?}");
     assert!(broken, "a dug-up panel is broken");
 }
 
@@ -559,8 +559,8 @@ fn the_scripted_swords_play_and_roll_back() {
         }
     }
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
-    assert!(ticks("engine/player in wideswrd/action") > 0, "a sword swung: {seen:?}");
-    assert!(ticks("engine/player in assnswrd/action") > 0, "a strike swung: {seen:?}");
+    assert!(ticks("engine/player in wide_sword/action") > 0, "a sword swung: {seen:?}");
+    assert!(ticks("engine/player in assassin_sword/action") > 0, "a strike swung: {seen:?}");
     assert!(ticks("attachment") > 0, "a blade: {seen:?}");
     assert!(ticks("engine/effect") > 0, "a slash: {seen:?}");
     assert!(ticks("engine/afterimage") > 0, "a step sword's afterimages: {seen:?}");
@@ -606,19 +606,19 @@ fn the_link_navis_chips_play_and_roll_back() {
     }
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     for chip in
-        ["heatpres", "delecswd", "rslash", "edeletbm", "volcchrg", "dripshwr", "etomahwk", "ftornado", "rc-brakr", "dustbrk"]
+        ["heat_press", "dash_elec_sword", "rolling_slash", "eraser_delete_beam", "volcano_charge", "drip_shower", "eagle_tomahawk", "fuujin_tornado", "rock_crush_breaker", "dust_break"]
     {
         assert!(ticks(&format!("action {chip}/action")) > 0, "{chip} ran: {seen:?}");
     }
     for kind in [
         "heatman/flame",
-        "delecswd/glow",
-        "slashman/riding-hit",
+        "dash_elec_sword/glow",
+        "slashman/riding_hit",
         "eraseman/beam",
-        "chargeman/volcano-rock",
+        "chargeman/volcano_rock",
         "tomahawkman/axe",
         "tomahawkman/strike",
-        "grndman/drill",
+        "groundman/held_drill",
         "dustman/cloud",
         "dustman/overlay",
     ] {
@@ -634,10 +634,10 @@ fn registrations_follow_the_content_data() {
     // effect no chip has (TenguCross's wind) has its own.
     let plus = d.chip(testing::chip_in(&c, testing::PLUS));
     assert!(matches!(plus.usage, crate::content::ChipUsage::Instant(_)), "{:?}", plus.usage);
-    assert!(d.weapon(c.weapon_by_key("megaman/tengu-wind")).instant.is_some());
+    assert!(d.weapon(c.weapon_by_key("megaman/tengu_wind")).instant.is_some());
     // A chip's action may be another chip's (the test link chips run
     // EXE6's link navis' chips' actions).
-    for (key, exe6) in testing::LINK_CHIPS.iter().zip(["heatpres", "delecswd", "rslash"]) {
+    for (key, exe6) in testing::LINK_CHIPS.iter().zip(["heat_press", "dash_elec_sword", "rolling_slash"]) {
         let (chip, other) = (d.chip(testing::chip_in(&c, key)), d.chip(testing::chip_in(&c, exe6)));
         assert!(matches!(chip.usage, crate::content::ChipUsage::Action(_)), "{key}: {:?}", chip.usage);
         assert_eq!(chip.usage, other.usage, "{key}");
@@ -669,7 +669,7 @@ fn scripted_instant_chips_play_and_roll_back() {
             assert_eq!(copy, whole[i..], "the copy from tick {i} went its own way");
         }
         b.tick(&t.input, t.events.clone());
-        sparkles += b.objects.in_order().filter(|&r| b.local_kind_key(r) == "rising-bubble").count();
+        sparkles += b.objects.in_order().filter(|&r| b.local_kind_key(r) == "rising_bubble").count();
     }
     assert!(sparkles > 0, "no plus chip was used");
 }
@@ -755,13 +755,13 @@ fn the_scripted_dimming_chips_and_rocks_play() {
     let (seen, _) = dimming_duel(2400);
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The cube's controller places rocks, which break into debris.
-    assert!(ticks("rockcube/cube") > 0, "the cube's controller: {seen:?}");
-    assert!(ticks("rockcube/rock") > 0, "rocks: {seen:?}");
+    assert!(ticks("rock_cube/cube") > 0, "the cube's controller: {seen:?}");
+    assert!(ticks("rock_cube/rock") > 0, "rocks: {seen:?}");
     // The veil's controller makes its user invisible.
-    assert!(ticks("invisibl/controller") > 0, "the veil's controller: {seen:?}");
+    assert!(ticks("invisible/controller") > 0, "the veil's controller: {seen:?}");
     assert!(ticks("an invisible navi") > 0, "an invisible navi: {seen:?}");
     // The trap's controller runs its hidden telop.
-    assert!(ticks("trap-chip") > 0, "the trap's controller: {seen:?}");
+    assert!(ticks("trap_chip") > 0, "the trap's controller: {seen:?}");
 }
 
 #[test]
@@ -813,10 +813,10 @@ fn a_stage_places_scripted_rocks_outside_the_navi_bookkeeping() {
     use crate::object::Pool;
     let mut b = rock_battle();
     let stage = b.content.stage(b.content.stage_by_key(testing::ROCK_BATTLE)).clone();
-    let rock = Place::Kind(b.content.defs.kind_by_key("rockcube/rock").expect("the rock"));
+    let rock = Place::Kind(b.content.defs.kind_by_key("rock_cube/rock").expect("the rock"));
     assert_eq!(stage.actors.iter().map(|e| e.place).collect::<Vec<_>>(), [Place::Navi, Place::Navi, rock, rock]);
     // Each rock names its variant, a record of the rock's.
-    let cube = b.content.defs.record("rockcube/rock/cube");
+    let cube = b.content.defs.record("rock_cube/rock/cube");
     assert!(cube.is_some() && stage.actors[2..].iter().all(|e| e.variant == cube));
     b.spawn_actors();
     assert_eq!(b.round.alive, [1, 1]);
@@ -824,7 +824,7 @@ fn a_stage_places_scripted_rocks_outside_the_navi_bookkeeping() {
     let rocks: Vec<_> = b.objects.in_order().filter(|r| r.pool == Pool::Attack).collect();
     assert_eq!(rocks.len(), 2);
     let o = b.objects.get(rocks[0]);
-    assert_eq!(b.local_kind_key(rocks[0]), "rockcube/rock");
+    assert_eq!(b.local_kind_key(rocks[0]), "rock_cube/rock");
     assert_eq!((o.damage, o.stamina), (200, 0), "the stage's rocks hit with 200 when thrown");
     // Registered on their panels' sides: (3,3) is side 0's, (4,1) side 1's.
     assert_eq!(b.field.objects.slots[0], Some(rocks[0]));
@@ -836,7 +836,7 @@ fn a_stage_places_scripted_rocks_outside_the_navi_bookkeeping() {
 #[test]
 fn breaking_a_scripted_rock_throws_debris() {
     use crate::object::{Pool, state};
-    const ROCK_KINDS: [&str; 3] = ["rockcube/rock", "rockcube/debris", "engine/effect"];
+    const ROCK_KINDS: [&str; 3] = ["rock_cube/rock", "rock_cube/debris", "engine/effect"];
     let mut b = rock_battle();
     b.spawn_actors();
     let r = b.objects.in_order().find(|r| r.pool == Pool::Attack).unwrap();
@@ -857,7 +857,7 @@ fn breaking_a_scripted_rock_throws_debris() {
     let order: Vec<_> = b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| b.local_kind_key(o)).collect();
     assert_eq!(
         &order[..4],
-        ["rockcube/rock", "engine/effect", "rockcube/debris", "rockcube/debris"],
+        ["rock_cube/rock", "engine/effect", "rock_cube/debris", "rock_cube/debris"],
         "the rock, then what it spawned in reverse order"
     );
     assert_eq!(b.objects.get(r).state, state::DESTROY);
@@ -874,7 +874,7 @@ fn breaking_a_scripted_rock_throws_debris() {
 fn a_stage_places_boulders_in_the_stage_slots() {
     use crate::object::{ObjectFlags, PanelPos, Pool, state};
     use crate::setup::NaviStats;
-    const BOULDER_KINDS: [&str; 3] = ["boulder", "rockcube/debris", "engine/effect"];
+    const BOULDER_KINDS: [&str; 3] = ["boulder", "rock_cube/debris", "engine/effect"];
     let stats = NaviStats { support: Some(Default::default()), ..Default::default() };
     let mut setup = testing::round_setup(testing::BOULDER_BATTLE, stats);
     setup.settings.effects = crate::setup::BattleEffects::empty();
@@ -920,7 +920,7 @@ fn a_stage_places_boulders_in_the_stage_slots() {
     }
     assert_eq!(b.rng.state, rng.state);
     let order: Vec<_> = b.objects.in_order().filter(|o| o.pool != Pool::Actor).map(|o| b.local_kind_key(o)).collect();
-    assert_eq!(&order[..4], ["boulder", "engine/effect", "rockcube/debris", "rockcube/debris"]);
+    assert_eq!(&order[..4], ["boulder", "engine/effect", "rock_cube/debris", "rock_cube/debris"]);
     assert_eq!(b.objects.get(boulders[0]).state, state::DESTROY);
     assert_eq!(b.field.objects.slots[6..], [None, Some(boulders[1])]);
     run_only(&mut b, &BOULDER_KINDS);
@@ -935,7 +935,7 @@ fn a_stage_places_boulders_in_the_stage_slots() {
 fn a_thrown_rock_flies_to_its_target_and_breaks() {
     use crate::collision::{StatusFlags, StatusRequests};
     use crate::object::{PanelPos, Pool};
-    const ROCK: [&str; 1] = ["rockcube/rock"];
+    const ROCK: [&str; 1] = ["rock_cube/rock"];
     let mut b = rock_battle();
     b.spawn_actors();
     b.round.flags.insert(crate::battle::BattleFlags::FIGHTING);
@@ -996,7 +996,7 @@ fn a_thrown_rock_flies_to_its_target_and_breaks() {
 fn encase_rock(ice: bool) -> (Battle, crate::object::ObjectRef) {
     use crate::collision::{StatusFlags, StatusRequests};
     use crate::object::{ObjectFlags, Pool};
-    const KINDS: [&str; 2] = ["rockcube/rock", "encased-bubble"];
+    const KINDS: [&str; 2] = ["rock_cube/rock", "encased_bubble"];
     // The rock stage on the test pack's content, which fills the role.
     let stats = crate::setup::NaviStats { support: Some(Default::default()), ..Default::default() };
     let mut setup = testing::round_setup(testing::ROCK_BATTLE, stats);
@@ -1035,13 +1035,13 @@ fn encase_rock(ice: bool) -> (Battle, crate::object::ObjectRef) {
 fn an_obstacle_encased_in_ice_becomes_an_ice_block() {
     let (mut b, r) = encase_rock(true);
     let panel = b.objects.get(r).panel;
-    let block = b.objects.in_order().find(|&o| o != r && b.local_kind_key(o) == "rockcube/rock").expect("the ice block");
+    let block = b.objects.in_order().find(|&o| o != r && b.local_kind_key(o) == "rock_cube/rock").expect("the ice block");
     // In the class the obstacle was in; once it has run, the ice variant
     // (its name, element and HP).
     assert_eq!(b.field.objects.class_of(block), Some(0));
-    run_only(&mut b, &["rockcube/rock", "encased-bubble"]);
+    run_only(&mut b, &["rock_cube/rock", "encased_bubble"]);
     let o = b.objects.get(block);
-    let ice = b.content.identity_by_key("ice-block");
+    let ice = b.content.identity_by_key("ice_block");
     assert_eq!((o.panel, o.identity, o.element, o.hp), (panel, Some(ice), 2, 200));
 }
 
@@ -1049,7 +1049,7 @@ fn an_obstacle_encased_in_ice_becomes_an_ice_block() {
 fn an_obstacle_encased_in_a_bubble_becomes_the_bubble() {
     let (b, r) = encase_rock(false);
     let panel = b.objects.get(r).panel;
-    let bubble = b.objects.in_order().find(|&o| b.local_kind_key(o) == "encased-bubble").expect("the bubble");
+    let bubble = b.objects.in_order().find(|&o| b.local_kind_key(o) == "encased_bubble").expect("the bubble");
     let o = b.objects.get(bubble);
     assert_eq!((o.panel, o.element, o.alliance), (panel, 2, b.objects.get(r).alliance));
 }
@@ -1064,7 +1064,7 @@ fn the_navi_changing_chips_change_the_navi() {
         use crate::content::ChipCode;
         use crate::custom::{BattleFolder, FolderChip};
         let mut s = scenario::setup();
-        let chips = [(testing::chip_handle("hubbatc"), ChipCode(9)), (testing::chip_handle("puncharm"), ChipCode::ASTERISK)];
+        let chips = [(testing::chip_handle("hub_batch"), ChipCode(9)), (testing::chip_handle("punch_arm"), ChipCode::ASTERISK)];
         let mut folder = BattleFolder::empty();
         for (slot, &(chip, code)) in folder.chips.iter_mut().zip(chips.iter().cycle()) {
             assert!(testing::content().chip(chip).codes.contains(&code));
@@ -1079,13 +1079,13 @@ fn the_navi_changing_chips_change_the_navi() {
     let mut controllers = 0;
     for t in &tape {
         b.tick(&t.input, t.events.clone());
-        controllers += b.objects.in_order().filter(|&r| b.local_kind_key(r) == "navi-boost").count();
+        controllers += b.objects.in_order().filter(|&r| b.local_kind_key(r) == "navi_boost").count();
     }
     assert!(controllers > 0, "the controller ran");
     let after = &b.stats[0];
     assert_eq!((after.rapid, after.charge, after.custom_level), (4, 4, 8), "{before:?}");
     assert!(after.float_shoes && after.air_shoes && after.undershirt);
-    assert_eq!(after.weapons.charge_shot, testing::weapon("puncharm/charge"), "the arm's charged shot");
+    assert_eq!(after.weapons.charge_shot, testing::weapon("punch_arm/charge"), "the arm's charged shot");
     let copy = digests(&tape, Battle::new(setup(), scenario::content()));
     let mut b = Battle::new(setup(), scenario::content());
     for (i, t) in tape.iter().enumerate() {
@@ -1180,7 +1180,7 @@ fn tango_heals_her_navi_at_a_quarter_of_its_hp() {
     });
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     assert!(ticks("support/controller") > 0 && ticks("tango") > 0, "Tango: {seen:?}");
-    assert!(ticks("tango/heal") > 0 && ticks("barrier-visual") > 0, "her heal and its barrier: {seen:?}");
+    assert!(ticks("tango/heal") > 0 && ticks("barrier_visual") > 0, "her heal and its barrier: {seen:?}");
     assert_eq!(b.stats[0].support, Some(Supports::default()), "Tango came once");
 }
 
@@ -1215,7 +1215,7 @@ fn play_error(behaviors: Behaviors) -> Option<String> {
     r.err().map(|e| e.downcast_ref::<String>().cloned().unwrap_or_default())
 }
 
-const GUN_DEL_SOL: &str = "chips/gundels/action";
+const GUN_DEL_SOL: &str = "chips/gun_del_sol/action";
 const UPDATE: &str = "    local function update(me: Object, s: State)\n";
 
 /// GunDelSol's action's update with `line` added at its top.
@@ -1291,7 +1291,7 @@ fn state_in_module_locals_is_rejected_at_load() {
     // (The sun beam's code is the support pack's.)
     let c = patched_in(
         "exelib",
-        "gundels/beam",
+        "gun_del_sol/beam",
         &[("local beam = {}", "local hums = 0\nlocal beam = {}"), ("    s.ticks += 1\n", "    s.ticks += 1\n    hums += 1\n")],
     );
     let e = load(&c).err().expect("rejected");
@@ -1341,7 +1341,7 @@ fn weak_tables_are_refused() {
 #[test]
 fn fractions_cannot_enter_battle_state() {
     let b = load(&patched(
-        "chips/gundels/action",
+        "chips/gun_del_sol/action",
         &[("            s.timer = WIND_UP_TICKS\n", "            s.timer = 13 / 2\n")],
     ))
     .unwrap();
@@ -1369,7 +1369,7 @@ fn runaway_scripts_stop() {
 fn content_errors_name_the_script() {
     let b = load(&in_update("error(\"boom\")")).unwrap();
     let e = play_error(b).expect("stopped");
-    assert!(e.contains("action gundels3/action") && e.contains("test:chips/gundels/action.luau") && e.contains("boom"), "{e}");
+    assert!(e.contains("action gun_del_sol_3/action") && e.contains("test:chips/gun_del_sol/action.luau") && e.contains("boom"), "{e}");
 }
 
 /// docs/design/scripting.md §2.1: an element, a turn, a sprite's parts, the
@@ -1469,7 +1469,7 @@ fn a_panic_inside_content_leaves_the_vm_sound() {
         // panics there.
         if let Some(p) = c.player(0)
             && crate::kinds::player::running_content_action(&c, p)
-                .is_some_and(|h| nettai_content_api::keys::local(&c.content.defs.action(h).key) == "gundels3/action")
+                .is_some_and(|h| nettai_content_api::keys::local(&c.content.defs.action(h).key) == "gun_del_sol_3/action")
         {
             let actor = c.objects.get(p).actor.unwrap();
             c.actors.get_mut(actor).requests.insert(crate::actor::Requests::ANTI_SWORD_TRIGGERED);
@@ -1607,10 +1607,10 @@ fn the_trap_bomb_and_mine_chips_play() {
     let seen = trap_bomb_mine_duel(2400, |_| {});
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
     // The element trap waits on the field.
-    assert!(ticks("trap-chip") > 0 && ticks("elemtrap/trap") > 0, "the element trap: {seen:?}");
+    assert!(ticks("trap_chip") > 0 && ticks("element_trap/trap") > 0, "the element trap: {seen:?}");
     // The time bombs' controller sets bombs; the mine's lays mines.
-    assert!(ticks("timebom/controller") > 0 && ticks("timebom/countdown") > 0, "the time bombs: {seen:?}");
-    assert!(ticks("mine/controller") > 0 && ticks("mine/land-mine") > 0, "the mine: {seen:?}");
+    assert!(ticks("time_bomb_plus/controller") > 0 && ticks("time_bomb_plus/countdown") > 0, "the time bombs: {seen:?}");
+    assert!(ticks("mine/controller") > 0 && ticks("mine/land_mine") > 0, "the mine: {seen:?}");
 }
 
 #[test]
@@ -1624,7 +1624,7 @@ fn a_sprung_element_trap_strikes_back() {
         if sprung || b.is_dimmed() {
             return;
         }
-        let trap = b.objects.in_order().find(|&r| b.local_kind_key(r) == "elemtrap/trap");
+        let trap = b.objects.in_order().find(|&r| b.local_kind_key(r) == "element_trap/trap");
         let Some(trap) = trap.filter(|&r| b.objects.get(r).state == state::UPDATE) else { return };
         let c = b.objects.get(trap).collision.unwrap();
         b.collision.get_mut(c).acc.element_damage[2] = 10;
@@ -1632,8 +1632,8 @@ fn a_sprung_element_trap_strikes_back() {
     });
     assert!(sprung, "no element trap stood: {seen:?}");
     let ticks = |k: &str| seen.get(k).copied().unwrap_or(0);
-    assert!(ticks("elemtrap/strike") > 0, "the counterattack's controller: {seen:?}");
-    assert!(ticks("panel-bursts") > 0, "the bursts: {seen:?}");
+    assert!(ticks("element_trap/strike") > 0, "the counterattack's controller: {seen:?}");
+    assert!(ticks("panel_bursts") > 0, "the bursts: {seen:?}");
 }
 
 #[test]
@@ -1654,21 +1654,21 @@ fn trap_bomb_and_mine_chips_roll_back() {
 // ---- Dimming chips of subtypes 4, 5, 9, 13, 26, 27, 28 and 36 ------------------------------
 
 /// The barriers (subtype 4), as content defines them.
-const BARRIER_CHIPS: &[&str] = &["barrier", "barr100", "barr200", "bblwrap", "lifeaur"];
+const BARRIER_CHIPS: &[&str] = &["barrier", "barrier_100", "barrier_200", "bubble_wrap", "life_aura"];
 /// BugFix (subtype 26).
-const BUGFIX_CHIPS: &[&str] = &["bugfix"];
+const BUGFIX_CHIPS: &[&str] = &["bug_fix"];
 /// The panel chips (subtype 5).
-const PANEL_CHIPS: &[&str] = &["pnlretrn", "holypanl", "snctuary", "comingrd", "goingrd"];
+const PANEL_CHIPS: &[&str] = &["panel_return", "holy_panel", "sanctuary", "coming_road", "going_road"];
 /// The instruments (subtype 9).
 const INSTRUMENT_CHIPS: &[&str] = &["fanfare", "discord", "timpani", "silence"];
 /// AirRaid (subtype 13).
-const AIR_RAID_CHIPS: &[&str] = &["airraid1", "airraid2", "airraid3"];
+const AIR_RAID_CHIPS: &[&str] = &["air_raid_1", "air_raid_2", "air_raid_3"];
 /// ColorPt and DblPoint (subtype 27).
-const POINT_CHIPS: &[&str] = &["colorpt", "dblpoint"];
+const POINT_CHIPS: &[&str] = &["color_point", "double_point"];
 /// Sensor (subtype 28).
-const SENSOR_CHIPS: &[&str] = &["sensor1", "sensor2", "sensor3"];
+const SENSOR_CHIPS: &[&str] = &["sensor_1", "sensor_2", "sensor_3"];
 /// SumnBlk (subtype 36).
-const SUMMON_CHIPS: &[&str] = &["sumnblk1", "sumnblk2", "sumnblk3"];
+const SUMMON_CHIPS: &[&str] = &["summon_black_1", "summon_black_2", "summon_black_3"];
 
 fn defined(keys: &[&str]) -> Vec<nettai_content_api::ChipHandle> {
     keys.iter().map(|k| testing::chip_handle(k)).collect()
@@ -1729,14 +1729,14 @@ fn duel(keys: &[&str]) -> Duel {
 fn the_barriers_play() {
     let d = duel(BARRIER_CHIPS);
     assert!(d.ticks("barriers/controller") > 0, "the barriers' controller: {:?}", d.seen);
-    assert!(d.ticks("barrier-visual") > 0, "a barrier's visual: {:?}", d.seen);
+    assert!(d.ticks("barrier_visual") > 0, "a barrier's visual: {:?}", d.seen);
 }
 
 #[test]
 fn bugfix_plays() {
     let d = duel(BUGFIX_CHIPS);
-    assert!(d.ticks("bugfix/controller") > 0, "BugFix's controller: {:?}", d.seen);
-    assert!(d.ticks("bugfix/glow") > 0, "BugFix's glow: {:?}", d.seen);
+    assert!(d.ticks("bug_fix/controller") > 0, "BugFix's controller: {:?}", d.seen);
+    assert!(d.ticks("bug_fix/glow") > 0, "BugFix's glow: {:?}", d.seen);
 }
 
 #[test]
@@ -1757,7 +1757,7 @@ fn bugfix_ends_the_emotion_window_glitch() {
     for t in &tape {
         b.tick(&t.input, t.events.clone());
         let glitch = b.consoles.iter().map(|c| c.emotion_window.glitch).collect::<Vec<_>>();
-        if !fixed && b.objects.in_order().any(|r| b.local_kind_key(r) == "bugfix/controller") {
+        if !fixed && b.objects.in_order().any(|r| b.local_kind_key(r) == "bug_fix/controller") {
             fixed = true;
         }
         if fixed {
@@ -1775,8 +1775,8 @@ fn bugfix_ends_the_emotion_window_glitch() {
 #[test]
 fn the_panel_chips_play() {
     let d = duel(PANEL_CHIPS);
-    assert!(d.ticks("panel-chips/controller") > 0, "the panel chips' controller: {:?}", d.seen);
-    assert!(d.ticks("panel-changer") > 0, "a panel changer: {:?}", d.seen);
+    assert!(d.ticks("panel_chips/controller") > 0, "the panel chips' controller: {:?}", d.seen);
+    assert!(d.ticks("panel_changer") > 0, "a panel changer: {:?}", d.seen);
 }
 
 #[test]
@@ -1789,17 +1789,17 @@ fn the_instruments_play() {
 #[test]
 fn air_raid_bombs() {
     let d = duel(AIR_RAID_CHIPS);
-    assert!(d.ticks("airraid/plane") > 0, "a plane: {:?}", d.seen);
-    assert!(d.ticks("airraid/propeller") > 0, "its propeller: {:?}", d.seen);
-    assert!(d.ticks("lilbolr/layer") > 0, "its jet flame: {:?}", d.seen);
-    assert!(d.ticks("panel-strike") > 0, "its bombs: {:?}", d.seen);
+    assert!(d.ticks("air_raid/plane") > 0, "a plane: {:?}", d.seen);
+    assert!(d.ticks("air_raid/propeller") > 0, "its propeller: {:?}", d.seen);
+    assert!(d.ticks("little_boiler/layer") > 0, "its jet flame: {:?}", d.seen);
+    assert!(d.ticks("panel_strike") > 0, "its bombs: {:?}", d.seen);
 }
 
 #[test]
 fn the_points_give_the_front_column_away() {
     let d = duel(POINT_CHIPS);
-    assert!(d.ticks("colorpt/controller") > 0, "the points' controller: {:?}", d.seen);
-    assert!(d.ticks("colorpt/point") > 0, "a point: {:?}", d.seen);
+    assert!(d.ticks("color_point/controller") > 0, "the points' controller: {:?}", d.seen);
+    assert!(d.ticks("color_point/point") > 0, "a point: {:?}", d.seen);
     assert!(d.panel_changed_hands, "a point gave its panel to the other side");
 }
 
@@ -1816,10 +1816,10 @@ fn the_summoned_navi_comes_out_of_a_hole() {
     // Without a hole in front, SumnBlk does nothing; with the middle column
     // missing, the navi comes out of it.
     let plain = duel(SUMMON_CHIPS);
-    assert!(plain.ticks("sumnblk/controller") > 0, "SumnBlk was used: {:?}", plain.seen);
-    assert_eq!(plain.ticks("sumnblk/navi"), 0, "no hole, no navi: {:?}", plain.seen);
+    assert!(plain.ticks("summon_black/controller") > 0, "SumnBlk was used: {:?}", plain.seen);
+    assert_eq!(plain.ticks("summon_black/navi"), 0, "no hole, no navi: {:?}", plain.seen);
     let holed = duel_on(&defined(SUMMON_CHIPS), holed_content(), 2400, 11);
-    assert!(holed.ticks("sumnblk/navi") > 0, "the navi: {:?}", holed.seen);
+    assert!(holed.ticks("summon_black/navi") > 0, "the navi: {:?}", holed.seen);
 }
 
 #[test]
@@ -1948,7 +1948,7 @@ fn count_rains_on_the_other_side_then_drops_lances() {
     // Side 1 stands at (5,2), in the rain (each hit the chip's damage, SP
     // or not) and where the first lance falls (each chip's parameter
     // byte).
-    for (chip, rain, lance) in [("count", Some(20), 50), ("count-ex", Some(25), 70), ("count-sp", None, 100)] {
+    for (chip, rain, lance) in [("count", Some(20), 50), ("count_ex", Some(25), 70), ("count_sp", None, 100)] {
         let mut t = 0u32;
         let mut navi: Vec<u32> = Vec::new();
         let mut storm: Vec<u32> = Vec::new();
@@ -1960,7 +1960,7 @@ fn count_rains_on_the_other_side_then_drops_lances() {
             if !all_of(b, "count/navi").is_empty() {
                 navi.push(t);
             }
-            if !all_of(b, "dust-storm").is_empty() {
+            if !all_of(b, "dust_storm").is_empty() {
                 storm.push(t);
             }
             for l in all_of(b, "count/lance") {
@@ -2059,7 +2059,7 @@ fn django_comes_back_to_slash_after_l_l_l_a() {
     };
     let mut actions = Vec::new();
     let mut slash_at = None;
-    let b = drive("django2", 1400, fight, |b| {
+    let b = drive("django_v2", 1400, fight, |b| {
         if let Some((action, _, panel)) = django_at(b) {
             if actions.last() != Some(&action) {
                 actions.push(action);

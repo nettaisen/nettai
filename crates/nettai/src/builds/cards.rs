@@ -2,7 +2,7 @@
 //! `effects`): each effect record's line from the strings' text table
 //! `patch_card_effects`, keyed by the record's `kind` and the name of its
 //! one choice where it has one (a string field's value, a choice's name, or
-//! a definition's id: `body.fire`, `charged_shot.patch-cards/airman/charge`),
+//! a definition's id: `body.fire`, `charged_shot.patch_cards/airman/charge`),
 //! its numbers put in by their field names (`HP+{amount}`, `{pair.slot}` a
 //! field of a table it holds); whether the card shows it as a bug is the
 //! record's `bug`, and the group the screen lists it in its `group` (the groups'
@@ -227,7 +227,7 @@ mod tests {
         assert_eq!(fill("{x} and {amount}%", &hp, none), "{x} and 150%");
         // A two-part card's half: its line names its other half and the slot it must be in, then its own effects'.
         let guard = record(&[("kind", Data::Str("all_guard".into()))]);
-        let half = record(&[("card", Data::Str("077-all-guard-2-2".into())), ("slot", Data::Int(3)), ("effects", Data::List(vec![guard]))]);
+        let half = record(&[("card", Data::Str("077_all_guard_2_2".into())), ("slot", Data::Int(3)), ("effects", Data::List(vec![guard]))]);
         let pair = record(&[("kind", Data::Str("pair".into())), ("pair", half)]);
         let named: Named = &|name, v| match (name, v) {
             ("pair.card", Data::Str(s)) => Some(s[..3].to_string()),
@@ -247,17 +247,17 @@ mod tests {
         let builds = Builds::of(&content, "exe6").unwrap();
         let mut side = builds.new_build(&content, "gregar").unwrap();
         let card = |id: &str| nettai_match::ids::entry(&content, "exe6", "patch_cards", id).unwrap_or_else(|| panic!("exe6: no {id}"));
-        for id in ["bassbx", "airman"] {
+        for id in ["bass_bx", "airman"] {
             assert!(crate::builds::edit::list(&content, &mut side, "patch_cards", crate::builds::edit::ListEdit::Add(card(id).0)), "exe6: {id} goes in");
         }
-        assert_eq!(held(&builds, &content, &side, "patch_cards"), vec![Some((card("bassbx"), None)), Some((card("airman"), None))]);
+        assert_eq!(held(&builds, &content, &side, "patch_cards"), vec![Some((card("bass_bx"), None)), Some((card("airman"), None))]);
 
         let content = nettai_match::testing::exe4_content();
         let builds = Builds::of(&content, "exe4").unwrap();
         let mut side = builds.new_build(&content, "redsun").unwrap();
         let slots = builds.slots.clone().unwrap();
         let card = |id: &str| nettai_match::ids::entry(&content, "exe4", &slots.field, id).unwrap_or_else(|| panic!("exe4: no {id}"));
-        let (later, earlier) = (card("078-first-life-aura"), card("001-max-hp-up"));
+        let (later, earlier) = (card("078_first_life_aura"), card("001_max_hp_up"));
         for h in [later, earlier] {
             slots.put(&content, &mut side, h).unwrap();
         }

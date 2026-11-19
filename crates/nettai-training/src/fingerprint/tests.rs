@@ -10,7 +10,7 @@ fn fingerprints_of_a_few_chips() {
     for game in ["exe6", "exe5", "exe4"] {
         let c = content(game);
         let pick = |key: &str| nettai_match::ids::chip(&c, game, key);
-        let keys = ["cannon", "minibomb", "sword", "recov10", "recover10", "areagrab", "grabrvng", "grabrevenge", "heatshot", "firearm", "panlgrab", "panelgrab", "aquaswrd", "icestage", "grasstge", "grassstage", "elecsword", "zapring1", "bubbler"];
+        let keys = ["cannon", "mini_bomb", "sword", "recovery_10", "recover10", "area_grab", "grab_revenge", "grabrevenge", "heat_shot", "firearm", "panel_grab", "panelgrab", "aqua_sword", "icestage", "grasstge", "grassstage", "elecsword", "zapring1", "bubbler"];
         let chips: Vec<ChipHandle> = keys.iter().filter_map(|k| pick(k)).collect();
         assert!(chips.len() >= 3, "{game}: chips {chips:?}");
         let fp = Fingerprints::compute(&c, &chips, 4).unwrap_or_else(|e| panic!("{e}"));
@@ -59,7 +59,7 @@ fn few() -> (Arc<nettai_battle::Content>, Arc<Fingerprints>) {
     static FEW: std::sync::OnceLock<Arc<Fingerprints>> = std::sync::OnceLock::new();
     let c = content("exe6");
     let f = FEW.get_or_init(|| {
-        let keys = ["cannon", "sword", "widesword", "areagrab", "panlgrab", "grabrvng", "heatshot", "recov10", "minibomb"];
+        let keys = ["cannon", "sword", "widesword", "area_grab", "panel_grab", "grab_revenge", "heat_shot", "recovery_10", "mini_bomb"];
         let chips: Vec<ChipHandle> = keys.iter().filter_map(|k| nettai_match::ids::chip(&c, "exe6", k)).collect();
         Arc::new(Fingerprints::compute(&c, &chips, 4).unwrap())
     });

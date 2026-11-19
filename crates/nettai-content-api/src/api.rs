@@ -582,8 +582,8 @@ named_fields! {
         /// NaviCust weapon stats: the buster shot's and the charged
         /// shot's programs, each the projectile variant a shot is on a
         /// lucky draw (none: no program).
-        BusterShot = "buster_shot", Ref(Registry::Record, Some("projectile-variant".into())), rw;
-        ChargeShotKind = "charge_shot_kind", Ref(Registry::Record, Some("projectile-variant".into())), rw;
+        BusterShot = "buster_shot", Ref(Registry::Record, Some("projectile_variant".into())), rw;
+        ChargeShotKind = "charge_shot_kind", Ref(Registry::Record, Some("projectile_variant".into())), rw;
         /// The damage a B+Back special takes from the navi's stats
         /// (NaviStats+0x48).
         BackSpecialDamage = "back_special_damage", U16, rw;

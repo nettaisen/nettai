@@ -905,8 +905,8 @@ const BACKGROUND: usize = 1;
 /// (the link battle stages a match may name, `nettai_match::link_battle_stages`: the panel layouts and what
 /// stands on them that its netbattles are fought on) and the background pool, every game's battle backgrounds
 /// (`nettai_match::ids::pool_backgrounds`; docs/app.md §1, "The battle's background"), the games in their order
-/// and each list in its keys' natural order (a run of digits by its number: `netbattle-2` before
-/// `netbattle-10`; a background by its name in its game). Each list is stepped through after Random: the
+/// and each list in its keys' natural order (a run of digits by its number: `netbattle_2` before
+/// `netbattle_10`; a background by its name in its game). Each list is stepped through after Random: the
 /// place picked from the seed each round, as a match that names none has it (what practice did before it had
 /// them), a background from the whole pool (`BackgroundPick::Pool`). A choice is a list's place, 0 Random.
 ///
@@ -926,7 +926,7 @@ pub struct Places {
     /// Each arena's records, in the list's order: the first is the one it plays.
     arenas: Vec<Vec<StageHandle>>,
     /// By the names a match writes for them: the game's own by its name in its game, another game's with its
-    /// game (`exe4:acdc-area`).
+    /// game (`exe4:acdc_area`).
     backgrounds: Vec<String>,
 }
 
@@ -1048,7 +1048,7 @@ fn same_arena(a: &StageData, b: &StageData) -> bool {
 }
 
 /// What `key` sorts by in its natural order: each run of digits as wide as any number's, so by its number
-/// (`netbattle-2` before `netbattle-10`).
+/// (`netbattle_2` before `netbattle_10`).
 fn natural(key: &str) -> String {
     let (mut out, mut digits) = (String::with_capacity(key.len() + 16), String::new());
     for c in key.chars().map(Some).chain([None]) {
@@ -1735,7 +1735,7 @@ mod tests {
             let n = places.arenas.len();
             assert_eq!((arenas[0].clone(), arenas[n - 1].clone()), (format!("1 / {n}"), format!("{n} / {n}")), "{game}: each by its place");
             let key = |at: usize| nettai_match::ids::local(&content.defs.stage(places.arenas[at][0]).key);
-            let numbers: Vec<u32> = (0..n).map(|at| key(at).trim_start_matches("netbattle-").parse().unwrap()).collect();
+            let numbers: Vec<u32> = (0..n).map(|at| key(at).trim_start_matches("netbattle_").parse().unwrap()).collect();
             assert!(numbers[0] == 1 && numbers.is_sorted(), "{game}: in their numbers' order");
             for (name, key) in backgrounds.iter().zip(&places.backgrounds) {
                 assert!(!name.is_empty() && name != key && !name.contains(" / ") && !name.contains('-'), "{game}: {key} has a name");
@@ -1785,11 +1785,11 @@ mod tests {
         let content = exe6_content();
         let places = Places::of(&content, "exe6");
         let stage = |name: &str| nettai_match::link_stage(&content, "exe6", name).unwrap();
-        for (first, later) in [("netbattle-1", "netbattle-89"), ("netbattle-2", "netbattle-90")] {
+        for (first, later) in [("netbattle_1", "netbattle_89"), ("netbattle_2", "netbattle_90")] {
             let at = places.find(&content, ARENA, Some(later));
             assert!(at > 0 && places.arenas[at - 1].contains(&stage(first)), "{later}");
         }
-        assert_eq!(places.arenas[0][..2], [stage("netbattle-1"), stage("netbattle-2")], "side 0's navi first, then side 1's");
+        assert_eq!(places.arenas[0][..2], [stage("netbattle_1"), stage("netbattle_2")], "side 0's navi first, then side 1's");
     }
 
     /// A background chosen leaves the arenas as they were: with Arena Random the seed picks each round's arena
@@ -1824,7 +1824,7 @@ mod tests {
         use crate::music::Music;
         let content = nettai_match::testing::exe6_content();
         let places = Places::of(&content, "exe6");
-        let theme = Music::Theme { game: "exe4".into(), song: "tournament-battle".into() };
+        let theme = Music::Theme { game: "exe4".into(), song: "tournament_battle".into() };
         // (the editor's PRACTICE: your build its chosen one, the rest the defaults; Practice shown keeps it.)
         let mut visit = Visit::new("exe6", "Swords", None);
         assert!(!visit.arrive(), "the editor's PRACTICE started it");

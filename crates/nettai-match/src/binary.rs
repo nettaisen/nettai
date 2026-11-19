@@ -355,20 +355,20 @@ mod tests {
         let content = crate::testing::exe5_content();
         let mut m = crate::pick::live(&content, "exe5", 9, None).unwrap();
         m.backgrounds = crate::BackgroundPick::Pool;
-        m.rounds = vec![RoundSettings { stage: None, background: Some("exe4:acdc-area".into()) }, RoundSettings::default(), RoundSettings::default()];
+        m.rounds = vec![RoundSettings { stage: None, background: Some("exe4:acdc_area".into()) }, RoundSettings::default(), RoundSettings::default()];
         let bytes = match_bytes(&content, &m).unwrap();
         let back = read_match(&content, &bytes).unwrap();
-        assert_eq!(back.rounds[0].background.as_deref(), Some("exe4:acdc-area"));
+        assert_eq!(back.rounds[0].background.as_deref(), Some("exe4:acdc_area"));
         assert_eq!(back, Match { backgrounds: crate::BackgroundPick::Game, ..m.stated(&content, 9).unwrap() });
         assert_eq!(format!("{:?}", back.round(&content, 9)), format!("{:?}", m.round(&content, 9)));
         let key = |at: usize| String::from_utf8(bytes[at + 3..at + 3 + bytes[at + 2] as usize].to_vec()).unwrap();
-        assert_eq!(key(5), "exe4:acdc-area", "by its game and its name");
+        assert_eq!(key(5), "exe4:acdc_area", "by its game and its name");
         let again = std::sync::Arc::new(crate::testing::defined(&["exe5"]).unwrap());
         assert_eq!(read_match(&again, &bytes).unwrap(), back, "another load");
         // (A pool that hasn't it refuses it, saying which.)
         let mut alone = (*content).clone();
         alone.background_pool = nettai_battle::content::BackgroundPool::default();
-        assert_eq!(read_match(&alone, &bytes).unwrap_err(), "round 1: no background \"exe4:acdc-area\" in the background pool");
+        assert_eq!(read_match(&alone, &bytes).unwrap_err(), "round 1: no background \"exe4:acdc_area\" in the background pool");
     }
 
     /// What isn't a match is refused, saying where.

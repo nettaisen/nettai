@@ -12,11 +12,11 @@ use std::sync::Arc;
 
 /// A folder of Tango's EXE5 saves (their first): Standard chips only.
 const FOLDER: [&str; 30] = [
-    "cannon A", "cannon A", "cannon B", "cannon B", "airshot *", "airshot *", "airshot *",
-    "vulcan1 D", "vulcan1 D", "vulcan1 D", "minibomb B", "minibomb B", "minibomb L", "minibomb L",
-    "sword S", "sword S", "sword S", "sword S", "wideswrd S", "wideswrd S", "busterup *",
-    "crakout *", "crakout *", "recov10 A", "recov10 A", "recov10 L", "recov10 L", "areagrab S",
-    "attck-10 *", "attck-10 *",
+    "cannon A", "cannon A", "cannon B", "cannon B", "air_shot *", "air_shot *", "air_shot *",
+    "vulcan_1 D", "vulcan_1 D", "vulcan_1 D", "mini_bomb B", "mini_bomb B", "mini_bomb L", "mini_bomb L",
+    "sword S", "sword S", "sword S", "sword S", "wide_sword S", "wide_sword S", "buster_up *",
+    "crack_out *", "crack_out *", "recovery_10 A", "recovery_10 A", "recovery_10 L", "recovery_10 L", "area_grab S",
+    "attack_10 *", "attack_10 *",
 ];
 
 /// An EXE5 MegaMan's side with that folder and `partners` in his party (at
@@ -99,13 +99,13 @@ fn d_hero_fires_from_full_synchro() {
     let content = exe5_content();
     let mut b = fighting(&content, &["protoman"]);
     let before = hp(&b, 1);
-    let (controllers, navis) = switch(&mut b, 1, 0xFF, 600, "d-hero");
+    let (controllers, navis) = switch(&mut b, 1, 0xFF, 600, "double_hero");
     assert_eq!((controllers, navis), (1, 2), "one controller, two navis");
-    assert_eq!(count(&b, "d-hero/controller") + count(&b, "d-hero/navi"), 0, "all gone again");
+    assert_eq!(count(&b, "double_hero/controller") + count(&b, "double_hero/navi"), 0, "all gone again");
     assert_eq!(before - hp(&b, 1), 7 * 40, "seven volleys of 40");
     assert!(!b.is_dimmed(), "the dimming is over");
     // Back to MegaMan out of ProtoMan's Full Synchro: spent for the round.
-    let (controllers, _) = switch(&mut b, 0, 0xFF, 200, "d-hero");
+    let (controllers, _) = switch(&mut b, 0, 0xFF, 200, "double_hero");
     assert_eq!(controllers, 0, "once a round");
 }
 
@@ -114,7 +114,7 @@ fn d_hero_fires_from_full_synchro() {
 fn d_hero_needs_full_synchro() {
     let content = exe5_content();
     let mut b = fighting(&content, &["protoman"]);
-    let (controllers, _) = switch(&mut b, 1, 0x80, 200, "d-hero");
+    let (controllers, _) = switch(&mut b, 1, 0x80, 200, "double_hero");
     assert_eq!(controllers, 0);
 }
 
@@ -128,12 +128,12 @@ fn d_hero_needs_full_synchro() {
 fn m_zan_fires_from_protoman_to_magnetman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["protoman", "magnetman"]);
-    let (controllers, _) = switch(&mut b, 1, 0x80, 100, "m-zan");
+    let (controllers, _) = switch(&mut b, 1, 0x80, 100, "magnet_zan");
     assert_eq!(controllers, 0, "MegaMan and ProtoMan out of no Full Synchro: nothing");
     let before = hp(&b, 1);
-    let (controllers, navis) = switch(&mut b, 2, 0xFF, 700, "m-zan");
+    let (controllers, navis) = switch(&mut b, 2, 0xFF, 700, "magnet_zan");
     assert_eq!((controllers, navis), (1, 2), "one controller, two navis");
-    assert_eq!(count(&b, "m-zan/controller") + count(&b, "m-zan/navi"), 0, "all gone again");
+    assert_eq!(count(&b, "magnet_zan/controller") + count(&b, "magnet_zan/navi"), 0, "all gone again");
     assert_eq!(before - hp(&b, 1), 240, "one slash of 240");
 }
 
@@ -167,13 +167,13 @@ fn switch_counting(b: &mut Battle, member: u8, mood: u8, ticks: usize, keys: &[&
 fn m_air_fires_from_gyroman_to_magnetman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["gyroman", "magnetman"]);
-    let (controllers, _) = switch(&mut b, 1, 0x80, 100, "m-air");
+    let (controllers, _) = switch(&mut b, 1, 0x80, 100, "magnet_air_raid");
     assert_eq!(controllers, 0, "MegaMan and GyroMan out of no Full Synchro: nothing");
     let before = hp(&b, 1);
-    let keys = ["m-air/controller", "m-air/navi", "m-air/toss", "m-air/bomb"];
+    let keys = ["magnet_air_raid/controller", "magnet_air_raid/navi", "magnet_air_raid/toss", "magnet_air_raid/bomb"];
     let counts = switch_counting(&mut b, 2, 0xFF, 900, &keys);
     assert_eq!(counts, [1, 2, 8, 9], "{keys:?}");
-    assert_eq!(count(&b, "m-air/controller") + count(&b, "m-air/navi"), 0, "all gone again");
+    assert_eq!(count(&b, "magnet_air_raid/controller") + count(&b, "magnet_air_raid/navi"), 0, "all gone again");
     assert_eq!(before - hp(&b, 1), 200, "one bomb of 200");
 }
 
@@ -185,10 +185,10 @@ fn d_valcan_fires_from_megaman_to_napalmman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["napalmman"]);
     let before = hp(&b, 1);
-    let keys = ["d-valcan/controller", "d-valcan/navi", "bullet"];
+    let keys = ["double_vulcan/controller", "double_vulcan/navi", "bullet"];
     let counts = switch_counting(&mut b, 1, 0xFF, 900, &keys);
     assert_eq!(counts, [1, 2, 60], "{keys:?}");
-    assert_eq!(count(&b, "d-valcan/controller") + count(&b, "d-valcan/navi"), 0, "all gone again");
+    assert_eq!(count(&b, "double_vulcan/controller") + count(&b, "double_vulcan/navi"), 0, "all gone again");
     assert_eq!(before - hp(&b, 1), 360, "60 bullets of 6");
 }
 
@@ -201,7 +201,7 @@ fn br_rush_fires_from_megaman_to_colonel() {
     let content = exe5_content();
     let mut b = fighting(&content, &["colonel"]);
     let before = hp(&b, 1);
-    let keys = ["br-rush/controller", "br-rush/navi", "br-rush/cape"];
+    let keys = ["blind_rain_rush/controller", "blind_rain_rush/navi", "blind_rain_rush/cape"];
     let counts = switch_counting(&mut b, 1, 0xFF, 900, &keys);
     assert_eq!(counts, [1, 2, 1], "{keys:?}");
     for key in keys {
@@ -220,10 +220,10 @@ fn br_rush_fires_from_megaman_to_colonel() {
 fn e_sappou_fires_from_colonel_to_shadowman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["colonel", "shadowman"]);
-    let (controllers, _) = switch(&mut b, 1, 0x80, 100, "e-sappou");
+    let (controllers, _) = switch(&mut b, 1, 0x80, 100, "engetsu_sappou");
     assert_eq!(controllers, 0, "MegaMan and Colonel out of no Full Synchro: nothing");
     let before = hp(&b, 1);
-    let keys = ["e-sappou/controller", "e-sappou/navi", "e-sappou/rock", "e-sappou/blade"];
+    let keys = ["engetsu_sappou/controller", "engetsu_sappou/navi", "engetsu_sappou/rock", "engetsu_sappou/blade"];
     let counts = switch_counting(&mut b, 2, 0xFF, 500, &keys);
     assert_eq!(counts, [1, 2, 2, 2], "{keys:?}");
     for key in keys {
@@ -244,12 +244,12 @@ fn e_sappou_fires_from_colonel_to_shadowman() {
 fn k_throw_fires_from_tomahawkman_to_knightman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["tomahawkman", "knightman"]);
-    let (controllers, _) = switch(&mut b, 1, 0x80, 100, "k-throw");
+    let (controllers, _) = switch(&mut b, 1, 0x80, 100, "knight_throw");
     assert_eq!(controllers, 0, "MegaMan and TomahawkMan out of no Full Synchro: nothing");
     let before = hp(&b, 1);
-    let (controllers, navis) = switch(&mut b, 2, 0xFF, 700, "k-throw");
+    let (controllers, navis) = switch(&mut b, 2, 0xFF, 700, "knight_throw");
     assert_eq!((controllers, navis), (1, 2), "one controller, two navis");
-    assert_eq!(count(&b, "k-throw/controller") + count(&b, "k-throw/navi"), 0, "all gone again");
+    assert_eq!(count(&b, "knight_throw/controller") + count(&b, "knight_throw/navi"), 0, "all gone again");
     assert_eq!(before - hp(&b, 1), 450, "one hit of 450");
 }
 
@@ -261,10 +261,10 @@ fn k_throw_fires_from_tomahawkman_to_knightman() {
 fn g_otoshi_fires_from_shadowman_to_toadman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["shadowman", "toadman"]);
-    let (controllers, _) = switch(&mut b, 1, 0xFF, 100, "g-otoshi");
+    let (controllers, _) = switch(&mut b, 1, 0xFF, 100, "gama_otoshi");
     assert_eq!(controllers, 0, "MegaMan and ShadowMan make no Double Attack");
     let before = hp(&b, 1);
-    let keys = ["g-otoshi/controller", "g-otoshi/navi", "g-otoshi/frog"];
+    let keys = ["gama_otoshi/controller", "gama_otoshi/navi", "gama_otoshi/frog"];
     let counts = switch_counting(&mut b, 2, 0xFF, 700, &keys);
     assert_eq!(counts, [1, 2, 12], "{keys:?}");
     for key in keys {
@@ -284,7 +284,7 @@ fn b_shoot_fires_from_megaman_to_knightman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["knightman"]);
     let before = hp(&b, 1);
-    let keys = ["b-shoot/controller", "b-shoot/navi", "b-shoot/ball"];
+    let keys = ["broken_shoot/controller", "broken_shoot/navi", "broken_shoot/ball"];
     let counts = switch_counting(&mut b, 1, 0xFF, 900, &keys);
     assert_eq!(counts, [1, 2, 6], "{keys:?}");
     for key in keys {
@@ -306,7 +306,7 @@ fn c_scope_stops_on_a() {
     b.stats[0].mood = 0xFF;
     let ask = PlayerTick { switch_to: Some(1), ..Default::default() };
     b.tick(&[ask, Default::default()], Default::default());
-    let scope = b.content.defs.kind_by_key("c-scope/scope").unwrap();
+    let scope = b.content.defs.kind_by_key("cross_scope/scope").unwrap();
     let target = b.objects.get(b.player(1).unwrap()).panel;
     let (mut pressed, mut scopes, mut controllers) = (false, 0, 0);
     for _ in 0..900 {
@@ -318,12 +318,12 @@ fn c_scope_stops_on_a() {
             Keys::empty()
         };
         b.tick(&[PlayerTick::buttons(a), Default::default()], Default::default());
-        scopes = scopes.max(count(&b, "c-scope/scope"));
-        controllers = controllers.max(count(&b, "c-scope/controller"));
+        scopes = scopes.max(count(&b, "cross_scope/scope"));
+        controllers = controllers.max(count(&b, "cross_scope/controller"));
     }
     assert!(pressed, "a scope stood on the opponent's panel");
     assert_eq!((controllers, scopes), (1, 2), "one controller, two scopes");
-    for key in ["c-scope/controller", "c-scope/navi", "c-scope/scope"] {
+    for key in ["cross_scope/controller", "cross_scope/navi", "cross_scope/scope"] {
         assert_eq!(count(&b, key), 0, "{key}: gone again");
     }
     assert_eq!(before - hp(&b, 1), 400, "ten shots of 40");
@@ -337,9 +337,9 @@ fn c_scope_unstopped_misses() {
     let content = exe5_content();
     let mut b = fighting(&content, &["searchman"]);
     let before = hp(&b, 1);
-    let (controllers, navis) = switch(&mut b, 1, 0xFF, 900, "c-scope");
+    let (controllers, navis) = switch(&mut b, 1, 0xFF, 900, "cross_scope");
     assert_eq!((controllers, navis), (1, 2), "one controller, two navis");
-    assert_eq!(count(&b, "c-scope/controller") + count(&b, "c-scope/navi") + count(&b, "c-scope/scope"), 0, "all gone again");
+    assert_eq!(count(&b, "cross_scope/controller") + count(&b, "cross_scope/navi") + count(&b, "cross_scope/scope"), 0, "all gone again");
     assert_eq!(before - hp(&b, 1), 0, "every shot misses");
 }
 
@@ -352,10 +352,10 @@ fn c_scope_unstopped_misses() {
 fn c_bomb_fires_from_napalmman_to_meddy() {
     let content = exe5_content();
     let mut b = fighting(&content, &["napalmman", "meddy"]);
-    let (controllers, _) = switch(&mut b, 1, 0x80, 100, "c-bomb");
+    let (controllers, _) = switch(&mut b, 1, 0x80, 100, "chemical_bomb");
     assert_eq!(controllers, 0, "MegaMan and NapalmMan out of no Full Synchro: nothing");
     let before = hp(&b, 1);
-    let keys = ["c-bomb/controller", "c-bomb/navi", "c-bomb/capsule", "napalmmn/bomb"];
+    let keys = ["chemical_bomb/controller", "chemical_bomb/navi", "chemical_bomb/capsule", "napalmman/bomb"];
     let counts = switch_counting(&mut b, 2, 0xFF, 900, &keys);
     assert_eq!(counts, [1, 2, 1, 1], "{keys:?}");
     for key in keys {
@@ -373,7 +373,7 @@ fn k_bomb_fires_from_megaman_to_numberman() {
     let content = exe5_content();
     let mut b = fighting(&content, &["numberman"]);
     let before = hp(&b, 1);
-    let keys = ["k-bomb/controller", "k-bomb/navi", "k-bomb/bomb"];
+    let keys = ["kokubankeshi_bomb/controller", "kokubankeshi_bomb/navi", "kokubankeshi_bomb/bomb"];
     let counts = switch_counting(&mut b, 1, 0xFF, 900, &keys);
     assert_eq!(counts, [1, 2, 4], "{keys:?}");
     for key in keys {
@@ -426,15 +426,15 @@ fn d_hero_fires_after_a_paused_switch() {
         for c in b.sound_cues() {
             if let nettai_battle::sound::SoundCue::Effect(id) = c {
                 match names.get(id.0 as usize).copied() {
-                    Some("cross-change") if telop.is_none() => landed = Some(t),
+                    Some("cross_change") if telop.is_none() => landed = Some(t),
                     Some("telop") if telop.is_none() => telop = Some(t),
                     _ => {}
                 }
             }
         }
-        controllers = controllers.max(count(&b, "d-hero/controller"));
-        navis = navis.max(count(&b, "d-hero/navi"));
-        if controllers > 0 && count(&b, "d-hero/controller") == 0 {
+        controllers = controllers.max(count(&b, "double_hero/controller"));
+        navis = navis.max(count(&b, "double_hero/navi"));
+        if controllers > 0 && count(&b, "double_hero/controller") == 0 {
             break;
         }
     }

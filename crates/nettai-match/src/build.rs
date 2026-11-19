@@ -1307,7 +1307,7 @@ mod tests {
             let plain = builds.new_build(&content, versions[0]).unwrap();
             let cards = match game {
                 "exe4" => {
-                    let custom2 = ids::entry(&content, game, facts::PATCH_CARDS, "017-custom2").unwrap();
+                    let custom2 = ids::entry(&content, game, facts::PATCH_CARDS, "017_custom2").unwrap();
                     vec![Fact::Record(vec![("card", entry(custom2)), ("slot", Fact::Value(Value::Int(0)))])]
                 }
                 "exe5" => patch_cards(&content, game, "quaker"),
@@ -1361,7 +1361,7 @@ mod tests {
         assert_eq!(names, ["copies", "mega", "giga", "regular_memory", "tag_memory", "patch_card_memory"]);
         let mut side = Builds::of(&content, game).unwrap().new_build(&content, "gregar").unwrap();
         // (Six Recov10s or more, a 4 MB chip's five copies past.)
-        let recov = ids::chip(&content, game, "recov10").unwrap();
+        let recov = ids::chip(&content, game, "recovery_10").unwrap();
         let mut folder = side.folder(&content);
         for e in &mut folder.chips[..6] {
             *e = Some(FolderChip::new(recov, content.chip(recov).codes[0]));
@@ -1409,9 +1409,9 @@ mod tests {
     #[test]
     fn a_build_holds_either_versions_giga_chips() {
         for (content, game, versions, own) in [
-            (exe4_content(), "exe4", ["redsun", "bluemoon"], ["redsun", "bluemoon"]),
-            (exe5_content(), "exe5", ["protoman", "colonel"], ["dethphnx", "phoenix"]),
-            (exe6_content(), "exe6", ["gregar", "falzar"], ["colforce", "hubbatc"]),
+            (exe4_content(), "exe4", ["redsun", "bluemoon"], ["red_sun", "blue_moon"]),
+            (exe5_content(), "exe5", ["protoman", "colonel"], ["death_phoenix", "phoenix"]),
+            (exe6_content(), "exe6", ["gregar", "falzar"], ["colonel_force", "hub_batch"]),
         ] {
             let builds = Builds::of(&content, game).unwrap();
             let rulesets = crate::ruleset::Rulesets::of(&content, game).unwrap();
@@ -1439,12 +1439,12 @@ mod tests {
     /// side's version (EXE6's: its rules' own fact).
     #[test]
     fn a_build_chooses_its_forms() {
-        let red = ["rollsoul", "gutssoul", "windsoul", "searchsoul", "firesoul", "thundersoul"];
-        let blue = ["protosoul", "numbersoul", "metalsoul", "junksoul", "aquasoul", "woodsoul"];
-        let protoman = ["protosoul", "gyrosoul", "searchsoul", "napalmsoul", "magnetsoul", "meddysoul"];
-        let colonel = ["colonelsoul", "shadowsoul", "numbersoul", "tomahawksoul", "knightsoul", "toadsoul"];
-        let gregar = ["heatcross", "eleccross", "slashcross", "erasecross", "chargecross"];
-        let falzar = ["spoutcross", "tomahawkcross", "tengucross", "groundcross", "dustcross"];
+        let red = ["roll_soul", "guts_soul", "wind_soul", "search_soul", "fire_soul", "thunder_soul"];
+        let blue = ["proto_soul", "number_soul", "metal_soul", "junk_soul", "aqua_soul", "wood_soul"];
+        let protoman = ["proto_soul", "gyro_soul", "search_soul", "napalm_soul", "magnet_soul", "meddy_soul"];
+        let colonel = ["colonel_soul", "shadow_soul", "number_soul", "tomahawk_soul", "knight_soul", "toad_soul"];
+        let gregar = ["heat_cross", "elec_cross", "slash_cross", "erase_cross", "charge_cross"];
+        let falzar = ["aqua_cross", "tomahawk_cross", "tengu_cross", "ground_cross", "dust_cross"];
         // (The game, the fact that lists the forms, its room, the versions and each one's forms.)
         let games: [(Arc<Content>, &str, &str, usize, [&str; 2], [&[&str]; 2]); 3] = [
             (exe4_content(), "exe4", "souls", 12, ["redsun", "bluemoon"], [&red, &blue]),
@@ -1461,7 +1461,7 @@ mod tests {
             let all: Vec<String> = [forms[0], forms[1]].concat().iter().map(|s| s.to_string()).collect();
             if game == "exe6" {
                 assert_eq!(facts, [("cybeast", 1, true), ("crosses", 5, false)], "{game}");
-                assert_eq!(names(&choices[0].forms), ["gregar-beast", "falzar-beast"], "{game}");
+                assert_eq!(names(&choices[0].forms), ["gregar_beast", "falzar_beast"], "{game}");
             } else {
                 assert_eq!(facts, [(fact, room, false)], "{game}");
             }
@@ -1487,7 +1487,7 @@ mod tests {
             assert!(builds.choose_form(&content, &mut side, fact, theirs));
             if game == "exe6" {
                 // The Cybeast: one always, the side's version.
-                let falzar_beast = ids::form(&content, game, "falzar-beast").unwrap();
+                let falzar_beast = ids::form(&content, game, "falzar_beast").unwrap();
                 assert!(builds.choose_form(&content, &mut side, "cybeast", falzar_beast));
                 assert!(!builds.choose_form(&content, &mut side, "cybeast", falzar_beast), "already chosen");
                 assert_eq!((side.version(&content), builds.chosen_forms(&content, &side, "cybeast")), (Some("falzar"), vec![falzar_beast]));
@@ -1510,12 +1510,12 @@ mod tests {
     fn bass_cross_megamans_effects_are_its_variants() {
         for (content, game, versions) in [(exe6_content(), "exe6", ["gregar", "falzar"]), (exe5_content(), "exe5", ["protoman", "colonel"])] {
             let builds = Builds::of(&content, game).unwrap();
-            let card = ids::entry(&content, game, facts::PATCH_CARDS, "bass-cross-megaman").unwrap();
+            let card = ids::entry(&content, game, facts::PATCH_CARDS, "bass_cross_megaman").unwrap();
             let other = ids::entry(&content, game, facts::PATCH_CARDS, if game == "exe6" { "canodumb" } else { "billy" }).unwrap();
             assert_eq!(crate::ruleset::variants_of(&content, Registry::Entry, card.0), versions, "{game}");
             assert!(crate::ruleset::variants_of(&content, Registry::Entry, other.0).is_empty(), "{game}");
             let other_name = ids::name_of(&content, Registry::Entry, other.0).unwrap();
-            let cards = |variant: &str| format!("{other_name},bass-cross-megaman/{variant}");
+            let cards = |variant: &str| format!("{other_name},bass_cross_megaman/{variant}");
             // The kind of the card's effect at place `i` of its list.
             let kind_at = |i: usize| {
                 let d = content.defs.definitions.get(Registry::Entry, &content.defs.entry(card).key).unwrap();
@@ -1587,14 +1587,14 @@ mod tests {
         let overview = |side: &Side| Checked::of(&content, "exe6", side).overview(&content, side).unwrap();
         // UnderSht on the command line, Attack+1 and HP+100 off it: no bug.
         let mut side = builds.new_build(&content, "falzar").unwrap();
-        set_navicust(&content, &mut side, &[placed("undersht", "white", 1, 3), placed("attack-1", "pink", 5, 2), placed("hp-100", "white", 3, 2)], 2);
+        set_navicust(&content, &mut side, &[placed("undershirt", "white", 1, 3), placed("attack_1", "pink", 5, 2), placed("hp_100", "white", 3, 2)], 2);
         let o = overview(&side);
         assert_eq!((o.hp, o.attack), (Stat { base: 1000, value: 1100 }, Stat { base: 1, value: 2 }));
         assert_eq!((o.hp.added(), o.attack.added(), o.mega.added()), (100, 1, 0));
-        assert_eq!(o.abilities, [Source::Entry(program("undersht"))]);
+        assert_eq!(o.abilities, [Source::Entry(program("undershirt"))]);
         assert_eq!(o.bugs, Vec::new());
         // UnderSht off the command line: its bug at level 1, and no UnderSht.
-        set_navicust(&content, &mut side, &[placed("undersht", "white", 1, 2)], 2);
+        set_navicust(&content, &mut side, &[placed("undershirt", "white", 1, 2)], 2);
         let o = overview(&side);
         assert_eq!(o.abilities, Vec::new());
         assert_eq!(o.bugs, [level("step_bug", 1)]);
@@ -1620,7 +1620,7 @@ mod tests {
         // drain adds: EraseMan's 1 more makes the one bug level 2. Kettle's
         // 0 clears the drain and leaves the hit's, and its own bug is the
         // custom screen's damage, 40.
-        set_navicust(&content, &mut side, &[placed("hp-100", "white", 3, 4)], 2);
+        set_navicust(&content, &mut side, &[placed("hp_100", "white", 3, 4)], 2);
         assert_eq!(overview(&side).bugs, [level("hp_drain", 1), level("hit_status.hp_bug", 1)]);
         assert_eq!((text("hp_drain"), text("hit_status.hp_bug"), text("custom_damage")), (Some("Battle HP Bug"), Some("Damage HP Bug"), Some("Custom Damage")));
         let with = |cards: &str| {
@@ -1652,7 +1652,7 @@ mod tests {
         assert_eq!((o.hp, o.attack), (Stat { base: 1000, value: 960 }, Stat { base: 1, value: 2 }));
         assert!(matches!(o.abilities[..], [Source::Effect(card, _)] if card == canodumb), "{:?}", o.abilities);
         assert_eq!(budget.refusal(&content, &side, canodumb), Some(EntryRefusal::Installed));
-        let other = ids::entry(&content, "exe6", "patch_cards", "amonicul").unwrap();
+        let other = ids::entry(&content, "exe6", "patch_cards", "ammonicule").unwrap();
         assert_eq!(budget.refusal(&content, &side, other), None);
         let tight = Budget { count: Tally { used: 70, limit: Some(80) }, ..budget };
         assert_eq!(tight.refusal(&content, &side, other), Some(EntryRefusal::Needs { needs: 16, free: 10 }));
@@ -1693,7 +1693,7 @@ mod tests {
         // blank shots of 16 are fewer than the buster bug's level 1.
         assert_eq!((with("dustman"), text("panel_trail.crack")), (vec![amount("panel_trail.crack", 1, Some(8))], Some("Panel Bug")));
         assert_eq!((with("spidy"), text("panel_trail.grass")), (vec![amount("panel_trail.grass", 2, Some(8))], Some("Movement Grass")));
-        assert_eq!((with("knigtman"), text("buster_blanks")), (vec![amount("buster_blanks", 4, Some(16))], Some("Buster Blank")));
+        assert_eq!((with("knightman"), text("buster_blanks")), (vec![amount("buster_blanks", 4, Some(16))], Some("Buster Blank")));
         // Two cards' bugs, and one card's fix of the other's: Kettle clears
         // EraseMan's drain (the later write), and brings its own.
         assert_eq!(with("eraseman, kettle"), [amount("custom_damage", 40, None)]);
@@ -1705,7 +1705,7 @@ mod tests {
         let content = exe5_content();
         let mut clean = Builds::of(&content, "exe5").unwrap().new_build(&content, "colonel").unwrap();
         set_navicust(&content, &mut clean, &[], 2);
-        let megfldr1 = ids::entry(&content, "exe5", "navicust_programs", "megfldr1").unwrap();
+        let megfldr1 = ids::entry(&content, "exe5", "navicust_programs", "mega_folder_1").unwrap();
         let bugs = |side: &Side| {
             let mut checked = Checked::of(&content, "exe5", side);
             if checked.problems.is_empty() { checked.overview(&content, side).map(|o| (o.bugs, o.abilities)) } else { None }
@@ -1822,15 +1822,15 @@ mod tests {
         let view = Checked::of(&content, "exe6", &side).folder_view(&content, &side.folder(&content)).unwrap();
         // (A library's order for the test: three chips' places, the rest
         // none.)
-        let rank = |key: &str| ["cannon", "hicannon", "m-cannon"].iter().position(|k| *k == key).map(|i| (0, i));
+        let rank = |key: &str| ["cannon", "high_cannon", "mega_cannon"].iter().position(|k| *k == key).map(|i| (0, i));
         let chip = |key: &str| ids::chip(&content, "exe6", key).unwrap();
         let cannon = chip_info(&content, chip("cannon"), &rank);
         assert_eq!((cannon.family_name.as_deref(), cannon.class, cannon.dark, cannon.attack, cannon.library), (Some("null"), ChipClass::Standard, false, 40, Some((0, 0))));
         assert_eq!(cannon.codes.iter().map(|c| c.letter()).collect::<String>(), "ABC*");
-        assert_eq!(chip_info(&content, chip("firebrn1"), &rank).family_name.as_deref(), Some("fire"));
+        assert_eq!(chip_info(&content, chip("fire_burner_1"), &rank).family_name.as_deref(), Some("fire"));
         let chips = library(&content, "exe6", &view, &rank);
         assert!(chips.len() > 250 && chips.iter().all(|c| view.lists(c.chip)));
-        assert_eq!(chips[..3].iter().map(|c| c.chip).collect::<Vec<_>>(), [chip("cannon"), chip("hicannon"), chip("m-cannon")]);
+        assert_eq!(chips[..3].iter().map(|c| c.chip).collect::<Vec<_>>(), [chip("cannon"), chip("high_cannon"), chip("mega_cannon")]);
         // The other version's Giga chips are listed (and a build may hold them).
         assert!(chips.iter().any(|c| c.chip == chip("falzar")), "{:?}", view.refusal(chip("falzar")));
         let name = |c: ChipHandle| crate::names::chip(&content, c).to_string();
@@ -1879,8 +1879,8 @@ mod tests {
         let content = exe4_content();
         let builds = Builds::of(&content, "exe4").unwrap();
         let mut side = builds.new_build(&content, "bluemoon").unwrap();
-        let undersht = ids::entry(&content, "exe4", "navicust_programs", "undersht").unwrap();
-        let custom2 = ids::entry(&content, "exe4", "patch_cards", "017-custom2").unwrap();
+        let undersht = ids::entry(&content, "exe4", "navicust_programs", "undershirt").unwrap();
+        let custom2 = ids::entry(&content, "exe4", "patch_cards", "017_custom2").unwrap();
         let entry = |h: EntryHandle| Fact::Value(Value::Def(Registry::Entry, h.0));
         let int = |n: i64| Fact::Value(Value::Int(n));
         // UnderSht on the command line (its two cells at (2, 2) and (2, 3)).
@@ -1915,7 +1915,7 @@ mod tests {
         let content = exe5_content();
         let builds = Builds::of(&content, "exe5").unwrap();
         let mut side = builds.new_build(&content, "colonel").unwrap();
-        let undersht = ids::entry(&content, "exe5", "navicust_programs", "undersht").unwrap();
+        let undersht = ids::entry(&content, "exe5", "navicust_programs", "undershirt").unwrap();
         set_navicust(&content, &mut side, &[PlacedProgram { program: undersht, color: 0, x: 1, y: 3, rotation: 0, compressed: false }], 2);
         let mut checked = Checked::of(&content, "exe5", &side);
         assert_eq!(checked.problems, Vec::new());
@@ -1943,7 +1943,7 @@ mod tests {
         let navi = |name: &str| Fact::Value(Value::Def(Registry::Navi, ids::navi(&content, "exe5", name).unwrap().0));
         let program = |name: &str| Fact::Value(Value::Def(Registry::Entry, ids::entry(&content, "exe5", "partycust_programs", name).unwrap().0));
         let partner = |name: &str, programs: &[&str]| Fact::Record(vec![("navi", navi(name)), ("programs", Fact::List(programs.iter().map(|p| program(p)).collect()))]);
-        side.set_fact(&content, "party", &[partner("protoman", &["p-hp-100", "p-spport"]), partner("toadman", &[])]).unwrap();
+        side.set_fact(&content, "party", &[partner("protoman", &["party_hp_100", "party_support"]), partner("toadman", &[])]).unwrap();
         let mut checked = Checked::of(&content, "exe5", &side);
         assert_eq!(checked.problems, Vec::new());
         assert_eq!(checked.members().len(), 3);
@@ -1962,7 +1962,7 @@ mod tests {
         // (P.Chp+30 adds to it; the build's own navi, ProtoMan, has his at his story's level, member 0's.)
         let damage = |o: &Overview, m: usize| o.members.iter().find(|(e, _)| *e == m).map(|(_, s)| s[0].stat);
         let mut chp = side.clone();
-        chp.set_fact(&content, "party", &[partner("protoman", &["p-chp-30"])]).unwrap();
+        chp.set_fact(&content, "party", &[partner("protoman", &["party_chip_30"])]).unwrap();
         let o = Checked::of(&content, "exe5", &chp).overview(&content, &chp).unwrap();
         assert_eq!(damage(&o, 1).map(|s| s.added()), Some(30), "{:?}", o.members);
         let mut proto = builds.new_build(&content, "protoman").unwrap();
@@ -1971,7 +1971,7 @@ mod tests {
         assert!(damage(&o, 0).is_some_and(|s| s.value > 0 && s.added() == 0), "{:?}", o.members);
         let o = checked.overview(&content, &side).unwrap();
         let b = o.budget_of("party", 0).unwrap();
-        let hp_300 = ids::entry(&content, "exe5", "partycust_programs", "p-hp-300").unwrap();
+        let hp_300 = ids::entry(&content, "exe5", "partycust_programs", "party_hp_300").unwrap();
         assert_eq!(b.refusal(&content, &side, hp_300), Some(EntryRefusal::Needs { needs: 5, free: 3 }));
         // Over the wire and in a build's file, whole.
         let bytes = crate::binary::side_bytes(&content, &side);
@@ -1979,7 +1979,7 @@ mod tests {
         let toml = crate::file::side_toml(&content, "side", &side);
         assert!(toml.contains("party"), "{toml}");
         // A party the rules refuse: a navi twice, programs past the gauge.
-        side.set_fact(&content, "party", &[partner("protoman", &["p-hp-300", "p-hp-300"]), partner("protoman", &[])]).unwrap();
+        side.set_fact(&content, "party", &[partner("protoman", &["party_hp_300", "party_hp_300"]), partner("protoman", &[])]).unwrap();
         let checked = Checked::of(&content, "exe5", &side);
         let got: Vec<(Wrong, Option<&str>, Option<usize>)> = checked.problems.iter().map(|p| (p.what.clone(), p.field.as_deref(), p.entry)).collect();
         assert!(got.contains(&(Wrong::Budget(Count { used: 10, limit: 6 }), Some("party"), Some(0))), "{got:?}");
@@ -2004,7 +2004,7 @@ mod tests {
         let mut folder = plain.folder(&content);
         folder.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); FOLDER_SIZE];
         plain.set_folder(&content, &folder).unwrap();
-        let soult = ids::entry(&content, "exe5", "navicust_programs", "soult-1").unwrap();
+        let soult = ids::entry(&content, "exe5", "navicust_programs", "soul_time_1").unwrap();
         let mut soul_t = plain.clone();
         set_navicust(&content, &mut soul_t, &[PlacedProgram { program: soult, color: 0, x: 1, y: 2, rotation: 0, compressed: false }], 2);
         let with = |side: &Side, cards: &str| {
@@ -2050,7 +2050,7 @@ mod tests {
             press(&mut b, nettai_battle::ScreenChoice::Press(SPECIAL_SLOT));
             b.tick(&[PlayerTick::default().with_choice(Some(nettai_battle::ScreenChoice::Ok)), Default::default()], Default::default());
             let (_, transform) = b.custom.sides[0].built.clone().expect("OK built the hand");
-            assert_eq!(transform.form, ids::form(&content, "exe5", "protosoul"));
+            assert_eq!(transform.form, ids::form(&content, "exe5", "proto_soul"));
             transform.turns as i64
         };
         // Nothing, SoulT+1, MagicMan's SoulTm+2, Bass's SoulTm-2, LaserMan's
@@ -2105,7 +2105,7 @@ mod tests {
                 Checked::of(&content, game, &side).overview(&content, &side).unwrap().abilities
             };
             let body = |name: &str, at: usize| Source::Effect(card(name), at);
-            let (first, second) = if game == "exe5" { (("cloudy", 0), ("elecman", 1)) } else { (("octon", 1), ("kilplant", 0)) };
+            let (first, second) = if game == "exe5" { (("cloudy", 0), ("elecman", 1)) } else { (("octon", 1), ("killplant", 0)) };
             assert!(abilities(first.0).contains(&body(first.0, first.1)), "{game}");
             let both = abilities(&format!("{}, {}", first.0, second.0));
             assert!(both.contains(&body(second.0, second.1)) && !both.contains(&body(first.0, first.1)), "{game}: {both:?}");
@@ -2127,7 +2127,7 @@ mod tests {
         // and one of another.
         let cards = content.defs.entries_of("patch_cards");
         assert!(cards.iter().all(|&c| slots.own(&content, c).is_some_and(|s| s < 6)));
-        let custom2 = ids::entry(&content, "exe4", "patch_cards", "017-custom2").unwrap();
+        let custom2 = ids::entry(&content, "exe4", "patch_cards", "017_custom2").unwrap();
         assert_eq!((slots.own(&content, custom2), slots.name(0)), (Some(0), Some("0A")));
         let another_0a = cards.iter().copied().find(|&c| c != custom2 && slots.own(&content, c) == Some(0)).unwrap();
         let elsewhere = cards.iter().copied().find(|&c| slots.own(&content, c) == Some(4)).unwrap();
@@ -2209,12 +2209,12 @@ mod tests {
         // card whose one bug effect is of the bug's kind, and the stats both
         // write.)
         for (key, placed, card, same) in [
-            ("step_bug", ("undersht", 1, 2), "beastman", vec!["processing"]),
+            ("step_bug", ("undershirt", 1, 2), "beastman", vec!["processing"]),
             ("emotion_bug", ("humor", 2, 5), "volcano", vec!["emotion"]),
-            ("panel_trail.crack", ("flotshoe", 2, 5), "dustman", vec!["panel_trail_kind", "panel_trail_level"]),
-            ("buster_blanks", ("attack-1", 5, 4), "knigtman", vec!["buster_blanks", "buster_charged"]),
-            ("hp_drain", ("hp-100", 3, 4), "eraseman", vec!["hp_drain"]),
-            ("hit_status.hp_bug", ("hp-100", 3, 4), "cragger", vec!["hit_status"]),
+            ("panel_trail.crack", ("float_shoes", 2, 5), "dustman", vec!["panel_trail_kind", "panel_trail_level"]),
+            ("buster_blanks", ("attack_1", 5, 4), "knightman", vec!["buster_blanks", "buster_charged"]),
+            ("hp_drain", ("hp_100", 3, 4), "eraseman", vec!["hp_drain"]),
+            ("hit_status.hp_bug", ("hp_100", 3, 4), "cragger", vec!["hit_status"]),
         ] {
             let mut by_navicust = clean.clone();
             set_navicust(&content, &mut by_navicust, &[PlacedProgram { program: program(placed.0), color: 0, x: placed.1, y: placed.2, rotation: 0, compressed: false }], 2);
@@ -2378,7 +2378,7 @@ mod tests {
         // keeps MegaMan's programs for a link navi's build keeps them aside,
         // or the build isn't ready. (Patch cards kept do nothing, and are
         // nothing wrong.)
-        let undersht = ids::entry(&six, "exe6", "navicust_programs", "undersht").unwrap();
+        let undersht = ids::entry(&six, "exe6", "navicust_programs", "undershirt").unwrap();
         set_navicust(&six, &mut side, &[PlacedProgram { program: undersht, color: 0, x: 1, y: 3, rotation: 0, compressed: false }], 2);
         side.set_fact(&six, "patch_cards", &patch_cards(&six, "exe6", "canodumb")).unwrap();
         builds.set_navi(&six, &mut side, ids::navi(&six, "exe6", "elecman").unwrap()).unwrap();

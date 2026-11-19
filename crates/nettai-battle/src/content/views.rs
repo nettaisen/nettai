@@ -105,8 +105,8 @@ pub enum PlayerFact {
     /// each other (EXE6's); an empty list: none.
     TagChips,
     /// The version of the game they play: one of the names its field lists,
-    /// or a form whose own `version` it is (EXE6's Cybeast, `gregar-beast`
-    /// or `falzar-beast`: docs/design/versions.md §2.1). The version's own
+    /// or a form whose own `version` it is (EXE6's Cybeast, `gregar_beast`
+    /// or `falzar_beast`: docs/design/versions.md §2.1). The version's own
     /// pictures ([`crate::Battle::version`]).
     Version,
     /// The forms they have for their form list, in its order: the forms a

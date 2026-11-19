@@ -1,7 +1,7 @@
 //! Which version of EXE6 a player plays, as the original tells them apart:
 //! what its saves, its traces and its link data say (Gregar 0, Falzar 1).
 //! The engine has no such type. It and the content know a version by its
-//! name, a form's `version` (the side's Cybeast's, `gregar-beast`'s
+//! name, a form's `version` (the side's Cybeast's, `gregar_beast`'s
 //! "gregar": docs/design/versions.md §2.1), and a match's side holds its
 //! Cybeast; this is those names at compat's boundary, where a save's or a
 //! trace's version becomes the facts it gives (§2.4).

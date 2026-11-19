@@ -7,11 +7,11 @@
 
 local absorbed_obstacle = require("../../objects/absorbed_obstacle")
 local beast_rush = require("../../rules/beast/rush")
-local dust_beast_scatter = require("../../navis/megaman/forms/dustcross_beast/scatter")
+local dust_beast_scatter = require("../../navis/megaman/forms/dust_cross_beast/scatter")
 local encased_bubble = require("../../objects/encased_bubble/bubble")
 local falling_rock = require("../../objects/falling_rock")
-local ground_drill = require("../../navis/megaman/forms/groundcross/drill")
-local slash_beast_lunge = require("../../navis/megaman/forms/slashcross_beast/lunge")
+local ground_drill = require("../../navis/megaman/forms/ground_cross/drill")
+local slash_beast_lunge = require("../../navis/megaman/forms/slash_cross_beast/lunge")
 local stun_strike = require("../../lib/swords/stun_strike")
 local test_chips = require("../../chips/test")
 local turn = require("../../navis/megaman/turn")
@@ -21,8 +21,8 @@ local ticker = require("../lib/ticker")
 
 return {
     actions = {
-        anti_damage_counter = ticker.action { id = "test/anti-damage-counter", length = 4 },
-        forced_charged_shot = ticker.action { id = "test/forced-charged-shot", length = 3 },
+        anti_damage_counter = ticker.action { id = "test/anti_damage_counter", length = 4 },
+        forced_charged_shot = ticker.action { id = "test/forced_charged_shot", length = 3 },
         stun_strike = stun_strike.action,
         switch_protect = ground_drill.action,
         turn = turn.action,

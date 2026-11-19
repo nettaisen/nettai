@@ -966,7 +966,7 @@ mod tests {
             let written = cards.iter().filter(|&&h| !cards::lines(&names, EntryHandle(h), None, none).unwrap_or_default().is_empty()).count();
             assert!(written * 10 > cards.len() * 9, "{game}: {written} of {} cards write lines", cards.len());
             if game == "exe4" {
-                let pair = nettai_match::ids::entry(&content, game, &collection, "074-triple-supporter-1-2").unwrap();
+                let pair = nettai_match::ids::entry(&content, game, &collection, "074_triple_supporter_1_2").unwrap();
                 let lines = cards::lines(&names, pair, None, none).unwrap();
                 let texts: Vec<&str> = lines.iter().map(|l| l.text.as_str()).collect();
                 assert_eq!(texts, ["With {pair.card} in 2", "Rush, Beat and Tango", "Clears Support Bug"]);
@@ -986,7 +986,7 @@ mod tests {
             (nettai_match::testing::exe5_content(), "exe5", [("protoman", ["HP+200", "NormBody", "MegFld-2", "SprArmr", "TriBustr", "Ⓑ↓Sbustr"]), ("colonel", ["HP+20%", "NormBody", "MegFld-2", "FlotShoe", "TriBustr", "Ⓑ↓HelzR"])]),
         ] {
             let collection = collection_of(&content, FIELD).unwrap();
-            let card = nettai_match::ids::entry(&content, game, &collection, "bass-cross-megaman").unwrap_or_else(|| panic!("{game}: one Bass-Cross MegaMan"));
+            let card = nettai_match::ids::entry(&content, game, &collection, "bass_cross_megaman").unwrap_or_else(|| panic!("{game}: one Bass-Cross MegaMan"));
             let names = crate::games::Names { content: &content, strings: None };
             let none: cards::Named = &|_, _| None;
             for (version, want) in versions {

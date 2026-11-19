@@ -14,7 +14,7 @@ ticker.hit_words = require("./hit_words")
 -- lifetime (or `LIFETIME`). `parent` is the kind that spawned it.
 local LIFETIME = 30
 
-local TICKER_VARIANT = schema.record_type("ticker-variant")
+local TICKER_VARIANT = schema.record_type("ticker_variant")
 
 ticker.kind = new.kind {
     id = "test/ticker",

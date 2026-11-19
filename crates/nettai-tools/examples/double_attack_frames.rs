@@ -30,11 +30,11 @@ use std::path::PathBuf;
 
 /// A folder of Tango's EXE5 saves (their first): Standard chips only.
 const FOLDER: [&str; 30] = [
-    "cannon A", "cannon A", "cannon B", "cannon B", "airshot *", "airshot *", "airshot *",
-    "vulcan1 D", "vulcan1 D", "vulcan1 D", "minibomb B", "minibomb B", "minibomb L", "minibomb L",
-    "sword S", "sword S", "sword S", "sword S", "wideswrd S", "wideswrd S", "busterup *",
-    "crakout *", "crakout *", "recov10 A", "recov10 A", "recov10 L", "recov10 L", "areagrab S",
-    "attck-10 *", "attck-10 *",
+    "cannon A", "cannon A", "cannon B", "cannon B", "air_shot *", "air_shot *", "air_shot *",
+    "vulcan_1 D", "vulcan_1 D", "vulcan_1 D", "mini_bomb B", "mini_bomb B", "mini_bomb L", "mini_bomb L",
+    "sword S", "sword S", "sword S", "sword S", "wide_sword S", "wide_sword S", "buster_up *",
+    "crack_out *", "crack_out *", "recovery_10 A", "recovery_10 A", "recovery_10 L", "recovery_10 L", "area_grab S",
+    "attack_10 *", "attack_10 *",
 ];
 
 fn main() {

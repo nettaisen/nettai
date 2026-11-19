@@ -107,7 +107,7 @@ return {
             burn = panel_types.burn {
                 damage = 50,
                 spared_by = { invisible = true, submerged = true, flashing = true, untouchable = true, bubbled = true },
-                spark = new.spark { sprite = sprites["test-spark"], anim = 0, palette = 0, steps = 4 },
+                spark = new.spark { sprite = sprites.test_spark, anim = 0, palette = 0, steps = 4 },
             },
         },
         sea = {
@@ -115,7 +115,7 @@ return {
             expires = 960,
             submerges = true,
             stand = panel_types.drains(PrimaryElement.fire),
-            move_end = panel_types.holds(20, new.effect { sprite = sprites["test-burst"], anim = 0, palette = 0, steps = 9 }),
+            move_end = panel_types.holds(20, new.effect { sprite = sprites.test_burst, anim = 0, palette = 0, steps = 9 }),
             slide = panel_types.stops_a_slide,
         },
     },

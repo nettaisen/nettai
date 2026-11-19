@@ -1023,7 +1023,7 @@ mod tests {
         let content = nettai_match::testing::exe6_content();
         // (The last of the game's, and one of another game's.)
         let own = nettai_match::ids::backgrounds(&content, "exe6").last().unwrap().to_string();
-        for background in [own, "exe4:acdc-area".to_string()] {
+        for background in [own, "exe4:acdc_area".to_string()] {
             on_another_background(&content, &background);
         }
     }

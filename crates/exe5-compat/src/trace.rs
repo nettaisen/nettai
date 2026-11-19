@@ -2021,7 +2021,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, exchange:
             // record): its +6, the turn's arm chip by number, where the
             // engine's image has 0xFFFF whatever the chip (rules/souls/image).
             let mut at = [x.pos.x, x.pos.y, x.pos.z];
-            if key.as_str() == "numbersoul/layer" && at[1] == 0xFFFF {
+            if key.as_str() == "number_soul/layer" && at[1] == 0xFFFF {
                 if let Some(n) = arm_chip_number(b, compat, x.alliance) {
                     at[1] = n as i32;
                 }

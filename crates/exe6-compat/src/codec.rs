@@ -192,7 +192,7 @@ impl<'a> Ids<'a> {
     }
 
     /// The patch card a save's card list names by its number (compat
-    /// patch-cards.toml): an entry of the game's `patch_cards`.
+    /// patch_cards.toml): an entry of the game's `patch_cards`.
     pub fn patch_card(&self, number: u8) -> EntryHandle {
         let key = self
             .compat
@@ -200,7 +200,7 @@ impl<'a> Ids<'a> {
             .iter()
             .find(|(_, n)| **n == number)
             .map(|(k, _)| k.as_str())
-            .unwrap_or_else(|| panic!("patch-cards.toml has no patch card {number}"));
+            .unwrap_or_else(|| panic!("patch_cards.toml has no patch card {number}"));
         self.content.defs.entry_in(PATCH_CARDS, key).unwrap_or_else(|| panic!("the content has no patch card {key:?} (number {number})"))
     }
 
@@ -235,7 +235,7 @@ impl<'a> Ids<'a> {
     /// A patch card's number.
     pub fn patch_card_number(&self, h: EntryHandle) -> u8 {
         let key = self.content.defs.entry(h).id();
-        *self.compat.patch_cards.get(key).unwrap_or_else(|| panic!("patch-cards.toml has no patch card {key:?}"))
+        *self.compat.patch_cards.get(key).unwrap_or_else(|| panic!("patch_cards.toml has no patch card {key:?}"))
     }
 
     /// The barrier a first-barrier byte names (NaviStats+0x06, the
@@ -511,9 +511,9 @@ pub fn patch_card(content: &Content, card: EntryHandle, version: crate::GameVers
 
 /// The Cybeast of a save of `version` (the rules' `cybeast`, the side's
 /// version: docs/design/versions.md §2.4): its Beast Out form,
-/// `gregar-beast` or `falzar-beast`.
+/// `gregar_beast` or `falzar_beast`.
 pub fn cybeast(content: &Content, version: crate::GameVersion) -> Result<nettai_content_api::FormHandle, String> {
-    let key = format!("{}-beast", version.name());
+    let key = format!("{}_beast", version.name());
     nettai_match::ids::form(content, "exe6", &key).ok_or_else(|| format!("the content has no form {key}"))
 }
 
@@ -830,12 +830,12 @@ mod tests {
         let c = testing::with_test_pack();
         let mut compat = Compat { root: "test".into(), ..Compat::default() };
         compat.chips.insert("test/ticker1".into(), crate::ChipEntry { id: 0x36, ..Default::default() });
-        compat.weapons.insert("test/tick-shot".into(), vec![0x2E, 0x2F]);
+        compat.weapons.insert("test/tick_shot".into(), vec![0x2E, 0x2F]);
         let ids = Ids::new(&c, &compat);
         let ticker = c.defs.chip_by_key("test/ticker1").unwrap();
         assert_eq!(ids.chip(0x36), ticker);
         assert_eq!(ids.chip_id(ticker), 0x36);
-        let shot = c.defs.weapon_by_key("test/tick-shot").unwrap();
+        let shot = c.defs.weapon_by_key("test/tick_shot").unwrap();
         assert_eq!((ids.weapon(0x2E), ids.weapon(0x2F)), (Some(shot), Some(shot)));
         assert_eq!(ids.weapon_number(Some(shot)), 0x2E);
         let mut raw = [0xFF; 2 * FOLDER_SIZE];

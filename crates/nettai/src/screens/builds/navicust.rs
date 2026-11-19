@@ -1252,7 +1252,7 @@ mod tests {
         let content = nettai_match::testing::exe6_content();
         let builds = nettai_match::build::Builds::of(&content, "exe6").unwrap();
         let mut side = builds.new_build(&content, "falzar").unwrap();
-        let undersht = nettai_match::ids::entry(&content, "exe6", "navicust_programs", "undersht").unwrap();
+        let undersht = nettai_match::ids::entry(&content, "exe6", "navicust_programs", "undershirt").unwrap();
         let white = program_colors(&content, undersht).iter().position(|c| *c == "white").unwrap() as u8;
         set_navicust(&content, &mut side, &[PlacedProgram { program: undersht, color: white, x: 1, y: 2, rotation: 0, compressed: false }], 2);
         let bugs = |o: Option<Overview>| o.unwrap().bugs.into_iter().filter_map(|b| if let Bug::Named { key, .. } = b { Some(key) } else { None }).collect::<Vec<_>>();

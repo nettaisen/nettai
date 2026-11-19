@@ -2,12 +2,12 @@ game = "exe6"
 seed = 7
 
 [[round]]
-stage = "netbattle-29"
-background = "sky-hp"
+stage = "netbattle_29"
+background = "sky_hp"
 
 [left]
 navi = "megaman"
-cybeast = "falzar-beast"
+cybeast = "falzar_beast"
 folder = [
     { chip = "cannon", code = "*" },
     { chip = "cannon", code = "*" },
@@ -19,31 +19,31 @@ folder = [
     { chip = "sword", code = "*" },
     { chip = "sword", code = "*" },
     { chip = "sword", code = "*" },
-    { chip = "minibomb", code = "*" },
-    { chip = "minibomb", code = "*" },
-    { chip = "minibomb", code = "*" },
-    { chip = "minibomb", code = "*" },
-    { chip = "minibomb", code = "*" },
-    { chip = "airshot", code = "*" },
-    { chip = "airshot", code = "*" },
-    { chip = "airshot", code = "*" },
-    { chip = "airshot", code = "*" },
-    { chip = "airshot", code = "*" },
-    { chip = "recov30", code = "*" },
-    { chip = "recov30", code = "*" },
-    { chip = "recov30", code = "*" },
-    { chip = "recov30", code = "*" },
-    { chip = "recov30", code = "*" },
-    { chip = "longswrd", code = "*" },
-    { chip = "longswrd", code = "*" },
-    { chip = "longswrd", code = "*" },
-    { chip = "longswrd", code = "*" },
-    { chip = "crakshot", code = "*" },
+    { chip = "mini_bomb", code = "*" },
+    { chip = "mini_bomb", code = "*" },
+    { chip = "mini_bomb", code = "*" },
+    { chip = "mini_bomb", code = "*" },
+    { chip = "mini_bomb", code = "*" },
+    { chip = "air_shot", code = "*" },
+    { chip = "air_shot", code = "*" },
+    { chip = "air_shot", code = "*" },
+    { chip = "air_shot", code = "*" },
+    { chip = "air_shot", code = "*" },
+    { chip = "recovery_30", code = "*" },
+    { chip = "recovery_30", code = "*" },
+    { chip = "recovery_30", code = "*" },
+    { chip = "recovery_30", code = "*" },
+    { chip = "recovery_30", code = "*" },
+    { chip = "long_sword", code = "*" },
+    { chip = "long_sword", code = "*" },
+    { chip = "long_sword", code = "*" },
+    { chip = "long_sword", code = "*" },
+    { chip = "crack_shot", code = "*" },
 ]
 
 [right]
 navi = "megaman"
-cybeast = "gregar-beast"
+cybeast = "gregar_beast"
 folder = [
     { chip = "cannon", code = "*" },
     { chip = "cannon", code = "*" },
@@ -55,24 +55,24 @@ folder = [
     { chip = "sword", code = "*" },
     { chip = "sword", code = "*" },
     { chip = "sword", code = "*" },
-    { chip = "minibomb", code = "*" },
-    { chip = "minibomb", code = "*" },
-    { chip = "minibomb", code = "*" },
-    { chip = "minibomb", code = "*" },
-    { chip = "minibomb", code = "*" },
-    { chip = "airshot", code = "*" },
-    { chip = "airshot", code = "*" },
-    { chip = "airshot", code = "*" },
-    { chip = "airshot", code = "*" },
-    { chip = "airshot", code = "*" },
-    { chip = "recov30", code = "*" },
-    { chip = "recov30", code = "*" },
-    { chip = "recov30", code = "*" },
-    { chip = "recov30", code = "*" },
-    { chip = "recov30", code = "*" },
-    { chip = "longswrd", code = "*" },
-    { chip = "longswrd", code = "*" },
-    { chip = "longswrd", code = "*" },
-    { chip = "longswrd", code = "*" },
-    { chip = "crakshot", code = "*" },
+    { chip = "mini_bomb", code = "*" },
+    { chip = "mini_bomb", code = "*" },
+    { chip = "mini_bomb", code = "*" },
+    { chip = "mini_bomb", code = "*" },
+    { chip = "mini_bomb", code = "*" },
+    { chip = "air_shot", code = "*" },
+    { chip = "air_shot", code = "*" },
+    { chip = "air_shot", code = "*" },
+    { chip = "air_shot", code = "*" },
+    { chip = "air_shot", code = "*" },
+    { chip = "recovery_30", code = "*" },
+    { chip = "recovery_30", code = "*" },
+    { chip = "recovery_30", code = "*" },
+    { chip = "recovery_30", code = "*" },
+    { chip = "recovery_30", code = "*" },
+    { chip = "long_sword", code = "*" },
+    { chip = "long_sword", code = "*" },
+    { chip = "long_sword", code = "*" },
+    { chip = "long_sword", code = "*" },
+    { chip = "crack_shot", code = "*" },
 ]

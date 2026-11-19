@@ -748,12 +748,12 @@ mod tests {
         use nettai_frontend::lobby::{Role, Status};
         let runtime = tokio::runtime::Builder::new_multi_thread().worker_threads(1).enable_all().build().unwrap();
         let site = Site::new(&["exe5", "exe6"]);
-        let (exe6, _) = site.bundle("exe6", 10, &["comp", "lans-hp"]);
+        let (exe6, _) = site.bundle("exe6", 10, &["comp", "lans_hp"]);
         site.index("exe6", &[&exe6]);
-        let (old, _) = site.bundle("exe5", 10, &["acdc-area"]);
+        let (old, _) = site.bundle("exe5", 10, &["acdc_area"]);
         site.index("exe5", &[&old]);
         let host = Peer::new(Role::Host, &site, &runtime);
-        let (new, _) = site.bundle("exe5", 11, &["acdc-area", "airport"]);
+        let (new, _) = site.bundle("exe5", 11, &["acdc_area", "airport"]);
         site.index("exe5", &[&old, &new]);
         let joiner = Peer::new(Role::Join, &site, &runtime);
         let mut peers = [host, joiner];
@@ -779,10 +779,10 @@ mod tests {
         let site = Site::new(&["exe5", "exe6"]);
         let (exe6, _) = site.bundle("exe6", 10, &["comp"]);
         site.index("exe6", &[&exe6]);
-        let (old, _) = site.bundle("exe5", 10, &["acdc-area"]);
+        let (old, _) = site.bundle("exe5", 10, &["acdc_area"]);
         site.index("exe5", &[&old]);
         let host = Peer::new(Role::Host, &site, &runtime);
-        let (new, path) = site.bundle("exe5", 12, &["acdc-area", "airport"]);
+        let (new, path) = site.bundle("exe5", 12, &["acdc_area", "airport"]);
         site.index("exe5", &[&old, &new]);
         let joiner = Peer::new(Role::Join, &site, &runtime);
         std::fs::remove_file(site.dir.path().join(path)).unwrap();

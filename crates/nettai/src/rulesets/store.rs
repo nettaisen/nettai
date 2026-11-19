@@ -9,7 +9,7 @@
 //! versions = "one_per_build"
 //!
 //! [banned]
-//! folder = ["bass", "deltaray"]
+//! folder = ["bass", "delta_ray_edge"]
 //! patch_cards = ["starman"]
 //! ```
 //!
@@ -19,10 +19,10 @@
 //!
 //! ```toml
 //! [banned]
-//! "party.programs" = ["p-hp-300"]
+//! "party.programs" = ["party_hp_300"]
 //!
 //! [banned_by."party.programs"]
-//! protoman = ["p-btlpk2"]
+//! protoman = ["party_battle_pack_2"]
 //! ```
 //!
 //! The limits it changes (`nettai_match::ruleset::Ruleset::limits`) are in `[limits]`, by name: `"none"` where it lifts
@@ -220,7 +220,7 @@ mod tests {
         let text = text(&content, "exe6", &own);
         assert!(text.contains("versions = \"one_per_build\"") && text.contains("bass"), "{text}");
         assert!(text.contains("[limits]\ncopies = \"none\"\nmega = 8"), "{text}");
-        assert!(text.contains("tengucross"), "Falzar's Crosses are held back by name: {text}");
+        assert!(text.contains("tengu_cross"), "Falzar's Crosses are held back by name: {text}");
         assert_eq!(read(&r, &content, &text), Ok(own.clone()));
         assert!(read(&rulesets("exe5"), &nettai_match::testing::exe5_content(), &text).unwrap_err().contains("not of exe5"));
         assert!(read(&r, &content, &text.replacen("bass", "nobody", 1)).is_err());
@@ -245,10 +245,10 @@ mod tests {
         let mut own = r.preset("unrestricted").unwrap().clone();
         own.name = Name::Own("Masters".into());
         let program = |n: &str| Item::of(ids::entry(&content, "exe5", "partycust_programs", n).unwrap().0);
-        own.set_allowed("party.programs", &program("p-hp-300"), false);
-        own.set_allowed_for(r.category("party.programs").unwrap(), ids::navi(&content, "exe5", "protoman").unwrap().0, &program("p-btlpk2"), false);
+        own.set_allowed("party.programs", &program("party_hp_300"), false);
+        own.set_allowed_for(r.category("party.programs").unwrap(), ids::navi(&content, "exe5", "protoman").unwrap().0, &program("party_battle_pack_2"), false);
         let text = text(&content, "exe5", &own);
-        assert!(text.contains("[banned_by.\"party.programs\"]\nprotoman = [\"p-btlpk2\"]") && text.contains("\"party.programs\" = [\"p-hp-300\"]"), "{text}");
+        assert!(text.contains("[banned_by.\"party.programs\"]\nprotoman = [\"party_battle_pack_2\"]") && text.contains("\"party.programs\" = [\"party_hp_300\"]"), "{text}");
         assert_eq!(read(&r, &content, &text), Ok(own));
         assert!(read(&r, &content, &text.replacen("protoman = ", "megaman = ", 1)).is_err());
         assert!(!super::text(&content, "exe5", r.preset("unrestricted").unwrap()).contains("banned_by"));

@@ -267,7 +267,7 @@ pub struct CustomShapes {
     pub buttons: Vec<(String, Vec<Drawing>)>,
     /// The chip window's pictures for OK and the buttons with their
     /// letters off (7x6 tiles each), by the picture's name (`ok`,
-    /// `ok-picked`, a button's), a language's own as `NAME-LANG`.
+    /// `ok_picked`, a button's), a language's own as `NAME-LANG`.
     pub pictures: Vec<(String, Drawing)>,
     /// The bar the form list's names lie on (9x2 tiles), their portraits
     /// over it kept as pictures.

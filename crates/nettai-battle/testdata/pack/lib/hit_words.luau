@@ -10,7 +10,7 @@ local function refused(f: () -> any): boolean
 end
 
 hit_words.kind = new.kind {
-    id = "test/hit-words",
+    id = "test/hit_words",
     pool = Pool.effect,
     state = {
         modifier = schema.u8,

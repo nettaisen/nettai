@@ -57,7 +57,7 @@ pub enum FieldType {
     /// (`schema.array(schema.u8, 18)`): read and written element by element.
     Array(Box<FieldType>, u8),
     /// A definition of a registry, or none (`schema.kind`; a record of a
-    /// record type, `schema.record_type("bomb-variant")`'s; an entry of a
+    /// record type, `schema.record_type("bomb_variant")`'s; an entry of a
     /// collection, `schema.entry("patch_cards")`):
     /// docs/design/content-model-v2.md §3.4. A record field names the
     /// records' type, an entry field the collection.
@@ -288,7 +288,7 @@ impl FieldType {
 /// The engine's own record type (`obstacle.absorbed_look`): an absorbed
 /// obstacle's look, which `obstacle.fly_to_absorber` takes. No content
 /// declares a record type of its name.
-pub const ABSORBED_LOOK: &str = "absorbed-look";
+pub const ABSORBED_LOOK: &str = "absorbed_look";
 
 /// Whether `name` may name a collection of a game's root (a field type that
 /// is an entry of it, [`Registry::Entry`]): lowercase words joined by `_`.

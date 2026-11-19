@@ -5,10 +5,10 @@
 //! ```toml
 //! # backgrounds.toml
 //! stage = "comp"                                   # the background every link battle stage is drawn on
-//! link_battle = ["lans-hp", "acdc-hp", "comp"]     # those a link battle picks one of at random
+//! link_battle = ["lans_hp", "acdc_hp", "comp"]     # those a link battle picks one of at random
 //!
 //! [backgrounds]
-//! acdc-area = { music = "virus-battle" }           # each background's music
+//! acdc-area = { music = "virus_battle" }           # each background's music
 //!
 //! [backgrounds.my-stage]                           # one made from a picture of the pack's own
 //! file = "backgrounds/my_stage.png"
@@ -21,11 +21,11 @@
 //!
 //! ```toml
 //! # music.toml
-//! themes = ["virus-battle", "boss-battle", "my-theme"]   # the songs a player may pick as a battle's music
+//! themes = ["virus_battle", "boss_battle", "my-theme"]   # the songs a player may pick as a battle's music
 //!
 //! [songs.my-theme]                                 # one made from a MIDI file of the pack's own
 //! file = "music/my_theme.mid"
-//! voices = "virus-battle"                          # the ROMs' song whose instruments it plays on
+//! voices = "virus_battle"                          # the ROMs' song whose instruments it plays on
 //!
 //! [songs.my-theme.instruments.41]                  # an instrument of its own, by program
 //! file = "music/strings.wav"
@@ -318,10 +318,10 @@ mod tests {
         let p = read_str(
             r#"
 stage = "comp"
-link_battle = ["comp", "lans-hp", "comp"]
+link_battle = ["comp", "lans_hp", "comp"]
 [backgrounds]
-comp = { music = "virus-battle" }
-lans-hp = { music = "boss-battle" }
+comp = { music = "virus_battle" }
+lans_hp = { music = "boss_battle" }
 [backgrounds.sea]
 file = "backgrounds/sea.png"
 scroll = [0, 16]
@@ -331,10 +331,10 @@ loop = true
 music = "sea-theme"
 "#,
             r#"
-themes = ["virus-battle", "boss-battle", "sea-theme"]
+themes = ["virus_battle", "boss_battle", "sea-theme"]
 [songs.sea-theme]
 file = "music/sea.mid"
-voices = "virus-battle"
+voices = "virus_battle"
 [songs.sea-theme.instruments.41]
 file = "music/strings.wav"
 key = 69
@@ -343,14 +343,14 @@ envelope = { release = 200 }
 "#,
         )
         .unwrap();
-        assert_eq!((p.stage_background.as_deref(), &p.link_battle[..]), (Some("comp"), &["comp".to_string(), "lans-hp".into(), "comp".into()][..]));
-        assert_eq!(p.backgrounds, ["comp", "lans-hp", "sea"]);
+        assert_eq!((p.stage_background.as_deref(), &p.link_battle[..]), (Some("comp"), &["comp".to_string(), "lans_hp".into(), "comp".into()][..]));
+        assert_eq!(p.backgrounds, ["comp", "lans_hp", "sea"]);
         assert_eq!(p.music.0.get("sea").map(String::as_str), Some("sea-theme"));
         let sea = &p.custom_backgrounds["sea"];
         assert_eq!((sea.file.as_str(), sea.scroll, sea.speed_up, &sea.frames[..], sea.looping), ("g:backgrounds/sea.png", (0, 16), Some(30), &[8u16, 8][..], true));
-        assert_eq!(p.battle_themes, ["virus-battle", "boss-battle", "sea-theme"]);
+        assert_eq!(p.battle_themes, ["virus_battle", "boss_battle", "sea-theme"]);
         let song = &p.songs["sea-theme"];
-        assert_eq!((song.file.as_str(), song.voices.as_str(), song.source.as_str()), ("g:music/sea.mid", "virus-battle", "g/music.toml"));
+        assert_eq!((song.file.as_str(), song.voices.as_str(), song.source.as_str()), ("g:music/sea.mid", "virus_battle", "g/music.toml"));
         let inst = &song.instruments[&41];
         assert_eq!((inst.file.as_str(), inst.key, inst.loop_start, inst.envelope), ("g:music/strings.wav", 69, Some(1024), [255, 0, 255, 200]));
     }

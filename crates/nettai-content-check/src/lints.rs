@@ -296,11 +296,9 @@ pub fn lints(path: &str, source: &str) -> Vec<Problem> {
             let quote = at + id + 2 + eq + 1 + (after[eq + 1..].len() - after[eq + 1..].trim_start().len());
             if let Some(key) = s.string_at(quote) {
                 let local = key.split_once(':').map_or(key, |(_, k)| k);
-                // Chip folders keep their content names; other owners use
-                // snake_case folders while their IDs keep their spelling.
-                let matches = local.split_once('/').is_some_and(|(name, _)| {
-                    name == owner || (!path.starts_with("chips/") && name.replace('-', "_") == owner)
-                });
+                // Owners use snake_case folders while their IDs keep their
+                // spelling.
+                let matches = local.split_once('/').is_some_and(|(name, _)| name.replace('-', "_") == owner);
                 if !matches {
                     out.push(format!("{path}:{}: kind {key:?} lives in {owner}'s folder: key it \"{owner}/...\"", s.line(at)));
                 }
@@ -357,18 +355,18 @@ mod tests {
 
     #[test]
     fn lints_catch_placeholders_compat_modules_and_unqualified_kinds() {
-        let l = lints("chips/minibomb/init.luau", "local S = asset.sprite('sprite-0c-01')\nlocal K = new.kind { id = 'bomb', pool = Pool.attack }\n");
+        let l = lints("chips/mini_bomb/init.luau", "local S = asset.sprite('sprite-0c-01')\nlocal K = new.kind { id = 'bomb', pool = Pool.attack }\n");
         assert_eq!(l.len(), 2, "{l:?}");
-        assert!(l[0].contains("placeholder") && l[1].contains("minibomb/"));
-        assert!(lints("chips/minibomb/init.luau", "local K = new.kind { id = 'minibomb/held', pool = Pool.effect }").is_empty());
+        assert!(l[0].contains("placeholder") && l[1].contains("mini_bomb/"));
+        assert!(lints("chips/mini_bomb/init.luau", "local K = new.kind { id = 'mini_bomb/held', pool = Pool.effect }").is_empty());
         assert!(lints("lib/bombs/bomb.luau", "local K = new.kind { id = 'bomb', pool = Pool.attack }").is_empty());
         // A navi's folder (without its index prefix), and a form's inside it.
-        let dash = "local K = new.kind { id = 'megaman/dash-hit', pool = Pool.attack }";
+        let dash = "local K = new.kind { id = 'megaman/dash_hit', pool = Pool.attack }";
         assert!(lints("navis/megaman/dash_hit.luau", dash).is_empty());
         assert!(lints("navis/megaman/dash_hit.luau", dash).is_empty());
-        let wave = "local K = new.kind { id = 'slashcross/sword-wave', pool = Pool.attack }";
-        assert!(lints("navis/megaman/forms/slashcross/sword_wave.luau", wave).is_empty());
-        assert_eq!(lints("navis/megaman/forms/heatcross/sword_wave.luau", wave).len(), 1);
+        let wave = "local K = new.kind { id = 'slash_cross/sword_wave', pool = Pool.attack }";
+        assert!(lints("navis/megaman/forms/slash_cross/sword_wave.luau", wave).is_empty());
+        assert_eq!(lints("navis/megaman/forms/heat_cross/sword_wave.luau", wave).len(), 1);
         assert_eq!(lints("navis/megaman/sword_wave.luau", wave).len(), 1);
         assert_eq!(lints("compat/x.luau", "").len(), 1);
         // The rules. state, outside the rules.
@@ -376,13 +374,14 @@ mod tests {
         assert!(l.len() == 1 && l[0].contains("`rules.state` is the rules' own"), "{l:?}");
         assert!(lints("rules/beast/init.luau", "local s = rules.state()\nlocal u = rules.setup()\n").is_empty());
         // A form's kinds keep the form's ID in a snake_case folder.
-        let surge = "local K = new.kind { id = 'spoutcross-beast/surge', pool = Pool.attack }";
-        assert!(lints("navis/megaman/forms/spoutcross_beast/surge.luau", surge).is_empty());
-        assert_eq!(lints("navis/megaman/forms/tengucross_beast/surge.luau", surge).len(), 1);
-        let burst = "local K = new.kind { id = 'h-burst/burst', pool = Pool.attack }";
-        assert!(lints("chips/h-burst/burst.luau", burst).is_empty());
-        assert_eq!(lints("chips/h_burst/burst.luau", burst).len(), 1);
-        let shared = "local K = new.kind { id = 'megaman/dash-hit', pool = Pool.attack }";
+        let surge = "local K = new.kind { id = 'aqua_cross_beast/surge', pool = Pool.attack }";
+        assert!(lints("navis/megaman/forms/aqua_cross_beast/surge.luau", surge).is_empty());
+        // A chip's too.
+        let puck = "local K = new.kind { id = 'air_hockey/puck', pool = Pool.attack }";
+        assert!(lints("chips/air_hockey/puck.luau", puck).is_empty());
+        assert_eq!(lints("chips/pit_hockey/puck.luau", puck).len(), 1);
+        assert_eq!(lints("navis/megaman/forms/tengu_cross_beast/surge.luau", surge).len(), 1);
+        let shared = "local K = new.kind { id = 'megaman/dash_hit', pool = Pool.attack }";
         assert!(lints("navis/megaman/dash_hit.luau", shared).is_empty());
         assert!(lints("navis/megaman/dash_hit.luau", shared).is_empty());
         assert_eq!(lints("navis/heatman/dash_hit.luau", shared).len(), 1);

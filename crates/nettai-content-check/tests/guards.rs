@@ -62,7 +62,7 @@ fn no_folder_carries_an_original_number() {
     );
     // (What the guard catches.)
     assert!(numbered("00f-gundels1") && numbered("0a-tengu-beast-charge") && numbered("00-megaman"));
-    assert!(!numbered("megaman") && !numbered("z-saver") && !numbered("element-pillar") && !numbered("dblbeast"));
+    assert!(!numbered("megaman") && !numbered("z_saber") && !numbered("element_pillar") && !numbered("double_beast"));
 }
 
 /// The lines of `source` that hold a `legacy` marker (`legacy { ... }`,

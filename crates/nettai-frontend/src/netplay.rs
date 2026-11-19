@@ -731,7 +731,7 @@ mod tests {
         let content = nettai_match::testing::exe5_content();
         let mut s = side_of(&content, "exe5", 5);
         s.set_fact(&content, "karma", &[Fact::Value(Value::Int(100))]).unwrap();
-        let proto = nettai_match::ids::form(&content, "exe5", "protosoul").unwrap();
+        let proto = nettai_match::ids::form(&content, "exe5", "proto_soul").unwrap();
         s.set_fact(&content, "souls", &[Fact::Value(Value::Def(Registry::Form, proto.0))]).unwrap();
         let [h, j] = crate::lobby::testing::agree(&content, &triple("exe5"), [s.clone(), side_of(&content, "exe5", 6)]);
         assert_eq!(j.sides[0], s);

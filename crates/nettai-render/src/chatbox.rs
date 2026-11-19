@@ -590,7 +590,7 @@ mod tests {
         let form = |key: &str| c.defs.form_by_key(key).unwrap_or_else(|| panic!("no form {key}"));
         for (language, table) in [(None, &c.strings), (Some(&ja), &ja)] {
             let strings = DisplayText::new(language);
-            for key in ["heatcross", "groundcross", "spoutcross", "tomahawkcross"] {
+            for key in ["heat_cross", "ground_cross", "aqua_cross", "tomahawk_cross"] {
                 let said = strings.form_description(&c, form(&format!("{key}"))).expect("a description");
                 let want = table.form(&format!("{key}")).and_then(|f| f.description.as_deref());
                 assert_eq!(Some(said.text), want, "{key} in {:?}", table.language);

@@ -269,7 +269,7 @@ pub fn navicust_dropped<'a>(compat: &'a Compat, list: &[u8]) -> Vec<&'a str> {
 /// A save's patch cards (each card's number and whether it is switched on,
 /// in the list's order: [`crate::save::Save::patch_cards`]) as the rules'
 /// setup's `patch_cards`: the cards switched on, by their numbers
-/// (compat's patch-cards.toml), each a record of its card and, of card
+/// (compat's patch_cards.toml), each a record of its card and, of card
 /// 111, whose effects are each team's own, the variant of the save's
 /// version (`version`: the team whose ROM the save is of; docs/design/versions.md
 /// §2.4). (A card switched off does nothing in battle: a side's cards are

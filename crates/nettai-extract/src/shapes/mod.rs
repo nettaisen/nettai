@@ -28,8 +28,8 @@ use std::path::Path;
 pub const SHAPES: &str = "extract/shapes";
 
 /// The hand-drawn files a game's graphics are extracted with, by path in its bundle:
-/// its own (`exe6/extract/shapes/hud/hp-box.svg`) and its support packs'
-/// (`exelib/extract/shapes/banners/bar-104.svg`), the drawings games share.
+/// its own (`exe6/extract/shapes/hud/hp_box.svg`) and its support packs'
+/// (`exelib/extract/shapes/banners/bar_104.svg`), the drawings games share.
 /// A drawing of the game's is its `NAME.svg`, or the file a `NAME.same`
 /// names by its path in the bundle.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -86,7 +86,7 @@ impl Drawings {
         self.files.get(&same).map(|t| (same.clone(), t.clone()))
     }
 
-    /// Each of its own SVG files (not the support packs'), by name (`hud/hp-box`): for a tool that rewrites them.
+    /// Each of its own SVG files (not the support packs'), by name (`hud/hp_box`): for a tool that rewrites them.
     pub fn own_svgs(&self) -> impl Iterator<Item = (&str, &str)> {
         let prefix = format!("{}/{SHAPES}/", self.game);
         self.files.iter().filter_map(move |(p, t)| Some((p.strip_prefix(&prefix)?.strip_suffix(".svg")?, t.as_str())))
@@ -428,8 +428,8 @@ pub fn read(bundle: &mut Bundle, drawings: &Drawings, banner_name: &dyn Fn(usize
         for (lang, l) in &mut bundle.hud.languages {
             for (i, b) in l.banners.iter_mut().enumerate() {
                 if let Some(b) = b {
-                    b.bar = bar(&mut sh, format!("{}-{lang}", banner_name(i)), b);
-                    b.logo = logo(&mut sh, format!("{}-{lang}", banner_name(i)), b);
+                    b.bar = bar(&mut sh, format!("{}_{lang}", banner_name(i)), b);
+                    b.logo = logo(&mut sh, format!("{}_{lang}", banner_name(i)), b);
                 }
             }
         }
@@ -496,23 +496,23 @@ impl Views {
         }
     }
 
-    /// The color drawing `name` (`hud/hp-box`, `banners/battle-start`...)
+    /// The color drawing `name` (`hud/hp_box`, `banners/battle_start`...)
     /// shows its palette entry (row `p`, index `k`) in.
     pub fn color(&self, name: &str, p: u8, k: u8) -> u16 {
         let k = k as usize & 15;
         match name {
             n if n.starts_with("banner") => self.banner[k],
             n if n.starts_with("hud/gauge") => self.gauge[k],
-            "hud/hp-box" | "custom/name-bar-0" | "custom/name-bar-1" => self.hp[k],
-            "hud/navi-box" => self.navi[k],
+            "hud/hp_box" | "custom/name_bar_0" | "custom/name_bar_1" => self.hp[k],
+            "hud/navi_box" => self.navi[k],
             n if n.starts_with("hud/count") || n.starts_with("hud/mugshot") => self.face[k],
-            n if n.starts_with("hud/chatbox-arrow") => self.chatbox_text[k],
+            n if n.starts_with("hud/chatbox_arrow") => self.chatbox_text[k],
             n if n.starts_with("hud/chatbox") => self.chatbox[k],
             n if n.starts_with("custom/cursor") || n.starts_with("custom/regular") => self.cursor[k],
-            n if n.starts_with("custom/form-list-cursor") => self.form_cursor[k],
+            n if n.starts_with("custom/form_list_cursor") => self.form_cursor[k],
             n if n.starts_with("custom/picture") => self.picture[k],
-            "custom/form-name-bar" => self.form_name[k],
-            "custom/element-frame" => self.element[k],
+            "custom/form_name_bar" => self.form_name[k],
+            "custom/element_frame" => self.element[k],
             _ => match p {
                 11 => self.icon[k],
                 13 => self.hp[k],
@@ -573,7 +573,7 @@ pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (Hud
             }
         }
         if ok {
-            s.hp_box = sh.drawing("hud/hp-box", c.grid());
+            s.hp_box = sh.drawing("hud/hp_box", c.grid());
         } else {
             say("the HP box has tiles the HUD layer lacks: it stays a picture".into());
         }
@@ -594,14 +594,14 @@ pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (Hud
             }
             cells.push([col as u8, row as u8]);
         }
-        s.gauge_frame = sh.drawing("hud/gauge-frame", c.grid()).map(|drawing| MapDrawing { parts: vec![nettai_assets::shapes::MapPart { name: "gauge-frame".into(), drawing, cells, plain: Vec::new() }] });
+        s.gauge_frame = sh.drawing("hud/gauge_frame", c.grid()).map(|drawing| MapDrawing { parts: vec![nettai_assets::shapes::MapPart { name: "gauge_frame".into(), drawing, cells, plain: Vec::new() }] });
     }
     s.gauge_cells = gauge_cells(h, &gauge_base, sh, say);
     // The emotion window's boxes beside the face.
-    s.count_blank = sh.tiles("hud/count-blank", &h.letters.counts.blank, 0, 2, 2);
-    s.count_box = sh.tiles("hud/count-box", &h.count_box, 0, 2, 2);
-    s.navi_box = sh.tiles("hud/navi-box", &h.navi_box, 0, 2, 2);
-    s.mugshot_boxes = h.mugshot_boxes.iter().enumerate().map(|(k, b)| sh.tiles(&format!("hud/mugshot-box-{k}"), b, 0, 2, 2)).collect();
+    s.count_blank = sh.tiles("hud/count_blank", &h.letters.counts.blank, 0, 2, 2);
+    s.count_box = sh.tiles("hud/count_box", &h.count_box, 0, 2, 2);
+    s.navi_box = sh.tiles("hud/navi_box", &h.navi_box, 0, 2, 2);
+    s.mugshot_boxes = h.mugshot_boxes.iter().enumerate().map(|(k, b)| sh.tiles(&format!("hud/mugshot_box_{k}"), b, 0, 2, 2)).collect();
     if s.mugshot_boxes.iter().all(Option::is_none) {
         s.mugshot_boxes.clear();
     }
@@ -619,7 +619,7 @@ pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (Hud
                 c.cells[y * 32 + x] = if ring { Label::Color(0, 1) } else if drawn { Label::Hole } else { Label::Clear };
             }
         }
-        s.mugshot_frame = sh.drawing("hud/mugshot-frame", c.grid());
+        s.mugshot_frame = sh.drawing("hud/mugshot_frame", c.grid());
     }
     let box_frame = mugshot_box_frame(h, say);
     if let Some(f) = &box_frame {
@@ -634,7 +634,7 @@ pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (Hud
                 c.cells[y * 16 + x] = if ring { Label::Color(0, 1) } else if drawn { Label::Hole } else { Label::Clear };
             }
         }
-        s.mugshot_box_frame = sh.drawing("hud/mugshot-box-frame", c.grid());
+        s.mugshot_box_frame = sh.drawing("hud/mugshot_box_frame", c.grid());
     }
     // The chatbox's box, each of its maps: its kinds' (the message box,
     // the description box), each at its opening steps.
@@ -642,7 +642,7 @@ pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (Hud
     let mut maps: Vec<NamedMap> = Vec::new();
     for (kind, steps) in g.boxes.iter().enumerate() {
         for (step, map) in steps.iter().enumerate() {
-            let name = format!("hud/chatbox-{kind}-{step}");
+            let name = format!("hud/chatbox_{kind}_{step}");
             if map.len() != Chatbox::COLUMNS * Chatbox::ROWS {
                 maps.push((name, None));
                 continue;
@@ -663,7 +663,7 @@ pub fn hud_shapes(h: &Hud, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> (Hud
         s.chatbox = map_drawings(&maps, sh);
     }
     // Its key-wait arrow, its frames (2x2 tiles each).
-    let arrow: Vec<Option<Drawing>> = (0..g.arrow.len() / 4).map(|k| sh.tiles(&format!("hud/chatbox-arrow-{k}"), &g.arrow, 4 * k, 2, 2)).collect();
+    let arrow: Vec<Option<Drawing>> = (0..g.arrow.len() / 4).map(|k| sh.tiles(&format!("hud/chatbox_arrow_{k}"), &g.arrow, 4 * k, 2, 2)).collect();
     s.chatbox_arrow = all(arrow);
     (s, frame, box_frame)
 }
@@ -674,16 +674,16 @@ fn gauge_cells(h: &Hud, base: &Tiles, sh: &mut Shaper, say: &mut dyn FnMut(Strin
         say("the gauge has fewer tiles than its cells, its full frames and its L or R take: they stay pictures".into());
         return None;
     }
-    let empty = sh.tiles("hud/gauge-empty", base, 0, 1, 1);
-    let filled = sh.tiles("hud/gauge-filled", base, Hud::GAUGE_FILLED as usize, 1, 1);
-    let full: Vec<Option<Drawing>> = (0..4).map(|k| sh.tiles(&format!("hud/gauge-full-{k}"), base, (Hud::GAUGE_FULL + k) as usize, 1, 1)).collect();
+    let empty = sh.tiles("hud/gauge_empty", base, 0, 1, 1);
+    let filled = sh.tiles("hud/gauge_filled", base, Hud::GAUGE_FILLED as usize, 1, 1);
+    let full: Vec<Option<Drawing>> = (0..4).map(|k| sh.tiles(&format!("hud/gauge_full_{k}"), base, (Hud::GAUGE_FULL + k) as usize, 1, 1)).collect();
     // L or R: its letters off where the graphics have them.
     let l_or_r: Vec<Option<Drawing>> = (0..2)
         .map(|f| {
             let blank = h.letters.words.l_or_r[f].as_ref().map(|w| w.blank.clone());
             let first = (Hud::GAUGE_L_OR_R + 4 * f as u16) as usize;
             let tiles = blank.unwrap_or_else(|| Tiles { pixels: base.pixels[first * Tiles::TILE..(first + 4) * Tiles::TILE].to_vec() });
-            sh.tiles(&format!("hud/gauge-l-or-r-{f}"), &tiles, 0, 4, 1)
+            sh.tiles(&format!("hud/gauge_l_or_r_{f}"), &tiles, 0, 4, 1)
         })
         .collect();
     // Whether each cell filled by eighths is the filled cell to that column
@@ -818,7 +818,7 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
     let window = if c.letters.window_blank.len() == c.window_tiles.len() { &c.letters.window_blank } else { &c.window_tiles };
     let mut maps: Vec<NamedMap> = Vec::new();
     for (k, m) in c.window_maps.iter().enumerate() {
-        maps.push((format!("custom/window-{k}"), window_grid(c, window, m, &c.window_patches, &|_, _| false, say)));
+        maps.push((format!("custom/window_{k}"), window_grid(c, window, m, &c.window_patches, &|_, _| false, say)));
     }
     // (The opening steps lay no names: where the names go they show the
     // panel's empty bars, and above it the chip window's frame, which is
@@ -829,29 +829,29 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
         let opening = k < CustomScreen::FORM_LIST_OPENING_MAPS;
         let chips = |x: usize, y: usize| tab.as_ref().is_some_and(|(t, cells)| t.get(y * 15 + x) == m.get(y * 15 + x) && cells.contains(&[x as u8, y as u8]));
         let names = |x: usize, y: usize| !opening || !chips(x, y);
-        maps.push((format!("custom/form-list-{k}"), window_grid(c, window, m, &c.form_list_patches, &names, say)));
+        maps.push((format!("custom/form_list_{k}"), window_grid(c, window, m, &c.form_list_patches, &names, say)));
     }
     let mut drawn = map_drawings(&maps, sh);
     s.form_list_maps = drawn.split_off(c.window_maps.len());
     s.window_maps = drawn;
     // The column's cells, both looks; an empty slot's box; a code's plate.
-    let column: Vec<Option<Drawing>> = (0..2).map(|k| sh.glyphs(&format!("custom/column-cell-{k}"), &c.column_cells, k, 1)).collect();
+    let column: Vec<Option<Drawing>> = (0..2).map(|k| sh.glyphs(&format!("custom/column_cell_{k}"), &c.column_cells, k, 1)).collect();
     s.column_cells = all(column);
-    s.empty_icon = sh.tiles("custom/empty-icon", &c.empty_icon, 0, 2, 2);
+    s.empty_icon = sh.tiles("custom/empty_icon", &c.empty_icon, 0, 2, 2);
     // The frame the element icons share (`elements::split`), but for its
     // ground round the ring, which the drawing leaves out (the user: "don't
     // draw the square background under the element icon since it just looks
     // awkward, only the icon frame should be filled in").
     if let Some((_, outside)) = c.element_outside() {
         let pixels = c.element_frame.pixels.iter().zip(&outside).map(|(&p, &o)| if o { 0 } else { p }).collect();
-        s.element_frame = sh.tiles("custom/element-frame", &Tiles { pixels }, 0, 2, 2);
+        s.element_frame = sh.tiles("custom/element_frame", &Tiles { pixels }, 0, 2, 2);
     }
     s.slot_code = slot_code(c, sh, say);
     // The cursors, their corners alone (the chip cursor's) or meeting each
     // other (the form list's).
-    let cursor: Vec<Option<Drawing>> = (0..c.cursor.len()).map(|k| sh.tiles(&format!("custom/cursor-{k}"), &c.cursor, k, 1, 1)).collect();
+    let cursor: Vec<Option<Drawing>> = (0..c.cursor.len()).map(|k| sh.tiles(&format!("custom/cursor_{k}"), &c.cursor, k, 1, 1)).collect();
     s.cursor = all(cursor);
-    let tiles: Vec<Option<Drawing>> = (0..c.form_list_cursor.len()).map(|k| sh.tiles(&format!("custom/form-list-cursor-{k}"), &c.form_list_cursor, k, 1, 1)).collect();
+    let tiles: Vec<Option<Drawing>> = (0..c.form_list_cursor.len()).map(|k| sh.tiles(&format!("custom/form_list_cursor_{k}"), &c.form_list_cursor, k, 1, 1)).collect();
     s.form_list_cursor = all(tiles);
     // The buttons' looks, each set's as its drawing's file has it (as many
     // cells side by side as its width takes), while the files go on.
@@ -862,7 +862,7 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
         }
         let mut sets = Vec::new();
         for k in 0.. {
-            let file = format!("custom/button-{name}-{k}");
+            let file = format!("custom/button_{name}_{k}");
             let Some((_, text)) = sh.file(&file) else { break };
             let cells = nettai_assets::shapes::from_svg(&text).map_or(1, |d| (d.size[0] as usize / (8 * w)).max(1));
             let mut canvas = Canvas::new(8 * w * cells, 8 * h, Label::Clear);
@@ -895,12 +895,12 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
     }
     // The chip window's pictures with their letters off, the graphics' own
     // language's and each other language's.
-    let langs = std::iter::once((String::new(), &c.letters.pictures)).chain(c.languages.iter().map(|(l, x)| (format!("-{l}"), &x.letters)));
+    let langs = std::iter::once((String::new(), &c.letters.pictures)).chain(c.languages.iter().map(|(l, x)| (format!("_{l}"), &x.letters)));
     for (suffix, p) in langs {
-        let named = [("ok", p.ok.as_ref()), ("ok-picked", p.ok_picked.as_ref()), ("other", p.other.as_ref())].into_iter().map(|(n, l)| (n.to_string(), l)).chain(p.buttons.iter().map(|(n, l)| (n.clone(), l.as_ref())));
+        let named = [("ok", p.ok.as_ref()), ("ok_picked", p.ok_picked.as_ref()), ("other", p.other.as_ref())].into_iter().map(|(n, l)| (n.to_string(), l)).chain(p.buttons.iter().map(|(n, l)| (n.clone(), l.as_ref())));
         for (name, letters) in named {
             let Some(l) = letters else { continue };
-            let file = format!("custom/picture-{name}{suffix}");
+            let file = format!("custom/picture_{name}{suffix}");
             if sh.file(&file).is_none() {
                 continue;
             }
@@ -912,10 +912,10 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
     // The bar the form list's names lie on (every version's, where the
     // names come apart into it, their portraits and their letters).
     if let Some((_, layers)) = crate::letters::form_names_layered(c).0.first() {
-        s.form_name_bar = tiles_grid(&layers.bar, 0, CustomScreen::FORM_NAME_COLUMNS, CustomScreen::FORM_NAME_TILES / CustomScreen::FORM_NAME_COLUMNS).and_then(|g| sh.drawing("custom/form-name-bar", g));
+        s.form_name_bar = tiles_grid(&layers.bar, 0, CustomScreen::FORM_NAME_COLUMNS, CustomScreen::FORM_NAME_TILES / CustomScreen::FORM_NAME_COLUMNS).and_then(|g| sh.drawing("custom/form_name_bar", g));
     }
     // The Regular chip's frame, its frames (32x32 each).
-    let regular: Vec<Option<Drawing>> = (0..c.regular.len() / 16).map(|k| sh.tiles(&format!("custom/regular-{k}"), &c.regular, 16 * k, 4, 4)).collect();
+    let regular: Vec<Option<Drawing>> = (0..c.regular.len() / 16).map(|k| sh.tiles(&format!("custom/regular_{k}"), &c.regular, 16 * k, 4, 4)).collect();
     s.regular = all(regular);
     // (By name.)
     s.buttons.sort_by(|a, b| a.0.cmp(&b.0));
@@ -923,8 +923,8 @@ pub fn custom_shapes(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(Stri
     // The enemy names' bar: its end (the bar's cells right of it), its
     // cell (more of them either side).
     if c.name_bar.len() >= 4 {
-        let end = sh.glyphs("custom/name-bar-0", &c.name_bar, 0, 1);
-        let cell = sh.glyphs("custom/name-bar-1", &c.name_bar, 1, 1);
+        let end = sh.glyphs("custom/name_bar_0", &c.name_bar, 0, 1);
+        let cell = sh.glyphs("custom/name_bar_1", &c.name_bar, 1, 1);
         if let (Some(end), Some(cell)) = (end, cell) {
             s.name_bar = vec![end, cell];
         }
@@ -948,7 +948,7 @@ fn slot_code(c: &CustomScreen, sh: &mut Shaper, say: &mut dyn FnMut(String)) -> 
         say("the slots' codes' plates differ with their letters off: they stay pictures".into());
         return None;
     }
-    sh.tiles("custom/slot-code", &Tiles { pixels: first.to_vec() }, 0, 2, 1)
+    sh.tiles("custom/slot_code", &Tiles { pixels: first.to_vec() }, 0, 2, 1)
 }
 
 /// A window map's frame: its own tiles (the window's, letters off), each

@@ -1544,7 +1544,7 @@ impl Window {
                 self.chip_details(v, c, text, problems);
             }
             SlotKind::Ok => {
-                let (p, key) = if cw.picks == 0 { (&a.pictures.ok, "ok") } else { (&a.pictures.ok_picked, "ok-picked") };
+                let (p, key) = if cw.picks == 0 { (&a.pictures.ok, "ok") } else { (&a.pictures.ok_picked, "ok_picked") };
                 blank_details(self, p);
                 let letters = if cw.picks == 0 { &a.letters.pictures.ok } else { &a.letters.pictures.ok_picked };
                 self.help = Some((format!("pictures.{key}"), letters.clone()));
@@ -3032,7 +3032,7 @@ pub fn draw<'a>(
         upright.push(crate::seat::Block::whole(Rect::new(layer_x(15, place.scroll), 4 * 8, 7 * 8, 16)));
         let palette = w.palettes[w.layout.turn_limit_palette as usize & 15];
         let found = a.letters.turn_limit.as_ref();
-        if let Some((words, look)) = crate::hud::lettered_word(b, text, "turn-limit", found.map(|f| &f.letters), &palette, Lettering::display, problems) {
+        if let Some((words, look)) = crate::hud::lettered_word(b, text, "turn_limit", found.map(|f| &f.letters), &palette, Lettering::display, problems) {
             // (Its cells with the letters taken off: its own ground.)
             if let Some(f) = found {
                 w.tiles.put(w.layout.turn_limit, &f.blank);

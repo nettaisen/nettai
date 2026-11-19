@@ -5,39 +5,39 @@
 -- the bubbling ones survive a counter hit, as EXE6's do.
 
 local PLAIN: { string } = {
-    "paralyze-90", "paralyze-120", "paralyze-150", "paralyze-4", "paralyze-300", "paralyze-600",
-    "confuse-480-past-paralyze", "confuse-720-past-paralyze", "confuse-960-past-paralyze",
-    "confuse-4-past-paralyze", "confuse-300-past-paralyze", "confuse-600-past-paralyze",
-    "blind-480-past-paralyze", "blind-720-past-paralyze", "blind-1200-past-paralyze",
-    "blind-4-past-paralyze", "confuse-480", "confuse-720", "confuse-960", "confuse-4",
-    "confuse-300", "confuse-600", "blind-480-past-confuse", "blind-720-past-confuse",
-    "blind-1200-past-confuse", "blind-4-past-confuse", "blind-300-past-confuse",
-    "blind-600-past-confuse", "immobilize-2-past-confuse", "immobilize-60-past-confuse",
-    "immobilize-120-past-confuse", "immobilize-4-past-confuse", "blind-480", "blind-720",
-    "blind-1200", "blind-4", "blind-300", "blind-600", "immobilize-2-past-blind",
-    "immobilize-60-past-blind", "immobilize-120-past-blind", "immobilize-4-past-blind",
-    "immobilize-300-past-blind", "immobilize-600-past-blind", "immobilize-30-past-blind",
-    "freeze-150-past-blind", "freeze-150-2-past-blind", "freeze-150-3-past-blind", "immobilize-2",
-    "immobilize-60", "immobilize-120", "immobilize-4", "immobilize-300", "immobilize-600",
-    "immobilize-30", "freeze-150-past-immobilize", "freeze-150-2-past-immobilize",
-    "freeze-150-3-past-immobilize", "freeze-4-past-immobilize", "freeze-300-past-immobilize",
-    "freeze-600-past-immobilize", "bubble-150-past-immobilize", "bubble-150-2-past-immobilize",
-    "bubble-150-3-past-immobilize", "bubble-150-past-freeze", "bubble-150-2-past-freeze",
-    "bubble-150-3-past-freeze", "bubble-4-past-freeze", "bubble-300-past-freeze",
-    "bubble-600-past-freeze",
+    "paralyze_90", "paralyze_120", "paralyze_150", "paralyze_4", "paralyze_300", "paralyze_600",
+    "confuse_480_past_paralyze", "confuse_720_past_paralyze", "confuse_960_past_paralyze",
+    "confuse_4_past_paralyze", "confuse_300_past_paralyze", "confuse_600_past_paralyze",
+    "blind_480_past_paralyze", "blind_720_past_paralyze", "blind_1200_past_paralyze",
+    "blind_4_past_paralyze", "confuse_480", "confuse_720", "confuse_960", "confuse_4",
+    "confuse_300", "confuse_600", "blind_480_past_confuse", "blind_720_past_confuse",
+    "blind_1200_past_confuse", "blind_4_past_confuse", "blind_300_past_confuse",
+    "blind_600_past_confuse", "immobilize_2_past_confuse", "immobilize_60_past_confuse",
+    "immobilize_120_past_confuse", "immobilize_4_past_confuse", "blind_480", "blind_720",
+    "blind_1200", "blind_4", "blind_300", "blind_600", "immobilize_2_past_blind",
+    "immobilize_60_past_blind", "immobilize_120_past_blind", "immobilize_4_past_blind",
+    "immobilize_300_past_blind", "immobilize_600_past_blind", "immobilize_30_past_blind",
+    "freeze_150_past_blind", "freeze_150_2_past_blind", "freeze_150_3_past_blind", "immobilize_2",
+    "immobilize_60", "immobilize_120", "immobilize_4", "immobilize_300", "immobilize_600",
+    "immobilize_30", "freeze_150_past_immobilize", "freeze_150_2_past_immobilize",
+    "freeze_150_3_past_immobilize", "freeze_4_past_immobilize", "freeze_300_past_immobilize",
+    "freeze_600_past_immobilize", "bubble_150_past_immobilize", "bubble_150_2_past_immobilize",
+    "bubble_150_3_past_immobilize", "bubble_150_past_freeze", "bubble_150_2_past_freeze",
+    "bubble_150_3_past_freeze", "bubble_4_past_freeze", "bubble_300_past_freeze",
+    "bubble_600_past_freeze",
 }
 local FREEZING: { string } = {
-    "freeze-150", "freeze-150-2", "freeze-150-3", "freeze-4", "freeze-300", "freeze-600",
+    "freeze_150", "freeze_150_2", "freeze_150_3", "freeze_4", "freeze_300", "freeze_600",
 }
 local BUBBLING: { string } = {
-    "bubble-150", "bubble-150-2", "bubble-150-3", "bubble-4", "bubble-300", "bubble-600",
+    "bubble_150", "bubble_150_2", "bubble_150_3", "bubble_4", "bubble_300", "bubble_600",
 }
 
 local status: { [string]: Status } = {}
 
 local function define_all(keys: { string }, cancels_flinch: boolean, survives_counter: boolean)
     for _, key in keys do
-        -- (By the id: `paralyze_150` for `paralyze-150`.)
+        -- (By the id: `paralyze_150` for `paralyze_150`.)
         local name = string.gsub(key, "-", "_")
         status[name] = new.status {
             id = key,

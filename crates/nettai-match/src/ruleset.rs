@@ -35,7 +35,7 @@
 //!   key (a union), and allowing it for every record leaves a record's own
 //!   ban standing. As text (a file, the lobby's wire) it names its items by
 //!   their names in the game, a variant after its definition's
-//!   (`bass-cross-megaman/gregar`: [`Ruleset::banned_names`],
+//!   (`bass_cross_megaman/gregar`: [`Ruleset::banned_names`],
 //!   [`Ruleset::of_names`]).
 //! - **Its limits** ([`LimitDef`], [`Ruleset::limit`]): the game's
 //!   rulesets data names the limits a ruleset may change (the folder's
@@ -751,7 +751,7 @@ impl Ruleset {
     /// What it doesn't allow, by name: each category with anything held
     /// back, by its fact's name, with the names of its items in the game (a
     /// chip's `cannon`, an entry's in its collection; a variant after its
-    /// definition's, `bass-cross-megaman/gregar`), in order. What a file and
+    /// definition's, `bass_cross_megaman/gregar`), in order. What a file and
     /// the lobby's wire state.
     pub fn banned_names(&self, content: &Content) -> Vec<(String, Vec<String>)> {
         self.banned
@@ -1151,7 +1151,7 @@ mod tests {
             }
             // (A chip both versions hold is none's: EXE5's ChaosLrd, EXE4's Duo.)
             let both = match game {
-                "exe5" => Some("chaoslrd"),
+                "exe5" => Some("chaos_lord"),
                 "exe4" => Some("duo"),
                 _ => None,
             };
@@ -1271,19 +1271,19 @@ mod tests {
         let content = exe6_content();
         let r = Rulesets::of(&content, "exe6").unwrap();
         let builds = Builds::of(&content, "exe6").unwrap();
-        let card = crate::ids::entry(&content, "exe6", crate::facts::PATCH_CARDS, "bass-cross-megaman").unwrap().0;
+        let card = crate::ids::entry(&content, "exe6", crate::facts::PATCH_CARDS, "bass_cross_megaman").unwrap().0;
         let gregars = Item { def: card, variant: Some("gregar".into()) };
         let mut ruleset = Ruleset::open(Name::Own("No Gregar card".into()));
         ruleset.set_allowed("patch_cards", &gregars, false);
         assert!(r.allows_def(&ruleset, "patch_cards", card) && r.allowed_variants(&ruleset, "patch_cards", card) == ["falzar"]);
         let names = ruleset.banned_names(&content);
-        assert_eq!(names, vec![("patch_cards".to_string(), vec!["bass-cross-megaman/gregar".to_string()])]);
+        assert_eq!(names, vec![("patch_cards".to_string(), vec!["bass_cross_megaman/gregar".to_string()])]);
         assert_eq!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &names, &[], &[]).unwrap(), ruleset);
         let mut side = builds.new_build(&content, "gregar").unwrap();
-        side.set_fact(&content, crate::facts::PATCH_CARDS, &patch_cards(&content, "exe6", "bass-cross-megaman/gregar")).unwrap();
+        side.set_fact(&content, crate::facts::PATCH_CARDS, &patch_cards(&content, "exe6", "bass_cross_megaman/gregar")).unwrap();
         let problems = ruleset.problems(&r, &content, &side);
         assert_eq!(problems.iter().map(|p| &p.what).collect::<Vec<_>>(), [&Wrong::NotAllowed { registry: Registry::Entry, item: gregars.clone(), entries: vec![0] }]);
-        side.set_fact(&content, crate::facts::PATCH_CARDS, &patch_cards(&content, "exe6", "bass-cross-megaman/falzar")).unwrap();
+        side.set_fact(&content, crate::facts::PATCH_CARDS, &patch_cards(&content, "exe6", "bass_cross_megaman/falzar")).unwrap();
         assert!(ruleset.problems(&r, &content, &side).is_empty());
     }
 
@@ -1323,7 +1323,7 @@ mod tests {
         side.set_fact(&content, "crosses", &mixed).unwrap();
         let mut all = forms(&gregar[..3]);
         all.extend(forms(&falzar[..2]));
-        all.insert(form("gregar-beast"));
+        all.insert(form("gregar_beast"));
         assert_eq!(mix(&side), all);
         assert!(r.preset("unrestricted").unwrap().problems(&r, &content, &side).is_empty());
         // Gregar's Crosses alone with Falzar's Cybeast: every one of them.
@@ -1331,17 +1331,17 @@ mod tests {
         beast.set_fact(&content, "cybeast", &[crate::facts::version_fact(&content, "falzar").unwrap()]).unwrap();
         let mut all: BTreeSet<_> = builds.chosen_forms(&content, &beast, "crosses").iter().map(|f| (Registry::Form, Item::of(f.0))).collect();
         assert!(!all.is_empty());
-        all.insert(form("falzar-beast"));
+        all.insert(form("falzar_beast"));
         assert_eq!(mix(&beast), all);
         // And Falzar's card with a Gregar build: the card, and the build's Gregar Beast and Crosses.
         let mut card = builds.new_build(&content, "gregar").unwrap();
-        card.set_fact(&content, crate::facts::PATCH_CARDS, &patch_cards(&content, "exe6", "bass-cross-megaman/falzar")).unwrap();
-        let h = crate::ids::entry(&content, "exe6", crate::facts::PATCH_CARDS, "bass-cross-megaman").unwrap().0;
+        card.set_fact(&content, crate::facts::PATCH_CARDS, &patch_cards(&content, "exe6", "bass_cross_megaman/falzar")).unwrap();
+        let h = crate::ids::entry(&content, "exe6", crate::facts::PATCH_CARDS, "bass_cross_megaman").unwrap().0;
         let mut all: BTreeSet<_> = builds.chosen_forms(&content, &card, "crosses").iter().map(|f| (Registry::Form, Item::of(f.0))).collect();
-        all.insert(form("gregar-beast"));
+        all.insert(form("gregar_beast"));
         all.insert((Registry::Entry, Item { def: h, variant: Some("falzar".into()) }));
         assert_eq!(mix(&card), all);
-        card.set_fact(&content, crate::facts::PATCH_CARDS, &patch_cards(&content, "exe6", "bass-cross-megaman/gregar")).unwrap();
+        card.set_fact(&content, crate::facts::PATCH_CARDS, &patch_cards(&content, "exe6", "bass_cross_megaman/gregar")).unwrap();
         assert!(r.first().problems(&r, &content, &card).is_empty());
     }
 
@@ -1361,10 +1361,10 @@ mod tests {
         let navi = |n: &str| Fact::Value(Value::Def(Registry::Navi, ids::navi(&content, "exe5", n).unwrap().0));
         let program = |n: &str| ids::entry(&content, "exe5", "partycust_programs", n).unwrap();
         let partner = |n: &str, p: &[&str]| Fact::Record(vec![("navi", navi(n)), ("programs", Fact::List(p.iter().map(|x| Fact::Value(Value::Def(Registry::Entry, program(x).0))).collect()))]);
-        side.set_fact(&content, "party", &[partner("protoman", &["p-hp-50"]), partner("toadman", &["p-spport", "p-hp-50"])]).unwrap();
+        side.set_fact(&content, "party", &[partner("protoman", &["party_hp_50"]), partner("toadman", &["party_support", "party_hp_50"])]).unwrap();
         // (Versions mixed: ToadMan is Team Colonel's.)
         let mut ruleset = r.preset("unrestricted").unwrap().clone();
-        let spport = Item::of(program("p-spport").0);
+        let spport = Item::of(program("party_support").0);
         ruleset.set_allowed("party.programs", &spport, false);
         assert!(!ruleset.allows("party.programs", spport.def));
         let problems = ruleset.problems(&r, &content, &side);
@@ -1373,7 +1373,7 @@ mod tests {
         let checked = Checked::under(&content, "exe5", &side, &r, &ruleset);
         assert!(!checked.ready() && checked.problems.iter().any(|p| p.field.as_deref() == Some("party") && p.at(1)), "{:?}", checked.problems);
         let names = ruleset.banned_names(&content);
-        assert_eq!(names, [("party.programs".to_string(), vec!["p-spport".to_string()])]);
+        assert_eq!(names, [("party.programs".to_string(), vec!["party_support".to_string()])]);
         let back = Ruleset::of_names(&r, &content, ruleset.name.clone(), ruleset.one_per_build, &names, &[], &[]).unwrap();
         assert!(back.same_rules(&ruleset));
     }
@@ -1394,7 +1394,7 @@ mod tests {
         assert_eq!(category.by.as_ref().map(|b| (b.field.as_str(), b.registry)), Some(("navi", Registry::Navi)));
         assert_eq!(category.within.as_deref(), Some("party"));
         let program = |n: &str| Item::of(ids::entry(&content, "exe5", "partycust_programs", n).unwrap().0);
-        let (hp_300, btlpk_2, spport) = (program("p-hp-300"), program("p-btlpk2"), program("p-spport"));
+        let (hp_300, btlpk_2, spport) = (program("party_hp_300"), program("party_battle_pack_2"), program("party_support"));
         let mut ruleset = r.preset("unrestricted").unwrap().clone();
         ruleset.set_allowed("party.programs", &hp_300, false);
         ruleset.set_allowed_for(&category, navi("protoman"), &btlpk_2, false);
@@ -1431,11 +1431,11 @@ mod tests {
         assert_eq!(every, ruleset);
         // By name, and back.
         let (names, by) = (ruleset.banned_names(&content), ruleset.banned_by_names(&content));
-        assert_eq!(by, [("party.programs".to_string(), vec![("meddy".to_string(), vec!["p-spport".to_string()]), ("protoman".to_string(), vec!["p-btlpk2".to_string()])])]);
+        assert_eq!(by, [("party.programs".to_string(), vec![("meddy".to_string(), vec!["party_support".to_string()]), ("protoman".to_string(), vec!["party_battle_pack_2".to_string()])])]);
         assert_eq!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &names, &by, &[]).unwrap(), ruleset);
         // What the categories can't hold: MegaMan in the party, as a key, a program's ban by a field it isn't kept by.
         assert!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &[("party".into(), vec!["megaman".into()])], &[], &[]).is_err());
-        let megaman = [("party.programs".to_string(), vec![("megaman".to_string(), vec!["p-spport".to_string()])])];
+        let megaman = [("party.programs".to_string(), vec![("megaman".to_string(), vec!["party_support".to_string()])])];
         assert!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &[], &megaman, &[]).is_err());
         assert!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &[], &[("party".into(), vec![("protoman".into(), vec![])])], &[]).is_err());
         // Allowed again for its navi, it holds nothing back of it.

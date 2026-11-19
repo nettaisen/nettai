@@ -236,9 +236,9 @@ pub struct GameAddresses {
 #[serde(deny_unknown_fields)]
 pub struct Games {
     pub colonel: GameAddresses,
-    #[serde(rename = "jp-protoman")]
+    #[serde(rename = "jp_protoman")]
     pub jp_protoman: GameAddresses,
-    #[serde(rename = "jp-colonel")]
+    #[serde(rename = "jp_colonel")]
     pub jp_colonel: GameAddresses,
 }
 
@@ -371,7 +371,7 @@ pub struct NaviCustNumbers {
 
 /// EXE5's asset names (assets.toml): the names its pack's assets are
 /// written under (by its recipe, content/exe5/extract/), by EXE6's names
-/// for what is EXE6's. Sprites as "cc-ii" (the
+/// for what is EXE6's. Sprites as "cc_ii" (the
 /// category's byte offset in the sprite list and the index), sounds by the
 /// song table's numbers, banners by banner id, backgrounds by number.
 #[derive(Clone, Debug, Default, PartialEq, Eq, Deserialize)]
@@ -461,7 +461,7 @@ pub struct Compat {
     pub text: Text,
     /// navicust.toml: the NaviCust programs' numbers.
     pub navicust: NaviCustNumbers,
-    /// patch-cards.toml: the patch cards' numbers, by key (one card a
+    /// patch_cards.toml: the patch cards' numbers, by key (one card a
     /// number: card 111, Bass-Cross MegaMan, is one card whose effects are
     /// each team's own, by the side's version).
     pub patch_cards: BTreeMap<String, u8>,
@@ -491,7 +491,7 @@ pub const FILES: [&str; 12] = [
     "kinds.toml",
     "text.toml",
     "navicust.toml",
-    "patch-cards.toml",
+    "patch_cards.toml",
 ];
 
 /// This repository's compat (content/exe5/compat), built in (the `builtin` feature: tools and tests; the app reads
@@ -500,7 +500,7 @@ pub const FILES: [&str; 12] = [
 const EXE5: [(&str, &str); 12] = [
     ("actions.toml", include_str!("../../../content/exe5/compat/actions.toml")),
     ("games.toml", include_str!("../../../content/exe5/compat/games.toml")),
-    ("patch-cards.toml", include_str!("../../../content/exe5/compat/patch-cards.toml")),
+    ("patch_cards.toml", include_str!("../../../content/exe5/compat/patch_cards.toml")),
     ("navicust.toml", include_str!("../../../content/exe5/compat/navicust.toml")),
     ("text.toml", include_str!("../../../content/exe5/compat/text.toml")),
     ("kinds.toml", include_str!("../../../content/exe5/compat/kinds.toml")),
@@ -512,14 +512,14 @@ const EXE5: [(&str, &str); 12] = [
     ("rules.toml", include_str!("../../../content/exe5/compat/rules.toml")),
 ];
 
-/// A sprite's "cc-ii".
+/// A sprite's "cc_ii".
 fn parse_sprite(id: &str) -> Option<(u8, u8)> {
     let (c, i) = id.split_once('-')?;
     Some((u8::from_str_radix(c, 16).ok()?, u8::from_str_radix(i, 16).ok()?))
 }
 
 impl Compat {
-    /// The number patch card `key` is printed with and a save holds (patch-cards.toml).
+    /// The number patch card `key` is printed with and a save holds (patch_cards.toml).
     pub fn patch_card_number(&self, key: &str) -> Option<u8> {
         self.patch_cards.get(key).copied()
     }
@@ -575,7 +575,7 @@ impl Compat {
             }
         }
         for (name, id) in &assets.sprites {
-            parse_sprite(id).ok_or_else(|| format!("assets.toml: sprite {name} is {id:?}, not \"cc-ii\""))?;
+            parse_sprite(id).ok_or_else(|| format!("assets.toml: sprite {name} is {id:?}, not \"cc_ii\""))?;
         }
         let rules: RuleNumbers = toml::from_str(&text("rules.toml")?).map_err(|e| format!("rules.toml: {e}"))?;
         let mut statuses = BTreeMap::new();
@@ -612,11 +612,11 @@ impl Compat {
                 return Err(format!("navicust.toml: program {k}'s number {n} is one nettai doesn't have too"));
             }
         }
-        let patch_cards: BTreeMap<String, u8> = toml::from_str(&text("patch-cards.toml")?).map_err(|e| format!("patch-cards.toml: {e}"))?;
+        let patch_cards: BTreeMap<String, u8> = toml::from_str(&text("patch_cards.toml")?).map_err(|e| format!("patch_cards.toml: {e}"))?;
         let mut card_numbers = BTreeMap::new();
         for (k, &n) in &patch_cards {
             if let Some(other) = card_numbers.insert(n, k) {
-                return Err(format!("patch-cards.toml: {k} and {other} are both card {n}"));
+                return Err(format!("patch_cards.toml: {k} and {other} are both card {n}"));
             }
         }
         let actions: BTreeMap<String, u8> = toml::from_str(&text("actions.toml")?).map_err(|e| format!("actions.toml: {e}"))?;
@@ -661,7 +661,7 @@ impl Compat {
             .iter()
             .find(|(_, n)| **n == number)
             .map(|(k, _)| k.as_str())
-            .ok_or_else(|| format!("patch-cards.toml has no card {number}"))
+            .ok_or_else(|| format!("patch_cards.toml has no card {number}"))
     }
 
     /// A chip's id (`cannon`) by its number.
@@ -743,7 +743,7 @@ impl Compat {
         self.records.forms.iter().find(|&(_, &n)| n == number).map(|(k, _)| k.as_str())
     }
 
-    /// A status's id (`paralyze-90`) by a hit's status byte.
+    /// A status's id (`paralyze_90`) by a hit's status byte.
     pub fn status(&self, byte: u8) -> Option<String> {
         self.rules.statuses.iter().find(|&(_, &n)| n == byte).map(|(k, _)| k.clone())
     }

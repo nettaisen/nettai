@@ -9,7 +9,7 @@ local sprites = require("../sprites")
 local forms: { [string]: FormDef } = {
     base = {
         base = true,
-        sprite = sprites["test-navi"],
+        sprite = sprites.test_navi,
         element = Element.null,
         buster_bonus = 0,
         weapons = { buster = buster.weapon, charge_shot = charged_shot.weapon },

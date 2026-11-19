@@ -64,7 +64,7 @@ fn toadman_switched_in_dives_on_sea() {
     assert!(!navi_status(&b).contains(ActorStatus::DIVES), "MegaMan doesn't dive");
     sea_under(&mut b);
     assert!(!flags(&b).contains(StatusFlags::BUBBLED), "MegaMan stands on the sea");
-    let ripple = b.content.defs.kind_by_key("dive-ripple").expect("EXE5's dive ripple");
+    let ripple = b.content.defs.kind_by_key("dive_ripple").expect("EXE5's dive ripple");
     assert!(b.objects.in_order().all(|q| b.objects.get(q).kind != ripple), "and no ripple is left over him");
 }
 
@@ -275,7 +275,7 @@ fn a_dark_megaman_switches() {
     let left = crate::double_attacks::side(&["protoman"]) + "karma = 0\n";
     let mut b = fighting_sides(&content, &left, &crate::double_attacks::side(&[]));
     assert_eq!(emotion_name(&b, 0), "evil", "a dark value starts him evil");
-    b.hands[0].ids[0] = crate::ids::chip(&content, "exe5", "darkplus");
+    b.hands[0].ids[0] = crate::ids::chip(&content, "exe5", "dark_plus");
     b.hands[0].cursor = 0;
     b.tick(&[PlayerTick::buttons(Keys::A), Default::default()], Default::default());
     for _ in 0..60 {
@@ -306,7 +306,7 @@ fn a_switch_to_a_supporting_member_is_refused() {
     use nettai_battle::content::SoundRole;
     let content = exe5_content();
     let megaman = crate::double_attacks::side(&[]);
-    let left = megaman.replace("party = []\n", "party = [{ navi = \"napalmman\", programs = [\"p-spport\"] }]\n");
+    let left = megaman.replace("party = []\n", "party = [{ navi = \"napalmman\", programs = [\"party_support\"] }]\n");
     let mut b = fighting_sides(&content, &left, &megaman);
     let support = b.content.defs.kind_by_key("napalmman/support").expect("NapalmMan's support");
     let out = |b: &Battle| b.objects.in_order().any(|q| b.objects.get(q).kind == support);

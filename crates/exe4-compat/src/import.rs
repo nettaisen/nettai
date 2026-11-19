@@ -190,15 +190,15 @@ mod tests {
         }
         assert_eq!(held, [27, 16, 16, 20, 50, 4], "the cards of slots 0A to 0F");
         let of = |id: &str| content.defs.entry_in("patch_cards", id).unwrap_or_else(|| panic!("no card {id}"));
-        assert_eq!(slot(of("017-custom2")), Some(0));
-        assert_eq!(slot(of("028-pet-menu-color-change")), Some(5));
+        assert_eq!(slot(of("017_custom2")), Some(0));
+        assert_eq!(slot(of("028_pet_menu_color_change")), Some(5));
         for (half, other, at) in [
-            ("074-triple-supporter-1-2", "075-triple-supporter-2-2", 2),
-            ("075-triple-supporter-2-2", "074-triple-supporter-1-2", 1),
-            ("076-all-guard-1-2", "077-all-guard-2-2", 3),
-            ("077-all-guard-2-2", "076-all-guard-1-2", 2),
-            ("103-fullcustom-charge-1-2", "104-fullcustom-charge-2-2", 4),
-            ("104-fullcustom-charge-2-2", "103-fullcustom-charge-1-2", 3),
+            ("074_triple_supporter_1_2", "075_triple_supporter_2_2", 2),
+            ("075_triple_supporter_2_2", "074_triple_supporter_1_2", 1),
+            ("076_all_guard_1_2", "077_all_guard_2_2", 3),
+            ("077_all_guard_2_2", "076_all_guard_1_2", 2),
+            ("103_fullcustom_charge_1_2", "104_fullcustom_charge_2_2", 4),
+            ("104_fullcustom_charge_2_2", "103_fullcustom_charge_1_2", 3),
         ] {
             let reads = spec(of(half)).field("effects").item(1).field("pair").field("slot").int();
             assert_eq!((reads, slot(of(other))), (Some(at), Some(at)), "{half} reads slot {at} for {other}");
@@ -232,7 +232,7 @@ mod tests {
             (get("double_soul"), get("souls")),
             (
                 Some(Stated::Flag(true)),
-                Some(Stated::List([form("rollsoul"), form("windsoul")].into_iter().chain(std::iter::repeat_n(Stated::Def(Registry::Form, None), 10)).collect()))
+                Some(Stated::List([form("roll_soul"), form("wind_soul")].into_iter().chain(std::iter::repeat_n(Stated::Def(Registry::Form, None), 10)).collect()))
             )
         );
         // Its auto battle data: a Cannon, an empty place, pattern 4, and a
@@ -271,7 +271,7 @@ mod tests {
         let named = |c: Option<FolderChip>| c.map(|c| (ids::local(&content.defs.chip(c.id).key).to_string(), c.code.letter()));
         assert_eq!(
             [named(folder.chips[0]), named(folder.chips[1]), named(folder.chips[2])],
-            [Some(("cannon".to_string(), 'A')), Some(("lifeaura".to_string(), 'D')), Some(("fullcust".to_string(), '*'))]
+            [Some(("cannon".to_string(), 'A')), Some(("life_aura".to_string(), 'D')), Some(("full_custom".to_string(), '*'))]
         );
         assert_eq!(folder.regular, Some(2));
     }
@@ -295,7 +295,7 @@ mod tests {
         let named = |c: Option<FolderChip>| c.map(|c| (ids::local(&content.defs.chip(c.id).key).to_string(), c.code.letter()));
         assert_eq!(
             [named(chips[0]), named(chips[1]), named(chips[2])],
-            [Some(("cannon".to_string(), 'A')), Some(("duo".to_string(), 'D')), Some(("prixpowr".to_string(), 'G'))]
+            [Some(("cannon".to_string(), 'A')), Some(("duo".to_string(), 'D')), Some(("prix_power".to_string(), 'G'))]
         );
         assert!(!notes.iter().any(|n| n.contains("folder")), "{notes:?}");
     }

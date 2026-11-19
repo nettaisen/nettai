@@ -574,15 +574,15 @@ mod tests {
         use std::sync::atomic::{AtomicUsize, Ordering};
         let content = nettai_match::testing::exe6_content();
         let mut m = nettai_match::pick::live(&content, "exe6", 5, None).unwrap();
-        m.rounds.iter_mut().for_each(|r| r.background = Some("exe5:nebula-area".into()));
+        m.rounds.iter_mut().for_each(|r| r.background = Some("exe5:nebula_area".into()));
         let set = Set::of(&content, &m, 5);
-        assert_eq!(content.background_of(set.first().settings.background), Some(("exe5", "nebula-area")));
+        assert_eq!(content.background_of(set.first().settings.background), Some(("exe5", "nebula_area")));
         let made = Arc::new(AtomicUsize::new(0));
         let counted = made.clone();
         let exe5 = OtherGame::new(Box::new(move || {
             counted.fetch_add(1, Ordering::SeqCst);
             std::thread::sleep(std::time::Duration::from_millis(50));
-            Ok([("nebula-area".to_string(), nettai_assets::Background { first_tile: 3, ..Default::default() })].into())
+            Ok([("nebula_area".to_string(), nettai_assets::Background { first_tile: 3, ..Default::default() })].into())
         }));
         let mut others = OtherBackgrounds::default();
         others.insert("exe5", exe5.clone());
@@ -593,7 +593,7 @@ mod tests {
             assert!(exe5.ready(), "extracted before the preload is done");
             assert_eq!(made.load(Ordering::SeqCst), 1);
             let missing = preload.missing();
-            assert!(!missing.iter().any(|m| m.contains("nebula-area")), "no lookup of it failed: {missing:?}");
+            assert!(!missing.iter().any(|m| m.contains("nebula_area")), "no lookup of it failed: {missing:?}");
         });
     }
 

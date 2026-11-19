@@ -367,7 +367,7 @@ definition_roles! {
         Confusion = "confusion",
         /// A navi turns invisible (`sub_8010474`).
         Invisible = "invisible",
-        /// A party's navi switch lands (the DS's 0x8D, `cross-change`:
+        /// A party's navi switch lands (the DS's 0x8D, `cross_change`:
         /// 0x0202BEB8, 0x0202C690).
         NaviSwitch = "navi_switch",
         /// A navi shows again: invisibility or a dive ended, a navi

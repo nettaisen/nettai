@@ -122,7 +122,7 @@ pub struct ChipEntry {
 }
 
 /// EXE4's asset names (assets.toml): the names the extractor writes its
-/// assets under. Sprites as "cc-ii" (the category's byte offset in the
+/// assets under. Sprites as "cc_ii" (the category's byte offset in the
 /// sprite list and the index), sounds by the song table's numbers, battle
 /// backgrounds by the background loader's (0x08085430), banners by the
 /// banner block's (0x02037CE0's +1), the emotion window's faces by the
@@ -252,9 +252,9 @@ pub struct GameAddresses {
 #[serde(deny_unknown_fields)]
 pub struct Games {
     pub bluemoon: GameAddresses,
-    #[serde(rename = "jp-redsun")]
+    #[serde(rename = "jp_redsun")]
     pub jp_redsun: GameAddresses,
-    #[serde(rename = "jp-bluemoon")]
+    #[serde(rename = "jp_bluemoon")]
     pub jp_bluemoon: GameAddresses,
 }
 
@@ -315,11 +315,11 @@ pub struct Compat {
     pub panels: BTreeMap<u8, PanelEntry>,
     /// navicust.toml: the NaviCust programs' numbers and colored variants.
     pub navicust: NaviCustNumbers,
-    /// patch-cards.toml: the patch cards' numbers, by key (those the content has).
+    /// patch_cards.toml: the patch cards' numbers, by key (those the content has).
     pub patch_cards: PatchCardNumbers,
 }
 
-/// EXE4's patch cards (patch-cards.toml): each card's number, the number a save's
+/// EXE4's patch cards (patch_cards.toml): each card's number, the number a save's
 /// slots hold, by key.
 #[derive(Clone, Debug, Default, Deserialize, PartialEq, Eq)]
 pub struct PatchCardNumbers {
@@ -359,7 +359,7 @@ pub const FILES: [&str; 12] = [
     "records.toml",
     "panels.toml",
     "navicust.toml",
-    "patch-cards.toml",
+    "patch_cards.toml",
 ];
 
 /// This repository's compat (content/exe4/compat), built in (the `builtin` feature: tools and tests; the app reads
@@ -377,10 +377,10 @@ const EXE4: [(&str, &str); 12] = [
     ("records.toml", include_str!("../../../content/exe4/compat/records.toml")),
     ("panels.toml", include_str!("../../../content/exe4/compat/panels.toml")),
     ("navicust.toml", include_str!("../../../content/exe4/compat/navicust.toml")),
-    ("patch-cards.toml", include_str!("../../../content/exe4/compat/patch-cards.toml")),
+    ("patch_cards.toml", include_str!("../../../content/exe4/compat/patch_cards.toml")),
 ];
 
-/// A sprite's "cc-ii".
+/// A sprite's "cc_ii".
 fn parse_sprite(id: &str) -> Option<(u8, u8)> {
     let (c, i) = id.split_once('-')?;
     Some((u8::from_str_radix(c, 16).ok()?, u8::from_str_radix(i, 16).ok()?))
@@ -397,7 +397,7 @@ fn parse_pool(name: &str) -> Option<Pool> {
 }
 
 impl Compat {
-    /// The number patch card `key` is printed with and a save holds (patch-cards.toml).
+    /// The number patch card `key` is printed with and a save holds (patch_cards.toml).
     pub fn patch_card_number(&self, key: &str) -> Option<u8> {
         self.patch_cards.cards.get(key).copied()
     }
@@ -436,7 +436,7 @@ impl Compat {
         }
         let assets: AssetNames = toml::from_str(&text("assets.toml")?).map_err(|e| format!("assets.toml: {e}"))?;
         for (name, id) in &assets.sprites {
-            parse_sprite(id).ok_or_else(|| format!("assets.toml: sprite {name} is {id:?}, not \"cc-ii\""))?;
+            parse_sprite(id).ok_or_else(|| format!("assets.toml: sprite {name} is {id:?}, not \"cc_ii\""))?;
         }
         let mut sounds = BTreeMap::new();
         for (name, &id) in &assets.sounds {
@@ -476,7 +476,7 @@ impl Compat {
             panels.insert(n, p);
         }
         let navicust: NaviCustNumbers = toml::from_str(&text("navicust.toml")?).map_err(|e| format!("navicust.toml: {e}"))?;
-        let patch_cards: PatchCardNumbers = toml::from_str(&text("patch-cards.toml")?).map_err(|e| format!("patch-cards.toml: {e}"))?;
+        let patch_cards: PatchCardNumbers = toml::from_str(&text("patch_cards.toml")?).map_err(|e| format!("patch_cards.toml: {e}"))?;
         Ok(Compat { chips, chip_keys, assets, text: text_file, rules, stages, games, kinds, actions, records, panels, navicust, patch_cards })
     }
 
@@ -577,7 +577,7 @@ impl Compat {
         self.records.barriers.iter().find(|&(_, &v)| v == n).map(|(k, _)| Some(k.clone())).ok_or_else(|| format!("aura {n}"))
     }
 
-    /// A status's id (`paralyze-90`) by a hit's status byte.
+    /// A status's id (`paralyze_90`) by a hit's status byte.
     pub fn status(&self, byte: u8) -> Option<String> {
         self.rules.statuses.iter().find(|&(_, &n)| n == byte).map(|(k, _)| k.clone())
     }
@@ -619,7 +619,7 @@ mod tests {
     fn the_built_in_compat_reads() {
         let c = Compat::exe4();
         assert_eq!(c.chip_key(1), Some("cannon"));
-        assert_eq!(c.chip_entry("bluemoon").map(|e| (e.id, e.version)), Some((0x135, Some(Version::BlueMoon))));
+        assert_eq!(c.chip_entry("blue_moon").map(|e| (e.id, e.version)), Some((0x135, Some(Version::BlueMoon))));
         assert_eq!(c.assets.sprites.get("megaman").map(String::as_str), Some("00-00"));
         // The US fonts draw 0x00 to 0x6F; the Japanese encoding's second page
         // runs from 0xE4.
@@ -632,7 +632,7 @@ mod tests {
         assert_eq!((c.panel_type(8), c.panel_name(8)), (Ok(PanelType(8)), Ok("lava")));
         assert_eq!((c.panel_name(5), c.panel_name(10), c.panel_name(11)), (Ok("metal"), Ok("pitfall"), Ok("hole")));
         assert!(c.panel_type(12).is_err());
-        assert_eq!(c.status(0x10).as_deref(), Some("paralyze-90"));
+        assert_eq!(c.status(0x10).as_deref(), Some("paralyze_90"));
         assert_eq!((c.navi_key(0), c.form(0), c.weapon(0).as_deref()), (Some("megaman"), Some("base"), Ok("megaman/buster")));
         assert_eq!(c.kind("engine/player"), Some((Pool::Actor, 0)));
     }
@@ -643,9 +643,9 @@ mod tests {
     #[test]
     fn a_settings_record_names_its_stage() {
         let c = Compat::exe4();
-        assert_eq!(c.stage(0x00, 0x080F_C5F2, Version::RedSun, false).as_deref(), Some("netbattle-2"));
-        assert_eq!(c.stage(0x00, 0x080F_C5FE, Version::BlueMoon, false).as_deref(), Some("netbattle-2"));
-        assert_eq!(c.stage(0x70, 0x080F_C616, Version::RedSun, false).as_deref(), Some("netbattle-60"));
+        assert_eq!(c.stage(0x00, 0x080F_C5F2, Version::RedSun, false).as_deref(), Some("netbattle_2"));
+        assert_eq!(c.stage(0x00, 0x080F_C5FE, Version::BlueMoon, false).as_deref(), Some("netbattle_2"));
+        assert_eq!(c.stage(0x70, 0x080F_C616, Version::RedSun, false).as_deref(), Some("netbattle_60"));
         assert_eq!(c.stage(0x00, 0x080F_C5F2, Version::BlueMoon, false), None);
     }
 

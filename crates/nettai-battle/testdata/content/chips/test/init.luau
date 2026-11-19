@@ -5,48 +5,48 @@
 -- `test/<name>`, its key in the table this returns (crates/nettai-battle/src/content/testing.rs names
 -- them).
 
-local antinavi = require("./antinavi").antinavi
-local assnswrd = require("./assnswrd").assnswrd
+local anti_navi = require("./anti_navi").anti_navi
+local assassin_sword = require("./assassin_sword").assassin_sword
 local bass = require("./bass/navi")
 local blastman = require("./blastman/navi")
-local bugbomb = require("./bugbomb").bugbomb
-local chrgeman = require("./chrgeman/navi")
+local bug_bomb = require("./bug_bomb").bug_bomb
+local chargeman = require("./chargeman/navi")
 local elecman = require("./elecman/navi")
-local elemtrap = require("./elemtrap").elemtrap
-local elmntman = require("./elmntman/navi")
+local element_trap = require("./element_trap").element_trap
+local elementman = require("./elementman/navi")
 local eraseman = require("./eraseman/navi")
-local fist = require("./firehit/fist")
-local flshbom_chips = require("./flshbom")
-local gundels_chips = require("./gundels")
+local fist = require("./fire_hit/fist")
+local flshbom_chips = require("./flash_bomb")
+local gundels_chips = require("./gun_del_sol")
 local heatman = require("./heatman/navi")
-local hook = require("./flmhook/hook")
-local invisible = require("./invisibl/controller")
+local hook = require("./flame_hook/hook")
+local invisible = require("./invisible/controller")
 local lockon = require("../rules/lockon")
-local minibomb = require("./minibomb").minibomb
+local mini_bomb = require("./mini_bomb").mini_bomb
 local navi_chips = require("../lib/navi_chips/chip")
 local plus = require("../lib/instant/plus")
-local poisseed = require("./poisseed").poisseed
+local poison_seed = require("./poison_seed").poison_seed
 local slashman = require("./slashman/navi")
 local sparks = require("../lib/sparks")
-local spoutman = require("./spoutman/navi")
-local stepswrd = require("./stepswrd").stepswrd
-local sunmoon = require("./sunmoon/sun")
+local aquaman = require("./aquaman/navi")
+local step_sword = require("./step_sword").step_sword
+local sun_and_moon = require("./sun_and_moon/sun")
 local tenguman = require("./tenguman/navi")
-local timebom_chips = require("./timebom")
-local tmhkman = require("./tmhkman/navi")
+local timebom_chips = require("./time_bomb_plus")
+local tomahawkman = require("./tomahawkman/navi")
 local traps = require("../lib/traps/controller")
-local wideswrd = require("./wideswrd").wideswrd
+local wide_sword = require("./wide_sword").wide_sword
 
-local dustbrk = require("../navis/dustman/chip").dustbrk
-local delecswd = require("../navis/elecman/chip").delecswd
-local edeletbm = require("../navis/eraseman/chip").edeletbm
-local etomahwk = require("../navis/tomahawkman/chip").etomahwk
-local ftornado = require("../navis/tenguman/chip").ftornado
-local heatpres = require("../navis/heatman/chip").heatpres
-local rc_brakr = require("../navis/groundman/chip")["rc-brakr"]
-local rslash = require("../navis/slashman/chip").rslash
-local volcchrg = require("../navis/chargeman/chip").volcchrg
-local dripshwr = require("../navis/spoutman/chip").dripshwr
+local dust_break = require("../navis/dustman/chip").dust_break
+local dash_elec_sword = require("../navis/elecman/chip").dash_elec_sword
+local eraser_delete_beam = require("../navis/eraseman/chip").eraser_delete_beam
+local eagle_tomahawk = require("../navis/tomahawkman/chip").eagle_tomahawk
+local fuujin_tornado = require("../navis/tenguman/chip").fuujin_tornado
+local heat_press = require("../navis/heatman/chip").heat_press
+local rock_crush_breaker = require("../navis/groundman/chip").rock_crush_breaker
+local rolling_slash = require("../navis/slashman/chip").rolling_slash
+local volcano_charge = require("../navis/chargeman/chip").volcano_charge
+local drip_shower = require("../navis/aquaman/chip").drip_shower
 
 -- A chip with the fields tests don't care about filled in (codes A and
 -- `*`, 10 MB, three to a folder; `n` its place in the library), and
@@ -71,7 +71,7 @@ local function chip(key: string, n: number, fields: { [string]: any }): Chip
     return spec :: any
 end
 
--- The SunGuns: EXE6's GunDelSols' actions (chips/gundels), each a GunDelSol's.
+-- The SunGuns: EXE6's GunDelSols' actions (chips/gun_del_sol), each a GunDelSol's.
 local function sun_gun(key: string, n: number, gundel: Chip): Chip
     return chip(key, n, { beast = { lockon = lockon.cannon }, action = gundel.action })
 end
@@ -111,7 +111,7 @@ local function navi_chip(key: string, n: number, damage: number, summon: NaviChi
     return chip(key, n, all)
 end
 
--- FlmHook's flames (chips/flmhook): from the columns one and two ahead, the
+-- FlmHook's flames (chips/flame_hook): from the columns one and two ahead, the
 -- small ones, the fire spark.
 local FLAME_HOOK_FLAMES = hook.flames {
     columns = function(me: Object): (number, number)
@@ -161,10 +161,10 @@ local chips: { [string]: Chip } = {
             error("the test content's blank chip has no use")
         end,
     }),
-    ["test/sun-gun-1"] = sun_gun("sun-gun-1", 0x01, gundels_chips.gundels1),
-    ["test/sun-gun-2"] = sun_gun("sun-gun-2", 0x02, gundels_chips.gundels2),
-    ["test/sun-gun-3"] = sun_gun("sun-gun-3", 0x03, gundels_chips.gundels3),
-    ["test/sun-gun-ex"] = sun_gun("sun-gun-ex", 0x04, gundels_chips.gundelex),
+    ["test/sun_gun_1"] = sun_gun("sun_gun_1", 0x01, gundels_chips.gun_del_sol_1),
+    ["test/sun_gun_2"] = sun_gun("sun_gun_2", 0x02, gundels_chips.gun_del_sol_2),
+    ["test/sun_gun_3"] = sun_gun("sun_gun_3", 0x03, gundels_chips.gun_del_sol_3),
+    ["test/sun_gun_ex"] = sun_gun("sun_gun_ex", 0x04, gundels_chips.gun_del_sol_ex),
     -- Invisibl's six seconds.
     ["test/veil"] = chip("veil", 0x05, {
         -- (The counter part's made-up extension.)
@@ -178,65 +178,65 @@ local chips: { [string]: Chip } = {
     ["test/eraser"] = navi_chip("eraser", 0x06, 60, eraseman.summon { aim_ticks = 16 }, { family = Family.cursor, counter = 100 }),
     -- A trap chip that sets no object.
     ["test/trap"] = chip("trap", 0x09, { flags = { dimming = true, standard_library = true }, dimming = traps.hook() }),
-    ["test/elem-trap"] = chip("elem-trap", 0x30, {
+    ["test/elem_trap"] = chip("elem_trap", 0x30, {
         flags = { dimming = true, has_damage = true, standard_library = true },
         damage = 40,
-        dimming = elemtrap.dimming,
+        dimming = element_trap.dimming,
     }),
-    ["test/time-bomb"] = chip("time-bomb", 0x31, {
+    ["test/time_bomb"] = chip("time_bomb", 0x31, {
         flags = { dimming = true, has_damage = true, standard_library = true },
         counter = 100,
         damage = 50,
-        dimming = timebom_chips.timebom1.dimming,
+        dimming = timebom_chips.time_bomb_1.dimming,
     }),
-    ["test/time-bomb-plus"] = chip("time-bomb-plus", 0x32, {
+    ["test/time_bomb_plus"] = chip("time_bomb_plus", 0x32, {
         flags = { dimming = true, has_damage = true, standard_library = true },
         counter = 100,
         damage = 70,
-        dimming = timebom_chips.timebom.dimming,
+        dimming = timebom_chips.time_bomb_plus.dimming,
     }),
     -- A plus chip used on its own.
     ["test/plus"] = chip("plus", 0x41, { family = Family.plus, damage = 10, instant = plus.attack }),
     ["test/fist"] = spawning("fist", 0x46, fist.instant(3)),
-    ["test/flame-hook"] = spawning("flame-hook", 0x48, hook.instant(FLAME_HOOK_FLAMES)),
-    ["test/heatpres"] = link_chip("heatpres", 0x50, heatpres),
-    ["test/delecswd"] = link_chip("delecswd", 0x51, delecswd),
-    ["test/rslash"] = link_chip("rslash", 0x52, rslash),
-    ["test/edeletbm"] = link_chip("edeletbm", 0x53, edeletbm),
-    ["test/volcchrg"] = link_chip("volcchrg", 0x54, volcchrg),
-    ["test/dripshwr"] = link_chip("dripshwr", 0x55, dripshwr),
-    ["test/etomahwk"] = link_chip("etomahwk", 0x56, etomahwk),
-    ["test/ftornado"] = link_chip("ftornado", 0x57, ftornado),
-    ["test/rc-brakr"] = link_chip("rc-brakr", 0x58, rc_brakr),
-    ["test/dustbrk"] = link_chip("dustbrk", 0x59, dustbrk),
+    ["test/flame_hook"] = spawning("flame_hook", 0x48, hook.instant(FLAME_HOOK_FLAMES)),
+    ["test/heat_press"] = link_chip("heat_press", 0x50, heat_press),
+    ["test/dash_elec_sword"] = link_chip("dash_elec_sword", 0x51, dash_elec_sword),
+    ["test/rolling_slash"] = link_chip("rolling_slash", 0x52, rolling_slash),
+    ["test/eraser_delete_beam"] = link_chip("eraser_delete_beam", 0x53, eraser_delete_beam),
+    ["test/volcano_charge"] = link_chip("volcano_charge", 0x54, volcano_charge),
+    ["test/drip_shower"] = link_chip("drip_shower", 0x55, drip_shower),
+    ["test/eagle_tomahawk"] = link_chip("eagle_tomahawk", 0x56, eagle_tomahawk),
+    ["test/fuujin_tornado"] = link_chip("fuujin_tornado", 0x57, fuujin_tornado),
+    ["test/rock_crush_breaker"] = link_chip("rock_crush_breaker", 0x58, rock_crush_breaker),
+    ["test/dust_break"] = link_chip("dust_break", 0x59, dust_break),
     -- A blank chip that is the AntiNavi trap when a side's defensive-chip
     -- record holds it.
-    ["test/anti-navi"] = chip("anti-navi", 0xBA, {
+    ["test/anti_navi"] = chip("anti_navi", 0xBA, {
         class = ChipClass.special,
         codes = {},
         trap = TrapKind.anti_navi,
-        dimming = antinavi.dimming,
+        dimming = anti_navi.dimming,
     }),
-    ["test/bomb"] = thrown("bomb", 0x103, 50, minibomb.action),
-    ["test/seed"] = thrown("seed", 0x104, 10, poisseed.action),
-    ["test/flash"] = thrown("flash", 0x105, 40, flshbom_chips.flshbom2.action),
-    ["test/bug"] = thrown("bug", 0x106, 0, bugbomb.action),
+    ["test/bomb"] = thrown("bomb", 0x103, 50, mini_bomb.action),
+    ["test/seed"] = thrown("seed", 0x104, 10, poison_seed.action),
+    ["test/flash"] = thrown("flash", 0x105, 40, flshbom_chips.flash_bomb_2.action),
+    ["test/bug"] = thrown("bug", 0x106, 0, bug_bomb.action),
     -- A column of three panels ahead; the same after a step two panels
     -- ahead; a strike at stunned or grounded opponents.
-    ["test/blade"] = blade("blade", 0x109, wideswrd.action),
-    ["test/step-blade"] = blade("step-blade", 0x10A, stepswrd.action),
-    ["test/stun-blade"] = blade("stun-blade", 0x10B, assnswrd.action),
-    ["test/elements"] = navi_chip("elements", 0x110, 50, elmntman.summon { cycle_ticks = 4 }, { counter = 100 }),
-    ["test/spout"] = navi_chip("spout", 0x111, 40, spoutman.summon, { element = Element.aqua }),
+    ["test/blade"] = blade("blade", 0x109, wide_sword.action),
+    ["test/step_blade"] = blade("step_blade", 0x10A, step_sword.action),
+    ["test/stun_blade"] = blade("stun_blade", 0x10B, assassin_sword.action),
+    ["test/elements"] = navi_chip("elements", 0x110, 50, elementman.summon { cycle_ticks = 4 }, { counter = 100 }),
+    ["test/spout"] = navi_chip("spout", 0x111, 40, aquaman.summon, { element = Element.aqua }),
     ["test/heat"] = navi_chip("heat", 0x112, 40, heatman.summon),
     ["test/elec"] = navi_chip("elec", 0x113, 40, elecman.summon),
     ["test/slash"] = navi_chip("slash", 0x114, 40, slashman.summon { wave_damage = 10 }),
-    ["test/charge"] = navi_chip("charge", 0x115, 40, chrgeman.summon),
-    ["test/tomahawk"] = navi_chip("tomahawk", 0x116, 40, tmhkman.summon),
+    ["test/charge"] = navi_chip("charge", 0x115, 40, chargeman.summon),
+    ["test/tomahawk"] = navi_chip("tomahawk", 0x116, 40, tomahawkman.summon),
     ["test/tengu"] = navi_chip("tengu", 0x117, 40, tenguman.summon),
     ["test/blast"] = navi_chip("blast", 0x118, 40, blastman.summon),
     ["test/shooter"] = navi_chip("shooter", 0x119, 30, bass.summon, { class = ChipClass.giga }),
-    ["test/sun-moon"] = navi_chip("sun-moon", 0x11A, 90, sunmoon.summon, { class = ChipClass.giga }),
+    ["test/sun_moon"] = navi_chip("sun_moon", 0x11A, 90, sun_and_moon.summon, { class = ChipClass.giga }),
 }
 
 return chips

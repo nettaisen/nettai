@@ -802,7 +802,7 @@ mod tests {
     fn live() -> Box<dyn Driver> {
         let content = testing::content();
         let settings = nettai_battle::BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE));
-        let folder = folder_of(&content, &[("gundels3", 13)]);
+        let folder = folder_of(&content, &[("gun_del_sol_3", 13)]);
         let setup = live_setup(&content, settings, [folder, folder], "falzar", 1);
         Box::new(LivePlayer::new(nettai_match::Set::new(content.clone(), setup, [folder, folder])))
     }
@@ -1174,7 +1174,7 @@ mod tests {
         let mut graphics = crate::testing::graphics(&content, 0x001F);
         crate::testing::scrolling_background(&mut graphics);
         let settings = nettai_battle::BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE));
-        let folder = folder_of(&content, &[("gundels3", 13)]);
+        let folder = folder_of(&content, &[("gun_del_sol_3", 13)]);
         let setup = live_setup(&content, settings, [folder, folder], "falzar", 1);
         let set = || Box::new(LivePlayer::new(nettai_match::Set::new(content.clone(), setup.clone(), [folder, folder])));
         let player = || Player::with(Renderer::with_graphics(graphics.game_graphics()), None, None, set());
@@ -1268,7 +1268,7 @@ mod tests {
         let mut graphics = crate::testing::graphics(&content, 0x001F);
         crate::testing::scrolling_background(&mut graphics);
         let settings = nettai_battle::BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE));
-        let folder = folder_of(&content, &[("gundels3", 13)]);
+        let folder = folder_of(&content, &[("gun_del_sol_3", 13)]);
         let setup = live_setup(&content, settings, [folder, folder], "falzar", 1);
         let set = || Box::new(LivePlayer::new(nettai_match::Set::new(content.clone(), setup.clone(), [folder, folder])));
         let mut never = Player::with(Renderer::with_graphics(graphics.game_graphics()), None, None, set());

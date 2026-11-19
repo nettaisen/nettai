@@ -530,8 +530,8 @@ fn name(tab: EditorTab) -> &'static str {
         EditorTab::Navi => "builds.navi",
         EditorTab::Folder => "builds.folder",
         EditorTab::Navicust => "builds.navicust",
-        EditorTab::PatchCards => "builds.patch-cards",
-        EditorTab::AutoBattle => "builds.auto-battle",
+        EditorTab::PatchCards => "builds.patch_cards",
+        EditorTab::AutoBattle => "builds.auto_battle",
         EditorTab::Party => "builds.party",
     }
 }

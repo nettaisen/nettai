@@ -1293,7 +1293,7 @@ mod tests {
     fn an_sp_chips_damage_goes_by_its_deletion_time() {
         use nettai_content_api::Registry;
         let content = scenario::content();
-        let count_sp = testing::chip_in(&content, "count-sp");
+        let count_sp = testing::chip_in(&content, "count_sp");
         let damage = |frames: Option<u16>| {
             let mut setup = scenario::setup();
             if let Some(f) = frames {
@@ -1478,7 +1478,7 @@ mod tests {
             use nettai_content_api::Data;
             let content = scenario::content();
             // (An entry of the root's `patch_cards`: data the rules read.)
-            let h = content.defs.entry_in("patch_cards", "test-stats").expect("the test card");
+            let h = content.defs.entry_in("patch_cards", "test_stats").expect("the test card");
             let card = content.defs.definitions.get(Registry::Entry, &content.defs.entry(h).key).expect("its definition");
             assert_eq!(card.spec.field("mb").int(), Some(20));
             let Data::List(effects) = card.spec.field("effects") else { panic!("its effects") };
@@ -1486,15 +1486,15 @@ mod tests {
                 effects.iter().map(|e| (e.field("kind").str().expect("a kind"), *e.field("bug") == Data::Bool(true))).collect();
             assert_eq!(kinds, [("hp_add", false), ("hp_percent_add", false), ("attack_add", false), ("body", false), ("hp_drain", true)]);
             // The cards are in the setup, which the digest covers.
-            let a = with_cards(&["test-stats"], |_| {});
-            let b = with_cards(&["test-later"], |_| {});
+            let a = with_cards(&["test_stats"], |_| {});
+            let b = with_cards(&["test_later"], |_| {});
             assert_ne!(a.setup.players[0].rules, b.setup.players[0].rules);
             assert_ne!(a.digest(), b.digest());
         }
 
         #[test]
         fn a_card_changes_the_stats_by_its_kinds_order() {
-            let b = with_cards(&["test-stats"], |_| {});
+            let b = with_cards(&["test_stats"], |_| {});
             let s = &b.stats[0];
             // HP 1000: +30 first, then +10% (the card lists them the other way).
             assert_eq!((s.max_hp, s.hp), (1133, 1133));
@@ -1506,7 +1506,7 @@ mod tests {
 
         #[test]
         fn a_later_card_writes_over_an_earlier_one() {
-            let b = with_cards(&["test-stats", "test-later"], |_| {});
+            let b = with_cards(&["test_stats", "test_later"], |_| {});
             let s = &b.stats[0];
             assert_eq!(s.attack, 2, "Attack 0 + 3 - 1");
             assert_eq!(s.giga_level, 0xFF, "GigaFolder- doesn't clamp");
@@ -1515,7 +1515,7 @@ mod tests {
         #[test]
         fn abilities_choices_and_chip_shuffle() {
             let content = scenario::content();
-            let b = with_cards(&["test-abilities"], |s| {
+            let b = with_cards(&["test_abilities"], |s| {
                 s.support = Some(Supports::default());
                 s.float_shoes = true;
                 s.set_game_stat(&content, "number_open", Value::Bool(true)).unwrap();
@@ -1524,7 +1524,7 @@ mod tests {
             let content = &b.content;
             assert!(s.super_armor && !s.float_shoes);
             assert_eq!(s.first_barrier, content.defs.record("barrier/200"));
-            assert_eq!(s.weapons.charge_shot_kind, content.defs.record("shot/charged-confusing"));
+            assert_eq!(s.weapons.charge_shot_kind, content.defs.record("shot/charged_confusing"));
             assert_eq!(s.support, Some(Supports { rush: true, ..Supports::default() }));
             assert_eq!(s.gauge_speed, GaugeSpeed::Fast);
             let stat = |name: &str| s.game_stat(content, name);
@@ -1538,7 +1538,7 @@ mod tests {
 
         #[test]
         fn with_cards_installed_the_glitch_follows_the_stats() {
-            let bugged = with_cards(&["test-abilities"], |s| {
+            let bugged = with_cards(&["test_abilities"], |s| {
                 s.support = Some(Supports::default());
                 s.bugs.emotion = 1;
             });
@@ -1556,7 +1556,7 @@ mod tests {
 
         #[test]
         fn the_support_bug_keeps_supports_off() {
-            let b = with_cards(&["test-abilities"], |s| s.support = None);
+            let b = with_cards(&["test_abilities"], |s| s.support = None);
             assert_eq!(b.stats[0].support, None, "the byte 0xFF stays 0xFF when a bit is set");
         }
     }

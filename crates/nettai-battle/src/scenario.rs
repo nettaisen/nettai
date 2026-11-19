@@ -36,7 +36,7 @@ fn megaman(content: &Content) -> NaviStats {
         giga_level: 1,
         weapons: NaviWeapons {
             buster: testing::weapon_in(content, "megaman/buster"),
-            charge_shot: testing::weapon_in(content, "megaman/charged-shot"),
+            charge_shot: testing::weapon_in(content, "megaman/charged_shot"),
             back_special: None,
             a_charge: None,
             mode9_a: None,

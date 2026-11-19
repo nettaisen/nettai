@@ -195,7 +195,7 @@ pub fn navicust_expansions(content: &Content, side: &crate::Side) -> Option<u8> 
 
 /// Patch cards of `game` from a list of their names, comma-separated, in
 /// the order they apply (`canodumb,shadow`; a card's variant after its
-/// name, `bass-cross-megaman/gregar`), as the rules' `patch_cards` take
+/// name, `bass_cross_megaman/gregar`), as the rules' `patch_cards` take
 /// them: a record of each card and its variant (none said: none).
 pub fn patch_cards<'a>(content: &Content, game: &str, list: &'a str) -> Vec<nettai_battle::rules::Fact<'a>> {
     use nettai_battle::rules::Fact;

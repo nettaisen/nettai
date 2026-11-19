@@ -34,12 +34,12 @@
 //! }
 //! -- exe6/chips/init.luau
 //! return merge {
-//!     require("@self/airshot"),
+//!     require("@self/air_shot"),
 //!     require("@self/cannon"),
 //! }
 //! -- exe6/chips/cannon/init.luau
 //! local cannon: Chip = { ... }
-//! return { cannon = cannon, hicannon = hicannon, ["m-cannon"] = m_cannon }
+//! return { cannon = cannon, hicannon = hicannon, ["mega_cannon"] = m_cannon }
 //! ```
 //!
 //! A load of a game runs its top module, and what that requires, in turn,
@@ -112,7 +112,7 @@ impl PackManifest {
     pub fn parse(text: &str, at: &str) -> Result<PackManifest, String> {
         let m: PackManifest = toml::from_str(text).map_err(|e| format!("{at}: {e}"))?;
         if !keys::valid_root_name(&m.id) {
-            return Err(format!("{at}: id {:?} is no pack's name (lowercase words in -)", m.id));
+            return Err(format!("{at}: id {:?} is no pack's name (lowercase words in _)", m.id));
         }
         for (i, u) in m.depends.iter().enumerate() {
             if u == &m.id {

@@ -26,7 +26,7 @@ impl std::hash::Hash for BackgroundPool {
     fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
 }
 
-/// The key the pool gives `game`'s background `name`: `<game>:<name>` (`exe4:acdc-area`).
+/// The key the pool gives `game`'s background `name`: `<game>:<name>` (`exe4:acdc_area`).
 pub fn pool_key(game: &str, name: &str) -> String {
     format!("{game}:{name}")
 }
@@ -141,10 +141,10 @@ mod tests {
     #[test]
     fn the_pool_is_in_its_games_order() {
         let pair = |g: &str, n: &str| (g.to_string(), n.to_string());
-        let pool = BackgroundPool::new([pair("exe6", "comp"), pair("exe4", "undernet"), pair("exe4", "acdc-area"), pair("exe6", "comp")]);
-        assert_eq!(pool.keys().collect::<Vec<_>>(), ["exe4:acdc-area", "exe4:undernet", "exe6:comp"]);
-        assert_eq!(pool.iter().next(), Some(("exe4", "acdc-area")));
-        let other = BackgroundPool::new([pair("exe4", "acdc-area"), pair("exe6", "comp")]);
+        let pool = BackgroundPool::new([pair("exe6", "comp"), pair("exe4", "undernet"), pair("exe4", "acdc_area"), pair("exe6", "comp")]);
+        assert_eq!(pool.keys().collect::<Vec<_>>(), ["exe4:acdc_area", "exe4:undernet", "exe6:comp"]);
+        assert_eq!(pool.iter().next(), Some(("exe4", "acdc_area")));
+        let other = BackgroundPool::new([pair("exe4", "acdc_area"), pair("exe6", "comp")]);
         assert_ne!(pool.identity(), other.identity());
         assert_eq!(pool.identity(), BackgroundPool::new(pool.iter().map(|(g, n)| pair(g, n))).identity());
     }

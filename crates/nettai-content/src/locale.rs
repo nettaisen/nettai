@@ -23,16 +23,16 @@
 //! "megaman" = { name = "ロックマン", run_message = "..." }
 //!
 //! [forms]
-//! "heatcross" = { name = "...", description = "..." }
+//! "heat_cross" = { name = "...", description = "..." }
 //!
 //! [backgrounds]
-//! "lans-hp" = { name = "熱斗のHP" }
+//! "lans_hp" = { name = "熱斗のHP" }
 //!
 //! [patch-cards]
 //! "canodumb" = { name = "..." }
 //!
 //! [navicust_programs]
-//! "airshoes" = { name = "AirShoes", description = "Move\novr hole" }
+//! "air_shoes" = { name = "AirShoes", description = "Move\novr hole" }
 //!
 //! [patch_card_effects]
 //! "hp_add" = "HP+{amount}"
@@ -550,29 +550,29 @@ mod tests {
     /// one the pack has.
     #[test]
     fn the_backgrounds_are_the_packs() {
-        let s = parse("language = \"en\"\n[backgrounds]\n\"lans-hp\" = { name = \"Lan's HP\" }\n\"lan-hp\" = { name = \"?\" }\n", "en.toml").unwrap();
-        assert_eq!(s.background("lans-hp").and_then(|b| b.name.as_deref()), Some("Lan's HP"));
+        let s = parse("language = \"en\"\n[backgrounds]\n\"lans_hp\" = { name = \"Lan's HP\" }\n\"lan-hp\" = { name = \"?\" }\n", "en.toml").unwrap();
+        assert_eq!(s.background("lans_hp").and_then(|b| b.name.as_deref()), Some("Lan's HP"));
         assert_eq!(
-            check_backgrounds(&s, &["lans-hp", "comp"], true),
+            check_backgrounds(&s, &["lans_hp", "comp"], true),
             ["backgrounds.lan-hp: the pack has no background of this name", "backgrounds.comp: the content's own language names every background of the pack"]
         );
-        assert_eq!(check_backgrounds(&s, &["lans-hp", "comp", "lan-hp"], false), Vec::<String>::new());
+        assert_eq!(check_backgrounds(&s, &["lans_hp", "comp", "lan-hp"], false), Vec::<String>::new());
     }
 
     /// `[battle_themes]` names the rules' battle themes by their songs' asset names: a song that is no theme is
     /// refused, and the own language names every theme.
     #[test]
     fn the_battle_themes_are_the_rules() {
-        let s = parse("language = \"en\"\n[battle_themes]\n\"virus-battle\" = \"Virus Battle\"\n\"winner\" = \"?\"\n", "en.toml").unwrap();
-        assert_eq!(s.text(BATTLE_THEMES, "virus-battle"), Some("Virus Battle"));
+        let s = parse("language = \"en\"\n[battle_themes]\n\"virus_battle\" = \"Virus Battle\"\n\"winner\" = \"?\"\n", "en.toml").unwrap();
+        assert_eq!(s.text(BATTLE_THEMES, "virus_battle"), Some("Virus Battle"));
         assert_eq!(
-            check_battle_themes(&s, &["virus-battle", "boss-battle"], true),
+            check_battle_themes(&s, &["virus_battle", "boss_battle"], true),
             [
                 "battle_themes.winner: the rules' battle_themes have no song of this name",
-                "battle_themes.boss-battle: the content's own language names every battle theme"
+                "battle_themes.boss_battle: the content's own language names every battle theme"
             ]
         );
-        assert_eq!(check_battle_themes(&s, &["virus-battle", "winner"], false), Vec::<String>::new());
+        assert_eq!(check_battle_themes(&s, &["virus_battle", "winner"], false), Vec::<String>::new());
     }
 
     /// `[emotions]` names the emotions the rules can hold a navi in: another
@@ -597,9 +597,9 @@ mod tests {
     fn each_games_battle_themes_are_named() {
         let dir = crate::index::content();
         for (game, en) in [
-            ("exe4", &["virus-battle", "boss-battle", "tournament-battle", "final-battle"][..]),
-            ("exe5", &["virus-battle", "boss-battle", "final-battle"][..]),
-            ("exe6", &["virus-battle", "boss-battle", "final-battle", "crossover-battle"][..]),
+            ("exe4", &["virus_battle", "boss_battle", "tournament_battle", "final_battle"][..]),
+            ("exe5", &["virus_battle", "boss_battle", "final_battle"][..]),
+            ("exe6", &["virus_battle", "boss_battle", "final_battle", "crossover_battle"][..]),
         ] {
             for lang in ["en", "ja"] {
                 let s = load(&dir.join(game), lang).unwrap().unwrap();
@@ -610,12 +610,12 @@ mod tests {
         }
         // (Read alone, as the app lists them: a language's, else the own language's.)
         let names = |game, lang| text_table(&dir, game, lang, BATTLE_THEMES);
-        assert_eq!(names("exe4", "en")["tournament-battle"], "Tournament Battle");
-        assert_eq!(names("exe4", "en")["final-battle"], "vs Duo");
-        assert_eq!(names("exe5", "en")["final-battle"], "vs Nebula Gray");
-        assert_eq!(names("exe6", "en")["final-battle"], "vs Cybeast");
-        assert_eq!(names("exe6", "ja")["final-battle"], "VS 電脳獣");
-        assert_eq!(names("exe6", "pseudo")["crossover-battle"], "Crossover Battle", "no table of its own");
+        assert_eq!(names("exe4", "en")["tournament_battle"], "Tournament Battle");
+        assert_eq!(names("exe4", "en")["final_battle"], "vs Duo");
+        assert_eq!(names("exe5", "en")["final_battle"], "vs Nebula Gray");
+        assert_eq!(names("exe6", "en")["final_battle"], "vs Cybeast");
+        assert_eq!(names("exe6", "ja")["final_battle"], "VS 電脳獣");
+        assert_eq!(names("exe6", "pseudo")["crossover_battle"], "Crossover Battle", "no table of its own");
         assert!(names("nowhere", "en").is_empty());
     }
 }

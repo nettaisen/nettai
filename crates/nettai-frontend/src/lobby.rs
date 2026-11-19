@@ -521,7 +521,7 @@ impl Settings {
     /// what it makes of it: 0 lifted, `n + 1` at most `n`); whether a background left to the seed is the pool's;
     /// the round wins the set is first to (`n`, a byte), then each of its
     /// `2n − 1` rounds' stage and background by name (empty: from the seed;
-    /// another game's background with its game, `exe4:acdc-area`).
+    /// another game's background with its game, `exe4:acdc_area`).
     pub fn to_bytes(&self, content: &Content) -> Vec<u8> {
         let mut out = Vec::new();
         let mut w = Writer(&mut out);
@@ -2305,7 +2305,7 @@ mod tests {
         assert_eq!(read(&own).unwrap(), own);
         assert_ne!(own.hash(&content), pool.hash(&content));
         let mut foreign = pool.clone();
-        foreign.rounds[1].background = Some("exe4:acdc-area".into());
+        foreign.rounds[1].background = Some("exe4:acdc_area".into());
         assert_eq!(read(&foreign).unwrap(), foreign);
         foreign.rounds[1].background = Some("exe4:nowhere".into());
         assert_eq!(read(&foreign).unwrap_err(), "round 2: no background exe4:nowhere in the background pool");
@@ -2317,7 +2317,7 @@ mod tests {
     fn bans_by_navi_go_by_name() {
         let content = nettai_match::testing::exe5_content();
         let r = Rulesets::of(&content, "exe5").unwrap();
-        let ids = nettai_match::ids::entry(&content, "exe5", "partycust_programs", "p-btlpk2").unwrap().0;
+        let ids = nettai_match::ids::entry(&content, "exe5", "partycust_programs", "party_battle_pack_2").unwrap().0;
         let protoman = nettai_match::ids::navi(&content, "exe5", "protoman").unwrap().0;
         let mut own = r.preset("unrestricted").unwrap().clone();
         own.name = RulesetName::Own("Masters".into());
@@ -2326,7 +2326,7 @@ mod tests {
         let owned = Settings { ruleset: own.clone(), ..Settings::of_match(&m, r.presets[0].clone()) };
         let bytes = owned.to_bytes(&content);
         let text = String::from_utf8_lossy(&bytes);
-        assert!(text.contains("protoman") && text.contains("p-btlpk2"), "by name: {text}");
+        assert!(text.contains("protoman") && text.contains("party_battle_pack_2"), "by name: {text}");
         let theirs = Settings::from_bytes(&content, &r, &bytes).unwrap();
         assert!(theirs.ruleset.same_rules(&own) && theirs.hash(&content) == owned.hash(&content));
         assert!(!theirs.ruleset.allows_for("party.programs", protoman, &nettai_match::ruleset::Item::of(ids)));
@@ -2535,7 +2535,7 @@ mod tests {
         use nettai_match::facts::PATCH_CARDS;
         use nettai_match::testing::{exe4_content, exe5_content, exe6_content, patch_cards};
         for (content, game, versions, card) in [
-            (exe4_content(), "exe4", ["redsun", "bluemoon"], "017-custom2"),
+            (exe4_content(), "exe4", ["redsun", "bluemoon"], "017_custom2"),
             (exe5_content(), "exe5", ["protoman", "colonel"], "quaker"),
             (exe6_content(), "exe6", ["gregar", "falzar"], "canodumb"),
         ] {
@@ -2597,7 +2597,7 @@ mod tests {
         // host's (a new save's folder) doesn't; the host's own ruleset holds it
         // back.
         let mut joiner = built(&content, "falzar");
-        let held = content.defs.chip_by_key("spreadr1").unwrap();
+        let held = content.defs.chip_by_key("spreader_1").unwrap();
         let first = 3;
         let mut folder = joiner.folder(&content);
         folder.chips[first] = Some(nettai_battle::custom::FolderChip::new(held, content.chip(held).codes[0]));
