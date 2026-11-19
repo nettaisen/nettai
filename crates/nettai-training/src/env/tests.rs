@@ -546,7 +546,7 @@ fn the_rules_buttons_without_uses_can_be_pressed() {
             }
         }
         println!("{game}: forms {seen:?}");
-        assert!(seen.iter().any(|k| k.contains(wanted) && k != "darksoul"), "{game}: no {wanted} form taken: {seen:?}");
+        assert!(seen.iter().any(|k| k.contains(wanted) && k != "dark_soul"), "{game}: no {wanted} form taken: {seen:?}");
     }
 }
 
@@ -769,7 +769,10 @@ fn a_view_played_on_with_both_seats_presses_is_the_battle_now() {
             kept = None;
         }
         if out.phase[0] == FIGHT {
-            if let Some((view, from)) = kept.take() {
+            // (The presses reach PRESSES ticks back: a view kept before a
+            // longer stretch without fight decisions, a custom screen or a
+            // dimming, isn't played on.)
+            if let Some((view, from)) = kept.take().filter(|&(_, from)| ((env.t - from) as usize) < PRESSES) {
                 let now = env.played_on(0, view, from, true).expect("presses kept that far back");
                 assert_eq!(now.digest(), env.battle.digest(), "step {step}: from tick {from} to {}", env.t);
                 checked += 1;
