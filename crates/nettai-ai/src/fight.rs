@@ -4,8 +4,8 @@
 //! 2-phase `Step → Fire` lookahead, Full Synchro awareness, and area/obstacle PvP tactics.
 
 use crate::sim::{
-    a_chargeable, dir_key_for_delta, enemy_seen_panel, fight_runs, navi_barrier_hp, navi_hp, navi_idle, navi_max_hp, navi_panel, navi_ref,
-    navi_status, owned_panel_count, sanitize_battle, seen_to, step_battle, stepped_pos, walkable_panel,
+    a_chargeable, dir_key_for_delta, enemy_seen_panel, fight_runs, navi_barrier_hp, navi_barrier_threshold, navi_hp, navi_idle, navi_max_hp, navi_panel,
+    navi_ref, navi_status, owned_panel_count, sanitize_battle, seen_to, step_battle, stepped_pos, walkable_panel,
 };
 use nettai_battle::actor::ActorStatus;
 use nettai_battle::collision::StatusFlags;
@@ -80,6 +80,8 @@ struct ReachEntry {
     probed_vuln: bool,
     probed_invuln: bool,
     hits_invuln: bool,
+    probed_aura: bool,
+    hits_aura: bool,
 }
 
 /// Per-round learned relative `(dx, dy)` hit offsets for each chip seen so far, plus
@@ -92,6 +94,12 @@ pub struct ReachTable {
     charge_form: Option<nettai_content_api::FormHandle>,
     charge_offsets: Vec<(i8, i8)>,
     charge_probed: bool,
+    /// `(enemy_x, own_panels)` when an empty B-charge probe occurred, so we re-probe if geometry changes.
+    charge_empty_at: Option<(u8, i32)>,
+    /// Consecutive fight ticks spent holding a full B-charge without firing it (detects kiting/deadlock).
+    charge_full_ticks: u32,
+    /// Cooldown ticks to stay in uncharged buster mode and avoid pursuing B-charge after abandoning a stuck charge.
+    charge_abandon_ticks: u32,
     /// Per-chip discovered non-dimming held-A command sequences (e.g. VarSwrd, NeoVari).
     chip_commands: Vec<(ChipHandle, Vec<Vec<Keys>>)>,
 }
@@ -112,18 +120,32 @@ impl ReachTable {
         self.charge_form == Some(form) && self.charge_probed
     }
 
+    /// If an earlier B-charge probe found no hitting panels (e.g. during an AreaGrab or hole blockage),
+    /// reset `charge_probed` as soon as the opponent changes column or our owned area changes!
+    pub fn refresh_empty_charge_probe(&mut self, form: nettai_content_api::FormHandle, enemy_x: u8, own_panels: i32) {
+        if self.charge_form == Some(form)
+            && self.charge_probed
+            && self.charge_offsets.is_empty()
+            && self.charge_empty_at.is_some_and(|(ex, op)| ex != enemy_x || op != own_panels)
+        {
+            self.charge_probed = false;
+            self.charge_empty_at = None;
+        }
+    }
+
     pub fn record_charge_hit(&mut self, form: nettai_content_api::FormHandle, offset: (i8, i8)) {
         if self.charge_form != Some(form) {
             self.charge_form = Some(form);
             self.charge_offsets.clear();
             self.charge_probed = false;
         }
+        self.charge_empty_at = None;
         if !self.charge_offsets.contains(&offset) && self.charge_offsets.len() < 12 {
             self.charge_offsets.push(offset);
         }
     }
 
-    pub fn set_charge_probed(&mut self, form: nettai_content_api::FormHandle, offsets: Vec<(i8, i8)>) {
+    pub fn set_charge_probed(&mut self, form: nettai_content_api::FormHandle, offsets: Vec<(i8, i8)>, enemy_x: u8, own_panels: i32) {
         if self.charge_form != Some(form) {
             self.charge_form = Some(form);
             self.charge_offsets.clear();
@@ -134,6 +156,11 @@ impl ReachTable {
             }
         }
         self.charge_probed = true;
+        self.charge_empty_at = if self.charge_offsets.is_empty() {
+            Some((enemy_x, own_panels))
+        } else {
+            None
+        };
     }
 
     /// Closest reachable walkable own-side panel from `my_pos` whose relative offset to `enemy_pos`
@@ -172,20 +199,28 @@ impl ReachTable {
         best.map(|(p, _)| p)
     }
 
-    pub fn already_probed(&self, chip: ChipHandle, while_invuln: bool) -> bool {
-        self.entries
-            .iter()
-            .find(|e| e.chip == chip)
-            .is_some_and(|e| if while_invuln { e.probed_invuln } else { e.probed_vuln })
+    pub fn already_probed(&self, chip: ChipHandle, while_invuln: bool, while_aura: bool) -> bool {
+        self.entries.iter().find(|e| e.chip == chip).is_some_and(|e| {
+            if while_invuln {
+                e.probed_invuln
+            } else if while_aura {
+                e.probed_aura
+            } else {
+                e.probed_vuln
+            }
+        })
     }
 
-    pub fn record(&mut self, chip: ChipHandle, offset: (i8, i8), while_invuln: bool) {
+    pub fn record(&mut self, chip: ChipHandle, offset: (i8, i8), while_invuln: bool, while_aura: bool) {
         if let Some(e) = self.entries.iter_mut().find(|e| e.chip == chip) {
             if !e.offsets.contains(&offset) && e.offsets.len() < 12 {
                 e.offsets.push(offset);
             }
             if while_invuln {
                 e.hits_invuln = true;
+            }
+            if while_aura {
+                e.hits_aura = true;
             }
         } else if self.entries.len() < 40 {
             self.entries.push(ReachEntry {
@@ -194,11 +229,13 @@ impl ReachTable {
                 probed_vuln: false,
                 probed_invuln: false,
                 hits_invuln: while_invuln,
+                probed_aura: false,
+                hits_aura: while_aura,
             });
         }
     }
 
-    pub fn set_probed(&mut self, chip: ChipHandle, offsets: Vec<(i8, i8)>, while_invuln: bool) {
+    pub fn set_probed(&mut self, chip: ChipHandle, offsets: Vec<(i8, i8)>, while_invuln: bool, while_aura: bool) {
         let hit_any = !offsets.is_empty();
         if let Some(e) = self.entries.iter_mut().find(|e| e.chip == chip) {
             for off in offsets {
@@ -211,6 +248,11 @@ impl ReachTable {
                 if hit_any {
                     e.hits_invuln = true;
                 }
+            } else if while_aura {
+                e.probed_aura = true;
+                if hit_any {
+                    e.hits_aura = true;
+                }
             } else {
                 e.probed_vuln = true;
             }
@@ -218,14 +260,17 @@ impl ReachTable {
             self.entries.push(ReachEntry {
                 chip,
                 offsets,
-                probed_vuln: !while_invuln,
+                probed_vuln: !while_invuln && !while_aura,
                 probed_invuln: while_invuln,
                 hits_invuln: while_invuln && hit_any,
+                probed_aura: !while_invuln && while_aura,
+                hits_aura: !while_invuln && while_aura && hit_any,
             });
         }
     }
 
     /// Closest walkable own-side panel from `my_pos` whose relative offset to `enemy_pos` is a known hit for `chip`.
+    #[allow(clippy::too_many_arguments)]
     pub fn best_target(
         &self,
         b: &Battle,
@@ -235,9 +280,13 @@ impl ReachTable {
         enemy_pos: PanelPos,
         air_shoe: bool,
         enemy_invuln: bool,
+        enemy_has_aura: bool,
     ) -> Option<PanelPos> {
         let entry = self.entries.iter().find(|e| e.chip == chip)?;
         if enemy_invuln && !entry.hits_invuln {
+            return None;
+        }
+        if enemy_has_aura && !entry.hits_aura {
             return None;
         }
         let forward: i32 = if side == 0 { 1 } else { -1 };
@@ -314,6 +363,7 @@ struct RolloutResult {
     spent_chip: bool,
     gained_invis: bool,
     gained_barrier: u16,
+    broke_enemy_barrier: bool,
     gained_trap: bool,
     ended_dimmed: bool,
     end_a_charging: bool,
@@ -377,14 +427,28 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
     let enemy_status = if enemy_pos.is_some() { navi_status(&sim, other) } else { StatusFlags::empty() };
     let enemy_invuln = enemy_status
         .intersects(StatusFlags::INVULNERABLE | StatusFlags::UNTOUCHABLE | StatusFlags::FLASHING | StatusFlags::INVISIBLE | StatusFlags::SUBMERGED);
-    // If we already probed this form's B-charge shot and NO walkable panel on our side can hit the
-    // opponent (e.g. MeddySoul / ProtoSoul when opponent is behind a hole or stolen column), stop
-    // holding B so we can shoot back with full-screen uncharged buster shots instead of deadlocking!
+    let enemy_has_aura = enemy_pos.is_some() && navi_barrier_threshold(&sim, other) > 0;
+    // Refresh an earlier empty B-charge probe if the opponent moved columns or our owned area changed.
+    let own_panels_now = owned_panel_count(&sim, side);
+    if let Some(ep) = enemy_pos {
+        ctx.reach.refresh_empty_charge_probe(cur_form, ep.x, own_panels_now);
+    }
+    if !sim.is_dimmed() {
+        ctx.reach.charge_abandon_ticks = ctx.reach.charge_abandon_ticks.saturating_sub(cfg.k);
+        if b_charge_full && !enemy_invuln && !enemy_has_aura {
+            ctx.reach.charge_full_ticks = ctx.reach.charge_full_ticks.saturating_add(cfg.k);
+        } else if !b_charge_full {
+            ctx.reach.charge_full_ticks = 0;
+        }
+    }
+    // If this form's B-charge has no reachable hit panel OR we recently abandoned a stuck/kited B-charge,
+    // stop holding B and avoid pursuing charge-shot spacing so we can fight back with uncharged buster!
     let b_charge_unreachable = can_b_charge
         && !enemy_invuln
         && ctx.reach.charge_probed_for(cur_form)
         && enemy_pos.is_some_and(|ep| ctx.reach.best_charge_target(&sim, side, cur_form, my_pos, ep, air_shoe).is_none());
-    let keep_b = if can_b_charge && (!b_charge_unreachable || b_charge_full) {
+    let b_charge_abandoned = b_charge_unreachable || ctx.reach.charge_abandon_ticks > 0;
+    let keep_b = if can_b_charge && (!b_charge_abandoned || b_charge_full) {
         Keys::B
     } else {
         Keys::empty()
@@ -531,14 +595,14 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             is_dimming_chip,
         );
 
-        // Learn relative hit offset whenever THIS chip lands additional damage (never credit already-in-flight hits!).
-        let chip_added_dmg = r.dealt > base_res.dealt + 0.001;
+        // Learn relative hit offset whenever THIS chip lands additional damage or breaks a barrier/Aura!
+        let chip_added_dmg = r.dealt > base_res.dealt + 0.001 || (r.broke_enemy_barrier && !base_res.broke_enemy_barrier);
         if chip_added_dmg
             && let Some(ep) = enemy_pos
         {
             let dx = ((ep.x as i32 - my_pos.x as i32) * forward) as i8;
             let dy = (ep.y as i32 - my_pos.y as i32) as i8;
-            ctx.reach.record(chip_id, (dx, dy), enemy_invuln);
+            ctx.reach.record(chip_id, (dx, dy), enemy_invuln, enemy_has_aura);
         }
 
         // Opponent movement modeling: if the opponent is actively moving and NOT locked in an attack/status,
@@ -728,17 +792,19 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             || cd.damage > 0
             || cd.formula.is_some()
             || (!cd.flags.contains(ChipFlags::DIMMING) && cd.modifier.is_none() && cd.trap.is_none());
-        let chip_hit_now = chip_res.as_ref().is_some_and(|(_, r)| r.dealt > base_res.dealt + 0.001);
-        if may_hit_enemy && !chip_hit_now && !ctx.reach.already_probed(chip_id, enemy_invuln) {
+        let chip_hit_now = chip_res
+            .as_ref()
+            .is_some_and(|(_, r)| r.dealt > base_res.dealt + 0.001 || (r.broke_enemy_barrier && !base_res.broke_enemy_barrier));
+        if may_hit_enemy && !chip_hit_now && !ctx.reach.already_probed(chip_id, enemy_invuln, enemy_has_aura) {
             let offsets = probe_chip_offsets(&sim, side, my_pos, epos, air_shoe);
-            ctx.reach.set_probed(chip_id, offsets, enemy_invuln);
+            ctx.reach.set_probed(chip_id, offsets, enemy_invuln, enemy_has_aura);
         }
     }
 
     let chip_target = if !blind {
         next_chip
             .zip(enemy_pos)
-            .and_then(|(chip_id, epos)| ctx.reach.best_target(&sim, side, chip_id, my_pos, epos, air_shoe, enemy_invuln))
+            .and_then(|(chip_id, epos)| ctx.reach.best_target(&sim, side, chip_id, my_pos, epos, air_shoe, enemy_invuln, enemy_has_aura))
     } else {
         None
     };
@@ -746,6 +812,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
     // 6. Build the rest of our candidate actions.
     let base_taken = base_res.taken;
     let base_dealt = base_res.dealt;
+    let base_broke_barrier = base_res.broke_enemy_barrier;
     let mut cands: Vec<(Candidate, RolloutResult)> = Vec::with_capacity(14);
     cands.push((base_cand, base_res));
     if let Some(cr) = chip_res {
@@ -791,11 +858,16 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
 
     // Release full B charge shot, or finish off / poke with an uncharged buster shot!
     let enemy_low_hp = !blind && navi_hp(&sim, other) <= 30;
-    if can_b_charge && !a_charging && (b_charge_full || (enemy_low_hp && !enemy_invuln && enemy_pos.is_some_and(|ep| ep.y == my_pos.y))) {
+    let chip_missed_here_early = cands
+        .get(1)
+        .is_some_and(|(_, r)| next_chip.is_some() && r.dealt <= base_dealt + 1e-5 && !r.broke_enemy_barrier);
+    let mut abandon_cand_idx: Option<usize> = None;
+    let mut b_charge_breaks_aura = false;
+    if can_b_charge && !a_charging && (b_charge_full || (enemy_low_hp && !enemy_invuln && !enemy_has_aura && enemy_pos.is_some_and(|ep| ep.y == my_pos.y))) {
         let c = Candidate {
             first: Keys::empty(),
             first_ticks: 2,
-            after: if b_charge_unreachable { Keys::empty() } else { Keys::B },
+            after: if b_charge_abandoned { Keys::empty() } else { Keys::B },
             cmd_queue: Vec::new(),
             is_move: false,
             is_charge_release: b_charge_full,
@@ -803,33 +875,43 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             is_step_fire: false,
         };
         let mut r = rollout(&sim, side, c.first, c.first_ticks, c.after, cfg.horizon, cfg.cap, blind, Keys::empty(), false);
+        let charge_hit_here = r.dealt > base_dealt + 0.001 || (r.broke_enemy_barrier && !base_broke_barrier);
+        if enemy_has_aura && charge_hit_here {
+            b_charge_breaks_aura = true;
+        }
         if b_charge_full
             && !enemy_invuln
+            && !enemy_has_aura
             && let Some(ep) = enemy_pos
         {
             let dx = ((ep.x as i32 - my_pos.x as i32) * forward) as i8;
             let dy = (ep.y as i32 - my_pos.y as i32) as i8;
-            if r.dealt > base_dealt + 0.001 {
+            if charge_hit_here {
                 ctx.reach.record_charge_hit(cur_form, (dx, dy));
+                ctx.reach.charge_full_ticks = 0;
+                ctx.reach.charge_abandon_ticks = 0;
             } else if r.obs_dmg == 0 && !ctx.reach.charge_probed_for(cur_form) {
                 let offsets = probe_b_charge_offsets(&sim, side, my_pos, ep, air_shoe);
-                ctx.reach.set_charge_probed(cur_form, offsets);
+                ctx.reach.set_charge_probed(cur_form, offsets, ep.x, own_panels_now);
             }
         }
         if !b_charge_full && r.dealt <= base_dealt + 1e-5 && r.obs_dmg == 0 {
             r.score -= 0.06;
         }
         cands.push((c, r));
-        // If we are holding a full B-charge shot, have no usable chip, and NO reachable walkable panel
-        // on our side can hit the opponent with this form's B-charge (e.g. MeddySoul / ProtoSoul when
-        // opponent is behind a hole or stolen column), allow releasing ONCE with `after = empty` so we
-        // immediately transition to full-screen uncharged buster pokes instead of holding charge forever!
-        let stuck_full_charge = b_charge_full
-            && !enemy_invuln
-            && next_chip.is_none()
-            && !under_threat
-            && ctx.reach.charge_probed_for(cur_form)
+        // Abandon a stuck/exploitable full B-charge (e.g. MeddySoul / ProtoSoul when the charge shot
+        // is unreachable OR we've been stuck holding full charge >= 90 ticks without landing it while
+        // the opponent kites/spams buster): release ONCE with `after = empty` and enter a 150-tick
+        // uncharged-buster cooldown so we fight back instead of getting baited and chipped down!
+        let unreachable_now = ctx.reach.charge_probed_for(cur_form)
             && enemy_pos.is_some_and(|ep| ctx.reach.best_charge_target(&sim, side, cur_form, my_pos, ep, air_shoe).is_none());
+        let stuck_full_charge = b_charge_full
+            && !charge_hit_here
+            && !enemy_invuln
+            && !enemy_has_aura
+            && !under_threat
+            && (next_chip.is_none() || chip_missed_here_early)
+            && (unreachable_now || ctx.reach.charge_full_ticks >= 90);
         if stuck_full_charge {
             let clr = Candidate {
                 first: Keys::empty(),
@@ -843,17 +925,18 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             };
             let mut cr = rollout(&sim, side, clr.first, clr.first_ticks, clr.after, cfg.horizon, cfg.cap, blind, Keys::empty(), false);
             if cr.taken <= base_taken + 0.001 {
-                cr.score += 0.014;
+                cr.score += 0.018;
+                abandon_cand_idx = Some(cands.len());
                 cands.push((clr, cr));
             }
         }
-    } else if (!can_b_charge || (b_charge_unreachable && !b_charge_full))
+    } else if (!can_b_charge || (b_charge_abandoned && !b_charge_full))
         && !a_charging
         && !enemy_invuln
+        && !enemy_has_aura
         && enemy_pos.is_some_and(|ep| ep.y == my_pos.y)
     {
-        // Uncharged buster poke when our form cannot charge B OR its B-charge cannot reach from any
-        // walkable panel right now (e.g. MeddySoul / ProtoSoul vs out-of-range opponent)!
+        // Uncharged buster poke when our form cannot charge B OR B-charge is currently unreachable/abandoned!
         let c = Candidate {
             first: Keys::B,
             first_ticks: 2,
@@ -890,7 +973,9 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
     // Cardinal movement steps (+ 2-phase Step→Fire lookahead when 1 step from a chip hit panel,
     // or 1 step from an elemental-weakness position for an interactive dimming chip like ElementMan!).
     let step_ticks = cfg.k.min(3) as u8;
-    let chip_missed_here = cands.get(1).is_some_and(|(_, r)| next_chip.is_some() && r.dealt == 0.0);
+    let chip_missed_here = cands
+        .get(1)
+        .is_some_and(|(_, r)| next_chip.is_some() && r.dealt == 0.0 && !(r.broke_enemy_barrier && !base_broke_barrier));
     let next_is_dimming = next_chip.is_some_and(|id| sim.content.chip(id).flags.contains(ChipFlags::DIMMING));
     let enemy_has_elem = enemy_pos.is_some()
         && navi_ref(&sim, other).is_some_and(|r| (sim.objects.get(r).element & 0x0F) != 0);
@@ -960,7 +1045,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
                         blind,
                         next_is_dimming,
                     );
-                    if sf_res.dealt > 0.0 && sf_res.taken <= base_taken + 0.02 {
+                    if (sf_res.dealt > 0.0 || (sf_res.broke_enemy_barrier && !base_broke_barrier)) && sf_res.taken <= base_taken + 0.02 {
                         let sf_cand = Candidate {
                             first: dir | keep_hold,
                             first_ticks: step_ticks,
@@ -978,7 +1063,12 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
         }
     }
 
-    let b_charge_target = if b_charge_full && !enemy_invuln {
+    let b_charge_target = if b_charge_full
+        && !enemy_invuln
+        && (!enemy_has_aura || b_charge_breaks_aura)
+        && !b_charge_abandoned
+        && ctx.reach.charge_full_ticks < 90
+    {
         enemy_pos.and_then(|ep| ctx.reach.best_charge_target(&sim, side, cur_form, my_pos, ep, air_shoe))
     } else {
         None
@@ -1010,9 +1100,9 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             total += 0.04;
         }
 
-        // Never waste a full B charge shot on empty air or an invulnerable/invisible opponent
-        // (penalty exceeds Easy's noise so it never fires into empty air or Invis!).
-        if cand.is_charge_release && res.dealt <= base_dealt + 0.001 && res.obs_dmg == 0 {
+        // Never waste a full B charge shot on empty air or an invulnerable/invisible/Aura-protected opponent
+        // (penalty exceeds Easy's noise so it never fires into empty air, Invis, or unbroken Aura!).
+        if cand.is_charge_release && res.dealt <= base_dealt + 0.001 && res.obs_dmg == 0 && !res.broke_enemy_barrier {
             total -= 0.065;
         }
 
@@ -1030,8 +1120,8 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
                 end_p,
                 res.end_enemy_panel.or(enemy_pos),
                 chip_target.or(b_charge_target),
-                b_charge_full || a_charge_full || !can_b_charge || b_charge_unreachable,
-                !enemy_invuln,
+                b_charge_full || a_charge_full || !can_b_charge || b_charge_abandoned,
+                !enemy_invuln && (!enemy_has_aura || b_charge_breaks_aura),
                 want_strafe,
                 air_shoe,
                 float_shoe,
@@ -1060,6 +1150,11 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             best_total = total;
             best_idx = i;
         }
+    }
+
+    if abandon_cand_idx == Some(best_idx) {
+        ctx.reach.charge_abandon_ticks = 150;
+        ctx.reach.charge_full_ticks = 0;
     }
 
     let chosen = cands.swap_remove(best_idx).0;
@@ -1952,6 +2047,7 @@ fn score_rollout(b: &Battle, c: &Battle, side: u8, blind: bool, s0: &Snap0) -> R
         spent_chip,
         gained_invis,
         gained_barrier,
+        broke_enemy_barrier: !blind && s0.enemy_barrier > enemy_barrier1,
         gained_trap,
         ended_dimmed: c.is_dimmed(),
         end_a_charging,
@@ -2093,22 +2189,24 @@ fn positional_score(
             if end_p.y == ep.y {
                 score += 0.006;
             }
-        } else if want_strafe {
+        } else if !enemy_vulnerable || want_strafe {
+            // When opponent is Invisible or protected by an Aura we cannot break, stay safely off their
+            // row instead of chasing into their line of fire to get repeatedly punished!
             if end_p.y != ep.y {
-                score += 0.008;
+                score += if !enemy_vulnerable { 0.012 } else { 0.008 };
             }
         }
     }
 
     // 2. Area control & PvP column tactics:
     //    - Standing on a stolen column locks it so it doesn't revert to the opponent!
-    //    - Standing on our front column blocks incoming AreaGrab steals and shortens travel time.
+    //    - Standing on our front column blocks incoming AreaGrab steals (skipped while playing evasive against Aura/Invis).
     if let Some(p) = b.field.panel(end_p.x, end_p.y) {
         if p.alliance == side && p.home != side {
             let col = b.field.columns[end_p.x as usize];
             score += if col.return_ready != 0 || col.timer < 90 { 0.014 } else { 0.009 };
         }
-        if p.front_edge && p.alliance == side {
+        if p.front_edge && p.alliance == side && enemy_vulnerable {
             score += 0.004;
         }
 
@@ -2328,6 +2426,7 @@ fn walk_and_chip_hits(b: &Battle, side: u8, target: PanelPos, air_shoe: bool) ->
     }
 
     let hp_before_chip = navi_hp(&c, other);
+    let barrier_before = navi_barrier_hp(&c, other);
     let attacks0 = count_side_attacks(&c, side);
     let snap0 = capture_snapshot(&c, side, false);
     let reads_a0 = c.dimmed_key_reads(side, Keys::A);
@@ -2347,13 +2446,13 @@ fn walk_and_chip_hits(b: &Battle, side: u8, target: PanelPos, air_shoe: bool) ->
         undimmed += !c.is_dimmed() as u32;
         if is_dimming && t >= 4 && c.is_dimmed() && c.dimmed_key_reads(side, Keys::A) != reads_a0 {
             let best = best_dimmed_a_rollout(&c, &c, side, false, &snap0, 220);
-            return best.dealt > 0.0;
+            return best.dealt > 0.0 || best.broke_enemy_barrier;
         }
-        if navi_hp(&c, other) < hp_before_chip {
+        if navi_hp(&c, other) < hp_before_chip || navi_barrier_hp(&c, other) < barrier_before {
             return true;
         }
     }
-    navi_hp(&c, other) < hp_before_chip
+    navi_hp(&c, other) < hp_before_chip || navi_barrier_hp(&c, other) < barrier_before
 }
 
 /// Probe canonical walkable own-side panels to learn relative `(dx, dy)` hit offsets for the active form's

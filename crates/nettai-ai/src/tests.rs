@@ -1046,16 +1046,11 @@ fn saves_invisible_unprovoked_and_cuts_in_against_enemy_dimming_attack() {
                     );
                 }
                 if fight_t >= 80 && !p0_cast {
-                    let (Some(p0_pos), Some(p1_pos)) = (sim::navi_panel(&b, 0), sim::navi_panel(&b, 1)) else {
+                    let Some(p0_pos) = sim::navi_panel(&b, 0) else {
                         continue;
                     };
-                    if p0_pos.y != p1_pos.y {
-                        if fight_t % 3 == 1 {
-                            PlayerTick::buttons(if p1_pos.y < p0_pos.y { Keys::UP } else { Keys::DOWN })
-                        } else {
-                            PlayerTick::default()
-                        }
-                    } else if p0_pos.x < 3 {
+                    // ProtoMan teleports to the opponent from any panel; JudgeMan sweeps all 3 rows from x=3.
+                    if enemy_chip_key == "judgeman" && p0_pos.x < 3 {
                         if fight_t % 3 == 1 {
                             PlayerTick::buttons(Keys::RIGHT)
                         } else {
@@ -1712,17 +1707,49 @@ fn meddysoul_switches_to_buster_when_charge_shot_unreachable() {
         for l in &mut layers {
             l.follow(&b);
         }
-        if navi_hp(&b, 0) + 15 <= sim::navi_max_hp(&b, 0) {
+        if navi_hp(&b, 0) + 10 <= sim::navi_max_hp(&b, 0) {
             break;
         }
     }
 
     let form_key = content.defs.form(b.stats[1].form).key.as_str();
-    let dealt = sim::navi_max_hp(&b, 0).saturating_sub(navi_hp(&b, 0));
+    let dealt_buster = sim::navi_max_hp(&b, 0).saturating_sub(navi_hp(&b, 0));
     assert_eq!(form_key, "meddy_soul");
     assert!(
-        dealt >= 10,
-        "MeddySoul got stuck holding charge forever instead of firing uncharged buster shots! (dealt={dealt}, my={:?}, en={:?})",
+        dealt_buster >= 10,
+        "MeddySoul got stuck holding charge forever instead of firing uncharged buster shots! (dealt={dealt_buster}, my={:?}, en={:?})",
+        sim::navi_panel(&b, 1),
+        sim::navi_panel(&b, 0)
+    );
+
+    // Now restore column 4 to side 1 (simulating AreaGrab wearing off): MeddySoul must reset its empty
+    // probe, resume charging B, step into x=4 (dx=3), and land a capsule charge shot!
+    for y in 1..=3u8 {
+        if let Some(p) = b.field.panel_mut(4, y) {
+            p.alliance = 1;
+            p.home = 1;
+        }
+    }
+    let hp_before_restore = navi_hp(&b, 0);
+    for _ in 0..900u32 {
+        if b.round_end().is_some() || b.is_stopped() {
+            break;
+        }
+        let p0 = PlayerTick::default();
+        let p1 = ai_tick(&mut ai, &b, 1);
+        let ticks = [layers[0].input(p0, &b), layers[1].input(p1, &b)];
+        assert!(step_ticks(&mut b, ticks));
+        for l in &mut layers {
+            l.follow(&b);
+        }
+        if hp_before_restore.saturating_sub(navi_hp(&b, 0)) >= 40 {
+            break;
+        }
+    }
+    let dealt_after_restore = hp_before_restore.saturating_sub(navi_hp(&b, 0));
+    assert!(
+        dealt_after_restore >= 40,
+        "MeddySoul failed to resume using capsule charge shot after stolen column returned! (dealt={dealt_after_restore}, my={:?}, en={:?})",
         sim::navi_panel(&b, 1),
         sim::navi_panel(&b, 0)
     );
@@ -1919,4 +1946,201 @@ fn varswrd_neovari_and_zsaber_execute_commands() {
             b.hands[1].cursor
         );
     }
+}
+
+/// When the opponent has LifeAura (threshold barrier) up and the AI has no Aura-breaking attack,
+/// the AI must NOT waste sub-threshold chips/buster shots OR chase onto the opponent's row to get punished;
+/// instead it plays evasive off-row!
+#[test]
+fn does_not_chase_into_enemy_aura_without_breaker() {
+    use nettai_battle::content::ChipCode;
+    use nettai_battle::custom::{FolderChip, SavedFolder};
+    use nettai_battle::setup::BattleSettings;
+    use nettai_frontend::driver::live_setup;
+
+    let content = nettai_match::testing::exe6_content();
+    let aura = content
+        .defs
+        .chips
+        .iter()
+        .enumerate()
+        .find(|(_, d)| d.key == "life_aura")
+        .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+        .expect("life_aura");
+    let aura_code = content.chip(aura).codes[0];
+    let cannon = content
+        .defs
+        .chips
+        .iter()
+        .enumerate()
+        .find(|(_, d)| d.key == "cannon" && d.record.codes.contains(&ChipCode::ASTERISK))
+        .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+        .expect("cannon *");
+
+    let f0 = [FolderChip::new(aura, aura_code); 30];
+    let f1 = [FolderChip::new(cannon, ChipCode::ASTERISK); 30];
+    let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
+    let setup = live_setup(
+        &content,
+        BattleSettings::on(&content, stage),
+        [
+            SavedFolder { chips: f0, regular: Some(0), tags: None },
+            SavedFolder { chips: f1, regular: Some(0), tags: None },
+        ],
+        "gregar",
+        13,
+    );
+    let mut b = Battle::new(setup, content.clone());
+    let mut layers = [Layer::new(0, &b), Layer::new(1, &b)];
+    let mut ai = Fighter::inline(Level::Hard, 13).with_open_custom(false);
+
+    let mut p0_cast_aura = false;
+    let mut aura_ticks = 0u32;
+    let mut off_row_ticks = 0u32;
+    let mut wasted_chip = false;
+
+    for t in 0..900u32 {
+        if b.round_end().is_some() || b.is_stopped() {
+            break;
+        }
+        let p0 = if b.round.mode == mode::CUSTOM {
+            bot_tick(&b, 0, t)
+        } else if sim::fight_runs(&b) && !p0_cast_aura && sim::navi_idle(&b, 0) {
+            p0_cast_aura = true;
+            PlayerTick::buttons(Keys::A)
+        } else {
+            PlayerTick::default()
+        };
+        let p0_has_aura = sim::navi_barrier_threshold(&b, 0) > 0;
+        let p1 = if b.round.mode == mode::CUSTOM {
+            PlayerTick::default().with_choice(ai.custom_screen(&b, 1))
+        } else if !p0_cast_aura || !p0_has_aura {
+            PlayerTick::default()
+        } else {
+            PlayerTick::buttons(ai.fight(&b, 1, Keys::empty()))
+        };
+
+        let cur_before = b.hands[1].cursor;
+        let ticks = [layers[0].input(p0, &b), layers[1].input(p1, &b)];
+        assert!(step_ticks(&mut b, ticks));
+        for l in &mut layers {
+            l.follow(&b);
+        }
+
+        if p0_cast_aura && !b.is_dimmed() && sim::navi_barrier_threshold(&b, 0) > 0 {
+            aura_ticks += 1;
+            if b.hands[1].cursor > cur_before {
+                wasted_chip = true;
+            }
+            if let (Some(p0p), Some(p1p)) = (sim::navi_panel(&b, 0), sim::navi_panel(&b, 1))
+                && p0p.y != p1p.y
+            {
+                off_row_ticks += 1;
+            }
+            if aura_ticks >= 240 {
+                break;
+            }
+        }
+    }
+
+    assert!(aura_ticks >= 200, "test setup never observed LifeAura active ({aura_ticks})");
+    assert!(!wasted_chip, "AI wasted sub-threshold Cannon into LifeAura!");
+    assert!(
+        off_row_ticks * 2 >= aura_ticks,
+        "AI chased onto opponent's row during LifeAura instead of playing evasive (off_row={off_row_ticks}/{aura_ticks})"
+    );
+}
+
+/// When the opponent has LifeAura up AND the AI holds an Aura-breaker (e.g. WindRack),
+/// the AI learns that it breaks Aura, repositions into range, and removes LifeAura!
+#[test]
+fn breaks_enemy_aura_when_holding_aura_breaker() {
+    use nettai_battle::custom::{FolderChip, SavedFolder};
+    use nettai_battle::setup::BattleSettings;
+    use nettai_frontend::driver::live_setup;
+
+    let content = nettai_match::testing::exe6_content();
+    let aura = content
+        .defs
+        .chips
+        .iter()
+        .enumerate()
+        .find(|(_, d)| d.key == "life_aura")
+        .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+        .expect("life_aura");
+    let aura_code = content.chip(aura).codes[0];
+    let wind_rack = content
+        .defs
+        .chips
+        .iter()
+        .enumerate()
+        .find(|(_, d)| d.key == "wind_racket")
+        .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+        .expect("wind_racket");
+    let wind_code = content.chip(wind_rack).codes[0];
+
+    let f0 = [FolderChip::new(aura, aura_code); 30];
+    let f1 = [FolderChip::new(wind_rack, wind_code); 30];
+    let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
+    let setup = live_setup(
+        &content,
+        BattleSettings::on(&content, stage),
+        [
+            SavedFolder { chips: f0, regular: Some(0), tags: None },
+            SavedFolder { chips: f1, regular: Some(0), tags: None },
+        ],
+        "gregar",
+        13,
+    );
+    let mut b = Battle::new(setup, content.clone());
+    let mut layers = [Layer::new(0, &b), Layer::new(1, &b)];
+    let mut ai = Fighter::inline(Level::Hard, 13).with_open_custom(false);
+
+    let mut p0_cast_aura = false;
+    let mut saw_aura = false;
+    let mut broke_aura = false;
+
+    for t in 0..900u32 {
+        if b.round_end().is_some() || b.is_stopped() {
+            break;
+        }
+        let p0 = if b.round.mode == mode::CUSTOM {
+            bot_tick(&b, 0, t)
+        } else if sim::fight_runs(&b) && !p0_cast_aura && sim::navi_idle(&b, 0) {
+            p0_cast_aura = true;
+            PlayerTick::buttons(Keys::A)
+        } else {
+            PlayerTick::default()
+        };
+        let p0_has_aura = sim::navi_barrier_threshold(&b, 0) > 0;
+        let p1 = if b.round.mode == mode::CUSTOM {
+            PlayerTick::default().with_choice(ai.custom_screen(&b, 1))
+        } else if !p0_cast_aura {
+            PlayerTick::default()
+        } else {
+            PlayerTick::buttons(ai.fight(&b, 1, Keys::empty()))
+        };
+
+        let ticks = [layers[0].input(p0, &b), layers[1].input(p1, &b)];
+        assert!(step_ticks(&mut b, ticks));
+        for l in &mut layers {
+            l.follow(&b);
+        }
+
+        if p0_has_aura {
+            saw_aura = true;
+        } else if saw_aura && !b.is_dimmed() {
+            broke_aura = true;
+            break;
+        }
+    }
+
+    assert!(saw_aura, "test setup never observed LifeAura active");
+    assert!(
+        broke_aura,
+        "AI failed to break LifeAura even while holding WindRack! (my={:?}, en={:?}, cur={})",
+        sim::navi_panel(&b, 1),
+        sim::navi_panel(&b, 0),
+        b.hands[1].cursor
+    );
 }

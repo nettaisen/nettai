@@ -112,6 +112,17 @@ pub fn navi_barrier_hp(b: &Battle, side: u8) -> u16 {
         })
 }
 
+/// Minimum single-hit damage required to break `side`'s Aura (0 if no threshold Aura is active).
+pub fn navi_barrier_threshold(b: &Battle, side: u8) -> u16 {
+    navi_ref(b, side)
+        .and_then(|r| b.objects.get(r).collision)
+        .filter(|&c| b.collision.in_use(c))
+        .map_or(0, |c| {
+            let cd = b.collision.get(c);
+            if cd.barrier != 0 { cd.barrier_threshold as u16 } else { 0 }
+        })
+}
+
 /// Status flags of `side`'s navi.
 pub fn navi_status(b: &Battle, side: u8) -> StatusFlags {
     navi_ref(b, side)
