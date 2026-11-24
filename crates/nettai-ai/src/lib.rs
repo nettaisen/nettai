@@ -124,6 +124,10 @@ struct RoundState {
     held_after: Keys,
     held_first_ticks: u8,
     decision_age: u32,
+    /// Queued multi-step command sequence (dimming commands like ShadeMan/FireMan/LarkMan/Django/LaserMan,
+    /// or non-dimming held-A commands like VarSwrd/NeoVari).
+    cmd_queue: Vec<(Keys, u8)>,
+    cmd_dimmed_only: bool,
     /// Panel tracking for anti-pacing hysteresis & delayed opponent movement cadence.
     cur_panel: Option<PanelPos>,
     prev_panel: Option<PanelPos>,
@@ -213,6 +217,8 @@ impl Fighter {
             held_after: Keys::empty(),
             held_first_ticks: 0,
             decision_age: 0,
+            cmd_queue: Vec::new(),
+            cmd_dimmed_only: false,
             cur_panel: None,
             prev_panel: None,
             ticks_since_move: 100,
@@ -239,6 +245,8 @@ impl Fighter {
         r.held_after = Keys::empty();
         r.held_first_ticks = 0;
         r.decision_age = 0;
+        r.cmd_queue.clear();
+        r.cmd_dimmed_only = false;
         r.opener_at = None;
         r.last_cursor = 0;
         r.ticks_same_chip = 0;
@@ -331,10 +339,19 @@ impl Fighter {
             r.ring[slot_idx] = (Some(ft), Some(Box::new(b.clone())), r.attack_log);
         }
 
-        // Schedule or run a fight decision.
+        if !r.cmd_queue.is_empty() {
+            let flinched = sim::navi_ref(b, side)
+                .and_then(|nr| b.objects.get(nr).actor)
+                .is_some_and(|a| b.actors.get(a).navi_action == nettai_battle::kinds::player::NaviAction::Flinch);
+            if (r.cmd_dimmed_only && !b.is_dimmed()) || (!r.cmd_dimmed_only && (b.is_dimmed() || flinched)) {
+                r.cmd_queue.clear();
+            }
+        }
+
+        // Schedule or run a fight decision (paused while executing a queued command sequence).
         let lead = if self.worker.is_some() { WORKER_LEAD.min(k.saturating_sub(1)).min(d) } else { 0 };
         let due = ft + lead;
-        if due.is_multiple_of(k) && (lead == 0 || self.pending.is_none()) {
+        if r.cmd_queue.is_empty() && due.is_multiple_of(k) && (lead == 0 || self.pending.is_none()) {
             let ctx = self.build_fight_context(b, side, r, ft, due, lead);
             if lead > 0 {
                 if let Some(w) = &mut self.worker {
@@ -347,8 +364,16 @@ impl Fighter {
             }
         }
 
-        // Emit this tick's fight buttons.
-        let mut out = if r.decision_age < r.held_first_ticks as u32 {
+        // Emit this tick's fight buttons (draining any queued command sequence first).
+        let mut out = if !r.cmd_queue.is_empty() {
+            let keys = r.cmd_queue[0].0;
+            if r.cmd_queue[0].1 <= 1 {
+                r.cmd_queue.remove(0);
+            } else {
+                r.cmd_queue[0].1 -= 1;
+            }
+            keys
+        } else if r.decision_age < r.held_first_ticks as u32 {
             r.held_first
         } else {
             r.held_after
@@ -444,6 +469,10 @@ fn apply_decision(r: &mut RoundState, dec: FightDecision) {
     r.held_after = dec.after;
     r.held_first_ticks = dec.first_ticks;
     r.decision_age = 0;
+    if !dec.cmd_queue.is_empty() {
+        r.cmd_queue = dec.cmd_queue;
+        r.cmd_dimmed_only = dec.cmd_dimmed_only;
+    }
     r.reach = dec.reach;
     r.strafe_timer = dec.strafe_timer;
     r.enemy_last_panel = dec.enemy_last_panel;

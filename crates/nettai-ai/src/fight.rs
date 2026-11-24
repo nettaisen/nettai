@@ -92,9 +92,22 @@ pub struct ReachTable {
     charge_form: Option<nettai_content_api::FormHandle>,
     charge_offsets: Vec<(i8, i8)>,
     charge_probed: bool,
+    /// Per-chip discovered non-dimming held-A command sequences (e.g. VarSwrd, NeoVari).
+    chip_commands: Vec<(ChipHandle, Vec<Vec<Keys>>)>,
 }
 
 impl ReachTable {
+    pub fn chip_commands(&self, chip: ChipHandle) -> Option<&[Vec<Keys>]> {
+        self.chip_commands.iter().find(|(c, _)| *c == chip).map(|(_, seqs)| seqs.as_slice())
+    }
+
+    pub fn set_chip_commands(&mut self, chip: ChipHandle, seqs: Vec<Vec<Keys>>) {
+        if let Some((_, existing)) = self.chip_commands.iter_mut().find(|(c, _)| *c == chip) {
+            *existing = seqs;
+        } else if self.chip_commands.len() < 40 {
+            self.chip_commands.push((chip, seqs));
+        }
+    }
     pub fn charge_probed_for(&self, form: nettai_content_api::FormHandle) -> bool {
         self.charge_form == Some(form) && self.charge_probed
     }
@@ -265,23 +278,27 @@ pub struct FightContext {
     pub reach: ReachTable,
 }
 
-/// Output of one fight decision: press `first` for `first_ticks` ticks, then hold `after`.
+/// Output of one fight decision: press `first` for `first_ticks` ticks, then hold `after`,
+/// or execute a multi-step command sequence (`cmd_queue`).
 #[derive(Clone, Debug)]
 pub struct FightDecision {
     pub first: Keys,
     pub after: Keys,
     pub first_ticks: u8,
+    pub cmd_queue: Vec<(Keys, u8)>,
+    pub cmd_dimmed_only: bool,
     pub reach: ReachTable,
     pub strafe_timer: u32,
     pub enemy_last_panel: Option<PanelPos>,
     pub enemy_stationary_ticks: u32,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 struct Candidate {
     first: Keys,
     first_ticks: u8,
     after: Keys,
+    cmd_queue: Vec<(Keys, u8)>,
     is_move: bool,
     is_charge_release: bool,
     is_a_charge_hold: bool,
@@ -341,14 +358,12 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
     }
 
     let my_actor = sim.objects.get(my_ref).actor.map(|a| sim.actors.get(a));
+    let cur_form = sim.stats[side as usize].form;
     let can_b_charge = my_actor.is_some_and(|a| !a.status.contains(ActorStatus::NO_CHARGE) && (a.charge_shot.is_some() || a.b_charge_time.is_some()));
     let can_a_charge = a_chargeable(&sim, side);
     let a_charging = can_a_charge && my_actor.is_some_and(|a| a.charge_source == 1 && a.charge_level >= 1);
     let a_charge_full = can_a_charge && my_actor.is_some_and(|a| a.charge_source == 1 && a.charge_level >= 2);
     let b_charge_full = can_b_charge && my_actor.is_some_and(|a| a.charge_source == 2 && a.charge_level >= 2);
-    let keep_b = if can_b_charge { Keys::B } else { Keys::empty() };
-    // While A-charging a chip, maintain `Keys::A` through movement/dodges so we don't cancel the charge early!
-    let keep_hold = if a_charging { Keys::A } else { keep_b };
     let has_back_special = my_actor.is_some_and(|a| a.back_special.is_some() && a.back_special_cooldown == 0);
     let next_chip = sim.hands[side as usize].next_chip();
     let is_doubled = next_chip.is_some() && next_chip_doubles(&sim, my_ref);
@@ -362,6 +377,20 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
     let enemy_status = if enemy_pos.is_some() { navi_status(&sim, other) } else { StatusFlags::empty() };
     let enemy_invuln = enemy_status
         .intersects(StatusFlags::INVULNERABLE | StatusFlags::UNTOUCHABLE | StatusFlags::FLASHING | StatusFlags::INVISIBLE | StatusFlags::SUBMERGED);
+    // If we already probed this form's B-charge shot and NO walkable panel on our side can hit the
+    // opponent (e.g. MeddySoul / ProtoSoul when opponent is behind a hole or stolen column), stop
+    // holding B so we can shoot back with full-screen uncharged buster shots instead of deadlocking!
+    let b_charge_unreachable = can_b_charge
+        && !enemy_invuln
+        && ctx.reach.charge_probed_for(cur_form)
+        && enemy_pos.is_some_and(|ep| ctx.reach.best_charge_target(&sim, side, cur_form, my_pos, ep, air_shoe).is_none());
+    let keep_b = if can_b_charge && (!b_charge_unreachable || b_charge_full) {
+        Keys::B
+    } else {
+        Keys::empty()
+    };
+    // While A-charging a chip, maintain `Keys::A` through movement/dodges so we don't cancel the charge early!
+    let keep_hold = if a_charging { Keys::A } else { keep_b };
     let enemy_attacking = enemy_pos.is_some()
         && navi_ref(&sim, other)
             .and_then(|r| sim.objects.get(r).actor)
@@ -380,17 +409,20 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
     let forward: i32 = if side == 0 { 1 } else { -1 };
 
     // 2. Dimming state:
-    //    (a) If our own interactive dimming chip is reading dimmed keys (EraseMan, Magnum, ElementMan,
-    //        BurnSquare, SearchMan, DeltaRayEdge, CircleGun, CrossScope, MetalMan, WoodMan, FireMan,
-    //        LaserMan, ShadeMan, etc.), aim / trigger it generically using `Battle::dimmed_key_reads`!
+    //    (a) If our own interactive dimming chip or command code is reading keys (EraseMan, Magnum,
+    //        ElementMan, BurnSquare, SearchMan, DeltaRayEdge, CircleGun, CrossScope, MetalMan, WoodMan,
+    //        FireMan, LaserMan, ShadeMan, Colonel, LarkMan, Django, etc.), aim or execute its command
+    //        generically using `Battle::dimmed_key_reads`!
     //    (b) Otherwise, check if we can & should counter cut-in with a dimming chip!
     if sim.is_dimmed() {
-        let held_a_before = ctx.past_inputs.last().is_some_and(|k| k.contains(Keys::A));
-        if let Some((first, first_ticks, after)) = decide_interactive_dimming(&sim, side, keep_hold, held_a_before, blind, cfg, &mut rng) {
+        let held_ab_before = ctx.past_inputs.last().is_some_and(|k| k.intersects(Keys::A | Keys::B));
+        if let Some((first, first_ticks, after, cmd_queue)) = decide_interactive_dimming(&sim, side, keep_hold, held_ab_before, blind, cfg, &mut rng) {
             return FightDecision {
                 first,
                 after,
                 first_ticks,
+                cmd_queue,
+                cmd_dimmed_only: true,
                 reach: ctx.reach,
                 strafe_timer: ctx.strafe_timer,
                 enemy_last_panel: next_enemy_panel,
@@ -423,6 +455,8 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
                     first: Keys::A,
                     after: keep_b,
                     first_ticks: 2,
+                    cmd_queue: Vec::new(),
+                    cmd_dimmed_only: false,
                     reach: ctx.reach,
                     strafe_timer: ctx.strafe_timer,
                     enemy_last_panel: next_enemy_panel,
@@ -434,6 +468,8 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             first: keep_hold,
             after: keep_hold,
             first_ticks: cfg.k as u8,
+            cmd_queue: Vec::new(),
+            cmd_dimmed_only: false,
             reach: ctx.reach,
             strafe_timer: ctx.strafe_timer,
             enemy_last_panel: next_enemy_panel,
@@ -446,6 +482,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
         first: keep_hold,
         first_ticks: cfg.k as u8,
         after: keep_hold,
+        cmd_queue: Vec::new(),
         is_move: false,
         is_charge_release: false,
         is_a_charge_hold: a_charging,
@@ -455,9 +492,10 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
     let under_threat = base_res.taken > 0.001;
     let should_dodge = !under_threat || rand_unit(&mut rng) < cfg.dodge_chance;
 
-    // 4. Evaluate chip use (`A` press, or `A` release when A-charging!).
+    // 4. Evaluate chip use (`A` press, `A` release when A-charging, or held-A command sequences like VarSwrd/NeoVari!).
     let mut chip_res: Option<(Candidate, RolloutResult)> = None;
     let mut a_charge_start: Option<(Candidate, RolloutResult)> = None;
+    let mut held_a_cmd_best: Option<(Candidate, RolloutResult)> = None;
 
     if let Some(chip_id) = next_chip {
         let cd = sim.content.chip(chip_id);
@@ -474,6 +512,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             first: fire_first,
             first_ticks: fire_ticks,
             after: fire_after,
+            cmd_queue: Vec::new(),
             is_move: false,
             is_charge_release: false,
             is_a_charge_hold: false,
@@ -598,6 +637,58 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
 
         chip_res = Some((fire_cand, r));
 
+        // Non-dimming held-A command chips (e.g. VarSwrd, NeoVari): discover command sequences once per
+        // chip per round via digest-diff search, then evaluate each discovered sequence (SonicBoom,
+        // LifeSwrd, SprSonic, DblDream, WideSwrd, LongSwrd, etc.) to pick the best attack for this position!
+        if !is_dimming_chip && !a_charging && cfg.probe_reach && navi_idle(&sim, side) {
+            if ctx.reach.chip_commands(chip_id).is_none() {
+                let seqs = probe_held_a_commands(&sim, side);
+                ctx.reach.set_chip_commands(chip_id, seqs);
+            }
+            if let Some(seqs) = ctx.reach.chip_commands(chip_id)
+                && !seqs.is_empty()
+            {
+                let held_a_prev = ctx.past_inputs.last().is_some_and(|k| k.contains(Keys::A));
+                for seq in seqs {
+                    let mut queue: Vec<(Keys, u8)> = Vec::with_capacity(seq.len() + 3);
+                    if held_a_prev {
+                        queue.push((Keys::empty(), 1));
+                    }
+                    queue.push((Keys::A, 2));
+                    for &k in seq {
+                        queue.push((k, 1));
+                    }
+                    queue.push((Keys::A, 2));
+                    let mut cr = rollout_command_sequence(&sim, side, &queue, keep_b, cfg.horizon.max(52), cfg.cap, blind);
+                    if cr.dealt > base_res.dealt + 0.001 {
+                        if enemy_attacking && can_counter {
+                            cr.score += 0.075;
+                        }
+                        if is_doubled && (cr.dealt - base_res.dealt) >= 0.08 {
+                            cr.score += 0.055;
+                        }
+                        let better = held_a_cmd_best.as_ref().is_none_or(|(_, prev)| cr.score > prev.score);
+                        if better {
+                            let (first, first_ticks) = queue[0];
+                            held_a_cmd_best = Some((
+                                Candidate {
+                                    first,
+                                    first_ticks,
+                                    after: keep_b,
+                                    cmd_queue: queue,
+                                    is_move: false,
+                                    is_charge_release: false,
+                                    is_a_charge_hold: false,
+                                    is_step_fire: false,
+                                },
+                                cr,
+                            ));
+                        }
+                    }
+                }
+            }
+        }
+
         // Consider starting an A-charge when `can_a_charge` is true, we aren't charging A yet, and opponent can be hit!
         if can_a_charge && !a_charging && !enemy_invuln && cfg.probe_reach && !under_threat {
             let is_attack_chip = cd.flags.contains(ChipFlags::HAS_DAMAGE) || cd.damage > 0 || cd.formula.is_some();
@@ -606,6 +697,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
                     first: Keys::A,
                     first_ticks: cfg.k as u8,
                     after: Keys::A,
+                    cmd_queue: Vec::new(),
                     is_move: false,
                     is_charge_release: false,
                     is_a_charge_hold: true,
@@ -659,18 +751,52 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
     if let Some(cr) = chip_res {
         cands.push(cr);
     }
+    if let Some(hc) = held_a_cmd_best {
+        cands.push(hc);
+    }
     if let Some(ac) = a_charge_start {
         cands.push(ac);
     }
 
+    // Mid-action follow-up command (e.g. Z-Saber's `B + Left` 4th-slash piercing SonicBoom):
+    // when already locked inside a `NaviAction::Content(_)` swing, check if pressing `B | LEFT` deals more!
+    if cfg.probe_reach
+        && my_actor.is_some_and(|a| matches!(a.navi_action, nettai_battle::kinds::player::NaviAction::Content(_)))
+    {
+        let prev_bl = ctx.past_inputs.last().is_some_and(|k| k.intersects(Keys::B | Keys::LEFT));
+        let mut queue = Vec::with_capacity(3);
+        if prev_bl {
+            queue.push((Keys::empty(), 1));
+        }
+        queue.push((Keys::B | Keys::LEFT, 2));
+        queue.push((Keys::empty(), 1));
+        let zr = rollout_command_sequence(&sim, side, &queue, keep_b, cfg.horizon, cfg.cap, blind);
+        if zr.dealt > base_dealt + 0.001 && zr.score > cands[0].1.score + 0.005 {
+            let (first, first_ticks) = queue[0];
+            cands.push((
+                Candidate {
+                    first,
+                    first_ticks,
+                    after: keep_b,
+                    cmd_queue: queue,
+                    is_move: false,
+                    is_charge_release: false,
+                    is_a_charge_hold: false,
+                    is_step_fire: false,
+                },
+                zr,
+            ));
+        }
+    }
+
     // Release full B charge shot, or finish off / poke with an uncharged buster shot!
-    let cur_form = sim.stats[side as usize].form;
     let enemy_low_hp = !blind && navi_hp(&sim, other) <= 30;
     if can_b_charge && !a_charging && (b_charge_full || (enemy_low_hp && !enemy_invuln && enemy_pos.is_some_and(|ep| ep.y == my_pos.y))) {
         let c = Candidate {
             first: Keys::empty(),
             first_ticks: 2,
-            after: Keys::B,
+            after: if b_charge_unreachable { Keys::empty() } else { Keys::B },
+            cmd_queue: Vec::new(),
             is_move: false,
             is_charge_release: b_charge_full,
             is_a_charge_hold: false,
@@ -685,52 +811,61 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             let dy = (ep.y as i32 - my_pos.y as i32) as i8;
             if r.dealt > base_dealt + 0.001 {
                 ctx.reach.record_charge_hit(cur_form, (dx, dy));
-            } else if r.obs_dmg == 0 && cfg.probe_reach && !ctx.reach.charge_probed_for(cur_form) {
+            } else if r.obs_dmg == 0 && !ctx.reach.charge_probed_for(cur_form) {
                 let offsets = probe_b_charge_offsets(&sim, side, my_pos, ep, air_shoe);
                 ctx.reach.set_charge_probed(cur_form, offsets);
             }
         }
-        if !b_charge_full && r.dealt <= base_dealt + 0.001 && r.obs_dmg == 0 {
+        if !b_charge_full && r.dealt <= base_dealt + 1e-5 && r.obs_dmg == 0 {
             r.score -= 0.06;
         }
         cands.push((c, r));
-    } else if !can_b_charge && !a_charging && !enemy_invuln && enemy_pos.is_some_and(|ep| ep.y == my_pos.y) {
-        // Uncharged buster poke for navis/forms that cannot charge B (only when opponent can be hit!).
+        // If we are holding a full B-charge shot, have no usable chip, and NO reachable walkable panel
+        // on our side can hit the opponent with this form's B-charge (e.g. MeddySoul / ProtoSoul when
+        // opponent is behind a hole or stolen column), allow releasing ONCE with `after = empty` so we
+        // immediately transition to full-screen uncharged buster pokes instead of holding charge forever!
+        let stuck_full_charge = b_charge_full
+            && !enemy_invuln
+            && next_chip.is_none()
+            && !under_threat
+            && ctx.reach.charge_probed_for(cur_form)
+            && enemy_pos.is_some_and(|ep| ctx.reach.best_charge_target(&sim, side, cur_form, my_pos, ep, air_shoe).is_none());
+        if stuck_full_charge {
+            let clr = Candidate {
+                first: Keys::empty(),
+                first_ticks: 2,
+                after: Keys::empty(),
+                cmd_queue: Vec::new(),
+                is_move: false,
+                is_charge_release: false,
+                is_a_charge_hold: false,
+                is_step_fire: false,
+            };
+            let mut cr = rollout(&sim, side, clr.first, clr.first_ticks, clr.after, cfg.horizon, cfg.cap, blind, Keys::empty(), false);
+            if cr.taken <= base_taken + 0.001 {
+                cr.score += 0.014;
+                cands.push((clr, cr));
+            }
+        }
+    } else if (!can_b_charge || (b_charge_unreachable && !b_charge_full))
+        && !a_charging
+        && !enemy_invuln
+        && enemy_pos.is_some_and(|ep| ep.y == my_pos.y)
+    {
+        // Uncharged buster poke when our form cannot charge B OR its B-charge cannot reach from any
+        // walkable panel right now (e.g. MeddySoul / ProtoSoul vs out-of-range opponent)!
         let c = Candidate {
             first: Keys::B,
             first_ticks: 2,
             after: Keys::empty(),
+            cmd_queue: Vec::new(),
             is_move: false,
             is_charge_release: false,
             is_a_charge_hold: false,
             is_step_fire: false,
         };
         let mut r = rollout(&sim, side, c.first, c.first_ticks, c.after, cfg.horizon.min(24), cfg.cap, blind, Keys::empty(), false);
-        if r.dealt == 0.0 && r.obs_dmg == 0 {
-            r.score -= 0.06;
-        }
-        cands.push((c, r));
-    } else if can_b_charge
-        && !a_charging
-        && !b_charge_full
-        && !enemy_invuln
-        && let Some(ep) = enemy_pos
-        && ep.y == my_pos.y
-        && ctx.reach.charge_probed_for(cur_form)
-        && ctx.reach.best_charge_target(&sim, side, cur_form, my_pos, ep, air_shoe).is_none()
-    {
-        // Only tap uncharged B when we already know this form's B-charge shot can't reach from here!
-        let c = Candidate {
-            first: Keys::empty(),
-            first_ticks: 1,
-            after: Keys::B,
-            is_move: false,
-            is_charge_release: false,
-            is_a_charge_hold: false,
-            is_step_fire: false,
-        };
-        let mut r = rollout(&sim, side, c.first, c.first_ticks, c.after, cfg.horizon.min(24), cfg.cap, blind, Keys::empty(), false);
-        if r.dealt == 0.0 && r.obs_dmg == 0 {
+        if r.dealt <= base_dealt + 1e-5 && r.obs_dmg == 0 {
             r.score -= 0.06;
         }
         cands.push((c, r));
@@ -742,6 +877,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             first: Keys::B | Keys::LEFT,
             first_ticks: 2,
             after: keep_b,
+            cmd_queue: Vec::new(),
             is_move: false,
             is_charge_release: false,
             is_a_charge_hold: false,
@@ -774,6 +910,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
                 first: dir | keep_hold,
                 first_ticks: step_ticks,
                 after: keep_hold,
+                cmd_queue: Vec::new(),
                 is_move: true,
                 is_charge_release: false,
                 is_a_charge_hold: a_charging,
@@ -828,6 +965,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
                             first: dir | keep_hold,
                             first_ticks: step_ticks,
                             after: keep_hold,
+                            cmd_queue: Vec::new(),
                             is_move: true,
                             is_charge_release: false,
                             is_a_charge_hold: a_charging,
@@ -892,7 +1030,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
                 end_p,
                 res.end_enemy_panel.or(enemy_pos),
                 chip_target.or(b_charge_target),
-                b_charge_full || a_charge_full || !can_b_charge,
+                b_charge_full || a_charge_full || !can_b_charge || b_charge_unreachable,
                 !enemy_invuln,
                 want_strafe,
                 air_shoe,
@@ -924,11 +1062,13 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
         }
     }
 
-    let chosen = cands[best_idx].0;
+    let chosen = cands.swap_remove(best_idx).0;
     FightDecision {
         first: chosen.first,
         after: chosen.after,
         first_ticks: chosen.first_ticks,
+        cmd_queue: chosen.cmd_queue,
+        cmd_dimmed_only: false,
         reach: ctx.reach,
         strafe_timer: if chosen.is_move { 0 } else { next_strafe },
         enemy_last_panel: next_enemy_panel,
@@ -941,6 +1081,8 @@ fn idle_decision(reach: ReachTable, strafe_timer: u32, enemy_last_panel: Option<
         first: Keys::empty(),
         after: Keys::empty(),
         first_ticks: 4,
+        cmd_queue: Vec::new(),
+        cmd_dimmed_only: false,
         reach,
         strafe_timer,
         enemy_last_panel,
@@ -964,21 +1106,24 @@ fn enemy_evade_dir(b: &Battle, other: u8, ep: PanelPos) -> Option<Keys> {
         .find(|&d| stepped_pos(other, ep, d).is_some_and(|(nx, ny)| walkable_panel(b, other, nx, ny, air)))
 }
 
-/// Keys that interactive dimming chips (EraseMan, Magnum, ElementMan, BurnSquare,
+/// Keys that interactive dimming chips and command codes (EraseMan, Magnum, ElementMan, BurnSquare,
 /// SearchMan, DeltaRayEdge, CircleGun, CrossScope, MetalMan, WoodMan, FireMan, LaserMan,
-/// ShadeMan, etc.) may read via `dimmed_pressed` / `dimmed_held`.
+/// ShadeMan, Colonel, LarkMan, Django, etc.) may read while dimmed.
 const DIMMED_INTERACTIVE_KEYS: Keys = Keys::from_bits_truncate(
     Keys::A.bits()
         | Keys::B.bits()
         | Keys::UP.bits()
         | Keys::DOWN.bits()
         | Keys::LEFT.bits()
-        | Keys::RIGHT.bits(),
+        | Keys::RIGHT.bits()
+        | Keys::L.bits()
+        | Keys::R.bits(),
 );
 
-/// Generically detect and control any interactive dimming chip by observing `Battle::dimmed_key_reads`
-/// on our own side while dimmed. Returns `Some((first, first_ticks, after))` when an active dimming
-/// chip is reading our inputs, or `None` for non-interactive dimming (e.g. AreaGrab / Invis / standard Navi).
+/// Generically detect and control any interactive dimming chip or command code by observing
+/// `Battle::dimmed_key_reads` on our own side while dimmed.
+/// Returns `Some((first, first_ticks, after, dim_queue))` when an active dimming chip is reading
+/// our inputs, or `None` for non-interactive dimming (e.g. AreaGrab / Invis / standard Navi).
 fn decide_interactive_dimming(
     sim: &Battle,
     side: u8,
@@ -987,8 +1132,8 @@ fn decide_interactive_dimming(
     blind: bool,
     cfg: LevelConfig,
     rng: &mut SplitMix64,
-) -> Option<(Keys, u8, Keys)> {
-    // Cheap 2-tick probe: does ANY active dimming script read our dimmed keys right now?
+) -> Option<(Keys, u8, Keys, Vec<(Keys, u8)>)> {
+    // Cheap 2-tick probe: does ANY active dimming script read our keys right now?
     let mut probe = sim.clone();
     let r0_all = probe.dimmed_key_reads(side, DIMMED_INTERACTIVE_KEYS);
     let r0_a = probe.dimmed_key_reads(side, Keys::A);
@@ -997,6 +1142,8 @@ fn decide_interactive_dimming(
     let r0_d = probe.dimmed_key_reads(side, Keys::DOWN);
     let r0_l = probe.dimmed_key_reads(side, Keys::LEFT);
     let r0_r = probe.dimmed_key_reads(side, Keys::RIGHT);
+    let r0_lb = probe.dimmed_key_reads(side, Keys::L);
+    let r0_rb = probe.dimmed_key_reads(side, Keys::R);
 
     for _ in 0..2 {
         let mut both = [Keys::empty(); 2];
@@ -1015,78 +1162,51 @@ fn decide_interactive_dimming(
     let reads_d = probe.dimmed_key_reads(side, Keys::DOWN) != r0_d;
     let reads_l = probe.dimmed_key_reads(side, Keys::LEFT) != r0_l;
     let reads_r = probe.dimmed_key_reads(side, Keys::RIGHT) != r0_r;
+    let reads_lb = probe.dimmed_key_reads(side, Keys::L) != r0_lb;
+    let reads_rb = probe.dimmed_key_reads(side, Keys::R) != r0_rb;
     let reads_dirs = reads_u || reads_d || reads_l || reads_r;
 
-    // Easy difficulty occasionally mistimes/delays aiming, while Normal/Hard aim cleanly.
-    if cfg.noise > 0.03 && rand_unit(rng) < 0.25 {
-        return Some((Keys::empty(), cfg.k as u8, Keys::empty()));
+    // Easy difficulty occasionally mistimes/skips interactive dimming & command codes; Normal/Hard execute cleanly.
+    if cfg.noise > 0.03 && rand_unit(rng) < 0.35 {
+        return Some((Keys::empty(), cfg.k as u8, Keys::empty(), Vec::new()));
     }
 
-    let dim_cap = cfg.cap.min(200);
+    // Long enough for SearchMan's lock + final powered shot, Django's ride + slash, WoodMan's 2nd wave,
+    // LaserMan's full 10-strike course, ShadeMan's crush, and LarkMan's swoop to all finish!
+    let dim_cap = cfg.cap.max(360);
     let base_none = rollout_dimmed_action(sim, side, Keys::empty(), 2, Keys::empty(), dim_cap, blind);
 
-    // Case 1: Directional / multi-button interactive dimming (MetalMan, FireMan, LaserMan, WoodMan, ShadeMan).
-    if reads_dirs {
-        let mut choices: Vec<(Keys, u8, Keys)> = Vec::with_capacity(12);
-        choices.push((Keys::empty(), cfg.k as u8, Keys::empty()));
-        if reads_a {
-            choices.push((Keys::A, 2, Keys::empty()));
-            // Hold A + direction (e.g. EXE4 MetalMan aiming reticle while holding A).
-            for (read, dir) in [(reads_u, Keys::UP), (reads_d, Keys::DOWN), (reads_l, Keys::LEFT), (reads_r, Keys::RIGHT)] {
-                if read {
-                    choices.push((Keys::A | dir, 2, Keys::A));
-                }
-            }
-            choices.push((Keys::A, cfg.k as u8, Keys::A));
-        }
-        if reads_b {
-            choices.push((Keys::B, 2, Keys::empty()));
-        }
-        for (read, dir) in [(reads_u, Keys::UP), (reads_d, Keys::DOWN), (reads_l, Keys::LEFT), (reads_r, Keys::RIGHT)] {
-            if read {
-                choices.push((dir, cfg.k as u8, dir));
-            }
-        }
-
-        let mut best = (Keys::empty(), cfg.k as u8, Keys::empty());
-        let mut best_score = base_none.score;
-        for (first, ticks, after) in choices {
-            let r = rollout_dimmed_action(sim, side, first, ticks, after, dim_cap, blind);
-            if r.score > best_score + 0.005 {
-                best_score = r.score;
-                best = (first, ticks, after);
-            }
-        }
-        return Some(best);
-    }
-
-    // Case 2: Timed button press while dimming (EraseMan, Magnum, BurnSquare, ElementMan,
+    // Case 1: Timed button-press aiming chips (EraseMan, Magnum, BurnSquare, ElementMan,
     //         CircleGun, CrossScope, DeltaRayEdge, SearchMan).
-    if reads_a || reads_b {
-        // Ensure a fresh rising edge if A was held on the previous tick!
-        if held_a_before && reads_a {
-            return Some((Keys::empty(), 1, Keys::empty()));
+    // Always test BOTH `A` AND `A | B` whenever `reads_a` is true (catches short-circuited
+    // power-ups like SearchMan's `if pressed("a") { if pressed("b") ... }`!).
+    if reads_a && !reads_dirs && !reads_lb && !reads_rb {
+        if held_a_before {
+            return Some((Keys::empty(), 1, Keys::empty(), Vec::new()));
         }
 
         let mut now_key = Keys::empty();
         let mut now_res = base_none.clone();
-        for (read, key) in [(reads_a, Keys::A), (reads_b, Keys::B), (reads_a && reads_b, Keys::A | Keys::B)] {
-            if !read {
-                continue;
-            }
+        // Test `A | B` BEFORE plain `A` so short-circuited power-ups (e.g. SearchMan's chip-destroying
+        // powered last shot on `A+B`) automatically win ties over plain `A`!
+        for key in [Keys::A | Keys::B, Keys::A] {
             let r = rollout_dimmed_action(sim, side, key, 2, Keys::empty(), dim_cap, blind);
             if r.score > now_res.score + 0.005 || (r.dealt > now_res.dealt + 0.001 && r.score >= now_res.score - 0.005) {
                 now_res = r;
                 now_key = key;
             }
         }
+        if reads_b {
+            let rb = rollout_dimmed_action(sim, side, Keys::B, 2, Keys::empty(), dim_cap, blind);
+            if rb.score > now_res.score + 0.005 {
+                now_res = rb;
+                now_key = Keys::B;
+            }
+        }
 
-        // Look ahead across the next ~60-72 ticks of the aiming cycle (e.g. EraseMan's 3-line cycle,
-        // ElementMan's 4-element cycle, Magnum's 6-position sight) to see if waiting produces a
-        // strictly better hit!
         let mut best_future = f32::NEG_INFINITY;
-        let step = 10u32;
-        let max_steps = if cfg.probe_reach { 7 } else { 4 };
+        let step = 5u32;
+        let max_steps = if cfg.probe_reach { 12 } else { 6 };
         let mut future = sim.clone();
         for _ in 0..max_steps {
             let mut stepped_ok = true;
@@ -1100,32 +1220,255 @@ fn decide_interactive_dimming(
             if !stepped_ok {
                 break;
             }
-            let r = rollout_dimmed_action(&future, side, if reads_a { Keys::A } else { Keys::B }, 2, Keys::empty(), dim_cap, blind);
-            if r.score > best_future {
-                best_future = r.score;
-            }
-            if reads_b && reads_a {
-                let rb = rollout_dimmed_action(&future, side, Keys::A | Keys::B, 2, Keys::empty(), dim_cap, blind);
-                if rb.score > best_future {
-                    best_future = rb.score;
+            for key in [Keys::A, Keys::A | Keys::B] {
+                let r = rollout_dimmed_action(&future, side, key, 2, Keys::empty(), dim_cap, blind);
+                if r.score > best_future {
+                    best_future = r.score;
                 }
             }
         }
 
-        // Press NOW if pressing immediately beats doing nothing AND waiting doesn't find a clearly better window!
         let worth_pressing = !now_key.is_empty()
             && (now_res.dealt > 0.0 || now_res.obs_dmg > 0 || now_res.score > base_none.score + 0.015);
         let better_later = best_future > now_res.score + 0.020;
 
         if worth_pressing && !better_later {
-            return Some((now_key, 2, Keys::empty()));
+            return Some((now_key, 2, Keys::empty(), Vec::new()));
         }
-        // Otherwise wait cleanly with `Keys::empty()` so our next decision has a crisp rising edge!
-        return Some((Keys::empty(), cfg.k as u8, Keys::empty()));
+        return Some((Keys::empty(), cfg.k as u8, Keys::empty(), Vec::new()));
+    }
+
+    // Case 2: Directional aiming & single/multi-step command codes
+    //         (LaserMan, MetalMan, WoodMan, FireMan, ShadeMan, Colonel, LarkMan, Django, etc.).
+    let mut seq_cands: Vec<Vec<(Keys, u8)>> = Vec::with_capacity(24);
+
+    // 2a. Single-step presses, holds (e.g. LaserMan's 31-tick directional charge), and chords
+    //     (Colonel `B|LEFT`, WoodMan `DOWN|A|B`, MetalMan `A|dir`).
+    for (read, dir) in [(reads_u, Keys::UP), (reads_d, Keys::DOWN), (reads_l, Keys::LEFT), (reads_r, Keys::RIGHT)] {
+        if read {
+            seq_cands.push(vec![(dir, 32)]);
+            seq_cands.push(vec![(Keys::B | dir, 8)]);
+            if reads_a {
+                seq_cands.push(vec![(Keys::A | dir, 4)]);
+            }
+        }
+    }
+    if reads_a {
+        seq_cands.push(vec![(Keys::A, 2)]);
+        seq_cands.push(vec![(Keys::A | Keys::B, 2)]);
+        seq_cands.push(vec![(Keys::A, cfg.k as u8)]);
+    }
+    if reads_b {
+        seq_cands.push(vec![(Keys::B, 4)]);
+        for dir in [Keys::UP, Keys::DOWN, Keys::LEFT, Keys::RIGHT] {
+            let chord = vec![(Keys::B | dir, 8)];
+            if !seq_cands.contains(&chord) {
+                seq_cands.push(chord);
+            }
+        }
+    }
+    if reads_d && reads_a && reads_b {
+        seq_cands.push(vec![(Keys::DOWN | Keys::A | Keys::B, 3)]);
+    }
+    if reads_lb {
+        seq_cands.push(vec![(Keys::L, 2)]);
+    }
+    if reads_rb {
+        seq_cands.push(vec![(Keys::R, 2)]);
+    }
+
+    // 2b. Generic multi-step command sequence discovery via digest-change beam search (depth <= 4):
+    //     Automatically discovers FireMan (`DOWN -> RIGHT`), ShadeMan (`DOWN -> RIGHT -> A` /
+    //     `DOWN -> LEFT -> A`), LarkMan (`B+UP -> B+RIGHT -> B+DOWN`), Django (`L -> L -> L -> A`), etc.!
+    if cfg.probe_reach {
+        for seq in discover_dimmed_commands(sim, side) {
+            if !seq_cands.contains(&seq) {
+                seq_cands.push(seq);
+            }
+        }
+    }
+
+    let mut best_seq: Option<Vec<(Keys, u8)>> = None;
+    let mut best_score = base_none.score;
+    for seq in seq_cands {
+        let r = rollout_dimmed_sequence(sim, side, &seq, dim_cap, blind);
+        if r.score > best_score + 0.005 {
+            best_score = r.score;
+            best_seq = Some(seq);
+        }
+    }
+
+    if let Some(seq) = best_seq {
+        let (first, first_ticks) = seq[0];
+        let mut queue = seq;
+        // Pad with a neutral release tick at the end so subsequent checks see a crisp rising edge.
+        queue.push((Keys::empty(), 2));
+        return Some((first, first_ticks, Keys::empty(), queue));
     }
 
     let _ = keep_hold;
-    None
+    Some((Keys::empty(), cfg.k as u8, Keys::empty(), Vec::new()))
+}
+
+/// Discover multi-step dimming command sequences (up to 4 steps) generically by checking which
+/// key presses advance an internal script state machine (`Battle::digest` differs after `[K, K, empty]`
+/// compared to `[empty, empty, empty]`, since pad state returns to 0 on the neutral tick!).
+fn discover_dimmed_commands(sim: &Battle, side: u8) -> Vec<Vec<(Keys, u8)>> {
+    let mut found: Vec<Vec<(Keys, u8)>> = Vec::new();
+    let mut frontier: Vec<(Battle, Vec<(Keys, u8)>)> = vec![(sim.clone(), Vec::new())];
+
+    for _depth in 0..4 {
+        let mut next_frontier: Vec<(Battle, Vec<(Keys, u8)>)> = Vec::new();
+        for (state, seq) in frontier {
+            // Probe 1 neutral tick to see which keys the script reads at this step.
+            let mut rp = state.clone();
+            let r0 = [
+                rp.dimmed_key_reads(side, Keys::A),
+                rp.dimmed_key_reads(side, Keys::B),
+                rp.dimmed_key_reads(side, Keys::UP),
+                rp.dimmed_key_reads(side, Keys::DOWN),
+                rp.dimmed_key_reads(side, Keys::LEFT),
+                rp.dimmed_key_reads(side, Keys::RIGHT),
+                rp.dimmed_key_reads(side, Keys::L),
+                rp.dimmed_key_reads(side, Keys::R),
+            ];
+            let mut idle_after = state.clone();
+            let mut alive = true;
+            for step_i in 0..3 {
+                if !step_battle(&mut idle_after, [Keys::empty(); 2]) || !idle_after.is_dimmed() {
+                    alive = false;
+                    break;
+                }
+                if step_i == 0 {
+                    rp = idle_after.clone();
+                }
+            }
+            if !alive {
+                if !seq.is_empty() {
+                    found.push(seq);
+                }
+                continue;
+            }
+            let idle_digest = idle_after.digest();
+            let read_flags = [
+                (rp.dimmed_key_reads(side, Keys::A) != r0[0], Keys::A),
+                (rp.dimmed_key_reads(side, Keys::B) != r0[1], Keys::B),
+                (rp.dimmed_key_reads(side, Keys::UP) != r0[2], Keys::UP),
+                (rp.dimmed_key_reads(side, Keys::DOWN) != r0[3], Keys::DOWN),
+                (rp.dimmed_key_reads(side, Keys::LEFT) != r0[4], Keys::LEFT),
+                (rp.dimmed_key_reads(side, Keys::RIGHT) != r0[5], Keys::RIGHT),
+                (rp.dimmed_key_reads(side, Keys::L) != r0[6], Keys::L),
+                (rp.dimmed_key_reads(side, Keys::R) != r0[7], Keys::R),
+            ];
+
+            let mut step_keys: Vec<Keys> = Vec::with_capacity(12);
+            for &(rd, k) in &read_flags {
+                if rd && !step_keys.contains(&k) {
+                    step_keys.push(k);
+                }
+            }
+            // If `B` is read (e.g. LarkMan `user.held.b` guard before reading directions),
+            // also probe `B | dir` so short-circuited B+direction commands are discovered!
+            if read_flags[1].0 {
+                for dir in [Keys::UP, Keys::DOWN, Keys::LEFT, Keys::RIGHT] {
+                    let k = Keys::B | dir;
+                    if !step_keys.contains(&k) {
+                        step_keys.push(k);
+                    }
+                }
+            }
+
+            let mut any_accepted = false;
+            let mut seen_digests: Vec<u64> = Vec::new();
+            for k in step_keys {
+                let mut c = state.clone();
+                let mut ok = true;
+                for i in 0..3 {
+                    let mut held = [Keys::empty(); 2];
+                    held[side as usize] = if i < 2 { k } else { Keys::empty() };
+                    if !step_battle(&mut c, held) || c.round_end().is_some() {
+                        ok = false;
+                        break;
+                    }
+                }
+                if !ok {
+                    continue;
+                }
+                let d = c.digest();
+                if d != idle_digest && !seen_digests.contains(&d) {
+                    seen_digests.push(d);
+                    any_accepted = true;
+                    let mut nseq = seq.clone();
+                    nseq.push((k, 2));
+                    nseq.push((Keys::empty(), 1));
+                    if c.is_dimmed() && next_frontier.len() < 3 {
+                        next_frontier.push((c, nseq));
+                    } else {
+                        found.push(nseq);
+                    }
+                }
+            }
+            if !any_accepted && !seq.is_empty() {
+                found.push(seq);
+            }
+        }
+        if next_frontier.is_empty() {
+            frontier = Vec::new();
+            break;
+        }
+        frontier = next_frontier;
+    }
+
+    for (_, seq) in frontier {
+        if !seq.is_empty() {
+            found.push(seq);
+        }
+    }
+    found
+}
+
+/// Simulate executing a timed `(Keys, ticks)` sequence while dimmed, then holding `Keys::empty()`
+/// until dimming ends (+ 8 undimmed ticks) or `cap` ticks elapse.
+fn rollout_dimmed_sequence(
+    b: &Battle,
+    side: u8,
+    seq: &[(Keys, u8)],
+    cap: u32,
+    blind: bool,
+) -> RolloutResult {
+    let other = side ^ 1;
+    let mut c = b.clone();
+    let snap0 = capture_snapshot(&c, side, blind);
+    let mut undimmed = 0u32;
+    let mut t = 0u32;
+    let mut seg = 0usize;
+    let mut seg_left = seq.first().map_or(0, |s| s.1);
+
+    while undimmed < 8 && t < cap {
+        let mine = if seg < seq.len() {
+            let k = seq[seg].0;
+            if seg_left <= 1 {
+                seg += 1;
+                seg_left = seq.get(seg).map_or(0, |s| s.1);
+            } else {
+                seg_left -= 1;
+            }
+            k
+        } else {
+            Keys::empty()
+        };
+        let mut held = [Keys::empty(); 2];
+        held[side as usize] = mine;
+        if !step_battle(&mut c, held) || c.round_end().is_some() {
+            break;
+        }
+        t += 1;
+        undimmed += !c.is_dimmed() as u32;
+        if navi_hp(&c, side) == 0 || (!blind && navi_hp(&c, other) == 0) {
+            break;
+        }
+    }
+    score_rollout(b, &c, side, blind, &snap0)
 }
 
 /// Simulate pressing `first` for `first_ticks` ticks then `after` while dimmed, until dimming ends
@@ -1173,14 +1516,14 @@ fn best_dimmed_a_rollout(
     rem_cap: u32,
 ) -> RolloutResult {
     let other = side ^ 1;
-    let cap = rem_cap.clamp(120, 220);
+    let cap = rem_cap.clamp(160, 260);
     let mut best: Option<RolloutResult> = None;
     let mut future = mid.clone();
 
-    for step_idx in 0..6u32 {
+    for step_idx in 0..14u32 {
         if step_idx > 0 {
             let mut ok = true;
-            for _ in 0..12 {
+            for _ in 0..5 {
                 let both = [Keys::empty(); 2];
                 if !step_battle(&mut future, both) || !future.is_dimmed() {
                     ok = false;
@@ -1195,7 +1538,7 @@ fn best_dimmed_a_rollout(
         let mut undimmed = 0u32;
         let mut t = 0u32;
         while undimmed < 8 && t < cap {
-            let mine = if t < 2 { Keys::A } else { Keys::empty() };
+            let mine = if t < 2 { Keys::A | Keys::B } else { Keys::empty() };
             let mut held = [Keys::empty(); 2];
             held[side as usize] = mine;
             if !step_battle(&mut c, held) || c.round_end().is_some() {
@@ -1412,6 +1755,9 @@ struct Snap0 {
     my_panels: i32,
     my_status: StatusFlags,
     enemy_status: StatusFlags,
+    enemy_back_special: bool,
+    enemy_custom_level: u8,
+    enemy_bugs: nettai_battle::setup::NaviCustBugs,
     obs_hp: u32,
     obs_cnt: u32,
     my_cursor: u8,
@@ -1421,6 +1767,10 @@ struct Snap0 {
 fn capture_snapshot(c: &Battle, side: u8, blind: bool) -> Snap0 {
     let other = side ^ 1;
     let (obs_hp, obs_cnt) = if blind { (0, 0) } else { visible_obstacle_hp(c, side) };
+    let enemy_back_special = !blind
+        && navi_ref(c, other)
+            .and_then(|r| c.objects.get(r).actor)
+            .is_some_and(|a| c.actors.get(a).back_special.is_some());
     Snap0 {
         my_hp: navi_hp(c, side),
         my_max: navi_max_hp(c, side) as f32,
@@ -1431,6 +1781,9 @@ fn capture_snapshot(c: &Battle, side: u8, blind: bool) -> Snap0 {
         my_panels: owned_panel_count(c, side),
         my_status: navi_status(c, side),
         enemy_status: if blind { StatusFlags::empty() } else { navi_status(c, other) },
+        enemy_back_special,
+        enemy_custom_level: if blind { 0 } else { c.stats[other as usize].custom_level },
+        enemy_bugs: if blind { Default::default() } else { c.stats[other as usize].bugs },
         obs_hp,
         obs_cnt,
         my_cursor: c.hands[side as usize].cursor,
@@ -1528,14 +1881,34 @@ fn score_rollout(b: &Battle, c: &Battle, side: u8, blind: bool, s0: &Snap0) -> R
         .is_some_and(|a| c.actors.get(a).status.intersects(ActorStatus::TRAP_ARMED | ActorStatus::HEAT_TRAP));
     let gained_trap = !trap_before && trap_after;
 
-    // Negative statuses suffered / inflicted.
+    // Negative statuses suffered / inflicted, plus NaviCust/capability strips (LaserMan, Uninstall, ShadeMan, BugCurse).
     let bad_flags =
         StatusFlags::PARALYZED | StatusFlags::FROZEN | StatusFlags::BUBBLED | StatusFlags::CONFUSED | StatusFlags::IMMOBILIZED | StatusFlags::BLIND;
     if (my_status1 - s0.my_status).intersects(bad_flags) {
         score -= 0.085;
     }
-    if !blind && (enemy_status1 - s0.enemy_status).intersects(bad_flags) {
-        score += 0.070;
+    if !blind {
+        if (enemy_status1 - s0.enemy_status).intersects(bad_flags) {
+            score += 0.070;
+        }
+        let stripped_passives = (s0.enemy_status - enemy_status1)
+            & (StatusFlags::SUPERARMOR | StatusFlags::AIRSHOE | StatusFlags::FLOATSHOE);
+        score += stripped_passives.bits().count_ones() as f32 * 0.045;
+        let enemy_back_special1 = navi_ref(c, other)
+            .and_then(|r| c.objects.get(r).actor)
+            .is_some_and(|a| c.actors.get(a).back_special.is_some());
+        if s0.enemy_back_special && !enemy_back_special1 {
+            score += 0.040;
+        }
+        if c.stats[other as usize].custom_level < s0.enemy_custom_level {
+            score += (s0.enemy_custom_level - c.stats[other as usize].custom_level) as f32 * 0.045;
+        }
+        if c.stats[other as usize].bugs != s0.enemy_bugs {
+            score += 0.040;
+        }
+        if enemy_panels_changed(b, c, other) {
+            score += 0.032;
+        }
     }
 
     // Chip conservation cost: never throw away a chip for nothing, while eagerly firing chips that deal real damage!
@@ -1637,6 +2010,20 @@ fn panel_types_changed(before: &Battle, after: &Battle) -> bool {
     for y in 1..=3u8 {
         for x in 1..=6u8 {
             if let (Some(a), Some(b)) = (before.field.panel(x, y), after.field.panel(x, y))
+                && a.kind != b.kind
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+fn enemy_panels_changed(before: &Battle, after: &Battle, other: u8) -> bool {
+    for y in 1..=3u8 {
+        for x in 1..=6u8 {
+            if let (Some(a), Some(b)) = (before.field.panel(x, y), after.field.panel(x, y))
+                && b.alliance == other
                 && a.kind != b.kind
             {
                 return true;
@@ -2084,6 +2471,161 @@ fn walk_and_b_charge_hits(b: &Battle, side: u8, target: PanelPos, air_shoe: bool
         }
     }
     navi_hp(&c, other) < hp_before
+}
+
+/// Generically discover non-dimming held-A command sequences (e.g. VarSwrd's 5 commands & NeoVari's 3
+/// commands across EXE4/EXE5/EXE6) by holding `A` and running a tiny digest-diff search over exact
+/// `A + direction/B` joypad words. Returns empty for normal chips in ~5 cheap ticks (cached per chip!).
+fn probe_held_a_commands(b: &Battle, side: u8) -> Vec<Vec<Keys>> {
+    use nettai_battle::kinds::player::NaviAction;
+
+    let mut start = b.clone();
+    let cur0 = start.hands[side as usize].cursor;
+    // Ensure a crisp rising edge on `A` without `B` held, then hold `A` to enter the command wait state.
+    for i in 0..3 {
+        let mut held = [Keys::empty(); 2];
+        held[side as usize] = if i == 0 { Keys::empty() } else { Keys::A };
+        if !step_battle(&mut start, held) || !fight_runs(&start) || start.is_dimmed() {
+            return Vec::new();
+        }
+    }
+    if start.hands[side as usize].cursor <= cur0 {
+        return Vec::new();
+    }
+    let action_of = |bt: &Battle| -> Option<NaviAction> {
+        navi_ref(bt, side)
+            .and_then(|r| bt.objects.get(r).actor)
+            .map(|a| bt.actors.get(a).navi_action)
+    };
+    let Some(cmd_action @ NaviAction::Content(_)) = action_of(&start) else {
+        return Vec::new();
+    };
+
+    const STEP_KEYS: [Keys; 9] = [
+        Keys::from_bits_truncate(Keys::A.bits() | Keys::DOWN.bits()),
+        Keys::from_bits_truncate(Keys::A.bits() | Keys::UP.bits()),
+        Keys::from_bits_truncate(Keys::A.bits() | Keys::LEFT.bits()),
+        Keys::from_bits_truncate(Keys::A.bits() | Keys::RIGHT.bits()),
+        Keys::from_bits_truncate(Keys::A.bits() | Keys::DOWN.bits() | Keys::LEFT.bits()),
+        Keys::from_bits_truncate(Keys::A.bits() | Keys::DOWN.bits() | Keys::RIGHT.bits()),
+        Keys::from_bits_truncate(Keys::A.bits() | Keys::UP.bits() | Keys::LEFT.bits()),
+        Keys::from_bits_truncate(Keys::A.bits() | Keys::UP.bits() | Keys::RIGHT.bits()),
+        Keys::from_bits_truncate(Keys::A.bits() | Keys::B.bits()),
+    ];
+
+    let mut discovered: Vec<Vec<Keys>> = Vec::new();
+    let mut frontier: Vec<(Battle, Vec<Keys>)> = vec![(start, Vec::new())];
+
+    for depth in 0..6usize {
+        let mut next_frontier: Vec<(Battle, Vec<Keys>)> = Vec::new();
+        for (state, seq) in frontier {
+            // Compute idle baseline digest after `[A, A]` (so pad == Keys::A matches `[K, A]`).
+            let mut idle = state.clone();
+            let mut idle_ok = true;
+            for _ in 0..2 {
+                let mut held = [Keys::empty(); 2];
+                held[side as usize] = Keys::A;
+                if !step_battle(&mut idle, held) || !fight_runs(&idle) {
+                    idle_ok = false;
+                    break;
+                }
+            }
+            if !idle_ok || action_of(&idle) != Some(cmd_action) {
+                continue;
+            }
+            let idle_digest = idle.digest();
+
+            // At depth 0, only check the 4 cardinal `A | dir` keys first so normal chips bail out fast!
+            let keys_to_try = if depth == 0 { &STEP_KEYS[..4] } else { &STEP_KEYS[..] };
+            let mut seen_digests: Vec<u64> = Vec::new();
+            for &k in keys_to_try {
+                let mut c = state.clone();
+                let mut h1 = [Keys::empty(); 2];
+                h1[side as usize] = k;
+                if !step_battle(&mut c, h1) || !fight_runs(&c) {
+                    continue;
+                }
+                let mut h2 = [Keys::empty(); 2];
+                h2[side as usize] = Keys::A;
+                if !step_battle(&mut c, h2) || !fight_runs(&c) {
+                    continue;
+                }
+                if action_of(&c) != Some(cmd_action) {
+                    // Sequence completed and morphed into the chosen sword action!
+                    let mut done_seq = seq.clone();
+                    done_seq.push(k);
+                    if !discovered.contains(&done_seq) && discovered.len() < 8 {
+                        discovered.push(done_seq);
+                    }
+                    continue;
+                }
+                let d = c.digest();
+                if d != idle_digest && !seen_digests.contains(&d) && next_frontier.len() < 8 {
+                    seen_digests.push(d);
+                    let mut nseq = seq.clone();
+                    nseq.push(k);
+                    next_frontier.push((c, nseq));
+                }
+            }
+        }
+        if next_frontier.is_empty() {
+            break;
+        }
+        frontier = next_frontier;
+    }
+
+    discovered
+}
+
+/// Simulate executing a non-dimming `(Keys, ticks)` command sequence, then holding `after` for up to `horizon` undimmed ticks.
+fn rollout_command_sequence(
+    b: &Battle,
+    side: u8,
+    seq: &[(Keys, u8)],
+    after: Keys,
+    horizon: u32,
+    cap: u32,
+    blind: bool,
+) -> RolloutResult {
+    let other = side ^ 1;
+    let mut c = b.clone();
+    let snap0 = capture_snapshot(&c, side, blind);
+    let attacks0 = count_side_attacks(&c, side);
+    let mut undimmed = 0u32;
+    let mut t = 0u32;
+    let mut seg = 0usize;
+    let mut seg_left = seq.first().map_or(0, |s| s.1);
+
+    while undimmed < horizon && t < cap {
+        let mine = if seg < seq.len() {
+            let k = seq[seg].0;
+            if seg_left <= 1 {
+                seg += 1;
+                seg_left = seq.get(seg).map_or(0, |s| s.1);
+            } else {
+                seg_left -= 1;
+            }
+            k
+        } else {
+            after
+        };
+        let mut held = [Keys::empty(); 2];
+        held[side as usize] = mine;
+        if !step_battle(&mut c, held) || c.round_end().is_some() {
+            break;
+        }
+        t += 1;
+        undimmed += !c.is_dimmed() as u32;
+        if navi_hp(&c, side) == 0 || (!blind && navi_hp(&c, other) == 0) {
+            break;
+        }
+    }
+
+    let mut res = score_rollout(b, &c, side, blind, &snap0);
+    if !blind && res.dealt == 0.0 && res.obs_dmg == 0 && count_side_attacks(&c, side) > attacks0 {
+        extend_delayed_projectile(&mut c, side, after, &snap0, attacks0, &mut res, undimmed, t, cap);
+    }
+    res
 }
 
 fn rand_unit(rng: &mut SplitMix64) -> f32 {

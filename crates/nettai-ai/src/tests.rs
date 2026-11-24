@@ -516,16 +516,27 @@ fn interactive_dimming_aims_and_lands_eraseman_and_magnum() {
 #[test]
 fn exe5_soul_unison_transforms_and_fights() {
     let content = nettai_match::testing::exe5_content();
+    let mut saw_soul = false;
     let (b, fight_ticks, _) = run_live(
         &content,
         "exe5",
         11,
         Box::new(Fighter::inline(Level::Hard, 42)),
         2400,
-        |b, t| if b.round.mode == mode::CUSTOM { bot_tick(b, 0, t) } else { PlayerTick::default() },
+        |b, t| {
+            if !b.form(1).base {
+                saw_soul = true;
+            }
+            if b.round.mode == mode::CUSTOM { bot_tick(b, 0, t) } else { PlayerTick::default() }
+        },
     );
     assert!(fight_ticks > 200);
-    assert!(!b.form(1).base, "expected EXE5 AI to transform via Soul Unison");
+    assert!(
+        saw_soul || !b.form(1).base,
+        "expected EXE5 AI to transform via Soul Unison (turn={}, end_form={})",
+        b.round.turn,
+        content.defs.form(b.stats[1].form).key
+    );
     assert!(navi_hp(&b, 0) < sim::navi_max_hp(&b, 0), "expected EXE5 Soul Unison AI to deal damage");
 }
 
@@ -1616,6 +1627,296 @@ fn meddysoul_repositions_and_releases_charge_shot() {
             "{level:?}: MeddySoul failed to reposition and release its lobbed charge shot (dealt={dealt}, my={:?}, en={:?})",
             sim::navi_panel(&b, 1),
             sim::navi_panel(&b, 0)
+        );
+    }
+}
+
+/// When MeddySoul's fixed `dx = 3` charge shot cannot reach from any own panel (e.g. opponent stole a
+/// column and camps back column spamming buster shots), the AI must NOT get stuck holding full charge
+/// forever — it drops the stuck charge and fires full-screen uncharged buster shots back!
+#[test]
+fn meddysoul_switches_to_buster_when_charge_shot_unreachable() {
+    use nettai_battle::content::ChipCode;
+    use nettai_battle::custom::{BattleFolder, FolderChip, SavedFolder};
+    use nettai_battle::rules::Fact;
+
+    let content = nettai_match::testing::exe5_content();
+    let recov = content
+        .defs
+        .chips
+        .iter()
+        .enumerate()
+        .find(|(_, d)| d.key.starts_with("recover") && d.record.damage == 0 && d.record.codes.contains(&ChipCode::ASTERISK))
+        .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+        .expect("a * Recovery chip in exe5");
+    let meddy_form = content
+        .defs
+        .forms
+        .iter()
+        .enumerate()
+        .find(|(_, d)| d.key == "meddy_soul")
+        .map(|(i, _)| nettai_content_api::FormHandle(i as u16))
+        .expect("meddy_soul form in exe5");
+
+    let mut m = nettai_match::pick::live(&content, "exe5", 7, None).unwrap();
+    let saved = SavedFolder { chips: [FolderChip::new(recov, ChipCode::ASTERISK); 30], regular: None, tags: None };
+    let meddy_fact = [Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, meddy_form.0))];
+    for side in &mut m.sides {
+        side.facts.set(&content, "souls", &meddy_fact).expect("set souls");
+    }
+
+    let set = Set::of(&content, &m, 7);
+    let mut setup = set.start().setup.clone();
+    for p in &mut setup.players {
+        let mut rng = Rng::new(7);
+        p.folder = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, &*content).0;
+    }
+    let mut b = Battle::new(setup, content.clone());
+    let mut layers = [Layer::new(0, &b), Layer::new(1, &b)];
+    let mut ai = Fighter::inline(Level::Hard, 7).with_open_custom(false);
+
+    let mut fight_t = 0u32;
+    let mut stole_col4 = false;
+    for t in 0..1500u32 {
+        if b.round_end().is_some() || b.is_stopped() {
+            break;
+        }
+        let p0 = if b.round.mode == mode::CUSTOM {
+            bot_tick(&b, 0, t)
+        } else if sim::fight_runs(&b) {
+            fight_t += 1;
+            if !stole_col4 {
+                // Permanently lock column 4 to side 0 so MeddySoul (on x=5..6) CANNOT reach dx=3 for p0 at x=1!
+                for y in 1..=3u8 {
+                    if let Some(p) = b.field.panel_mut(4, y) {
+                        p.alliance = 0;
+                        p.home = 0;
+                    }
+                }
+                // Also clear AI's recovery chips so it has to rely on buster vs charge.
+                b.hands[1] = ChipHand::empty(&content);
+                stole_col4 = true;
+            }
+            let p = sim::navi_panel(&b, 0);
+            if p.is_some_and(|p| p.x > 1) && fight_t % 3 == 1 {
+                PlayerTick::buttons(Keys::LEFT)
+            } else {
+                PlayerTick::default()
+            }
+        } else {
+            PlayerTick::default()
+        };
+        let p1 = ai_tick(&mut ai, &b, 1);
+        let ticks = [layers[0].input(p0, &b), layers[1].input(p1, &b)];
+        assert!(step_ticks(&mut b, ticks));
+        for l in &mut layers {
+            l.follow(&b);
+        }
+        if navi_hp(&b, 0) + 15 <= sim::navi_max_hp(&b, 0) {
+            break;
+        }
+    }
+
+    let form_key = content.defs.form(b.stats[1].form).key.as_str();
+    let dealt = sim::navi_max_hp(&b, 0).saturating_sub(navi_hp(&b, 0));
+    assert_eq!(form_key, "meddy_soul");
+    assert!(
+        dealt >= 10,
+        "MeddySoul got stuck holding charge forever instead of firing uncharged buster shots! (dealt={dealt}, my={:?}, en={:?})",
+        sim::navi_panel(&b, 1),
+        sim::navi_panel(&b, 0)
+    );
+}
+
+/// Generic command-code execution during dimming: SearchMan (`A+B` powered final shot),
+/// LaserMan (`UP/DOWN/LEFT/RIGHT` NaviCust strip), ShadeMan (3-step `Down→Right/Left→A` status),
+/// and Django (4-step `L→L→L→A` bonus return slash) are all discovered and executed without hardcoding!
+#[test]
+fn dimming_command_codes_searchman_laserman_shademan_django() {
+    use nettai_battle::collision::StatusFlags;
+    use nettai_battle::custom::{BattleFolder, FolderChip, SavedFolder};
+
+    // Helper: run a battle where side 1 has `chip_key` as its first chip and side 0 stands still.
+    let run_chip = |game: &str, content: &std::sync::Arc<nettai_battle::Content>, chip_key: &str| -> (Battle, u16, StatusFlags, u8, nettai_battle::setup::NaviCustBugs) {
+        let chip_id = content
+            .defs
+            .chips
+            .iter()
+            .enumerate()
+            .find(|(_, d)| d.key == chip_key)
+            .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+            .unwrap_or_else(|| panic!("missing {chip_key} in {game}"));
+        let code = content.chip(chip_id).codes[0];
+
+        let mut m = nettai_match::pick::live(content, game, 11, None).unwrap();
+        m.rounds.truncate(1);
+        m.rounds[0].stage = Some(nettai_match::link_battle_stages(content, game)[0]);
+        let set = Set::of(content, &m, 11);
+        let mut setup = set.start().setup.clone();
+        let saved = SavedFolder { chips: [FolderChip::new(chip_id, code); 30], regular: Some(0), tags: None };
+        let mut rng = Rng::new(11);
+        setup.players[1].folder = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, &**content).0;
+        // Give side 0 custom_level = 5 so LaserMan's strip / bug effects are clearly observable.
+        setup.navi_stats[0].custom_level = 5;
+        let mut b = Battle::new(setup, content.clone());
+        let mut layers = [Layer::new(0, &b), Layer::new(1, &b)];
+        let mut ai = Fighter::inline(Level::Hard, 11).with_open_custom(false);
+
+        let mut saw_dim = false;
+        let mut peak_status = StatusFlags::empty();
+        for t in 0..1600u32 {
+            if b.round_end().is_some() || b.is_stopped() {
+                break;
+            }
+            let p0 = if b.round.mode == mode::CUSTOM { bot_tick(&b, 0, t) } else { PlayerTick::default() };
+            let p1 = ai_tick(&mut ai, &b, 1);
+            let ticks = [layers[0].input(p0, &b), layers[1].input(p1, &b)];
+            assert!(step_ticks(&mut b, ticks));
+            for l in &mut layers {
+                l.follow(&b);
+            }
+            if b.is_dimmed() && b.hands[1].cursor > 0 {
+                saw_dim = true;
+            }
+            peak_status |= sim::navi_status(&b, 0);
+            if saw_dim && !b.is_dimmed() {
+                // Step 15 more undimmed ticks for any post-dim damage/status to settle.
+                for _ in 0..15 {
+                    let ticks = [layers[0].input(PlayerTick::default(), &b), layers[1].input(PlayerTick::default(), &b)];
+                    if !step_ticks(&mut b, ticks) {
+                        break;
+                    }
+                    peak_status |= sim::navi_status(&b, 0);
+                }
+                break;
+            }
+        }
+        assert!(
+            saw_dim,
+            "{game}/{chip_key}: AI never cast chip (stage={}, my={:?}, en={:?}, cur={}, hand={:?})",
+            content.defs.stage(b.setup.settings.stage).key,
+            sim::navi_panel(&b, 1),
+            sim::navi_panel(&b, 0),
+            b.hands[1].cursor,
+            b.hands[1].ids.iter().flatten().map(|&id| content.defs.chip(id).key.as_str()).collect::<Vec<_>>()
+        );
+        let dealt = sim::navi_max_hp(&b, 0).saturating_sub(navi_hp(&b, 0));
+        let cl = b.stats[0].custom_level;
+        let bugs = b.stats[0].bugs;
+        (b, dealt, peak_status, cl, bugs)
+    };
+
+    // 1. EXE5 SearchMan (`searchman`): base = 5 * 20 = 100 dmg; with `A+B` power-up the 5th shot carries
+    //    `chip_destruction` and destroys side 0's hand (`hands[0].remaining() == 0`)!
+    let exe5 = nettai_match::testing::exe5_content();
+    let (sm_b, sm_dealt, _, _, _) = run_chip("exe5", &exe5, "searchman");
+    assert!(
+        sm_dealt >= 100 && sm_b.hands[0].remaining() == 0,
+        "EXE5 SearchMan did not use A+B chip-destruction command (dealt={sm_dealt}, p0_rem={})",
+        sm_b.hands[0].remaining()
+    );
+
+    // 2. EXE5 ShadeMan (`shademan`): uncommanded carries no status; command (`Down→Right→A` / `Down→Left→A`) inflicts Paralyze or Confuse!
+    let (_, _, shade_st, _, _) = run_chip("exe5", &exe5, "shademan");
+    assert!(
+        shade_st.intersects(StatusFlags::PARALYZED | StatusFlags::CONFUSED),
+        "EXE5 ShadeMan did not execute Paralyze/Confuse command (peak status={shade_st:?})"
+    );
+
+    // 3. EXE4 LaserMan SP (`laserman_sp`): uncommanded leaves custom_level & bugs untouched; directional command strips/inflicts bugs!
+    let exe4 = nettai_match::testing::exe4_content();
+    let (_, lm_dealt, _, lm_cl, lm_bugs) = run_chip("exe4", &exe4, "laserman_sp");
+    assert!(
+        lm_dealt > 0 && (lm_cl < 5 || lm_bugs != Default::default()),
+        "EXE4 LaserMan SP did not hold a directional command (dealt={lm_dealt}, custom_level={lm_cl}, bugs={lm_bugs:?})"
+    );
+
+    // 4. EXE6 Django (`django`): ride deals 100 dmg; 4-step `L→L→L→A` command brings him back on foot for bonus slash (> 100 dmg)!
+    let exe6 = nettai_match::testing::exe6_content();
+    let (_, dj_dealt, _, _, _) = run_chip("exe6", &exe6, "django");
+    assert!(dj_dealt > 100, "EXE6 Django did not execute L→L→L→A command (dealt={dj_dealt}, expected > 100)");
+}
+
+/// Non-dimming command chips (`VarSwrd`, `NeoVari`, and `Z-Saber`):
+/// - From long range (`dx = 3`), `VarSwrd` and `NeoVari` automatically discover & execute their
+///   full-screen `SonicBoom` / `SprSonic` command sequences (dealing multi-wave damage from afar
+///   instead of whiffing a 1-panel Sword!).
+/// - Up close (`dx = 1`), `Z-Saber` triggers its mid-swing `B+Left` 4th-slash piercing SonicBoom!
+#[test]
+fn varswrd_neovari_and_zsaber_execute_commands() {
+    use nettai_battle::custom::{BattleFolder, FolderChip, SavedFolder};
+
+    let content = nettai_match::testing::exe6_content();
+    for (chip_key, min_dmg, close_range) in [
+        ("variable_sword", 300u16, false),     // SonicBoom hits multiple 160-dmg waves from dx=3!
+        ("neo_variable_sword", 400u16, false), // SprSonic hits multiple 220-dmg waves from dx=3!
+        ("z_saber", 260u16, true),             // 3 slashes = 240 dmg; 4th-slash B+Left SonicBoom > 260!
+    ] {
+        let chip_id = content
+            .defs
+            .chips
+            .iter()
+            .enumerate()
+            .find(|(_, d)| d.key == chip_key)
+            .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+            .unwrap_or_else(|| panic!("missing {chip_key}"));
+        let code = content.chip(chip_id).codes[0];
+
+        let mut m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
+        m.rounds.truncate(1);
+        m.rounds[0].stage = Some(nettai_match::link_battle_stages(&content, "exe6")[0]);
+        let set = Set::of(&content, &m, 11);
+        let mut setup = set.start().setup.clone();
+        let saved = SavedFolder { chips: [FolderChip::new(chip_id, code); 30], regular: Some(0), tags: None };
+        let mut rng = Rng::new(11);
+        setup.players[1].folder = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, &*content).0;
+        let mut b = Battle::new(setup, content.clone());
+        let mut layers = [Layer::new(0, &b), Layer::new(1, &b)];
+        let mut ai = Fighter::inline(Level::Hard, 11).with_open_custom(false);
+
+        let mut fight_t = 0u32;
+        let mut cast_t = None;
+        for t in 0..1200u32 {
+            if b.round_end().is_some() || b.is_stopped() {
+                break;
+            }
+            let p0 = if b.round.mode == mode::CUSTOM {
+                bot_tick(&b, 0, t)
+            } else if sim::fight_runs(&b) {
+                fight_t += 1;
+                // Keep side 0 at x=3 for Z-Saber (dx=1 from front col), else at x=2 (dx=3 from x=5!).
+                let want_x = if close_range { 3 } else { 2 };
+                let p = sim::navi_panel(&b, 0);
+                if p.is_some_and(|p| p.x < want_x) && fight_t % 3 == 1 {
+                    PlayerTick::buttons(Keys::RIGHT)
+                } else {
+                    PlayerTick::default()
+                }
+            } else {
+                PlayerTick::default()
+            };
+            let p1 = ai_tick(&mut ai, &b, 1);
+            let ticks = [layers[0].input(p0, &b), layers[1].input(p1, &b)];
+            assert!(step_ticks(&mut b, ticks));
+            for l in &mut layers {
+                l.follow(&b);
+            }
+            if b.hands[1].cursor > 0 && cast_t.is_none() {
+                cast_t = Some(t);
+            }
+            if let Some(ct) = cast_t
+                && t >= ct + 140
+            {
+                break;
+            }
+        }
+        let dealt = sim::navi_max_hp(&b, 0).saturating_sub(navi_hp(&b, 0));
+        assert!(
+            dealt >= min_dmg,
+            "{chip_key}: AI did not execute command sequence (dealt={dealt}, expected >= {min_dmg}, my={:?}, en={:?}, cur={})",
+            sim::navi_panel(&b, 1),
+            sim::navi_panel(&b, 0),
+            b.hands[1].cursor
         );
     }
 }
