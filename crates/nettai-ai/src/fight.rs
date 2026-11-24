@@ -98,6 +98,8 @@ pub struct ReachTable {
     charge_empty_at: Option<(u8, i32)>,
     /// Consecutive fight ticks spent holding a full B-charge without firing it (detects kiting/deadlock).
     charge_full_ticks: u32,
+    /// Our HP when `charge_full_ticks` started counting (detects opponent chipping/exploiting a stuck charge).
+    charge_full_start_hp: u16,
     /// Cooldown ticks to stay in uncharged buster mode and avoid pursuing B-charge after abandoning a stuck charge.
     charge_abandon_ticks: u32,
     /// Per-chip discovered non-dimming held-A command sequences (e.g. VarSwrd, NeoVari).
@@ -118,6 +120,14 @@ impl ReachTable {
     }
     pub fn charge_probed_for(&self, form: nettai_content_api::FormHandle) -> bool {
         self.charge_form == Some(form) && self.charge_probed
+    }
+
+    /// True once `form`'s B-charge has been probed and only hits restricted/short-range offsets
+    /// (e.g. fixed-distance lobbed capsules or melee slashes), NOT full-row shots (`dx >= 4`).
+    pub fn charge_is_restricted(&self, form: nettai_content_api::FormHandle) -> bool {
+        self.charge_form == Some(form)
+            && self.charge_probed
+            && !self.charge_offsets.iter().any(|&(dx, dy)| dy == 0 && dx >= 4)
     }
 
     /// If an earlier B-charge probe found no hitting panels (e.g. during an AreaGrab or hole blockage),
@@ -433,12 +443,17 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
     if let Some(ep) = enemy_pos {
         ctx.reach.refresh_empty_charge_probe(cur_form, ep.x, own_panels_now);
     }
+    let my_hp_now = navi_hp(&sim, side);
     if !sim.is_dimmed() {
         ctx.reach.charge_abandon_ticks = ctx.reach.charge_abandon_ticks.saturating_sub(cfg.k);
-        if b_charge_full && !enemy_invuln && !enemy_has_aura {
+        if b_charge_full && !enemy_invuln && !enemy_has_aura && ctx.reach.charge_is_restricted(cur_form) {
+            if ctx.reach.charge_full_ticks == 0 {
+                ctx.reach.charge_full_start_hp = my_hp_now;
+            }
             ctx.reach.charge_full_ticks = ctx.reach.charge_full_ticks.saturating_add(cfg.k);
         } else if !b_charge_full {
             ctx.reach.charge_full_ticks = 0;
+            ctx.reach.charge_full_start_hp = 0;
         }
     }
     // If this form's B-charge has no reachable hit panel OR we recently abandoned a stuck/kited B-charge,
@@ -900,18 +915,21 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
         }
         cands.push((c, r));
         // Abandon a stuck/exploitable full B-charge (e.g. MeddySoul / ProtoSoul when the charge shot
-        // is unreachable OR we've been stuck holding full charge >= 90 ticks without landing it while
-        // the opponent kites/spams buster): release ONCE with `after = empty` and enter a 150-tick
-        // uncharged-buster cooldown so we fight back instead of getting baited and chipped down!
+        // is unreachable OR a range-restricted charge is actively getting chipped/kited without landing):
+        // release ONCE with `after = empty` and enter a short uncharged-buster cooldown so we fight back
+        // instead of getting baited and chipped down!
         let unreachable_now = ctx.reach.charge_probed_for(cur_form)
             && enemy_pos.is_some_and(|ep| ctx.reach.best_charge_target(&sim, side, cur_form, my_pos, ep, air_shoe).is_none());
+        let exploited_restricted = ctx.reach.charge_is_restricted(cur_form)
+            && ((ctx.reach.charge_full_ticks >= 120 && my_hp_now < ctx.reach.charge_full_start_hp)
+                || ctx.reach.charge_full_ticks >= 240);
         let stuck_full_charge = b_charge_full
             && !charge_hit_here
             && !enemy_invuln
             && !enemy_has_aura
             && !under_threat
             && (next_chip.is_none() || chip_missed_here_early)
-            && (unreachable_now || ctx.reach.charge_full_ticks >= 90);
+            && (unreachable_now || exploited_restricted);
         if stuck_full_charge {
             let clr = Candidate {
                 first: Keys::empty(),
@@ -1067,12 +1085,20 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
         && !enemy_invuln
         && (!enemy_has_aura || b_charge_breaks_aura)
         && !b_charge_abandoned
-        && ctx.reach.charge_full_ticks < 90
+        && (!ctx.reach.charge_is_restricted(cur_form)
+            || (ctx.reach.charge_full_ticks < 240
+                && !(ctx.reach.charge_full_ticks >= 120 && my_hp_now < ctx.reach.charge_full_start_hp)))
     {
         enemy_pos.and_then(|ep| ctx.reach.best_charge_target(&sim, side, cur_form, my_pos, ep, air_shoe))
     } else {
         None
     };
+
+    // Long-duration untouchable defense (`Invisible`, `Invulnerable`, or unbroken `Aura`) — distinct from
+    // brief post-hit `FLASHING` i-frames so we stay evasive off-row against Aura/Invis without surrendering
+    // front-column pressure during brief post-hit flashing!
+    let enemy_long_defense = enemy_status.intersects(StatusFlags::INVISIBLE | StatusFlags::INVULNERABLE | StatusFlags::UNTOUCHABLE)
+        || (enemy_has_aura && !b_charge_breaks_aura);
 
     // 7. Score candidates with rollout outcome + tactical positioning + area/obstacle play + anti-pacing.
     let next_strafe = if ctx.strafe_timer >= 36 { 0 } else { ctx.strafe_timer + cfg.k };
@@ -1122,6 +1148,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
                 chip_target.or(b_charge_target),
                 b_charge_full || a_charge_full || !can_b_charge || b_charge_abandoned,
                 !enemy_invuln && (!enemy_has_aura || b_charge_breaks_aura),
+                enemy_long_defense,
                 want_strafe,
                 air_shoe,
                 float_shoe,
@@ -1153,8 +1180,9 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
     }
 
     if abandon_cand_idx == Some(best_idx) {
-        ctx.reach.charge_abandon_ticks = 150;
+        ctx.reach.charge_abandon_ticks = 120;
         ctx.reach.charge_full_ticks = 0;
+        ctx.reach.charge_full_start_hp = 0;
     }
 
     let chosen = cands.swap_remove(best_idx).0;
@@ -2163,6 +2191,7 @@ fn positional_score(
     nav_target: Option<PanelPos>,
     ready_shot: bool,
     enemy_vulnerable: bool,
+    enemy_long_defense: bool,
     want_strafe: bool,
     air_shoe: bool,
     float_shoe: bool,
@@ -2189,11 +2218,11 @@ fn positional_score(
             if end_p.y == ep.y {
                 score += 0.006;
             }
-        } else if !enemy_vulnerable || want_strafe {
+        } else if enemy_long_defense || want_strafe {
             // When opponent is Invisible or protected by an Aura we cannot break, stay safely off their
             // row instead of chasing into their line of fire to get repeatedly punished!
             if end_p.y != ep.y {
-                score += if !enemy_vulnerable { 0.012 } else { 0.008 };
+                score += if enemy_long_defense { 0.012 } else { 0.008 };
             }
         }
     }
@@ -2202,11 +2231,13 @@ fn positional_score(
     //    - Standing on a stolen column locks it so it doesn't revert to the opponent!
     //    - Standing on our front column blocks incoming AreaGrab steals (skipped while playing evasive against Aura/Invis).
     if let Some(p) = b.field.panel(end_p.x, end_p.y) {
-        if p.alliance == side && p.home != side {
-            let col = b.field.columns[end_p.x as usize];
+        if p.alliance == side
+            && p.home != side
+            && let Some(col) = b.field.columns.get(end_p.x as usize)
+        {
             score += if col.return_ready != 0 || col.timer < 90 { 0.014 } else { 0.009 };
         }
-        if p.front_edge && p.alliance == side && enemy_vulnerable {
+        if p.front_edge && p.alliance == side && !enemy_long_defense {
             score += 0.004;
         }
 
@@ -2263,6 +2294,9 @@ fn manhattan(a: PanelPos, b: PanelPos) -> i32 {
 /// Shortest walkable step distance between `from` and `to` on the 6x3 battle grid (routes around
 /// holes, broken panels, and stage obstacles cleanly; zero heap allocation).
 fn grid_dist(b: &Battle, side: u8, from: PanelPos, to: PanelPos, air_shoe: bool) -> Option<i32> {
+    if !(1..=6).contains(&from.x) || !(1..=3).contains(&from.y) || !(1..=6).contains(&to.x) || !(1..=3).contains(&to.y) {
+        return None;
+    }
     if from == to {
         return Some(0);
     }
