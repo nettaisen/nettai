@@ -413,15 +413,15 @@ pub struct Opponent {
 }
 
 /// An AI that plays the opponent, which a host gives live play
-/// ([`LivePlayer::set_ai`]): buttons, a tick at a time, as a player's are.
-/// The library has none of its own (nettai-training's is the app's).
+/// ([`LivePlayer::set_ai`]): buttons in the fight, and direct choices on its
+/// custom screen.
 pub trait Ai: Send {
     /// Its buttons in the fight for the navi of `side` in `b`, this tick
     /// (`theirs`: what the local player holds).
     fn fight(&mut self, b: &Battle, side: u8, theirs: Keys) -> Keys;
-    /// Its buttons on its custom screen, this tick, which go through its
-    /// side's layer (`layer`: where its cursor is), as a player's do.
-    fn custom_screen(&mut self, b: &Battle, side: u8, layer: &Layer) -> Keys;
+    /// Its direct choice on its custom screen, this tick (`None` while waiting
+    /// on a transition or animation).
+    fn custom_screen(&mut self, b: &Battle, side: u8) -> Option<ScreenChoice>;
     /// The set starts over: it is as it was given.
     fn reset(&mut self);
 }
@@ -735,7 +735,7 @@ impl LivePlayer {
     /// (`keys`: the local player's buttons, which its AI hears of; `layer`:
     /// its own layer, where its AI's cursor is). Its buttons, or on its
     /// custom screen a bot's choice.
-    fn opponent_input(&mut self, b: &Battle, side: usize, keys: Keys, layer: &Layer) -> PlayerTick {
+    fn opponent_input(&mut self, b: &Battle, side: usize, keys: Keys, _layer: &Layer) -> PlayerTick {
         const MOVES: Keys = Keys::UP.union(Keys::DOWN).union(Keys::LEFT).union(Keys::RIGHT);
         let mashed = self.masher.buttons();
         // (START outside the custom screen is the pause's, the local player's alone: the game's own pause, in a
@@ -745,7 +745,7 @@ impl LivePlayer {
         }
         if b.round.mode == mode::CUSTOM {
             return match (self.opponent.on_custom_screen, &mut self.ai) {
-                (OnCustomScreen::Ai, Some(ai)) => PlayerTick::buttons(ai.custom_screen(b, side as u8, layer)),
+                (OnCustomScreen::Ai, Some(ai)) => PlayerTick::default().with_choice(ai.custom_screen(b, side as u8)),
                 (choice, _) => PlayerTick::default().with_choice(bot_choice(b, side, self.ticks, choice != OnCustomScreen::PicksNothing)),
             };
         }

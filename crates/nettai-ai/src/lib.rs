@@ -6,10 +6,10 @@
 //!   (`theirs`), hand, folder, custom screen, RNG, or objects hidden from its
 //!   side. Fight decisions are made from a delayed snapshot (`t - D`), with
 //!   sanitized RNG and cleared hidden opponent state.
-//! - **Custom screen** ([`screen`], [`nav`]): detects Program Advances, folds
+//! - **Custom screen** ([`screen`]): detects Program Advances, folds
 //!   modifiers optimally, evaluates code-compatible hands with `builder::build`,
-//!   picks matchup-favorable forms (Crosses / Souls / Beast Out) and probes
-//!   rules buttons generically.
+//!   picks matchup-favorable forms (Crosses / Souls / Beast Out / Beast Over)
+//!   and probes rules buttons generically, emitting direct [`ScreenChoice`]s.
 //! - **Fight** ([`fight`], [`worker`]): evaluates candidate actions (dodge,
 //!   chip use, charge shot release, B+Back special, dimming cut-ins, movement)
 //!   via bounded lookahead on a background thread (with inline fallback) and
@@ -17,19 +17,16 @@
 //!   aimed accurately without per-chip hardcoding.
 
 mod fight;
-mod nav;
 mod screen;
 mod sim;
 mod worker;
 
 use crate::fight::{AttackLog, FightContext, FightDecision, LevelConfig, ReachTable};
-use crate::nav::Navigator;
 use crate::screen::ScreenPlanner;
 use crate::sim::{fight_runs, may_open, navi_panel, presses_l};
 use crate::worker::Worker;
 use nettai_battle::battle::mode;
-use nettai_battle::custom::Layer;
-use nettai_battle::input::Keys;
+use nettai_battle::input::{Keys, ScreenChoice};
 use nettai_battle::setup::SetScore;
 use nettai_battle::Battle;
 use nettai_content_api::PanelPos;
@@ -138,7 +135,6 @@ struct RoundState {
     reach: ReachTable,
     /// Custom screen state.
     in_screen: bool,
-    nav: Navigator,
     planner: ScreenPlanner,
     /// Tick to begin pressing L when the custom gauge is full.
     opener_at: Option<u32>,
@@ -225,7 +221,6 @@ impl Fighter {
             enemy_stationary_ticks: 100,
             reach: ReachTable::default(),
             in_screen: false,
-            nav: Navigator::default(),
             planner: ScreenPlanner::default(),
             opener_at: None,
             last_cursor: 0,
@@ -251,45 +246,42 @@ impl Fighter {
         r.enemy_stationary_ticks = 100;
     }
 
-    fn tick(&mut self, b: &Battle, side: u8, layer: Option<&Layer>) -> Keys {
+    fn ensure_round(&mut self, b: &Battle) -> RoundState {
         let key = (b.setup.content.0, b.setup.score);
         let new_round = self.round.as_ref().is_none_or(|r| r.key != key);
         if new_round {
-            let fresh = self.start_round(b, key);
-            self.round = Some(fresh);
+            self.start_round(b, key)
+        } else {
+            self.round.take().expect("round state")
         }
-        let mut r = self.round.take().expect("round state");
-        let keys = self.step_round(b, side, layer, &mut r);
-        r.t = r.t.wrapping_add(1);
-        self.round = Some(r);
-        keys
     }
 
-    fn step_round(&mut self, b: &Battle, side: u8, layer: Option<&Layer>, r: &mut RoundState) -> Keys {
+    fn step_screen(&mut self, b: &Battle, side: u8, r: &mut RoundState) -> Option<ScreenChoice> {
         if r.t > 0 {
             r.attack_log.push(b);
         }
+        if !r.in_screen {
+            Self::clear_fight_ring(r);
+            self.pending = None;
+            r.planner.reset();
+            r.in_screen = true;
+        }
+        r.planner.decide(b, side, self.cfg, &mut self.rng)
+    }
 
+    fn step_fight(&mut self, b: &Battle, side: u8, r: &mut RoundState) -> Keys {
+        if r.t > 0 {
+            r.attack_log.push(b);
+        }
         let custom = b.round.mode == mode::CUSTOM;
         if custom && !r.in_screen {
             Self::clear_fight_ring(r);
             self.pending = None;
-            r.nav.reset();
             r.planner.reset();
         }
         r.in_screen = custom;
-
-        // ---- Custom Screen ----
         if custom {
-            let Some(layer) = layer else {
-                return Keys::empty();
-            };
-            if r.nav.idle() && b.custom.sides[side as usize].screen.as_ref().is_some_and(|s| nav::chooses(s, layer)) {
-                if let Some(action) = r.planner.decide(b, side, layer, &mut r.nav, self.cfg, &mut self.rng) {
-                    r.nav.point(action);
-                }
-            }
-            return r.nav.buttons(b, side, layer);
+            return Keys::empty();
         }
 
         // ---- Fight ----
@@ -460,11 +452,19 @@ fn apply_decision(r: &mut RoundState, dec: FightDecision) {
 
 impl Ai for Fighter {
     fn fight(&mut self, b: &Battle, side: u8, _theirs: Keys) -> Keys {
-        self.tick(b, side, None)
+        let mut r = self.ensure_round(b);
+        let keys = self.step_fight(b, side, &mut r);
+        r.t = r.t.wrapping_add(1);
+        self.round = Some(r);
+        keys
     }
 
-    fn custom_screen(&mut self, b: &Battle, side: u8, layer: &Layer) -> Keys {
-        self.tick(b, side, Some(layer))
+    fn custom_screen(&mut self, b: &Battle, side: u8) -> Option<ScreenChoice> {
+        let mut r = self.ensure_round(b);
+        let choice = self.step_screen(b, side, &mut r);
+        r.t = r.t.wrapping_add(1);
+        self.round = Some(r);
+        choice
     }
 
     fn reset(&mut self) {

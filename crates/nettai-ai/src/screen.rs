@@ -1,18 +1,17 @@
 //! Custom screen planner: combinatorial hand selection (with Program Advance
 //! detection, setup→payoff combo ordering, and optimal modifier folding),
-//! matchup-aware form selection (Crosses / Beast Out / EXE4 & EXE5 Soul Unison),
-//! and generic button probing (re-deal, capsules).
+//! matchup-aware form selection (Crosses / Beast Out / Beast Over / EXE4 & EXE5 Soul Unison),
+//! and generic button probing (re-deal, capsules), emitting direct [`ScreenChoice`]s.
 
 use crate::fight::LevelConfig;
-use crate::nav::{self, Navigator, ScreenAction};
 use crate::sim::{navi_hp, navi_max_hp, navi_ref, seen_to, step_ticks};
 use nettai_battle::battle::BattleFlags;
 use nettai_battle::content::{
     ButtonView, ChipClass, ChipCode, ChipData, ChipFlags, ChipMatch, ChipTraits, Content, Element, FormData, FormTraits, Recipe,
 };
 use nettai_battle::custom::builder::{self, Marks, Pick};
-use nettai_battle::custom::screen::{ButtonCell, FORM_LIST_ENTRIES, MAX_SELECTIONS, OK_SLOT, Phase, SLOTS, Screen, SlotKind, SlotState};
-use nettai_battle::custom::{FolderChip, Layer};
+use nettai_battle::custom::screen::{ButtonCell, FORM_LIST_ENTRIES, MAX_SELECTIONS, Phase, SLOTS, Screen, SlotKind, SlotState};
+use nettai_battle::custom::FolderChip;
 use nettai_battle::input::ScreenChoice;
 use nettai_battle::{Battle, PlayerTick};
 use nettai_content_api::{ChipHandle, FormHandle};
@@ -24,13 +23,58 @@ const MAX_SCREEN_DECISIONS: u16 = 20;
 /// Planner state for one custom screen visit.
 #[derive(Clone, Debug, Default)]
 pub struct ScreenPlanner {
-    probed: bool,
     decisions: u16,
-    queue: VecDeque<ScreenAction>,
+    queue: VecDeque<ScreenChoice>,
     tried_form_list: bool,
     tried_soul_offer: bool,
     tried_redeal: bool,
     probed_buttons: u16,
+    refused_slots: u16,
+    refused_forms: u8,
+    last_sent: Option<(ScreenChoice, u8, Option<FormHandle>, bool, u16)>,
+}
+
+fn legal_slots(screen: &Screen, refused: u16) -> [bool; SLOTS] {
+    let mut out = [false; SLOTS];
+    if screen.phase != Phase::Choosing {
+        return out;
+    }
+    for (i, s) in screen.slots.iter().enumerate() {
+        let ok = match s.kind {
+            SlotKind::Ok => true,
+            SlotKind::Chip { .. } | SlotKind::Offered(_) => s.state == SlotState::Selectable && (screen.selected as usize) < MAX_SELECTIONS,
+            SlotKind::Button { cell, .. } => cell != ButtonCell::Right && s.state == SlotState::Selectable,
+            SlotKind::Empty | SlotKind::Hidden => false,
+        };
+        out[i] = ok && (refused & (1 << i)) == 0;
+    }
+    out
+}
+
+fn legal_forms(b: &Battle, side: u8, refused_forms: u8) -> [bool; FORM_LIST_ENTRIES] {
+    let mut out = [false; FORM_LIST_ENTRIES];
+    let Some(screen) = b.custom.sides[side as usize].screen.as_ref().filter(|s| s.phase == Phase::Choosing) else {
+        return out;
+    };
+    let _ = screen;
+    let Some(list) = b.form_list(side) else {
+        return out;
+    };
+    if list.chosen.is_some() {
+        return out;
+    }
+    for (k, legal) in out.iter_mut().enumerate().take((list.count as usize).min(FORM_LIST_ENTRIES)) {
+        *legal = list.forms[k].is_some() && !list.marked[k] && (refused_forms & (1 << k)) == 0;
+    }
+    out
+}
+
+fn attached_mask(screen: &Screen) -> u16 {
+    screen
+        .slots
+        .iter()
+        .enumerate()
+        .fold(0u16, |m, (i, s)| if s.attached.is_some() { m | (1 << i) } else { m })
 }
 
 impl ScreenPlanner {
@@ -38,93 +82,100 @@ impl ScreenPlanner {
         *self = ScreenPlanner::default();
     }
 
-    /// Choose the next [`ScreenAction`] while the screen is choosing and the navigator is idle.
-    pub fn decide(
-        &mut self,
-        b: &Battle,
-        side: u8,
-        layer: &Layer,
-        nav: &mut Navigator,
-        cfg: LevelConfig,
-        rng: &mut SplitMix64,
-    ) -> Option<ScreenAction> {
+    /// Choose the next direct [`ScreenChoice`] while the screen is choosing.
+    pub fn decide(&mut self, b: &Battle, side: u8, cfg: LevelConfig, rng: &mut SplitMix64) -> Option<ScreenChoice> {
         let s = &b.custom.sides[side as usize];
-        let screen = s.screen.as_ref()?;
-        if !nav::chooses(screen, layer) {
+        let screen = s.screen.as_ref().filter(|_| s.in_custom)?;
+        if screen.phase != Phase::Choosing {
+            self.last_sent = None;
             return None;
         }
 
-        if !self.probed {
-            self.probed = true;
-            nav.opener = nav::probe_opener(b, layer, side);
+        // If our previous direct choice had zero observable effect while staying in Phase::Choosing,
+        // mark that slot/form refused so we never loop on an invalid pick!
+        let cur_att = attached_mask(screen);
+        if let Some((prev, sel0, form0, trade0, att0)) = self.last_sent.take()
+            && screen.selected == sel0
+            && screen.form == form0
+            && screen.trade.is_some() == trade0
+            && cur_att == att0
+        {
+            match prev {
+                ScreenChoice::Pick(sl) | ScreenChoice::Press(sl) if (sl as usize) < SLOTS => {
+                    self.refused_slots |= 1 << sl;
+                }
+                ScreenChoice::ChooseForm(k) if (k as usize) < FORM_LIST_ENTRIES => {
+                    self.refused_forms |= 1 << k;
+                }
+                _ => {}
+            }
         }
 
         // Hard safety cap so the AI can never stall a custom screen.
         if self.decisions >= MAX_SCREEN_DECISIONS {
             self.decisions += 1;
-            return Some(ScreenAction::Slot(OK_SLOT));
+            return Some(ScreenChoice::Ok);
         }
 
-        let layout = &b.game_rules().custom_screen;
-        let legal_s = nav::legal_slots(screen, layer, layout, nav.refused, false);
-        let legal_f = nav::legal_forms(b, side, layer, nav);
+        let legal_s = legal_slots(screen, self.refused_slots);
+        let legal_f = legal_forms(b, side, self.refused_forms);
         let picked_chips = screen
             .selection()
             .iter()
             .filter(|&&sl| matches!(screen.slots[sl as usize].kind, SlotKind::Chip { .. }))
             .count();
 
-        // Drain queued planned actions while they remain legal.
+        let emit = |choice: ScreenChoice, this: &mut Self| -> Option<ScreenChoice> {
+            this.decisions += 1;
+            this.last_sent = Some((choice, screen.selected, screen.form, screen.trade.is_some(), cur_att));
+            Some(choice)
+        };
+
+        // Drain queued planned choices while they remain legal.
         if let Some(&front) = self.queue.front() {
             // If we're queued to press a FormOffer button immediately after picking our sacrifice chip, let it run!
-            let is_queued_button = matches!(front, ScreenAction::Slot(sl) if matches!(screen.slots.get(sl as usize).map(|s| s.kind), Some(SlotKind::Button { .. })));
+            let is_queued_button = matches!(front, ScreenChoice::Press(_));
             if !is_queued_button && picked_chips > 0 {
                 // Check if a newly-enabled non-trade button (e.g. EXE5 Capsules) became selectable.
                 if let Some(btn_slot) = self.pick_post_pick_button(b, side, screen, &legal_s, cfg, rng) {
-                    self.decisions += 1;
-                    return Some(ScreenAction::Slot(btn_slot));
+                    return emit(ScreenChoice::Press(btn_slot), self);
                 }
             }
             while let Some(next) = self.queue.pop_front() {
                 let ok = match next {
-                    ScreenAction::Slot(slot) => (slot as usize) < SLOTS && legal_s[slot as usize],
-                    ScreenAction::Form(entry) => (entry as usize) < FORM_LIST_ENTRIES && legal_f[entry as usize],
+                    ScreenChoice::Pick(slot) | ScreenChoice::Press(slot) => (slot as usize) < SLOTS && legal_s[slot as usize],
+                    ScreenChoice::ChooseForm(entry) => (entry as usize) < FORM_LIST_ENTRIES && legal_f[entry as usize],
+                    ScreenChoice::Ok => true,
+                    _ => true,
                 };
                 if ok {
-                    self.decisions += 1;
-                    return Some(next);
+                    return emit(next, self);
                 }
             }
         } else if picked_chips > 0 {
             if let Some(btn_slot) = self.pick_post_pick_button(b, side, screen, &legal_s, cfg, rng) {
-                self.decisions += 1;
-                return Some(ScreenAction::Slot(btn_slot));
+                return emit(ScreenChoice::Press(btn_slot), self);
             }
-            self.decisions += 1;
-            return Some(ScreenAction::Slot(OK_SLOT));
+            return emit(ScreenChoice::Ok, self);
         }
 
-        // ---- Fresh planning (selected == 0, including right after a Soul Unison trade!) ----
+        // ---- Fresh planning (picked_chips == 0, including right after a Soul Unison trade!) ----
         let enemy_elem = visible_enemy_element(b, side);
 
         // 1. Consider picking a form from the rules' form list (e.g. EXE6 Crosses) when in base form.
         if !self.tried_form_list && screen.form.is_none() && screen.trade.is_none() && b.form(side as usize).base {
             self.tried_form_list = true;
             if let Some(entry) = choose_form_list_entry(b, side, screen, &s.folder, &legal_f, enemy_elem, cfg, rng) {
-                self.decisions += 1;
-                return Some(ScreenAction::Form(entry));
+                return emit(ScreenChoice::ChooseForm(entry), self);
             }
         }
 
         // 2. Consider chip-trade form offer buttons (EXE4 Double Soul UNITE & EXE5 Soul Unison)!
-        //    These buttons start greyed out until a compatible sacrifice chip is picked, so we probe
-        //    which dealt chip lights up the FormOffer button and weigh the Soul's value vs the sacrifice.
         if !self.tried_soul_offer && screen.form.is_none() && screen.trade.is_none() && b.form(side as usize).base {
             self.tried_soul_offer = true;
             if let Some((chip_slot, btn_slot)) = plan_soul_unison(b, side, screen, &s.folder, &legal_s, enemy_elem, cfg, rng) {
-                self.queue.push_back(ScreenAction::Slot(btn_slot));
-                self.decisions += 1;
-                return Some(ScreenAction::Slot(chip_slot));
+                self.queue.push_back(ScreenChoice::Press(btn_slot));
+                return emit(ScreenChoice::Pick(chip_slot), self);
             }
         }
 
@@ -136,23 +187,21 @@ impl ScreenPlanner {
             .unwrap_or_else(|| b.form(side as usize));
         let best_hand = plan_best_hand(b, side, screen, &s.folder, &legal_s, active_form, cfg, rng);
 
-        // 4. Probe any selectable pre-pick buttons (e.g. Beast Out, ChpShufl re-deal).
+        // 4. Probe any selectable pre-pick buttons (e.g. Beast Out, Beast Over, ChpShufl re-deal).
         if let Some(btn_slot) = self.pick_pre_pick_button(b, side, screen, &legal_s, &best_hand, enemy_elem, cfg, rng) {
-            self.decisions += 1;
-            return Some(ScreenAction::Slot(btn_slot));
+            return emit(ScreenChoice::Press(btn_slot), self);
         }
 
         // 5. Queue the planned chip picks + OK.
         for slot in best_hand.slots {
             if legal_s[slot as usize] {
-                self.queue.push_back(ScreenAction::Slot(slot));
+                self.queue.push_back(ScreenChoice::Pick(slot));
             }
         }
-        self.queue.push_back(ScreenAction::Slot(OK_SLOT));
+        self.queue.push_back(ScreenChoice::Ok);
 
-        let first = self.queue.pop_front().unwrap_or(ScreenAction::Slot(OK_SLOT));
-        self.decisions += 1;
-        Some(first)
+        let first = self.queue.pop_front().unwrap_or(ScreenChoice::Ok);
+        emit(first, self)
     }
 
     /// Check selectable buttons before picking chips (Beast Out, ChpShufl re-deal, etc.).
@@ -190,16 +239,20 @@ impl ScreenPlanner {
                     let f = b.content.form(form_h);
                     let is_berserk = is_tired || f.traits.contains(FormTraits::CONTROLLED);
                     let want = if is_berserk {
-                        // Allow Beast Over (and similar berserk/loss-of-control forms) when closing out a low-HP
-                        // opponent, when low on HP, or when meaningfully behind in the round.
+                        // Reserve Beast Over (and similar berserk/loss-of-control forms) for true last-resort
+                        // situations: near death (<22% HP), severely behind (<45% HP and down >30% HP),
+                        // or finishing a critical-HP opponent (<18% HP while still healthy).
+                        let desperate = hp_frac < 0.22
+                            || (hp_frac < 0.45 && hp_frac + 0.30 < enemy_hp_frac)
+                            || (enemy_hp_frac < 0.18 && hp_frac > 0.35);
                         !is_exhausted
                             && screen.form.is_none()
-                            && (enemy_hp_frac < 0.35 || hp_frac < 0.40 || hp_frac + 0.15 < enemy_hp_frac)
-                            && rand_unit(rng) < cfg.form_chance
+                            && desperate
+                            && rand_unit(rng) < cfg.form_chance * 0.45
                     } else {
-                        // Regular Beast Out / Cross Beast: activate from base form, once damaged, or from turn 2+.
+                        // Regular Beast Out / Cross Beast: activate from base form or once below 60% HP.
                         screen.form.is_none()
-                            && (b.form(side as usize).base || hp_frac < 0.70 || b.round.turn >= 2)
+                            && (b.form(side as usize).base || hp_frac < 0.60)
                             && rand_unit(rng) < cfg.form_chance
                     };
                     if want {
@@ -353,7 +406,7 @@ enum ButtonEffect {
     Other,
 }
 
-/// Probe pressing a rules button slot on a cloned battle via direct `ScreenChoice::Pick(slot)`.
+/// Probe pressing a rules button slot on a cloned battle via direct `ScreenChoice::Press(slot)`.
 fn probe_button(b: &Battle, side: u8, slot: u8) -> ButtonEffect {
     let Some(before) = b.custom.sides[side as usize].screen else {
         return ButtonEffect::None;
@@ -361,9 +414,25 @@ fn probe_button(b: &Battle, side: u8, slot: u8) -> ButtonEffect {
     let offered_before = b.offer(side).and_then(|o| o.form);
     let mut copy = b.clone();
     let mut both = [PlayerTick::default(); 2];
-    both[side as usize] = PlayerTick::default().with_choice(Some(ScreenChoice::Pick(slot)));
+    both[side as usize] = PlayerTick::default().with_choice(Some(ScreenChoice::Press(slot)));
     if !step_ticks(&mut copy, both) {
         return ButtonEffect::None;
+    }
+    // If pressing the button started a short fade/transition (e.g. Soul Unison flight/flash),
+    // advance up to 40 ticks until it settles so we see its true effect!
+    for _ in 0..40 {
+        let Some(cur) = copy.custom.sides[side as usize].screen else { break };
+        if cur.form != before.form
+            || cur.trade.is_some() != before.trade.is_some()
+            || matches!(cur.phase, Phase::Redealing { .. })
+            || cur.slots.iter().zip(before.slots.iter()).any(|(a, b)| a.attached != b.attached && a.attached.is_some())
+            || (cur.phase == Phase::Choosing && !cur.fade.active())
+        {
+            break;
+        }
+        if !step_ticks(&mut copy, [PlayerTick::default(); 2]) {
+            break;
+        }
     }
     let Some(after) = copy.custom.sides[side as usize].screen else {
         return ButtonEffect::None;
