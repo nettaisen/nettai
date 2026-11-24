@@ -169,11 +169,12 @@ impl ScreenPlanner {
         rng: &mut SplitMix64,
     ) -> Option<u8> {
         let hp_frac = navi_hp(b, side) as f32 / navi_max_hp(b, side) as f32;
-        let is_tired = navi_ref(b, side)
+        let enemy_hp_frac = navi_hp(b, side ^ 1) as f32 / navi_max_hp(b, side ^ 1) as f32;
+        let (is_tired, is_exhausted) = navi_ref(b, side)
             .and_then(|r| b.objects.get(r).actor)
-            .is_some_and(|a| {
+            .map_or((false, false), |a| {
                 let ad = b.actors.get(a);
-                ad.tired || ad.exhausted
+                (ad.tired, ad.exhausted)
             });
         for slot in 0..SLOTS as u8 {
             if !legal_s[slot as usize] || self.probed_buttons & (1 << slot) != 0 {
@@ -187,17 +188,23 @@ impl ScreenPlanner {
             match effect {
                 ButtonEffect::Form(form_h) => {
                     let f = b.content.form(form_h);
-                    // Never trigger a tired/spent or berserk/loss-of-control form (e.g. EXE6 Beast Over -> permanent HP-drain exhaustion!).
-                    if is_tired || f.traits.contains(FormTraits::CONTROLLED) {
-                        continue;
-                    }
-                    // e.g. Beast Out: strong when in base form (or low HP), once per fresh counter.
-                    let want = screen.form.is_none()
-                        && (b.form(side as usize).base || hp_frac < 0.55)
-                        && rand_unit(rng) < cfg.form_chance;
+                    let is_berserk = is_tired || f.traits.contains(FormTraits::CONTROLLED);
+                    let want = if is_berserk {
+                        // Allow Beast Over (and similar berserk/loss-of-control forms) when closing out a low-HP
+                        // opponent, when low on HP, or when meaningfully behind in the round.
+                        !is_exhausted
+                            && screen.form.is_none()
+                            && (enemy_hp_frac < 0.35 || hp_frac < 0.40 || hp_frac + 0.15 < enemy_hp_frac)
+                            && rand_unit(rng) < cfg.form_chance
+                    } else {
+                        // Regular Beast Out / Cross Beast: activate from base form, once damaged, or from turn 2+.
+                        screen.form.is_none()
+                            && (b.form(side as usize).base || hp_frac < 0.70 || b.round.turn >= 2)
+                            && rand_unit(rng) < cfg.form_chance
+                    };
                     if want {
                         let score = score_form(b, side, screen, &b.custom.sides[side as usize].folder, f, enemy_elem);
-                        if score >= -10.0 {
+                        if is_berserk || score >= -10.0 {
                             return Some(slot);
                         }
                     }
