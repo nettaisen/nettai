@@ -1528,3 +1528,94 @@ fn aquacross_does_not_dump_water_attack_chip_for_passive_heal() {
         content.defs.form(b.stats[1].form).key
     );
 }
+
+/// Slow lobbed B-charge shots (`MeddySoul` capsule: 10f throw + 40f flight + 21f column burst = 47..71f):
+/// the AI follows the in-flight projectile past `horizon`, learns its exact `dx = 3` hit offset,
+/// repositions into range, and lands the charge shot!
+#[test]
+fn meddysoul_repositions_and_releases_charge_shot() {
+    use nettai_battle::content::ChipCode;
+    use nettai_battle::custom::{BattleFolder, FolderChip, SavedFolder};
+    use nettai_battle::rules::Fact;
+
+    let content = nettai_match::testing::exe5_content();
+    let recov = content
+        .defs
+        .chips
+        .iter()
+        .enumerate()
+        .find(|(_, d)| d.key.starts_with("recover") && d.record.damage == 0 && d.record.codes.contains(&ChipCode::ASTERISK))
+        .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+        .expect("a * Recovery chip in exe5");
+    let meddy_form = content
+        .defs
+        .forms
+        .iter()
+        .enumerate()
+        .find(|(_, d)| d.key == "meddy_soul")
+        .map(|(i, _)| nettai_content_api::FormHandle(i as u16))
+        .expect("meddy_soul form in exe5");
+
+    let mut m = nettai_match::pick::live(&content, "exe5", 7, None).unwrap();
+    let saved = SavedFolder { chips: [FolderChip::new(recov, ChipCode::ASTERISK); 30], regular: None, tags: None };
+    let meddy_fact = [Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, meddy_form.0))];
+    for side in &mut m.sides {
+        side.facts.set(&content, "souls", &meddy_fact).expect("set souls");
+    }
+
+    for level in [Level::Normal, Level::Hard] {
+        let set = Set::of(&content, &m, 7);
+        let mut b = set.start();
+        let mut setup = b.setup.clone();
+        for p in &mut setup.players {
+            let mut rng = Rng::new(7);
+            p.folder = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, &*content).0;
+        }
+        b = Battle::new(setup, content.clone());
+        let mut layers = [Layer::new(0, &b), Layer::new(1, &b)];
+        let mut ai = Fighter::inline(level, 7).with_open_custom(false);
+
+        let mut fight_t = 0u32;
+        for t in 0..1400u32 {
+            if b.round_end().is_some() || b.is_stopped() {
+                break;
+            }
+            let p0 = if b.round.mode == mode::CUSTOM {
+                bot_tick(&b, 0, t)
+            } else if sim::fight_runs(&b) {
+                fight_t += 1;
+                // Move side 0 to (1, 1) so MeddySoul starts at (5, 2) (dx=4, dy=-1 — out of range!)
+                // and must reposition to x=4 (dx=3) to land its lobbed capsule!
+                let p = sim::navi_panel(&b, 0);
+                if p.is_some_and(|p| p.x > 1) && fight_t % 3 == 1 {
+                    PlayerTick::buttons(Keys::LEFT)
+                } else if p.is_some_and(|p| p.y > 1) && fight_t % 3 == 1 {
+                    PlayerTick::buttons(Keys::UP)
+                } else {
+                    PlayerTick::default()
+                }
+            } else {
+                PlayerTick::default()
+            };
+            let p1 = ai_tick(&mut ai, &b, 1);
+            let ticks = [layers[0].input(p0, &b), layers[1].input(p1, &b)];
+            assert!(step_ticks(&mut b, ticks));
+            for l in &mut layers {
+                l.follow(&b);
+            }
+            if navi_hp(&b, 0) + 80 <= sim::navi_max_hp(&b, 0) {
+                break;
+            }
+        }
+
+        let form_key = content.defs.form(b.stats[1].form).key.as_str();
+        let dealt = sim::navi_max_hp(&b, 0).saturating_sub(navi_hp(&b, 0));
+        assert_eq!(form_key, "meddy_soul", "{level:?}: expected MeddySoul transform");
+        assert!(
+            dealt >= 40,
+            "{level:?}: MeddySoul failed to reposition and release its lobbed charge shot (dealt={dealt}, my={:?}, en={:?})",
+            sim::navi_panel(&b, 1),
+            sim::navi_panel(&b, 0)
+        );
+    }
+}

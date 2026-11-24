@@ -84,33 +84,79 @@ struct ReachEntry {
 
 /// Per-round learned relative `(dx, dy)` hit offsets for each chip seen so far, plus
 /// whether a chip was observed hitting through invulnerability/Invis (e.g. GunDelSol, JudgeMan),
-/// and observed out-of-range distance for short-range/lobbed B-charge forms so navigation around
-/// holes never oscillates.
+/// and learned relative `(dx, dy)` hit offsets for the active form's B-charge shot (handling
+/// short-range melee forms like ProtoSoul/TomahawkCross AND fixed-range lobbed forms like MeddySoul!).
 #[derive(Clone, Debug, Default)]
 pub struct ReachTable {
     entries: Vec<ReachEntry>,
-    charge_miss: Option<(nettai_content_api::FormHandle, u8)>,
+    charge_form: Option<nettai_content_api::FormHandle>,
+    charge_offsets: Vec<(i8, i8)>,
+    charge_probed: bool,
 }
 
 impl ReachTable {
-    pub fn note_charge_miss(&mut self, form: nettai_content_api::FormHandle, dx: u8) {
-        match self.charge_miss {
-            Some((f, prev)) if f == form => self.charge_miss = Some((form, prev.min(dx))),
-            _ => self.charge_miss = Some((form, dx)),
+    pub fn charge_probed_for(&self, form: nettai_content_api::FormHandle) -> bool {
+        self.charge_form == Some(form) && self.charge_probed
+    }
+
+    pub fn record_charge_hit(&mut self, form: nettai_content_api::FormHandle, offset: (i8, i8)) {
+        if self.charge_form != Some(form) {
+            self.charge_form = Some(form);
+            self.charge_offsets.clear();
+            self.charge_probed = false;
+        }
+        if !self.charge_offsets.contains(&offset) && self.charge_offsets.len() < 12 {
+            self.charge_offsets.push(offset);
         }
     }
 
-    pub fn note_charge_hit(&mut self, form: nettai_content_api::FormHandle, dx: u8) {
-        if let Some((f, prev)) = self.charge_miss
-            && f == form
-            && dx >= prev
-        {
-            self.charge_miss = None;
+    pub fn set_charge_probed(&mut self, form: nettai_content_api::FormHandle, offsets: Vec<(i8, i8)>) {
+        if self.charge_form != Some(form) {
+            self.charge_form = Some(form);
+            self.charge_offsets.clear();
         }
+        for off in offsets {
+            if !self.charge_offsets.contains(&off) && self.charge_offsets.len() < 12 {
+                self.charge_offsets.push(off);
+            }
+        }
+        self.charge_probed = true;
     }
 
-    pub fn charge_miss_dx(&self, form: nettai_content_api::FormHandle) -> Option<u8> {
-        self.charge_miss.filter(|&(f, _)| f == form).map(|(_, dx)| dx)
+    /// Closest reachable walkable own-side panel from `my_pos` whose relative offset to `enemy_pos`
+    /// is a known hit for `form`'s B-charge shot (routes around holes via BFS!).
+    pub fn best_charge_target(
+        &self,
+        b: &Battle,
+        side: u8,
+        form: nettai_content_api::FormHandle,
+        my_pos: PanelPos,
+        enemy_pos: PanelPos,
+        air_shoe: bool,
+    ) -> Option<PanelPos> {
+        if self.charge_form != Some(form) || self.charge_offsets.is_empty() {
+            return None;
+        }
+        let forward: i32 = if side == 0 { 1 } else { -1 };
+        let mut best: Option<(PanelPos, i32)> = None;
+        for &(dx, dy) in &self.charge_offsets {
+            let tx = enemy_pos.x as i32 - (dx as i32) * forward;
+            let ty = enemy_pos.y as i32 - dy as i32;
+            if !(1..=6).contains(&tx) || !(1..=3).contains(&ty) {
+                continue;
+            }
+            let (tx, ty) = (tx as u8, ty as u8);
+            if !walkable_panel(b, side, tx, ty, air_shoe) {
+                continue;
+            }
+            let p = PanelPos { x: tx, y: ty };
+            if let Some(d) = grid_dist(b, side, my_pos, p, air_shoe)
+                && best.is_none_or(|(_, bd)| d < bd)
+            {
+                best = Some((p, d));
+            }
+        }
+        best.map(|(p, _)| p)
     }
 
     pub fn already_probed(&self, chip: ChipHandle, while_invuln: bool) -> bool {
@@ -634,13 +680,14 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
         if b_charge_full
             && !enemy_invuln
             && let Some(ep) = enemy_pos
-            && ep.y == my_pos.y
         {
-            let cur_dx = (my_pos.x as i32 - ep.x as i32).unsigned_abs() as u8;
-            if r.dealt <= base_dealt + 0.001 && r.obs_dmg == 0 {
-                ctx.reach.note_charge_miss(cur_form, cur_dx);
-            } else {
-                ctx.reach.note_charge_hit(cur_form, cur_dx);
+            let dx = ((ep.x as i32 - my_pos.x as i32) * forward) as i8;
+            let dy = (ep.y as i32 - my_pos.y as i32) as i8;
+            if r.dealt > base_dealt + 0.001 {
+                ctx.reach.record_charge_hit(cur_form, (dx, dy));
+            } else if r.obs_dmg == 0 && cfg.probe_reach && !ctx.reach.charge_probed_for(cur_form) {
+                let offsets = probe_b_charge_offsets(&sim, side, my_pos, ep, air_shoe);
+                ctx.reach.set_charge_probed(cur_form, offsets);
             }
         }
         if !b_charge_full && r.dealt <= base_dealt + 0.001 && r.obs_dmg == 0 {
@@ -667,8 +714,10 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
         && !a_charging
         && !b_charge_full
         && !enemy_invuln
-        && enemy_pos.is_some_and(|ep| ep.y == my_pos.y)
-        && ctx.reach.charge_miss_dx(cur_form).is_some_and(|mdx| (my_pos.x as i32 - enemy_pos.unwrap().x as i32).unsigned_abs() as u8 >= mdx)
+        && let Some(ep) = enemy_pos
+        && ep.y == my_pos.y
+        && ctx.reach.charge_probed_for(cur_form)
+        && ctx.reach.best_charge_target(&sim, side, cur_form, my_pos, ep, air_shoe).is_none()
     {
         // Only tap uncharged B when we already know this form's B-charge shot can't reach from here!
         let c = Candidate {
@@ -791,30 +840,8 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
         }
     }
 
-    let b_charge_target = if b_charge_full
-        && !enemy_invuln
-        && let Some(miss_dx) = ctx.reach.charge_miss_dx(cur_form)
-        && let Some(ep) = enemy_pos
-    {
-        // Find the closest reachable walkable panel on the enemy's row strictly closer than `miss_dx`
-        // (persists across off-row detours around holes so we never ping-pong!).
-        let mut best: Option<(PanelPos, i32)> = None;
-        for x in 1..=6u8 {
-            if !walkable_panel(&sim, side, x, ep.y, air_shoe) {
-                continue;
-            }
-            let cand_dx = (x as i32 - ep.x as i32).unsigned_abs() as u8;
-            if cand_dx >= miss_dx {
-                continue;
-            }
-            let p = PanelPos { x, y: ep.y };
-            if let Some(d) = grid_dist(&sim, side, my_pos, p, air_shoe) {
-                if best.is_none_or(|(_, bd)| d < bd) {
-                    best = Some((p, d));
-                }
-            }
-        }
-        best.map(|(p, _)| p)
+    let b_charge_target = if b_charge_full && !enemy_invuln {
+        enemy_pos.and_then(|ep| ctx.reach.best_charge_target(&sim, side, cur_form, my_pos, ep, air_shoe))
     } else {
         None
     };
@@ -1211,6 +1238,7 @@ fn rollout(
     let mut c = b.clone();
 
     let snap0 = capture_snapshot(&c, side, blind);
+    let attacks0 = count_side_attacks(&c, side);
     let reads_a0 = c.dimmed_key_reads(side, Keys::A);
     let mut undimmed = 0u32;
     let mut t = 0u32;
@@ -1237,7 +1265,77 @@ fn rollout(
         }
     }
 
-    score_rollout(b, &c, side, blind, &snap0)
+    let mut res = score_rollout(b, &c, side, blind, &snap0);
+
+    // If this action spawned a slow lobbed/delayed attack projectile still in flight past `horizon`
+    // (e.g. MeddySoul capsule landing at ~47f / column-bursting at ~71f, NumberSoul dice, MiniBomb),
+    // follow its flight up to 82 undimmed ticks and credit ONLY the delayed damage/KO (never modifying
+    // `res.taken`, so there is zero horizon mismatch against `base_cand`!).
+    if !blind && res.dealt == 0.0 && res.obs_dmg == 0 && count_side_attacks(&c, side) > attacks0 {
+        extend_delayed_projectile(&mut c, side, after, &snap0, attacks0, &mut res, undimmed, t, cap);
+    }
+
+    res
+}
+
+/// Follow a newly-spawned slow projectile (MeddySoul capsule, lobbed bombs, etc.) past `horizon` until
+/// it hits, disappears, or hits 82 undimmed ticks, crediting only delayed opponent/obstacle damage.
+#[allow(clippy::too_many_arguments)]
+fn extend_delayed_projectile(
+    c: &mut Battle,
+    side: u8,
+    after: Keys,
+    s0: &Snap0,
+    attacks0: u8,
+    res: &mut RolloutResult,
+    mut undimmed: u32,
+    mut t: u32,
+    cap: u32,
+) {
+    let other = side ^ 1;
+    let ext_horizon = undimmed.max(82);
+    let ext_cap = cap.max(t + 64);
+    while undimmed < ext_horizon && t < ext_cap {
+        let mut held = [Keys::empty(); 2];
+        held[side as usize] = after;
+        if !step_battle(c, held) || c.round_end().is_some() {
+            break;
+        }
+        t += 1;
+        undimmed += !c.is_dimmed() as u32;
+        let eh = navi_hp(c, other);
+        let (obs_hp1, obs_cnt1) = visible_obstacle_hp(c, side);
+        if eh < s0.enemy_hp || obs_hp1 < s0.obs_hp {
+            let extra_dealt = s0.enemy_hp.saturating_sub(eh) as f32 / s0.enemy_max;
+            let extra_obs = s0.obs_hp.saturating_sub(obs_hp1);
+            res.dealt = extra_dealt;
+            res.obs_dmg = extra_obs;
+            if extra_dealt > 0.0 {
+                res.score += extra_dealt * 1.25;
+                if s0.enemy_hp > 0 && eh == 0 {
+                    res.score += 4.0;
+                }
+            }
+            if extra_obs > 0 && !res.spent_chip {
+                res.score += 0.020 + if obs_cnt1 < s0.obs_cnt { 0.025 } else { 0.0 };
+            }
+            break;
+        }
+        if count_side_attacks(c, side) <= attacks0 {
+            break;
+        }
+    }
+}
+
+fn count_side_attacks(b: &Battle, side: u8) -> u8 {
+    let mut n = 0u8;
+    for slot in 0..nettai_battle::object::SLOTS as u8 {
+        let r = nettai_content_api::ObjectRef { pool: nettai_content_api::Pool::Attack, slot };
+        if b.objects.is_allocated(r) && b.objects.get(r).alliance == side {
+            n = n.saturating_add(1);
+        }
+    }
+    n
 }
 
 /// 2-phase `Step → Fire` rollout: step `dir` cleanly, and on the first idle tick after landing press (or release) `A`!
@@ -1843,6 +1941,7 @@ fn walk_and_chip_hits(b: &Battle, side: u8, target: PanelPos, air_shoe: bool) ->
     }
 
     let hp_before_chip = navi_hp(&c, other);
+    let attacks0 = count_side_attacks(&c, side);
     let snap0 = capture_snapshot(&c, side, false);
     let reads_a0 = c.dimmed_key_reads(side, Keys::A);
     let is_dimming = c
@@ -1851,7 +1950,7 @@ fn walk_and_chip_hits(b: &Battle, side: u8, target: PanelPos, air_shoe: bool) ->
         .is_some_and(|id| c.content.chip(id).flags.contains(ChipFlags::DIMMING));
     let mut undimmed = 0u32;
     let mut t = 0u32;
-    while undimmed < 34 && t < 320 {
+    while (undimmed < 34 || (undimmed < 82 && count_side_attacks(&c, side) > attacks0)) && t < 320 {
         let mut held = [Keys::empty(); 2];
         held[side as usize] = if t < 2 { Keys::A } else { Keys::empty() };
         if !step_battle(&mut c, held) || c.round_end().is_some() {
@@ -1868,6 +1967,123 @@ fn walk_and_chip_hits(b: &Battle, side: u8, target: PanelPos, air_shoe: bool) ->
         }
     }
     navi_hp(&c, other) < hp_before_chip
+}
+
+/// Probe canonical walkable own-side panels to learn relative `(dx, dy)` hit offsets for the active form's
+/// full B-charge shot (handles melee forms like ProtoSoul/SlashCross AND fixed-range lobbed forms like MeddySoul!).
+fn probe_b_charge_offsets(b: &Battle, side: u8, my_pos: PanelPos, enemy_pos: PanelPos, air_shoe: bool) -> Vec<(i8, i8)> {
+    let forward: i32 = if side == 0 { 1 } else { -1 };
+    let xs: Vec<u8> = if side == 0 { (1..=6).rev().collect() } else { (1..=6).collect() };
+    let front_on_row = xs.iter().copied().find(|&x| walkable_panel(b, side, x, enemy_pos.y, air_shoe));
+    let back_on_row = xs.iter().rev().copied().find(|&x| walkable_panel(b, side, x, enemy_pos.y, air_shoe));
+    let two_ahead_x = if side == 0 {
+        enemy_pos.x.checked_sub(2)
+    } else {
+        let tx = enemy_pos.x + 2;
+        (tx <= 6).then_some(tx)
+    };
+    let bomb_x = if side == 0 {
+        enemy_pos.x.checked_sub(3)
+    } else {
+        let bx = enemy_pos.x + 3;
+        (bx <= 6).then_some(bx)
+    };
+
+    let mut tries: Vec<PanelPos> = Vec::with_capacity(8);
+    let mut push = |x: u8, y: u8| {
+        let p = PanelPos { x, y };
+        if p != my_pos && walkable_panel(b, side, x, y, air_shoe) && !tries.contains(&p) {
+            tries.push(p);
+        }
+    };
+
+    push(my_pos.x, enemy_pos.y);
+    if let Some(bx) = bomb_x {
+        push(bx, enemy_pos.y);
+        push(bx, my_pos.y);
+    }
+    if let Some(tx) = two_ahead_x {
+        push(tx, enemy_pos.y);
+    }
+    if let Some(fx) = front_on_row {
+        push(fx, enemy_pos.y);
+    }
+    if let Some(bx) = back_on_row {
+        push(bx, enemy_pos.y);
+    }
+    for adj_y in [enemy_pos.y.saturating_sub(1), enemy_pos.y + 1] {
+        if (1..=3).contains(&adj_y) {
+            if let Some(bx) = bomb_x {
+                push(bx, adj_y);
+            }
+            if let Some(fx) = xs.iter().copied().find(|&x| walkable_panel(b, side, x, adj_y, air_shoe)) {
+                push(fx, adj_y);
+            }
+        }
+    }
+
+    tries.sort_by_key(|&p| manhattan(my_pos, p));
+
+    let mut offsets = Vec::new();
+    for target in tries {
+        if walk_and_b_charge_hits(b, side, target, air_shoe) {
+            let dx = ((enemy_pos.x as i32 - target.x as i32) * forward) as i8;
+            let dy = (enemy_pos.y as i32 - target.y as i32) as i8;
+            if !offsets.contains(&(dx, dy)) {
+                offsets.push((dx, dy));
+            }
+            if offsets.len() >= 2 {
+                break;
+            }
+        }
+    }
+    offsets
+}
+
+/// Walk `side` to `target` while maintaining `Keys::B` charge, release `B`, and check if the charge shot hits.
+fn walk_and_b_charge_hits(b: &Battle, side: u8, target: PanelPos, air_shoe: bool) -> bool {
+    let other = side ^ 1;
+    let mut c = b.clone();
+    if navi_hp(&c, other) == 0 {
+        return false;
+    }
+    let mut released = true;
+    let mut arrived = false;
+    for _ in 0..56 {
+        let Some(at) = navi_panel(&c, side) else { return false };
+        if at == target && navi_idle(&c, side) {
+            arrived = true;
+            break;
+        }
+        let dir = next_step_toward(&c, side, at, target, air_shoe);
+        let step = if navi_idle(&c, side) && released { dir } else { Keys::empty() };
+        released = step.is_empty();
+        let mut held = [Keys::empty(); 2];
+        held[side as usize] = step | Keys::B;
+        if !step_battle(&mut c, held) || !fight_runs(&c) {
+            return false;
+        }
+    }
+    if !arrived {
+        return false;
+    }
+    let hp_before = navi_hp(&c, other);
+    let attacks0 = count_side_attacks(&c, side);
+    let mut undimmed = 0u32;
+    let mut t = 0u32;
+    while (undimmed < 34 || (undimmed < 82 && count_side_attacks(&c, side) > attacks0)) && t < 160 {
+        let mut held = [Keys::empty(); 2];
+        held[side as usize] = if t < 2 { Keys::empty() } else { Keys::B };
+        if !step_battle(&mut c, held) || c.round_end().is_some() {
+            break;
+        }
+        t += 1;
+        undimmed += !c.is_dimmed() as u32;
+        if navi_hp(&c, other) < hp_before {
+            return true;
+        }
+    }
+    navi_hp(&c, other) < hp_before
 }
 
 fn rand_unit(rng: &mut SplitMix64) -> f32 {
