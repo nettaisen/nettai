@@ -446,8 +446,9 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             is_dimming_chip,
         );
 
-        // Learn relative hit offset whenever a chip lands!
-        if r.dealt > 0.0
+        // Learn relative hit offset whenever THIS chip lands additional damage (never credit already-in-flight hits!).
+        let chip_added_dmg = r.dealt > base_res.dealt + 0.001;
+        if chip_added_dmg
             && let Some(ep) = enemy_pos
         {
             let dx = ((ep.x as i32 - my_pos.x as i32) * forward) as i8;
@@ -459,7 +460,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
         // verify whether a non-dimming chip still lands when the opponent steps off the row on tick 10!
         if cfg.probe_reach
             && !blind
-            && r.dealt > 0.0
+            && chip_added_dmg
             && !enemy_locked
             && enemy_moving_actively
             && !is_dimming_chip
@@ -472,18 +473,18 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
                 let delta = blended_dealt - r.dealt;
                 r.score += delta * 1.45;
                 // Extra caution against whiffing Full Synchro (2x) on a slow dodgeable chip!
-                if is_doubled && ev.dealt == 0.0 {
+                if is_doubled && ev.dealt <= base_res.dealt + 0.001 {
                     r.score -= 0.06;
                 }
             }
         }
 
         // Counter-hit hunting & Full Synchro burst bonuses!
-        if r.dealt > 0.0 {
+        if chip_added_dmg {
             if enemy_attacking && can_counter {
                 r.score += 0.075;
             }
-            if is_doubled && r.dealt >= 0.08 {
+            if is_doubled && (r.dealt - base_res.dealt) >= 0.08 {
                 r.score += 0.055;
             }
         }
@@ -537,9 +538,9 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             }
         }
 
-        // Strongly penalize whiffed chips (no damage, no useful effect, score <= 0) so Easy/Normal
-        // decision noise never accidentally fires an attack chip into an Invisible/Invulnerable player!
-        if r.spent_chip && r.dealt == 0.0 && r.score <= 0.0 {
+        // Strongly penalize whiffed chips (no added damage, no net value over doing nothing) so Easy/Normal
+        // decision noise never accidentally fires an attack chip into empty air or an Invisible/Invulnerable player!
+        if r.spent_chip && !chip_added_dmg && r.score <= base_res.score + 0.001 {
             r.score -= 0.065;
         }
 
@@ -589,7 +590,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             || cd.damage > 0
             || cd.formula.is_some()
             || (!cd.flags.contains(ChipFlags::DIMMING) && cd.modifier.is_none() && cd.trap.is_none());
-        let chip_hit_now = chip_res.as_ref().is_some_and(|(_, r)| r.dealt > 0.0);
+        let chip_hit_now = chip_res.as_ref().is_some_and(|(_, r)| r.dealt > base_res.dealt + 0.001);
         if may_hit_enemy && !chip_hit_now && !ctx.reach.already_probed(chip_id, enemy_invuln) {
             let offsets = probe_chip_offsets(&sim, side, my_pos, epos, air_shoe);
             ctx.reach.set_probed(chip_id, offsets, enemy_invuln);
@@ -619,8 +620,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
     // Release full B charge shot, or finish off / poke with an uncharged buster shot!
     let cur_form = sim.stats[side as usize].form;
     let enemy_low_hp = !blind && navi_hp(&sim, other) <= 30;
-    let mut b_charge_missed_on_row = false;
-    if can_b_charge && !a_charging && (b_charge_full || (enemy_low_hp && enemy_pos.is_some_and(|ep| ep.y == my_pos.y))) {
+    if can_b_charge && !a_charging && (b_charge_full || (enemy_low_hp && !enemy_invuln && enemy_pos.is_some_and(|ep| ep.y == my_pos.y))) {
         let c = Candidate {
             first: Keys::empty(),
             first_ticks: 2,
@@ -630,41 +630,23 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             is_a_charge_hold: false,
             is_step_fire: false,
         };
-        let r = rollout(&sim, side, c.first, c.first_ticks, c.after, cfg.horizon, cfg.cap, blind, Keys::empty(), false);
+        let mut r = rollout(&sim, side, c.first, c.first_ticks, c.after, cfg.horizon, cfg.cap, blind, Keys::empty(), false);
         if b_charge_full
             && !enemy_invuln
             && let Some(ep) = enemy_pos
             && ep.y == my_pos.y
         {
             let cur_dx = (my_pos.x as i32 - ep.x as i32).unsigned_abs() as u8;
-            if r.dealt == 0.0 && r.obs_dmg == 0 {
-                b_charge_missed_on_row = true;
+            if r.dealt <= base_dealt + 0.001 && r.obs_dmg == 0 {
                 ctx.reach.note_charge_miss(cur_form, cur_dx);
             } else {
                 ctx.reach.note_charge_hit(cur_form, cur_dx);
             }
         }
-        cands.push((c, r));
-        // If our full B-charge shot missed on the enemy's row (e.g. short-range melee Soul charge shot like
-        // ProtoSoul/KnightSoul/ShadowSoul while opponent camps back column), also evaluate releasing and firing
-        // a full-screen uncharged buster shot so we never deadlock!
-        if b_charge_missed_on_row {
-            let can_step_fwd = stepped_pos(side, my_pos, Keys::RIGHT)
-                .is_some_and(|(nx, ny)| walkable_panel(&sim, side, nx, ny, air_shoe));
-            if !can_step_fwd {
-                let poke = Candidate {
-                    first: Keys::empty(),
-                    first_ticks: 1,
-                    after: Keys::empty(),
-                    is_move: false,
-                    is_charge_release: false,
-                    is_a_charge_hold: false,
-                    is_step_fire: false,
-                };
-                let pr = rollout(&sim, side, Keys::empty(), 2, Keys::B, cfg.horizon, cfg.cap, blind, Keys::empty(), false);
-                cands.push((poke, pr));
-            }
+        if !b_charge_full && r.dealt <= base_dealt + 0.001 && r.obs_dmg == 0 {
+            r.score -= 0.06;
         }
+        cands.push((c, r));
     } else if !can_b_charge && !a_charging && !enemy_invuln && enemy_pos.is_some_and(|ep| ep.y == my_pos.y) {
         // Uncharged buster poke for navis/forms that cannot charge B (only when opponent can be hit!).
         let c = Candidate {
@@ -863,14 +845,10 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             total += 0.04;
         }
 
-        // Don't waste a full B charge shot on empty air or an invulnerable/invisible opponent
-        // (penalty exceeds Easy's noise so it never fires into Invis by random jitter!).
-        if cand.is_charge_release && res.dealt == 0.0 && res.obs_dmg == 0 {
-            if !enemy_invuln && b_charge_missed_on_row && b_charge_target.is_none() {
-                total += 0.008;
-            } else {
-                total -= 0.065;
-            }
+        // Never waste a full B charge shot on empty air or an invulnerable/invisible opponent
+        // (penalty exceeds Easy's noise so it never fires into empty air or Invis!).
+        if cand.is_charge_release && res.dealt <= base_dealt + 0.001 && res.obs_dmg == 0 {
+            total -= 0.065;
         }
 
         // Subtle tie-breaker for maintaining B charge.
@@ -1402,7 +1380,17 @@ fn score_rollout(b: &Battle, c: &Battle, side: u8, blind: bool, s0: &Snap0) -> R
     }
 
     // Healing value: high when hurt, zero when nearly full HP so Recovery isn't wasted!
-    if healed > 0.0 {
+    // Never credit a passive form heal (e.g. AquaCross +5% on Water chips, RollSoul) for throwing away
+    // an attack chip into empty air (`dealt == 0.0`) unless critically low HP (< 18%) — align and hit
+    // to get BOTH the heal and the damage!
+    let wasted_attack_heal = spent_chip
+        && dealt == 0.0
+        && s0.spent_chip_id.is_some_and(|id| {
+            let cd = c.content.chip(id);
+            cd.flags.contains(ChipFlags::HAS_DAMAGE) || cd.damage > 0 || cd.formula.is_some()
+        })
+        && my_frac >= 0.18;
+    if healed > 0.0 && !wasted_attack_heal {
         let heal_weight = if my_frac < 0.50 {
             1.15
         } else if my_frac < 0.80 {

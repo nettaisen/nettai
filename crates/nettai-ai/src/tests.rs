@@ -1410,3 +1410,121 @@ fn gundelsol_and_judgeman_reposition_and_hit_through_invis() {
         );
     }
 }
+
+/// AquaCross passively heals +5% HP when using Water chips, but the AI must NOT dump a Water attack
+/// chip (`train_arrow_3`) into empty air while the opponent is Invisible/off-row just for the passive heal!
+#[test]
+fn aquacross_does_not_dump_water_attack_chip_for_passive_heal() {
+    use nettai_battle::collision::StatusFlags;
+    use nettai_battle::content::ChipCode;
+    use nettai_battle::custom::{FolderChip, SavedFolder};
+    use nettai_battle::setup::BattleSettings;
+    use nettai_frontend::driver::live_setup;
+
+    let content = nettai_match::testing::exe6_content();
+    let invis = content
+        .defs
+        .chips
+        .iter()
+        .enumerate()
+        .find(|(_, d)| d.key == "invisible")
+        .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+        .expect("invisible");
+    let train_arrow = content
+        .defs
+        .chips
+        .iter()
+        .enumerate()
+        .find(|(_, d)| d.key == "train_arrow_3")
+        .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+        .expect("train_arrow_3");
+    let ta_code = content.chip(train_arrow).codes[0];
+
+    let f0 = [FolderChip::new(invis, ChipCode::ASTERISK); 30];
+    let mut f1 = [FolderChip::new(invis, ChipCode::ASTERISK); 30];
+    f1[0] = FolderChip::new(train_arrow, ta_code);
+    f1[1] = FolderChip::new(train_arrow, ta_code);
+
+    let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
+    let setup = live_setup(
+        &content,
+        BattleSettings::on(&content, stage),
+        [
+            SavedFolder { chips: f0, regular: Some(0), tags: None },
+            SavedFolder { chips: f1, regular: Some(0), tags: None },
+        ],
+        "falzar",
+        13,
+    );
+    let mut b = Battle::new(setup, content.clone());
+    let mut layers = [Layer::new(0, &b), Layer::new(1, &b)];
+    let mut ai = Fighter::inline(Level::Hard, 13).with_open_custom(false);
+
+    let mut fight_t = 0u32;
+    let mut hurt_ai = false;
+    let mut p0_used_invis = false;
+    let mut saw_invis_ticks = 0u32;
+    let mut wasted_during_invis = false;
+
+    for t in 0..900u32 {
+        if b.round_end().is_some() || b.is_stopped() {
+            break;
+        }
+        let p0 = if b.round.mode == mode::CUSTOM {
+            bot_tick(&b, 0, t)
+        } else if sim::fight_runs(&b) {
+            fight_t += 1;
+            if !hurt_ai
+                && let Some(r1) = sim::navi_ref(&b, 1)
+            {
+                // Drop AI to 45% HP so AquaCross passive heal is strongly valued by raw heal_weight.
+                b.objects.get_mut(r1).hp = 450;
+                hurt_ai = true;
+            }
+            let en = sim::navi_panel(&b, 0);
+            if !p0_used_invis && en.is_some_and(|p| p.y > 1) && fight_t % 3 == 1 {
+                PlayerTick::buttons(Keys::UP)
+            } else if !p0_used_invis && en.is_some_and(|p| p.y == 1) && sim::navi_idle(&b, 0) {
+                p0_used_invis = true;
+                PlayerTick::buttons(Keys::A)
+            } else {
+                PlayerTick::default()
+            }
+        } else {
+            PlayerTick::default()
+        };
+
+        let p0_invis = sim::navi_status(&b, 0).contains(StatusFlags::INVISIBLE);
+        let p1 = if b.round.mode == mode::CUSTOM {
+            PlayerTick::default().with_choice(ai.custom_screen(&b, 1))
+        } else if !p0_used_invis || !p0_invis {
+            PlayerTick::default()
+        } else {
+            PlayerTick::buttons(ai.fight(&b, 1, Keys::empty()))
+        };
+
+        let cur_before = b.hands[1].cursor;
+        let ticks = [layers[0].input(p0, &b), layers[1].input(p1, &b)];
+        assert!(step_ticks(&mut b, ticks));
+        for l in &mut layers {
+            l.follow(&b);
+        }
+
+        if p0_used_invis && !b.is_dimmed() && sim::navi_status(&b, 0).contains(StatusFlags::INVISIBLE) {
+            saw_invis_ticks += 1;
+            if b.hands[1].cursor > cur_before {
+                wasted_during_invis = true;
+            }
+            if saw_invis_ticks >= 220 {
+                break;
+            }
+        }
+    }
+
+    assert!(saw_invis_ticks >= 200, "test setup never observed enough Invisible ticks ({saw_invis_ticks})");
+    assert!(
+        !wasted_during_invis,
+        "AquaCross AI dumped train_arrow_3 into Invisible/empty air just for passive +5% heal! (form={})",
+        content.defs.form(b.stats[1].form).key
+    );
+}
