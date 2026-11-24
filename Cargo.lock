@@ -3794,6 +3794,7 @@ dependencies = [
  "libc 0.2.190",
  "log",
  "ndk-context",
+ "nettai-ai",
  "nettai-audio",
  "nettai-battle",
  "nettai-content",
@@ -3810,7 +3811,6 @@ dependencies = [
  "nettai-rtc",
  "nettai-signaling",
  "nettai-threads",
- "nettai-training",
  "nettai-ui",
  "nettai-updater",
  "nettai-video",
@@ -3824,7 +3824,6 @@ dependencies = [
  "rustls-platform-verifier",
  "serde",
  "serde_json",
- "sha2 0.10.9",
  "slint",
  "sys-locale",
  "tempfile",
@@ -3835,6 +3834,18 @@ dependencies = [
  "web-time",
  "winit",
  "winresource",
+]
+
+[[package]]
+name = "nettai-ai"
+version = "0.29.0"
+dependencies = [
+ "nettai-battle",
+ "nettai-content-api",
+ "nettai-frontend",
+ "nettai-match",
+ "nettai-netplay",
+ "nettai-threads",
 ]
 
 [[package]]

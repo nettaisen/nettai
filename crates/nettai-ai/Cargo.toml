@@ -1,0 +1,17 @@
+[package]
+name = "nettai-ai"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Built-in AI player for nettai (EXE4, EXE5, EXE6 and any game the engine runs): delayed fair perception, combinatorial custom-screen planning, and tactical lookahead with dynamic chip-reach probing"
+
+[dependencies]
+nettai-battle.workspace = true
+nettai-content-api = { path = "../nettai-content-api" }
+nettai-frontend = { path = "../nettai-frontend" }
+nettai-netplay = { path = "../nettai-netplay" }
+nettai-threads = { path = "../nettai-threads" }
+
+[dev-dependencies]
+nettai-match = { path = "../nettai-match", features = ["testing"] }
+nettai-frontend = { path = "../nettai-frontend", features = ["testing"] }

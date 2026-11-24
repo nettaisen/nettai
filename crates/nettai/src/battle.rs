@@ -1073,14 +1073,10 @@ mod tests {
         battle_of(content, LivePlayer::against(Set::new(content.clone(), first, folders), opponent, seed as u64))
     }
 
-    /// The dummy that fights, plugged in as Practice plugs it (its Action Fights at Hard, its custom screen the AI's,
-    /// on the weights `NETTAI_AI_WEIGHTS` names: those to publish, the publishing step's check, `nettai_ai.publish`):
+    /// The dummy that fights, plugged in as Practice plugs it (its Action Fights at Hard, its custom screen the AI's):
     /// against a player who only gets through their custom screen, it takes HP away, the battle stepped as the shell
-    /// steps a practice battle once its chips' fingerprints are made (made here on threads of their own, kept
-    /// nowhere). Not run unless asked (`--ignored`): no trained weights are in the repository.
-    #[cfg(feature = "ai")]
+    /// steps a practice battle.
     #[test]
-    #[ignore]
     fn the_dummy_that_fights_takes_hp_away() {
         use nettai_battle::battle::mode;
         use nettai_frontend::driver::{InFight, OnCustomScreen, Opponent, bot_tick};
@@ -1089,21 +1085,8 @@ mod tests {
         let opponent = Opponent { in_fight: InFight::Ai, on_custom_screen: OnCustomScreen::Ai };
         let mut b = practice(&content, &m, 11, opponent);
         let live = b.stage.player.live_mut().expect("live play");
-        let plugged = crate::screens::practice::ai::plug(live, opponent, 2, 11, None, None, || {
-            let path = std::env::var("NETTAI_AI_WEIGHTS").expect("NETTAI_AI_WEIGHTS: the weights to check");
-            nettai_training::ai::Arriving::arrived(nettai_training::net::Net::from_safetensors(&std::fs::read(path).unwrap()).map(std::sync::Arc::new))
-        })
-        .expect("plugged in");
+        let plugged = crate::screens::practice::ai::plug(live, opponent, 2, 11, None).expect("plugged in");
         assert_eq!(plugged.level, 2);
-        // (The fingerprints of both folders' chips, made before the battle steps: the shell's frames go on while
-        // they are made, the dummy waiting on its custom screen.)
-        let fingerprints = &plugged.fingerprints;
-        let made = std::time::Instant::now();
-        while fingerprints.status() != nettai_training::ai::Status::Ready {
-            assert!(!matches!(fingerprints.status(), nettai_training::ai::Status::Failed(_)), "{:?}", fingerprints.status());
-            assert!(made.elapsed().as_secs() < 300, "the fingerprints weren't made: {:?}", fingerprints.status());
-            std::thread::sleep(std::time::Duration::from_millis(20));
-        }
         let hp = |b: &Battle| {
             let battle = b.stage.player.battle();
             battle.player(0).map(|r| (battle.objects.get(r).hp, battle.objects.get(r).max_hp))
@@ -1112,7 +1095,6 @@ mod tests {
             let battle = b.stage.player.battle();
             let input = if battle.round.mode == mode::CUSTOM { bot_tick(battle, 0, b.stage.player.ticks() as u32) } else { Default::default() };
             frame_input(&mut b, input);
-            assert_eq!(plugged.stopped.why(), None);
             if hp(&b).is_some_and(|(hp, max)| hp < max) {
                 return;
             }

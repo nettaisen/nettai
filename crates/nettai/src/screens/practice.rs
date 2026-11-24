@@ -49,10 +49,7 @@ use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::rc::Rc;
 use web_time::Instant;
 
-#[cfg(feature = "ai")]
 pub(crate) mod ai;
-#[cfg(feature = "ai")]
-mod weights;
 mod thumbs;
 
 // ---- A practice session, which any screen may start ----------------------------------------------------------
@@ -164,9 +161,6 @@ pub struct Shared {
     /// What the menu of a session another screen started was left at when that screen stopped it for a while
     /// ([`stop`]: a phone's STOP PRACTICE): its next session in the same wait starts on it. [`end`] forgets it.
     waiting: Option<Kept>,
-    /// The network the dummy that fights plays with: asked for when Fights is first picked, the same after.
-    #[cfg(feature = "ai")]
-    weights: weights::Weights,
 }
 
 /// A session's choices, kept from one to the next of the same wait ([`Shared::waiting`]).
@@ -310,12 +304,8 @@ struct Session {
     /// The game's emotions a side can be held in, in the menu's order, with their words ([`emotions_of`]): the
     /// Emotion row's values after Normal, each side's.
     emotions: Vec<(Emotion, String)>,
-    /// The AI plugged into the dummy's live play, while one is (`ai::plug`); and what the corner over the battle was
-    /// last told of its getting ready (`ai::watch`).
-    #[cfg(feature = "ai")]
+    /// The AI plugged into the dummy's live play, while one is (`ai::plug`).
     ai: Option<ai::Plugged>,
-    #[cfg(feature = "ai")]
-    getting_ready: GettingReady,
     /// The builds the Dummy's build row offers, and the one the dummy is on (none: the row isn't there).
     builds: Vec<Pick>,
     dummys: usize,
@@ -542,10 +532,7 @@ pub(crate) fn dummys_build(shell: &Shell) -> Option<usize> {
 
 /// The dummy's Actions, in the row's order (practice.slint words them by their place: `PracticeView.fights`
 /// says whether Fights is among them).
-#[cfg(feature = "ai")]
 const ACTIONS: [InFight; 4] = [InFight::StandsStill, InFight::MovesAround, InFight::Ai, InFight::SecondPad];
-#[cfg(not(feature = "ai"))]
-const ACTIONS: [InFight; 3] = [InFight::StandsStill, InFight::MovesAround, InFight::SecondPad];
 
 /// The Level row's values (`ai::LEVELS`: Easy, Normal, Hard); Normal at first.
 const LEVEL_COUNT: usize = 3;
@@ -639,7 +626,6 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
         let named = |name: &Option<String>| name.as_deref().and_then(|n| emotions.iter().map(|(e, _)| *e).find(|e| content.rules().emotion.name(*e) == n));
         start.options.emotions = [named(&shell.practice.visit.menu.emotions[0]), named(&shell.practice.visit.menu.emotions[1])];
     }
-    #[cfg_attr(not(feature = "ai"), allow(unused_mut))] // (the dummy's AI plugged in)
     let mut session = Session {
         from: start.from,
         exit: start.exit.is_some(),
@@ -658,10 +644,7 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
         options: start.options,
         inputs,
         emotions,
-        #[cfg(feature = "ai")]
         ai: None,
-        #[cfg(feature = "ai")]
-        getting_ready: GettingReady::default(),
         dummys: start.dummys.min(start.builds.len().saturating_sub(1)),
         builds: start.builds,
         menu_at_start: start.menu,
@@ -676,7 +659,7 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
         .chain(session.rows.iter().map(|o| row(*o, &session, &shell.practice.thumbs, shell.settings.input_delay)))
         .collect();
     view.set_rows(ModelRc::new(VecModel::from(rows)));
-    view.set_fights(cfg!(feature = "ai"));
+    view.set_fights(true);
     view.set_leave(start.from.is_none() || start.exit.is_some());
     view.set_exit_word(start.exit.clone().unwrap_or_default().into());
     view.set_session_yours(start.you.name.as_str().into());
@@ -686,12 +669,10 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
     view.set_held_dummys(0);
     // (The player's input delay netplay's, the one setting both change: the user, "practice mode should have the same
     // input delay as netplay and adjusting it should adjust the netplay delay".)
-    #[cfg_attr(not(feature = "ai"), allow(unused_mut))] // (the dummy's AI plugged in)
     let mut driver = LivePlayer::against(set_of(content, &session.m, start.seed), start.opponent, start.seed as u64)
         .with_training(start.options)
         .with_input_delay(shell.settings.input_delay);
-    #[cfg(feature = "ai")]
-    ai::replug(&mut driver, &mut session, &mut shell.practice.weights);
+    ai::replug(&mut driver, &mut session);
     view.set_getting_ready(GettingReady::default());
     shell.start_battle(BattleStart {
         owner: ScreenId::Practice,
@@ -794,8 +775,6 @@ fn restart_set(shell: &mut Shell, session: &mut Session) {
     let Some(ready) = shell.games.ready(&session.game) else { return };
     session.places.put(&mut session.m, session.place);
     let set = set_of(ready.content(), &session.m, session.seed);
-    #[cfg(feature = "ai")]
-    ai::want_chips(session, &set);
     if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice)
         && let Some(live) = b.stage.player.live_mut()
     {
@@ -1344,9 +1323,8 @@ impl Practice {
             if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice) {
                 b.stage.player.set_opponent(session.opponent);
                 b.stage.player.set_training(session.options);
-                #[cfg(feature = "ai")]
                 if let Some(live) = b.stage.player.live_mut() {
-                    ai::replug(live, &mut session, &mut shell.practice.weights);
+                    ai::replug(live, &mut session);
                 }
             }
             // (The row's own value: its stepper slides to it. Then the rows its Action has under it.)
@@ -1562,11 +1540,9 @@ impl Screen for Practice {
         }
     }
 
-    /// After the battle's ticks: the dummy's AI (one that stopped taken out; its getting ready shown), the round,
-    /// for the line beside MENU on a phone, and with the input display on, the buttons each side holds.
+    /// After the battle's ticks: the round, for the line beside MENU on a phone, and with the input display on,
+    /// the buttons each side holds.
     fn frame_end(&mut self, shell: &mut Shell, _now: Instant) {
-        #[cfg(feature = "ai")]
-        ai::watch(shell);
         let Some(b) = shell.battle.as_ref().filter(|b| b.owner == ScreenId::Practice) else { return };
         let Some(session) = shell.practice.session.as_mut() else { return };
         let battle = b.stage.player.battle();
@@ -1624,13 +1600,8 @@ mod tests {
         let angry = Options { emotions: [None, Some(emotions[1].0)], ..options };
         assert_eq!(value(PracticeOption::Emotion, opponent, NORMAL, angry, false, [0; 2]), [0, 2]);
         assert_eq!(values(PracticeOption::InputDelay, &places), MAX_INPUT_DELAY as usize + 1, "0 to netplay's most");
-        #[cfg(feature = "ai")]
-        {
-            assert_eq!(ACTIONS, [InFight::StandsStill, InFight::MovesAround, InFight::Ai, InFight::SecondPad]);
-            assert_eq!(value(PracticeOption::Action, dummy(InFight::Ai), NORMAL, options, false, [0; 2]), [2, 0]);
-        }
-        #[cfg(not(feature = "ai"))]
-        assert_eq!(ACTIONS, [InFight::StandsStill, InFight::MovesAround, InFight::SecondPad], "no Fights without the AI");
+        assert_eq!(ACTIONS, [InFight::StandsStill, InFight::MovesAround, InFight::Ai, InFight::SecondPad]);
+        assert_eq!(value(PracticeOption::Action, dummy(InFight::Ai), NORMAL, options, false, [0; 2]), [2, 0]);
         assert_eq!(value(PracticeOption::Action, dummy(InFight::SecondPad), NORMAL, options, false, [0; 2]), [ACTIONS.len() - 1, 0]);
         assert_eq!(value(PracticeOption::Level, opponent, NORMAL, options, false, [0; 2]), [1, 0], "Normal at first");
         assert_eq!(value(PracticeOption::Hp, opponent, NORMAL, Options { refills: [false, true], ..options }, false, [0; 2]), [0, 1]);
