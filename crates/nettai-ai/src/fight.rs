@@ -10,6 +10,7 @@ use crate::sim::{
 use nettai_battle::actor::ActorStatus;
 use nettai_battle::collision::StatusFlags;
 use nettai_battle::content::{ChipClass, ChipFlags};
+use nettai_battle::dimming::DimmingState;
 use nettai_battle::field::PanelFlags;
 use nettai_battle::input::Keys;
 use nettai_battle::kinds::player::next_chip_doubles;
@@ -198,6 +199,9 @@ struct RolloutResult {
     taken: f32,
     obs_dmg: u32,
     spent_chip: bool,
+    gained_invis: bool,
+    gained_barrier: u16,
+    gained_trap: bool,
     end_a_charging: bool,
     end_panel: Option<PanelPos>,
     end_enemy_panel: Option<PanelPos>,
@@ -296,13 +300,25 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             };
         }
 
-        if let Some(chip_id) = next_chip
+        let other_dim = sim.dimming[other as usize];
+        let my_dim = sim.dimming[side as usize];
+        let can_cut = matches!(my_dim.state, DimmingState::Idle | DimmingState::Waiting)
+            && !other_dim.no_cut_in
+            && other_dim.state == DimmingState::ShowingName;
+        if can_cut
+            && let Some(chip_id) = next_chip
             && sim.content.chip(chip_id).flags.contains(ChipFlags::DIMMING)
             && rand_unit(&mut rng) < cfg.cut_in_chance
         {
-            let base = rollout(&sim, side, keep_b, 1, keep_b, 20, cfg.cap, blind, Keys::empty(), false);
-            let cut = rollout(&sim, side, Keys::A, 2, keep_b, 24, cfg.cap, blind, Keys::empty(), true);
-            if cut.spent_chip && cut.score > base.score + 0.03 {
+            // Simulate long enough for BOTH our cut-in and the opponent's dimming chip to resolve,
+            // so we cut in to negate real incoming damage (e.g. Invisible vs JudgeMan/ProtoMan)
+            // or deal counter damage — NEVER wasting Invisible on a harmless opponent AreaGrab/Invis!
+            let cut_cap = cfg.cap.max(460);
+            let base = rollout(&sim, side, keep_b, 1, keep_b, 20, cut_cap, blind, Keys::empty(), false);
+            let cut = rollout(&sim, side, Keys::A, 2, keep_b, 24, cut_cap, blind, Keys::empty(), true);
+            let prevented_dmg = cut.taken + 0.005 < base.taken;
+            let dealt_more = cut.dealt > base.dealt + 0.005;
+            if cut.spent_chip && (prevented_dmg || dealt_more) && cut.score > base.score + 0.025 {
                 return FightDecision {
                     first: Keys::A,
                     after: keep_b,
@@ -418,19 +434,51 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             }
         }
 
-        // Credit persistent setup chips (traps armed in rules_state, FastGauge/SlowGauge, RockCubes, summons).
+        // Defensive chip discipline:
+        // - NEVER stack redundant defenses (`Invisible -> Invisible`, `Invisible -> Barrier`, `Barrier -> Barrier`, etc.).
+        // - Save timed/reactive defenses (`Invisible`, `Invuln`, `Barrier`/`Aura`) for incoming threats
+        //   (`r.taken < base_res.taken`, which is already naturally rewarded by `score_rollout`!),
+        //   dimming cut-ins, or critically low HP under active pressure — NOT unprovoked when safe!
+        let my_hp_frac = navi_hp(&sim, side) as f32 / navi_max_hp(&sim, side) as f32;
+        let my_barrier_now = navi_barrier_hp(&sim, side);
+        let my_trap_now = my_actor.is_some_and(|a| a.status.intersects(ActorStatus::TRAP_ARMED | ActorStatus::HEAT_TRAP));
+        let already_invis = my_status.intersects(StatusFlags::INVISIBLE | StatusFlags::INVULNERABLE);
+        let already_protected = already_invis || my_barrier_now > 0 || my_trap_now;
+
         if r.spent_chip && r.dealt == 0.0 {
-            if r.end_gauge_rate != base_res.end_gauge_rate {
-                r.score += 0.065;
-            }
-            if r.end_field_objs > base_res.end_field_objs {
-                r.score += 0.055;
-            }
-            if r.end_friendly_objs > base_res.end_friendly_objs {
-                r.score += 0.055;
-            }
-            if r.end_rules != base_res.end_rules {
-                r.score += 0.055;
+            if r.gained_invis {
+                // Only proactively pop Invis without immediate damage if NOT already protected AND critically low under attack;
+                // otherwise save it in hand for incoming hits or counter cut-ins!
+                if !already_protected && my_hp_frac < 0.35 && enemy_attacking {
+                    r.score += 0.038;
+                }
+            } else if r.gained_barrier > 0 {
+                // Never pop Barrier/Aura while Invisible or overwriting an existing barrier (unless a huge Aura upgrade under pressure).
+                let big_upgrade = my_barrier_now == 0 || (r.gained_barrier >= 100 && (under_threat || enemy_attacking));
+                if !already_invis && big_upgrade && (under_threat || enemy_attacking || (my_barrier_now == 0 && my_hp_frac < 0.55)) {
+                    let gain = (r.gained_barrier as f32 / navi_max_hp(&sim, side) as f32).min(0.25);
+                    r.score += 0.032 + gain * 0.18;
+                }
+            } else if r.gained_trap {
+                // Persistent traps (AntiDmg, AntiNavi, etc.) are good to arm when not already holding Invis/Trap.
+                if !already_invis && !my_trap_now {
+                    r.score += 0.042;
+                }
+            } else {
+                // Credit persistent non-defensive setup chips (FastGauge/SlowGauge, RockCubes, actor summons, rules traps).
+                // Never credit lingering attack projectiles when a damaging attack chip whiffed (e.g. into an Invisible opponent)!
+                if r.end_gauge_rate != base_res.end_gauge_rate {
+                    r.score += 0.065;
+                }
+                if r.end_field_objs > base_res.end_field_objs {
+                    r.score += 0.055;
+                }
+                if !cd.flags.contains(ChipFlags::HAS_DAMAGE) && r.end_friendly_objs > base_res.end_friendly_objs {
+                    r.score += 0.055;
+                }
+                if r.end_rules != base_res.end_rules && !already_invis && !my_trap_now {
+                    r.score += 0.045;
+                }
             }
         }
 
@@ -1261,8 +1309,8 @@ fn score_rollout(b: &Battle, c: &Battle, side: u8, blind: bool, s0: &Snap0) -> R
     let taken_w = if push_win { 1.00 } else { 1.10 };
     let mut score = dealt * dealt_w - taken * taken_w;
 
-    // Reward clearing/damaging obstacles blocking the field (RockCubes, Guardians, stage boulders).
-    if obs_dmg > 0 {
+    // Reward clearing/damaging obstacles with free buster/charge shots (don't waste attack chips just to scratch obstacles).
+    if obs_dmg > 0 && !spent_chip {
         score += 0.024 + if obs_cnt1 < s0.obs_cnt { 0.030 } else { 0.0 };
     }
 
@@ -1289,10 +1337,10 @@ fn score_rollout(b: &Battle, c: &Battle, side: u8, blind: bool, s0: &Snap0) -> R
     }
 
     // Barrier gain / enemy barrier break.
-    if my_barrier1 > s0.my_barrier {
-        let gain = (my_barrier1 - s0.my_barrier) as f32 / s0.my_max;
-        score += 0.055 + gain.min(0.25) * 0.25;
-    }
+    // Note: defensive buff gains (`gained_invis`, `gained_barrier`, `gained_trap`) are NOT given an
+    // unconditional bonus here — they are evaluated contextually in `decide` (and naturally rewarded
+    // here whenever they prevent incoming `taken` damage or win a dimming cut-in!).
+    let gained_barrier = my_barrier1.saturating_sub(s0.my_barrier);
     if !blind && s0.enemy_barrier > enemy_barrier1 {
         let broken = (s0.enemy_barrier - enemy_barrier1) as f32 / s0.enemy_max;
         score += broken.min(0.25) * 0.20 + if enemy_barrier1 == 0 { 0.045 } else { 0.0 };
@@ -1304,18 +1352,16 @@ fn score_rollout(b: &Battle, c: &Battle, side: u8, blind: bool, s0: &Snap0) -> R
         score += area_diff as f32 * 0.060;
     }
 
-    // Beneficial defensive buffs gained (Invis, Invuln, Guard, Traps).
+    // Track defensive buffs gained so `decide` can apply them reactively without spamming/stacking.
     let good_flags = StatusFlags::INVISIBLE | StatusFlags::INVULNERABLE;
-    let gained_good = (my_status1 - s0.my_status).intersects(good_flags);
+    let gained_invis = (my_status1 - s0.my_status).intersects(good_flags);
     let trap_before = navi_ref(b, side)
         .and_then(|r| b.objects.get(r).actor)
         .is_some_and(|a| b.actors.get(a).status.intersects(ActorStatus::TRAP_ARMED | ActorStatus::HEAT_TRAP));
     let trap_after = navi_ref(c, side)
         .and_then(|r| c.objects.get(r).actor)
         .is_some_and(|a| c.actors.get(a).status.intersects(ActorStatus::TRAP_ARMED | ActorStatus::HEAT_TRAP));
-    if gained_good || (!trap_before && trap_after) {
-        score += 0.075;
-    }
+    let gained_trap = !trap_before && trap_after;
 
     // Negative statuses suffered / inflicted.
     let bad_flags =
@@ -1366,6 +1412,9 @@ fn score_rollout(b: &Battle, c: &Battle, side: u8, blind: bool, s0: &Snap0) -> R
         taken,
         obs_dmg,
         spent_chip,
+        gained_invis,
+        gained_barrier,
+        gained_trap,
         end_a_charging,
         end_panel: navi_panel(c, side),
         end_enemy_panel,
@@ -1404,15 +1453,15 @@ fn count_side_field_objects(b: &Battle, side: u8) -> u8 {
 fn count_friendly_objects(b: &Battle, side: u8) -> u8 {
     let my = navi_ref(b, side);
     let mut n = 0u8;
-    for pool in [nettai_content_api::Pool::Actor, nettai_content_api::Pool::Attack] {
-        for slot in 0..nettai_battle::object::SLOTS as u8 {
-            let r = nettai_content_api::ObjectRef { pool, slot };
-            if Some(r) == my || !b.objects.is_allocated(r) {
-                continue;
-            }
-            if b.objects.get(r).alliance == side {
-                n = n.saturating_add(1);
-            }
+    // Only count persistent actor summons/obstacles (RockCube, Guardian, Anubis, Fan, etc.),
+    // never transient `Pool::Attack` projectiles that haven't finished flying off-screen.
+    for slot in 0..nettai_battle::object::SLOTS as u8 {
+        let r = nettai_content_api::ObjectRef { pool: nettai_content_api::Pool::Actor, slot };
+        if Some(r) == my || !b.objects.is_allocated(r) {
+            continue;
+        }
+        if b.objects.get(r).alliance == side {
+            n = n.saturating_add(1);
         }
     }
     n

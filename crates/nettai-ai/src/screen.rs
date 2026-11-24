@@ -760,11 +760,12 @@ fn find_pa_slots(dealt: &[DealtSlot], recipe: &Recipe) -> Option<Vec<DealtSlot>>
 }
 
 /// Order a subset of chips tactically:
-/// 1. Non-damaging setup / area / field / defensive chips FIRST (so AreaGrab opens sword reach,
-///    GrassSeed/SeaSeed/IceSeed sets up 2x elemental panels, Barrier/Invis protects the turn).
-/// 2. Damaging attacks sorted so setup/status/non-dimming chips lead into heavy payoffs, with every
-///    modifier (`Atk+`, `Navi+`, `Paralyze`, `Uninstall`) folded directly behind its best compatible host!
-fn order_subset(content: &Content, subset: &[DealtSlot], _hp_frac: f32, doubled_elems: u8) -> Vec<DealtSlot> {
+/// 1. Damaging attacks (and offensive dimming openers with damage like AreaGrab) FIRST, with every
+///    modifier (`Atk+`, `Navi+`, `Paralyze`, `Uninstall`) folded directly behind its best compatible host.
+/// 2. Pure non-damaging defensive / cut-in / utility chips (`Invisible`, `Barrier`, `Aura`, `Recovery`, traps)
+///    LAST (except when critically hurt < 40% HP), so attacks fire freely and a defensive dimming chip sits
+///    saved at the back of the hand ready to counter cut-in on an opponent's dimming attack!
+fn order_subset(content: &Content, subset: &[DealtSlot], hp_frac: f32, doubled_elems: u8) -> Vec<DealtSlot> {
     let mut utilities = Vec::new();
     let mut attacks = Vec::new();
     let mut modifiers = Vec::new();
@@ -780,14 +781,29 @@ fn order_subset(content: &Content, subset: &[DealtSlot], _hp_frac: f32, doubled_
         }
     }
 
-    // Prefer non-trap utilities (AreaGrab, GrassStage, Invis, Barrier) first, traps after.
-    utilities.sort_by_key(|u| (content.chip(u.chip.id).trap.is_some() as u8, u.slot));
+    // Order utilities: non-dimming field/setup chips first, traps next, reactive dimming defenses (Invis/Barrier) last!
+    utilities.sort_by_key(|u| {
+        let c = content.chip(u.chip.id);
+        let tier = if c.flags.contains(ChipFlags::DIMMING) {
+            2u8
+        } else if c.trap.is_some() {
+            1u8
+        } else {
+            0u8
+        };
+        (tier, u.slot)
+    });
 
-    // Sort attacks: panel-doubled payoff elements slightly after setup utilities, highest base value first.
+    // Sort attacks: low-damage dimming openers (e.g. AreaGrab with damage=10) first so they set up swords/combos,
+    // then highest-value Navi/payoff attacks!
     attacks.sort_by(|a, b| {
         let ca = content.chip(a.chip.id);
         let cb = content.chip(b.chip.id);
+        let is_opener = |c: &ChipData| c.flags.contains(ChipFlags::DIMMING) && !c.flags.contains(ChipFlags::HAS_DAMAGE) && c.damage <= 20;
         let bonus = |c: &ChipData| -> i32 {
+            if is_opener(c) {
+                return 10_000;
+            }
             let mut p = c.damage as i32;
             if c.flags.contains(ChipFlags::NAVI) {
                 p += 80;
@@ -813,10 +829,18 @@ fn order_subset(content: &Content, subset: &[DealtSlot], _hp_frac: f32, doubled_
     }
 
     let mut out = Vec::with_capacity(subset.len());
-    out.extend(utilities);
+    // When critically low HP, put non-dimming utilities (e.g. Recovery) first; otherwise keep attacks first
+    // so reactive defensive dimming chips (Invis/Barrier/Aura) sit saved at the back of the hand for cut-ins!
+    let defenses_first = hp_frac < 0.40;
+    if defenses_first {
+        out.extend(utilities.iter().copied());
+    }
     for (i, atk) in attacks.into_iter().enumerate() {
         out.push(atk);
         out.extend(attached[i].iter().copied());
+    }
+    if !defenses_first {
+        out.extend(utilities);
     }
     out.extend(leftover_mods);
     out
@@ -865,6 +889,8 @@ fn score_ordered_hand(
     score += ordered.len() as f32 * 30.0;
 
     let mut has_setup = false;
+    let mut utility_count = 0u8;
+    let mut seen_utilities: [Option<ChipHandle>; 6] = [None; 6];
     let mut attack_count = 0u8;
     let mut has_doubled_payoff = false;
 
@@ -933,17 +959,32 @@ fn score_ordered_hand(
                 score += 95.0;
             }
         } else {
-            // Non-damaging setup / area / defensive / trap / heal chip.
+            // Non-damaging setup / defensive / trap / heal chip.
+            // Strongly discourage picking duplicate copies (e.g. Invisible + Invisible) or clogging the hand
+            // with multiple defensive chips in one turn!
             has_setup = true;
-            let mut util = 62.0;
-            if c.trap.is_some() {
-                util += 24.0;
+            let dup = seen_utilities[..utility_count as usize].contains(&Some(id));
+            if (utility_count as usize) < seen_utilities.len() {
+                seen_utilities[utility_count as usize] = Some(id);
             }
-            if c.flags.contains(ChipFlags::DIMMING) {
-                util += 24.0;
-            }
-            if hp_frac < 0.65 {
-                util += 26.0;
+            utility_count += 1;
+            let mut util = if dup {
+                -85.0
+            } else if utility_count >= 2 {
+                12.0
+            } else {
+                58.0
+            };
+            if !dup {
+                if c.trap.is_some() {
+                    util += 18.0;
+                }
+                if c.flags.contains(ChipFlags::DIMMING) {
+                    util += 18.0;
+                }
+                if hp_frac < 0.65 {
+                    util += 24.0;
+                }
             }
             score += util;
         }

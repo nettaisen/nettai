@@ -951,3 +951,237 @@ fn elementman_steps_into_weakness_range_for_cross_break() {
         content.defs.form(b.stats[0].form).key
     );
 }
+
+/// Defense chip discipline & smart dimming cut-in saving:
+/// 1. With Invisible in hand against a passive opponent, the AI does NOT waste Invisible unprovoked.
+/// 2. Against a blockable dimming Navi chip (ProtoMan), the AI cuts in with its saved Invisible during
+///    the telop and takes 0 damage!
+/// 3. Against an Invis-piercing dimming Navi chip (JudgeMan — Curse hit!), the AI simulates the pierce
+///    and does NOT waste its Invisible!
+#[test]
+fn saves_invisible_unprovoked_and_cuts_in_against_enemy_dimming_attack() {
+    use nettai_battle::content::ChipCode;
+    use nettai_battle::custom::{FolderChip, SavedFolder};
+    use nettai_battle::setup::BattleSettings;
+    use nettai_frontend::driver::live_setup;
+
+    let content = nettai_match::testing::exe6_content();
+    let invis = content
+        .defs
+        .chips
+        .iter()
+        .enumerate()
+        .find(|(_, d)| d.key == "invisible")
+        .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+        .expect("invisible");
+
+    for (enemy_chip_key, expect_cut_in) in [("protoman", true), ("judgeman", false)] {
+        let enemy_chip = content
+            .defs
+            .chips
+            .iter()
+            .enumerate()
+            .find(|(_, d)| d.key == enemy_chip_key)
+            .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+            .unwrap_or_else(|| panic!("missing {enemy_chip_key}"));
+        let code = content.chip(enemy_chip).codes.first().copied().unwrap_or(ChipCode::ASTERISK);
+
+        let f0 = [FolderChip::new(enemy_chip, code); 30];
+        let f1 = [FolderChip::new(invis, ChipCode::ASTERISK); 30];
+        let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
+        let setup = live_setup(
+            &content,
+            BattleSettings::on(&content, stage),
+            [
+                SavedFolder { chips: f0, regular: Some(0), tags: None },
+                SavedFolder { chips: f1, regular: Some(0), tags: None },
+            ],
+            "gregar",
+            13,
+        );
+        let mut b = Battle::new(setup, content.clone());
+        let mut layers = [Layer::new(0, &b), Layer::new(1, &b)];
+        let mut ai = Fighter::inline(Level::Hard, 13).with_open_custom(false);
+
+        let mut fight_t = 0u32;
+        let mut p0_cast = false;
+        let mut saw_dim_after_cast = false;
+        let mut saw_ai_cut_in = false;
+        let mut hp1_before = 0u16;
+
+        for t in 0..1600u32 {
+            if b.round_end().is_some() || b.is_stopped() {
+                break;
+            }
+            let p0 = if b.round.mode == mode::CUSTOM {
+                bot_tick(&b, 0, t)
+            } else if sim::fight_runs(&b) {
+                fight_t += 1;
+                // First 80 fight ticks: side 0 does nothing -> AI MUST hold its Invisible!
+                if fight_t == 80 {
+                    assert_eq!(
+                        b.hands[1].cursor, 0,
+                        "{enemy_chip_key}: AI wasted Invisible unprovoked during the first 80 passive fight ticks!"
+                    );
+                }
+                if fight_t >= 80 && !p0_cast {
+                    let (Some(p0_pos), Some(p1_pos)) = (sim::navi_panel(&b, 0), sim::navi_panel(&b, 1)) else {
+                        continue;
+                    };
+                    if p0_pos.y != p1_pos.y {
+                        if fight_t % 3 == 1 {
+                            PlayerTick::buttons(if p1_pos.y < p0_pos.y { Keys::UP } else { Keys::DOWN })
+                        } else {
+                            PlayerTick::default()
+                        }
+                    } else if p0_pos.x < 3 {
+                        if fight_t % 3 == 1 {
+                            PlayerTick::buttons(Keys::RIGHT)
+                        } else {
+                            PlayerTick::default()
+                        }
+                    } else if sim::navi_idle(&b, 0) && sim::navi_idle(&b, 1) {
+                        p0_cast = true;
+                        hp1_before = navi_hp(&b, 1);
+                        PlayerTick::buttons(Keys::A)
+                    } else {
+                        PlayerTick::default()
+                    }
+                } else {
+                    PlayerTick::default()
+                }
+            } else {
+                PlayerTick::default()
+            };
+            let ai_keys = if b.round.mode == mode::CUSTOM {
+                ai.custom_screen(&b, 1, &layers[1])
+            } else {
+                ai.fight(&b, 1, Keys::empty())
+            };
+            let ticks = [layers[0].input(p0, &b), layers[1].input(PlayerTick::buttons(ai_keys), &b)];
+            assert!(step_ticks(&mut b, ticks));
+            for l in &mut layers {
+                l.follow(&b);
+            }
+            if p0_cast && b.is_dimmed() {
+                saw_dim_after_cast = true;
+                if b.hands[1].cursor > 0 {
+                    saw_ai_cut_in = true;
+                }
+            }
+            if saw_dim_after_cast && !b.is_dimmed() {
+                break;
+            }
+        }
+
+        assert!(saw_dim_after_cast, "{enemy_chip_key}: test setup never saw enemy dimming");
+        assert_eq!(
+            saw_ai_cut_in, expect_cut_in,
+            "{enemy_chip_key}: expected cut_in={expect_cut_in}, got {saw_ai_cut_in} (hp1={hp1_before}->{})",
+            navi_hp(&b, 1)
+        );
+        if expect_cut_in {
+            assert_eq!(
+                navi_hp(&b, 1),
+                hp1_before,
+                "{enemy_chip_key}: expected Invisible cut-in to completely negate damage!"
+            );
+        }
+    }
+}
+
+/// Do not waste attack chips (even slow-moving projectile chips like Thunder / AirHockey) while the opponent
+/// is Invisible — hold them until Invisible wears off!
+#[test]
+fn does_not_waste_attack_chips_on_invisible_opponent() {
+    use nettai_battle::collision::StatusFlags;
+    use nettai_battle::content::ChipCode;
+    use nettai_battle::custom::{FolderChip, SavedFolder};
+    use nettai_battle::setup::BattleSettings;
+    use nettai_frontend::driver::live_setup;
+
+    let content = nettai_match::testing::exe6_content();
+    let invis = content
+        .defs
+        .chips
+        .iter()
+        .enumerate()
+        .find(|(_, d)| d.key == "invisible")
+        .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+        .expect("invisible");
+
+    for atk_key in ["thunder", "air_hockey", "cannon"] {
+        let atk = content
+            .defs
+            .chips
+            .iter()
+            .enumerate()
+            .find(|(_, d)| d.key == atk_key)
+            .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+            .unwrap_or_else(|| panic!("missing {atk_key}"));
+        let code = content.chip(atk).codes.first().copied().unwrap_or(ChipCode::ASTERISK);
+
+        let f0 = [FolderChip::new(invis, ChipCode::ASTERISK); 30];
+        let f1 = [FolderChip::new(atk, code); 30];
+        let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
+        let setup = live_setup(
+            &content,
+            BattleSettings::on(&content, stage),
+            [
+                SavedFolder { chips: f0, regular: Some(0), tags: None },
+                SavedFolder { chips: f1, regular: Some(0), tags: None },
+            ],
+            "gregar",
+            13,
+        );
+        let mut b = Battle::new(setup, content.clone());
+        let mut layers = [Layer::new(0, &b), Layer::new(1, &b)];
+        let mut ai = Fighter::inline(Level::Hard, 13).with_open_custom(false);
+
+        let mut p0_used_invis = false;
+        let mut invis_ticks = 0u32;
+        let mut cursor_when_invis_started = None;
+
+        for t in 0..1200u32 {
+            if b.round_end().is_some() || b.is_stopped() {
+                break;
+            }
+            let p0 = if b.round.mode == mode::CUSTOM {
+                bot_tick(&b, 0, t)
+            } else if sim::fight_runs(&b) && !p0_used_invis && sim::navi_idle(&b, 0) {
+                p0_used_invis = true;
+                PlayerTick::buttons(Keys::A)
+            } else {
+                PlayerTick::default()
+            };
+            let ai_keys = if b.round.mode == mode::CUSTOM {
+                ai.custom_screen(&b, 1, &layers[1])
+            } else if !p0_used_invis {
+                // Let side 0 pop Invisible immediately on tick 0 so the test measures behavior DURING Invisible.
+                Keys::empty()
+            } else {
+                ai.fight(&b, 1, Keys::empty())
+            };
+            let ticks = [layers[0].input(p0, &b), layers[1].input(PlayerTick::buttons(ai_keys), &b)];
+            assert!(step_ticks(&mut b, ticks));
+            for l in &mut layers {
+                l.follow(&b);
+            }
+            if p0_used_invis && !b.is_dimmed() && sim::navi_status(&b, 0).contains(StatusFlags::INVISIBLE) {
+                let start_c = *cursor_when_invis_started.get_or_insert(b.hands[1].cursor);
+                invis_ticks += 1;
+                // Check the first 250 ticks of Invisible (well before Invis wears off at 360 ticks):
+                // AI must NOT waste its attack chip while opponent is Invisible!
+                if invis_ticks <= 250 {
+                    assert_eq!(
+                        b.hands[1].cursor, start_c,
+                        "{atk_key}: AI wasted attack chip into Invisible opponent at invis_tick={invis_ticks}!"
+                    );
+                } else {
+                    break;
+                }
+            }
+        }
+        assert!(invis_ticks >= 250, "{atk_key}: test setup didn't run enough Invisible ticks ({invis_ticks})");
+    }
+}
