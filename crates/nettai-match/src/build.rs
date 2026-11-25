@@ -2375,7 +2375,8 @@ mod tests {
 
     /// EXE6's MegaMan is offered as four navis (a choice with `cards`):
     /// MegaMan; GBeast and FBeast, in his Cybeast from the round's start and
-    /// for good (`beast_start`, with that Cybeast); and the LinkNavi MegaMan
+    /// for good (`beast_start`, with that Cybeast, Beast Out off: no count in
+    /// the emotion window, no Beast Out button); and the LinkNavi MegaMan
     /// (level 14: no Beast Out, no patch card applied). A new build is
     /// MegaMan. A preset is told apart by what it sets, the choice's other
     /// own facts at the rules' defaults; MegaMan keeps the Cybeast a Beast
@@ -2384,25 +2385,27 @@ mod tests {
     /// last level.
     #[test]
     fn exe6_megaman_is_four_navis() {
-        use nettai_battle::custom::screen::Phase;
+        use nettai_battle::custom::screen::{Phase, SPECIAL_SLOT, SlotKind};
         use nettai_battle::input::PlayerTick;
         let content = exe6_content();
         let builds = Builds::of(&content, "exe6").unwrap();
         assert_eq!(builds.choices.iter().map(|c| (c.id.as_str(), c.cards)).collect::<Vec<_>>(), [("megaman", true)]);
         let c = &builds.choices[0];
         assert_eq!(c.presets.iter().map(|p| p.id.as_str()).collect::<Vec<_>>(), ["megaman", "gregar_beast", "falzar_beast", "link_navi"]);
-        assert_eq!(c.own_facts(&content), ["beast_start", "level"]);
+        assert_eq!(c.own_facts(&content), ["beast_out", "beast_start", "level"]);
         let form = |name: &str| ids::form(&content, "exe6", name).unwrap();
         let (gregar_beast, falzar_beast) = (form("gregar_beast"), form("falzar_beast"));
         assert_eq!(c.preset_forms(&content, "exe6", c.preset("falzar_beast").unwrap()), [("cybeast".to_string(), falzar_beast)]);
         assert_eq!(c.preset_forms(&content, "exe6", c.preset("link_navi").unwrap()), []);
         let on = |side: &Side| builds.preset_of(&content, side, "megaman").map(|p| p.id.clone());
         let beast_start = |side: &Side| side.facts.get(&content, "beast_start") == Some(Stated::Flag(true));
+        let beast_out = |side: &Side| side.facts.is_default(&content, "beast_out");
         let mut side = builds.new_build(&content, "gregar").unwrap();
         assert_eq!((on(&side).as_deref(), side.level(&content), beast_start(&side)), (Some("megaman"), None, false));
-        // FBeast from a Gregar build: his Cybeast Falzar's, and nothing to mend.
+        assert!(beast_out(&side));
+        // FBeast from a Gregar build: his Cybeast Falzar's, Beast Out off, and nothing to mend.
         builds.take_preset(&content, &mut side, "megaman", "falzar_beast").unwrap();
-        assert_eq!((on(&side).as_deref(), beast_start(&side)), (Some("falzar_beast"), true));
+        assert_eq!((on(&side).as_deref(), beast_start(&side), beast_out(&side)), (Some("falzar_beast"), true, false));
         assert_eq!(builds.chosen_forms(&content, &side, "cybeast"), [falzar_beast]);
         assert_eq!(builds.as_built(&content, &mut side), Vec::<String>::new());
         let checked = Checked::of(&content, "exe6", &side);
@@ -2425,6 +2428,9 @@ mod tests {
             let now = choosing(&b, 0);
             if now && !was_choosing {
                 screens += 1;
+                // (No Beast Out: the emotion window's empty box, and no button on the screen.)
+                let special = b.custom.sides[0].screen.map(|s| s.slots[SPECIAL_SLOT as usize].kind);
+                assert!(!b.looks[0].window_count && !matches!(special, Some(SlotKind::Button { .. })), "screen {screens}: {special:?}");
                 if b.player(0).is_some() {
                     assert_eq!(b.stats[0].form, falzar_beast, "screen {screens}");
                 }
@@ -2441,7 +2447,7 @@ mod tests {
         builds.take_preset(&content, &mut side, "megaman", "gregar_beast").unwrap();
         assert_eq!((on(&side).as_deref(), builds.chosen_forms(&content, &side, "cybeast")), (Some("gregar_beast"), vec![gregar_beast]));
         builds.take_preset(&content, &mut side, "megaman", "megaman").unwrap();
-        assert_eq!((on(&side).as_deref(), beast_start(&side), builds.chosen_forms(&content, &side, "cybeast")), (Some("megaman"), false, vec![gregar_beast]));
+        assert_eq!((on(&side).as_deref(), beast_start(&side), beast_out(&side), builds.chosen_forms(&content, &side, "cybeast")), (Some("megaman"), false, true, vec![gregar_beast]));
         assert!(matches!(Checked::of(&content, "exe6", &side).face(), Some(Face::Form(f, ..)) if f != gregar_beast));
         // The LinkNavi MegaMan: his last level, kept as built.
         builds.take_preset(&content, &mut side, "megaman", "link_navi").unwrap();

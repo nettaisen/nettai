@@ -1894,7 +1894,9 @@ Each is settled unless the user changes it.
     game's builds data's choice names its presets (content/exe6/rules/builds.luau, `cards = true`), a Beast's card
     with its form's face. GBeast and FBeast are MegaMan in that Cybeast from the round's start for good (the
     original's starting form, NaviStats+0x17: a turn in a starting form of 0x0B or 0x0C spends no Beast Out turn,
-    docs/engine/battle-flow.md's `sub_8015A38`; the setup's `beast_start`, content/exe6/rules/beast); Link MegaMan
+    docs/engine/battle-flow.md's `sub_8015A38`; the setup's `beast_start`, content/exe6/rules/beast), with Beast Out
+    off (the save's event flag 0xE0: the emotion window's empty box rather than a count stuck at 3, and no Beast
+    Out button, which a Beast could never press; the user asked whether they belonged); Link MegaMan
     is MegaMan from a navi code at its last level (docs/engine/link-navis.md §5) (his NaviCust and his level's gains, his Crosses, no Beast Out, no patch card applied: a build of one
     with cards has a problem on the PATCH CARDS tab). Choosing a card chooses MegaMan and takes its preset
     (`Draft::choose_navi_as`); the Beast form selector still says the Cybeast, so choosing the other there moves the
