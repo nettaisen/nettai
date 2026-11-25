@@ -150,7 +150,14 @@ impl ReachTable {
             self.charge_probed = false;
         }
         self.charge_empty_at = None;
-        if !self.charge_offsets.contains(&offset) && self.charge_offsets.len() < 12 {
+        if offset.1 == 0 && offset.0 >= 4 {
+            // Full-row charge shot: hits from any column on the opponent's row.
+            for dx in 1..=5i8 {
+                if !self.charge_offsets.contains(&(dx, 0)) && self.charge_offsets.len() < 12 {
+                    self.charge_offsets.push((dx, 0));
+                }
+            }
+        } else if !self.charge_offsets.contains(&offset) && self.charge_offsets.len() < 12 {
             self.charge_offsets.push(offset);
         }
     }
@@ -878,6 +885,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
         .is_some_and(|(_, r)| next_chip.is_some() && r.dealt <= base_dealt + 1e-5 && !r.broke_enemy_barrier);
     let mut abandon_cand_idx: Option<usize> = None;
     let mut b_charge_breaks_aura = false;
+    let mut charge_hit_here = false;
     if can_b_charge && !a_charging && (b_charge_full || (enemy_low_hp && !enemy_invuln && !enemy_has_aura && enemy_pos.is_some_and(|ep| ep.y == my_pos.y))) {
         let c = Candidate {
             first: Keys::empty(),
@@ -890,7 +898,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
             is_step_fire: false,
         };
         let mut r = rollout(&sim, side, c.first, c.first_ticks, c.after, cfg.horizon, cfg.cap, blind, Keys::empty(), false);
-        let charge_hit_here = r.dealt > base_dealt + 0.001 || (r.broke_enemy_barrier && !base_broke_barrier);
+        charge_hit_here = r.dealt > base_dealt + 1e-5 || (r.broke_enemy_barrier && !base_broke_barrier);
         if enemy_has_aura && charge_hit_here {
             b_charge_breaks_aura = true;
         }
@@ -988,12 +996,27 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
         cands.push((c, r));
     }
 
-    // Cardinal movement steps (+ 2-phase Step→Fire lookahead when 1 step from a chip hit panel,
-    // or 1 step from an elemental-weakness position for an interactive dimming chip like ElementMan!).
+    let b_charge_target = if b_charge_full
+        && !enemy_invuln
+        && (!enemy_has_aura || b_charge_breaks_aura)
+        && !b_charge_abandoned
+        && (!ctx.reach.charge_is_restricted(cur_form)
+            || (ctx.reach.charge_full_ticks < 240
+                && !(ctx.reach.charge_full_ticks >= 120 && my_hp_now < ctx.reach.charge_full_start_hp)))
+    {
+        enemy_pos.and_then(|ep| ctx.reach.best_charge_target(&sim, side, cur_form, my_pos, ep, air_shoe))
+    } else {
+        None
+    };
+
+    // Cardinal movement steps (+ 2-phase Step→Fire lookahead for chips and full B-charge shots).
     let step_ticks = cfg.k.min(3) as u8;
     let chip_missed_here = cands
         .get(1)
         .is_some_and(|(_, r)| next_chip.is_some() && r.dealt == 0.0 && !(r.broke_enemy_barrier && !base_broke_barrier));
+    let chip_hit_now_any = cands
+        .get(1)
+        .is_some_and(|(_, r)| next_chip.is_some() && (r.dealt > base_dealt + 0.001 || (r.broke_enemy_barrier && !base_broke_barrier)));
     let next_is_dimming = next_chip.is_some_and(|id| sim.content.chip(id).flags.contains(ChipFlags::DIMMING));
     let enemy_has_elem = enemy_pos.is_some()
         && navi_ref(&sim, other).is_some_and(|r| (sim.objects.get(r).element & 0x0F) != 0);
@@ -1077,22 +1100,40 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
                         cands.push((sf_cand, sf_res));
                     }
                 }
+
+                // (c) 2-phase `Step → Release B` lookahead when holding a full B-charge that can't hit from
+                //     our current panel: lets the AI snap onto the opponent's row (bypassing anti-pacing right
+                //     after dodging!) and release its charge shot cleanly instead of holding B all turn!
+                let promising_b_step = b_charge_full
+                    && !a_charging
+                    && !charge_hit_here
+                    && !chip_hit_now_any
+                    && !enemy_invuln
+                    && (!enemy_has_aura || b_charge_breaks_aura)
+                    && !b_charge_abandoned
+                    && (b_charge_target == Some(dp)
+                        || (b_charge_target.is_none() && enemy_pos.is_some_and(|ep| ny == ep.y)));
+                if promising_b_step {
+                    let sb_res = rollout_step_and_release_b(&sim, side, dir, cfg.horizon, cfg.cap, blind);
+                    if (sb_res.dealt > base_dealt + 1e-5 || (sb_res.broke_enemy_barrier && !base_broke_barrier))
+                        && sb_res.taken <= base_taken + 0.005
+                    {
+                        let sb_cand = Candidate {
+                            first: dir | Keys::B,
+                            first_ticks: step_ticks,
+                            after: Keys::B,
+                            cmd_queue: Vec::new(),
+                            is_move: true,
+                            is_charge_release: true,
+                            is_a_charge_hold: false,
+                            is_step_fire: true,
+                        };
+                        cands.push((sb_cand, sb_res));
+                    }
+                }
             }
         }
     }
-
-    let b_charge_target = if b_charge_full
-        && !enemy_invuln
-        && (!enemy_has_aura || b_charge_breaks_aura)
-        && !b_charge_abandoned
-        && (!ctx.reach.charge_is_restricted(cur_form)
-            || (ctx.reach.charge_full_ticks < 240
-                && !(ctx.reach.charge_full_ticks >= 120 && my_hp_now < ctx.reach.charge_full_start_hp)))
-    {
-        enemy_pos.and_then(|ep| ctx.reach.best_charge_target(&sim, side, cur_form, my_pos, ep, air_shoe))
-    } else {
-        None
-    };
 
     // Long-duration untouchable defense (`Invisible`, `Invulnerable`, or unbroken `Aura`) — distinct from
     // brief post-hit `FLASHING` i-frames so we stay evasive off-row against Aura/Invis without surrendering
@@ -1127,13 +1168,20 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
         }
 
         // Never waste a full B charge shot on empty air or an invulnerable/invisible/Aura-protected opponent
-        // (penalty exceeds Easy's noise so it never fires into empty air, Invis, or unbroken Aura!).
-        if cand.is_charge_release && res.dealt <= base_dealt + 0.001 && res.obs_dmg == 0 && !res.broke_enemy_barrier {
-            total -= 0.065;
+        // (penalty exceeds Easy's noise so it never fires into empty air, Invis, or unbroken Aura!),
+        // and ensure a safe hitting B-charge release decisively beats passive positional wandering even against
+        // high-HP (1500-2500 HP) PvP navis!
+        if cand.is_charge_release {
+            let hit = res.dealt > base_dealt + 1e-5 || res.obs_dmg > 0 || (res.broke_enemy_barrier && !base_broke_barrier);
+            if !hit {
+                total -= 0.065;
+            } else if res.taken <= base_taken + 0.001 && (res.dealt > base_dealt + 1e-5 || (res.broke_enemy_barrier && !base_broke_barrier)) {
+                total += if cand.is_step_fire { 0.022 } else { 0.032 };
+            }
         }
 
-        // Subtle tie-breaker for maintaining B charge.
-        if can_b_charge && !a_charging && cand.after.contains(Keys::B) && !cand.is_charge_release {
+        // Subtle tie-breaker for maintaining B charge (applies equally to releasing B and immediately re-charging!).
+        if can_b_charge && !a_charging && cand.after.contains(Keys::B) {
             total += 0.003;
         }
 
@@ -1868,6 +1916,57 @@ fn rollout_step_and_fire(
     score_rollout(b, &c, side, blind, &snap0)
 }
 
+/// 2-phase `Step → Release B` rollout: step `dir` while holding `B`, and on the first idle tick after
+/// landing release `B` for 2 ticks (then resume charging `B`), following slow projectiles past `horizon`.
+fn rollout_step_and_release_b(
+    b: &Battle,
+    side: u8,
+    dir: Keys,
+    horizon: u32,
+    cap: u32,
+    blind: bool,
+) -> RolloutResult {
+    let other = side ^ 1;
+    let mut c = b.clone();
+    let start_pos = navi_panel(&c, side);
+    let snap0 = capture_snapshot(&c, side, blind);
+    let attacks0 = count_side_attacks(&c, side);
+
+    let mut undimmed = 0u32;
+    let mut t = 0u32;
+    let mut fired_at: Option<u32> = None;
+
+    while undimmed < horizon && t < cap {
+        let cur_pos = navi_panel(&c, side);
+        let mine = if t < 3 {
+            dir | Keys::B
+        } else if fired_at.is_none() && cur_pos != start_pos && navi_idle(&c, side) {
+            fired_at = Some(t);
+            Keys::empty()
+        } else if let Some(fa) = fired_at {
+            if t < fa + 2 { Keys::empty() } else { Keys::B }
+        } else {
+            Keys::B
+        };
+        let mut held = [Keys::empty(); 2];
+        held[side as usize] = mine;
+        if !step_battle(&mut c, held) || c.round_end().is_some() {
+            break;
+        }
+        t += 1;
+        undimmed += !c.is_dimmed() as u32;
+        if navi_hp(&c, side) == 0 || (!blind && navi_hp(&c, other) == 0) {
+            break;
+        }
+    }
+
+    let mut res = score_rollout(b, &c, side, blind, &snap0);
+    if !blind && res.dealt == 0.0 && res.obs_dmg == 0 && count_side_attacks(&c, side) > attacks0 {
+        extend_delayed_projectile(&mut c, side, Keys::B, &snap0, attacks0, &mut res, undimmed, t, cap);
+    }
+    res
+}
+
 struct Snap0 {
     my_hp: u16,
     my_max: f32,
@@ -2545,15 +2644,45 @@ fn probe_b_charge_offsets(b: &Battle, side: u8, my_pos: PanelPos, enemy_pos: Pan
     tries.sort_by_key(|&p| manhattan(my_pos, p));
 
     let mut offsets = Vec::new();
+    let mut probed_back = false;
     for target in tries {
+        if back_on_row == Some(target.x) && target.y == enemy_pos.y {
+            probed_back = true;
+        }
         if walk_and_b_charge_hits(b, side, target, air_shoe) {
             let dx = ((enemy_pos.x as i32 - target.x as i32) * forward) as i8;
             let dy = (enemy_pos.y as i32 - target.y as i32) as i8;
             if !offsets.contains(&(dx, dy)) {
                 offsets.push((dx, dy));
             }
-            if offsets.len() >= 2 {
+            if offsets.len() >= 2 && (probed_back || back_on_row.is_none()) {
                 break;
+            }
+        }
+    }
+    // If we found same-row hits but haven't tested the back column yet, test `back_on_row` so full-row
+    // charge shots aren't misclassified as short-range 2-column shots!
+    if !probed_back
+        && let Some(bx) = back_on_row
+        && offsets.iter().any(|&(_, dy)| dy == 0)
+    {
+        let bp = PanelPos { x: bx, y: enemy_pos.y };
+        if bp != my_pos && walk_and_b_charge_hits(b, side, bp, air_shoe) {
+            let dx = ((enemy_pos.x as i32 - bp.x as i32) * forward) as i8;
+            if !offsets.contains(&(dx, 0)) {
+                offsets.push((dx, 0));
+            }
+        }
+    }
+    // If the charge shot hits from far same-row distance (`dx >= 4`), or from multiple same-row columns
+    // including `dx >= 3` and `dx != 3` (i.e. not fixed-distance lob like MeddySoul), expand all same-row
+    // columns `(1..=5, 0)` so full-row charge shots never appear unreachable at any column!
+    let far_same_row = offsets.iter().any(|&(dx, dy)| dy == 0 && dx >= 4)
+        || (offsets.iter().any(|&(dx, dy)| dy == 0 && dx >= 3) && offsets.iter().any(|&(dx, dy)| dy == 0 && dx <= 2));
+    if far_same_row {
+        for dx in 1..=5i8 {
+            if !offsets.contains(&(dx, 0)) {
+                offsets.push((dx, 0));
             }
         }
     }

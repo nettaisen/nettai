@@ -2144,3 +2144,106 @@ fn breaks_enemy_aura_when_holding_aura_breaker() {
         b.hands[1].cursor
     );
 }
+
+/// Against a high-HP (2000 HP) opponent standing on the back column and shifting rows,
+/// Hard AI with a full-row B-charge (e.g. MegaMan's 10-dmg Charge Shot) must reliably
+/// align and release multiple B-charge shots rather than holding charge all turn!
+#[test]
+fn releases_b_charge_reliably_against_high_hp_and_moving_opponent() {
+    use nettai_battle::content::ChipCode;
+    use nettai_battle::custom::{FolderChip, SavedFolder};
+    use nettai_battle::setup::BattleSettings;
+    use nettai_frontend::driver::live_setup;
+
+    let content = nettai_match::testing::exe6_content();
+    let recov = content
+        .defs
+        .chips
+        .iter()
+        .enumerate()
+        .find(|(_, d)| d.key.starts_with("recover") && d.record.damage == 0 && d.record.codes.contains(&ChipCode::ASTERISK))
+        .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+        .expect("a * Recovery chip");
+    let sword = content
+        .defs
+        .chips
+        .iter()
+        .enumerate()
+        .find(|(_, d)| d.key == "wide_sword" || d.key == "sword")
+        .map(|(i, _)| nettai_content_api::ChipHandle(i as u16))
+        .expect("sword");
+    let sw_code = content.chip(sword).codes[0];
+
+    // Give AI a close-range sword chip (unreachable at back column) so `chip_target` steering
+    // would previously outscore MegaMan's 10-dmg Charge Shot on a 2000 HP target!
+    let f0 = [FolderChip::new(recov, ChipCode::ASTERISK); 30];
+    let f1 = [FolderChip::new(sword, sw_code); 30];
+    let stage = nettai_match::link_battle_stages(&content, "exe6")[0];
+    let setup = live_setup(
+        &content,
+        BattleSettings::on(&content, stage),
+        [
+            SavedFolder { chips: f0, regular: None, tags: None },
+            SavedFolder { chips: f1, regular: Some(0), tags: None },
+        ],
+        "gregar",
+        19,
+    );
+    let mut b = Battle::new(setup, content.clone());
+    let mut layers = [Layer::new(0, &b), Layer::new(1, &b)];
+    let mut ai = Fighter::inline(Level::Hard, 19).with_open_custom(false);
+
+    let mut boosted_hp = false;
+    let mut fight_t = 0u32;
+    let mut start_hp0 = 2000u16;
+
+    for t in 0..1600u32 {
+        if b.round_end().is_some() || b.is_stopped() {
+            break;
+        }
+        let p0 = if b.round.mode == mode::CUSTOM {
+            bot_tick(&b, 0, t)
+        } else if sim::fight_runs(&b) {
+            fight_t += 1;
+            if !boosted_hp
+                && let Some(r0) = sim::navi_ref(&b, 0)
+            {
+                let o = b.objects.get_mut(r0);
+                o.max_hp = 2000;
+                o.hp = 2000;
+                start_hp0 = 2000;
+                boosted_hp = true;
+            }
+            // Stand on the back column (x=1, dx=4..5!) and switch rows periodically.
+            let want_y = match (fight_t / 150) % 3 {
+                0 => 1,
+                1 => 3,
+                _ => 2,
+            };
+            let pos = sim::navi_panel(&b, 0);
+            if pos.is_some_and(|p| p.x > 1) && fight_t % 3 == 1 {
+                PlayerTick::buttons(Keys::LEFT)
+            } else if pos.is_some_and(|p| p.y != want_y) && fight_t % 4 == 1 {
+                let dir = if pos.unwrap().y > want_y { Keys::UP } else { Keys::DOWN };
+                PlayerTick::buttons(dir)
+            } else {
+                PlayerTick::default()
+            }
+        } else {
+            PlayerTick::default()
+        };
+        let p1 = ai_tick(&mut ai, &b, 1);
+        let ticks = [layers[0].input(p0, &b), layers[1].input(p1, &b)];
+        assert!(step_ticks(&mut b, ticks));
+        for l in &mut layers {
+            l.follow(&b);
+        }
+    }
+
+    assert!(boosted_hp, "test never reached fight");
+    let dealt = start_hp0.saturating_sub(navi_hp(&b, 0));
+    assert!(
+        dealt >= 40,
+        "AI held B-charge instead of releasing shots against 2000 HP back-column opponent (dealt={dealt}, expected >= 40)"
+    );
+}
