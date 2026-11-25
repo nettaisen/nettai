@@ -144,7 +144,9 @@ in the internet, each block's HP is cut to its maximum.
   what the round's setup builds.
 - **MegaMan's level** (a MegaMan received from a navi code): the rules' `round_setup` adds the level's
   gains over what his NaviCust made (§4), and the HP is the maximum again; without a NaviCust in the setup his
-  stats are as given (a recording's carry them). The editor offers him an optional level (empty: no code).
+  stats are as given (a recording's carry them). No patch card applies to him (the Japanese twin runs the level's
+  script in the card routine's stead, docs/engine/patch-cards.md §1.2). The build creator offers him as a navi of
+  his own, Link MegaMan, at level 14 (EXE6's builds data's MegaMan choice, docs/design/app-ui.md §2.106).
 - **The level in the setup** (the rules' `level`, a `u8?`; the engine knows no level, and EXE6's rules
   read it, `exe6.navi_level`: what it gives a link navi in battle is rules/by_level.luau's, the navi's functions of
   its side, which the round's setup asks once into `Battle::given`): none is

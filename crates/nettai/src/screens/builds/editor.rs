@@ -18,7 +18,7 @@
 //! implements [`Tab`]: the same few calls a `Screen` gets (`show`, `activate`, `step`, `choose`, `edit`,
 //! `focused`, `key`, `button`, `action`, `back`, `answered`), each with the shell and the [`Draft`].
 //!
-//! **A tab changes the build through the draft** ([`Draft::edit`]: the side; [`Draft::choose_navi`]: its
+//! **A tab changes the build through the draft** ([`Draft::edit`]: the side; [`Draft::choose_navi_as`]: its
 //! navi). The draft is checked again at once, so the tab reads what is wrong and what the round starts with
 //! straight after (`draft.checked`); and when the tab's call returns the frame saves the build's file and
 //! shows the header and the tabs' marks anew. A tab neither saves nor checks.
@@ -103,14 +103,21 @@ impl Draft {
     }
 
     /// Choose the build's navi, as a build is (`Build::set_navi`: what is the game's own navi's alone kept
-    /// aside, or put back). Whether it changed.
-    pub fn choose_navi(&mut self, navi: NaviHandle) -> bool {
+    /// aside, or put back), and, with `preset`, put it on that preset of that choice (`Builds::take_preset`: a
+    /// card of a choice offered as navis, EXE6's FBeast), as one change. Whether it changed.
+    pub fn choose_navi_as(&mut self, navi: NaviHandle, preset: Option<(&str, &str)>) -> bool {
         let kit = self.kit.clone();
         let before = self.build.clone();
-        if let Err(why) = self.build.set_navi(kit.content(), &kit.builds, navi, &self.navi_only) {
+        let mut made = self.build.clone();
+        let chosen = made.set_navi(kit.content(), &kit.builds, navi, &self.navi_only).and_then(|()| match preset {
+            Some((choice, preset)) => kit.builds.take_preset(kit.content(), &mut made.side, choice, preset),
+            None => Ok(()),
+        });
+        if let Err(why) = chosen {
             crate::errors::log("choosing a build's navi", &why);
             return false;
         }
+        self.build = made;
         if self.build == before {
             return false;
         }

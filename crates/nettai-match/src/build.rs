@@ -108,17 +108,23 @@ pub struct Preset {
 
 /// A choice a build makes beside its forms, of a few presets, each of
 /// which sets its facts together (EXE4's and EXE5's light or dark MegaMan:
-/// the light/dark value and the base HP): its id, by which a screen words
-/// it, and its presets in the order a screen offers them, the first a new
-/// build's. A choice may be one navi's alone (`navi`): a build of another
-/// navi has none of it, and its facts are the rules' defaults there. A build
-/// is on a preset by the fact that tells them apart (`fact`).
+/// the light/dark value and the base HP; EXE6's MegaMan, GBeast, FBeast or
+/// LinkNavi MegaMan): its id, by which a screen words it, and its presets
+/// in the order a screen offers them, the first a new build's. A choice may
+/// be one navi's alone (`navi`): a build of another navi has none of it, and
+/// its own facts ([`Choice::own_facts`]) are the rules' defaults there. A
+/// build is on a preset by the number that tells them apart, where one does
+/// (`fact`, the game's line), else by what the presets set
+/// ([`Builds::preset_of`]). A screen offers the presets of a choice with
+/// `cards` as navis of their own, a card each among the game's navis (EXE6's
+/// MegaMan's), else as a choice under the navi.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Choice {
     pub id: String,
     pub presets: Vec<Preset>,
+    pub cards: bool,
     navi: Option<NaviHandle>,
-    fact: String,
+    fact: Option<String>,
 }
 
 impl Choice {
@@ -139,6 +145,36 @@ impl Choice {
         names.sort();
         names.dedup();
         names
+    }
+
+    /// The facts the choice alone states: those its presets set but the
+    /// facts of forms, which the build chooses whatever its preset (EXE6's
+    /// Cybeast, which GBeast and FBeast set and MegaMan keeps). A preset
+    /// leaves each of them it doesn't set at the rules' default; a build of
+    /// a navi the choice isn't of has them all there.
+    pub fn own_facts(&self, content: &Content) -> Vec<&str> {
+        let forms = facts::form_facts(content);
+        self.facts().into_iter().filter(|name| !forms.iter().any(|f| f.name == *name)).collect()
+    }
+
+    /// The navi the choice is of alone; none: any navi's.
+    pub fn navi(&self) -> Option<NaviHandle> {
+        self.navi
+    }
+
+    /// The forms preset `preset` names, each with the fact it names it for
+    /// (EXE6's FBeast: its Cybeast, the face its card shows).
+    pub fn preset_forms(&self, content: &Content, game: &str, preset: &Preset) -> Vec<(String, FormHandle)> {
+        let mut out = Vec::new();
+        for (name, value) in fields(&preset.set) {
+            let Some(field) = facts::field(content, name) else { continue };
+            for fact in facts_of(content, game, &field, value).unwrap_or_default() {
+                if let Fact::Value(Value::Def(Registry::Form, h)) = fact {
+                    out.push((name.to_string(), FormHandle(h)));
+                }
+            }
+        }
+        out
     }
 }
 
@@ -361,8 +397,20 @@ impl Builds {
         }
         let mut choices: Vec<Choice> = Vec::new();
         for c in items(data.field("choices")) {
-            let (Data::Str(id), Data::Str(fact)) = (c.field("id"), c.field("fact")) else { return Err(format!("{module}: a choice has its `id` and the `fact` that tells its presets apart")) };
-            facts::field(content, fact).ok_or_else(|| format!("{module}: choice {id}: {}", facts::no_field(content, fact)))?;
+            let Data::Str(id) = c.field("id") else { return Err(format!("{module}: a choice has its `id`")) };
+            let fact = match c.field("fact") {
+                Data::Nil => None,
+                Data::Str(fact) => {
+                    facts::field(content, fact).ok_or_else(|| format!("{module}: choice {id}: {}", facts::no_field(content, fact)))?;
+                    Some(fact.clone())
+                }
+                other => return Err(format!("{module}: choice {id}: the `fact` that tells its presets apart is a fact's name, not {other:?}")),
+            };
+            let cards = match c.field("cards") {
+                Data::Nil => false,
+                Data::Bool(b) => *b,
+                other => return Err(format!("{module}: choice {id}: `cards` is true or false, not {other:?}")),
+            };
             let navi = match c.field("navi") {
                 Data::Nil => None,
                 Data::Str(name) => Some(ids::navi(content, game, name).ok_or_else(|| format!("{module}: choice {id}: {game} has no navi {name:?}"))?),
@@ -378,7 +426,10 @@ impl Builds {
             if presets.is_empty() {
                 return Err(format!("{module}: choice {id} has no presets"));
             }
-            choices.push(Choice { id: id.clone(), presets, navi, fact: fact.clone() });
+            if cards && navi.is_none() {
+                return Err(format!("{module}: choice {id}: a choice offered as navis (`cards`) is one navi's"));
+            }
+            choices.push(Choice { id: id.clone(), presets, cards, navi, fact });
         }
         let slots = match data.field("slots") {
             Data::Nil => None,
@@ -566,17 +617,26 @@ impl Builds {
     /// The preset of choice `choice` that `side` is on: where a number tells
     /// the presets apart, the one with the highest line the side's value
     /// reaches (EXE5's light/dark value: 470 or more is light's, under it
-    /// dark's); else the first whose facts are all the side's; else the
-    /// first. None: the game has no such choice, or the side's navi none of
-    /// it.
+    /// dark's); else the first whose facts are all the side's, with the
+    /// choice's own facts it doesn't set at the rules' defaults (EXE6's
+    /// MegaMan: no `beast_start`, no level); else the one with the most of
+    /// its facts the side's (its other facts to be put back: FBeast's with a
+    /// level); else the first. None: the game has no such choice, or the
+    /// side's navi none of it.
     pub fn preset_of(&self, content: &Content, side: &Side, choice: &str) -> Option<&Preset> {
         let c = self.choice(choice).filter(|c| self.offers(content, side, c))?;
-        let on_the_line = match side.facts.get(content, &c.fact) {
+        let on_the_line = match c.fact.as_ref().and_then(|fact| side.facts.get(content, fact)) {
             Some(Stated::Number(n) | Stated::Optional(Some(n))) => c.presets.iter().filter(|p| p.from.is_some_and(|from| from <= n)).max_by_key(|p| p.from),
             _ => None,
         };
-        let exactly = || c.presets.iter().find(|p| self.sets(content, side, &p.set));
-        on_the_line.or_else(exactly).or(c.presets.first())
+        let own = c.own_facts(content);
+        let rest_at_defaults = |p: &Preset| {
+            let set: Vec<&str> = fields(&p.set).into_iter().map(|(name, _)| name).collect();
+            own.iter().filter(|name| !set.contains(name)).all(|name| side.facts.is_default(content, name))
+        };
+        let exactly = || c.presets.iter().find(|p| self.sets(content, side, &p.set) && rest_at_defaults(p));
+        let nearly = || c.presets.iter().filter(|p| self.sets(content, side, &p.set)).rev().max_by_key(|p| fields(&p.set).len());
+        on_the_line.or_else(exactly).or_else(nearly).or(c.presets.first())
     }
 
     /// Whether every fact of `set` is `side`'s already.
@@ -598,35 +658,47 @@ impl Builds {
             format!("{choice} has no preset {preset:?} (its are {})", known.join(", "))
         })?;
         let mut made = side.clone();
-        state(content, &self.game, &mut made, &p.set)?;
+        self.put_on(content, &mut made, c, p)?;
         *side = made;
         Ok(())
+    }
+
+    /// Put `side` on preset `p` of choice `c`: the choice's own facts the
+    /// preset doesn't set back at the rules' defaults, then the preset's
+    /// facts.
+    fn put_on(&self, content: &Content, side: &mut Side, c: &Choice, p: &Preset) -> Result<(), String> {
+        let set: Vec<&str> = fields(&p.set).into_iter().map(|(name, _)| name).collect();
+        for name in c.own_facts(content).into_iter().filter(|name| !set.contains(name)) {
+            side.facts.reset(content, name);
+        }
+        state(content, &self.game, side, &p.set)
     }
 
     /// Settle `side`'s choices, as a build read from a file or made from a
     /// save is settled: each choice it has, on the preset it is on
     /// ([`Builds::preset_of`]: a value that is neither preset's takes the
     /// one on its side of the game's line), with every fact that preset
-    /// sets; and each choice its navi has none of, with its facts back at
-    /// the rules' defaults. The presets that changed the side, for an import
-    /// to say which it took.
+    /// sets and the choice's other own facts at the rules' defaults; and
+    /// each choice its navi has none of, with its own facts back at the
+    /// rules' defaults. The presets that changed the side, for an import to
+    /// say which it took.
     pub fn settle(&self, content: &Content, side: &mut Side) -> Vec<Taken> {
         let mut taken = Vec::new();
         for c in &self.choices {
             if !self.offers(content, side, c) {
-                for name in c.facts() {
+                for name in c.own_facts(content) {
                     side.facts.reset(content, name);
                 }
                 continue;
             }
             let Some(p) = self.preset_of(content, side, &c.id) else { continue };
-            let was = match side.facts.get(content, &c.fact) {
+            let was = match c.fact.as_ref().and_then(|fact| side.facts.get(content, fact)) {
                 Some(Stated::Number(n) | Stated::Optional(Some(n))) => Some(n),
                 _ => None,
             };
             let before = side.facts.clone();
             let mut made = side.clone();
-            if state(content, &self.game, &mut made, &p.set).is_ok() && made.facts != before {
+            if self.put_on(content, &mut made, c, p).is_ok() && made.facts != before {
                 *side = made;
                 taken.push(Taken { choice: c.id.clone(), preset: p.id.clone(), was });
             }
@@ -645,10 +717,11 @@ impl Builds {
     }
 
     /// Set `side` to what every build is: the facts no build states back at
-    /// the rules' defaults, a navi that must have a level at its last, and
-    /// its choices settled ([`Builds::settle`]: an import that says which
-    /// presets it took settles first, and reads them). The facts that
-    /// changed, by name (a save's import says them).
+    /// the rules' defaults, its choices settled ([`Builds::settle`]: an
+    /// import that says which presets it took settles first, and reads
+    /// them), and a navi that must have a level at its last (one whose
+    /// choice states its level, its preset's: EXE6's MegaMan's). The facts
+    /// that changed, by name (a save's import says them).
     pub fn as_built(&self, content: &Content, side: &mut Side) -> Vec<String> {
         let before = side.clone();
         for f in facts::fields(content) {
@@ -656,12 +729,13 @@ impl Builds {
                 side.facts.reset(content, f.name);
             }
         }
+        self.settle(content, side);
         if let Some(navi) = side.stated_navi(content)
-            && content.defs.fact_name(PlayerFact::Level).is_some()
+            && let Some(level) = content.defs.fact_name(PlayerFact::Level)
+            && !self.choices_of(content, side).iter().any(|c| c.facts().contains(&level))
         {
             let _ = side.set_level(content, crate::play_level(content, navi));
         }
-        self.settle(content, side);
         facts::fields(content).into_iter().filter(|f| before.facts.get(content, f.name) != side.facts.get(content, f.name)).map(|f| f.name.to_string()).collect()
     }
 
@@ -2256,7 +2330,8 @@ mod tests {
     /// light first, each the light/dark value and the base HP together (as
     /// Tango's saves have them). A new build is light; a dark one is ready
     /// too, with its 997 HP in the round's stats and the overview, and
-    /// starts the round with another face. EXE6 has no such choice.
+    /// starts the round with another face. EXE6's MegaMan is neither (its
+    /// choice is another: `exe6_megaman_is_four_navis`).
     #[test]
     fn megaman_is_light_or_dark() {
         // (The game, light's and dark's value and HP.)
@@ -2294,8 +2369,123 @@ mod tests {
         let six = exe6_content();
         let builds = Builds::of(&six, "exe6").unwrap();
         let side = builds.new_build(&six, "gregar").unwrap();
-        assert!(builds.choices.is_empty() && builds.preset_of(&six, &side, "light_dark").is_none());
+        assert!(builds.choice("light_dark").is_none() && builds.preset_of(&six, &side, "light_dark").is_none());
         assert!(matches!(Checked::of(&six, "exe6", &side).face(), Some(Face::Form(..))));
+    }
+
+    /// EXE6's MegaMan is offered as four navis (a choice with `cards`):
+    /// MegaMan; GBeast and FBeast, in his Cybeast from the round's start and
+    /// for good (`beast_start`, with that Cybeast); and the LinkNavi MegaMan
+    /// (level 14: no Beast Out, no patch card applied). A new build is
+    /// MegaMan. A preset is told apart by what it sets, the choice's other
+    /// own facts at the rules' defaults; MegaMan keeps the Cybeast a Beast
+    /// left; settling keeps each as it is and puts a mix back on one; a
+    /// build of another navi has none of the choice's facts, and its own
+    /// last level.
+    #[test]
+    fn exe6_megaman_is_four_navis() {
+        use nettai_battle::custom::screen::Phase;
+        use nettai_battle::input::PlayerTick;
+        let content = exe6_content();
+        let builds = Builds::of(&content, "exe6").unwrap();
+        assert_eq!(builds.choices.iter().map(|c| (c.id.as_str(), c.cards)).collect::<Vec<_>>(), [("megaman", true)]);
+        let c = &builds.choices[0];
+        assert_eq!(c.presets.iter().map(|p| p.id.as_str()).collect::<Vec<_>>(), ["megaman", "gregar_beast", "falzar_beast", "link_navi"]);
+        assert_eq!(c.own_facts(&content), ["beast_start", "level"]);
+        let form = |name: &str| ids::form(&content, "exe6", name).unwrap();
+        let (gregar_beast, falzar_beast) = (form("gregar_beast"), form("falzar_beast"));
+        assert_eq!(c.preset_forms(&content, "exe6", c.preset("falzar_beast").unwrap()), [("cybeast".to_string(), falzar_beast)]);
+        assert_eq!(c.preset_forms(&content, "exe6", c.preset("link_navi").unwrap()), []);
+        let on = |side: &Side| builds.preset_of(&content, side, "megaman").map(|p| p.id.clone());
+        let beast_start = |side: &Side| side.facts.get(&content, "beast_start") == Some(Stated::Flag(true));
+        let mut side = builds.new_build(&content, "gregar").unwrap();
+        assert_eq!((on(&side).as_deref(), side.level(&content), beast_start(&side)), (Some("megaman"), None, false));
+        // FBeast from a Gregar build: his Cybeast Falzar's, and nothing to mend.
+        builds.take_preset(&content, &mut side, "megaman", "falzar_beast").unwrap();
+        assert_eq!((on(&side).as_deref(), beast_start(&side)), (Some("falzar_beast"), true));
+        assert_eq!(builds.chosen_forms(&content, &side, "cybeast"), [falzar_beast]);
+        assert_eq!(builds.as_built(&content, &mut side), Vec::<String>::new());
+        let checked = Checked::of(&content, "exe6", &side);
+        assert_eq!(checked.problems, Vec::new());
+        assert!(matches!(checked.face(), Some(Face::Form(f, ..)) if f == falzar_beast), "{:?}", checked.face());
+        // In it from the start, and still after five turns: a turn there spends none of his Beast Out turns, so the
+        // turn's start never takes him back.
+        let m = Match { sides: [side.clone(), builds.new_build(&content, "gregar").unwrap()], ..Match::empty(&content, "exe6").unwrap() };
+        let mut b = Battle::new(m.round(&content, 0x5EED), content.clone());
+        let mut screens = 0;
+        let mut was_choosing = false;
+        for t in 0..20_000 {
+            let choosing = |b: &Battle, s: usize| b.custom.sides[s].built.is_none() && b.custom.sides[s].screen.is_some_and(|x| x.phase == Phase::Choosing);
+            // (OK on a screen; else L on every other tick, which opens the next once the gauge is full.)
+            let ok = |on: bool| match on {
+                true => PlayerTick::default().with_choice(Some(nettai_battle::ScreenChoice::Ok)),
+                false if t % 2 == 0 => PlayerTick::buttons(nettai_battle::input::Keys::L),
+                false => PlayerTick::default(),
+            };
+            let now = choosing(&b, 0);
+            if now && !was_choosing {
+                screens += 1;
+                if b.player(0).is_some() {
+                    assert_eq!(b.stats[0].form, falzar_beast, "screen {screens}");
+                }
+            }
+            was_choosing = now;
+            if screens > 5 {
+                break;
+            }
+            b.tick(&[ok(now), ok(choosing(&b, 1))], Default::default());
+        }
+        assert!(screens > 5, "{screens} screens");
+        assert_eq!(b.stats[0].form, falzar_beast);
+        // GBeast: the other Cybeast; and back to MegaMan, who keeps it and starts in his base form.
+        builds.take_preset(&content, &mut side, "megaman", "gregar_beast").unwrap();
+        assert_eq!((on(&side).as_deref(), builds.chosen_forms(&content, &side, "cybeast")), (Some("gregar_beast"), vec![gregar_beast]));
+        builds.take_preset(&content, &mut side, "megaman", "megaman").unwrap();
+        assert_eq!((on(&side).as_deref(), beast_start(&side), builds.chosen_forms(&content, &side, "cybeast")), (Some("megaman"), false, vec![gregar_beast]));
+        assert!(matches!(Checked::of(&content, "exe6", &side).face(), Some(Face::Form(f, ..)) if f != gregar_beast));
+        // The LinkNavi MegaMan: his last level, kept as built.
+        builds.take_preset(&content, &mut side, "megaman", "link_navi").unwrap();
+        assert_eq!((on(&side).as_deref(), side.level(&content), beast_start(&side)), (Some("link_navi"), Some(14), false));
+        assert_eq!(builds.as_built(&content, &mut side), Vec::<String>::new());
+        assert_eq!(Checked::of(&content, "exe6", &side).problems, Vec::new());
+        // A mix a file may hold (a Beast with a level) settles on the Beast, its level put back; the check refuses it
+        // as it is.
+        let mut mixed = side.clone();
+        builds.take_preset(&content, &mut mixed, "megaman", "falzar_beast").unwrap();
+        mixed.set_level(&content, Some(14)).unwrap();
+        assert!(Checked::of(&content, "exe6", &mixed).problems.iter().any(|p| p.field.as_deref() == Some("beast_start")));
+        builds.as_built(&content, &mut mixed);
+        assert_eq!((on(&mixed).as_deref(), mixed.level(&content)), (Some("falzar_beast"), None));
+        // Another navi: none of the choice's facts, its own last level; MegaMan again is MegaMan.
+        let protoman = ids::navi(&content, "exe6", "protoman").unwrap();
+        builds.set_navi(&content, &mut side, protoman).unwrap();
+        assert_eq!((side.level(&content), beast_start(&side), on(&side)), (crate::play_level(&content, protoman), false, None));
+        let megaman = ids::navi(&content, "exe6", "megaman").unwrap();
+        builds.set_navi(&content, &mut side, megaman).unwrap();
+        assert_eq!((on(&side).as_deref(), side.level(&content)), (Some("megaman"), None));
+    }
+
+    /// A LinkNavi MegaMan (a level: event flag 0x163) takes no patch card: the Japanese game runs his level's script
+    /// in their stead, so the cards change nothing of his round, and a build of one with cards is refused.
+    #[test]
+    fn a_link_navi_megaman_takes_no_patch_cards() {
+        let content = exe6_content();
+        let builds = Builds::of(&content, "exe6").unwrap();
+        let mut side = builds.new_build(&content, "falzar").unwrap();
+        builds.take_preset(&content, &mut side, "megaman", "link_navi").unwrap();
+        let bare = Checked::of(&content, "exe6", &side).stats().copied().unwrap();
+        side.set_fact(&content, facts::PATCH_CARDS, &patch_cards(&content, "exe6", "airman")).unwrap();
+        let checked = Checked::of(&content, "exe6", &side);
+        assert_eq!(checked.stats().map(|s| (s.max_hp, s.hp)), Some((bare.max_hp, bare.hp)), "no card applies");
+        assert!(checked.problems.iter().any(|p| p.field.as_deref() == Some(facts::PATCH_CARDS)), "{:?}", checked.problems);
+        // MegaMan takes them: AirMan's HP+150.
+        builds.take_preset(&content, &mut side, "megaman", "megaman").unwrap();
+        let checked = Checked::of(&content, "exe6", &side);
+        assert_eq!(checked.problems, Vec::new());
+        let mut without = side.clone();
+        without.set_fact(&content, facts::PATCH_CARDS, &[]).unwrap();
+        let plain = Checked::of(&content, "exe6", &without).stats().copied().unwrap();
+        assert_eq!(checked.stats().map(|s| s.max_hp), Some(plain.max_hp + 150));
     }
 
     /// A build read from a file or made from a save whose light/dark value

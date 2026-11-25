@@ -229,6 +229,10 @@ rule, EXE6's patch cards module (content/exe6/rules/patch_cards/init.luau, in co
   whose glitch is the NaviCust's (its compile's bugs) where the original's is the stats' bug count after no card;
   the two agree unless a NaviCust bug writes a byte the cards' count doesn't read. A recording carries the glitch
   its console showed, and the lab's "every card switched off over a NaviCust bug" replays as before.
+- **Whom they apply to**: MegaMan with no navi code received, as §1.2 has it. A LinkNavi MegaMan (a side with a
+  level: event flag 0x163) gets his level's gains instead and no card (`apply` returns, the glitch as a link
+  navi's), and a build of one with cards installed is refused by `build_check` (a save of one may hold them; a
+  build's would do nothing). The build creator offers him as Link MegaMan (docs/design/app-ui.md §2.106).
 - **The application** is the part's `round_setup` hook: once per side as the round is set up (`Battle::new`),
   before anything reads the side's stats. It is §1.2 steps 2 to 7 over the side's stats (`battle.navi(side)`):
   the slots seeded from the stats, each card's effects in the kinds' order, the clamps, the copy

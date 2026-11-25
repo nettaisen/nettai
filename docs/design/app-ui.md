@@ -1888,6 +1888,19 @@ Each is settled unless the user changes it.
     and over the custom screen's targets in a battle; the text cursor over a field; the arrow over a page, a list as
     a whole, a shade that closes what is over it, and anything disabled. The NaviCust board keeps its grab cursor,
     the replay's seek bar its resize cursor.
+106. **GBeast, FBeast and the LinkNavi MegaMan as navis** (2026-11-25, the user: "for exe6, add fbeast and gbeast as
+    navi selection options since they were also available in beast link gate right? also megaman as his link navi
+    form"). EXE6's grid has MegaMan four times: MegaMan, GBeast, FBeast and Link MegaMan, cards named as the
+    game's builds data's choice names its presets (content/exe6/rules/builds.luau, `cards = true`), a Beast's card
+    with its form's face. GBeast and FBeast are MegaMan in that Cybeast from the round's start for good (the
+    original's starting form, NaviStats+0x17: a turn in a starting form of 0x0B or 0x0C spends no Beast Out turn,
+    docs/engine/battle-flow.md's `sub_8015A38`; the setup's `beast_start`, content/exe6/rules/beast); Link MegaMan
+    is MegaMan from a navi code at its last level (docs/engine/link-navis.md §5) (his NaviCust and his level's gains, his Crosses, no Beast Out, no patch card applied: a build of one
+    with cards has a problem on the PATCH CARDS tab). Choosing a card chooses MegaMan and takes its preset
+    (`Draft::choose_navi_as`); the Beast form selector still says the Cybeast, so choosing the other there moves the
+    build to the other Beast's card. The panel's name is the card's. The Japanese Beast Link Gate itself let MegaMan
+    Beast Out at will from the first turn (no Beast Over), and its Navi Change Box swapped in a LinkNavi MegaMan;
+    nettai's cards are a battle's start the ROM already has, not the gate's mode (battle mode 1).
 
 ## 3. Chosen where the user gave no answer
 
@@ -2330,7 +2343,8 @@ DUPLICATE and DELETE.
   shot: no game's content names a navi's, and the user chose to leave it out), the face the round starts it with. No
   strip (§2.66: the user, "i don't like having an info thing on the navi view, it's redundant"). Under them, one
   after the other (§2.63): in EXE4 and EXE5 MegaMan's Light or Dark, a segmented control (LIGHT | DARK) as tall as
-  the editor's rows; the selector of the build's forms (§2.60, §2.61): EXE6's Beast Out (BEAST OUT: GBeast and
+  the editor's rows (EXE6's choice of MegaMan is cards of the grid instead: MegaMan, GBeast, FBeast and Link
+  MegaMan, §2.106); the selector of the build's forms (§2.60, §2.61): EXE6's Beast Out (BEAST OUT: GBeast and
   FBeast side by side under their versions' heads) and Crosses, EXE4's and EXE5's souls, each fact's heading with its
   count (in the error red where it has a problem) over its forms' rows grouped by version. The note,
   "NaviCust and patch cards are MegaMan only.", is for another navi alone, on the problems' line where it says

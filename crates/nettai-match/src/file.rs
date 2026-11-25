@@ -833,7 +833,7 @@ mod tests {
         // game takes.)
         has(
             bad("navi = \"megaman\"", "navi = \"megaman\"\nemotion_window_glitch = true"),
-            "left: no field \"emotion_window_glitch\" (a side of exe6 takes beast_out, bug_frags, crosses, cybeast, folder, hp, level, navi, navicust_expansions, navicust_programs, patch_cards, reg_up, regular_chip, sp_times, sun, tag_chips)",
+            "left: no field \"emotion_window_glitch\" (a side of exe6 takes beast_out, beast_start, bug_frags, crosses, cybeast, folder, hp, level, navi, navicust_expansions, navicust_programs, patch_cards, reg_up, regular_chip, sp_times, sun, tag_chips)",
         );
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
         has(bad(stage, "stage = \"moon\""), "round 1: no stage \"moon\" in exe6");

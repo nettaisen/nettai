@@ -27,8 +27,12 @@
 //! one appears (the user: "error messages for beast form/crosses ends up shifting layout"). The lists are the game's
 //! own navi's alone; the Cybeast is every navi's (MstrCros plays its version's Crosses).
 //!
-//! Choosing a navi is `Draft::choose_navi` (nettai-match's `Builds::set_navi`, with what is the game's own
-//! navi's alone kept aside in the build's file); a choice's preset is `Builds::take_preset`.
+//! Choosing a navi is `Draft::choose_navi_as` (nettai-match's `Builds::set_navi`, with what is the game's own
+//! navi's alone kept aside in the build's file); a choice's preset is `Builds::take_preset`. A choice the game
+//! offers as navis (`Choice::cards`: EXE6's MegaMan, GBeast, FBeast and Link MegaMan; the user: "add fbeast and
+//! gbeast as navi selection options") is no segmented control: its presets are cards of the grid in its navi's
+//! place, each named as the preset, its face the form it sets (else the navi's), and choosing one chooses the navi
+//! and takes the preset (`Draft::choose_navi_as`).
 //!
 //! On a phone the grid is a sheet from the bottom (`NaviOverlay`), which the navi's card on the tab opens
 //! (`navi-pick`): a navi chosen in it, a tap on the shade or Back shuts it, the focus back on the card. The selector's
@@ -46,10 +50,18 @@ use crate::builds::overview::{stat_line, stat_name};
 use nettai_ui::{EditorTab, NaviCard, NaviChoice, NaviForm, NaviFormGroup, NaviView, StatLine};
 use slint::{ComponentHandle, ModelRc, VecModel};
 
+/// A card of the grid: a navi, or a preset of a choice offered as navis (the choice's place among the game's, and the
+/// preset's among the choice's).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Card {
+    navi: NaviHandle,
+    preset: Option<(usize, usize)>,
+}
+
 #[derive(Default)]
 pub struct Navi {
-    /// The game's navis, as the grid has them.
-    navis: Vec<NaviHandle>,
+    /// The grid's cards: the game's navis, a choice offered as navis by its presets, in the grid's order.
+    cards: Vec<Card>,
     /// The selector's forms, each with the fact it is of, in the focus order.
     forms: Vec<(String, FormHandle)>,
     /// What each ALL and NONE of the selector is of (their focus keys' index): a fact of forms, and its version's
@@ -94,6 +106,45 @@ impl Navi {
         content.defs.fact_name(PlayerFact::Navi).map(str::to_string).into_iter().collect()
     }
 
+    /// The grid's cards (the game's own navi first: the content states no order of the others, which are by their
+    /// keys), a choice offered as navis by its presets in its navi's place.
+    fn cards(draft: &Draft) -> Vec<Card> {
+        let (content, builds) = (draft.content(), &draft.kit.builds);
+        let mut navis = nettai_match::navis(content, &draft.kit.game);
+        navis.sort_by_key(|&n| !content.navi(n).changes_form());
+        navis
+            .into_iter()
+            .flat_map(|navi| match builds.choices.iter().position(|c| c.cards && c.navi() == Some(navi)) {
+                Some(at) => (0..builds.choices[at].presets.len()).map(|p| Card { navi, preset: Some((at, p)) }).collect(),
+                None => vec![Card { navi, preset: None }],
+            })
+            .collect()
+    }
+
+    /// The build's card: its navi, on the preset it is on of a choice offered as navis.
+    fn current(draft: &Draft) -> Card {
+        let (content, builds) = (draft.content(), &draft.kit.builds);
+        let navi = draft.side().navi(content);
+        let preset = builds.choices.iter().enumerate().filter(|(_, c)| c.cards && c.navi() == Some(navi)).find_map(|(at, c)| {
+            let now = builds.preset_of(content, draft.side(), &c.id)?;
+            Some((at, c.presets.iter().position(|p| p.id == now.id)?))
+        });
+        Card { navi, preset }
+    }
+
+    /// The forms card `card`'s preset sets, each with its fact (none: a navi's card).
+    fn card_forms(draft: &Draft, card: Card) -> Vec<(String, FormHandle)> {
+        let Some((c, p)) = card.preset else { return Vec::new() };
+        let choice = &draft.kit.builds.choices[c];
+        choice.preset_forms(draft.content(), &draft.kit.game, &choice.presets[p])
+    }
+
+    /// Whether the build's ruleset holds card `card` back: its navi, or a form its preset sets.
+    fn banned(draft: &Draft, card: Card) -> bool {
+        let navi_fact = Navi::navi_fact(draft.content());
+        navi_fact.first().is_some_and(|f| !draft.allows(f, card.navi.0)) || Navi::card_forms(draft, card).iter().any(|(fact, f)| !draft.allows(fact, f.0))
+    }
+
     /// What the line under the navi's facts says (docs/design/app-ui.md §2.66, §2.70): what the build's problems have
     /// against the form under the pointer or the cursor, the ruleset's among them, where they have anything; else
     /// against the navi, and the build where no tab shows what it is about. Empty: the note.
@@ -118,7 +169,8 @@ impl Navi {
 
     /// The phone's sheet of the navis opens, the focus on the build's navi's card.
     fn open_sheet(&mut self, shell: &mut Shell, draft: &Draft) {
-        let at = self.navis.iter().position(|&n| n == draft.side().navi(draft.content())).unwrap_or(0);
+        let current = Navi::current(draft);
+        let at = self.cards.iter().position(|&c| c == current).unwrap_or(0);
         shell.ui().global::<NaviView>().set_sheet(true);
         shell.nav.open(SHEET, crate::nav::Key::new(SHEET_NAVI, at as i32));
     }
@@ -156,10 +208,9 @@ impl Tab for Navi {
         }
         let content = draft.content().clone();
         let kit = draft.kit.clone();
-        // (The game's own navi first: the content states no order of the others, which are by their keys.)
-        self.navis = nettai_match::navis(&content, &kit.game);
-        self.navis.sort_by_key(|&n| !content.navi(n).changes_form());
-        let chosen = draft.side().navi(&content);
+        self.cards = Navi::cards(draft);
+        let current = Navi::current(draft);
+        let chosen = current.navi;
         let ui = shell.ui();
         let view = ui.global::<NaviView>();
         let face = draft.checked.face().map(|f| kit.pictures.shown(&f)).unwrap_or_else(|| kit.pictures.navi(chosen));
@@ -169,12 +220,23 @@ impl Tab for Navi {
         let offered = kit.builds.choices_of(&content, draft.side());
         draft.with_words(shell, |words| {
             let names = words.names;
-            // (A navi the build's ruleset doesn't allow is marked: the navi fact's category.)
-            let navi_fact = content.defs.fact_name(PlayerFact::Navi).unwrap_or_default();
-            let cards: Vec<NaviCard> =
-                self.navis.iter().map(|&n| NaviCard { name: names.navi(n).into(), face: kit.pictures.navi(n), chosen: n == chosen, banned: !draft.allows(navi_fact, n.0) }).collect();
+            // (A navi the build's ruleset doesn't allow is marked: the navi fact's category, or a form a preset's card
+            // sets.)
+            let card_name = |card: Card| match card.preset {
+                Some((c, p)) => crate::builds::preset_name(names, &kit.builds.choices[c], &kit.builds.choices[c].presets[p]),
+                None => names.navi(card.navi),
+            };
+            let cards: Vec<NaviCard> = self
+                .cards
+                .iter()
+                .map(|&card| {
+                    let form = Navi::card_forms(draft, card).first().map(|&(_, f)| f);
+                    let face = form.map_or_else(|| kit.pictures.navi(card.navi), |f| kit.pictures.face(f));
+                    NaviCard { name: card_name(card).into(), face, chosen: card == current, banned: Navi::banned(draft, card) }
+                })
+                .collect();
             view.set_navis(ModelRc::new(VecModel::from(cards)));
-            view.set_name(names.navi(chosen).into());
+            view.set_name(card_name(current).into());
             let stats: Vec<StatLine> = match &overview {
                 Some(o) => std::iter::once(stat_line(String::new(), o.hp))
                     .chain(o.members.iter().filter(|(m, _)| *m == 0).flat_map(|(_, s)| s).map(|s| stat_line(stat_name(words, s), s.stat)))
@@ -189,7 +251,7 @@ impl Tab for Navi {
                 .choices
                 .iter()
                 .enumerate()
-                .filter(|(_, c)| offered.iter().any(|o| o.id == c.id))
+                .filter(|(_, c)| !c.cards && offered.iter().any(|o| o.id == c.id))
                 .filter_map(|(i, c)| {
                     let now = kit.builds.preset_of(&content, draft.side(), &c.id)?;
                     let presets: Vec<slint::SharedString> = c.presets.iter().map(|p| crate::builds::preset_name(names, c, p).into()).collect();
@@ -315,7 +377,7 @@ impl Tab for Navi {
         if shell.nav.focused().is_none_or(|k| (!known.contains(&k.id.as_str()) && !k.id.starts_with(SHEET)) || (!phone && k.id == "navi-pick")) {
             if phone {
                 shell.nav.focus("navi-pick", 0);
-            } else if let Some(at) = self.navis.iter().position(|&n| n == chosen) {
+            } else if let Some(at) = self.cards.iter().position(|&c| c == current) {
                 shell.nav.focus("navi", at as i32);
             }
         }
@@ -349,13 +411,14 @@ impl Tab for Navi {
             // (A navi the build's ruleset doesn't allow is refused: docs/design/app-ui.md §2.68. A phone's sheet stays
             // open for another; one chosen shuts it.)
             "navi" | SHEET_NAVI => {
-                let Some(&navi) = self.navis.get(index.max(0) as usize) else { return };
-                let navi_fact = Navi::navi_fact(draft.content());
-                if navi != draft.side().navi(draft.content()) && navi_fact.first().is_some_and(|f| !draft.allows(f, navi.0)) {
+                let Some(&card) = self.cards.get(index.max(0) as usize) else { return };
+                if card != Navi::current(draft) && Navi::banned(draft, card) {
                     return shell.sound.play(crate::sound::Cue::Refused);
                 }
                 self.close_sheet(shell);
-                if draft.choose_navi(navi) {
+                let kit = draft.kit.clone();
+                let preset = card.preset.map(|(c, p)| (kit.builds.choices[c].id.as_str(), kit.builds.choices[c].presets[p].id.as_str()));
+                if draft.choose_navi_as(card.navi, preset) {
                     self.show(shell, draft);
                 }
             }
