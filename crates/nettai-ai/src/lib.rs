@@ -318,16 +318,20 @@ impl Fighter {
             }
         }
 
-        // Collect a finished background worker decision due on this tick.
+        // Collect a finished background worker decision due on or before this tick.
+        // Never block the 60fps main thread for more than a few ms: if a heavy lookahead job is still
+        // finishing, keep holding our current action for 1 more frame and pick up the result next tick!
         if let Some(p) = self.pending.take_if(|p| p.at <= ft) {
-            if p.at == ft {
-                if let Some(w) = &self.worker {
-                    match w.wait(p.job_id) {
-                        Ok(dec) => apply_decision(r, dec),
-                        Err(_) => {
-                            // Worker failed; drop it and fall back to inline on subsequent decisions.
-                            self.worker = None;
-                        }
+            if let Some(w) = &self.worker {
+                match w.wait_timeout(p.job_id, std::time::Duration::from_millis(6)) {
+                    Some(Ok(dec)) => apply_decision(r, dec),
+                    Some(Err(_)) => {
+                        // Worker failed; drop it and fall back to inline on subsequent decisions.
+                        self.worker = None;
+                    }
+                    None => {
+                        // Still running off-thread: re-park without stalling the rendered frame!
+                        self.pending = Some(p);
                     }
                 }
             }

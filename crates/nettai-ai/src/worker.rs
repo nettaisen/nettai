@@ -16,6 +16,7 @@ struct Shared {
     queue: Mutex<Queue>,
     wake: Condvar,
     answer: Mutex<Option<Answer>>,
+    done: Condvar,
 }
 
 type Answer = (u64, Result<FightDecision, String>);
@@ -57,19 +58,19 @@ impl Worker {
         id
     }
 
-    /// Wait for job `id`'s decision.
-    pub fn wait(&self, id: u64) -> Result<FightDecision, String> {
-        loop {
-            {
-                let answer = nettai_threads::lock(&self.shared.answer).unwrap_or_else(|p| p.into_inner());
-                match &*answer {
-                    Some((got, res)) if *got == id => return res.clone(),
-                    Some((_, Err(why))) => return Err(why.clone()),
-                    _ => {}
-                }
-            }
-            std::hint::spin_loop();
+    /// Wait up to `timeout` for job `id`'s decision (`None` if still computing so the caller never drops frames).
+    pub fn wait_timeout(&self, id: u64, timeout: std::time::Duration) -> Option<Result<FightDecision, String>> {
+        let answer = nettai_threads::lock(&self.shared.answer).unwrap_or_else(|p| p.into_inner());
+        let check = |ans: &Option<Answer>| match ans {
+            Some((got, res)) if *got == id => Some(res.clone()),
+            Some((_, Err(why))) => Some(Err(why.clone())),
+            _ => None,
+        };
+        if let Some(res) = check(&answer) {
+            return Some(res);
         }
+        let (guard, _) = self.shared.done.wait_timeout(answer, timeout).unwrap_or_else(|p| p.into_inner());
+        check(&guard)
     }
 }
 
@@ -109,6 +110,7 @@ fn work(s: &Shared) {
         };
         let stopped = answer.1.is_err();
         *s.answer.lock().unwrap_or_else(|p| p.into_inner()) = Some(answer);
+        s.done.notify_all();
         if stopped {
             return;
         }

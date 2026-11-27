@@ -502,7 +502,10 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
     //    (b) Otherwise, check if we can & should counter cut-in with a dimming chip!
     if sim.is_dimmed() {
         let held_ab_before = ctx.past_inputs.last().is_some_and(|k| k.intersects(Keys::A | Keys::B));
-        if let Some((first, first_ticks, after, cmd_queue)) = decide_interactive_dimming(&sim, side, keep_hold, held_ab_before, blind, cfg, &mut rng) {
+        let snap_was_dimmed = ctx.snap.is_dimmed();
+        if let Some((first, first_ticks, after, cmd_queue)) =
+            decide_interactive_dimming(&sim, side, keep_hold, held_ab_before, snap_was_dimmed, blind, cfg, &mut rng)
+        {
             return FightDecision {
                 first,
                 after,
@@ -1017,10 +1020,12 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
     let chip_hit_now_any = cands
         .get(1)
         .is_some_and(|(_, r)| next_chip.is_some() && (r.dealt > base_dealt + 0.001 || (r.broke_enemy_barrier && !base_broke_barrier)));
+    let chip_dealt_here = cands.get(1).map_or(0.0, |(_, r)| if next_chip.is_some() { r.dealt } else { 0.0 });
     let next_is_dimming = next_chip.is_some_and(|id| sim.content.chip(id).flags.contains(ChipFlags::DIMMING));
     let enemy_has_elem = enemy_pos.is_some()
         && navi_ref(&sim, other).is_some_and(|r| (sim.objects.get(r).element & 0x0F) != 0);
     if should_dodge || !under_threat {
+        let mut dim_sf_done = false;
         let dirs = [Keys::UP, Keys::DOWN, Keys::RIGHT, Keys::LEFT];
         for dir in dirs {
             let dest = stepped_pos(side, my_pos, dir);
@@ -1073,7 +1078,7 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
                         let dx = (ep.x as i32 - nx as i32) * forward;
                         ny == ep.y || dx == 3 || dx == 1
                     });
-                if promising_miss || promising_elem_dim {
+                if (promising_miss || promising_elem_dim) && !(next_is_dimming && dim_sf_done) {
                     let sf_res = rollout_step_and_fire(
                         &sim,
                         side,
@@ -1087,6 +1092,9 @@ pub fn decide(mut ctx: FightContext) -> FightDecision {
                         next_is_dimming,
                     );
                     if (sf_res.dealt > 0.0 || (sf_res.broke_enemy_barrier && !base_broke_barrier)) && sf_res.taken <= base_taken + 0.02 {
+                        if next_is_dimming && (chip_missed_here || sf_res.dealt >= chip_dealt_here * 1.45) {
+                            dim_sf_done = true;
+                        }
                         let sf_cand = Candidate {
                             first: dir | keep_hold,
                             first_ticks: step_ticks,
@@ -1295,11 +1303,13 @@ const DIMMED_INTERACTIVE_KEYS: Keys = Keys::from_bits_truncate(
 /// `Battle::dimmed_key_reads` on our own side while dimmed.
 /// Returns `Some((first, first_ticks, after, dim_queue))` when an active dimming chip is reading
 /// our inputs, or `None` for non-interactive dimming (e.g. AreaGrab / Invis / standard Navi).
+#[allow(clippy::too_many_arguments)]
 fn decide_interactive_dimming(
     sim: &Battle,
     side: u8,
     keep_hold: Keys,
     held_a_before: bool,
+    snap_was_dimmed: bool,
     blind: bool,
     cfg: LevelConfig,
     rng: &mut SplitMix64,
@@ -1342,72 +1352,98 @@ fn decide_interactive_dimming(
         return Some((Keys::empty(), cfg.k as u8, Keys::empty(), Vec::new()));
     }
 
-    // Long enough for SearchMan's lock + final powered shot, Django's ride + slash, WoodMan's 2nd wave,
-    // LaserMan's full 10-strike course, ShadeMan's crush, and LarkMan's swoop to all finish!
-    let dim_cap = cfg.cap.max(360);
-    let base_none = rollout_dimmed_action(sim, side, Keys::empty(), 2, Keys::empty(), dim_cap, blind);
-
     // Case 1: Timed button-press aiming chips (EraseMan, Magnum, BurnSquare, ElementMan,
     //         CircleGun, CrossScope, DeltaRayEdge, SearchMan).
-    // Always test BOTH `A` AND `A | B` whenever `reads_a` is true (catches short-circuited
-    // power-ups like SearchMan's `if pressed("a") { if pressed("b") ... }`!).
+    // Because the battle is frozen while dimmed, solve the full aiming cycle ONCE with a single sweep
+    // (1 rollout per timestamp instead of 27 rollouts every 4 frames!) and queue the exact wait + press
+    // in `cmd_queue` so subsequent dimmed ticks do ZERO simulation work (0 ms/frame)!
     if reads_a && !reads_dirs && !reads_lb && !reads_rb {
-        if held_a_before {
-            return Some((Keys::empty(), 1, Keys::empty(), Vec::new()));
-        }
+        let aim_cap = cfg.cap.clamp(180, 240);
+        let base_aim = rollout_dimmed_action(sim, side, Keys::empty(), 2, Keys::empty(), aim_cap, blind);
 
-        let mut now_key = Keys::empty();
-        let mut now_res = base_none.clone();
-        // Test `A | B` BEFORE plain `A` so short-circuited power-ups (e.g. SearchMan's chip-destroying
-        // powered last shot on `A+B`) automatically win ties over plain `A`!
-        for key in [Keys::A | Keys::B, Keys::A] {
-            let r = rollout_dimmed_action(sim, side, key, 2, Keys::empty(), dim_cap, blind);
-            if r.score > now_res.score + 0.005 || (r.dealt > now_res.dealt + 0.001 && r.score >= now_res.score - 0.005) {
-                now_res = r;
-                now_key = key;
-            }
-        }
-        if reads_b {
-            let rb = rollout_dimmed_action(sim, side, Keys::B, 2, Keys::empty(), dim_cap, blind);
-            if rb.score > now_res.score + 0.005 {
-                now_res = rb;
-                now_key = Keys::B;
-            }
-        }
-
-        let mut best_future = f32::NEG_INFINITY;
         let step = 5u32;
-        let max_steps = if cfg.probe_reach { 12 } else { 6 };
+        let max_steps = if cfg.probe_reach { 12u32 } else { 6u32 };
         let mut future = sim.clone();
-        for _ in 0..max_steps {
-            let mut stepped_ok = true;
-            for _ in 0..step {
-                let both = [Keys::empty(); 2];
-                if !step_battle(&mut future, both) || !future.is_dimmed() {
-                    stepped_ok = false;
+        let mut best_dt: Option<u32> = None;
+        let mut best_state: Option<Battle> = None;
+        let mut best_res = base_aim.clone();
+        let mut best_key = Keys::empty();
+
+        for step_idx in 0..max_steps {
+            if step_idx > 0 {
+                let mut stepped_ok = true;
+                for _ in 0..step {
+                    let both = [Keys::empty(); 2];
+                    if !step_battle(&mut future, both) || !future.is_dimmed() {
+                        stepped_ok = false;
+                        break;
+                    }
+                }
+                if !stepped_ok {
                     break;
                 }
             }
-            if !stepped_ok {
-                break;
-            }
-            for key in [Keys::A, Keys::A | Keys::B] {
-                let r = rollout_dimmed_action(&future, side, key, 2, Keys::empty(), dim_cap, blind);
-                if r.score > best_future {
-                    best_future = r.score;
+            // Test `A | B` across the sweep: triggers plain `A` on Magnum/EraseMan/ElementMan/DeltaRayEdge
+            // AND simultaneously triggers `A+B` power-ups like SearchMan's chip-destroying last shot!
+            let r = rollout_dimmed_action(&future, side, Keys::A | Keys::B, 2, Keys::empty(), aim_cap, blind);
+            let better = r.score > best_res.score + 0.005
+                || (r.dealt > best_res.dealt + 0.001 && r.score >= best_res.score - 0.005);
+            if better {
+                best_dt = Some(step_idx * step);
+                best_state = Some(future.clone());
+                best_res = r;
+                best_key = Keys::A | Keys::B;
+                if best_res.score >= 3.5 {
+                    break;
                 }
             }
         }
 
-        let worth_pressing = !now_key.is_empty()
-            && (now_res.dealt > 0.0 || now_res.obs_dmg > 0 || now_res.score > base_none.score + 0.015);
-        let better_later = best_future > now_res.score + 0.020;
-
-        if worth_pressing && !better_later {
-            return Some((now_key, 2, Keys::empty(), Vec::new()));
+        // Verify plain `A` ONCE at the winning timestamp (in case `B` has an unintended side-effect).
+        if let Some(ref st) = best_state {
+            let ra = rollout_dimmed_action(st, side, Keys::A, 2, Keys::empty(), aim_cap, blind);
+            if ra.score > best_res.score + 0.005 {
+                best_res = ra;
+                best_key = Keys::A;
+            }
+        } else if reads_b {
+            let rb = rollout_dimmed_action(sim, side, Keys::B, 2, Keys::empty(), aim_cap, blind);
+            if rb.score > best_res.score + 0.005 {
+                best_dt = Some(0);
+                best_res = rb;
+                best_key = Keys::B;
+            }
         }
-        return Some((Keys::empty(), cfg.k as u8, Keys::empty(), Vec::new()));
+
+        let worth_pressing = !best_key.is_empty()
+            && (best_res.dealt > 0.0 || best_res.obs_dmg > 0 || best_res.score > base_aim.score + 0.015);
+        if worth_pressing && let Some(dt) = best_dt {
+            // If `snap` predated the dimming freeze and we need to wait, wait only until `snap` is inside
+            // the freeze so the opponent's frozen panel is 100% exact before queueing a long wait!
+            if dt > 0 && !snap_was_dimmed {
+                let wait = dt.min(cfg.delay) as u8;
+                return Some((Keys::empty(), wait, Keys::empty(), vec![(Keys::empty(), wait)]));
+            }
+            let mut queue = Vec::with_capacity(3);
+            if dt > 0 {
+                queue.push((Keys::empty(), dt as u8));
+            } else if held_a_before {
+                queue.push((Keys::empty(), 1));
+            }
+            queue.push((best_key, 2));
+            queue.push((Keys::empty(), 2));
+            let (first, first_ticks) = queue[0];
+            return Some((first, first_ticks, Keys::empty(), queue));
+        }
+
+        // Nothing in the next ~55 ticks hits: sleep 20 ticks without re-running rollouts every 4 frames.
+        return Some((Keys::empty(), 20, Keys::empty(), vec![(Keys::empty(), 20)]));
     }
+
+    // Long enough for Django's ride + slash, WoodMan's 2nd wave, LaserMan's full 10-strike course,
+    // ShadeMan's crush, and LarkMan's swoop to all finish!
+    let dim_cap = cfg.cap.max(360);
+    let base_none = rollout_dimmed_action(sim, side, Keys::empty(), 2, Keys::empty(), dim_cap, blind);
 
     // Case 2: Directional aiming & single/multi-step command codes
     //         (LaserMan, MetalMan, WoodMan, FireMan, ShadeMan, Colonel, LarkMan, Django, etc.).
@@ -1658,7 +1694,7 @@ fn rollout_dimmed_action(
     let snap0 = capture_snapshot(&c, side, blind);
     let mut undimmed = 0u32;
     let mut t = 0u32;
-    while undimmed < 8 && t < cap {
+    while undimmed < 4 && t < cap {
         let mine = if t < first_ticks as u32 { first } else { after };
         let mut held = [Keys::empty(); 2];
         held[side as usize] = mine;
@@ -1675,9 +1711,9 @@ fn rollout_dimmed_action(
 }
 
 /// Called during a dimming-chip cast rollout the instant an interactive dimming chip starts reading
-/// `dimmed_key_reads(side, Keys::A)`: tests pressing `A` across the aiming cycle (`dt = 0, 12, 24, 36, 48, 60`)
+/// `dimmed_key_reads(side, Keys::A)`: tests pressing `A|B` across the aiming cycle (`step = 6`, 10 samples)
 /// and returns the best achievable `RolloutResult` so chips like EraseMan, Magnum, ElementMan, and
-/// DeltaRayEdge are accurately valued when deciding whether to cast them!
+/// SearchMan are accurately valued without blowing up frame times!
 fn best_dimmed_a_rollout(
     mid: &Battle,
     orig: &Battle,
@@ -1685,16 +1721,17 @@ fn best_dimmed_a_rollout(
     blind: bool,
     snap0: &Snap0,
     rem_cap: u32,
+    stop_on_hit: bool,
 ) -> RolloutResult {
     let other = side ^ 1;
-    let cap = rem_cap.clamp(160, 260);
+    let cap = rem_cap.clamp(140, 220);
     let mut best: Option<RolloutResult> = None;
     let mut future = mid.clone();
 
-    for step_idx in 0..14u32 {
+    for step_idx in 0..10u32 {
         if step_idx > 0 {
             let mut ok = true;
-            for _ in 0..5 {
+            for _ in 0..6 {
                 let both = [Keys::empty(); 2];
                 if !step_battle(&mut future, both) || !future.is_dimmed() {
                     ok = false;
@@ -1708,7 +1745,7 @@ fn best_dimmed_a_rollout(
         let mut c = future.clone();
         let mut undimmed = 0u32;
         let mut t = 0u32;
-        while undimmed < 8 && t < cap {
+        while undimmed < 4 && t < cap {
             let mine = if t < 2 { Keys::A | Keys::B } else { Keys::empty() };
             let mut held = [Keys::empty(); 2];
             held[side as usize] = mine;
@@ -1722,8 +1759,13 @@ fn best_dimmed_a_rollout(
             }
         }
         let res = score_rollout(orig, &c, side, blind, snap0);
+        let hit_now = res.dealt > 0.0 || res.broke_enemy_barrier;
+        let ko_now = res.score >= 3.5;
         if best.as_ref().is_none_or(|b| res.score > b.score) {
             best = Some(res);
+        }
+        if ko_now || (stop_on_hit && hit_now) {
+            break;
         }
     }
 
@@ -1772,7 +1814,7 @@ fn rollout(
         t += 1;
         undimmed += !c.is_dimmed() as u32;
         if watch_interactive_dim && t >= 4 && c.is_dimmed() && c.dimmed_key_reads(side, Keys::A) != reads_a0 {
-            return best_dimmed_a_rollout(&c, b, side, blind, &snap0, cap.saturating_sub(t));
+            return best_dimmed_a_rollout(&c, b, side, blind, &snap0, cap.saturating_sub(t), false);
         }
         if navi_hp(&c, side) == 0 || (!blind && navi_hp(&c, other) == 0) {
             break;
@@ -1906,7 +1948,7 @@ fn rollout_step_and_fire(
             && c.is_dimmed()
             && c.dimmed_key_reads(side, Keys::A) != reads_a0
         {
-            return best_dimmed_a_rollout(&c, b, side, blind, &snap0, cap.saturating_sub(t));
+            return best_dimmed_a_rollout(&c, b, side, blind, &snap0, cap.saturating_sub(t), false);
         }
         if navi_hp(&c, side) == 0 || (!blind && navi_hp(&c, other) == 0) {
             break;
@@ -2578,7 +2620,7 @@ fn walk_and_chip_hits(b: &Battle, side: u8, target: PanelPos, air_shoe: bool) ->
         t += 1;
         undimmed += !c.is_dimmed() as u32;
         if is_dimming && t >= 4 && c.is_dimmed() && c.dimmed_key_reads(side, Keys::A) != reads_a0 {
-            let best = best_dimmed_a_rollout(&c, &c, side, false, &snap0, 220);
+            let best = best_dimmed_a_rollout(&c, &c, side, false, &snap0, 220, true);
             return best.dealt > 0.0 || best.broke_enemy_barrier;
         }
         if navi_hp(&c, other) < hp_before_chip || navi_barrier_hp(&c, other) < barrier_before {
