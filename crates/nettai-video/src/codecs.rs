@@ -24,25 +24,25 @@ pub struct Audio {
     pub tracks: usize,
 }
 
-/// The picture's quality where a codec keeps one (the desktop's x264: its constant rate factor; lower is closer to
+/// The picture's quality where a codec keeps one (Linux's x264: its constant rate factor; lower is closer to
 /// the frames and larger).
-#[cfg_attr(not(desktop), allow(dead_code))]
+#[cfg_attr(not(ffmpeg), allow(dead_code))]
 pub(crate) const QUALITY: u8 = 16;
 
-/// The picture's bits for each pixel of each frame where a codec takes a bit rate instead (the browser's, the
-/// phones'): a generous rate for the pixels' edges, less than x264 makes at [`QUALITY`] of a busy battle.
-#[cfg_attr(desktop, allow(dead_code))]
+/// The picture's bits for each pixel of each frame where a codec takes a bit rate instead (macOS, Windows,
+/// browsers, phones): a generous rate for the pixels' edges, less than x264 makes at [`QUALITY`] of a busy battle.
+#[cfg_attr(ffmpeg, allow(dead_code))]
 const BITS_PER_PIXEL: f64 = 0.2;
 
 /// The most bits a second the picture is given (two pictures side by side at four times the frame).
-#[cfg_attr(desktop, allow(dead_code))]
+#[cfg_attr(ffmpeg, allow(dead_code))]
 const MOST_BITRATE: f64 = 40e6;
 
 /// Each sound track's bits a second.
 pub(crate) const SOUND_BITRATE: u32 = 192_000;
 
-/// The picture's bit rate, for a codec that takes one (the desktop's takes [`QUALITY`]).
-#[cfg_attr(desktop, allow(dead_code))]
+/// The picture's bit rate, for a codec that takes one (Linux's x264 takes [`QUALITY`]).
+#[cfg_attr(ffmpeg, allow(dead_code))]
 pub(crate) fn bitrate(video: &Video) -> u32 {
     let (frame, timescale) = video.frame_time;
     (video.width as f64 * video.height as f64 * timescale as f64 / frame as f64 * BITS_PER_PIXEL).min(MOST_BITRATE) as u32
@@ -72,11 +72,11 @@ pub(crate) const KEY_FRAMES: u32 = 120;
 /// H.264 as a codec makes it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum H264 {
-    /// Its NAL units each after a start code (Annex B: ffmpeg's raw H.264, the browser's, Android's).
-    #[cfg_attr(target_os = "ios", allow(dead_code))]
+    /// Its NAL units each after a start code (Annex B: Windows', Android's, the browser's, Linux's ffmpeg).
+    #[cfg_attr(apple, allow(dead_code))]
     AnnexB(Vec<u8>),
-    /// Its NAL units each after its length in four bytes (iOS's).
-    #[cfg_attr(not(target_os = "ios"), allow(dead_code))]
+    /// Its NAL units each after its length in four bytes (macOS and iOS's VideoToolbox).
+    #[cfg_attr(not(apple), allow(dead_code))]
     Lengths(Vec<u8>),
 }
 
@@ -94,9 +94,10 @@ pub(crate) enum Sound {
 /// What the codecs made, each track's in order.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Coded {
-    /// The picture's parameter sets (its SPS and PPS), where its codec says them apart from its frames (Android's
-    /// codec configuration, iOS's format description); a codec that puts them in its key frames says none.
-    #[cfg_attr(not(phone), allow(dead_code))]
+    /// The picture's parameter sets (its SPS and PPS), where its codec says them apart from its frames (Apple's
+    /// format description, Android's codec configuration, Windows' sequence header); a codec that puts them in its
+    /// key frames says none.
+    #[cfg_attr(not(any(apple, target_os = "android", target_os = "windows")), allow(dead_code))]
     Sets(H264),
     /// The picture's next frame: its access unit (a key frame is one with an IDR slice).
     Frame(H264),

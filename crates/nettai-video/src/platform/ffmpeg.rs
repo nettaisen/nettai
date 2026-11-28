@@ -1,4 +1,4 @@
-//! The desktop's codecs: `ffmpeg` run as children, encoding and nothing more, one a track: one for the picture,
+//! Linux's codecs: the system's `ffmpeg` run as children, encoding and nothing more, one a track: one for the picture,
 //! written the frames' NV12 on its standard input, and one for each sound track (a console shown), written its
 //! samples, 48 kHz stereo 32-bit floats, on its own. Each writes its codec's raw output on its standard output: the
 //! picture's H.264 as Annex B, each frame's access unit after a delimiter (x264's `aud`), and a sound track's AAC as
@@ -39,10 +39,8 @@
 //!   from past.
 //! - **Errors** say which of two things went wrong ([`crate::Error`]): ffmpeg couldn't be started, or one of the
 //!   children failed (with what it said; one that said the disk is full is the disk's error).
-//! - **Which ffmpeg**: [`find_ffmpeg`]'s, the one nettai's packages bundle, else one installed (`$NETTAI_FFMPEG`
-//!   says another). The bundled one is a minimal build with what these commands need and nothing more
-//!   (nettaisen/ffmpeg-build: the rawvideo and pcm_f32le demuxers, libx264 and aac, and the h264 and adts muxers,
-//!   which its build at ffmpeg-9.0.2-2 hasn't: it has the mp4 muxer these commands used before; docs/app.md §19).
+//! - **Which ffmpeg**: [`find_ffmpeg`]'s — `$NETTAI_FFMPEG`, else one beside the program if placed there, else the
+//!   system's `ffmpeg` on `PATH` (nothing is bundled).
 
 use crate::Error;
 use crate::codecs::{self, Audio, Codecs, Coded, H264, Sound, Video};

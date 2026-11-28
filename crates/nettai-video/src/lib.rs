@@ -11,8 +11,9 @@
 //! - `codecs`: what the codecs are to the rest. In: each frame's NV12 and each sound track's 48 kHz samples. Out: the
 //!   picture's H.264, a frame at a time in the order shown (no codec reorders its frames), with its parameter sets;
 //!   each sound track's coded frames (AAC, or a browser's Opus), with its config and its encoder's priming.
-//! - `platform`: the codecs, a module a platform, chosen in one place: `desktop` (ffmpeg, a child a track: x264 and
-//!   ffmpeg's AAC), `web` (WebCodecs), `ios` (VideoToolbox and AudioToolbox), `android` (MediaCodec).
+//! - `platform`: the codecs, a module a platform, chosen in one place: `apple` (VideoToolbox and AudioToolbox on
+//!   macOS and iOS), `windows` (Media Foundation on Windows), `android` (MediaCodec on Android), `web` (WebCodecs),
+//!   `ffmpeg` (system ffmpeg on Linux, a child a track: x264 and ffmpeg's AAC).
 //! - `assemble`, with `h264` and `aac`: what the codecs made, made the MP4's tracks and samples: each frame's H.264
 //!   as the MP4 holds it, the tracks' descriptions (H.264's of its parameter sets, AAC's of its config), every
 //!   sample's time (a frame's count on the tick's time base; the samples before a sound frame), and what of each
@@ -83,7 +84,7 @@
 //! // Err(Error::NoFfmpeg(_)) | Err(Error::FfmpegFailed { .. }) | Err(Error::Encoder(_)) | Err(Error::Canceled) ...
 //! ```
 
-// (Unsafe only where iOS's frameworks are called: `platform::ios`.)
+// (Unsafe only where Apple's and Windows' media frameworks are called: `platform::apple`, `platform::windows`.)
 #![deny(unsafe_code)]
 
 mod aac;
@@ -334,8 +335,9 @@ pub enum Error {
     /// `ffmpeg` ran and failed: its exit code (none: a signal ended it)
     /// and the last of what it wrote to its standard error.
     FfmpegFailed { code: Option<i32>, log: String },
-    /// The platform's codecs refused or failed (the browser's WebCodecs, iOS's VideoToolbox or AudioToolbox,
-    /// Android's MediaCodec), or what they made can't be an MP4's (ffmpeg's included): what was said.
+    /// The platform's codecs refused or failed (Apple's VideoToolbox or AudioToolbox, Windows' Media Foundation,
+    /// the browser's WebCodecs, Android's MediaCodec), or what they made can't be an MP4's (Linux's ffmpeg
+    /// included): what was said.
     Encoder(String),
     /// The threads the frames' pictures are made on didn't start, or one
     /// stopped: what was said.

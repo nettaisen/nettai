@@ -1,10 +1,9 @@
-# Velopack's release of the app, on Windows, for one architecture: target\package\windows\<arch>\releases\
+﻿# Velopack's release of the app, on Windows, for one architecture: target\package\windows\<arch>\releases\
 # (nettai-<channel>-Setup.exe, the installer; nettai-<channel>-Portable.zip, the app alone; and the update package and
 # its feed the installed app's updater reads from the GitHub release: nettai-<version>-<channel>-full.nupkg,
 # releases.<channel>.json, assets.<channel>.json, RELEASES-<channel>).
 #
 #   pwsh packaging\windows\package.ps1 [-Arch x64|arm64] [-Version <version>] [-Icon <nettai.ico>]
-#       [-Ffmpeg <ffmpeg.exe>]
 #
 # Each architecture is its own package on its own Velopack channel, named for the system and the architecture as
 # every system's is (which is also Velopack's runtime, `vpk pack --runtime`), so that each one's files and feed sit
@@ -16,9 +15,9 @@
 # (Up to 0.19.1 x64's app was packed a second time on the channel `win`, the only one up to 0.19.0: the bridge,
 # docs/app.md §19, "Updates".)
 #
-# The app: nettai.exe, ffmpeg.exe, LICENSE.txt, THIRD-PARTY-NOTICES.txt, ffmpeg-NOTICE.txt. No content, no ROM and no
-# extracted asset is in it: the app downloads each game's content (docs/design/content-deployment.md §5) and extracts
-# each game's pack from the player's own copy. The installer is the
+# The app: nettai.exe, LICENSE.txt, THIRD-PARTY-NOTICES.txt. No ffmpeg (Windows exports with Media Foundation), no
+# content, no ROM and no extracted asset is in it: the app downloads each game's content
+# (docs/design/content-deployment.md §5) and extracts each game's pack from the player's own copy. The installer is the
 # player's alone (%LOCALAPPDATA%\nettai, no administrator), with a Start menu and a desktop shortcut; uninstalling
 # leaves the player's data folder (%APPDATA%\nettai: builds, replays, settings, the extracted packs, the downloaded
 # content) as it is.
@@ -26,18 +25,15 @@
 # -Arch      x64 or arm64 (above): this machine's own, which is the default
 # -Version   the version, if set; else $env:NETTAI_VERSION, else the app crate's
 # -Icon      the .ico packaging/icons.sh makes, for the program and the installer; without it neither has one
-# -Ffmpeg    the ffmpeg.exe to bundle (for the architecture packaged); else $env:NETTAI_BUNDLE_FFMPEG, else the release
-#            packaging\ffmpeg.sha256 pins, downloaded and checked (a static program that needs no DLL)
 # $env:WINDOWS_CERTIFICATE_PATH, $env:WINDOWS_CERTIFICATE_PASSWORD
-#            a code-signing certificate (.pfx) vpk signs every program of the release with (the app's, ffmpeg,
+#            a code-signing certificate (.pfx) vpk signs every program of the release with (the app's,
 #            Velopack's installer and updater); else none is signed
 # $env:VPK   Velopack's vpk (the version crates/nettai's velopack is: 1.3.39-g8d2844f); else vpk on the PATH
 param(
     [ValidateSet('x64', 'arm64')]
     [string]$Arch,
     [string]$Version = $env:NETTAI_VERSION,
-    [string]$Icon,
-    [string]$Ffmpeg = $env:NETTAI_BUNDLE_FFMPEG
+    [string]$Icon
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -50,10 +46,10 @@ $machine = switch ([System.Runtime.InteropServices.RuntimeInformation]::OSArchit
 }
 if (-not $Arch) { $Arch = $machine }
 if ($Arch -ne $machine) { throw "the $Arch package is built on $Arch Windows, not on this $machine machine" }
-# The architecture's channel, which is also Velopack's runtime; and the ffmpeg release's program for the architecture.
-$package = @{
-    'x64' = @{ Channel = 'win-x64'; Ffmpeg = 'ffmpeg-windows-x86_64.exe' }
-    'arm64' = @{ Channel = 'win-arm64'; Ffmpeg = 'ffmpeg-windows-arm64.exe' }
+# The architecture's channel, which is also Velopack's runtime.
+$channel = @{
+    'x64' = 'win-x64'
+    'arm64' = 'win-arm64'
 }[$Arch]
 
 $root = (Resolve-Path "$PSScriptRoot\..\..").Path
@@ -85,40 +81,15 @@ foreach ($line in $messages) {
 if (-not $program) { throw "the build named no program" }
 if (-not $notices) { throw "the build named no licenses.txt (crates/nettai/build.rs)" }
 
-# A file of the ffmpeg release packaging\ffmpeg.sha256 pins (nettaisen/ffmpeg-build's, a minimal static
-# build of what the replay export runs), downloaded once into target\package\ffmpeg\<tag>\ and checked: its path.
-function Get-FfmpegFile([string]$file) {
-    $pins = Get-Content "$root\packaging\ffmpeg.sha256"
-    $release = ($pins | Select-String -Pattern '^# release: (.*)$' | Select-Object -First 1).Matches[0].Groups[1].Value
-    $sum = $pins | ForEach-Object { if ($_ -match "^([0-9a-f]{64})  $([regex]::Escape($file))$") { $Matches[1] } } | Select-Object -First 1
-    if (-not $sum) { throw "packaging\ffmpeg.sha256 pins no $file" }
-    $dir = "$root\target\package\ffmpeg\$release"
-    New-Item -ItemType Directory -Force $dir | Out-Null
-    $path = "$dir\$file"
-    if (-not (Test-Path $path) -or (Get-FileHash -Algorithm SHA256 $path).Hash.ToLower() -ne $sum) {
-        Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/nettaisen/ffmpeg-build/releases/download/$release/$file" -OutFile $path
-        if ((Get-FileHash -Algorithm SHA256 $path).Hash.ToLower() -ne $sum) {
-            Remove-Item $path
-            throw "$file of $release isn't the one pinned"
-        }
-    }
-    return $path
-}
-
 Copy-Item $program "$app\nettai.exe"
-# ffmpeg beside the program, where the export looks first (nettai_video::mp4::find_ffmpeg): the release's program for
-# the architecture; and its notice (GPL: what it is built from, where that source is).
-if (-not $Ffmpeg) { $Ffmpeg = Get-FfmpegFile $package.Ffmpeg }
-Copy-Item $Ffmpeg "$app\ffmpeg.exe"
 Copy-Item "$root\LICENSE" "$app\LICENSE.txt"
 Copy-Item $notices "$app\THIRD-PARTY-NOTICES.txt"
-Copy-Item (Get-FfmpegFile 'ffmpeg-NOTICE.txt') "$app\ffmpeg-NOTICE.txt"
 
 # The release (Velopack's: docs/app.md §19), on the architecture's channel, every program in it signed where there is
 # a certificate.
 $vpk = if ($env:VPK) { $env:VPK } else { 'vpk' }
 $pack = @('pack', '--packId', 'nettai', '--packVersion', $Version, '--packTitle', 'nettai', '--packAuthors', 'nettai',
-    '--packDir', $app, '--mainExe', 'nettai.exe', '--channel', $package.Channel, '--runtime', $package.Channel,
+    '--packDir', $app, '--mainExe', 'nettai.exe', '--channel', $channel, '--runtime', $channel,
     '--outputDir', "$out\releases")
 if ($Icon) { $pack += @('--icon', (Resolve-Path $Icon).Path) }
 if ($env:WINDOWS_CERTIFICATE_PATH) {

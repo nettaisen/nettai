@@ -10,9 +10,9 @@
 # apps see at once (the user: "you should just publish the release instead of drafting it"); with `publish` off, the
 # packages alone, as the run's artifacts. It runs on main, not on a tag, so that its Rust caches are main's, which
 # every later run can restore: a cache saved on a tag is that tag's alone, and each release started cold (the user:
-# "it looks like rust cache doesn't actually ever work"). Each package bundles the ffmpeg
-# packaging/ffmpeg.sha256 pins (nettaisen/ffmpeg-build's release, built by that repository's own workflow),
-# which the packaging scripts download and check. No package holds the games' content: the app downloads it from
+# "it looks like rust cache doesn't actually ever work"). No package bundles ffmpeg (macOS exports with VideoToolbox
+# and AudioToolbox, Windows with Media Foundation, phones with their own codecs, Linux with the system's ffmpeg on
+# PATH) or the games' content: the app downloads it from
 # the games' sites (docs/design/content-deployment.md §5), and builds without the content submodules, so the jobs
 # check none out.
 name: Release

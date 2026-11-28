@@ -2,11 +2,11 @@
 //! ADTS (ffmpeg's raw AAC: each frame after a header that says its config and its length) read into raw frames.
 
 /// The sample rates AAC's configs number (ISO 14496-3's sampling frequency index), up to the ones used.
-#[cfg_attr(not(any(target_os = "ios", test)), allow(dead_code))]
+#[cfg_attr(not(any(apple, target_os = "windows", test)), allow(dead_code))]
 const RATES: [u32; 12] = [96_000, 88_200, 64_000, 48_000, 44_100, 32_000, 24_000, 22_050, 16_000, 12_000, 11_025, 8_000];
 
 /// AAC-LC's audio object type.
-#[cfg_attr(not(any(target_os = "ios", test)), allow(dead_code))]
+#[cfg_attr(not(any(apple, target_os = "windows", test)), allow(dead_code))]
 pub(crate) const LC: u8 = 2;
 
 /// An AudioSpecificConfig's fields: the audio object type, the sample rate's index, the channels' configuration.
@@ -18,16 +18,15 @@ pub(crate) struct Config {
 }
 
 impl Config {
-    /// AAC-LC at `rate` samples a second, `channels` of them (a rate AAC has): what iOS's converter is asked for.
-    #[cfg_attr(not(any(target_os = "ios", test)), allow(dead_code))]
+    /// AAC-LC at `rate` samples a second, `channels` of them (a rate AAC has).
+    #[cfg_attr(not(any(apple, target_os = "windows", test)), allow(dead_code))]
     pub(crate) fn lc(rate: u32, channels: u8) -> Config {
         let index = RATES.iter().position(|&r| r == rate).expect("a rate AAC has") as u8;
         Config { object: LC, rate: index, channels }
     }
 
-    /// The config's two bytes: five bits of object type, four of rate, four of channels, three of zero (as the
-    /// desktop's ADTS and iOS's converter say it).
-    #[cfg_attr(not(any(desktop, target_os = "ios", test)), allow(dead_code))]
+    /// The config's two bytes: five bits of object type, four of rate, four of channels, three of zero.
+    #[cfg_attr(not(any(apple, target_os = "windows", ffmpeg, test)), allow(dead_code))]
     pub(crate) fn bytes(self) -> Vec<u8> {
         let bits = (self.object as u16) << 11 | (self.rate as u16) << 7 | (self.channels as u16) << 3;
         bits.to_be_bytes().to_vec()
@@ -41,7 +40,7 @@ impl Config {
 }
 
 /// A stream of ADTS as it comes (ffmpeg's), read into raw AAC frames and the config its headers say.
-#[cfg(any(desktop, test))]
+#[cfg(any(ffmpeg, test))]
 #[derive(Default)]
 pub(crate) struct Adts {
     held: Vec<u8>,
@@ -49,7 +48,7 @@ pub(crate) struct Adts {
     pub config: Option<Config>,
 }
 
-#[cfg(any(desktop, test))]
+#[cfg(any(ffmpeg, test))]
 impl Adts {
     /// `bytes` more of the stream: the frames it completed, their headers left off. An error: what isn't ADTS.
     pub(crate) fn push(&mut self, bytes: &[u8]) -> Result<Vec<Vec<u8>>, String> {

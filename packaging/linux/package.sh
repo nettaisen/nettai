@@ -16,9 +16,9 @@
 # (Up to 0.19.1 x86_64's app was packed a second time on the channel `linux`, the only one up to 0.19.0: the bridge,
 # docs/app.md §19, "Updates".)
 #
-# The app's folder, which vpk makes the AppImage of: nettai and ffmpeg (beside the program, where the app looks for
-# it), and LICENSE, THIRD-PARTY-NOTICES.txt and ffmpeg-NOTICE.txt. vpk writes the AppImage's entry, its desktop file
-# and its icon. No content, no ROM and no extracted asset is in it: the app downloads each game's content
+# The app's folder, which vpk makes the AppImage of: nettai, LICENSE and THIRD-PARTY-NOTICES.txt. vpk writes the
+# AppImage's entry, its desktop file and its icon. No ffmpeg (Linux exports use the system's ffmpeg on PATH), no
+# content, no ROM and no extracted asset is in it: the app downloads each game's content
 # (docs/design/content-deployment.md §5) and extracts each game's pack from the player's own copy. The system's
 # libraries (glibc, ALSA, fontconfig, OpenGL, X11 or Wayland) are the system's: build it on an old distribution (the
 # workflow's is Ubuntu 22.04, on each architecture) to reach more.
@@ -26,8 +26,6 @@
 # NETTAI_LINUX_ARCH      x86_64 or arm64 (above): this machine's own, which is the default
 # NETTAI_VERSION         the version, if set; else the app crate's
 # NETTAI_ICONS           a folder packaging/icons.sh made; else it is made here (needs librsvg and ImageMagick)
-# NETTAI_BUNDLE_FFMPEG   the ffmpeg to bundle (for the architecture packaged); else the release
-#                        packaging/ffmpeg.sha256 pins (a static program), downloaded and checked
 # VPK                    Velopack's vpk (the version crates/nettai's velopack is: 1.3.39-g8d2844f); else vpk on the PATH
 set -euo pipefail
 # shellcheck source-path=SCRIPTDIR source=../build.sh
@@ -63,17 +61,6 @@ cp "$program" "$app/nettai"
 strip --strip-debug "$app/nettai"
 cp "$root/LICENSE" "$app/LICENSE"
 cp "$notices" "$app/THIRD-PARTY-NOTICES.txt"
-# ffmpeg beside the program, where the export looks first (nettai_video::mp4::find_ffmpeg): the release's program for
-# the architecture; and its notice (GPL: what it is built from, where that source is).
-if [ -n "${NETTAI_BUNDLE_FFMPEG:-}" ]; then
-    cp "$NETTAI_BUNDLE_FFMPEG" "$app/ffmpeg"
-else
-    fetch_ffmpeg "ffmpeg-linux-$arch"
-    cp "$fetched" "$app/ffmpeg"
-fi
-chmod 755 "$app/ffmpeg"
-fetch_ffmpeg ffmpeg-NOTICE.txt
-cp "$fetched" "$app/ffmpeg-NOTICE.txt"
 
 # The release (Velopack's: docs/app.md §19), on the architecture's channel.
 "${VPK:-vpk}" pack --packId nettai --packVersion "$version" --packTitle nettai --packAuthors nettai \

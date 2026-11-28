@@ -3129,8 +3129,9 @@ nothing more:
   threads of their own (`presenters`, `yuv`), the sound made 48 kHz
   (`resample`).
 - **The codecs** (`codecs`), the platform's, a module each (`platform`):
-  `desktop` (ffmpeg run as children), `web` (WebCodecs), `ios`
-  (VideoToolbox and AudioToolbox), `android` (MediaCodec). Each is given the
+  `apple` (macOS and iOS: VideoToolbox and AudioToolbox), `windows`
+  (Media Foundation), `android` (MediaCodec), `web` (WebCodecs), and `ffmpeg`
+  (Linux: system ffmpeg run as children). Each is given the
   same NV12 and the same samples, and says back what its codecs made: the
   picture's H.264 a frame at a time in the order shown, with its parameter
   sets, and each sound track's coded frames, with its config and priming.
@@ -3280,8 +3281,9 @@ then took as long as ffmpeg alone took to encode the same frames from a file
 (1,200 of them: 3.2 s against ffmpeg's 3.0; libx264 at `-preset medium`, CRF
 16, unchanged), and was byte for byte what it had been.
 
-**On the desktop: ffmpeg** (`platform::desktop`), a child a track (the user:
-"can we avoid emitting nut entirely?"). The picture's child is written the
+**On Linux: system ffmpeg** (`platform::ffmpeg`), a child a track (the user:
+"can we avoid emitting nut entirely?", and later "all in on no ffmpeg, with
+system ffmpeg linux only"). The picture's child is written the
 frames' NV12 on its standard input (`-f rawvideo -pixel_format nv12`, the
 video's size, `-framerate 262144/4389`: a tick's rate), and each sound
 track's child that track's samples (`-f f32le -sample_rate 48000
@@ -3318,18 +3320,16 @@ decoded MP4 against the frames, RGB PSNR): 40 dB at twice the frame and
 So a host offers even sizes first. (4:4:4 was the desktop's alone, and went
 for one picture format everywhere.)
 
-**Which ffmpeg** is `platform::desktop::find_ffmpeg()`, the one the app, the
-tour and `nettai-tool --mp4` run: `$NETTAI_FFMPEG`, else `ffmpeg` beside the
-running program (the one every package bundles: docs/app.md §19), else one
-in an absolute folder of the path or where a package manager puts it
-(`/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin`). A relative folder
-of the path (`.`, or an empty entry) is never looked in, so an `ffmpeg` in
-the working directory isn't run; found nowhere, it is the bundled one's
-place, which fails to start (`NoFfmpeg`). The bundled ffmpeg is a minimal
-static build of these commands and nothing more (nettaisen/ffmpeg-build:
-the raw video and float PCM demuxers, libx264 and aac, pipes alone). Its
-muxers are to be the h264 and adts ones (`--enable-muxer=h264,adts`): the
-build at ffmpeg-9.0.2-2 has mp4's alone, from when ffmpeg wrote MP4s.
+**Which ffmpeg** (Linux) is `platform::ffmpeg::find_ffmpeg()`, the one the app,
+the tour and `nettai-tool --mp4` run on Linux: `$NETTAI_FFMPEG`, else `ffmpeg`
+beside the running program if placed there, else one in an absolute folder of
+the path or where a package manager puts it (`/opt/homebrew/bin`,
+`/usr/local/bin`, `/opt/local/bin`). A relative folder of the path (`.`, or an
+empty entry) is never looked in, so an `ffmpeg` in the working directory isn't
+run; found nowhere, it fails to start (`NoFfmpeg`), and the app tells the user
+to install `ffmpeg`. No package bundles `ffmpeg` anymore (macOS uses
+VideoToolbox and AudioToolbox in `platform::apple`, Windows uses Media
+Foundation in `platform::windows`).
 
 **In a browser: WebCodecs** (`platform::web`). H.264 at level 4.2 (High,
 else Main, else the constrained baseline every encoder has), at a bit rate

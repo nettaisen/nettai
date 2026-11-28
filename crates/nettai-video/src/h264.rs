@@ -72,13 +72,13 @@ pub(crate) fn is_key(units: &[&[u8]]) -> bool {
 
 /// A stream of Annex B as it comes (ffmpeg's raw H.264, a frame's access unit after another's, each beginning with
 /// a delimiter: x264's `aud`), cut into access units.
-#[cfg(any(desktop, test))]
+#[cfg(any(ffmpeg, test))]
 #[derive(Default)]
 pub(crate) struct Stream {
     held: Vec<u8>,
 }
 
-#[cfg(any(desktop, test))]
+#[cfg(any(ffmpeg, test))]
 impl Stream {
     /// `bytes` more of the stream: the access units it ended (each but the last, which the next delimiter ends).
     pub(crate) fn push(&mut self, bytes: &[u8]) -> Vec<Vec<u8>> {

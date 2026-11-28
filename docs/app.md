@@ -4079,35 +4079,35 @@ found, the file not written, anything else with the log named). The app keeps aw
   by two pixels it covers, within one of ffmpeg's scaler); and AAC-LC at 192 kb/s (a browser with none: Opus) a
   track, shown from past its encoder's priming and exactly as long as the samples it was given (its last frame's
   padding left out). No 4:4:4: one picture format everywhere.
-- *On the desktop* the codecs are ffmpeg's children, a track each (nettai-video's `platform::desktop`): x264 at
-  CRF 16, given the NV12 raw, writing raw H.264 (`-f h264`, each frame after an access unit delimiter); ffmpeg's
-  AAC writing ADTS. nettai-video reads both as they come, without parsing any container. ffmpeg's AAC priming is
-  its encoder's 1024 samples (libavcodec's `aacenc.c`, `initial_padding`). The bundled ffmpeg has the h264 and
-  adts muxers for this since ffmpeg-9.0.2-3 (§19).
+- *Native codecs on macOS, Windows and phones; system ffmpeg on Linux* (the user: "i don't like having to bundle
+  ffmpeg... all in on no ffmpeg, with system ffmpeg linux only"):
+  - macOS and iOS (`platform::apple`): VideoToolbox's H.264 (High; its parameter sets from its format description)
+    and AudioToolbox's AAC-LC, whose priming is the 2112 samples AudioToolbox says it puts first
+    (`kAudioConverterPrimeInfo`). Tested on macOS (`videotoolbox_makes_the_mp4` and `videotoolbox_mp4_plays_as_given`):
+    a set's 120 frames at twice the frame, read back by ffprobe as H.264 High 480x320 yuv420p, tagged
+    tv/bt709/bt709/bt709, 262144/4389, starting at 0, 120 frames, and AAC LC at 48 kHz; decoded by ffmpeg, the
+    pictures 0.000 off a byte of the NV12 given on the tests' flat graphics, and the sound at no lag from what was
+    given and as long.
+  - Windows (`platform::windows`): Media Foundation's synchronous H.264 encoder MFT (High, else Main, else Baseline;
+    no B-frames via `CODECAPI_AVEncMPVDefaultBPictureCount`, key frame every 120 via `CODECAPI_AVEncMPVGOPSize`,
+    NV12 input tagged BT.709 video range, Annex B output) and AAC-LC encoder MFT (16-bit PCM input, 192 kb/s raw
+    frames, `AudioSpecificConfig` from `MF_MT_USER_DATA`, priming measured via Windows' AAC decoder MFT).
+    Cross-checked against `x86_64-pc-windows-gnu`.
+  - Android (`platform::android`): MediaCodec's `video/avc` and `audio/mp4a-latm` through the NDK; its parameter sets
+    are its codec configuration; the sound goes in as 16-bit PCM, and the AAC encoder's priming, which Android
+    doesn't say and which differs by device, is measured as an export starts, a click through it and the system's
+    decoder, as the browser's is. Only type-checked: no device has run it.
+  - Linux (`platform::ffmpeg`): the system's `ffmpeg` (`$NETTAI_FFMPEG`, else one beside the program if placed there,
+    else one on `PATH` or `/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin`; relative `PATH` folders are
+    skipped), run as children a track each: x264 at CRF 16 (`-bf 0`, `-f h264`) and ffmpeg's AAC (`-f adts`, 1024
+    samples priming). Not bundled: if missing, the app tells the user "Video export needs ffmpeg. Install it, then
+    try again." (`Error::NoFfmpeg`).
   - *B-frames dropped* (2026-10-29, so that no platform's codec reorders its frames): an EXE5 set of 7,199 ticks
     (two minutes, recorded headless from verify's `exe5-dark` match with scripted keys against `--opponent attacks`)
     at four times the frame, through `nettai-tool --mp4`: 17,903,532 bytes with B-frames (H.264 at 987 kb/s),
     21,142,353 without (1,205 kb/s): the file 18% larger, the picture 22%. All of it is the B-frames: the new
     pipeline with them on again made 17,858,229 bytes (987.5 kb/s). Encoding took 15.0 s and 15.9 s, within the
     machine's load's noise.
-- *ffmpeg* is `$NETTAI_FFMPEG`, else the one beside the program, which every package bundles (§19), else one on
-  the path or where a package manager puts it (`/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin`: an app
-  started from the desktop has a short path). The path's relative folders (`.`, an empty entry) are passed by, so
-  an `ffmpeg` in the working directory is never run (nettai-video's `platform::desktop::find_ffmpeg`,
-  docs/frontend.md §8).
-- *On a phone* there is no ffmpeg: the codecs are the phone's own (nettai-video's `platform::ios` and
-  `platform::android`), given the same NV12 and samples, into the same MP4.
-  - iOS: VideoToolbox's H.264 (High; its parameter sets from its format description) and AudioToolbox's AAC-LC,
-    whose priming is the 2112 samples AudioToolbox says it puts first (`kAudioConverterPrimeInfo`). macOS has the
-    same frameworks, and nettai-video's tests run them there (2026-10-29): a set's 120 frames at twice the frame,
-    read back by ffprobe as H.264 High 480x320 yuv420p, tagged tv/bt709/bt709/bt709, 262144/4389, starting at 0,
-    120 frames, and AAC LC at 48 kHz; decoded by ffmpeg, the pictures 0.000 off a byte of the NV12 given on the
-    tests' flat graphics, and the sound at no lag from what was given and as long (96,432 samples for 96,438: the
-    edit's length is in milliseconds). Not run on an iPhone.
-  - Android: MediaCodec's `video/avc` and `audio/mp4a-latm` through the NDK; its parameter sets are its codec
-    configuration; the sound goes in as 16-bit PCM, and the AAC encoder's priming, which Android doesn't say and
-    which differs by device, is measured as an export starts, a click through it and the system's decoder, as the
-    browser's is. Only type-checked: no device has run it.
 - *How fast* (the user: "is replay export slower than it should be?"): the export's thread plays the replay and
   draws each tick's frame at 240x160; the picture at the video's size, text and all, is made on a few threads
   beside it and made NV12 there (nettai-video's `presenters`, with the window's own `present`: there is one way a
@@ -4467,35 +4467,11 @@ and appimagetool.
   its own.
 - **Android** (`packaging/android/package.sh`; §7): `nettai-android.apk`, signed with the release key.
 
-**The bundled ffmpeg.** The user: "i think you also need like the equivalent of
-https://github.com/tangobattle/ffmpeg-build for encoding and bundle ffmpeg with it. it should support whatever
-nettai needs and nothing more so the build is minimal", then "make sure to bundle it with the binary", then "i want
-you to build it with a separate workflow in https://github.com/nettaisen/ffmpeg-build so you don't have to
-build ffmpeg everty time". That repository's workflow, run by hand, builds a static `ffmpeg` per platform from
-`--disable-everything` with only what the export's commands run (the raw video and float PCM demuxers and
-decoders, the pipe protocol, swresample's `aresample` with `aformat`, `null` and `anull`, libx264 and the native
-AAC encoder, the `h264` and `adts` muxers: its README traces each to the commands), smoke-tests it with those
-commands on the raw bytes nettai writes (NV12 made as nettai makes it), decodes the outputs with a full ffmpeg,
-and publishes a release `ffmpeg-<version>-<revision>`. ffmpeg-9.0.2-3 (2026-10-30) is the one for the export's
-raw H.264 and ADTS (nettai-video reads its codecs' own output on every platform: §16): the `h264` and `adts`
-muxers in place of the MP4 one, and no `scale`, `format` or `setparams`, as the frames come as NV12; 9.0.2-2 had
-the MP4 muxer alone (the export before, released to 0.17.0). Its macOS arm64 build ran nettai-video's tests
-(`NETTAI_FFMPEG`, the end-to-end export among them). Its revision 4 (`ffmpeg-9.0.2-4`, 2026-10-31, the same program), the
-one pinned, adds the arm64 packages' two: `ffmpeg-linux-arm64`, built on `ubuntu-22.04-arm` and linked statically as
-x86_64's is, and `ffmpeg-windows-arm64.exe`, cross-compiled on Linux with llvm-mingw against the UCRT (Windows' own
-since Windows 10) and smoke-tested on `windows-11-arm`. Its Linux and Mac programs are revision 3's byte for byte;
-Windows x86_64's, built again from the same sources by the same job, differs in its bytes alone. `packaging/ffmpeg.sha256` pins the release a package takes by its tag and each file by its SHA-256; the scripts download them once into
-`target/package/ffmpeg/<tag>/` and check them (or bundle the ffmpeg `NETTAI_BUNDLE_FFMPEG`, `-Ffmpeg` on Windows,
-names). Where it goes: `ffmpeg.exe` beside `nettai.exe` (the installer and the .zip), `Contents/MacOS/ffmpeg` in
-the app (the release's program for the app's architecture; signed before the app, as the app is), beside the program
-in the AppImage. The app looks beside itself
-first (§16).
-
-The binary is GPL: FFmpeg built with `--enable-gpl` and linked with x264 (GPL-2.0-or-later) is licensed
-GPL-2.0-or-later as a whole. Each package ships `ffmpeg-NOTICE.txt` from the release (beside THIRD-PARTY-NOTICES.txt:
-beside the program on Windows and in the AppImage, in `Contents/Resources` on macOS): what
-the program is built from, its license, the license texts, and where its complete source is, which is the release
-itself: the FFmpeg and x264 source tarballs it was built from and the build scripts at the commit that built it.
+**No bundled ffmpeg.** Earlier releases bundled a minimal static GPL build of `ffmpeg` from `nettaisen/ffmpeg-build`
+(pinned in `packaging/ffmpeg.sha256`) alongside the app on macOS, Windows, and Linux. That bundling is gone: macOS
+uses VideoToolbox and AudioToolbox (`platform::apple`), Windows uses Media Foundation (`platform::windows`), phones
+use their own OS codecs, and Linux uses the system's `ffmpeg` on `PATH` (asking the user to install it if missing).
+None of the packages ship `ffmpeg` or `ffmpeg-NOTICE.txt`.
 
 The icons are made from `docs/logo/nettai-icon.svg` by `packaging/icons.sh` (rsvg-convert and ImageMagick):
 PNGs (Linux's sizes, and the iPhone's and iPad's, which iOS's app takes), the Windows .ico, and macOS's icon set, the artwork on Apple's grid (824 of 1024, centered) so that it is no

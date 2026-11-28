@@ -122,11 +122,13 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    a video's sound then the left console's with the right
                    side's own effects over it, one track
   --mp4 OUT        with --replay: write it as an MP4 (H.264 and AAC, the
-                   sound at 48 kHz), encoded by ffmpeg ($NETTAI_FFMPEG, else
-                   one beside this program, else the path's): a frame a tick,
-                   as a viewer playing it straight shows and plays it, each
-                   round a chapter ('Round N') and the sound titled with its
-                   player's name; OUT is there only once it is whole
+                   sound at 48 kHz), coded by the platform's own codecs
+                   (VideoToolbox/AudioToolbox on macOS, Media Foundation on
+                   Windows, system ffmpeg on Linux — $NETTAI_FFMPEG, else the
+                   path's): a frame a tick, as a viewer playing it straight
+                   shows and plays it, each round a chapter ('Round N') and
+                   the sound titled with its player's name; OUT is there only
+                   once it is whole
   --scale N        with --mp4: the picture N times the frame's
                    240x160 (default 1; the sharp text and HUD are drawn at that
                    size)

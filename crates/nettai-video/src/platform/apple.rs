@@ -1,6 +1,5 @@
-//! iOS's codecs ([`crate::codecs`]): VideoToolbox's H.264 for the picture and AudioToolbox's AAC for each sound
-//! track, a console shown: the system's own encoders (the picture's in hardware on every iPhone). macOS has the same
-//! frameworks, and the tests run this there.
+//! macOS and iOS's codecs ([`crate::codecs`]): VideoToolbox's H.264 for the picture and AudioToolbox's AAC for each
+//! sound track, a console shown: the system's own encoders (hardware-accelerated on Apple silicon and every iPhone).
 //!
 //! - **The picture** is the NV12 every platform is given, each frame written into a pixel buffer of the session's
 //!   pool and given at its time on the tick's time base. H.264 High at the level its size needs, at the bit rate
@@ -58,7 +57,7 @@ const AAC_FRAME: u32 = 1024;
 /// converter stops and says it back).
 const WAIT_FOR_MORE: i32 = i32::from_be_bytes(*b"more");
 
-/// iOS's codecs for a video of `video` and `audio`.
+/// macOS and iOS's codecs for a video of `video` and `audio`.
 pub(crate) fn start(video: Video, audio: Option<Audio>) -> Result<Box<dyn Codecs>, Error> {
     let picture = Picture::start(video, codecs::bitrate(&video))?;
     let sound = (0..audio.map_or(0, |a| a.tracks)).map(|t| Aac::start(t, codecs::SOUND_BITRATE)).collect::<Result<Vec<_>, _>>()?;
@@ -519,16 +518,15 @@ impl Drop for Aac {
 
 #[cfg(test)]
 mod tests {
-    use super::start;
     use crate::tests::{given, options, viewer};
-    use crate::{Error, Mp4, Options, Part, Sides, play};
+    use crate::{Error, Options, Part, Sides, write_mp4};
     use mp4_atom::{Codec, Decode, Ftyp, Moov, StszSamples};
     use nettai_frontend::viewer::Viewer;
     use std::ops::ControlFlow;
 
-    /// `options`' MP4 of the replay `viewer` plays, made by iOS's encoders (here macOS's, the same frameworks).
+    /// `options`' MP4 of the replay `viewer` plays, made by Apple's encoders (VideoToolbox and AudioToolbox).
     fn mp4(viewer: &mut Viewer, options: &Options) -> Result<Vec<u8>, Error> {
-        let made = play(viewer, options, &mut |_| ControlFlow::Continue(()), |video, audio, info| Ok(Mp4::with(start(video, audio)?, video, audio, info, Vec::new())))?.finish()?;
+        let made = write_mp4(viewer, options, Vec::new(), &mut |_| ControlFlow::Continue(()))?;
         Ok([made.head, made.body].concat())
     }
 

@@ -18,14 +18,13 @@
 # the bridge, docs/app.md §19, "Updates". The universal app, both programs joined by lipo on the channel osx, a Mac's
 # only package up to 0.12.0, was made up to 0.18.1.)
 #
-# The bundle: Contents/MacOS/{nettai, ffmpeg}, Contents/Resources/{nettai.icns, LICENSE, THIRD-PARTY-NOTICES.txt,
-# ffmpeg-NOTICE.txt}. No content, no ROM and no extracted asset is in it: the app downloads each game's content
-# (docs/design/content-deployment.md §5) and extracts each game's pack from the player's own copy.
+# The bundle: Contents/MacOS/nettai, Contents/Resources/{nettai.icns, LICENSE, THIRD-PARTY-NOTICES.txt}. No ffmpeg
+# (macOS exports with VideoToolbox and AudioToolbox), no content, no ROM and no extracted asset is in it: the app
+# downloads each game's content (docs/design/content-deployment.md §5) and extracts each game's pack from the player's
+# own copy.
 #
 # NETTAI_MACOS_ARCH      aarch64 or x86_64 (above); else this Mac's own architecture
 # NETTAI_VERSION         the version, if set; else the app crate's
-# NETTAI_BUNDLE_FFMPEG   the ffmpeg to bundle (for the architecture packaged); else the release
-#                        packaging/ffmpeg.sha256 pins, downloaded and checked
 # NETTAI_ICONS           a folder packaging/icons.sh made; else it is made here (needs librsvg and ImageMagick)
 # MACOS_SIGN_IDENTITY    a Developer ID Application identity in the keychain to sign the app with (vpk signs it);
 #                        else it is signed ad hoc here
@@ -68,20 +67,6 @@ iconutil -c icns -o "$app/Contents/Resources/nettai.icns" "$icons/nettai.iconset
 cp "$root/LICENSE" "$app/Contents/Resources/LICENSE"
 cp "$notices" "$app/Contents/Resources/THIRD-PARTY-NOTICES.txt"
 
-# ffmpeg beside the program, where the export looks first (nettai_video::mp4::find_ffmpeg): the release's program
-# for the architecture (its arm64 is Rust's aarch64); and its notice (GPL: what it is built from, where that source
-# is).
-ffmpeg=$app/Contents/MacOS/ffmpeg
-if [ -n "${NETTAI_BUNDLE_FFMPEG:-}" ]; then
-    cp "$NETTAI_BUNDLE_FFMPEG" "$ffmpeg"
-else
-    fetch_ffmpeg "ffmpeg-macos-${arch/aarch64/arm64}"
-    cp "$fetched" "$ffmpeg"
-fi
-chmod 755 "$ffmpeg"
-fetch_ffmpeg ffmpeg-NOTICE.txt
-cp "$fetched" "$app/Contents/Resources/ffmpeg-NOTICE.txt"
-
 # The release (Velopack's: docs/app.md §19), on the architecture's channel. With an identity vpk
 # signs the bundle itself, everything in it with the hardened runtime, as notarizing asks; without one it is signed ad
 # hoc here (an Apple silicon Mac runs nothing unsigned; Gatekeeper still asks the player to allow it once).
@@ -92,7 +77,6 @@ if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then
     [ -n "${MACOS_NOTARY_PROFILE:-}" ] && pack+=(--notaryProfile "$MACOS_NOTARY_PROFILE")
     [ -n "${MACOS_KEYCHAIN:-}" ] && pack+=(--keychain "$MACOS_KEYCHAIN")
 else
-    codesign --force --sign - "$ffmpeg"
     codesign --force --sign - "$app"
 fi
 "${VPK:-vpk}" "${pack[@]}" --channel "$channel"
