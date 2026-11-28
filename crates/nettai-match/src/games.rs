@@ -1415,3 +1415,86 @@ fn a_deleted_navis_emotion_swing_goes_on() {
         step(&mut b, false);
     }
 }
+
+/// Every absorbable field object in EXE5 and EXE6 must define a `look` (even
+/// `{ anim = 0, palette = 0, shadow = false }` for a `none` row of
+/// `0x0801D6B0` / `byte_8021220`), or CosmoMan / DustMan throws
+/// `has no absorbed look` when dropping it back.
+#[test]
+fn absorbable_field_objects_have_a_look() {
+    use nettai_battle::content::IdentityClass;
+    for (name, content) in [("exe5", exe5_content()), ("exe6", exe6_content())] {
+        let missing: Vec<&str> = content
+            .defs
+            .identities
+            .iter()
+            .filter(|id| id.class == IdentityClass::FieldObject && id.scrap && id.look.is_none())
+            .map(|id| id.key.as_str())
+            .collect();
+        assert!(missing.is_empty(), "{name}: absorbable field objects missing `look`: {missing:?}");
+    }
+}
+
+/// EXE5's BoyBomb (NameID 0xD4) can be absorbed by CosmoMan; its meteor must
+/// fall back to CosmoMan's own meteor look cleanly instead of stopping the
+/// battle in `exelib:looks.luau:131`.
+#[test]
+fn cosmoman_absorbs_boy_bomb_without_stopping() {
+    use nettai_battle::battle::{fight, mode};
+    use nettai_battle::input::Keys;
+    let content = exe5_content();
+    let m = parse(&content, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
+    let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
+    let step = |b: &mut nettai_battle::Battle, keys0: Keys, ok: bool| {
+        let p0 = nettai_battle::PlayerTick { held: keys0, ..Default::default() }
+            .with_choice(ok.then_some(nettai_battle::ScreenChoice::Ok));
+        let p1 = nettai_battle::PlayerTick::default()
+            .with_choice(ok.then_some(nettai_battle::ScreenChoice::Ok));
+        let input = nettai_battle::TickInput { players: [p0, p1], events: Default::default() };
+        b.step(&input);
+        assert!(!b.is_stopped(), "the engine stopped: {:?}", b.round_end());
+    };
+    // Reach the fight phase.
+    let mut t = 0;
+    while !(b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING) {
+        let ok = b.round.mode == mode::CUSTOM && t % 4 == 2;
+        step(&mut b, Keys::empty(), ok);
+        t += 1;
+        assert!(t < 2000, "no fight");
+    }
+    // Load BoyBomb1 followed by CosmoMan into side 0's hand.
+    let boy_bomb = content.defs.chip_by_key("boy_bomb_1").expect("boy_bomb_1");
+    let cosmoman = content.defs.chip_by_key("cosmoman").expect("cosmoman");
+    b.hands[0].cursor = 0;
+    b.hands[0].ids = [Some(boy_bomb), Some(cosmoman), None, None, None, None];
+    b.hands[0].damage = [content.defs.chip(boy_bomb).record.damage, content.defs.chip(cosmoman).record.damage, 0, 0, 0, 0];
+    b.hands[0].attack_bonus = [0; 6];
+    b.hands[0].charge_bonus = [0; 6];
+    // Use BoyBomb1 (places bomb one panel ahead of MegaMan).
+    for _ in 0..10 {
+        step(&mut b, Keys::A, false);
+        if b.hands[0].cursor == 1 {
+            break;
+        }
+    }
+    assert_eq!(b.hands[0].cursor, 1, "BoyBomb1 should have been used");
+    // Wait for BoyBomb1's dimming animation to finish while the bomb is still on the field.
+    for _ in 0..200 {
+        step(&mut b, Keys::empty(), false);
+        if !b.is_dimmed() && b.hands[0].cursor == 1 {
+            // Try using CosmoMan as soon as MegaMan can act.
+            step(&mut b, Keys::A, false);
+            if b.hands[0].cursor == 2 {
+                break;
+            }
+        }
+    }
+    assert_eq!(b.hands[0].cursor, 2, "CosmoMan should have been used");
+    // Step through CosmoMan gathering the BoyBomb and dropping all 4 meteors.
+    let hp_before = b.objects.get(b.player(1).unwrap()).hp;
+    for _ in 0..420 {
+        step(&mut b, Keys::empty(), false);
+    }
+    let hp_after = b.objects.get(b.player(1).unwrap()).hp;
+    assert!(hp_after < hp_before, "CosmoMan's meteors should have hit side 1 ({hp_before} -> {hp_after})");
+}
